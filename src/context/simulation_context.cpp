@@ -1468,6 +1468,11 @@ void Simulation_context::init_comm()
     int npr = cfg().control().mpi_grid_dims()[0];
     int npc = cfg().control().mpi_grid_dims()[1];
     int npb = npr * npc;
+    if (npb <= 0) {
+        std::stringstream s;
+        s << "wrong mpi grid dimensions : " << npr << " " << npc;
+        TERMINATE(s);
+    }
     int npk = comm_.size() / npb;
     if (npk * npb != comm_.size()) {
         std::stringstream s;

@@ -664,6 +664,7 @@ end subroutine sirius_set_parameters
 !> @param [out] lmax_pot Maximum orbital quantum number for potential.
 !> @param [out] num_fv_states Number of first-variational states.
 !> @param [out] num_bands Number of bands.
+!> @param [out] num_spins Number of spins.
 !> @param [out] num_mag_dims Number of magnetic dimensions.
 !> @param [out] pw_cutoff Cutoff for G-vectors.
 !> @param [out] gk_cutoff Cutoff for G+k-vectors.
@@ -680,8 +681,8 @@ end subroutine sirius_set_parameters
 !> @param [out] num_loc_op_applied Internal counter of the number of wave-functions to which Hamiltonian was applied.
 !> @param [out] error_code Error code.
 subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
-&num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
+&num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
+&use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
 &evp_work_count,num_loc_op_applied,error_code)
 implicit none
 !
@@ -691,6 +692,7 @@ integer, optional, target, intent(out) :: lmax_rho
 integer, optional, target, intent(out) :: lmax_pot
 integer, optional, target, intent(out) :: num_fv_states
 integer, optional, target, intent(out) :: num_bands
+integer, optional, target, intent(out) :: num_spins
 integer, optional, target, intent(out) :: num_mag_dims
 real(8), optional, target, intent(out) :: pw_cutoff
 real(8), optional, target, intent(out) :: gk_cutoff
@@ -713,6 +715,7 @@ type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
 type(C_PTR) :: num_fv_states_ptr
 type(C_PTR) :: num_bands_ptr
+type(C_PTR) :: num_spins_ptr
 type(C_PTR) :: num_mag_dims_ptr
 type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
@@ -735,8 +738,8 @@ type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
-&num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
+&num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
+&use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
 &evp_work_count,num_loc_op_applied,error_code)&
 &bind(C, name="sirius_get_parameters")
 use, intrinsic :: ISO_C_BINDING
@@ -746,6 +749,7 @@ type(C_PTR), value :: lmax_rho
 type(C_PTR), value :: lmax_pot
 type(C_PTR), value :: num_fv_states
 type(C_PTR), value :: num_bands
+type(C_PTR), value :: num_spins
 type(C_PTR), value :: num_mag_dims
 type(C_PTR), value :: pw_cutoff
 type(C_PTR), value :: gk_cutoff
@@ -785,6 +789,10 @@ endif
 num_bands_ptr = C_NULL_PTR
 if (present(num_bands)) then
 num_bands_ptr = C_LOC(num_bands)
+endif
+num_spins_ptr = C_NULL_PTR
+if (present(num_spins)) then
+num_spins_ptr = C_LOC(num_spins)
 endif
 num_mag_dims_ptr = C_NULL_PTR
 if (present(num_mag_dims)) then
@@ -847,10 +855,10 @@ if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_get_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
-&num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
-&auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,iter_solver_tol_ptr,&
-&iter_solver_tol_empty_ptr,verbosity_ptr,hubbard_correction_ptr,evp_work_count_ptr,&
-&num_loc_op_applied_ptr,error_code_ptr)
+&num_fv_states_ptr,num_bands_ptr,num_spins_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,&
+&fft_grid_size_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,&
+&iter_solver_tol_ptr,iter_solver_tol_empty_ptr,verbosity_ptr,hubbard_correction_ptr,&
+&evp_work_count_ptr,num_loc_op_applied_ptr,error_code_ptr)
 if (present(gamma_point)) then
 gamma_point = gamma_point_c_type
 endif
@@ -1179,6 +1187,130 @@ endif
 call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,f_rg_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_periodic_function_ptr
+
+!
+!> @brief Get values of the periodic function.
+!> @param [in] handler Handler of the DFT ground state object.
+!> @param [in] label Label of the function.
+!> @param [in] f_rg Real space values on the regular grid.
+!> @param [in] f_rg_global If true, real-space array is global.
+!> @param [out] error_code Error code.
+subroutine sirius_set_periodic_function(handler,label,f_rg,f_rg_global,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), optional, target, dimension(*), intent(in) :: f_rg
+logical, optional, target, intent(in) :: f_rg_global
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: f_rg_ptr
+type(C_PTR) :: f_rg_global_ptr
+logical(C_BOOL), target :: f_rg_global_c_type
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_periodic_function_aux(handler,label,f_rg,f_rg_global,error_code)&
+&bind(C, name="sirius_set_periodic_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: label
+type(C_PTR), value :: f_rg
+type(C_PTR), value :: f_rg_global
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string_f2c(label)
+label_ptr = C_LOC(label_c_type)
+f_rg_ptr = C_NULL_PTR
+if (present(f_rg)) then
+f_rg_ptr = C_LOC(f_rg)
+endif
+f_rg_global_ptr = C_NULL_PTR
+if (present(f_rg_global)) then
+f_rg_global_c_type = f_rg_global
+f_rg_global_ptr = C_LOC(f_rg_global_c_type)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_periodic_function_aux(handler_ptr,label_ptr,f_rg_ptr,f_rg_global_ptr,&
+&error_code_ptr)
+deallocate(label_c_type)
+if (present(f_rg_global)) then
+endif
+end subroutine sirius_set_periodic_function
+
+!
+!> @brief Get values of the periodic function.
+!> @param [in] handler Handler of the DFT ground state object.
+!> @param [in] label Label of the function.
+!> @param [out] f_rg Real space values on the regular grid.
+!> @param [in] f_rg_global If true, real-space array is global.
+!> @param [out] error_code Error code.
+subroutine sirius_get_periodic_function(handler,label,f_rg,f_rg_global,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), optional, target, dimension(*), intent(out) :: f_rg
+logical, optional, target, intent(in) :: f_rg_global
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: f_rg_ptr
+type(C_PTR) :: f_rg_global_ptr
+logical(C_BOOL), target :: f_rg_global_c_type
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_periodic_function_aux(handler,label,f_rg,f_rg_global,error_code)&
+&bind(C, name="sirius_get_periodic_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: label
+type(C_PTR), value :: f_rg
+type(C_PTR), value :: f_rg_global
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string_f2c(label)
+label_ptr = C_LOC(label_c_type)
+f_rg_ptr = C_NULL_PTR
+if (present(f_rg)) then
+f_rg_ptr = C_LOC(f_rg)
+endif
+f_rg_global_ptr = C_NULL_PTR
+if (present(f_rg_global)) then
+f_rg_global_c_type = f_rg_global
+f_rg_global_ptr = C_LOC(f_rg_global_c_type)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_periodic_function_aux(handler_ptr,label_ptr,f_rg_ptr,f_rg_global_ptr,&
+&error_code_ptr)
+deallocate(label_c_type)
+if (present(f_rg_global)) then
+endif
+end subroutine sirius_get_periodic_function
 
 !
 !> @brief Create k-point set from the list of k-points.
@@ -3867,9 +3999,9 @@ subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-integer, optional, target, intent(in) :: gvec
-real(8), optional, target, intent(in) :: gvec_cart
-real(8), optional, target, intent(in) :: gvec_len
+integer, optional, target, dimension(3,*), intent(in) :: gvec
+real(8), optional, target, dimension(3,*), intent(in) :: gvec_cart
+real(8), optional, target, dimension(*), intent(in) :: gvec_len
 integer, optional, target, intent(in) :: index_by_gvec
 !
 type(C_PTR) :: handler_ptr
@@ -5734,80 +5866,6 @@ call sirius_get_num_kpoints_aux(handler_ptr,num_kpoints_ptr,error_code_ptr)
 end subroutine sirius_get_num_kpoints
 
 !
-!> @brief Get the number of computed bands
-!> @param [in] handler Simulation context handler.
-!> @param [out] num_kpoints Number of kpoints in the set
-!> @param [out] error_code Error code.
-subroutine sirius_get_num_bands(handler,num_kpoints,error_code)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(out) :: num_kpoints
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: num_kpoints_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_get_num_bands_aux(handler,num_kpoints,error_code)&
-&bind(C, name="sirius_get_num_bands")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: num_kpoints
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-num_kpoints_ptr = C_NULL_PTR
-num_kpoints_ptr = C_LOC(num_kpoints)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_get_num_bands_aux(handler_ptr,num_kpoints_ptr,error_code_ptr)
-end subroutine sirius_get_num_bands
-
-!
-!> @brief Get the number of spin components
-!> @param [in] handler Simulation context handler
-!> @param [out] num_spin_components Number of spin components.
-!> @param [out] error_code Error code.
-subroutine sirius_get_num_spin_components(handler,num_spin_components,error_code)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(out) :: num_spin_components
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: num_spin_components_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_get_num_spin_components_aux(handler,num_spin_components,error_code)&
-&bind(C, name="sirius_get_num_spin_components")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: num_spin_components
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-num_spin_components_ptr = C_NULL_PTR
-num_spin_components_ptr = C_LOC(num_spin_components)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_get_num_spin_components_aux(handler_ptr,num_spin_components_ptr,error_code_ptr)
-end subroutine sirius_get_num_spin_components
-
-!
 !> @brief Get the kpoint properties
 !> @param [in] handler Kpoint set handler
 !> @param [in] ik Index of the kpoint
@@ -5858,43 +5916,6 @@ endif
 call sirius_get_kpoint_properties_aux(handler_ptr,ik_ptr,weight_ptr,coordinates_ptr,&
 &error_code_ptr)
 end subroutine sirius_get_kpoint_properties
-
-!
-!> @brief Get maximum APW basis size across all atoms.
-!> @param [in] handler Simulation context handler.
-!> @param [out] max_mt_aw_basis_size Maximum APW basis size.
-!> @param [out] error_code Error code.
-subroutine sirius_get_max_mt_aw_basis_size(handler,max_mt_aw_basis_size,error_code)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(out) :: max_mt_aw_basis_size
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: max_mt_aw_basis_size_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code)&
-&bind(C, name="sirius_get_max_mt_aw_basis_size")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: max_mt_aw_basis_size
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-max_mt_aw_basis_size_ptr = C_NULL_PTR
-max_mt_aw_basis_size_ptr = C_LOC(max_mt_aw_basis_size)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_get_max_mt_aw_basis_size_aux(handler_ptr,max_mt_aw_basis_size_ptr,error_code_ptr)
-end subroutine sirius_get_max_mt_aw_basis_size
 
 !
 !> @brief Get matching coefficients for all atoms.

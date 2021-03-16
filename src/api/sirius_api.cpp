@@ -672,6 +672,10 @@ sirius_get_parameters:
       type: int
       attr: out, optional
       doc: Number of bands.
+    num_spins:
+      type: int
+      attr: out, optional
+      doc: Number of spins.
     num_mag_dims:
       type: int
       attr: out, optional
@@ -740,6 +744,7 @@ void sirius_get_parameters(void* const* handler__,
                            int*         lmax_pot__,
                            int*         num_fv_states__,
                            int*         num_bands__,
+                           int*         num_spins__,
                            int*         num_mag_dims__,
                            double*      pw_cutoff__,
                            double*      gk_cutoff__,
@@ -759,63 +764,66 @@ void sirius_get_parameters(void* const* handler__,
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
-        if (lmax_apw__ != nullptr) {
+        if (lmax_apw__) {
             *lmax_apw__ = sim_ctx.lmax_apw();
         }
-        if (lmax_rho__ != nullptr) {
+        if (lmax_rho__) {
             *lmax_rho__ = sim_ctx.lmax_rho();
         }
-        if (lmax_pot__ != nullptr) {
+        if (lmax_pot__) {
             *lmax_pot__ = sim_ctx.lmax_pot();
         }
-        if (num_fv_states__ != nullptr) {
+        if (num_fv_states__) {
             *num_fv_states__ = sim_ctx.num_fv_states();
         }
-        if (num_bands__ != nullptr) {
+        if (num_bands__) {
             *num_bands__ = sim_ctx.num_bands();
         }
-        if (num_mag_dims__ != nullptr) {
+        if (num_spins__) {
+            *num_spins__ = sim_ctx.num_spins();
+        }
+        if (num_mag_dims__) {
             *num_mag_dims__ = sim_ctx.num_mag_dims();
         }
-        if (pw_cutoff__ != nullptr) {
+        if (pw_cutoff__) {
             *pw_cutoff__ = sim_ctx.pw_cutoff();
         }
-        if (gk_cutoff__ != nullptr) {
+        if (gk_cutoff__) {
             *gk_cutoff__ = sim_ctx.gk_cutoff();
         }
-        if (auto_rmt__ != nullptr) {
+        if (auto_rmt__) {
             *auto_rmt__ = sim_ctx.auto_rmt();
         }
-        if (gamma_point__ != nullptr) {
+        if (gamma_point__) {
             *gamma_point__ = sim_ctx.gamma_point();
         }
-        if (use_symmetry__ != nullptr) {
+        if (use_symmetry__) {
             *use_symmetry__ = sim_ctx.use_symmetry();
         }
-        if (so_correction__ != nullptr) {
+        if (so_correction__) {
             *so_correction__ = sim_ctx.so_correction();
         }
-        if (iter_solver_tol__ != nullptr) {
+        if (iter_solver_tol__) {
             *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
         }
-        if (iter_solver_tol_empty__ != nullptr) {
+        if (iter_solver_tol_empty__) {
             *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
-        if (verbosity__ != nullptr) {
+        if (verbosity__) {
             *verbosity__ = sim_ctx.verbosity();
         }
-        if (hubbard_correction__ != nullptr) {
+        if (hubbard_correction__) {
             *hubbard_correction__ = sim_ctx.hubbard_correction();
         }
-        if (fft_grid_size__ != nullptr) {
+        if (fft_grid_size__) {
             for (int x: {0, 1, 2}) {
                 fft_grid_size__[x] = sim_ctx.fft_grid()[x];
             }
         }
-        if (evp_work_count__ != nullptr) {
+        if (evp_work_count__) {
             *evp_work_count__ = sim_ctx.evp_work_count();
         }
-        if (num_loc_op_applied__ != nullptr) {
+        if (num_loc_op_applied__) {
             *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
         }
     }, error_code__);
@@ -860,7 +868,7 @@ sirius_insert_xc_functional:
 */
 void sirius_insert_xc_functional(void* const* gs_handler__,
                                  char const* name__)
-{
+{ // TODO: deprecate and remove
     auto& gs = get_gs(gs_handler__);
     auto& potential = gs.potential();
     int rank;
@@ -1087,6 +1095,124 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
     if (f_rg__) {
         f->set_rg_ptr(f_rg__);
     }
+}
+
+/*
+@api begin
+sirius_set_periodic_function:
+  doc: Get values of the periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the DFT ground state object.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    f_rg:
+      type: double
+      attr: in, optional, dimension(*)
+      doc: Real space values on the regular grid.
+    f_rg_global:
+      type: bool
+      attr: in, optional
+      doc: If true, real-space array is global.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+
+@api end
+*/
+void sirius_set_periodic_function(void* const* handler__, char const* label__, double const* f_rg__,
+        bool const* f_rg_global__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        std::string label(label__);
+        std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            {"rho",  &gs.density().component(0)},
+            {"magz", &gs.density().component(1)},
+            {"magx", &gs.density().component(2)},
+            {"magy", &gs.density().component(3)},
+            {"veff", &gs.potential().component(0)},
+            {"bz",   &gs.potential().component(1)},
+            {"bx",   &gs.potential().component(2)},
+            {"by",   &gs.potential().component(3)},
+            {"vha",  &gs.potential().hartree_potential()}
+        };
+        if (func_map.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+        }
+        if (f_rg__) {
+            if (f_rg_global__ == nullptr) {
+                throw std::runtime_error("missing bool argument `f_rg_global`");
+            }
+            bool is_local = !(*f_rg_global__);
+            func_map[label]->copy_from(nullptr, f_rg__, is_local);
+        }
+    }, error_code__);
+}
+
+/*
+@api begin
+sirius_get_periodic_function:
+  doc: Get values of the periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the DFT ground state object.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    f_rg:
+      type: double
+      attr: out, optional, dimension(*)
+      doc: Real space values on the regular grid.
+    f_rg_global:
+      type: bool
+      attr: in, optional
+      doc: If true, real-space array is global.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+
+@api end
+*/
+void sirius_get_periodic_function(void* const* handler__, char const* label__, double* f_rg__,
+        bool const* f_rg_global__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        std::string label(label__);
+        std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            {"rho",  &gs.density().component(0)},
+            {"magz", &gs.density().component(1)},
+            {"magx", &gs.density().component(2)},
+            {"magy", &gs.density().component(3)},
+            {"veff", &gs.potential().component(0)},
+            {"bz",   &gs.potential().component(1)},
+            {"bx",   &gs.potential().component(2)},
+            {"by",   &gs.potential().component(3)},
+            {"vha",  &gs.potential().hartree_potential()}
+        };
+        if (func_map.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+        }
+        if (f_rg__) {
+            if (f_rg_global__ == nullptr) {
+                throw std::runtime_error("missing bool argument `f_rg_global`");
+            }
+            bool is_local = !(*f_rg_global__);
+            func_map[label]->copy_to(nullptr, f_rg__, is_local);
+        }
+    }, error_code__);
 }
 
 /*
@@ -3838,15 +3964,15 @@ sirius_get_gvec_arrays:
       doc: Simulation context handler
     gvec:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: G-vectors in lattice coordinates.
     gvec_cart:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: G-vectors in Cartesian coordinates.
     gvec_len:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(*)
       doc: Length of G-vectors.
     index_by_gvec:
       type: int
@@ -3890,7 +4016,7 @@ void sirius_get_gvec_arrays(void* const* handler__,
         auto d1 = sim_ctx.fft_grid().limits(1);
         auto d2 = sim_ctx.fft_grid().limits(2);
 
-        mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
+        sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
         std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
 
         for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
@@ -4116,13 +4242,12 @@ sirius_get_vha_el:
       attr: in, required
       doc: DFT ground state handler.
     vha_el:
-      type: double
+      type: double, dimension(*)
       attr: out, required
       doc: Electronic part of Hartree potential at each atom's origin.
 @api end
 */
-void sirius_get_vha_el(void* const* handler__,
-                       double*      vha_el__)
+void sirius_get_vha_el(void* const* handler__, double* vha_el__)
 {
     auto& gs = get_gs(handler__);
     for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
@@ -5386,8 +5511,6 @@ void sirius_get_sv_eigen_vectors(void*          const* handler__,
     ks[ik]->get_sv_eigen_vectors(sv_evec);
 }
 
-// TODO: check if this two functions below are needed
-
 /*
 @api begin
 sirius_set_rg_values:
@@ -5710,70 +5833,6 @@ void sirius_get_num_kpoints(void* const* handler__,
 
 /*
 @api begin
-sirius_get_num_bands:
-  doc: Get the number of computed bands
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    num_kpoints:
-      type: int
-      attr: out, required
-      doc: Number of kpoints in the set
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_num_bands(void* const* handler__,
-                          int *num_bands__,
-                          int *error_code__)
-{ // TODO: already exists in sirius_get_parameters; deprecate
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *num_bands__ = sim_ctx.num_bands();
-    }, error_code__);
-}
-
-/*
-@api begin
-sirius_get_num_spin_components:
-  doc: Get the number of spin components
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler
-    num_spin_components:
-      type: int
-      attr: out, required
-      doc: Number of spin components.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_num_spin_components(void* const* handler__,
-                                    int *num_spin_components__,
-                                    int *error_code__)
-{ // TODO: merge into sirius_get_parameters and deprecate
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (sim_ctx.num_mag_dims() == 0) {
-            *num_spin_components__ = 1;
-        } else {
-            *num_spin_components__ = 2;
-        }
-    }, error_code__);
-}
-
-/*
-@api begin
 sirius_get_kpoint_properties:
   doc: Get the kpoint properties
   arguments:
@@ -5816,34 +5875,6 @@ void sirius_get_kpoint_properties(void* const* handler__,
             coordinates__[1] = ks[ik]->vk()[1];
             coordinates__[2] = ks[ik]->vk()[2];
         }
-    }, error_code__);
-}
-
-/*
-@api begin
-sirius_get_max_mt_aw_basis_size:
-  doc: Get maximum APW basis size across all atoms.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    max_mt_aw_basis_size:
-      type: int
-      attr: out, required
-      doc: Maximum APW basis size.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
-{ // TODO: merge into sirius_get_parameters
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *max_mt_aw_basis_size__ = sim_ctx.unit_cell().max_mt_aw_basis_size();
     }, error_code__);
 }
 

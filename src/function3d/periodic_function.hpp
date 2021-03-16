@@ -95,7 +95,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         , angular_domain_size_(angular_domain_size__)
     {
         if (ctx_.full_potential()) {
-            f_mt_local_ = mdarray<Spheric_function<function_domain_t::spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
+            f_mt_local_ = sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
         }
     }
 
@@ -149,15 +149,16 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Copy the values of the function to the external location.
     inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
     {
-        int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
-        std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
-                  f_rg__ + offs);
-        if (!is_local_rg__) {
-            sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
+        if (f_rg__) {
+            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
+            std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
+                      f_rg__ + offs);
+            if (!is_local_rg__) {
+                sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
+            }
         }
-
-        if (ctx_.full_potential()) {
-            mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+        if (ctx_.full_potential() && f_mt__) {
+            sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
                 std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
@@ -165,6 +166,23 @@ class Periodic_function : public Smooth_periodic_function<T>
             int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
             comm_.allgather(f_mt__, ld * unit_cell_.spl_num_atoms().local_size(),
                 ld * unit_cell_.spl_num_atoms().global_offset());
+        }
+    }
+
+    /// Copy the values of the function from the external location.
+    inline void copy_from(T const* f_mt__, T const* f_rg__, bool is_local_rg__)
+    {
+        if (f_rg__) {
+            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
+            std::copy(f_rg__ + offs, f_rg__ + offs + this->spfft_->local_slice_size(), this->f_rg_.at(memory_t::host));
+        }
+        if (ctx_.full_potential() && f_mt__) {
+            //sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+            int sz = angular_domain_size_ * unit_cell_.max_num_mt_points() * unit_cell_.num_atoms();
+            std::copy(f_mt__, f_mt__ + sz, &f_mt_(0, 0, 0));
+            //for (int ia = 0; ialoc < unit_cell_.num_atoms(); ia++) {
+            //    std::copy(&f_mt(0, 0, ia), &f_mt(0, 0, ia) + sz, &f_mt_(0, 0, ia));
+            //}
         }
     }
 
