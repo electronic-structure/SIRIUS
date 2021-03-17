@@ -83,8 +83,10 @@ def write_function_doc(o, func_doc, details, func_args):
     o.write("!> @brief %s\n"%func_doc)
     if details:
         o.write("!> @details\n")
-        for l in details:
-            o.write("!> %s\n"%l)
+        for l in details.split('\n'):
+            o.write(f"!> {l}\n")
+        #for l in details:
+        #    o.write("!> %s\n"%l)
 
     for a in func_args:
         o.write("!> @param [%s] %s %s\n"%(a[i_arg_intent], a[i_arg_name], a[i_arg_doc]))

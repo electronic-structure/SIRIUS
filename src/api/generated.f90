@@ -276,8 +276,7 @@ end subroutine sirius_context_initialized
 !> @brief Create context of the simulation.
 !> @details
 !> Simulation context is the complex data structure that holds all the parameters of the individual simulation.
-!> The context must be created, populated with the correct parameters and initialized before using all subsequent
-!> SIRIUS functions.
+!> The context must be created, populated with the correct parameters and initialized before using all subsequent SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
 !> @param [out] handler New empty simulation context.
 !> @param [out] error_code Error code.
@@ -3728,46 +3727,84 @@ end subroutine sirius_set_atom_type_configuration
 
 !
 !> @brief Generate Coulomb potential by solving Poisson equation
-!> @param [in] handler Ground state handler
-!> @param [in] is_local_rg true if regular grid pointer is local
-!> @param [out] vclmt Muffin-tin part of potential
-!> @param [out] vclrg Regular-grid part of potential
-subroutine sirius_generate_coulomb_potential(handler,is_local_rg,vclmt,vclrg)
+!> @param [in] handler DFT ground state handler
+!> @param [out] vclmt Muffin-tin part of Coulomb potential
+!> @param [in] lmmax Number of spherical harmonics
+!> @param [in] max_num_mt_points Maximum number of muffin-tin points
+!> @param [in] num_atoms Number of atoms
+!> @param [out] vha_el Electronic part of Hartree potential at each atom's origin.
+!> @param [out] vclrg Interstitital part of the Coulomb potential
+!> @param [out] num_rg_points Error code
+subroutine sirius_generate_coulomb_potential(handler,vclmt,lmmax,max_num_mt_points,&
+&num_atoms,vha_el,vclrg,num_rg_points)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-logical, target, intent(in) :: is_local_rg
-real(8), target, intent(out) :: vclmt
-real(8), target, intent(out) :: vclrg
+real(8), optional, target, intent(out) :: vclmt
+integer, optional, target, intent(in) :: lmmax
+integer, optional, target, intent(in) :: max_num_mt_points
+integer, optional, target, intent(in) :: num_atoms
+real(8), optional, target, intent(out) :: vha_el
+real(8), optional, target, intent(out) :: vclrg
+integer, optional, target, intent(out) :: num_rg_points
 !
 type(C_PTR) :: handler_ptr
-type(C_PTR) :: is_local_rg_ptr
-logical(C_BOOL), target :: is_local_rg_c_type
 type(C_PTR) :: vclmt_ptr
+type(C_PTR) :: lmmax_ptr
+type(C_PTR) :: max_num_mt_points_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: vha_el_ptr
 type(C_PTR) :: vclrg_ptr
+type(C_PTR) :: num_rg_points_ptr
 !
 interface
-subroutine sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)&
+subroutine sirius_generate_coulomb_potential_aux(handler,vclmt,lmmax,max_num_mt_points,&
+&num_atoms,vha_el,vclrg,num_rg_points)&
 &bind(C, name="sirius_generate_coulomb_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
-type(C_PTR), value :: is_local_rg
 type(C_PTR), value :: vclmt
+type(C_PTR), value :: lmmax
+type(C_PTR), value :: max_num_mt_points
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: vha_el
 type(C_PTR), value :: vclrg
+type(C_PTR), value :: num_rg_points
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-is_local_rg_ptr = C_NULL_PTR
-is_local_rg_c_type = is_local_rg
-is_local_rg_ptr = C_LOC(is_local_rg_c_type)
 vclmt_ptr = C_NULL_PTR
+if (present(vclmt)) then
 vclmt_ptr = C_LOC(vclmt)
+endif
+lmmax_ptr = C_NULL_PTR
+if (present(lmmax)) then
+lmmax_ptr = C_LOC(lmmax)
+endif
+max_num_mt_points_ptr = C_NULL_PTR
+if (present(max_num_mt_points)) then
+max_num_mt_points_ptr = C_LOC(max_num_mt_points)
+endif
+num_atoms_ptr = C_NULL_PTR
+if (present(num_atoms)) then
+num_atoms_ptr = C_LOC(num_atoms)
+endif
+vha_el_ptr = C_NULL_PTR
+if (present(vha_el)) then
+vha_el_ptr = C_LOC(vha_el)
+endif
 vclrg_ptr = C_NULL_PTR
+if (present(vclrg)) then
 vclrg_ptr = C_LOC(vclrg)
-call sirius_generate_coulomb_potential_aux(handler_ptr,is_local_rg_ptr,vclmt_ptr,&
-&vclrg_ptr)
+endif
+num_rg_points_ptr = C_NULL_PTR
+if (present(num_rg_points)) then
+num_rg_points_ptr = C_LOC(num_rg_points)
+endif
+call sirius_generate_coulomb_potential_aux(handler_ptr,vclmt_ptr,lmmax_ptr,max_num_mt_points_ptr,&
+&num_atoms_ptr,vha_el_ptr,vclrg_ptr,num_rg_points_ptr)
 end subroutine sirius_generate_coulomb_potential
 
 !
@@ -4257,35 +4294,6 @@ cfunrg_ptr = C_NULL_PTR
 cfunrg_ptr = C_LOC(cfunrg)
 call sirius_get_step_function_aux(handler_ptr,cfunig_ptr,cfunrg_ptr)
 end subroutine sirius_get_step_function
-
-!
-!> @brief Get electronic part of Hartree potential at atom origins.
-!> @param [in] handler DFT ground state handler.
-!> @param [out] vha_el Electronic part of Hartree potential at each atom's origin.
-subroutine sirius_get_vha_el(handler,vha_el)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-real(8), target, intent(out) :: vha_el
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: vha_el_ptr
-!
-interface
-subroutine sirius_get_vha_el_aux(handler,vha_el)&
-&bind(C, name="sirius_get_vha_el")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: vha_el
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-vha_el_ptr = C_NULL_PTR
-vha_el_ptr = C_LOC(vha_el)
-call sirius_get_vha_el_aux(handler_ptr,vha_el_ptr)
-end subroutine sirius_get_vha_el
 
 !
 !> @brief Set LAPW Hamiltonian radial integrals.

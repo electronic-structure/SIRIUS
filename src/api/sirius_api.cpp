@@ -346,7 +346,11 @@ void sirius_context_initialized(void* const* handler__, bool* status__, int* err
 @api begin
 sirius_create_context:
   doc: Create context of the simulation.
-  full_doc: ['Simulation context is the complex data structure that holds all the parameters of the individual simulation.', 'The context must be created, populated with the correct parameters and initialized before using all subsequent', 'SIRIUS functions.']
+  full_doc: Simulation context is the complex data structure that holds all the parameters of the
+    individual simulation.
+
+    The context must be created, populated with the correct parameters and
+    initialized before using all subsequent SIRIUS functions.
   arguments:
     fcomm:
       type: int
@@ -3754,31 +3758,90 @@ sirius_generate_coulomb_potential:
     handler:
       type: void*
       attr: in, required
-      doc: Ground state handler
-    is_local_rg:
-      type: bool
-      attr: in, required
-      doc: true if regular grid pointer is local
+      doc: DFT ground state handler
     vclmt:
       type: double
-      attr: out, required
-      doc: Muffin-tin part of potential
+      attr: out, optional
+      doc: Muffin-tin part of Coulomb potential
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of spherical harmonics 
+    max_num_mt_points:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Number of atoms
+    vha_el:
+      type: double
+      attr: out, optional
+      doc: Electronic part of Hartree potential at each atom's origin.
     vclrg:
       type: double
-      attr: out, required
-      doc: Regular-grid part of potential
+      attr: out, optional
+      doc: Interstitital part of the Coulomb potential
+    num_rg_points:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_generate_coulomb_potential(void* const* handler__,
-                                       bool  const* is_local_rg__,
-                                       double*      vclmt__,
-                                       double*      vclrg__)
+void sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int const* lmmax__,
+        int const* max_num_mt_points__, int const* num_atoms__, double* vha_el__, double* vclrg__,
+        int const* num_rg_points__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
 
-    gs.density().rho().fft_transform(-1);
-    gs.potential().poisson(gs.density().rho());
-    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, *is_local_rg__);
+        gs.density().rho().fft_transform(-1);
+        gs.potential().poisson(gs.density().rho());
+
+        if (vclmt__) {
+            if (!lmmax__) {
+                throw std::runtime_error("missing 'lmmax' argument");
+            }
+            if (*lmmax__ != gs.potential().hartree_potential().angular_domain_size()) {
+                throw std::runtime_error("wrong number of spherical harmonics");
+            }
+            if (!max_num_mt_points__) {
+                throw std::runtime_error("missing 'max_num_mt_points' argument");
+            }
+            if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
+                throw std::runtime_error("wrong maximum number of muffin-tin radial points");
+            }
+            if (!num_atoms__) {
+                throw std::runtime_error("missing `num_atoms' argument");
+            }
+            if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
+                throw std::runtime_error("wrong number of atoms");
+            }
+            gs.potential().hartree_potential().copy_to(vclmt__, nullptr, false);
+            if (vha_el__) {
+                for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+                    vha_el__[ia] = gs.potential().vha_el(ia);
+                }
+            }
+        }
+
+        if (vclrg__) {
+            if (!num_rg_points__) {
+                throw std::runtime_error("missing 'num_rg_points' argument");
+            }
+            bool is_local_rg;
+            if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
+                is_local_rg = false;
+            } else if (spfft_grid_size(gs.ctx().spfft()) == *num_rg_points__) {
+                is_local_rg = true;
+            } else {
+                throw std::runtime_error("wrong number of regular grid points");
+            }
+            gs.potential().hartree_potential().copy_to(nullptr, vclrg__, is_local_rg);
+        }
+    }, error_code__);
 }
 
 /*
@@ -4229,29 +4292,6 @@ void sirius_get_step_function(void* const*          handler__,
     }
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
         cfunig__[ig] = sim_ctx.theta_pw(ig);
-    }
-}
-
-/*
-@api begin
-sirius_get_vha_el:
-  doc: Get electronic part of Hartree potential at atom origins.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: DFT ground state handler.
-    vha_el:
-      type: double, dimension(*)
-      attr: out, required
-      doc: Electronic part of Hartree potential at each atom's origin.
-@api end
-*/
-void sirius_get_vha_el(void* const* handler__, double* vha_el__)
-{
-    auto& gs = get_gs(handler__);
-    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
-        vha_el__[ia] = gs.potential().vha_el(ia);
     }
 }
 
@@ -5882,7 +5922,7 @@ void sirius_get_kpoint_properties(void* const* handler__,
 @api begin
 sirius_get_matching_coefficients:
   doc: Get matching coefficients for all atoms.
-  full_doc: ['Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.']
+  full_doc: Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
   arguments:
     handler:
       type: void*

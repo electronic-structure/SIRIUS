@@ -105,6 +105,11 @@ class Periodic_function : public Smooth_periodic_function<T>
       this->allocate_mt(allocate_global__);
     }
 
+    int angular_domain_size() const
+    {
+        return angular_domain_size_;
+    }
+
     /// Allocate memory for muffin-tin part.
     void allocate_mt(bool allocate_global__)
     {
