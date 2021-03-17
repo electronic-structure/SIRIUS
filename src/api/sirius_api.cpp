@@ -2410,10 +2410,18 @@ sirius_find_eigen_states:
       type: void*
       attr: in, required
       doc: K-point set handler.
-    precompute:
+    precompute_pw:
       type: bool
-      attr: in, required
-      doc: True if neccessary data to setup eigen-value problem must be automatically precomputed.
+      attr: in, optional
+      doc: Generate plane-wave coefficients of the potential
+    precompute_rf:
+      type: bool
+      attr: in, optional
+      doc: Generate radial functions
+    precompute_ri:
+      type: bool
+      attr: in, optional
+      doc: Generate radial integrals
     iter_solver_tol:
       type: double
       attr: in, optional
@@ -2424,11 +2432,8 @@ sirius_find_eigen_states:
       doc: Error code.
 @api end
 */
-void sirius_find_eigen_states(void* const* gs_handler__,
-                              void* const* ks_handler__,
-                              bool  const* precompute__,
-                              double const* iter_solver_tol__,
-                              int* error_code__)
+void sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, bool const* precompute_pw__,
+        bool const* precompute_rf__, bool const* precompute_ri__, double const* iter_solver_tol__, int* error_code__)
 {
     call_sirius([&]()
     {
@@ -2438,7 +2443,19 @@ void sirius_find_eigen_states(void* const* gs_handler__,
             ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
         }
         sirius::Hamiltonian0 H0(gs.potential());
-        sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+        if (precompute_pw__ && *precompute_pw__) {
+            H0.potential().generate_pw_coefs();
+        }
+        if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
+            H0.potential().update_atomic_potential();
+        }
+        if (precompute_rf__ && *precompute_rf__) {
+            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
+        }
+        if (precompute_ri__ && *precompute_ri__) {
+            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+        }
+        sirius::Band(ks.ctx()).solve(ks, H0, false);
     }, error_code__);
 }
 
@@ -3834,7 +3851,7 @@ void sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, 
             bool is_local_rg;
             if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
                 is_local_rg = false;
-            } else if (spfft_grid_size(gs.ctx().spfft()) == *num_rg_points__) {
+            } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft())) == *num_rg_points__) {
                 is_local_rg = true;
             } else {
                 throw std::runtime_error("wrong number of regular grid points");

@@ -2512,34 +2512,44 @@ end subroutine sirius_initialize_subspace
 !> @brief Find eigen-states of the Hamiltonian
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] ks_handler K-point set handler.
-!> @param [in] precompute True if neccessary data to setup eigen-value problem must be automatically precomputed.
+!> @param [in] precompute_pw Generate plane-wave coefficients of the potential
+!> @param [in] precompute_rf Generate radial functions
+!> @param [in] precompute_ri Generate radial integrals
 !> @param [in] iter_solver_tol Iterative solver tolerance.
 !> @param [out] error_code Error code.
-subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver_tol,&
-&error_code)
+subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute_pw,precompute_rf,&
+&precompute_ri,iter_solver_tol,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 type(C_PTR), target, intent(in) :: ks_handler
-logical, target, intent(in) :: precompute
+logical, optional, target, intent(in) :: precompute_pw
+logical, optional, target, intent(in) :: precompute_rf
+logical, optional, target, intent(in) :: precompute_ri
 real(8), optional, target, intent(in) :: iter_solver_tol
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: ks_handler_ptr
-type(C_PTR) :: precompute_ptr
-logical(C_BOOL), target :: precompute_c_type
+type(C_PTR) :: precompute_pw_ptr
+logical(C_BOOL), target :: precompute_pw_c_type
+type(C_PTR) :: precompute_rf_ptr
+logical(C_BOOL), target :: precompute_rf_c_type
+type(C_PTR) :: precompute_ri_ptr
+logical(C_BOOL), target :: precompute_ri_c_type
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol,&
-&error_code)&
+subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute_pw,precompute_rf,&
+&precompute_ri,iter_solver_tol,error_code)&
 &bind(C, name="sirius_find_eigen_states")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: ks_handler
-type(C_PTR), value :: precompute
+type(C_PTR), value :: precompute_pw
+type(C_PTR), value :: precompute_rf
+type(C_PTR), value :: precompute_ri
 type(C_PTR), value :: iter_solver_tol
 type(C_PTR), value :: error_code
 end subroutine
@@ -2549,9 +2559,21 @@ gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler)
 ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
-precompute_ptr = C_NULL_PTR
-precompute_c_type = precompute
-precompute_ptr = C_LOC(precompute_c_type)
+precompute_pw_ptr = C_NULL_PTR
+if (present(precompute_pw)) then
+precompute_pw_c_type = precompute_pw
+precompute_pw_ptr = C_LOC(precompute_pw_c_type)
+endif
+precompute_rf_ptr = C_NULL_PTR
+if (present(precompute_rf)) then
+precompute_rf_c_type = precompute_rf
+precompute_rf_ptr = C_LOC(precompute_rf_c_type)
+endif
+precompute_ri_ptr = C_NULL_PTR
+if (present(precompute_ri)) then
+precompute_ri_c_type = precompute_ri
+precompute_ri_ptr = C_LOC(precompute_ri_c_type)
+endif
 iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) then
 iter_solver_tol_ptr = C_LOC(iter_solver_tol)
@@ -2560,8 +2582,14 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_ptr,iter_solver_tol_ptr,&
-&error_code_ptr)
+call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_pw_ptr,&
+&precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,error_code_ptr)
+if (present(precompute_pw)) then
+endif
+if (present(precompute_rf)) then
+endif
+if (present(precompute_ri)) then
+endif
 end subroutine sirius_find_eigen_states
 
 !
