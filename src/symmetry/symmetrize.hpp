@@ -609,15 +609,17 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
                     for (int m4 = -l2; m4 <= l2; m4++) {
                         int lm4 = utils::lm(l2, m4);
                         int xi4 = indexb.index_by_lm_order(lm4, o2);
-                        dm_rot_spatial[j] += ns_(xi3, xi4, j, ja) *
+                        dm_rot_spatial[j] += ns_(xi3, xi4, j, ia) *
                             rotm(lm1, lm3) * rotm(lm2, lm4);
                     }
                 }
             }
 
             /* magnetic symmetrization */
-            if (ndm == 1) {
-                dm_(xi1, xi2, 0, ia) += dm_rot_spatial[0];
+            if (ndm != 3) {
+                for (int j = 0; j < ndm; j++) {
+                    dm_(xi1, xi2, j, ja) += dm_rot_spatial[j];
+                }
             } else {
                 double_complex spin_dm[2][2] = {
                     {dm_rot_spatial[0], dm_rot_spatial[2]},
@@ -681,15 +683,17 @@ symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::b
                     for (int m4 = -l2; m4 <= l2; m4++) {
                         int lm4 = utils::lm(l2, m4);
                         int xi4 = indexb__.index_by_lm_order(lm4, o2);
-                        dm_rot_spatial[j] += ns__(xi3, xi4, j, ja__) *
+                        dm_rot_spatial[j] += ns__(xi3, xi4, j, ia__) *
                             rotm__(lm1, lm3) * rotm__(lm2, lm4);
                     }
                 }
             }
 
             /* magnetic symmetrization */
-            if (ndm__ == 1) {
-                dm__(xi1, xi2, 0, ia__) += dm_rot_spatial[0];
+            if (ndm__ != 3) {
+                for (int j = 0; j < ndm__; j++) {
+                    dm__(xi1, xi2, j, ja__) += dm_rot_spatial[j];
+                }
             } else {
                 double_complex spin_dm[2][2] = {
                     {dm_rot_spatial[0], dm_rot_spatial[2]},
