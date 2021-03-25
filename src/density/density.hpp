@@ -669,7 +669,8 @@ class Density : public Field4D
     }
 
     /// Return density matrix in auxiliary form.
-    sddk::mdarray<double, 3> density_matrix_aux(int iat__);
+    sddk::mdarray<double, 3>
+    density_matrix_aux(sddk::mdarray<double_complex, 4> const& dm__, int iat__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
     sddk::mdarray<double, 2>
