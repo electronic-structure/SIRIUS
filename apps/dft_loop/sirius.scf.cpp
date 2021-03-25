@@ -93,7 +93,8 @@ double ground_state(Simulation_context& ctx,
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
+    bool const reduce_kp = ctx.use_symmetry() && ctx.cfg().parameters().use_ibz();
+    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), reduce_kp);
     DFT_ground_state dft(kset);
 
     ctx.print_memory_usage(__FILE__, __LINE__);
