@@ -386,10 +386,10 @@ matrix3d<double> Stress::calc_stress_us()
         int nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(iat);
+        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
-        mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
-                                                 ctx_.mem_pool(memory_t::host));
+        sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+                                                       ctx_.mem_pool(memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)
