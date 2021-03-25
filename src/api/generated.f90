@@ -386,12 +386,13 @@ end subroutine sirius_import_parameters
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
 !> @param [in] smearing Type of occupancy smearing.
 !> @param [in] smearing_width Smearing width
+!> @param [in] spglib_tol Tolerance for the spglib symmetry search.
 !> @param [out] error_code Error code.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
 &verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,error_code)
+&min_occupancy,smearing,smearing_width,spglib_tol,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -421,6 +422,7 @@ integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
 character(*), optional, target, intent(in) :: smearing
 real(8), optional, target, intent(in) :: smearing_width
+real(8), optional, target, intent(in) :: spglib_tol
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -459,6 +461,7 @@ type(C_PTR) :: min_occupancy_ptr
 type(C_PTR) :: smearing_ptr
 character(C_CHAR), target, allocatable :: smearing_c_type(:)
 type(C_PTR) :: smearing_width_ptr
+type(C_PTR) :: spglib_tol_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
@@ -466,7 +469,7 @@ subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
 &verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,error_code)&
+&min_occupancy,smearing,smearing_width,spglib_tol,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -496,6 +499,7 @@ type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
 type(C_PTR), value :: smearing
 type(C_PTR), value :: smearing_width
+type(C_PTR), value :: spglib_tol
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -620,6 +624,10 @@ smearing_width_ptr = C_NULL_PTR
 if (present(smearing_width)) then
 smearing_width_ptr = C_LOC(smearing_width)
 endif
+spglib_tol_ptr = C_NULL_PTR
+if (present(spglib_tol)) then
+spglib_tol_ptr = C_LOC(spglib_tol)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -629,7 +637,8 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
 &verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
-&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,error_code_ptr)
+&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
+&error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -678,11 +687,12 @@ end subroutine sirius_set_parameters
 !> @param [out] hubbard_correction True if LDA+U correction is enabled.
 !> @param [out] evp_work_count Internal counter of total eigen-value problem work.
 !> @param [out] num_loc_op_applied Internal counter of the number of wave-functions to which Hamiltonian was applied.
+!> @param [out] num_sym_op Number of symmetry operations discovered by spglib
 !> @param [out] error_code Error code.
 subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
 &use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
-&evp_work_count,num_loc_op_applied,error_code)
+&evp_work_count,num_loc_op_applied,num_sym_op,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -706,6 +716,7 @@ integer, optional, target, intent(out) :: verbosity
 logical, optional, target, intent(out) :: hubbard_correction
 real(8), optional, target, intent(out) :: evp_work_count
 integer, optional, target, intent(out) :: num_loc_op_applied
+integer, optional, target, intent(out) :: num_sym_op
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -733,13 +744,14 @@ type(C_PTR) :: hubbard_correction_ptr
 logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: evp_work_count_ptr
 type(C_PTR) :: num_loc_op_applied_ptr
+type(C_PTR) :: num_sym_op_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
 &use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
-&evp_work_count,num_loc_op_applied,error_code)&
+&evp_work_count,num_loc_op_applied,num_sym_op,error_code)&
 &bind(C, name="sirius_get_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -763,6 +775,7 @@ type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: evp_work_count
 type(C_PTR), value :: num_loc_op_applied
+type(C_PTR), value :: num_sym_op
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -849,6 +862,10 @@ num_loc_op_applied_ptr = C_NULL_PTR
 if (present(num_loc_op_applied)) then
 num_loc_op_applied_ptr = C_LOC(num_loc_op_applied)
 endif
+num_sym_op_ptr = C_NULL_PTR
+if (present(num_sym_op)) then
+num_sym_op_ptr = C_LOC(num_sym_op)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -857,7 +874,7 @@ call sirius_get_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &num_fv_states_ptr,num_bands_ptr,num_spins_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,&
 &fft_grid_size_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,&
 &iter_solver_tol_ptr,iter_solver_tol_empty_ptr,verbosity_ptr,hubbard_correction_ptr,&
-&evp_work_count_ptr,num_loc_op_applied_ptr,error_code_ptr)
+&evp_work_count_ptr,num_loc_op_applied_ptr,num_sym_op_ptr,error_code_ptr)
 if (present(gamma_point)) then
 gamma_point = gamma_point_c_type
 endif
@@ -5521,22 +5538,26 @@ end subroutine sirius_option_add_string_to
 !> @brief Dump the runtime setup in a file.
 !> @param [in] handler Simulation context handler.
 !> @param [in] filename String containing the name of the file.
-subroutine sirius_dump_runtime_setup(handler,filename)
+!> @param [out] error_code Error code
+subroutine sirius_dump_runtime_setup(handler,filename,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: filename
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: filename_ptr
 character(C_CHAR), target, allocatable :: filename_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_dump_runtime_setup_aux(handler,filename)&
+subroutine sirius_dump_runtime_setup_aux(handler,filename,error_code)&
 &bind(C, name="sirius_dump_runtime_setup")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: filename
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5546,7 +5567,11 @@ filename_ptr = C_NULL_PTR
 allocate(filename_c_type(len(filename)+1))
 filename_c_type = string_f2c(filename)
 filename_ptr = C_LOC(filename_c_type)
-call sirius_dump_runtime_setup_aux(handler_ptr,filename_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_dump_runtime_setup_aux(handler_ptr,filename_ptr,error_code_ptr)
 deallocate(filename_c_type)
 end subroutine sirius_dump_runtime_setup
 

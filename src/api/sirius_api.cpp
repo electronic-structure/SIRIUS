@@ -520,6 +520,10 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Smearing width
+    spglib_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance for the spglib symmetry search.
     error_code:
       type: int
       attr: out, optional
@@ -553,7 +557,8 @@ void sirius_set_parameters(void*  const* handler__,
                            double const* min_occupancy__,
                            char   const* smearing__,
                            double const* smearing_width__,
-                           int* error_code__)
+                           double const* spglib_tol__,
+                           int*          error_code__)
 {
     call_sirius([&]()
     {
@@ -643,6 +648,9 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (smearing_width__ != nullptr) {
             sim_ctx.smearing_width(*smearing_width__);
+        }
+        if (spglib_tol__ != nullptr) {
+            sim_ctx.cfg().control().spglib_tolerance(*spglib_tol__);
         }
     }, error_code__);
 }
@@ -736,6 +744,10 @@ sirius_get_parameters:
       type: int
       attr: out, optional
       doc: Internal counter of the number of wave-functions to which Hamiltonian was applied.
+    num_sym_op:
+      type: int
+      attr: out, optional
+      doc: Number of symmetry operations discovered by spglib
     error_code:
       type: int
       attr: out, optional
@@ -763,6 +775,7 @@ void sirius_get_parameters(void* const* handler__,
                            bool*        hubbard_correction__,
                            double*      evp_work_count__,
                            int*         num_loc_op_applied__,
+                           int*         num_sym_op__,
                            int*         error_code__)
 {
     call_sirius([&]()
@@ -829,6 +842,13 @@ void sirius_get_parameters(void* const* handler__,
         }
         if (num_loc_op_applied__) {
             *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
+        }
+        if (num_sym_op__) {
+            if (sim_ctx.use_symmetry()) {
+                *num_sym_op__ = sim_ctx.unit_cell().symmetry().num_mag_sym();
+            } else {
+                *num_sym_op__ = 0;
+            }
         }
     }, error_code__);
 }
@@ -5446,15 +5466,21 @@ sirius_dump_runtime_setup:
       type: string
       attr: in, required
       doc: String containing the name of the file.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_dump_runtime_setup(void* const* handler__, char *filename)
+void sirius_dump_runtime_setup(void* const* handler__, char* filename__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::ofstream fi(filename);
-    json &conf_dict = sim_ctx.get_runtime_options_dictionary();
-    fi << conf_dict;
-    fi.close();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::ofstream fi(filename__, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = sim_ctx.serialize(); //get_runtime_options_dictionary();
+        fi << conf_dict.dump(4);
+    }, error_code__);
 }
 
 /*
