@@ -893,7 +893,8 @@ class Simulation_context : public Simulation_parameters
     {
         nlohmann::json dict;
         dict["config"] = cfg().dict();
-        dict["config"]["unit_cell"] = unit_cell().serialize(false);
+        bool const cart_pos{false};
+        dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
         auto fftgrid = {spfft_coarse().dim_x(), spfft_coarse().dim_y(), spfft_coarse().dim_z()};
         dict["fft_coarse_grid"] = fftgrid;
         dict["mpi_grid"] = mpi_grid_dims();

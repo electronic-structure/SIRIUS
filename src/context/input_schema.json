@@ -602,6 +602,11 @@
                     "default" : true,
                     "title" : "True if symmetry is used."
                 },
+                "use_ibz" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "Use irreducible Brillouin zone."
+                },
                 "nn_radius" : {
                     "type" : "number",
                     "default" : -1,
