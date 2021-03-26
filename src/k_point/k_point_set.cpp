@@ -161,7 +161,7 @@ void K_point_set::find_band_occupancies()
      * system is non-magnetic */
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
         /* this is an insulator, skip search for band occupancies */
-        this->band_gap_ = -1;
+        this->band_gap_ = 0;
 
         /* determine fermi energy as max occupied band energy. */
         energy_fermi_ = std::numeric_limits<double>::lowest();
@@ -249,12 +249,12 @@ void K_point_set::find_band_occupancies()
     int nve = static_cast<int>(ne_target + 1e-12);
     if (ctx_.num_spins() == 2 || (std::abs(nve - ne_target) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
-        std::vector<std::pair<double, double>> eband(ctx_.num_bands());
-        std::pair<double, double> eminmax;
+        std::vector<std::pair<double, double>> eband(ctx_.num_bands() * ctx_.num_spinors());
 
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp for
             for (int j = 0; j < ctx_.num_bands(); j++) {
+                std::pair<double, double> eminmax;
                 eminmax.first  = std::numeric_limits<double>::max();
                 eminmax.second = std::numeric_limits<double>::lowest();
 
@@ -263,7 +263,7 @@ void K_point_set::find_band_occupancies()
                     eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
                 }
 
-                eband[j] = eminmax;
+                eband[j + ispn * ctx_.num_bands()] = eminmax;
             }
         }
 
