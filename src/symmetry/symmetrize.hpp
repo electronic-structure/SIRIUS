@@ -616,10 +616,8 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
             }
 
             /* magnetic symmetrization */
-            if (ndm != 3) {
-                for (int j = 0; j < ndm; j++) {
-                    dm_(xi1, xi2, j, ja) += dm_rot_spatial[j];
-                }
+            if (ndm == 1) {
+                dm_(xi1, xi2, 0, ja) += dm_rot_spatial[0];
             } else {
                 double_complex spin_dm[2][2] = {
                     {dm_rot_spatial[0], dm_rot_spatial[2]},
@@ -633,7 +631,7 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
                 for (int k = 0; k < ndm; k++) {
                     for (int is = 0; is < 2; is++) {
                         for (int js = 0; js < 2; js++) {
-                            dm_(xi1, xi2, k, ia) += spin_rot_su2(k & 1, is) * spin_dm[is][js] * std::conj(spin_rot_su2(std::min(k, 1), js));
+                            dm_(xi1, xi2, k, ja) += spin_rot_su2(k & 1, is) * spin_dm[is][js] * std::conj(spin_rot_su2(std::min(k, 1), js));
                         }
                     }
                 }
@@ -690,10 +688,8 @@ symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::b
             }
 
             /* magnetic symmetrization */
-            if (ndm__ != 3) {
-                for (int j = 0; j < ndm__; j++) {
-                    dm__(xi1, xi2, j, ja__) += dm_rot_spatial[j];
-                }
+            if (ndm__ == 1) {
+                dm__(xi1, xi2, 0, ja__) += dm_rot_spatial[0];
             } else {
                 double_complex spin_dm[2][2] = {
                     {dm_rot_spatial[0], dm_rot_spatial[2]},
@@ -707,7 +703,7 @@ symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::b
                 for (int k = 0; k < ndm__; k++) {
                     for (int is = 0; is < 2; is++) {
                         for (int js = 0; js < 2; js++) {
-                            dm__(xi1, xi2, k, ia__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
+                            dm__(xi1, xi2, k, ja__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
                                 std::conj(spin_rot_su2__(std::min(k, 1), js));
                         }
                     }
