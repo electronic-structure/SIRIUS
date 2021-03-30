@@ -160,6 +160,15 @@ class K_point_set
     {
         double s_sum{0};
 
+        double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
+
+        bool only_occ = (ctx_.num_mag_dims() != 1 &&
+                         std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10);
+
+        if (only_occ) {
+            return 0;
+        }
+
         auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
         splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());

@@ -157,11 +157,10 @@ void K_point_set::find_band_occupancies()
     /* target number of electrons */
     double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
-    /* this is a special case when there are no empty states and the
-     * system is non-magnetic */
-    if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
+    /* this is a special case when there are no empty states */
+    if (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10) {
         /* this is an insulator, skip search for band occupancies */
-        this->band_gap_ = -1;
+        this->band_gap_ = 0;
 
         /* determine fermi energy as max occupied band energy. */
         energy_fermi_ = std::numeric_limits<double>::lowest();
@@ -172,7 +171,22 @@ void K_point_set::find_band_occupancies()
                 }
             }
         }
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            int ik = spl_num_kpoints_[ikloc];
+            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                #pragma omp parallel for
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    kpoints_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
+                }
+            }
+        }
+
+        this->sync_band<sync_band_t::occupancy>();
         return;
+    }
+
+    if (ctx_.smearing_width() == 0) {
+        throw std::runtime_error("[find_band_occupancies] zero smearing width");
     }
 
     /* get minimum and maximum band energies */
@@ -236,8 +250,8 @@ void K_point_set::find_band_occupancies()
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                kpoints_[ik]->band_occupancy(j, ispn,
-                    f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy());
+                auto o = f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
+                kpoints_[ik]->band_occupancy(j, ispn, o);
             }
         }
     }
@@ -249,12 +263,12 @@ void K_point_set::find_band_occupancies()
     int nve = static_cast<int>(ne_target + 1e-12);
     if (ctx_.num_spins() == 2 || (std::abs(nve - ne_target) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
-        std::vector<std::pair<double, double>> eband(ctx_.num_bands());
-        std::pair<double, double> eminmax;
+        std::vector<std::pair<double, double>> eband(ctx_.num_bands() * ctx_.num_spinors());
 
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp for
             for (int j = 0; j < ctx_.num_bands(); j++) {
+                std::pair<double, double> eminmax;
                 eminmax.first  = std::numeric_limits<double>::max();
                 eminmax.second = std::numeric_limits<double>::lowest();
 
@@ -263,7 +277,7 @@ void K_point_set::find_band_occupancies()
                     eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
                 }
 
-                eband[j] = eminmax;
+                eband[j + ispn * ctx_.num_bands()] = eminmax;
             }
         }
 

@@ -43,6 +43,102 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 {
 }
 
+void Force::symmetrize(mdarray<double, 2>& forces__) const
+{
+    if (!ctx_.use_symmetry()) {
+        return;
+    }
+
+    PROFILE("sirius::Force::symmetrize");
+
+    sddk::mdarray<double, 2> sym_forces(3, ctx_.unit_cell().spl_num_atoms().local_size());
+    sym_forces.zero();
+
+    for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
+        auto Rc = ctx_.unit_cell().symmetry().lattice_vectors() *
+                  matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R) *
+                  ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            vector3d<double> force_ia(&forces__(0, ia));
+            int ja = ctx_.unit_cell().symmetry().sym_table(ia, isym);
+            auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
+            if (location.rank == ctx_.comm().rank()) {
+                auto force_ja = Rc * force_ia;
+                for (int x: {0, 1, 2}) {
+                    sym_forces(x, location.local_index) += force_ja[x];
+                }
+            }
+        }
+    }
+
+    double alpha = 1.0 / double(ctx_.unit_cell().symmetry().num_mag_sym());
+    for (int ia = 0; ia < ctx_.unit_cell().spl_num_atoms().local_size(); ia++) {
+        for (int x: {0, 1, 2}) {
+            sym_forces(x, ia) *= alpha;
+        }
+    }
+    double* sbuf = ctx_.unit_cell().spl_num_atoms().local_size() ? sym_forces.at(memory_t::host) : nullptr;
+    ctx_.comm().allgather(sbuf, forces__.at(memory_t::host), 3 * ctx_.unit_cell().spl_num_atoms().local_size(),
+        3 * ctx_.unit_cell().spl_num_atoms().global_offset());
+
+
+    ////#pragma omp parallel for
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+
+    //    for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
+    //        int ja  = ctx_.unit_cell().symmetry().sym_table(ia, isym);
+    //        auto Rc = ctx_.unit_cell().symmetry().lattice_vectors() *
+    //            matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R) *
+    //            ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+
+    //        force_ja = Rc * force_ia;
+
+    //        //#pragma omp atomic update
+    //        sym_forces(0, ja) += force_ja[0];
+
+    //        //#pragma omp atomic update
+    //        sym_forces(1, ja) += force_ja[1];
+
+    //        //#pragma omp atomic update
+    //        sym_forces(2, ja) += force_ja[2];
+    //    }
+    //}
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    for (int x: {0, 1, 2}) {
+    //        sym_forces(x, ia) /= (double)ctx_.unit_cell().symmetry().num_mag_sym();
+    //    }
+    //}
+    //sym_forces >> forces__;
+
+
+
+    //for (int i = 0; i < sym__.num_mag_sym(); i++) {
+    //    /* full space-group symmetry operation is {R|t} */
+    //    int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
+    //    auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
+    //    int isym = sym__.magnetic_group_symmetry(i).isym;
+    //    SHT::rotation_matrix(lmax, eang, pr, rotm);
+
+    //    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+    //        int ja = sym__.sym_table(ia, isym);
+    //        auto location = spl_atoms.location(ja);
+    //        if (location.rank == comm__.rank()) {
+    //            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+    //                                        frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
+    //                                        fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
+    //        }
+    //    }
+    //}
+    //double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
+    //comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+    //        lmmax * nrmax * spl_atoms.global_offset());
+
+
+
+}
+
+
 template <typename T>
 void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
 {
@@ -274,7 +370,7 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
 {
     PROFILE("sirius::Force::calc_forces_ewald");
 
-    forces_ewald_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_ewald_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_ewald_.zero();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
@@ -283,12 +379,9 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
 
     double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 
-    int ig0{0};
-    if (ctx_.comm().rank() == 0) {
-        ig0 = 1;
-    }
+    int ig0 = ctx_.gvec().skip_g0();
 
-    mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
+    sddk::mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
     rho_tmp.zero();
     #pragma omp parallel for schedule(static)
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
@@ -311,7 +404,7 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
             double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
 
             double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                  static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
@@ -334,8 +427,7 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            vector3d<double> t =
-                unit_cell.lattice_vectors() * vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation);
+            auto t = unit_cell.lattice_vectors() * vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation);
 
             double scalar_part =
                 static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
@@ -347,6 +439,8 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
         }
     }
 
+    symmetrize(forces_ewald_);
+
     return forces_ewald_;
 }
 
@@ -354,7 +448,7 @@ mdarray<double, 2> const& Force::calc_forces_us()
 {
     PROFILE("sirius::Force::calc_forces_us");
 
-    forces_us_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_us_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_us_.zero();
 
     potential_.fft_transform(-1);
@@ -392,10 +486,10 @@ mdarray<double, 2> const& Force::calc_forces_us()
         int nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(iat);
+        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
-        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
-        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
+        sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
+        sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
 
         /* over spin components, can be from 1 to 4*/
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
@@ -438,6 +532,8 @@ mdarray<double, 2> const& Force::calc_forces_us()
     }
 
     ctx_.comm().allreduce(&forces_us_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+    symmetrize(forces_us_);
 
     return forces_us_;
 }
@@ -491,6 +587,8 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
         }
     }
     ctx_.comm().allreduce(&forces_scf_corr_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+    symmetrize(forces_scf_corr_);
 
     return forces_scf_corr_;
 }
@@ -548,6 +646,8 @@ mdarray<double, 2> const& Force::calc_forces_core()
         }
     }
     ctx_.comm().allreduce(&forces_core_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+    symmetrize(forces_core_);
 
     return forces_core_;
 }
@@ -630,6 +730,8 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
     }
 
     ctx_.comm().allreduce(&forces_vloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+    symmetrize(forces_vloc_);
 
     return forces_vloc_;
 }
@@ -798,44 +900,6 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
             }
         }
     } // ia
-}
-
-void Force::symmetrize(mdarray<double, 2>& forces__) const
-{
-    if (!ctx_.use_symmetry()) {
-        return;
-    }
-
-    mdarray<double, 2> sym_forces(3, ctx_.unit_cell().num_atoms());
-    sym_forces.zero();
-
-    auto& lattice_vectors         = ctx_.unit_cell().symmetry().lattice_vectors();
-    auto& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
-
-    sym_forces.zero();
-
-    #pragma omp parallel for
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        vector3d<double> cart_force(&forces__(0, ia));
-        vector3d<double> lat_force =
-            inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
-
-        for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
-            int ja                     = ctx_.unit_cell().symmetry().sym_table(ia, isym);
-            auto& R                    = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
-            vector3d<double> rot_force = lattice_vectors * (R * lat_force);
-
-            #pragma omp atomic update
-            sym_forces(0, ja) += rot_force[0];
-
-            #pragma omp atomic update
-            sym_forces(1, ja) += rot_force[1];
-
-            #pragma omp atomic update
-            sym_forces(2, ja) += rot_force[2];
-        }
-    }
-    sym_forces >> forces__;
 }
 
 mdarray<double, 2> const& Force::calc_forces_nonloc()
