@@ -98,7 +98,7 @@ void Atom_type::init(int offset_lo__)
     if (ps_atomic_wfs_.size()) {
         for (auto& e: ps_atomic_wfs_) {
             /* add angular quantum number to the list */
-            indexr_wfs_.add(e.l);
+            indexr_wfs_.add(e.aqn);
         }
         indexb_wfs_ = sirius::experimental::basis_functions_index(indexr_wfs_, false);
         if (ps_atomic_wfs_.size() != indexr_wfs_.size()) {
@@ -554,7 +554,7 @@ void Atom_type::read_pseudo_uspp(json const& parser)
                     s = 1;
                 }
             }
-            add_ps_atomic_wf(n, sirius::experimental::aqn(l, s), v, occ);
+            add_ps_atomic_wf(n, sirius::experimental::angular_momentum_quantum_number(l, s), v, occ);
         }
     }
 }
@@ -744,11 +744,11 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
         auto& e = ps_atomic_wfs_[s];
         int n = e.n;
-        auto l = e.l;
-        if (n == n__ && l() == l__) {
+        auto aqn = e.aqn;
+        if (n == n__ && aqn.l() == l__) {
             idx_rf.push_back(s);
             /* in spin orbit case we need to find the second radial function, otherwise we break */
-            if (!(l.s() && l() > 0)) {
+            if (!(aqn.s() && aqn.l() > 0)) {
                 break;
             }
         }
@@ -760,8 +760,8 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
         for (int k = 0; k < (int)ps_atomic_wfs_.size(); k++) {
             auto& e = ps_atomic_wfs_[k];
             int n = e.n;
-            auto l = e.l;
-            s << "  n=" << n << " l=" << l() << " j=" << l.j() << std::endl;
+            auto aqn = e.aqn;
+            s << "  n=" << n << " l=" << aqn.l() << " j=" << aqn.j() << std::endl;
         }
         s << "  the following atomic orbital is requested for U-correction: n=" << n__ << " l=" << l__;
         TERMINATE(s);
@@ -783,7 +783,7 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     }
 
     /* add a record in radial function index */
-    indexr_hub_.add(sirius::experimental::aqn(l__));
+    indexr_hub_.add(sirius::experimental::angular_momentum_quantum_number(l__));
 
     /* add radial function of Hubbard orbital to a list */
     hubbard_radial_functions_.push_back(std::move(s.interpolate()));

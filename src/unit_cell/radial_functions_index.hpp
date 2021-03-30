@@ -29,82 +29,98 @@ namespace sirius {
 
 namespace experimental {
 
-/// Angular (aka azimuthal) quantum number.
-class aqn
+#define THROW(msg)                                                                                    \
+{                                                                                                     \
+    do {                                                                                              \
+        throw std::runtime_error(std::string("[") + std::string(__func__) + std::string("] ") + msg); \
+    } while(0);                                                                                       \
+}
+
+
+
+/// Angular momentum quantum number.
+/** This class handles orbital or total angluar momentum quantum number. */
+class angular_momentum_quantum_number
 {
   private:
-    /// Angual quantum number l.
+
+    /// Orbital quantum number l.
     int l_;
+
     /// Spin quantum number in the units of 1/2.
     /** This variable can have only three values: -1,0,1. It is used to consruct the total angular
      *  momentum j = l + s/2. In case s = 0 total agular momentum j = l (no level splitting). */
     int s_{0};
+
   public:
+
     /// Constructor.
-    explicit aqn(int l__)
+    explicit angular_momentum_quantum_number(int l__)
       : l_(l__)
     {
         if (l__ < 0) {
-            throw std::runtime_error("l can't be negative");
+            THROW("l can't be negative");
         }
     }
+
     /// Constructor.
-    explicit aqn(int l__, int s__)
+    explicit angular_momentum_quantum_number(int l__, int s__)
       : l_(l__)
       , s_(s__)
     {
         if (l__ < 0) {
-            throw std::runtime_error("l can't be negative");
+            THROW("l can't be negative");
         }
         if (s__ != -1 && s__ != 0 && s__ != 1) {
-            throw std::runtime_error("wrong index of s");
+            THROW("wrong value of s");
         }
         if (l__ == 0 && s__ == -1) {
-            throw std::runtime_error("incompatible combination of l and s quantum numbers");
+            THROW("incompatible combination of l and s quantum numbers");
         }
     }
-    aqn()
-    {
-    }
-    /// Get l.
-    inline int operator()() const
+
+    /// Get orbital quantum number l.
+    inline int l() const
     {
         return l_;
     }
+
     /// Get total angular momentum j = l +/- 1/2
     inline double j() const
     {
         return l_ + s_ / 2.0;
     }
-    /// Get s.
+
+    /// Get spin quantum number s.
     inline int s() const
     {
         return s_;
     }
 };
 
+/// Descriptor of the radial function.
+/** Several radial functions can exist for the same angular quantum number. In order to distinguish them, they
+ *  are labeled by the additional index \f$ \nu \f$ : \f$ f_{\ell \nu}(r) \f$ or \f$ f_{j \nu}(r) \f$
+ *  which is called the "order" of the radial function for a given orbital quantum number. */
 struct radial_function_index_descriptor
 {
-    /// Orbital quantum number \f$ \ell \f$.
-    aqn l;
+    /// Angular momentum quantum number \f$ \ell \f$ or total momentum j.
+    angular_momentum_quantum_number aqn;
 
     /// Order of a function for a given \f$ \ell \f$.
     int order{-1};
 
     /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
-    int idxlo{-1};
+    int idxlo{-1}; // TODO: check if this is strictly necessary
 
     /// Constructor.
-    radial_function_index_descriptor(aqn l__, int order__, int idxlo__)
-        : l(l__)
+    radial_function_index_descriptor(angular_momentum_quantum_number aqn__, int order__, int idxlo__)
+        : aqn(aqn__)
         , order(order__)
         , idxlo(idxlo__)
     {
-        if (l() < 0) {
-            throw std::runtime_error("wrong l");
-        }
         if (order < 0) {
-            throw std::runtime_error("wrong order");
+            THROW("wrong order of radial function");
         }
     }
 };
@@ -117,25 +133,26 @@ class radial_functions_index : public std::vector<radial_function_index_descript
     int full_j_{-1};
   public:
 
-    void add(aqn l__, bool is_lo__ = false)
+    /// Add index of radial function to the list.
+    void add(angular_momentum_quantum_number aqn__, bool is_lo__ = false)
     {
-        if (is_lo__ && l__.s()) {
-            throw std::runtime_error("local orbitals can only be of pure l character");
+        if (is_lo__ && aqn__.s()) {
+            THROW("local orbitals can only be of pure l character");
         }
         /* perform immediate check of j */
         if (full_j_ == -1) { /* checking first time */
-            full_j_ = std::abs(l__.s()); /* set if this will be an index for the full j orbitals or for pure l */
+            full_j_ = std::abs(aqn__.s()); /* set if this will be an index for the full j orbitals or for pure l */
         } else {
             /* this is not the first time */
-            if (full_j_ == 0 && l__.s()) {
-                throw std::runtime_error("radial orbital index is set to count pure-l radial functions");
-            }
-            if (full_j_ && l__.s() == 0) {
-                throw std::runtime_error("radial orbital index is set to count full-j radial functions");
-            }
+            //if (full_j_ == 0 && aqn__.s()) {
+            //    throw std::runtime_error("radial orbital index is set to count pure-l radial functions");
+            //}
+            //if (full_j_ && aqn__.s() == 0) {
+            //    throw std::runtime_error("radial orbital index is set to count full-j radial functions");
+            //}
         }
         /* current l */
-        int l = l__();
+        int l = aqn__.l();
         /* make sure that the space is available */
         if (static_cast<int>(index_by_l_order_.size()) < l + 1) {
             index_by_l_order_.resize(l + 1);
@@ -148,23 +165,23 @@ class radial_functions_index : public std::vector<radial_function_index_descript
         int idxlo = is_lo__ ? static_cast<int>(index_by_idxlo_.size()) : -1;
 
         /* add radial function descriptor */
-        this->push_back(radial_function_index_descriptor(l__, o, idxlo));
+        this->emplace_back(aqn__, o, idxlo);
 
         /* add reverse index */
-        index_by_l_order_[l__()].push_back(i);
+        index_by_l_order_[aqn__.l()].push_back(i);
         if (is_lo__) {
             index_by_idxlo_.push_back(i);
         }
     }
 
-    inline int index_by_l_order(aqn l__, int order__) const
+    inline int index_by_l_order(angular_momentum_quantum_number aqn__, int order__) const
     {
-        int idx = index_by_l_order_[l__()][order__];
-        if ((*this)[idx].l.s() != l__.s()) {
-            throw std::runtime_error("wrong value of spin");
+        int idx = index_by_l_order_[aqn__.l()][order__];
+        if ((*this)[idx].aqn.s() != aqn__.s()) {
+            THROW("wrong value of spin");
         }
         if ((*this)[idx].order != order__) {
-            throw std::runtime_error("wrong order");
+            THROW("wrong order");
         }
         return idx;
     }
@@ -173,7 +190,7 @@ class radial_functions_index : public std::vector<radial_function_index_descript
     {
         int idx = index_by_l_order_[l__][order__];
         if ((*this)[idx].order != order__) {
-            throw std::runtime_error("wrong order");
+            THROW("wrong order");
         }
         return idx;
     }
@@ -284,7 +301,7 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
                     if (i2 != i1 + 1) {
                         throw std::runtime_error("wrong order of radial functions");
                     }
-                    if (indexr_[i1].l.s() * indexr_[i2].l.s() != -1) {
+                    if (indexr_[i1].aqn.s() * indexr_[i2].aqn.s() != -1) {
                         throw std::runtime_error("wrong j of radial functions");
                     }
                 }
@@ -295,7 +312,7 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
             int lmmax = utils::lmmax(indexr_.lmax());
             index_by_lm_order_.resize(lmmax);
             for (int idxrf = 0; idxrf < static_cast<int>(indexr_.size()); idxrf++) {
-                int l = indexr_[idxrf].l();
+                int l = indexr_[idxrf].aqn.l();
                 int o = indexr_[idxrf].order;
                 for (int m = -l; m <= l; m++) {
                     sirius::experimental::basis_function_index_descriptor b;
@@ -315,7 +332,7 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
 
     inline int l(int xi__) const
     {
-        return indexr_[(*this)[xi__].idxrf].l();
+        return indexr_[(*this)[xi__].idxrf].aqn.l();
     }
 
     inline int lm(int xi__) const

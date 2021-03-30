@@ -145,8 +145,16 @@ class Atom_type
     /// Store basic information about radial pseudo wave-functions.
     struct ps_atomic_wf_descriptor
     {
+        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum_quantum_number aqn__, double occ__,
+                Spline<double> f__)
+            : n(n__)
+            , aqn(aqn__)
+            , occ(occ__)
+            , f(std::move(f__))
+        {
+        }
         int n;
-        sirius::experimental::aqn l;
+        sirius::experimental::angular_momentum_quantum_number aqn;
         double occ;
         Spline<double> f;
     };
@@ -441,9 +449,10 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::aqn l__, std::vector<double> f__, double occ__ = 0.0)
+    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum_quantum_number aqn__,
+            std::vector<double> f__, double occ__ = 0.0)
     {
-        ps_atomic_wfs_.push_back({n__, l__, occ__, Spline<double>(radial_grid_, f__)});
+        ps_atomic_wfs_.emplace_back(n__, aqn__, occ__, Spline<double>(radial_grid_, f__));
     }
 
     /// Return a tuple describing a given atomic radial function
@@ -457,7 +466,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: ps_atomic_wfs_) {
-            auto l = e.l();
+            auto l = e.aqn.l();
             lmax = std::max(lmax, l);
         }
         return lmax;
