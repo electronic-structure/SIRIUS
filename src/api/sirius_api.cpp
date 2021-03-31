@@ -748,6 +748,10 @@ sirius_get_parameters:
       type: int
       attr: out, optional
       doc: Number of symmetry operations discovered by spglib
+    electronic_structure_method:
+      type: string
+      attr: out, optional
+      doc: Type of electronic structure method.
     error_code:
       type: int
       attr: out, optional
@@ -776,6 +780,7 @@ void sirius_get_parameters(void* const* handler__,
                            double*      evp_work_count__,
                            int*         num_loc_op_applied__,
                            int*         num_sym_op__,
+                           char*        electronic_structure_method__,
                            int*         error_code__)
 {
     call_sirius([&]()
@@ -849,6 +854,10 @@ void sirius_get_parameters(void* const* handler__,
             } else {
                 *num_sym_op__ = 0;
             }
+        }
+        if (electronic_structure_method__) {
+            auto str = sim_ctx.cfg().parameters().electronic_structure_method();
+            std::copy(str.c_str(), str.c_str() + str.length() + 1, electronic_structure_method__);
         }
     }, error_code__);
 }
@@ -2990,9 +2999,7 @@ sirius_get_energy:
       doc: Total energy component.
 @api end
 */
-void sirius_get_energy(void* const* handler__,
-                       char  const* label__,
-                       double*      energy__)
+void sirius_get_energy(void* const* handler__, char const* label__, double* energy__)
 {
     auto& gs = get_gs(handler__);
 
@@ -3019,7 +3026,8 @@ void sirius_get_energy(void* const* handler__,
         {"descf",      [&](){ return gs.scf_energy(); }},
         {"demet",      [&](){ return kset.entropy_sum(); }},
         {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
-        {"paw",        [&](){ return potential.PAW_total_energy(); }}
+        {"paw",        [&](){ return potential.PAW_total_energy(); }},
+        {"fermi",      [&](){ return kset.energy_fermi(); }}
     };
 
     try {
