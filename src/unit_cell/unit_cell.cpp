@@ -832,6 +832,7 @@ void Unit_cell::print_symmetry_info(int verbosity__) const
                     }
                     std::printf("\n");
                 }
+                printf("proper: %i\n", symmetry_->magnetic_group_symmetry(isym).spg_op.proper);
                 std::printf("\n");
             }
         }
