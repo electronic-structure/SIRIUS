@@ -193,7 +193,7 @@ void Gvec::find_gvec_shells()
     auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
 
     num_gvec_shells_ = 0;
-    gvec_shell_      = mdarray<int, 1>(num_gvec_);
+    gvec_shell_      = sddk::mdarray<int, 1>(num_gvec_);
 
     std::fill(&gvec_shell_[0], &gvec_shell_[0] + num_gvec_, -1);
 
@@ -201,17 +201,16 @@ void Gvec::find_gvec_shells()
     for (int ig = 0; ig < num_gvec_; ig++) {
         if (gvec_shell_[ig] == -1) {
             auto G = gvec(ig);
-            for (size_t isym = 0; isym < lat_sym.size(); isym++) {
-                auto R   = lat_sym[isym];
+            for (auto& R: lat_sym) {
                 auto G1  = R * G;
                 auto ig1 = index_by_gvec(G1);
                 if (ig1 == -1) {
-                    auto G1 = R * (G * (-1));
-                    ig1     = index_by_gvec(G1);
+                    ig1 = index_by_gvec(G1 * (-1));
+                    if (ig1 == -1) {
+                        throw std::runtime_error("[sddk::Gvec] symmetry-related G-vector is not found");
+                    }
                 }
-                if (ig1 >= 0) {
-                    gvec_shell_[ig1] = num_gvec_shells_;
-                }
+                gvec_shell_[ig1] = num_gvec_shells_;
             }
             num_gvec_shells_++;
         }
@@ -713,8 +712,8 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
 
     /* local set of G-vectors in the remapped order */
-    gvec_remapped_       = mdarray<int, 2>(3, gvec_count_remapped());
-    gvec_shell_remapped_ = mdarray<int, 1>(gvec_count_remapped());
+    gvec_remapped_       = sddk::mdarray<int, 2>(3, gvec_count_remapped());
+    gvec_shell_remapped_ = sddk::mdarray<int, 1>(gvec_count_remapped());
     std::vector<int> counts(comm_.size(), 0);
     for (int r = 0; r < comm_.size(); r++) {
         for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {

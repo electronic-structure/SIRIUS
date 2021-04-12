@@ -150,7 +150,7 @@ class Gvec
     int num_gvec_shells_;
 
     /// Radii (or lengths) of G-vector shells in a.u.^-1.
-    mdarray<double, 1> gvec_shell_len_;
+    sddk::mdarray<double, 1> gvec_shell_len_;
 
     /// Local number of G-vector shells for the local number of G-vectors.
     /** G-vectors are distributed by sticks, not by G-shells. This means that each rank stores local fraction of
@@ -164,7 +164,7 @@ class Gvec
     /// Mapping between local index of G-vector and local  G-shell index.
     std::vector<int> gvec_shell_idx_local_;
 
-    mdarray<int, 3> gvec_index_by_xy_;
+    sddk::mdarray<int, 3> gvec_index_by_xy_;
 
     /// Global list of non-zero z-columns.
     std::vector<z_column_descriptor> z_columns_;
@@ -457,6 +457,11 @@ class Gvec
     inline int shell(int ig__) const
     {
         return gvec_shell_(ig__);
+    }
+
+    inline int shell(vector3d<int> const& G__) const
+    {
+        return this->shell(index_by_gvec(G__));
     }
 
     /// Return length of the G-vector shell.
