@@ -733,7 +733,7 @@ class Density : public Field4D
      *
      *  The LDA+U case (will be moved to the correct location).
      *
-     *  We start from the spectral represntation of the occupany operator defined for the irreducible Brillouin
+     *  We start from the spectral represntation of the occupancy operator defined for the irreducible Brillouin
      *  zone:
      *  \f[
      *    \hat N_{IBZ} = \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
@@ -766,10 +766,44 @@ class Density : public Field4D
      *  The \f$ \tilde n \f$ is unsymmetrized because we used irreducible Brillouin zone for k-point summation.
      *  Let's now label the overlap integrals between localized orbitals and KS wave-functions:
      *  \f[
-     *    A_{\ell m j{\bf k}}^{\alpha \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} | \phi_{\ell m}^{\alpha}  \rangle
+     *    A_{\ell m j{\bf k}}^{\alpha {\bf T} \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} |
+     *       \phi_{\ell m}^{\alpha {\bf T}} \rangle =
+     *      \int \Psi_{j{\bf k}}^{\sigma *}({\bf r})
+     *        \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r}
      *  \f]
-     *  and check how it transforms under the symmetry operation \f$ \hat {\bf P} \f$ applied to \f$ {\bf k} \f$.
+     *  and check how it transforms under inverse of the symmetry operation 
+     *  \f$ \hat {\bf P} = \{ {\bf R} | {\bf t} \} \f$ applied to the KS states.
+     *  \f[
+     *   \int \big( \hat {\bf P}^{-1}\Psi_{j {\bf k}}^{\sigma *}({\bf r}) \big)
+     *        \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} = 
+     *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *     \big( \hat {\bf P} \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
+     *  \f]
+     *  Symmetry operation acts on \f$ \phi \f$ in two ways: transformation of the origin of orbital to the 
+     *  symmetry-related atom \f$ \tilde {\bf r}_{\alpha'} = {\bf R}{\bf r}_{\alpha} + {\bf t} \f$ and tranformation
+     *  of the orbital itself:
+     *  \f[
+     *    \hat {\bf P}\phi_{\ell m}^{\alpha}({\bf r}) = \tilde \phi_{\ell m}^{\alpha}({\bf r})
+     *  \f]
+     *  This is illustrated on the following figures:
+     *  \image html sym_orbital1.png
+     *  \image html sym_orbital2.png
      *
+     *  where \f$ {\bf R} \f$ is rotational part and \f$ {\bf t} \f$ is a fractional translation.
+     *  Now \f$ {\bf R}{\bf r}_{\alpha} - {\bf t} = {\bf r}_{\alpha'} + {\bf T}' \f$, i.e. equivalent atom
+     *  in the current or neigbouring cell and \f$ {\bf R}{\bf T} + {\bf T}' = {\bf T}'' \f$. We will use Bloch
+     *  theorem to get rid of \f$ {\bf T}'' \f$ in the argument of \f$ \phi \f$:
+     *  \f[
+     *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *     \phi_{\ell m}^{\alpha}({\bf R} {\bf r} - {\bf R}{\bf r}_{\alpha} - {\bf R}{\bf T} + {\bf t}) d{\bf r} = 
+     *    e^{i{\bf k}{\bf T}''} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *       \phi_{\ell m}^{\alpha}(\hat {\bf P}{\bf r} - {\bf r}_{\alpha'}) d{\bf r}
+     *  \f]
+     *  We now use the definition of symmetry operation and 
+     *  We can now write
+     *  \f[
+     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
+     *  \f]
      *
      *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
      *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:

@@ -145,16 +145,16 @@ class Atom_type
     /// Store basic information about radial pseudo wave-functions.
     struct ps_atomic_wf_descriptor
     {
-        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum_quantum_number aqn__, double occ__,
+        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__,
                 Spline<double> f__)
             : n(n__)
-            , aqn(aqn__)
+            , am(am__)
             , occ(occ__)
             , f(std::move(f__))
         {
         }
         int n;
-        sirius::experimental::angular_momentum_quantum_number aqn;
+        sirius::experimental::angular_momentum am;
         double occ;
         Spline<double> f;
     };
@@ -449,10 +449,10 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum_quantum_number aqn__,
+    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__,
             std::vector<double> f__, double occ__ = 0.0)
     {
-        ps_atomic_wfs_.emplace_back(n__, aqn__, occ__, Spline<double>(radial_grid_, f__));
+        ps_atomic_wfs_.emplace_back(n__, am__, occ__, Spline<double>(radial_grid_, f__));
     }
 
     /// Return a tuple describing a given atomic radial function
@@ -466,7 +466,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: ps_atomic_wfs_) {
-            auto l = e.aqn.l();
+            auto l = e.am.l();
             lmax = std::max(lmax, l);
         }
         return lmax;
@@ -912,11 +912,11 @@ class Atom_type
         return hubbard_radial_functions_[i];
     }
 
-    inline sirius::experimental::radial_function_index_descriptor const& indexr_wfs(int i) const
-    {
-        assert(i >= 0 && i < (int)indexr_wfs_.size());
-        return indexr_wfs_[i];
-    }
+    //inline sirius::experimental::radial_function_index_descriptor const& indexr_wfs(int i) const
+    //{
+    //    assert(i >= 0 && i < (int)indexr_wfs_.size());
+    //    return indexr_wfs_[i];
+    //}
 
     inline void set_symbol(const std::string symbol__)
     {
