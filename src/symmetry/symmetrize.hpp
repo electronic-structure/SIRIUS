@@ -202,8 +202,8 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
                     auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
-                    double_complex phase = phase_factor(i, G) * S(2, 2);
                     auto gv_rot = invRT * G;
+                    double_complex phase = phase_factor(i, gv_rot) * S(2, 2);
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
 
