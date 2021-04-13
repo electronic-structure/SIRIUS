@@ -105,6 +105,11 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 
             int igsh = gvec_shells__.gvec_shell_remapped(igloc);
 
+#ifndef NDEBUG
+            if (igsh != gvec_shells__.gvec().shell(G)) {
+                throw std::runtime_error("wrong index of G-shell");
+            }
+#endif
             /* each thread is working on full shell of G-vectors */
             if (igsh % nt == tid && !is_done[igloc]) {
                 double_complex zsym(0, 0);
@@ -112,7 +117,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 /* find the symmetrized PW coefficient */
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = sym__.magnetic_group_symmetry(i).spg_op.invR * G;
+                    auto gvi = sym__.magnetic_group_symmetry(i).spg_op.invRT * G;
 
                     double_complex phase = std::conj(phase_factor(i, G));
 
@@ -121,10 +126,20 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 
                     if (igi == -1) {
                         gvi = gvi * (-1);
+#ifndef NDEBUG
+                        if (igsh != gvec_shells__.gvec().shell(gvi)) {
+                            throw std::runtime_error("wrong index of G-shell");
+                        }
+#endif
                         igi = gvec_shells__.index_by_gvec(gvi);
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += std::conj(v[igi]) * phase;
                     } else {
+#ifndef NDEBUG
+                        if (igsh != gvec_shells__.gvec().shell(gvi)) {
+                            throw std::runtime_error("wrong index of G-shell");
+                        }
+#endif
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += v[igi] * phase;
                     }
@@ -135,7 +150,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 /* apply symmetry operation and get all other plane-wave coefficients */
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gv_rot = sym__.magnetic_group_symmetry(i).spg_op.R * G;
+                    auto gv_rot = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
                     double_complex phase = std::conj(phase_factor(i, gv_rot));
@@ -146,7 +161,12 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                         if (is_done[ig_rot]) {
                             /* check that another symmetry operation leads to the same coefficient */
                             if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
-                                throw std::runtime_error("inconsistent symmetry operation");
+                                std::stringstream s;
+                                s << "inconsistent symmetry operation" << std::endl
+                                  << "  existing value : " << sym_f_pw[ig_rot] << std::endl
+                                  << "  computed value : " <<  zsym * phase << std::endl
+                                  << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
+                                throw std::runtime_error(s.str());
                             }
                         } else {
                             assert(ig_rot >= 0 && ig_rot < int(v.size()));
@@ -159,7 +179,6 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
         } /* loop over igloc */
     }
     PROFILE_STOP("sirius::symmetrize_function|fpw|local");
-
 
     gvec_shells__.remap_backward(sym_f_pw, f_pw__);
 }
@@ -191,13 +210,13 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
 
             int igsh = gvec_shells__.gvec_shell_remapped(igloc);
 
-            assert(igsh == gvec_shells__.gvec().shell(G));
+            //assert(igsh == gvec_shells__.gvec().shell(G));
 
             if (igsh % nt == tid && !is_done[igloc]) {
                 double_complex zsym(0, 0);
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = sym__.magnetic_group_symmetry(i).spg_op.invR * G;
+                    auto gvi = sym__.magnetic_group_symmetry(i).spg_op.invRT * G;
 
                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
 
@@ -210,13 +229,13 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                     if (igi == -1) {
                         gvi = gvi * (-1);
                         igi = gvec_shells__.index_by_gvec(gvi);
-                        assert(igsh == gvec_shells__.gvec().shell(gvi));
+                        //assert(igsh == gvec_shells__.gvec().shell(gvi));
                         assert(igi >= 0 && igi < (int)v.size());
 
                         zsym += std::conj(v[igi]) * phase * S(2, 2);
                     } else {
                         assert(igi  >= 0 && igi < (int)v.size());
-                        assert(igsh == gvec_shells__.gvec().shell(gvi));
+                        //assert(igsh == gvec_shells__.gvec().shell(gvi));
 
                         zsym += v[igi] * phase * S(2, 2);
                     }
@@ -225,7 +244,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                 zsym *= norm;
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gv_rot = sym__.magnetic_group_symmetry(i).spg_op.R * G;
+                    auto gv_rot = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
                     double_complex phase = std::conj(phase_factor(i, gv_rot));

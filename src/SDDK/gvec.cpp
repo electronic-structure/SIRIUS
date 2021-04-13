@@ -673,22 +673,22 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
 {
     PROFILE("sddk::Gvec_shells");
 
-    a2a_send = block_data_descriptor(comm_.size());
-    a2a_recv = block_data_descriptor(comm_.size());
+    a2a_send_ = block_data_descriptor(comm_.size());
+    a2a_recv_ = block_data_descriptor(comm_.size());
 
     /* split G-vector shells between ranks in cyclic order */
-    spl_num_gsh = splindex<splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
+    spl_num_gsh_ = splindex<splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
 
     /* each rank sends a fraction of its local G-vectors to other ranks */
     /* count this fraction */
     for (int igloc = 0; igloc < gvec_.count(); igloc++) {
         int ig   = gvec_.offset() + igloc;
         int igsh = gvec_.shell(ig);
-        a2a_send.counts[spl_num_gsh.local_rank(igsh)]++;
+        a2a_send_.counts[spl_num_gsh_.local_rank(igsh)]++;
     }
-    a2a_send.calc_offsets();
+    a2a_send_.calc_offsets();
     /* sanity check: total number of elements to send is equal to the local number of G-vector */
-    if (a2a_send.size() != gvec_.count()) {
+    if (a2a_send_.size() != gvec_.count()) {
         throw std::runtime_error("wrong number of G-vectors");
     }
     /* count the number of elements to receive */
@@ -698,12 +698,12 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             int ig = gvec_.gvec_offset(r) + igloc;
             /* index of the G-vector shell */
             int igsh = gvec_.shell(ig);
-            if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
-                a2a_recv.counts[r]++;
+            if (spl_num_gsh_.local_rank(igsh) == comm_.rank()) {
+                a2a_recv_.counts[r]++;
             }
         }
     }
-    a2a_recv.calc_offsets();
+    a2a_recv_.calc_offsets();
     /* sanity check: sum of local sizes in the remapped order is equal to the total number of G-vectors */
     int ng = gvec_count_remapped();
     comm_.allreduce(&ng, 1);
@@ -720,17 +720,28 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             int ig   = gvec_.gvec_offset(r) + igloc;
             int igsh = gvec_.shell(ig);
             auto G   = gvec_.gvec(ig);
-            if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
+            if (spl_num_gsh_.local_rank(igsh) == comm_.rank()) {
                 for (int x : {0, 1, 2}) {
-                    gvec_remapped_(x, a2a_recv.offsets[r] + counts[r]) = G[x];
+                    gvec_remapped_(x, a2a_recv_.offsets[r] + counts[r]) = G[x];
                 }
-                gvec_shell_remapped_(a2a_recv.offsets[r] + counts[r]) = igsh;
+                gvec_shell_remapped_(a2a_recv_.offsets[r] + counts[r]) = igsh;
                 counts[r]++;
             }
         }
     }
     for (int ig = 0; ig < gvec_count_remapped(); ig++) {
-        idx_gvec[gvec_remapped(ig)] = ig;
+        idx_gvec_[gvec_remapped(ig)] = ig;
+    }
+    /* sanity check */
+    for (int igloc = 0; igloc < this->gvec_count_remapped(); igloc++) {
+        auto G = this->gvec_remapped(igloc);
+        if (this->index_by_gvec(G) != igloc) {
+            throw std::runtime_error("Wrong remapped index of G-vector");
+        }
+        int igsh = this->gvec_shell_remapped(igloc);
+        if (igsh != this->gvec().shell(G)) {
+            throw std::runtime_error("Wrong remapped shell of G-vector");
+        }
     }
 }
 
