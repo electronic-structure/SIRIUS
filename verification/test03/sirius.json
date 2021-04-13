@@ -12,7 +12,7 @@
         "smearing_width" : 0.001,
         "xc_functionals": ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
         "num_fv_states" : 10,
-        "num_mag_dims": 1,
+        "num_mag_dims": 0,
         "pw_cutoff" : 30.00,
         "gk_cutoff":  8.00,
         "use_symmetry": true,
