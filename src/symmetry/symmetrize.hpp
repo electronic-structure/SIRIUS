@@ -134,7 +134,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                         igi = gvec_shells__.index_by_gvec(gvi);
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += std::conj(v[igi]) * phase;
-                        sym_f_pw[igi] += std::conj(v[igloc]) * phase * norm;
+                        sym_f_pw[igloc] += std::conj(v[igi]) * phase * norm;
                     } else {
 #if !defined(NDEBUG)
                         if (igsh != gvec_shells__.gvec().shell(gvi)) {
@@ -143,7 +143,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 #endif
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += v[igi] * phase;
-                        sym_f_pw[igi] += v[igloc] * phase * norm;
+                        sym_f_pw[igloc] += v[igi] * phase * norm;
                     }
                 } /* loop over symmetries */
 
@@ -237,11 +237,11 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                         assert(igi >= 0 && igi < (int)v.size());
 
                         //zsym += std::conj(v[igi]) * phase * S(2, 2);
-                        sym_f_pw[igi] += std::conj(v[igloc]) * phase * S(2, 2) * norm;
+                        sym_f_pw[igloc] += std::conj(v[igloc]) * phase * S(2, 2) * norm;
                     } else {
                         assert(igi  >= 0 && igi < (int)v.size());
                         //assert(igsh == gvec_shells__.gvec().shell(gvi));
-                        sym_f_pw[igi] += v[igloc] * phase * S(2, 2) * norm;
+                        sym_f_pw[igloc] += v[igloc] * phase * S(2, 2) * norm;
 
                         //zsym += v[igi] * phase * S(2, 2);
                     }
