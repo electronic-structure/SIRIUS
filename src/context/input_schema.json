@@ -451,7 +451,7 @@
                     "default" : [],
                     "title" : "List of XC functionals (typically contains exchange term and correlation term).",
                     "description" : "Naming convention of LibXC is used, names should be provided in capital letters.",
-                    "example" : ["XC_LDA_X", "XC_LDA_C_PZ"] 
+                    "example" : ["XC_LDA_X", "XC_LDA_C_PZ"]
                 },
                 "core_relativity" : {
                     "type" : "string",
@@ -748,13 +748,21 @@
                                 "minItems" : 2,
                                 "maxItems" : 2
                             },
+                            "T" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "integer"
+                                },
+                                "minItems" : 3,
+                                "maxItems" : 3
+                            },
                             "l" : {
                                 "type" : "array",
                                 "items" : {
                                     "type" : "integer"
                                 },
                                 "minItems" : 2,
-                                "maxItems" : 2 
+                                "maxItems" : 2
                             },
                             "V" : {
                                 "type" : "number",
@@ -767,4 +775,3 @@
         }
     }
 }
-
