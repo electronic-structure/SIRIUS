@@ -316,19 +316,6 @@ class matrix3d
         return c;
     }
 
-    /// Matrix-vector multiplication.
-    template <typename U>
-    inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b) const
-    {
-        vector3d<decltype(T{} * U{})> a;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                a[i] += (*this)(i, j) * b[j];
-            }
-        }
-        return a;
-    }
-
     /// Sum of two matrices.
     template <typename U>
     inline matrix3d<decltype(T{} + U{})> operator+(matrix3d<U> const& b) const
@@ -392,6 +379,32 @@ class matrix3d
         std::fill(&mtrx_[0][0], &mtrx_[0][0] + 9, 0);
     }
 };
+
+/// Matrix-vector multiplication.
+template <typename T, typename U>
+inline vector3d<decltype(T{} * U{})> operator*(matrix3d<T> const& m__, vector3d<U> const& b__)
+{
+    vector3d<decltype(T{} * U{})> a;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            a[i] += m__(i, j) * b__[j];
+        }
+    }
+    return a;
+}
+
+/// Vector-matrix multiplication.
+template <typename T, typename U>
+inline vector3d<decltype(T{} * U{})> operator*(vector3d<U> const& b__, matrix3d<T> const& m__)
+{
+    vector3d<decltype(T{} * U{})> a;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            a[i] += b__[j] * m__(j, i);
+        }
+    }
+    return a;
+}
 
 /// Return transpose of the matrix.
 template <typename T>

@@ -117,7 +117,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 /* find the symmetrized PW coefficient */
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
+                    auto gvi = G * sym__.magnetic_group_symmetry(i).spg_op.R;
 
                     double_complex phase = std::conj(phase_factor(i, G));
 
@@ -220,7 +220,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                 double_complex zsym(0, 0);
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
+                    auto gvi = G * sym__.magnetic_group_symmetry(i).spg_op.R;
 
                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
 
