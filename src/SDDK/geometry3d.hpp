@@ -368,13 +368,7 @@ inline matrix3d<decltype(T{} * U{})> operator*(matrix3d<T> const& a__, U p__)
 template <typename T, typename U>
 inline matrix3d<decltype(T{} * U{})> operator*(U p__, matrix3d<T> const& a__)
 {
-    matrix3d<decltype(T{} * U{})> c;
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            c(i, j) = a__(i, j) * p__;
-        }
-    }
-    return c;
+    return a__ * p__;
 }
 
 /// Multiply two matrices.
