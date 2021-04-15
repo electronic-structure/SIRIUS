@@ -54,7 +54,7 @@ int run_test(cmd_args& args)
             //    printf("\n");
             //}
 
-            vector3d<double> coord2 = rotm * coord;
+            vector3d<double> coord2 = dot(rotm, coord);
             vector3d<double> scoord2;
             scoord2 = SHT::spherical_coordinates(coord2);
 
