@@ -111,7 +111,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
             }
 #endif
             /* each thread is working on full shell of G-vectors */
-            if (igsh % nt == tid) { // && !is_done[igloc]) {
+            if (igsh % nt == tid && !is_done[igloc]) {
                 double_complex zsym(0, 0);
 
                 /* find the symmetrized PW coefficient */
@@ -134,7 +134,6 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                         igi = gvec_shells__.index_by_gvec(gvi);
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += std::conj(v[igi]) * phase;
-                        sym_f_pw[igloc] += std::conj(v[igi]) * phase * norm;
                     } else {
 #if !defined(NDEBUG)
                         if (igsh != gvec_shells__.gvec().shell(gvi)) {
@@ -143,42 +142,39 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 #endif
                         assert(igi >= 0 && igi < (int)v.size());
                         zsym += v[igi] * phase;
-                        sym_f_pw[igloc] += v[igi] * phase * norm;
                     }
                 } /* loop over symmetries */
 
-                //zsym *= norm;
+                zsym *= norm;
 
-                //sym_f_pw[igloc] = zsym;
+                /* apply symmetry operation and get all other plane-wave coefficients */
 
-                //== /* apply symmetry operation and get all other plane-wave coefficients */
+                for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+                    auto gv_rot = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
+                    /* index of a rotated G-vector */
+                    int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+                    double_complex phase = std::conj(phase_factor(isym, gv_rot));
 
-                //== for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                //==     auto gv_rot = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
-                //==     /* index of a rotated G-vector */
-                //==     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-                //==     double_complex phase = std::conj(phase_factor(i, gv_rot));
-
-                //==     if (ig_rot == -1) {
-                //==         /* skip */
-                //==     } else {
-                //==         if (is_done[ig_rot]) {
-                //==             /* check that another symmetry operation leads to the same coefficient */
-                //==             if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
-                //==                 std::stringstream s;
-                //==                 s << "inconsistent symmetry operation" << std::endl
-                //==                   << "  existing value : " << sym_f_pw[ig_rot] << std::endl
-                //==                   << "  computed value : " <<  zsym * phase << std::endl
-                //==                   << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
-                //==                 throw std::runtime_error(s.str());
-                //==             }
-                //==         } else {
-                //==             assert(ig_rot >= 0 && ig_rot < int(v.size()));
-                //==             sym_f_pw[ig_rot] = zsym * phase;
-                //==             is_done[ig_rot] = true;
-                //==         }
-                //==     }
-                //== } /* loop over symmetries */
+                    if (ig_rot == -1) {
+                        /* skip */
+                    } else {
+                        if (is_done[ig_rot]) {
+                            /* check that another symmetry operation leads to the same coefficient */
+                            if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
+                                std::stringstream s;
+                                s << "inconsistent symmetry operation" << std::endl
+                                  << "  existing value : " << sym_f_pw[ig_rot] << std::endl
+                                  << "  computed value : " <<  zsym * phase << std::endl
+                                  << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
+                                throw std::runtime_error(s.str());
+                            }
+                        } else {
+                            assert(ig_rot >= 0 && ig_rot < int(v.size()));
+                            sym_f_pw[ig_rot] = zsym * phase;
+                            is_done[ig_rot] = true;
+                        }
+                    }
+                } /* loop over symmetries */
             }
         } /* loop over igloc */
     }
