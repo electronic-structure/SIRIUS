@@ -62,7 +62,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
             /* get z-coordinate of G-vector */
             int k = fft_box__.freq_by_coord<2>(iz);
             /* take G+k */
-            auto vgk = lattice_vectors_ * (vector3d<double>(i, j, k) + vk_);
+            auto vgk = dot(lattice_vectors_, (vector3d<double>(i, j, k) + vk_));
             /* add z-coordinate of G-vector to the list */
             if (vgk.length() <= Gmax__) {
                 zcol.push_back(k);
@@ -202,7 +202,7 @@ void Gvec::find_gvec_shells()
         if (gvec_shell_[ig] == -1) {
             auto G = gvec(ig);
             for (auto& R: lat_sym) {
-                auto G1  = R * G;
+                auto G1  = dot(R, G);
                 auto ig1 = index_by_gvec(G1);
                 if (ig1 == -1) {
                     ig1 = index_by_gvec(G1 * (-1));
@@ -310,8 +310,8 @@ void Gvec::init_gvec_cart()
     for (int igloc = 0; igloc < count(); igloc++) {
         int ig   = offset() + igloc;
         auto G   = gvec_by_full_index(gvec_full_index_(ig));
-        auto gc  = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
-        auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+        auto gc  = dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]));
+        auto gkc = dot(lattice_vectors_, (vector3d<double>(G[0], G[1], G[2]) + vk_));
         for (int x : {0, 1, 2}) {
             gvec_cart_(x, igloc)  = gc[x];
             gkvec_cart_(x, igloc) = gkc[x];

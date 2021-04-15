@@ -6,29 +6,32 @@ void create_supercell(cmd_args const& args__)
 {
     matrix3d<int> scell;
     std::stringstream s(args__.value<std::string>("supercell"));
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++) s >> scell(j, i);
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            s >> scell(j, i);
+        }
     }
 
     std::cout << std::endl;
     std::cout << "supercell vectors (lattice coordinates) : " << std::endl;
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         std::cout << "A" << i << " : ";
-        for (int j = 0; j < 3; j++) std::cout << scell(j, i) << " ";
+        for (int j = 0; j < 3; j++) {
+            std::cout << scell(j, i) << " ";
+        }
         std::cout << std::endl;
     }
 
     Simulation_context ctx("sirius.json", Communicator::self());
 
-    matrix3d<double> scell_lattice_vectors = ctx.unit_cell().lattice_vectors() * matrix3d<double>(scell);
+    auto scell_lattice_vectors = dot(ctx.unit_cell().lattice_vectors(), matrix3d<double>(scell));
 
     std::cout << "supercell vectors (Cartesian coordinates) : " << std::endl;
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         std::cout << "A" << i << " : ";
-        for (int x = 0; x < 3; x++) std::cout << scell_lattice_vectors(x, i) << " ";
+        for (int x = 0; x < 3; x++) {
+            std::cout << scell_lattice_vectors(x, i) << " ";
+        }
         std::cout << std::endl;
     }
 
@@ -37,35 +40,28 @@ void create_supercell(cmd_args const& args__)
     Simulation_context ctx_sc(Communicator::self());
 
     vector3d<double> a0, a1, a2;
-    for (int x = 0; x < 3; x++)
-    {
+    for (int x = 0; x < 3; x++) {
         a0[x] = scell_lattice_vectors(x, 0);
         a1[x] = scell_lattice_vectors(x, 1);
         a2[x] = scell_lattice_vectors(x, 2);
     }
     ctx_sc.unit_cell().set_lattice_vectors(a0, a1, a2);
 
-    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
         auto label = ctx.unit_cell().atom_type(iat).label();
         ctx_sc.unit_cell().add_atom_type(label, "");
     }
 
-    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
         auto label = ctx.unit_cell().atom_type(iat).label();
 
-        for (int i = 0; i < ctx.unit_cell().atom_type(iat).num_atoms(); i++)
-        {
+        for (int i = 0; i < ctx.unit_cell().atom_type(iat).num_atoms(); i++) {
             int ia = ctx.unit_cell().atom_type(iat).atom_id(i);
             auto va = ctx.unit_cell().atom(ia).position();
 
-            for (int i0 = -10; i0 <= 10; i0++)
-            {
-                for (int i1 = -10; i1 <= 10; i1++)
-                {
-                    for (int i2 = -10; i2 <= 10; i2++)
-                    {
+            for (int i0 = -10; i0 <= 10; i0++) {
+                for (int i1 = -10; i1 <= 10; i1++) {
+                    for (int i2 = -10; i2 <= 10; i2++) {
                         vector3d<double> T(i0, i1, i2);
                         vector3d<double> vc = ctx.unit_cell().get_cartesian_coordinates(va + T);
                         vector3d<double> vf = ctx_sc.unit_cell().get_fractional_coordinates(vc);

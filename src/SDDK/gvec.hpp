@@ -435,7 +435,7 @@ class Gvec
     inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>> gvec_cart(int ig__) const
     {
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+        return dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]));
     }
 
     /// Return G+k vector in Cartesian coordinates.
@@ -450,7 +450,7 @@ class Gvec
     inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>> gkvec_cart(int ig__) const
     {
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+        return dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]) + vk_);
     }
 
     /// Return index of the G-vector shell by the G-vector index.

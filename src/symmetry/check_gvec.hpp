@@ -43,7 +43,7 @@ inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& sym__)
 
             auto gv = gvec__.gvec(ig);
             /* apply symmetry operation to the G-vector */
-            auto gv_rot = transpose(sm) * gv;
+            auto gv_rot = dot(gv, sm);
 
             //== /* check limits */
             //== for (int x: {0, 1, 2}) {
@@ -97,7 +97,7 @@ inline void check_gvec(Gvec_shells const& gvec_shells__, Unit_cell_symmetry cons
 
         for (int i = 0; i < sym__.num_mag_sym(); i++) {
             auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
-            auto gv_rot = invRT * G;
+            auto gv_rot = dot(invRT, G);
 
             /* local index of a rotated G-vector */
             int ig_rot = gvec_shells__.index_by_gvec(gv_rot);

@@ -55,16 +55,16 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
     sym_forces.zero();
 
     for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
-        auto Rc = ctx_.unit_cell().symmetry().lattice_vectors() *
-                  matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R) *
-                  ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+        auto Rc = dot(dot(ctx_.unit_cell().symmetry().lattice_vectors(),
+                  matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R)),
+                  ctx_.unit_cell().symmetry().inverse_lattice_vectors());
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             vector3d<double> force_ia(&forces__(0, ia));
             int ja = ctx_.unit_cell().symmetry().sym_table(ia, isym);
             auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
             if (location.rank == ctx_.comm().rank()) {
-                auto force_ja = Rc * force_ia;
+                auto force_ja = dot(Rc, force_ia);
                 for (int x: {0, 1, 2}) {
                     sym_forces(x, location.local_index) += force_ja[x];
                 }
@@ -427,7 +427,7 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            auto t = unit_cell.lattice_vectors() * vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation);
+            auto t = dot(unit_cell.lattice_vectors(), vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation));
 
             double scalar_part =
                 static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *

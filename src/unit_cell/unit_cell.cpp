@@ -285,7 +285,7 @@ json Unit_cell::serialize(bool cart_pos__) const
             auto v = atom(ia).position();
             /* convert to Cartesian coordinates */
             if (cart_pos__) {
-                v = lattice_vectors_ * v;
+                v = dot(lattice_vectors_, v);
             }
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
@@ -695,7 +695,7 @@ void Unit_cell::import(config_t::unit_cell_t const &inp__)
             }
             /* convert from Cartesian to lattice coordinates */
             if (units == "au" || units == "A") {
-                p = ilv * p;
+                p = dot(ilv, p);
                 auto rc = reduce_coordinates(p);
                 for (int x : {0, 1, 2}) {
                     p[x] = rc.first[x];

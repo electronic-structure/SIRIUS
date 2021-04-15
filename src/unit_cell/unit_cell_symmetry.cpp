@@ -103,7 +103,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             /* is this proper or improper rotation */
             sym_op.proper = p;
             /* proper rotation in cartesian Coordinates */
-            sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
+            sym_op.rotation = dot(dot(lattice_vectors_, matrix3d<double>(sym_op.R * p)), inverse_lattice_vectors_);
             /* get Euler angles of the rotation */
             sym_op.euler_angles = euler_angles(sym_op.rotation);
             /* add symmetry operation to a list */
@@ -139,7 +139,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             /* spatial transform */
             vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
             /* apply crystal symmetry */
-            auto v = reduce_coordinates(R * pos + t);
+            auto v = reduce_coordinates(dot(R, pos) + t);
             auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
             {
                 auto diff = a - b;
@@ -208,7 +208,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
 
                 /* now check that vector field transforms from atom ia to atom ja */
                 /* vector field of atom is expected to be in Cartesian coordinates */
-                auto vd = Rspin * vector3d<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia)) -
+                auto vd = dot(Rspin, vector3d<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia))) -
                                   vector3d<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
 
                 if (vd.length() < 1e-10) {

@@ -117,7 +117,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 /* find the symmetrized PW coefficient */
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = G * sym__.magnetic_group_symmetry(i).spg_op.R;
+                    auto gvi = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
 
                     double_complex phase = std::conj(phase_factor(i, G));
 
@@ -220,7 +220,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                 double_complex zsym(0, 0);
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto gvi = G * sym__.magnetic_group_symmetry(i).spg_op.R;
+                    auto gvi = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
 
                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
 
@@ -326,7 +326,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
 
     auto vrot = [&](vector3d<double_complex> const& v, matrix3d<double> const& S) -> vector3d<double_complex>
     {
-        return S * v;
+        return dot(S, v);
     };
 
     #pragma omp parallel
@@ -349,7 +349,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                     auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
                     double_complex phase = phase_factor(i, G);
-                    auto gv_rot = invRT * G;
+                    auto gv_rot = dot(invRT, G);
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
 
@@ -377,7 +377,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
                     const auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
                     const auto& invS = sym__.magnetic_group_symmetry(i).spin_rotation_inv;
-                    auto gv_rot = invRT * G;
+                    auto gv_rot = dot(invRT, G);
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
                     auto v_rot = vrot({xsym, ysym, zsym}, invS);

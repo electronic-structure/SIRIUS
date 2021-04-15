@@ -294,13 +294,13 @@ class Unit_cell
     template <typename T>
     inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
     {
-        return lattice_vectors_ * a__;
+        return dot(lattice_vectors_ , a__);
     }
 
     /// Get fractional coordinates of the vector by its Cartesian coordinates.
     inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
     {
-        return inverse_lattice_vectors_ * a__;
+        return dot(inverse_lattice_vectors_ , a__);
     }
 
     /// Unit cell volume.
