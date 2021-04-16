@@ -13,7 +13,7 @@
         ],
         "smearing_width": 0.00475021734517012,
         "smearing": "fermi_dirac",
-        "use_symmetry": false,
+        "use_symmetry": true,
         "num_mag_dims": 1,
         "num_fv_states": 60,
         "gk_cutoff": 5,

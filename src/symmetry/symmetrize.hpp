@@ -96,7 +96,7 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
                     auto G1 = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
 
-                    auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
+                    auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
 
                     auto phase = std::conj(phase_factor(i, G));
 
@@ -115,6 +115,15 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                         if (f_pw__) {
                             symf += std::conj(f_pw[ig1]) * phase;
                         }
+                        if (!is_non_collin && z_pw__) {
+                            symz += std::conj(z_pw[ig1]) * phase * S(2, 2);
+                        }
+                        if (is_non_collin) {
+                            auto v = dot(S, vector3d<double_complex>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            symx += std::conj(v[0]) * phase;
+                            symy += std::conj(v[1]) * phase;
+                            symz += std::conj(v[2]) * phase;
+                        }
                     } else {
 #if !defined(NDEBUG)
                         if (igsh != gvec_shells__.gvec().shell(G1)) {
@@ -124,6 +133,15 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                         assert(ig1 >= 0 && ig1 < ngv);
                         if (f_pw__) {
                             symf += f_pw[ig1] * phase;
+                        }
+                        if (!is_non_collin && z_pw__) {
+                            symz += z_pw[ig1] * phase * S(2, 2);
+                        }
+                        if (is_non_collin) {
+                            auto v = dot(S, vector3d<double_complex>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            symx += v[0] * phase;
+                            symy += v[1] * phase;
+                            symz += v[2] * phase;
                         }
                     }
                 } /* loop over symmetries */
@@ -136,6 +154,8 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                 /* apply symmetry operation and get all other plane-wave coefficients */
 
                 for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+                    auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
+
                     auto G1 = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
                     /* index of a rotated G-vector */
                     int ig1 = gvec_shells__.index_by_gvec(G1);
@@ -143,7 +163,20 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                     if (ig1 != -1) {
                         assert(ig1 >= 0 && ig1 < ngv);
                         auto phase = std::conj(phase_factor(isym, G1));
-                        auto symf1 = (f_pw__) ? symf * phase : double_complex(0, 0);
+                        double_complex symf1, symx1, symy1, symz1;
+                        if (f_pw__) {
+                            symf1 = symf * phase;
+                        }
+                        if (!is_non_collin && z_pw__) {
+                            symz1 = symz * phase * S(2, 2);
+                        }
+                        if (is_non_collin) {
+                            auto v = dot(S, vector3d<double_complex>({symx, symy, symz}));
+                            symx1 = v[0] * phase;
+                            symy1 = v[1] * phase;
+                            symz1 = v[2] * phase;
+                        }
+
                         if (is_done[ig1]) {
                             if (f_pw__) {
                                 /* check that another symmetry operation leads to the same coefficient */
@@ -156,9 +189,36 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                                     throw std::runtime_error(s.str());
                                 }
                             }
+                            if (!is_non_collin && z_pw__) {
+                                if (std::abs(sym_z_pw[ig1] -  symz1) > 1e-12) {
+                                    std::stringstream s;
+                                    s << "inconsistent symmetry operation" << std::endl
+                                      << "  existing value : " << sym_z_pw[ig1] << std::endl
+                                      << "  computed value : " << symz1 << std::endl
+                                      << "  difference: " << std::abs(sym_z_pw[ig1] - symz1) << std::endl;
+                                    throw std::runtime_error(s.str());
+                                }
+                            }
+                            if (is_non_collin) {
+                                if (std::abs(sym_x_pw[ig1] - symx1) > 12e-12 ||
+                                    std::abs(sym_y_pw[ig1] - symy1) > 12e-12 ||
+                                    std::abs(sym_z_pw[ig1] - symz1) > 12e-12) {
+
+                                    throw std::runtime_error("inconsistent symmetry operation");
+                                }
+                            }
                         } else {
                             if (f_pw__) {
                                 sym_f_pw[ig1] = symf1;
+                            }
+                            if (!is_non_collin && z_pw__) {
+                                sym_z_pw[ig1] = symz1;
+                            }
+                            if (is_non_collin) {
+                                sym_x_pw[ig1] = symx1;
+                                sym_y_pw[ig1] = symy1;
+                                sym_z_pw[ig1] = symz1;
+
                             }
                             is_done[ig1] = true;
                         }

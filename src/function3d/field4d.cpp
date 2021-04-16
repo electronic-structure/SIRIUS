@@ -40,7 +40,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
 
     auto& comm = ctx_.comm();
 
-    auto& remap_gvec = ctx_.remap_gvec();
+    //auto& remap_gvec = ctx_.remap_gvec();
 
     if (ctx_.cfg().control().print_hash()) {
         auto h = f__->hash_f_pw();
@@ -49,23 +49,22 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
         }
     }
 
-    sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
-        &f__->f_pw_local(0), nullptr, nullptr, nullptr);
-
-    //symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
-
-    if (ctx_.cfg().control().print_hash()) {
-        auto h = f__->hash_f_pw();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("f_symmetrized(G)", h);
-        }
-    }
-
     /* symmetrize PW components */
     switch (ctx_.num_mag_dims()) {
+        case 0: {
+            sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
+                &f__->f_pw_local(0), nullptr, nullptr, nullptr);
+            if (ctx_.cfg().control().print_hash()) {
+                auto h = f__->hash_f_pw();
+                if (ctx_.comm().rank() == 0) {
+                    utils::print_hash("f_symmetrized(G)", h);
+                }
+            }
+            break;
+        }
         case 1: {
-            symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
-                                       &gz__->f_pw_local(0));
+            sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
+                &f__->f_pw_local(0), nullptr, nullptr, &gz__->f_pw_local(0));
             break;
         }
         case 3: {
@@ -80,8 +79,8 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
                 }
             }
 
-            symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
-                                       &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
+            sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
+                &f__->f_pw_local(0), &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
 
             if (ctx_.cfg().control().print_hash()) {
                 auto h1 = gx__->hash_f_pw();
