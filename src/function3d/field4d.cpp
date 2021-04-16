@@ -49,7 +49,10 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
         }
     }
 
-    symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
+    sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
+        &f__->f_pw_local(0), nullptr, nullptr, nullptr);
+
+    //symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
 
     if (ctx_.cfg().control().print_hash()) {
         auto h = f__->hash_f_pw();
