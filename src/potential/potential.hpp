@@ -621,7 +621,7 @@ class Potential : public Field4D
     void xc(Density const& rho__);
 
     /// Generate effective potential and magnetic field from charge density and magnetization.
-    void generate(Density const& density__);
+    void generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
     void save()
     {

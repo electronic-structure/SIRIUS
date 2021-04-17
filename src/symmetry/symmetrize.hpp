@@ -66,6 +66,26 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                sym_phase_factors__(2, G[2], isym);
     };
 
+    double diff{0};
+    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
+        auto G = gvec_shells__.gvec_remapped(igloc);
+
+        for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+            auto gv_rot = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
+            /* index of a rotated G-vector */
+            int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+            double_complex phase = std::conj(phase_factor(isym, gv_rot));
+
+            if (f_pw__ && ig_rot != -1) {
+                diff += std::abs(f_pw[ig_rot] - f_pw[igloc] * phase);
+            }
+        }
+    }
+
+    std::cout << "1st test: check how incoming function transforms under symmetry operations" << std::endl
+              << "the test only makes sense when use_ibz=false" << std::endl
+              << "result: " << diff << std::endl;
+
     PROFILE_START("sirius::symmetrize|fpw|local");
 
     #pragma omp parallel
@@ -84,7 +104,7 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
             }
 #endif
             /* each thread is working on full shell of G-vectors */
-            if (igsh % nt == tid && !is_done[igloc]) {
+            if (igsh % nt == tid) {// && !is_done[igloc]) {
 
                 double_complex symf(0, 0);
                 double_complex symx(0, 0);
@@ -151,83 +171,122 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                 symy *= norm;
                 symz *= norm;
 
-                /* apply symmetry operation and get all other plane-wave coefficients */
+                if (f_pw__) {
+                    sym_f_pw[igloc] = symf;
+                }
+                if (!is_non_collin && z_pw__) {
+                    sym_z_pw[igloc] = symz;
+                }
+                if (is_non_collin) {
+                    sym_x_pw[igloc] = symx;
+                    sym_y_pw[igloc] = symy;
+                    sym_z_pw[igloc] = symz;
+                }
 
-                for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-                    auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
+                ///* apply symmetry operation and get all other plane-wave coefficients */
 
-                    auto G1 = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
-                    /* index of a rotated G-vector */
-                    int ig1 = gvec_shells__.index_by_gvec(G1);
+                //for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+                //    auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
 
-                    if (ig1 != -1) {
-                        assert(ig1 >= 0 && ig1 < ngv);
-                        auto phase = std::conj(phase_factor(isym, G1));
-                        double_complex symf1, symx1, symy1, symz1;
-                        if (f_pw__) {
-                            symf1 = symf * phase;
-                        }
-                        if (!is_non_collin && z_pw__) {
-                            symz1 = symz * phase * S(2, 2);
-                        }
-                        if (is_non_collin) {
-                            auto v = dot(S, vector3d<double_complex>({symx, symy, symz}));
-                            symx1 = v[0] * phase;
-                            symy1 = v[1] * phase;
-                            symz1 = v[2] * phase;
-                        }
+                //    auto G1 = dot(sym__.magnetic_group_symmetry(isym).spg_op.R, G);
+                //    /* index of a rotated G-vector */
+                //    int ig1 = gvec_shells__.index_by_gvec(G1);
 
-                        if (is_done[ig1]) {
-                            if (f_pw__) {
-                                /* check that another symmetry operation leads to the same coefficient */
-                                if (std::abs(sym_f_pw[ig1] -  symf1) > 1e-12) {
-                                    std::stringstream s;
-                                    s << "inconsistent symmetry operation" << std::endl
-                                      << "  existing value : " << sym_f_pw[ig1] << std::endl
-                                      << "  computed value : " << symf1 << std::endl
-                                      << "  difference: " << std::abs(sym_f_pw[ig1] - symf1) << std::endl;
-                                    throw std::runtime_error(s.str());
-                                }
-                            }
-                            if (!is_non_collin && z_pw__) {
-                                if (std::abs(sym_z_pw[ig1] -  symz1) > 1e-12) {
-                                    std::stringstream s;
-                                    s << "inconsistent symmetry operation" << std::endl
-                                      << "  existing value : " << sym_z_pw[ig1] << std::endl
-                                      << "  computed value : " << symz1 << std::endl
-                                      << "  difference: " << std::abs(sym_z_pw[ig1] - symz1) << std::endl;
-                                    throw std::runtime_error(s.str());
-                                }
-                            }
-                            if (is_non_collin) {
-                                if (std::abs(sym_x_pw[ig1] - symx1) > 12e-12 ||
-                                    std::abs(sym_y_pw[ig1] - symy1) > 12e-12 ||
-                                    std::abs(sym_z_pw[ig1] - symz1) > 12e-12) {
+                //    if (ig1 != -1) {
+                //        assert(ig1 >= 0 && ig1 < ngv);
+                //        auto phase = std::conj(phase_factor(isym, G1));
+                //        double_complex symf1, symx1, symy1, symz1;
+                //        if (f_pw__) {
+                //            symf1 = symf * phase;
+                //        }
+                //        if (!is_non_collin && z_pw__) {
+                //            symz1 = symz * phase * S(2, 2);
+                //        }
+                //        if (is_non_collin) {
+                //            auto v = dot(S, vector3d<double_complex>({symx, symy, symz}));
+                //            symx1 = v[0] * phase;
+                //            symy1 = v[1] * phase;
+                //            symz1 = v[2] * phase;
+                //        }
 
-                                    throw std::runtime_error("inconsistent symmetry operation");
-                                }
-                            }
-                        } else {
-                            if (f_pw__) {
-                                sym_f_pw[ig1] = symf1;
-                            }
-                            if (!is_non_collin && z_pw__) {
-                                sym_z_pw[ig1] = symz1;
-                            }
-                            if (is_non_collin) {
-                                sym_x_pw[ig1] = symx1;
-                                sym_y_pw[ig1] = symy1;
-                                sym_z_pw[ig1] = symz1;
+                //        if (is_done[ig1]) {
+                //            if (f_pw__) {
+                //                /* check that another symmetry operation leads to the same coefficient */
+                //                if (std::abs(sym_f_pw[ig1] -  symf1) > 1e-12) {
+                //                    std::stringstream s;
+                //                    s << "inconsistent symmetry operation" << std::endl
+                //                      << "  existing value : " << sym_f_pw[ig1] << std::endl
+                //                      << "  computed value : " << symf1 << std::endl
+                //                      << "  difference: " << std::abs(sym_f_pw[ig1] - symf1) << std::endl;
+                //                    throw std::runtime_error(s.str());
+                //                }
+                //            }
+                //            if (!is_non_collin && z_pw__) {
+                //                if (std::abs(sym_z_pw[ig1] -  symz1) > 1e-12) {
+                //                    std::stringstream s;
+                //                    s << "inconsistent symmetry operation" << std::endl
+                //                      << "  existing value : " << sym_z_pw[ig1] << std::endl
+                //                      << "  computed value : " << symz1 << std::endl
+                //                      << "  difference: " << std::abs(sym_z_pw[ig1] - symz1) << std::endl;
+                //                    throw std::runtime_error(s.str());
+                //                }
+                //            }
+                //            if (is_non_collin) {
+                //                if (std::abs(sym_x_pw[ig1] - symx1) > 12e-12 ||
+                //                    std::abs(sym_y_pw[ig1] - symy1) > 12e-12 ||
+                //                    std::abs(sym_z_pw[ig1] - symz1) > 12e-12) {
 
-                            }
-                            is_done[ig1] = true;
-                        }
-                    }
-                } /* loop over symmetries */
+                //                    throw std::runtime_error("inconsistent symmetry operation");
+                //                }
+                //            }
+                //        } else {
+                //            if (f_pw__) {
+                //                sym_f_pw[ig1] = symf1;
+                //            }
+                //            if (!is_non_collin && z_pw__) {
+                //                sym_z_pw[ig1] = symz1;
+                //            }
+                //            if (is_non_collin) {
+                //                sym_x_pw[ig1] = symx1;
+                //                sym_y_pw[ig1] = symy1;
+                //                sym_z_pw[ig1] = symz1;
+
+                //            }
+                //            is_done[ig1] = true;
+                //        }
+                //    }
+                //} /* loop over symmetries */
             }
         } /* loop over igloc */
     }
     PROFILE_STOP("sirius::symmetrize|fpw|local");
+
+    diff=0.0;
+    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
+        auto G = gvec_shells__.gvec_remapped(igloc);
+
+        for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+            auto gv_rot = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
+            /* index of a rotated G-vector */
+            int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+            double_complex phase = std::conj(phase_factor(isym, gv_rot));
+
+            if (f_pw__ && ig_rot != -1) {
+                diff += std::abs(sym_f_pw[ig_rot] - sym_f_pw[igloc] * phase);
+            }
+        }
+    }
+
+    std::cout << "2nd test: check how symmetrized function transforms under symmetry operations" << std::endl
+              << "result: " << diff << " (must be close to zero)" << std::endl;
+
+    diff=0.0;
+    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
+        diff += std::abs(f_pw[igloc] - sym_f_pw[igloc]);
+    }
+    std::cout << "3rd test: difference between incoming and symmetrized functions" << std::endl
+              << "the test only makes sense when use_ibz=false" << std::endl
+              << "result: " << diff << std::endl;
 
     if (f_pw__) {
         gvec_shells__.remap_backward(sym_f_pw, f_pw__);
@@ -291,17 +350,17 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 
     auto v = gvec_shells__.remap_forward(f_pw__);
 
-    std::vector<double_complex> sym_f_pw(v.size(), 0);
-    std::vector<bool> is_done(v.size(), false);
-
-    double norm = 1 / double(sym__.num_mag_sym());
-
     auto phase_factor = [&](int isym, vector3d<int> G)
     {
         return sym_phase_factors__(0, G[0], isym) *
                sym_phase_factors__(1, G[1], isym) *
                sym_phase_factors__(2, G[2], isym);
     };
+
+    std::vector<double_complex> sym_f_pw(v.size(), 0);
+    std::vector<bool> is_done(v.size(), false);
+
+    double norm = 1 / double(sym__.num_mag_sym());
 
     PROFILE_START("sirius::symmetrize_function|fpw|local");
 
@@ -321,7 +380,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
             }
 #endif
             /* each thread is working on full shell of G-vectors */
-            if (igsh % nt == tid && !is_done[igloc]) {
+            if (igsh % nt == tid) { //&& !is_done[igloc]) {
                 double_complex zsym(0, 0);
 
                 /* find the symmetrized PW coefficient */
@@ -357,37 +416,40 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
 
                 zsym *= norm;
 
-                /* apply symmetry operation and get all other plane-wave coefficients */
+                sym_f_pw[igloc] = zsym;
 
-                for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-                    auto gv_rot = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
-                    /* index of a rotated G-vector */
-                    int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-                    double_complex phase = std::conj(phase_factor(isym, gv_rot));
+                ///* apply symmetry operation and get all other plane-wave coefficients */
 
-                    if (ig_rot == -1) {
-                        /* skip */
-                    } else {
-                        if (is_done[ig_rot]) {
-                            /* check that another symmetry operation leads to the same coefficient */
-                            if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
-                                std::stringstream s;
-                                s << "inconsistent symmetry operation" << std::endl
-                                  << "  existing value : " << sym_f_pw[ig_rot] << std::endl
-                                  << "  computed value : " <<  zsym * phase << std::endl
-                                  << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
-                                throw std::runtime_error(s.str());
-                            }
-                        } else {
-                            assert(ig_rot >= 0 && ig_rot < int(v.size()));
-                            sym_f_pw[ig_rot] = zsym * phase;
-                            is_done[ig_rot] = true;
-                        }
-                    }
-                } /* loop over symmetries */
+                //for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+                //    auto gv_rot = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
+                //    /* index of a rotated G-vector */
+                //    int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+                //    double_complex phase = std::conj(phase_factor(isym, gv_rot));
+
+                //    if (ig_rot == -1) {
+                //        /* skip */
+                //    } else {
+                //        if (is_done[ig_rot]) {
+                //            /* check that another symmetry operation leads to the same coefficient */
+                //            if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
+                //                std::stringstream s;
+                //                s << "inconsistent symmetry operation" << std::endl
+                //                  << "  existing value : " << sym_f_pw[ig_rot] << std::endl
+                //                  << "  computed value : " <<  zsym * phase << std::endl
+                //                  << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
+                //                throw std::runtime_error(s.str());
+                //            }
+                //        } else {
+                //            assert(ig_rot >= 0 && ig_rot < int(v.size()));
+                //            sym_f_pw[ig_rot] = zsym * phase;
+                //            is_done[ig_rot] = true;
+                //        }
+                //    }
+                //} /* loop over symmetries */
             }
         } /* loop over igloc */
     }
+
     PROFILE_STOP("sirius::symmetrize_function|fpw|local");
 
     gvec_shells__.remap_backward(sym_f_pw, f_pw__);

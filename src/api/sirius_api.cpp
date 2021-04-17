@@ -2538,7 +2538,7 @@ sirius_generate_effective_potential:
 void sirius_generate_effective_potential(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().generate(gs.density());
+    gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), false);
 }
 
 /*
@@ -2574,7 +2574,7 @@ void sirius_generate_density(void* const* gs_handler__,
         transform_to_rg = *transform_to_rg__;
     }
 
-    gs.density().generate(gs.k_point_set(), add_core, transform_to_rg);
+    gs.density().generate(gs.k_point_set(), add_core, gs.ctx().use_symmetry(), transform_to_rg);
 }
 
 /*
