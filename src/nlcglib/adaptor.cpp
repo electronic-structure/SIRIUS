@@ -127,14 +127,8 @@ void Energy::compute()
     //     }
     // }
 
-    density.generate(kset, true /* add core */, false /* transform to rg */);
+    density.generate(kset, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
 
-    if (ctx.use_symmetry()) {
-        density.symmetrize();
-        density.symmetrize_density_matrix();
-    }
-
-    density.fft_transform(1);
     potential.generate(density, ctx.use_symmetry(), true);
 
     /* compute H@X and new band energies */
