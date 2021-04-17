@@ -331,7 +331,7 @@ class Density : public Field4D
         to get the full charge density of the system. Density is generated in spectral representation, i.e.
         plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
      */
-    void generate(K_point_set const& ks__, bool add_core__, bool transform_to_rg__);// TODO: remove in future
+    //void generate(K_point_set const& ks__, bool add_core__, bool transform_to_rg__);// TODO: remove in future
 
     void generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
 
