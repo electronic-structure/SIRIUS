@@ -179,13 +179,13 @@ class vector3d : public std::array<T, 3>
     }
 
     template <typename U>
-    inline friend vector3d<decltype(T{} * U{})> operator*(U p, vector3d<T> vec)
+    inline friend std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>> operator*(U p, vector3d<T> vec)
     {
         return vec * p;
     }
 
     template <typename U>
-    inline friend vector3d<decltype(T{} * U{})> operator/(vector3d<T> vec, U p)
+    inline friend std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>> operator/(vector3d<T> vec, U p)
     {
         vector3d<decltype(T{} * U{})> a;
         for (int x : {0, 1, 2}) {
@@ -354,7 +354,7 @@ class matrix3d
 
 /// Multiply matrix by a scalar number.
 template <typename T, typename U>
-inline matrix3d<decltype(T{} * U{})> operator*(matrix3d<T> const& a__, U p__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>> operator*(matrix3d<T> const& a__, U p__)
 {
     matrix3d<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
@@ -366,7 +366,7 @@ inline matrix3d<decltype(T{} * U{})> operator*(matrix3d<T> const& a__, U p__)
 }
 
 template <typename T, typename U>
-inline matrix3d<decltype(T{} * U{})> operator*(U p__, matrix3d<T> const& a__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>> operator*(U p__, matrix3d<T> const& a__)
 {
     return a__ * p__;
 }
