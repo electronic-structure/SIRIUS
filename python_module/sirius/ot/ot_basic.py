@@ -63,12 +63,8 @@ class Energy:
             if psi.preferred_memory_t() == MemoryEnum.device:
                 psi.copy_to_gpu()
         # update density, potential
-        self.density.generate(self.kpointset)
-        if self.ctx.use_symmetry():
-            self.density.symmetrize()
-            self.density.symmetrize_density_matrix()
+        self.density.generate(self.kpointset, self.ctx.use_symmetry())
 
-        self.density.generate_paw_loc_density()
         self.density.fft_transform(1)
         self.potential.generate(self.density)
         if self.ctx.use_symmetry():
