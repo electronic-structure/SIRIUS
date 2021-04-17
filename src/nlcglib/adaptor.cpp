@@ -135,13 +135,7 @@ void Energy::compute()
     }
 
     density.fft_transform(1);
-    potential.generate(density);
-
-    if (ctx.use_symmetry()) {
-        potential.symmetrize();
-    }
-    potential.fft_transform(1);
-
+    potential.generate(density, ctx.use_symmetry(), true);
 
     /* compute H@X and new band energies */
     auto H0 = Hamiltonian0(potential);

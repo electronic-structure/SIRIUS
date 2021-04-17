@@ -292,7 +292,7 @@ void run_tasks(cmd_args const& args)
 
         //density.initial_density();
         density.load();
-        potential.generate(density);
+        potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
         Hamiltonian0 H0(potential);
         if (!ctx->full_potential()) {
