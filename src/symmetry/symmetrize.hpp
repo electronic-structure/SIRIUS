@@ -66,26 +66,6 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                sym_phase_factors__(2, G[2], isym);
     };
 
-    double diff{0};
-    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-        auto G = gvec_shells__.gvec_remapped(igloc);
-
-        for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-            auto gv_rot = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
-            /* index of a rotated G-vector */
-            int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-            double_complex phase = std::conj(phase_factor(isym, gv_rot));
-
-            if (f_pw__ && ig_rot != -1) {
-                diff += std::abs(f_pw[ig_rot] - f_pw[igloc] * phase);
-            }
-        }
-    }
-
-    std::cout << "1st test: check how incoming function transforms under symmetry operations" << std::endl
-              << "the test only makes sense when use_ibz=false" << std::endl
-              << "result: " << diff << std::endl;
-
     PROFILE_START("sirius::symmetrize|fpw|local");
 
     #pragma omp parallel
@@ -261,11 +241,12 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
     }
     PROFILE_STOP("sirius::symmetrize|fpw|local");
 
-    diff=0.0;
+#if !defined(NDEBUG)
+    double diff{0};
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
         auto G = gvec_shells__.gvec_remapped(igloc);
-
         for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+            auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
             auto gv_rot = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
             /* index of a rotated G-vector */
             int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
@@ -274,19 +255,15 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
             if (f_pw__ && ig_rot != -1) {
                 diff += std::abs(sym_f_pw[ig_rot] - sym_f_pw[igloc] * phase);
             }
+            if (!is_non_collin && z_pw__ && ig_rot != -1) {
+                diff += std::abs(sym_z_pw[ig_rot] - sym_z_pw[igloc] * phase * S(2, 2));
+            }
         }
     }
-
-    std::cout << "2nd test: check how symmetrized function transforms under symmetry operations" << std::endl
-              << "result: " << diff << " (must be close to zero)" << std::endl;
-
-    diff=0.0;
-    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-        diff += std::abs(f_pw[igloc] - sym_f_pw[igloc]);
+    if (diff > 1e-12) {
+        throw std::runtime_error("check of symmetrized PW coefficients failed");
     }
-    std::cout << "3rd test: difference between incoming and symmetrized functions" << std::endl
-              << "the test only makes sense when use_ibz=false" << std::endl
-              << "result: " << diff << std::endl;
+#endif
 
     if (f_pw__) {
         gvec_shells__.remap_backward(sym_f_pw, f_pw__);
