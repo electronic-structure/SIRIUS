@@ -34,6 +34,62 @@
 
 namespace sirius {
 
+/// Symmetrize scalar or vector function.
+/** The following operation is performed:
+    \f[
+      f_{\mathrm{sym}}({\bf r}) = \frac{1}{N_{\mathrm{sym}}}
+        \sum_{\hat{\bf S}\hat{\bf P}} \hat {\bf S} \hat {\bf P}f({\bf r})
+    \f]
+    where \f$ f({\bf r}) \f$ has to be understood as an unsymmetrized scalar or vector function.
+    In the case of a scalar function \f$ \hat {\bf S} = 1 \f$. In the case of vector function
+    \f$ \hat {\bf S} \f$ is rotation matrix acting on the Cartesian components of the function.
+    \f$ \hat {\bf P} = \{{\bf R}|{\bf t}\} \f$ is a spacial part of the full magentic symmetry operatoin acting
+    on the real-space coordinates.
+
+    For the function expanded in plane-waves we have:
+    \f[
+      f_{\mathrm{sym}}({\bf r}) = \frac{1}{N_{\mathrm{sym}}}
+        \sum_{\hat{\bf S}\hat{\bf P}} \hat {\bf S} \hat {\bf P}f({\bf r}) = 
+        \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}} \hat {\bf S} \sum_{\bf G}
+        f({\bf G}) e^{i{\bf G}\hat{\bf P}^{-1}{\bf r}} = \\
+        \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}} \sum_{\bf G} \hat {\bf S} f({\bf G})
+        e^{i{\bf G}({\bf R}^{-1}{\bf r} - {\bf R}^{-1}{\bf t})} = 
+        \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}} \sum_{\bf G} \hat {\bf S} f({\bf G})
+        e^{i{\bf G}'{\bf r}} e^{-i{\bf G}'{\bf t}}
+    \f]
+    where \f$ {\bf G}' = {\bf G}{\bf R}^{-1} \f$ should be uderstood as a row-vector multiplied by a
+    \f$ {\bf R}^{-1} \f$ matrix. The last expression establishes the link between unsymmetrized plane-wave
+    coefficient at <b>G</b>-vector and symmetrized coefficient at <b>G</b>'. We will rewrite the expression
+    using inverse relation \f$ {\bf G} = {\bf G'}{\bf R} \f$ and summing over <b>G</b>' (which is just a permutaion
+    of <b>G</b>):
+    \f[
+       f_{\mathrm{sym}}({\bf r}) = 
+        \sum_{\bf G'} e^{i{\bf G}'{\bf r}} \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}}
+        \hat {\bf S} f({\bf G'}{\bf R}) e^{-i{\bf G}'{\bf t}}
+    \f]
+    That gives an expression for the symmetrized plane-wave coefficient at <b>G</b>':
+    \f[
+      f_{\mathrm{sym}}({\bf G}') = \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}}
+         \hat {\bf S} f({\bf G'}{\bf R}) e^{-i{\bf G}'{\bf t}}
+    \f]
+
+    Once \f$ f_{\mathrm{sym}}({\bf G}) \f$ has been calculated for a single <b>G</b>, its values at a
+    star of <b>G</b> can be calculated using the following relation:
+    \f[
+      f_{\mathrm{sym}}({\bf r}) = \hat{\bf S}\hat{\bf P} f_{\mathrm{sym}}({\bf r})
+    \f]
+    which leads to the following relation for the plane-wave coefficient:
+    \f[
+      \sum_{\bf G} f_{\mathrm{sym}}({\bf G})e^{i{\bf G}{\bf r}} =
+        \sum_{\bf G} \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{i{\bf G}\hat{\bf P}^{-1}{\bf r}} = 
+        \sum_{\bf G} \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{i{\bf G}{\bf R}^{-1}{\bf r}}
+            e^{-i{\bf G}{\bf R}^{-1}{\bf t}}
+    \f]
+    and so
+    \f[
+       f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
+    \f]
+ */
 inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
                        sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__,
                        double_complex* x_pw__, double_complex* y_pw__, double_complex* z_pw__)
@@ -151,18 +207,6 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
                 symy *= norm;
                 symz *= norm;
 
-                //if (f_pw__) {
-                //    sym_f_pw[igloc] = symf;
-                //}
-                //if (!is_non_collin && z_pw__) {
-                //    sym_z_pw[igloc] = symz;
-                //}
-                //if (is_non_collin) {
-                //    sym_x_pw[igloc] = symx;
-                //    sym_y_pw[igloc] = symy;
-                //    sym_z_pw[igloc] = symz;
-                //}
-
                 /* apply symmetry operation and get all other plane-wave coefficients */
 
                 for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
@@ -278,374 +322,6 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
         gvec_shells__.remap_backward(sym_z_pw, z_pw__);
     }
 }
-
-
-/// Symmetrize scalar function.
-/** The following operation is performed:
-    \f[
-      f_{\mathrm{sym}}({\bf x}) = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} f({\bf \hat P x})
-    \f]
-    For the function expanded in plane-waves we have:
-    \f[
-      f_{\mathrm{sym}}({\bf x}) = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} \sum_{\bf G}
-      e^{i{\bf G \hat P x}} \hat f({\bf G})
-                 = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G (Rx +
-                     t)}} \hat f({\bf G})
-                 = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G t}}
-                 e^{i{\bf R^T G x}} \hat f({\bf G})
-    \f]
-    Substitute \f$\bf \tilde G = \bf R^T \bf G\f$
-    \f[
-      f_{\mathrm{sym}}({\bf x}) =
-      \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \tilde G}} e^{i {\bf \tilde G} }\sum_{{\bf \hat P}}
-      e^{i {\bf R}^{-T} {\bf t}} \hat f ({\bf R}^{-T} {\bf \tilde G}) \,,
-    \f]
-    to find the Fourier coefficients \f$ \hat f_{\mathrm{sym}} \f$ of \f$f_{\mathrm{sym}}\f$ in
-    terms of \f$ \hat f \f$:
-    \f[
-      \hat f_{\mathrm{sym}}({\bf G}) = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} e^{i {\bf R}^{-T} {\bf t}}
-        \hat f ({\bf R}^{-T} {\bf G})\,.
-    \f]
-    Once \f$\hat f_{\mathrm{sym}} \f$ has been calculated by the above formula for a single \f$\bf G \f$, its values at
-    points \f${\bf R}^{-T} {\bf G}\f$, \f$\forall \, {\bf R}\f$ are given by the update formula
-    \f[
-      \hat f_{\mathrm{sym}} ({\bf R}^{-T} {\bf G}) = e^{-i {\bf R}^{-T} {\bf G} {\bf t}}
-      \hat{f}_{\mathrm{sym}} ({\bf G})\,,
-    \f]
-
-    which follows by using that \f$f_{\mathrm{sym}}({\bf \hat P} {\bf x}) = f_{\mathrm{sym}}({\bf x})\f$:
-    \f{eqnarray*}{
-      f_{\mathrm{sym}}(\hat{P}{\bf x}) &=& \sum_G e^{i G ({\bf R}{\bf x} + {\bf t} )} \hat{f}_{\mathrm{sym}}({\bf G}) \ \
-                                       &=& \sum_G e^{i {\bf G} {\bf x}} e^{i {\bf R}^{-T} {\bf G} {\bf t}}
-                                       \hat{f}_{\mathrm{sym}}({\bf R}^{-T} {\bf G}) \,.
-    \f}
- */
-//== inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
-//==                                 mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__)
-//== {
-//==     PROFILE("sirius::symmetrize_function|fpw");
-//== 
-//==     auto v = gvec_shells__.remap_forward(f_pw__);
-//== 
-//==     auto phase_factor = [&](int isym, vector3d<int> G)
-//==     {
-//==         return sym_phase_factors__(0, G[0], isym) *
-//==                sym_phase_factors__(1, G[1], isym) *
-//==                sym_phase_factors__(2, G[2], isym);
-//==     };
-//== 
-//==     std::vector<double_complex> sym_f_pw(v.size(), 0);
-//==     std::vector<bool> is_done(v.size(), false);
-//== 
-//==     double norm = 1 / double(sym__.num_mag_sym());
-//== 
-//==     PROFILE_START("sirius::symmetrize_function|fpw|local");
-//== 
-//==     #pragma omp parallel
-//==     {
-//==         int nt = omp_get_max_threads();
-//==         int tid = omp_get_thread_num();
-//== 
-//==         for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-//==             auto G = gvec_shells__.gvec_remapped(igloc);
-//== 
-//==             int igsh = gvec_shells__.gvec_shell_remapped(igloc);
-//== 
-//== #if !defined(NDEBUG)
-//==             if (igsh != gvec_shells__.gvec().shell(G)) {
-//==                 throw std::runtime_error("wrong index of G-shell");
-//==             }
-//== #endif
-//==             /* each thread is working on full shell of G-vectors */
-//==             if (igsh % nt == tid) { //&& !is_done[igloc]) {
-//==                 double_complex zsym(0, 0);
-//== 
-//==                 /* find the symmetrized PW coefficient */
-//== 
-//==                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-//==                     auto gvi = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
-//== 
-//==                     double_complex phase = std::conj(phase_factor(i, G));
-//== 
-//==                     /* local index of a rotated G-vector */
-//==                     int igi = gvec_shells__.index_by_gvec(gvi);
-//== 
-//==                     if (igi == -1) {
-//==                         gvi = gvi * (-1);
-//== #if !defined(NDEBUG)
-//==                         if (igsh != gvec_shells__.gvec().shell(gvi)) {
-//==                             throw std::runtime_error("wrong index of G-shell");
-//==                         }
-//== #endif
-//==                         igi = gvec_shells__.index_by_gvec(gvi);
-//==                         assert(igi >= 0 && igi < (int)v.size());
-//==                         zsym += std::conj(v[igi]) * phase;
-//==                     } else {
-//== #if !defined(NDEBUG)
-//==                         if (igsh != gvec_shells__.gvec().shell(gvi)) {
-//==                             throw std::runtime_error("wrong index of G-shell");
-//==                         }
-//== #endif
-//==                         assert(igi >= 0 && igi < (int)v.size());
-//==                         zsym += v[igi] * phase;
-//==                     }
-//==                 } /* loop over symmetries */
-//== 
-//==                 zsym *= norm;
-//== 
-//==                 sym_f_pw[igloc] = zsym;
-//== 
-//==                 ///* apply symmetry operation and get all other plane-wave coefficients */
-//== 
-//==                 //for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-//==                 //    auto gv_rot = dot(G, sym__.magnetic_group_symmetry(isym).spg_op.R);
-//==                 //    /* index of a rotated G-vector */
-//==                 //    int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-//==                 //    double_complex phase = std::conj(phase_factor(isym, gv_rot));
-//== 
-//==                 //    if (ig_rot == -1) {
-//==                 //        /* skip */
-//==                 //    } else {
-//==                 //        if (is_done[ig_rot]) {
-//==                 //            /* check that another symmetry operation leads to the same coefficient */
-//==                 //            if (std::abs(sym_f_pw[ig_rot] -  zsym * phase) > 1e-12) {
-//==                 //                std::stringstream s;
-//==                 //                s << "inconsistent symmetry operation" << std::endl
-//==                 //                  << "  existing value : " << sym_f_pw[ig_rot] << std::endl
-//==                 //                  << "  computed value : " <<  zsym * phase << std::endl
-//==                 //                  << "  difference: " << std::abs(sym_f_pw[ig_rot] -  zsym * phase) << std::endl;
-//==                 //                throw std::runtime_error(s.str());
-//==                 //            }
-//==                 //        } else {
-//==                 //            assert(ig_rot >= 0 && ig_rot < int(v.size()));
-//==                 //            sym_f_pw[ig_rot] = zsym * phase;
-//==                 //            is_done[ig_rot] = true;
-//==                 //        }
-//==                 //    }
-//==                 //} /* loop over symmetries */
-//==             }
-//==         } /* loop over igloc */
-//==     }
-//== 
-//==     PROFILE_STOP("sirius::symmetrize_function|fpw|local");
-//== 
-//==     gvec_shells__.remap_backward(sym_f_pw, f_pw__);
-//== }
-//== 
-//== inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
-//==                                        mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* fz_pw__)
-//== {
-//==     PROFILE("sirius::symmetrize_vector_function|vzpw");
-//== 
-//==     auto phase_factor = [&](int isym, const vector3d<int>& G) {
-//==         return sym_phase_factors__(0, G[0], isym) *
-//==                sym_phase_factors__(1, G[1], isym) *
-//==                sym_phase_factors__(2, G[2], isym);
-//==     };
-//== 
-//==     auto v = gvec_shells__.remap_forward(fz_pw__);
-//== 
-//==     std::vector<double_complex> sym_f_pw(v.size(), 0);
-//==     std::vector<bool> is_done(v.size(), false);
-//==     double norm = 1 / double(sym__.num_mag_sym());
-//== 
-//==     #pragma omp parallel
-//==     {
-//==         int nt = omp_get_max_threads();
-//==         int tid = omp_get_thread_num();
-//== 
-//==         for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-//==             auto G = gvec_shells__.gvec_remapped(igloc);
-//== 
-//==             int igsh = gvec_shells__.gvec_shell_remapped(igloc);
-//== 
-//==             //assert(igsh == gvec_shells__.gvec().shell(G));
-//== 
-//==             if (igsh % nt == tid) { // && !is_done[igloc]) {
-//==                 double_complex zsym(0, 0);
-//== 
-//==                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-//==                     auto gvi = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
-//== 
-//==                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
-//== 
-//==                     double_complex phase = std::conj(phase_factor(i, G));
-//== 
-//==                     /* local index of a rotated G-vector */
-//==                     int igi = gvec_shells__.index_by_gvec(gvi);
-//== 
-//==                     /* use property of plane-wave coefficients of the real function: f(-G) = f^{*}(G) */
-//==                     if (igi == -1) {
-//==                         gvi = gvi * (-1);
-//==                         igi = gvec_shells__.index_by_gvec(gvi);
-//==                         //assert(igsh == gvec_shells__.gvec().shell(gvi));
-//==                         assert(igi >= 0 && igi < (int)v.size());
-//== 
-//==                         //zsym += std::conj(v[igi]) * phase * S(2, 2);
-//==                         sym_f_pw[igloc] += std::conj(v[igi]) * phase * S(2, 2) * norm;
-//==                     } else {
-//==                         assert(igi  >= 0 && igi < (int)v.size());
-//==                         //assert(igsh == gvec_shells__.gvec().shell(gvi));
-//==                         sym_f_pw[igloc] += v[igi] * phase * S(2, 2) * norm;
-//== 
-//==                         //zsym += v[igi] * phase * S(2, 2);
-//==                     }
-//==                 } /* loop over symmetries */
-//== 
-//==                 //zsym *= norm;
-//== 
-//==                 //sym_f_pw[igloc] = zsym;
-//== 
-//==                 //for (int i = 0; i < sym__.num_mag_sym(); i++) {
-//==                 //    auto gv_rot = transpose(sym__.magnetic_group_symmetry(i).spg_op.R) * G;
-//==                 //    /* index of a rotated G-vector */
-//==                 //    int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-//==                 //    double_complex phase = std::conj(phase_factor(i, gv_rot));
-//== 
-//==                 //    auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
-//== 
-//==                 //    if (ig_rot == -1) {
-//==                 //        /* skip */
-//==                 //    } else {
-//==                 //        if (is_done[ig_rot]) {
-//==                 //            /* check that another symmetry operation leads to the same coefficient */
-//==                 //            if (std::abs(sym_f_pw[ig_rot] - zsym * phase * S(2, 2)) > 1e-12) {
-//==                 //                std::cout << "sym_f_pw[ig_rot] = " << sym_f_pw[ig_rot]
-//==                 //                    << " zsym * phase * S = " << zsym * phase << std::endl
-//==                 //                    << "isym : " << i << std::endl;
-//==                 //                throw std::runtime_error("inconsistent symmetry operation");
-//==                 //            }
-//==                 //        } else {
-//==                 //            assert(ig_rot >= 0 && ig_rot < int(v.size()));
-//==                 //            sym_f_pw[ig_rot] = zsym * phase * S(2, 2);
-//==                 //            is_done[ig_rot] = true;
-//==                 //        }
-//==                 //    }
-//==                 //} /* loop over symmetries */
-//==             }
-//==         }
-//==     }
-//== 
-//==     gvec_shells__.remap_backward(sym_f_pw, fz_pw__);
-//== }
-//== 
-//== /// Symmetrize vector valued function.
-//== /** The following operations are performed.
-//==  *
-//==  *   Fourier coefficient of symmetrized function:
-//==  *   \f[
-//==  *     \hat f_{\mathrm{sym}}({\bf G}) = \frac{1}{N_{\mathrm{sym}}} \sum_{{\bf \hat P}} e^{i {\bf R}^{-T} {\bf t}} {\bf S} \hat f ({\bf R}^{-T} {\bf G})\,.
-//==  *   \f]
-//==  *
-//==  *   Update formula when \f$\hat f({\bf G})\f$ is known:
-//==  *   \f[
-//==  *     \hat f_{\mathrm{sym}} ({\bf R}^{-T} {\bf G}) = e^{-i {\bf R}^{-T} {\bf G} {\bf t}}
-//==  *     {\bf S}^{-1} \hat{f}_{\mathrm{sym}} ({\bf G})\,,
-//==  *   \f]
-//==  *
-//==  *   The derivation works similarly to the one for symmetrize_function().
-//==  */
-//== inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
-//==                                        mdarray<double_complex, 3> const& sym_phase_factors__,
-//==                                        double_complex* fx_pw__, double_complex* fy_pw__, double_complex* fz_pw__)
-//== {
-//==     PROFILE("sirius::symmetrize_vector_function|vpw");
-//== 
-//==     auto vx = gvec_shells__.remap_forward(fx_pw__);
-//==     auto vy = gvec_shells__.remap_forward(fy_pw__);
-//==     auto vz = gvec_shells__.remap_forward(fz_pw__);
-//== 
-//==     std::vector<double_complex> sym_fx_pw(vx.size(), 0);
-//==     std::vector<double_complex> sym_fy_pw(vx.size(), 0);
-//==     std::vector<double_complex> sym_fz_pw(vx.size(), 0);
-//==     std::vector<bool> is_done(vx.size(), false);
-//== 
-//==     double norm = 1 / double(sym__.num_mag_sym());
-//== 
-//==     auto phase_factor = [&](int isym, const vector3d<int>& G)
-//==     {
-//==         return sym_phase_factors__(0, G[0], isym) *
-//==                sym_phase_factors__(0, G[1], isym) *
-//==                sym_phase_factors__(0, G[2], isym);
-//==     };
-//== 
-//==     auto vrot = [&](vector3d<double_complex> const& v, matrix3d<double> const& S) -> vector3d<double_complex>
-//==     {
-//==         return dot(S, v);
-//==     };
-//== 
-//==     #pragma omp parallel
-//==     {
-//==         int nt = omp_get_max_threads();
-//==         int tid = omp_get_thread_num();
-//== 
-//==         for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-//==             auto G = gvec_shells__.gvec_remapped(igloc);
-//== 
-//==             int igsh = gvec_shells__.gvec_shell_remapped(igloc);
-//== 
-//==             if (igsh % nt == tid && !is_done[igloc]) {
-//==                 double_complex xsym(0, 0);
-//==                 double_complex ysym(0, 0);
-//==                 double_complex zsym(0, 0);
-//== 
-//==                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-//==                     /* full space-group symmetry operation is {R|t} */
-//==                     auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
-//==                     auto& S = sym__.magnetic_group_symmetry(i).spin_rotation;
-//==                     double_complex phase = phase_factor(i, G);
-//==                     auto gv_rot = dot(invRT, G);
-//==                     /* index of a rotated G-vector */
-//==                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-//== 
-//==                     if (ig_rot == -1) {
-//==                         gv_rot = gv_rot * (-1);
-//==                         ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-//==                         auto v_rot = vrot({vx[ig_rot], vy[ig_rot], vz[ig_rot]}, S);
-//==                         assert(ig_rot >=0 && ig_rot < (int)vx.size());
-//==                         xsym += std::conj(v_rot[0]) * phase;
-//==                         ysym += std::conj(v_rot[1]) * phase;
-//==                         zsym += std::conj(v_rot[2]) * phase;
-//==                     } else {
-//==                         assert(ig_rot >=0 && ig_rot < (int)vx.size());
-//==                         auto v_rot = vrot({vx[ig_rot], vy[ig_rot], vz[ig_rot]}, S);
-//==                         xsym += v_rot[0] * phase;
-//==                         ysym += v_rot[1] * phase;
-//==                         zsym += v_rot[2] * phase;
-//==                     }
-//==                 } /* loop over symmetries */
-//== 
-//==                 xsym *= norm;
-//==                 ysym *= norm;
-//==                 zsym *= norm;
-//== 
-//==                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-//==                     const auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
-//==                     const auto& invS = sym__.magnetic_group_symmetry(i).spin_rotation_inv;
-//==                     auto gv_rot = dot(invRT, G);
-//==                     /* index of a rotated G-vector */
-//==                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
-//==                     auto v_rot = vrot({xsym, ysym, zsym}, invS);
-//==                     double_complex phase = std::conj(phase_factor(i, gv_rot));
-//== 
-//==                     if (ig_rot == -1) {
-//==                         /* skip */
-//==                     } else {
-//==                         assert(ig_rot >= 0 && ig_rot < int(vz.size()));
-//==                         sym_fx_pw[ig_rot] = v_rot[0] * phase;
-//==                         sym_fy_pw[ig_rot] = v_rot[1] * phase;
-//==                         sym_fz_pw[ig_rot] = v_rot[2] * phase;
-//==                         is_done[ig_rot] = true;
-//==                     }
-//==                 } /* loop over symmetries */
-//==             }
-//==         }
-//==     }
-//== 
-//==     gvec_shells__.remap_backward(sym_fx_pw, fx_pw__);
-//==     gvec_shells__.remap_backward(sym_fy_pw, fy_pw__);
-//==     gvec_shells__.remap_backward(sym_fz_pw, fz_pw__);
-//== }
 
 inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
 {
