@@ -689,7 +689,7 @@ void Stress::symmetrize(matrix3d<double>& mtrx__) const
 
     for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
         auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
-        result = result + transpose(R) * mtrx__ * R;
+        result = result + dot(dot(transpose(R), mtrx__), R);
     }
 
     mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());

@@ -2172,7 +2172,8 @@ void sirius_set_pw_coeffs(void*                const* handler__,
                     ig = gs.ctx().gvec().index_by_gvec(G * (-1));
                     if (ig == -1) {
                         std::stringstream s;
-                        auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                        auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
+                                       vector3d<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                         TERMINATE(s);
@@ -2297,7 +2298,7 @@ void sirius_get_pw_coeffs(void*                const* handler__,
             }
             if (ig == -1) {
                 std::stringstream s;
-                auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                 s << "wrong index of G-vector" << std::endl
                   << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                 TERMINATE(s);
@@ -2369,7 +2370,8 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
         double fourpi_omega = fourpi / sim_ctx.unit_cell().omega();
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
-            auto gc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            auto gc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(),
+                          vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i)));
             pw_coeffs__[i] = fourpi_omega * f(gc.length());
         }
     };
@@ -2536,7 +2538,7 @@ sirius_generate_effective_potential:
 void sirius_generate_effective_potential(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().generate(gs.density());
+    gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), false);
 }
 
 /*
@@ -2572,7 +2574,7 @@ void sirius_generate_density(void* const* gs_handler__,
         transform_to_rg = *transform_to_rg__;
     }
 
-    gs.density().generate(gs.k_point_set(), add_core, transform_to_rg);
+    gs.density().generate(gs.k_point_set(), add_core, gs.ctx().use_symmetry(), transform_to_rg);
 }
 
 /*
@@ -3281,7 +3283,7 @@ void sirius_get_q_operator(void*          const* handler__,
     for (int i = 0; i < *ngv__; i++) {
         vector3d<int> G(gvl(0, i), gvl(1, i), gvl(2, i));
 
-        auto gvc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+        auto gvc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
         if (gvc.length() > sim_ctx.pw_cutoff()) {
             q_pw__[i] = 0;
             continue;
@@ -3295,7 +3297,7 @@ void sirius_get_q_operator(void*          const* handler__,
         }
         if (ig == -1) {
             std::stringstream s;
-            auto gvc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            auto gvc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
             s << "wrong index of G-vector" << std::endl
               << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
             TERMINATE(s);
@@ -3394,8 +3396,8 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
         for (int ig = 0; ig < *npw__; ig++) {
             /* G vector of host code */
-            auto gvc = kset.ctx().unit_cell().reciprocal_lattice_vectors() *
-                       (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
+            auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(), 
+                       (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
             if (gvc.length() > kset.ctx().gk_cutoff()) {
                 continue;
             }
