@@ -57,33 +57,36 @@ namespace sirius {
         \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}} \sum_{\bf G} \hat {\bf S} f({\bf G})
         e^{i{\bf G}'{\bf r}} e^{-i{\bf G}'{\bf t}}
     \f]
-    where \f$ {\bf G}' = {\bf G}{\bf R}^{-1} \f$ should be uderstood as a row-vector multiplied by a
-    \f$ {\bf R}^{-1} \f$ matrix. The last expression establishes the link between unsymmetrized plane-wave
-    coefficient at <b>G</b>-vector and symmetrized coefficient at <b>G</b>'. We will rewrite the expression
-    using inverse relation \f$ {\bf G} = {\bf G'}{\bf R} \f$ and summing over <b>G</b>' (which is just a permutaion
-    of <b>G</b>):
+    where \f$ {\bf G}' = {\bf G}{\bf R}^{-1} = {\bf R}^{-T}{\bf G} \f$. The last expression establishes the link
+    between unsymmetrized plane-wave coefficient at <b>G</b>-vector and symmetrized coefficient at <b>G</b>'. We will
+    rewrite the expression using inverse relation \f$ {\bf G} = {\bf R}^{T}{\bf G'} \f$ and summing over <b>G</b>'
+    (which is just a permutaion of <b>G</b>):
     \f[
        f_{\mathrm{sym}}({\bf r}) = 
         \sum_{\bf G'} e^{i{\bf G}'{\bf r}} \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}}
-        \hat {\bf S} f({\bf G'}{\bf R}) e^{-i{\bf G}'{\bf t}}
+        \hat {\bf S} f({\bf R}^{T}{\bf G'}) e^{-i{\bf G}'{\bf t}}
     \f]
     That gives an expression for the symmetrized plane-wave coefficient at <b>G</b>':
     \f[
       f_{\mathrm{sym}}({\bf G}') = \frac{1}{N_{\mathrm{sym}}} \sum_{\hat{\bf S}\hat{\bf P}}
-         \hat {\bf S} f({\bf G'}{\bf R}) e^{-i{\bf G}'{\bf t}}
+         \hat {\bf S} f({\bf R}^{T}{\bf G'}) e^{-i{\bf G}'{\bf t}}
     \f]
 
     Once \f$ f_{\mathrm{sym}}({\bf G}) \f$ has been calculated for a single <b>G</b>, its values at a
     star of <b>G</b> can be calculated using the following relation:
     \f[
-      f_{\mathrm{sym}}({\bf r}) = \hat{\bf S}\hat{\bf P} f_{\mathrm{sym}}({\bf r})
+      f_{\mathrm{sym}}({\bf r}) = \hat{\bf S}\hat{\bf P} f_{\mathrm{sym}}({\bf r}) =
+        \hat{\bf S} f_{\mathrm{sym}}(\hat {\bf P}^{-1}{\bf r})
     \f]
     which leads to the following relation for the plane-wave coefficient:
     \f[
       \sum_{\bf G} f_{\mathrm{sym}}({\bf G})e^{i{\bf G}{\bf r}} =
         \sum_{\bf G} \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{i{\bf G}\hat{\bf P}^{-1}{\bf r}} = 
         \sum_{\bf G} \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{i{\bf G}{\bf R}^{-1}{\bf r}}
-            e^{-i{\bf G}{\bf R}^{-1}{\bf t}}
+            e^{-i{\bf G}{\bf R}^{-1}{\bf t}} = 
+        \sum_{\bf G'} \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{i{\bf G}'{\bf r}}
+             e^{-i{\bf G}'{\bf t}} = 
+        \sum_{\bf G'} \hat{\bf S}f_{\mathrm{sym}}({\bf G'})e^{i{\bf G}'{\bf r}}
     \f]
     and so
     \f[
