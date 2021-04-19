@@ -36,7 +36,7 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
     std::vector<matrix3d<int>> lat_sym;
 
     /* metric tensor */
-    auto mt = transpose(lat_vec__) * lat_vec__;
+    auto mt = dot(transpose(lat_vec__), lat_vec__);
     auto r = {-1, 0, 1};
 
     for (int i00: r) {
@@ -53,7 +53,7 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
                 /* valid symmetry operation has a determinant of +/- 1 */
                 if (std::abs(S.det()) == 1) {
                     /* metric tensor should be invariant under symmetry operation */
-                    auto mt1 = transpose(S) * mt * S;
+                    auto mt1 = dot(dot(transpose(S), mt), S);
                     double diff{0};
                     for (int i: {0, 1, 2}) {
                         for (int j: {0, 1, 2}) {

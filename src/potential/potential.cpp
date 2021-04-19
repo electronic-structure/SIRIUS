@@ -235,7 +235,7 @@ void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
     }
 }
 
-void Potential::generate(Density const& density__)
+void Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
 {
     PROFILE("sirius::Potential::generate");
 
@@ -303,6 +303,15 @@ void Potential::generate(Density const& density__)
          *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator
          *  3) symmetrize effective potential */
         fft_transform(-1);
+    }
+
+    if (use_symmetry__) {
+        /* symmetrize potential and effective magnetic field */
+        this->symmetrize();
+        if (transform_to_rg__) {
+            /* transform potential to real space after symmetrization */
+            this->fft_transform(1);
+        }
     }
 
     if (!ctx_.full_potential()) {

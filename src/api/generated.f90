@@ -688,11 +688,12 @@ end subroutine sirius_set_parameters
 !> @param [out] evp_work_count Internal counter of total eigen-value problem work.
 !> @param [out] num_loc_op_applied Internal counter of the number of wave-functions to which Hamiltonian was applied.
 !> @param [out] num_sym_op Number of symmetry operations discovered by spglib
+!> @param [out] electronic_structure_method Type of electronic structure method.
 !> @param [out] error_code Error code.
 subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
 &use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
-&evp_work_count,num_loc_op_applied,num_sym_op,error_code)
+&evp_work_count,num_loc_op_applied,num_sym_op,electronic_structure_method,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -717,6 +718,7 @@ logical, optional, target, intent(out) :: hubbard_correction
 real(8), optional, target, intent(out) :: evp_work_count
 integer, optional, target, intent(out) :: num_loc_op_applied
 integer, optional, target, intent(out) :: num_sym_op
+character(*), optional, target, intent(out) :: electronic_structure_method
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -745,13 +747,15 @@ logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: evp_work_count_ptr
 type(C_PTR) :: num_loc_op_applied_ptr
 type(C_PTR) :: num_sym_op_ptr
+type(C_PTR) :: electronic_structure_method_ptr
+character(C_CHAR), target, allocatable :: electronic_structure_method_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_spins,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,&
 &use_symmetry,so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
-&evp_work_count,num_loc_op_applied,num_sym_op,error_code)&
+&evp_work_count,num_loc_op_applied,num_sym_op,electronic_structure_method,error_code)&
 &bind(C, name="sirius_get_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -776,6 +780,7 @@ type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: evp_work_count
 type(C_PTR), value :: num_loc_op_applied
 type(C_PTR), value :: num_sym_op
+type(C_PTR), value :: electronic_structure_method
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -866,6 +871,11 @@ num_sym_op_ptr = C_NULL_PTR
 if (present(num_sym_op)) then
 num_sym_op_ptr = C_LOC(num_sym_op)
 endif
+electronic_structure_method_ptr = C_NULL_PTR
+if (present(electronic_structure_method)) then
+allocate(electronic_structure_method_c_type(len(electronic_structure_method)+1))
+electronic_structure_method_ptr = C_LOC(electronic_structure_method_c_type)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -874,7 +884,8 @@ call sirius_get_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &num_fv_states_ptr,num_bands_ptr,num_spins_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,&
 &fft_grid_size_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,&
 &iter_solver_tol_ptr,iter_solver_tol_empty_ptr,verbosity_ptr,hubbard_correction_ptr,&
-&evp_work_count_ptr,num_loc_op_applied_ptr,num_sym_op_ptr,error_code_ptr)
+&evp_work_count_ptr,num_loc_op_applied_ptr,num_sym_op_ptr,electronic_structure_method_ptr,&
+&error_code_ptr)
 if (present(gamma_point)) then
 gamma_point = gamma_point_c_type
 endif
@@ -886,6 +897,10 @@ so_correction = so_correction_c_type
 endif
 if (present(hubbard_correction)) then
 hubbard_correction = hubbard_correction_c_type
+endif
+if (present(electronic_structure_method)) then
+electronic_structure_method = string_c2f(electronic_structure_method_c_type)
+deallocate(electronic_structure_method_c_type)
 endif
 end subroutine sirius_get_parameters
 

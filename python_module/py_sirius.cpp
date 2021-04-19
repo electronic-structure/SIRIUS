@@ -326,16 +326,17 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<std::vector<std::vector<double>>>())
         .def(py::init<>())
         .def("__call__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
-        .def("__array__",
-             [](const matrix3d<double>& mat) {
-                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
-             },
-             py::return_value_policy::reference_internal)
-        .def(py::self * py::self)
+        .def(
+            "__array__",
+            [](const matrix3d<double>& mat) {
+                return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
+            },
+            py::return_value_policy::reference_internal)
+        // .def(py::self * py::self, [](const matrix3d<double>& m1, const matrix3d<double>& m2) { return dot(m1, m2); })
         .def("__getitem__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
         .def("__mul__",
              [](const matrix3d<double>& obj, vector3d<double> const& b) {
-                 vector3d<double> res = obj * b;
+                 vector3d<double> res = dot(obj, b);
                  return res;
              })
         .def("__repr__", [](const matrix3d<double>& mat) { return show_mat(mat); })
@@ -397,8 +398,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("mix", &Density::mix)
         .def("symmetrize", py::overload_cast<>(&Density::symmetrize))
         .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
-        .def("generate", py::overload_cast<K_point_set const&, bool, bool>(&Density::generate), "kpointset"_a,
-             "add_core"_a = true, "transform_to_rg"_a = false)
+        .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate), "kpointset"_a,
+             "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)

@@ -610,7 +610,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
-            kp.message(3, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
+            kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
             orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
                              hphi, sphi, N, expand_with, ovlp, res);
@@ -621,11 +621,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             set_subspace_mtrx(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
 
             if (ctx_.cfg().control().verification() >= 1) {
-                double max_diff = check_hermitian(hmlt, N + expand_with);
+                double max_diff = check_hermitian(hmlt, N + expand_with - num_locked);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
                     s << "H matrix is not Hermitian, max_err = " << max_diff;
                     WARNING(s);
+                } else {
+                    kp.message(1, __function_name__, "OK! H matrix of size %i is Hermitian\n", N + expand_with - num_locked);
                 }
             }
 

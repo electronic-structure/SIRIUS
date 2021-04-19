@@ -101,10 +101,10 @@ inline double occupancy(double x__, double width__)
 inline double entropy(double x__, double width__)
 {
     double t = x__ / width__;
-    if (std::abs(t) > 50) {
-        return 0.0;
-    }
     double f = 1.0 / (1.0 + std::exp(t));
+    if (std::abs(f - 1.0) * std::abs(f) < 1e-16) {
+        return 0;
+    }
     return width__ * ((1 - f) * std::log(1 - f) + f * std::log(f));
 }
 

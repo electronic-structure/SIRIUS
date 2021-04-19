@@ -30,7 +30,7 @@ namespace sirius {
 void DFT_ground_state::initial_state()
 {
     density_.initial_density();
-    potential_.generate(density_);
+    potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         Hamiltonian0 H0(potential_);
         Band(ctx_).initialize_subspace(kset_, H0);
@@ -130,7 +130,7 @@ json DFT_ground_state::check_scf_density()
     /* create new potential */
     Potential pot(ctx_);
     /* generate potential from existing density */
-    pot.generate(density_);
+    pot.generate(density_, ctx_.use_symmetry(), true);
     /* create new Hamiltonian */
     Hamiltonian0 H0(pot);
     /* set the high tolerance */
@@ -142,15 +142,7 @@ json DFT_ground_state::check_scf_density()
     /* find band occupancies */
     kset_.find_band_occupancies();
     /* generate new density from the occupied wave-functions */
-    density_.generate(kset_, true, false);
-    /* symmetrize density and magnetization */
-    if (ctx_.use_symmetry()) {
-        density_.symmetrize();
-        if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-            density_.symmetrize_density_matrix();
-        }
-    }
-    density_.fft_transform(1);
+    density_.generate(kset_, true, true, false);
     double rms{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
@@ -225,20 +217,12 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         density_.check_num_electrons();
 
         /* compute new potential */
-        potential_.generate(density_);
+        potential_.generate(density_, ctx_.use_symmetry(), true);
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
             sirius::check_xc_potential(density_);
         }
-
-        /* symmetrize potential and effective magnetic field */
-        if (ctx_.use_symmetry()) {
-            potential_.symmetrize();
-        }
-
-        /* transform potential to real space after symmetrization */
-        potential_.fft_transform(1);
 
         if (ctx_.cfg().parameters().use_scf_correction()) {
             double e2 = energy_potential(rho1, potential_);

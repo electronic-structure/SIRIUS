@@ -30,7 +30,7 @@ namespace sirius {
 void check_xc_potential(Density const& rho__)
 {
     Potential p0(const_cast<Simulation_context&>(rho__.ctx()));
-    p0.generate(rho__);
+    p0.generate(rho__, rho__.ctx().use_symmetry(), true);
 
     double evxc{0}, ebxc{0};
     if (rho__.ctx().full_potential()) {
@@ -48,7 +48,7 @@ void check_xc_potential(Density const& rho__)
         Potential p1(const_cast<Simulation_context&>(rho__.ctx()));
         /* compute Exc, Vxc at  rho + delta * rho = (1+delta)rho */
         p1.add_delta_rho_xc(eps);
-        p1.generate(rho__);
+        p1.generate(rho__, rho__.ctx().use_symmetry(), true);
 
         double deriv_mag{0};
 
@@ -56,7 +56,7 @@ void check_xc_potential(Density const& rho__)
             Potential p2(const_cast<Simulation_context&>(rho__.ctx()));
             /* compute Exc, Vxc at mag + delta * mag = (1+delta)mag */
             p2.add_delta_mag_xc(eps);
-            p2.generate(rho__);
+            p2.generate(rho__, rho__.ctx().use_symmetry(), true);
 
             deriv_mag = (p2.energy_exc(rho__) - p0.energy_exc(rho__)) / eps;
         }
