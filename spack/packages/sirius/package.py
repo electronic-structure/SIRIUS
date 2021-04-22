@@ -20,7 +20,7 @@ class Sirius(CMakePackage, CudaPackage):
 
     # Don't upstream this, it's to work around
     # https://github.com/spack/spack/pull/18574 / https://github.com/spack/spack/pull/18838
-    build_directory = 'spack-build'
+    build_dirname = 'spack-build'
 
     version('develop', branch='develop')
     version('master', branch='master')

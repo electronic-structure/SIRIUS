@@ -47,13 +47,13 @@ class Unit_cell
     std::map<std::string, int> atom_type_id_map_;
 
     /// List of atom types.
-    std::vector<Atom_type> atom_types_;
+    std::vector<std::shared_ptr<Atom_type>> atom_types_;
 
     /// List of atom classes.
-    std::vector<Atom_symmetry_class> atom_symmetry_classes_;
+    std::vector<std::shared_ptr<Atom_symmetry_class>> atom_symmetry_classes_;
 
     /// List of atoms.
-    std::vector<Atom> atoms_;
+    std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
     splindex<splindex_t::block> spl_num_atoms_;
@@ -195,12 +195,6 @@ class Unit_cell
     /// Add new atom to the list of atom types.
     void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
 
-    ///// Add new atom without vector field to the list of atom types.
-    //inline void add_atom(const std::string label, vector3d<double> position)
-    //{
-    //    add_atom(label, position, {0, 0, 0});
-    //}
-
     /// Add new atom without vector field to the list of atom types.
     void add_atom(const std::string label, std::vector<double> position)
     {
@@ -300,13 +294,13 @@ class Unit_cell
     template <typename T>
     inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
     {
-        return lattice_vectors_ * a__;
+        return dot(lattice_vectors_ , a__);
     }
 
     /// Get fractional coordinates of the vector by its Cartesian coordinates.
     inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
     {
-        return inverse_lattice_vectors_ * a__;
+        return dot(inverse_lattice_vectors_ , a__);
     }
 
     /// Unit cell volume.
@@ -326,14 +320,14 @@ class Unit_cell
     inline Atom_type& atom_type(int id__)
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return atom_types_[id__];
+        return *atom_types_[id__];
     }
 
     /// Return const atom type instance by id.
     inline Atom_type const& atom_type(int id__) const
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return atom_types_[id__];
+        return *atom_types_[id__];
     }
 
     /// Return atom type instance by label.
@@ -369,13 +363,13 @@ class Unit_cell
     /// Return const symmetry class instance by class id.
     inline Atom_symmetry_class const& atom_symmetry_class(int id__) const
     {
-        return atom_symmetry_classes_[id__];
+        return *atom_symmetry_classes_[id__];
     }
 
     /// Return symmetry class instance by class id.
     inline Atom_symmetry_class& atom_symmetry_class(int id__)
     {
-        return atom_symmetry_classes_[id__];
+        return *atom_symmetry_classes_[id__];
     }
 
     /// Number of atoms in the unit cell.
@@ -388,14 +382,14 @@ class Unit_cell
     inline Atom const& atom(int id__) const
     {
         assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return atoms_[id__];
+        return *atoms_[id__];
     }
 
     /// Return atom instance by id.
     inline Atom& atom(int id__)
     {
         assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return atoms_[id__];
+        return *atoms_[id__];
     }
 
     inline int total_nuclear_charge() const

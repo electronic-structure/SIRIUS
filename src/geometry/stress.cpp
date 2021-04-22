@@ -386,10 +386,10 @@ matrix3d<double> Stress::calc_stress_us()
         int nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(iat);
+        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
-        mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
-                                                 ctx_.mem_pool(memory_t::host));
+        sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+                                                       ctx_.mem_pool(memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)
@@ -689,7 +689,7 @@ void Stress::symmetrize(matrix3d<double>& mtrx__) const
 
     for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
         auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
-        result = result + transpose(R) * mtrx__ * R;
+        result = result + dot(dot(transpose(R), mtrx__), R);
     }
 
     mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());

@@ -346,7 +346,11 @@ void sirius_context_initialized(void* const* handler__, bool* status__, int* err
 @api begin
 sirius_create_context:
   doc: Create context of the simulation.
-  full_doc: ['Simulation context is the complex data structure that holds all the parameters of the individual simulation.', 'The context must be created, populated with the correct parameters and initialized before using all subsequent', 'SIRIUS functions.']
+  full_doc: Simulation context is the complex data structure that holds all the parameters of the
+    individual simulation.
+
+    The context must be created, populated with the correct parameters and
+    initialized before using all subsequent SIRIUS functions.
   arguments:
     fcomm:
       type: int
@@ -516,6 +520,10 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Smearing width
+    spglib_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance for the spglib symmetry search.
     error_code:
       type: int
       attr: out, optional
@@ -549,7 +557,8 @@ void sirius_set_parameters(void*  const* handler__,
                            double const* min_occupancy__,
                            char   const* smearing__,
                            double const* smearing_width__,
-                           int* error_code__)
+                           double const* spglib_tol__,
+                           int*          error_code__)
 {
     call_sirius([&]()
     {
@@ -640,6 +649,9 @@ void sirius_set_parameters(void*  const* handler__,
         if (smearing_width__ != nullptr) {
             sim_ctx.smearing_width(*smearing_width__);
         }
+        if (spglib_tol__ != nullptr) {
+            sim_ctx.cfg().control().spglib_tolerance(*spglib_tol__);
+        }
     }, error_code__);
 }
 
@@ -672,6 +684,10 @@ sirius_get_parameters:
       type: int
       attr: out, optional
       doc: Number of bands.
+    num_spins:
+      type: int
+      attr: out, optional
+      doc: Number of spins.
     num_mag_dims:
       type: int
       attr: out, optional
@@ -728,6 +744,14 @@ sirius_get_parameters:
       type: int
       attr: out, optional
       doc: Internal counter of the number of wave-functions to which Hamiltonian was applied.
+    num_sym_op:
+      type: int
+      attr: out, optional
+      doc: Number of symmetry operations discovered by spglib
+    electronic_structure_method:
+      type: string
+      attr: out, optional
+      doc: Type of electronic structure method.
     error_code:
       type: int
       attr: out, optional
@@ -740,6 +764,7 @@ void sirius_get_parameters(void* const* handler__,
                            int*         lmax_pot__,
                            int*         num_fv_states__,
                            int*         num_bands__,
+                           int*         num_spins__,
                            int*         num_mag_dims__,
                            double*      pw_cutoff__,
                            double*      gk_cutoff__,
@@ -754,69 +779,85 @@ void sirius_get_parameters(void* const* handler__,
                            bool*        hubbard_correction__,
                            double*      evp_work_count__,
                            int*         num_loc_op_applied__,
+                           int*         num_sym_op__,
+                           char*        electronic_structure_method__,
                            int*         error_code__)
 {
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
-        if (lmax_apw__ != nullptr) {
+        if (lmax_apw__) {
             *lmax_apw__ = sim_ctx.lmax_apw();
         }
-        if (lmax_rho__ != nullptr) {
+        if (lmax_rho__) {
             *lmax_rho__ = sim_ctx.lmax_rho();
         }
-        if (lmax_pot__ != nullptr) {
+        if (lmax_pot__) {
             *lmax_pot__ = sim_ctx.lmax_pot();
         }
-        if (num_fv_states__ != nullptr) {
+        if (num_fv_states__) {
             *num_fv_states__ = sim_ctx.num_fv_states();
         }
-        if (num_bands__ != nullptr) {
+        if (num_bands__) {
             *num_bands__ = sim_ctx.num_bands();
         }
-        if (num_mag_dims__ != nullptr) {
+        if (num_spins__) {
+            *num_spins__ = sim_ctx.num_spins();
+        }
+        if (num_mag_dims__) {
             *num_mag_dims__ = sim_ctx.num_mag_dims();
         }
-        if (pw_cutoff__ != nullptr) {
+        if (pw_cutoff__) {
             *pw_cutoff__ = sim_ctx.pw_cutoff();
         }
-        if (gk_cutoff__ != nullptr) {
+        if (gk_cutoff__) {
             *gk_cutoff__ = sim_ctx.gk_cutoff();
         }
-        if (auto_rmt__ != nullptr) {
+        if (auto_rmt__) {
             *auto_rmt__ = sim_ctx.auto_rmt();
         }
-        if (gamma_point__ != nullptr) {
+        if (gamma_point__) {
             *gamma_point__ = sim_ctx.gamma_point();
         }
-        if (use_symmetry__ != nullptr) {
+        if (use_symmetry__) {
             *use_symmetry__ = sim_ctx.use_symmetry();
         }
-        if (so_correction__ != nullptr) {
+        if (so_correction__) {
             *so_correction__ = sim_ctx.so_correction();
         }
-        if (iter_solver_tol__ != nullptr) {
+        if (iter_solver_tol__) {
             *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
         }
-        if (iter_solver_tol_empty__ != nullptr) {
+        if (iter_solver_tol_empty__) {
             *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
-        if (verbosity__ != nullptr) {
+        if (verbosity__) {
             *verbosity__ = sim_ctx.verbosity();
         }
-        if (hubbard_correction__ != nullptr) {
+        if (hubbard_correction__) {
             *hubbard_correction__ = sim_ctx.hubbard_correction();
         }
-        if (fft_grid_size__ != nullptr) {
+        if (fft_grid_size__) {
             for (int x: {0, 1, 2}) {
                 fft_grid_size__[x] = sim_ctx.fft_grid()[x];
             }
         }
-        if (evp_work_count__ != nullptr) {
+        if (evp_work_count__) {
             *evp_work_count__ = sim_ctx.evp_work_count();
         }
-        if (num_loc_op_applied__ != nullptr) {
+        if (num_loc_op_applied__) {
             *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
+        }
+        if (num_sym_op__) {
+            if (sim_ctx.use_symmetry()) {
+                *num_sym_op__ = sim_ctx.unit_cell().symmetry().num_mag_sym();
+            } else {
+                *num_sym_op__ = 0;
+            }
+        }
+        if (electronic_structure_method__) {
+            auto str = sim_ctx.cfg().parameters().electronic_structure_method();
+            std::copy(str.c_str(), str.c_str() + str.length() + 1, electronic_structure_method__);
         }
     }, error_code__);
 }
@@ -860,7 +901,7 @@ sirius_insert_xc_functional:
 */
 void sirius_insert_xc_functional(void* const* gs_handler__,
                                  char const* name__)
-{
+{ // TODO: deprecate and remove
     auto& gs = get_gs(gs_handler__);
     auto& potential = gs.potential();
     int rank;
@@ -1087,6 +1128,124 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
     if (f_rg__) {
         f->set_rg_ptr(f_rg__);
     }
+}
+
+/*
+@api begin
+sirius_set_periodic_function:
+  doc: Get values of the periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the DFT ground state object.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    f_rg:
+      type: double
+      attr: in, optional, dimension(*)
+      doc: Real space values on the regular grid.
+    f_rg_global:
+      type: bool
+      attr: in, optional
+      doc: If true, real-space array is global.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+
+@api end
+*/
+void sirius_set_periodic_function(void* const* handler__, char const* label__, double const* f_rg__,
+        bool const* f_rg_global__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        std::string label(label__);
+        std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            {"rho",  &gs.density().component(0)},
+            {"magz", &gs.density().component(1)},
+            {"magx", &gs.density().component(2)},
+            {"magy", &gs.density().component(3)},
+            {"veff", &gs.potential().component(0)},
+            {"bz",   &gs.potential().component(1)},
+            {"bx",   &gs.potential().component(2)},
+            {"by",   &gs.potential().component(3)},
+            {"vha",  &gs.potential().hartree_potential()}
+        };
+        if (func_map.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+        }
+        if (f_rg__) {
+            if (f_rg_global__ == nullptr) {
+                throw std::runtime_error("missing bool argument `f_rg_global`");
+            }
+            bool is_local = !(*f_rg_global__);
+            func_map[label]->copy_from(nullptr, f_rg__, is_local);
+        }
+    }, error_code__);
+}
+
+/*
+@api begin
+sirius_get_periodic_function:
+  doc: Get values of the periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the DFT ground state object.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    f_rg:
+      type: double
+      attr: out, optional, dimension(*)
+      doc: Real space values on the regular grid.
+    f_rg_global:
+      type: bool
+      attr: in, optional
+      doc: If true, real-space array is global.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+
+@api end
+*/
+void sirius_get_periodic_function(void* const* handler__, char const* label__, double* f_rg__,
+        bool const* f_rg_global__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        std::string label(label__);
+        std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            {"rho",  &gs.density().component(0)},
+            {"magz", &gs.density().component(1)},
+            {"magx", &gs.density().component(2)},
+            {"magy", &gs.density().component(3)},
+            {"veff", &gs.potential().component(0)},
+            {"bz",   &gs.potential().component(1)},
+            {"bx",   &gs.potential().component(2)},
+            {"by",   &gs.potential().component(3)},
+            {"vha",  &gs.potential().hartree_potential()}
+        };
+        if (func_map.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+        }
+        if (f_rg__) {
+            if (f_rg_global__ == nullptr) {
+                throw std::runtime_error("missing bool argument `f_rg_global`");
+            }
+            bool is_local = !(*f_rg_global__);
+            func_map[label]->copy_to(nullptr, f_rg__, is_local);
+        }
+    }, error_code__);
 }
 
 /*
@@ -2013,7 +2172,8 @@ void sirius_set_pw_coeffs(void*                const* handler__,
                     ig = gs.ctx().gvec().index_by_gvec(G * (-1));
                     if (ig == -1) {
                         std::stringstream s;
-                        auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                        auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
+                                       vector3d<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                         TERMINATE(s);
@@ -2138,7 +2298,7 @@ void sirius_get_pw_coeffs(void*                const* handler__,
             }
             if (ig == -1) {
                 std::stringstream s;
-                auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                 s << "wrong index of G-vector" << std::endl
                   << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                 TERMINATE(s);
@@ -2210,7 +2370,8 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
         double fourpi_omega = fourpi / sim_ctx.unit_cell().omega();
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
-            auto gc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            auto gc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(),
+                          vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i)));
             pw_coeffs__[i] = fourpi_omega * f(gc.length());
         }
     };
@@ -2280,10 +2441,18 @@ sirius_find_eigen_states:
       type: void*
       attr: in, required
       doc: K-point set handler.
-    precompute:
+    precompute_pw:
       type: bool
-      attr: in, required
-      doc: True if neccessary data to setup eigen-value problem must be automatically precomputed.
+      attr: in, optional
+      doc: Generate plane-wave coefficients of the potential
+    precompute_rf:
+      type: bool
+      attr: in, optional
+      doc: Generate radial functions
+    precompute_ri:
+      type: bool
+      attr: in, optional
+      doc: Generate radial integrals
     iter_solver_tol:
       type: double
       attr: in, optional
@@ -2294,11 +2463,8 @@ sirius_find_eigen_states:
       doc: Error code.
 @api end
 */
-void sirius_find_eigen_states(void* const* gs_handler__,
-                              void* const* ks_handler__,
-                              bool  const* precompute__,
-                              double const* iter_solver_tol__,
-                              int* error_code__)
+void sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, bool const* precompute_pw__,
+        bool const* precompute_rf__, bool const* precompute_ri__, double const* iter_solver_tol__, int* error_code__)
 {
     call_sirius([&]()
     {
@@ -2308,7 +2474,19 @@ void sirius_find_eigen_states(void* const* gs_handler__,
             ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
         }
         sirius::Hamiltonian0 H0(gs.potential());
-        sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+        if (precompute_pw__ && *precompute_pw__) {
+            H0.potential().generate_pw_coefs();
+        }
+        if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
+            H0.potential().update_atomic_potential();
+        }
+        if (precompute_rf__ && *precompute_rf__) {
+            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
+        }
+        if (precompute_ri__ && *precompute_ri__) {
+            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+        }
+        sirius::Band(ks.ctx()).solve(ks, H0, false);
     }, error_code__);
 }
 
@@ -2360,7 +2538,7 @@ sirius_generate_effective_potential:
 void sirius_generate_effective_potential(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().generate(gs.density());
+    gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), false);
 }
 
 /*
@@ -2396,7 +2574,7 @@ void sirius_generate_density(void* const* gs_handler__,
         transform_to_rg = *transform_to_rg__;
     }
 
-    gs.density().generate(gs.k_point_set(), add_core, transform_to_rg);
+    gs.density().generate(gs.k_point_set(), add_core, gs.ctx().use_symmetry(), transform_to_rg);
 }
 
 /*
@@ -2823,9 +3001,7 @@ sirius_get_energy:
       doc: Total energy component.
 @api end
 */
-void sirius_get_energy(void* const* handler__,
-                       char  const* label__,
-                       double*      energy__)
+void sirius_get_energy(void* const* handler__, char const* label__, double* energy__)
 {
     auto& gs = get_gs(handler__);
 
@@ -2852,7 +3028,8 @@ void sirius_get_energy(void* const* handler__,
         {"descf",      [&](){ return gs.scf_energy(); }},
         {"demet",      [&](){ return kset.entropy_sum(); }},
         {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
-        {"paw",        [&](){ return potential.PAW_total_energy(); }}
+        {"paw",        [&](){ return potential.PAW_total_energy(); }},
+        {"fermi",      [&](){ return kset.energy_fermi(); }}
     };
 
     try {
@@ -3106,7 +3283,7 @@ void sirius_get_q_operator(void*          const* handler__,
     for (int i = 0; i < *ngv__; i++) {
         vector3d<int> G(gvl(0, i), gvl(1, i), gvl(2, i));
 
-        auto gvc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+        auto gvc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
         if (gvc.length() > sim_ctx.pw_cutoff()) {
             q_pw__[i] = 0;
             continue;
@@ -3120,7 +3297,7 @@ void sirius_get_q_operator(void*          const* handler__,
         }
         if (ig == -1) {
             std::stringstream s;
-            auto gvc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            auto gvc = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
             s << "wrong index of G-vector" << std::endl
               << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
             TERMINATE(s);
@@ -3219,8 +3396,8 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
         for (int ig = 0; ig < *npw__; ig++) {
             /* G vector of host code */
-            auto gvc = kset.ctx().unit_cell().reciprocal_lattice_vectors() *
-                       (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
+            auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(), 
+                       (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
             if (gvc.length() > kset.ctx().gk_cutoff()) {
                 continue;
             }
@@ -3628,31 +3805,90 @@ sirius_generate_coulomb_potential:
     handler:
       type: void*
       attr: in, required
-      doc: Ground state handler
-    is_local_rg:
-      type: bool
-      attr: in, required
-      doc: true if regular grid pointer is local
+      doc: DFT ground state handler
     vclmt:
       type: double
-      attr: out, required
-      doc: Muffin-tin part of potential
+      attr: out, optional
+      doc: Muffin-tin part of Coulomb potential
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of spherical harmonics 
+    max_num_mt_points:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Number of atoms
+    vha_el:
+      type: double
+      attr: out, optional
+      doc: Electronic part of Hartree potential at each atom's origin.
     vclrg:
       type: double
-      attr: out, required
-      doc: Regular-grid part of potential
+      attr: out, optional
+      doc: Interstitital part of the Coulomb potential
+    num_rg_points:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_generate_coulomb_potential(void* const* handler__,
-                                       bool  const* is_local_rg__,
-                                       double*      vclmt__,
-                                       double*      vclrg__)
+void sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int const* lmmax__,
+        int const* max_num_mt_points__, int const* num_atoms__, double* vha_el__, double* vclrg__,
+        int const* num_rg_points__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
 
-    gs.density().rho().fft_transform(-1);
-    gs.potential().poisson(gs.density().rho());
-    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, *is_local_rg__);
+        gs.density().rho().fft_transform(-1);
+        gs.potential().poisson(gs.density().rho());
+
+        if (vclmt__) {
+            if (!lmmax__) {
+                throw std::runtime_error("missing 'lmmax' argument");
+            }
+            if (*lmmax__ != gs.potential().hartree_potential().angular_domain_size()) {
+                throw std::runtime_error("wrong number of spherical harmonics");
+            }
+            if (!max_num_mt_points__) {
+                throw std::runtime_error("missing 'max_num_mt_points' argument");
+            }
+            if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
+                throw std::runtime_error("wrong maximum number of muffin-tin radial points");
+            }
+            if (!num_atoms__) {
+                throw std::runtime_error("missing `num_atoms' argument");
+            }
+            if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
+                throw std::runtime_error("wrong number of atoms");
+            }
+            gs.potential().hartree_potential().copy_to(vclmt__, nullptr, false);
+            if (vha_el__) {
+                for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+                    vha_el__[ia] = gs.potential().vha_el(ia);
+                }
+            }
+        }
+
+        if (vclrg__) {
+            if (!num_rg_points__) {
+                throw std::runtime_error("missing 'num_rg_points' argument");
+            }
+            bool is_local_rg;
+            if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
+                is_local_rg = false;
+            } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft())) == *num_rg_points__) {
+                is_local_rg = true;
+            } else {
+                throw std::runtime_error("wrong number of regular grid points");
+            }
+            gs.potential().hartree_potential().copy_to(nullptr, vclrg__, is_local_rg);
+        }
+    }, error_code__);
 }
 
 /*
@@ -3826,6 +4062,7 @@ void sirius_get_num_gvec(void* const* handler__, int* num_gvec__, int* error_cod
     }, error_code__);
 }
 
+// TODO: add dimensions keyword to the argument properties
 /*
 @api begin
 sirius_get_gvec_arrays:
@@ -3837,15 +4074,15 @@ sirius_get_gvec_arrays:
       doc: Simulation context handler
     gvec:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: G-vectors in lattice coordinates.
     gvec_cart:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: G-vectors in Cartesian coordinates.
     gvec_len:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(*)
       doc: Length of G-vectors.
     index_by_gvec:
       type: int
@@ -3889,7 +4126,7 @@ void sirius_get_gvec_arrays(void* const* handler__,
         auto d1 = sim_ctx.fft_grid().limits(1);
         auto d2 = sim_ctx.fft_grid().limits(2);
 
-        mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
+        sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
         std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
 
         for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
@@ -4102,30 +4339,6 @@ void sirius_get_step_function(void* const*          handler__,
     }
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
         cfunig__[ig] = sim_ctx.theta_pw(ig);
-    }
-}
-
-/*
-@api begin
-sirius_get_vha_el:
-  doc: Get electronic part of Hartree potential at atom origins.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: DFT ground state handler.
-    vha_el:
-      type: double
-      attr: out, required
-      doc: Electronic part of Hartree potential at each atom's origin.
-@api end
-*/
-void sirius_get_vha_el(void* const* handler__,
-                       double*      vha_el__)
-{
-    auto& gs = get_gs(handler__);
-    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
-        vha_el__[ia] = gs.potential().vha_el(ia);
     }
 }
 
@@ -5263,15 +5476,21 @@ sirius_dump_runtime_setup:
       type: string
       attr: in, required
       doc: String containing the name of the file.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_dump_runtime_setup(void* const* handler__, char *filename)
+void sirius_dump_runtime_setup(void* const* handler__, char* filename__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::ofstream fi(filename);
-    json &conf_dict = sim_ctx.get_runtime_options_dictionary();
-    fi << conf_dict;
-    fi.close();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::ofstream fi(filename__, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = sim_ctx.serialize(); //get_runtime_options_dictionary();
+        fi << conf_dict.dump(4);
+    }, error_code__);
 }
 
 /*
@@ -5707,70 +5926,6 @@ void sirius_get_num_kpoints(void* const* handler__,
 
 /*
 @api begin
-sirius_get_num_bands:
-  doc: Get the number of computed bands
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    num_kpoints:
-      type: int
-      attr: out, required
-      doc: Number of kpoints in the set
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_num_bands(void* const* handler__,
-                          int *num_bands__,
-                          int *error_code__)
-{ // TODO: already exists in sirius_get_parameters
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *num_bands__ = sim_ctx.num_bands();
-    }, error_code__);
-}
-
-/*
-@api begin
-sirius_get_num_spin_components:
-  doc: Get the number of spin components
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler
-    num_spin_components:
-      type: int
-      attr: out, required
-      doc: Number of spin components.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_num_spin_components(void* const* handler__,
-                                    int *num_spin_components__,
-                                    int *error_code__)
-{ // TODO: merge into sirius_get_parameters
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (sim_ctx.num_mag_dims() == 0) {
-            *num_spin_components__ = 1;
-        } else {
-            *num_spin_components__ = 2;
-        }
-    }, error_code__);
-}
-
-/*
-@api begin
 sirius_get_kpoint_properties:
   doc: Get the kpoint properties
   arguments:
@@ -5818,37 +5973,9 @@ void sirius_get_kpoint_properties(void* const* handler__,
 
 /*
 @api begin
-sirius_get_max_mt_aw_basis_size:
-  doc: Get maximum APW basis size across all atoms.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    max_mt_aw_basis_size:
-      type: int
-      attr: out, required
-      doc: Maximum APW basis size.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
-{ // TODO: merge into sirius_get_parameters
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *max_mt_aw_basis_size__ = sim_ctx.unit_cell().max_mt_aw_basis_size();
-    }, error_code__);
-}
-
-/*
-@api begin
 sirius_get_matching_coefficients:
   doc: Get matching coefficients for all atoms.
-  full_doc: ['Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.']
+  full_doc: Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
   arguments:
     handler:
       type: void*

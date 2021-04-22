@@ -40,7 +40,7 @@ class Atom
     Atom_type const& type_;
 
     /// Symmetry class of the given atom.
-    Atom_symmetry_class* symmetry_class_{nullptr};
+    std::shared_ptr<Atom_symmetry_class> symmetry_class_;
 
     /// Position in fractional coordinates.
     vector3d<double> position_;
@@ -374,9 +374,9 @@ class Atom
     }
 
     /// Set symmetry class of the atom.
-    inline void set_symmetry_class(Atom_symmetry_class* symmetry_class__)
+    inline void set_symmetry_class(std::shared_ptr<Atom_symmetry_class> symmetry_class__)
     {
-        symmetry_class_ = symmetry_class__;
+        symmetry_class_ = std::move(symmetry_class__);
     }
 
     /// Set muffin-tin potential and magnetic field.

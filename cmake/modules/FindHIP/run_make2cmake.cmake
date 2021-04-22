@@ -1,7 +1,6 @@
 ###############################################################################
 # Computes dependencies using HIPCC
 ###############################################################################
-
 # Copyright (c) 2008-2020 Advanced Micro Devices, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

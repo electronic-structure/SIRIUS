@@ -93,7 +93,8 @@ double ground_state(Simulation_context& ctx,
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
+    bool const reduce_kp = ctx.use_symmetry() && ctx.cfg().parameters().use_ibz();
+    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), reduce_kp);
     DFT_ground_state dft(kset);
 
     ctx.print_memory_usage(__FILE__, __LINE__);
@@ -315,7 +316,7 @@ void run_tasks(cmd_args const& args)
             vector3d<double> v0 = vector3d<double>(vertex[i].second);
             vector3d<double> v1 = vector3d<double>(vertex[i + 1].second);
             vector3d<double> dv = v1 - v0;
-            vector3d<double> dv_cart = ctx->unit_cell().reciprocal_lattice_vectors() * dv;
+            vector3d<double> dv_cart = dot(ctx->unit_cell().reciprocal_lattice_vectors(), dv);
             int np = std::max(10, static_cast<int>(30 * dv_cart.length()));
             for (int j = 1; j <= np; j++) {
                 vector3d<double> v = v0 + dv * static_cast<double>(j) / np;
@@ -330,7 +331,7 @@ void run_tasks(cmd_args const& args)
 
         //density.initial_density();
         density.load();
-        potential.generate(density);
+        potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
         Hamiltonian0 H0(potential);
         if (!ctx->full_potential()) {

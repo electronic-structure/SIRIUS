@@ -164,9 +164,8 @@ void test_davidson(cmd_args const& args__)
     rho.zero();
 
     Potential pot(ctx);
-    pot.generate(rho);
+    pot.generate(rho, ctx.use_symmetry(), true);
     pot.zero();
-
 
     for (int r = 0; r < 2; r++) {
         double vk[] = {0.1, 0.1, 0.1};

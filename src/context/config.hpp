@@ -1254,6 +1254,18 @@ class config_t
             }
             dict_["/parameters/use_symmetry"_json_pointer] = use_symmetry__;
         }
+        /// Use irreducible Brillouin zone.
+        inline auto use_ibz() const
+        {
+            return dict_.at("/parameters/use_ibz"_json_pointer).get<bool>();
+        }
+        inline void use_ibz(bool use_ibz__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/use_ibz"_json_pointer] = use_ibz__;
+        }
         /// Radius of atom nearest-neighbour cluster.
         inline auto nn_radius() const
         {

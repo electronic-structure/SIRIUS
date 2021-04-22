@@ -90,7 +90,7 @@ std::vector<double> Unit_cell::find_mt_radii()
     for (int i = 0; i < num_atom_types(); i++) {
         if (Rmt[i] < 0.3) {
             std::stringstream s;
-            s << "muffin-tin radius for atom type " << i << " (" << atom_types_[i].label()
+            s << "muffin-tin radius for atom type " << i << " (" << atom_type(i).label()
               << ") is too small: " << Rmt[i];
             TERMINATE(s);
         }
@@ -285,7 +285,7 @@ json Unit_cell::serialize(bool cart_pos__) const
             auto v = atom(ia).position();
             /* convert to Cartesian coordinates */
             if (cart_pos__) {
-                v = lattice_vectors_ * v;
+                v = dot(lattice_vectors_, v);
             }
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
@@ -501,12 +501,12 @@ std::string Unit_cell::chemical_formula()
 Atom_type& Unit_cell::add_atom_type(const std::string label__, const std::string file_name__)
 {
     if (atoms_.size()) {
-        TERMINATE("Can't add new atom type if atoms are already added");
+        WARNING("New feature in use: add new atom type if atoms are already added. Please check your results!");
     }
 
     int id = next_atom_type_id(label__);
-    atom_types_.push_back(Atom_type(parameters_, id, label__, file_name__));
-    return atom_types_.back();
+    atom_types_.push_back(std::shared_ptr<Atom_type>(new Atom_type(parameters_, id, label__, file_name__)));
+    return *atom_types_.back();
 }
 
 void Unit_cell::add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
@@ -523,7 +523,7 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position, vec
         TERMINATE(s);
     }
 
-    atoms_.push_back(Atom(atom_type(label), position, vector_field));
+    atoms_.push_back(std::shared_ptr<Atom>(new Atom(atom_type(label), position, vector_field)));
     atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
@@ -636,7 +636,8 @@ void Unit_cell::get_symmetry()
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
-            atom_symmetry_classes_.push_back(Atom_symmetry_class(atom_class_id, atoms_[i].type()));
+            atom_symmetry_classes_.push_back(std::shared_ptr<Atom_symmetry_class>(
+                        new Atom_symmetry_class(atom_class_id, atom(i).type())));
 
             /* scan all atoms */
             for (int j = 0; j < num_atoms(); j++) {
@@ -646,16 +647,16 @@ void Unit_cell::get_symmetry()
                 /* assign new class id for all equivalent atoms */
                 if (is_equal) {
                     asc[j] = atom_class_id;
-                    atom_symmetry_classes_.back().add_atom_id(j);
+                    atom_symmetry_classes_.back()->add_atom_id(j);
                 }
             }
         }
     }
 
-    for (auto& e : atom_symmetry_classes_) {
-        for (int i = 0; i < e.num_atoms(); i++) {
-            int ia = e.atom_id(i);
-            atoms_[ia].set_symmetry_class(&e);
+    for (auto e : atom_symmetry_classes_) {
+        for (int i = 0; i < e->num_atoms(); i++) {
+            int ia = e->atom_id(i);
+            atom(ia).set_symmetry_class(e);
         }
     }
 
@@ -694,7 +695,7 @@ void Unit_cell::import(config_t::unit_cell_t const &inp__)
             }
             /* convert from Cartesian to lattice coordinates */
             if (units == "au" || units == "A") {
-                p = ilv * p;
+                p = dot(ilv, p);
                 auto rc = reduce_coordinates(p);
                 for (int x : {0, 1, 2}) {
                     p[x] = rc.first[x];
@@ -831,6 +832,7 @@ void Unit_cell::print_symmetry_info(int verbosity__) const
                     }
                     std::printf("\n");
                 }
+                printf("proper: %i\n", symmetry_->magnetic_group_symmetry(isym).spg_op.proper);
                 std::printf("\n");
             }
         }
