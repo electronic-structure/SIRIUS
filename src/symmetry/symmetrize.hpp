@@ -624,8 +624,16 @@ inline void
 symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::basis_functions_index const& indexb__,
            int const ia__, int const ja__, int const ndm__, sddk::mdarray<double, 2> const& rotm__,
            sddk::mdarray<double_complex, 2> const& spin_rot_su2__, sddk::mdarray<double_complex, 4>& dm__,
-           bool const hubbard__) // TODO: revisit the implementation, also thnik about off-site occupation matrix 
+           bool const hubbard__) // TODO: revisit the implementation, also think about off-site occupation matrix 
 {
+    /* loop over radial functions */
+    for (int idxrf1 = 0; idxrf1 < indexb__.idxrf().size(); idxrf1++) {
+        for (int idxrf2 = 0; idxrf2 < indexb__.idxrf().size(); idxrf2++) {
+        }
+    }
+
+
+        
     for (int xi1 = 0; xi1 < static_cast<int>(indexb__.size()); xi1++) {
         int l1  = indexb__.l(xi1);
         int lm1 = indexb__.lm(xi1);

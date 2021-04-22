@@ -317,14 +317,19 @@ class basis_functions_index
         return size_;
     }
 
-    inline auto idxrf(int idx__) const
+    inline auto idxrf(int xi__) const
     {
-        return idxrf_[idx__];
+        return idxrf_[xi__];
     }
 
-    inline auto lm(int idx__) const
+    inline auto lm(int xi__) const
     {
-        return lm_[idx__];
+        return lm_[xi__];
+    }
+
+    inline auto idxrf() const
+    {
+        return idxrf_;
     }
         
 //

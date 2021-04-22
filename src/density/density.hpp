@@ -682,56 +682,7 @@ class Density : public Field4D
     get_magnetisation() const;
 
     /// Symmetrize density matrix.
-    /** Initially, density matrix is obtained with summation over irreducible BZ:
-     *  \f[
-     *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  =
-     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| 
-     *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-     *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
-     *  \f]
-     *  In order to symmetrize it, the following operation is performed:
-     *  \f[
-     *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}|
-     *          \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-     *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
-     *  \f]
-     *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
-     *  local orbital is transformed as:
-     *  \f[
-     *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
-     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r)
-     *          Y_{\ell m}(\hat {\bf r}) dr = \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r})
-     *          u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r)
-     *          Y_{\ell m}({\bf P} \hat{\bf r}) dr
-     *  \f]
-     *  Under rotation the spherical harmonic is transformed as:
-     *  \f[
-     *    Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) =
-     *       \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
-     *       \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
-     *  \f]
-     *  The inner-product integral is then rewritten as:
-     *  \f[
-     *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  =
-     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} |
-     *          u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle
-     *  \f]
-     *  and the final expression for density matrix gets the following form:
-     *  \f[
-     *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-     *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})
-     *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}|
-     *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} |
-     *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
-     *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})
-     *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha}
-     *  \f]
-     *
-     *  The LDA+U case (will be moved to the correct location).
-     *
-     *  We start from the spectral represntation of the occupancy operator defined for the irreducible Brillouin
+    /** We start from the spectral represntation of the occupancy operator defined for the irreducible Brillouin
      *  zone:
      *  \f[
      *    \hat N_{IBZ} = \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
@@ -748,60 +699,112 @@ class Density : public Field4D
      *    \langle {\bf r} | \phi_{\ell m}^{\alpha {\bf T}} \rangle = \phi_{\ell m}({\bf r - r_{\alpha} - T})
      *  \f]
      *
-     *  There might be several localized orbitals per atom. We wish to compute the occupation matrix:
+     *  There might be several localized orbitals per atom. We wish to compute the symmetrized occupation matrix:
      *  \f[
      *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
-     *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
+     *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle = 
+     *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
+     *       \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat{\bf P} \Psi_{j{\bf k}}^{\sigma} \rangle 
+     *       w_{\bf k} n_{j{\bf k}}
+     *       \langle \hat{\bf P} \Psi_{j{\bf k}}^{\sigma'} | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
      *  \f]
      *
-     *  Let's focus on the "on-site" case for which \f$ {\bf T=T'} \f$ and \f$ \alpha = \alpha'\f$:
-     *  \f[
-     *    \tilde n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} = \langle \phi_{\ell m}^{\alpha} | \hat N_{IBZ} |
-     *      \phi_{\ell' m'}^{\alpha} \rangle = \sum_{j} \sum_{{\bf k}}^{IBZ} \langle \phi_{\ell m}^{\alpha} |
-     *      \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} |
-     *       \phi_{\ell' m'}^{\alpha} \rangle
-     *  \f]
-     *  The \f$ \tilde n \f$ is unsymmetrized because we used irreducible Brillouin zone for k-point summation.
      *  Let's now label the overlap integrals between localized orbitals and KS wave-functions:
      *  \f[
      *    A_{\ell m j{\bf k}}^{\alpha {\bf T} \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} |
      *       \phi_{\ell m}^{\alpha {\bf T}} \rangle =
      *      \int \Psi_{j{\bf k}}^{\sigma *}({\bf r})
-     *        \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r}
+     *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r}
      *  \f]
-     *  and check how it transforms under inverse of the symmetry operation 
-     *  \f$ \hat {\bf P} = \{ {\bf R} | {\bf t} \} \f$ applied to the KS states.
+     *  and check how it transforms under the symmetry operation \f$ \hat {\bf P} = \{ {\bf R} | {\bf t} \} \f$
+     *  applied to the KS states.
      *  \f[
-     *   \int \big( \hat {\bf P}^{-1}\Psi_{j {\bf k}}^{\sigma *}({\bf r}) \big)
-     *        \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} = 
+     *   \int \big( \hat {\bf P}\Psi_{j {\bf k}}^{\sigma *}({\bf r}) \big)
+     *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} = 
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \big( \hat {\bf P} \phi_{\ell m}^{\alpha}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
+     *     \big( \hat {\bf P}^{-1} \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
      *  \f]
      *  Symmetry operation acts on \f$ \phi \f$ in two ways: transformation of the origin of orbital to the 
-     *  symmetry-related atom \f$ \tilde {\bf r}_{\alpha'} = {\bf R}{\bf r}_{\alpha} + {\bf t} \f$ and tranformation
-     *  of the orbital itself:
+     *  symmetry-related atom \f$ \alpha_p \f$ centered at 
+     *  \f$ \tilde {\bf r}_{\alpha_p} = {\bf R}{\bf r}_{\alpha} + {\bf R}{\bf T} + {\bf t} \f$
+     *  (with <b>R</b> being a rotational part and <b>t</b> - a fractional translation) and tranformation of the
+     *  orbital itself:
      *  \f[
-     *    \hat {\bf P}\phi_{\ell m}^{\alpha}({\bf r}) = \tilde \phi_{\ell m}^{\alpha}({\bf r})
+     *    \hat {\bf P}^{-1}\phi_{\ell m}({\bf r}) = \tilde \phi_{\ell m}({\bf r})
      *  \f]
      *  This is illustrated on the following figures:
      *  \image html sym_orbital1.png
      *  \image html sym_orbital2.png
      *
-     *  where \f$ {\bf R} \f$ is rotational part and \f$ {\bf t} \f$ is a fractional translation.
-     *  Now \f$ {\bf R}{\bf r}_{\alpha} - {\bf t} = {\bf r}_{\alpha'} + {\bf T}' \f$, i.e. equivalent atom
-     *  in the current or neigbouring cell and \f$ {\bf R}{\bf T} + {\bf T}' = {\bf T}'' \f$. We will use Bloch
-     *  theorem to get rid of \f$ {\bf T}'' \f$ in the argument of \f$ \phi \f$:
+     *  The atomic functions of (\f$ \ell m \f$) character is expressed as a product of radial function and a
+     *  spherical harmonic:
+     *  \f[
+     *    \phi_{\ell m}({\bf r}) = \phi_{\ell}(r) Y_{\ell m}(\theta, \phi)
+     *  \f]
+     *
+     *  Under rotation the spherical harmonic is transformed as:
+     *  \f[
+     *    Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) =
+     *       \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
+     *       \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+     *  \f]
+     *  so
+     *  \f[
+     *    \tilde \phi_{\ell m}({\bf r}) =\hat {\bf P}^{-1} \phi_{\ell}(r) Y_{\ell m}(\theta, \phi) = 
+     *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) \phi_{\ell}(r) Y_{\ell m'}(\theta, \phi)
+     *  \f]
+     *
+     *  Now we bring the atom's transformed origin to the initial unit cell:
+     *  \f[
+     *   \tilde {\bf r}_{\alpha_p} = {\bf r}_{\alpha_p} + {\bf T}_{\alpha_p}
+     *  \f]
+     *  where \f$ {\bf r}_{\alpha_p} \f$ belongs to the initial unit cell and
+     *  \f[
+     *    {\bf T}_{\alpha_p} = \tilde {\bf r}_{\alpha_p} - {\bf r}_{\alpha_p} = 
+     *       {\bf R}{\bf r}_{\alpha} + {\bf R}{\bf T} + {\bf t} - {\bf r}_{\alpha_p}
+     *  \f]
+     *
+     *  We will use Bloch theorem to get rid of \f$ {\bf T}_{\alpha_p} \f$ in the argument of \f$ \tilde \phi \f$:
      *  \f[
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \phi_{\ell m}^{\alpha}({\bf R} {\bf r} - {\bf R}{\bf r}_{\alpha} - {\bf R}{\bf T} + {\bf t}) d{\bf r} = 
-     *    e^{i{\bf k}{\bf T}''} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *       \phi_{\ell m}^{\alpha}(\hat {\bf P}{\bf r} - {\bf r}_{\alpha'}) d{\bf r}
+     *     \tilde \phi_{\ell m}({\bf r} - {\bf r}_{\alpha_p} - {\bf T}_{\alpha_p}) d{\bf r} = 
+     *    e^{i{\bf k}{\bf T}_{\alpha_p}} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *       \tilde \phi_{\ell m}({\bf r} - {\bf r}_{\alpha_p}) d{\bf r}
      *  \f]
-     *  We now use the definition of symmetry operation and 
      *  We can now write
      *  \f[
-     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
+     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = e^{i{\bf k}( {\bf R}{\bf r}_{\alpha} + {\bf t} -
+     *      {\bf r}_{\alpha_p} + {\bf R}{\bf T})} \sum_{m'} D_{mm'}^{\ell}({\bf P})
+     *       A_{\ell m' j{\bf k}}^{\alpha_p \sigma}
      *  \f]
+     *
+     *  The final expression for the symmetrized matrix is then
+     *  \f[
+     *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
+     *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
+     *        A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma *}
+     *       w_{\bf k} n_{j{\bf k}}
+     *        A_{\ell' m' j\hat {\bf P}{\bf k}}^{\alpha' {\bf T'} \sigma'} = \\ = \sum_{\bf P} \sum_{j}
+     *        \sum_{{\bf k}}^{IBZ}
+     *      e^{-i{\bf k}( {\bf R}{\bf r}_{\alpha} + {\bf t} - {\bf r}_{\alpha_p} + {\bf R}{\bf T})}
+     *      e^{i{\bf k}( {\bf R}{\bf r}_{\alpha'} + {\bf t} - {\bf r}_{{\alpha}'_p} + {\bf R}{\bf T'})}
+     *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
+     *        A_{\ell m_1 j{\bf k}}^{\alpha_p \sigma *} A_{\ell' m_2 j{\bf k}}^{\alpha'_p \sigma'} w_{\bf k} n_{j{\bf k}}
+     *  \f]
+     *
+     *  In the case of \f$ \alpha = \alpha' \f$ and \f$ {\bf T}={\bf T}' \f$ all the phase-factor exponents disapper
+     *  and we get an expression for the "on-site" occupation matrix:
+     *
+     *  \f[
+     *    n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} =
+     *        \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ}
+     *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
+     *        A_{\ell m_1 j{\bf k}}^{\alpha_p \sigma *} A_{\ell' m_2 j{\bf k}}^{\alpha_p \sigma'}
+     *        w_{\bf k} n_{j{\bf k}} = \\ =
+     *        \sum_{\bf P} \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
+     *        \tilde n_{\ell m_1 \sigma, \ell' m_2 \sigma'}^{\alpha_p}
+     *  \f]
+     *
      *
      *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
      *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
