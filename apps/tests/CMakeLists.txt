@@ -15,4 +15,8 @@ if(CREATE_FORTRAN_BINDINGS)
   add_executable(test_fortran_api test_fortran_api.f90)
   target_link_libraries(test_fortran_api PRIVATE sirius)
   install(TARGETS test_fortran_api RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+
+  add_executable(test_srvo3_pwpp test_srvo3_pwpp.f90)
+  target_link_libraries(test_srvo3_pwpp PRIVATE sirius)
+  install(TARGETS test_srvo3_pwpp RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 endif(CREATE_FORTRAN_BINDINGS)
