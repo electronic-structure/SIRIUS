@@ -4,7 +4,7 @@ type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft
 integer i
-real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3)
+real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
 integer comm
 
 ! initialize the library
@@ -17,7 +17,7 @@ call sirius_create_context(comm, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "pseudopotential"},&
-      "control" : {"verbosity" : 1, "verification" : 0}}')
+      "control" : {"verbosity" : 0, "verification" : 0}}')
 
 ! atomic units are used everywhere
 ! plane-wave cutoffs are provided in a.u.^-1
@@ -59,6 +59,8 @@ call sirius_find_ground_state(dft)
 
 call sirius_get_forces(dft, "total", forces)
 call sirius_get_stress_tensor(dft, "total", stress)
+call sirius_get_energy(dft, "total", energy)
+call sirius_get_energy(dft, "descf", scf_correction)
 
 write(*,*)'Forces:'
 do i = 1, 5
@@ -68,6 +70,7 @@ write(*,*)'Stress:'
 do i = 1, 3
   write(*,*)stress(i,:)
 enddo
+write(*,*)"Total energy: ",energy + scf_correction, " Ha"
 
 
 call sirius_free_handler(dft)
