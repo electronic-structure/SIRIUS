@@ -580,7 +580,8 @@ class SHT // TODO: better name
     static void rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation,
                                   double* rot_mtrx__, int ld);
 
-    template <typename T>
+    template <typename T> // TODO: this is used in rotatin rlm wpherical functions, but this is wrong.
+        // the rotation must happen inside l-shells
     static void rotation_matrix(int              lmax,
                                 geometry3d::vector3d<double> euler_angles,
                                 int              proper_rotation,
@@ -591,6 +592,19 @@ class SHT // TODO: better name
         for (int l = 0; l <= lmax; l++) {
             rotation_matrix_l(l, euler_angles, proper_rotation, &rotm(l * l, l * l), rotm.ld());
         }
+    }
+
+    template <typename T>
+    static std::vector<sddk::mdarray<T, 2>>
+    rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+    {
+        std::vector<sddk::mdarray<T, 2>> result;
+
+        for (int l = 0; l <= lmax; l++) {
+            result.emplace_back(2 * l + 1, 2 * l + 1);
+            rotation_matrix_l(l, euler_angles, proper_rotation, result.back().at(memory_t::host), 2 * l + 1);
+        }
+        return result;
     }
 
     static double ClebschGordan(const int l, const double j, const double mj, const int spin);

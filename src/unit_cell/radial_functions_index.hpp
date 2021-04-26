@@ -95,6 +95,14 @@ class angular_momentum
         return 2 * l_ + s_;
     }
 
+    /// The size of the subshell for the angular momentum l or j.
+    /** This is the number of m_l values in the range [-l, l] or the number of
+     *  m_j values in the range [-j, j] */
+    inline auto subshell_size() const
+    {
+        return j2() + 1;
+    }
+
     /// Get spin quantum number s.
     inline auto s() const
     {
@@ -237,6 +245,15 @@ class radial_functions_index
     {
         return size_;
     }
+
+    inline auto subshell_size(int l__, int o__) const
+    {
+        int size{0};
+        for (auto s: spins(l__, o__)) {
+            size += angular_momentum(l__, s).subshell_size();
+        }
+        return size;
+    }
 };
 
 class basis_functions_index
@@ -263,6 +280,7 @@ class basis_functions_index
 //
     std::vector<int> idxrf_;
     std::vector<int> lm_;
+    std::vector<int> offset_;
   public:
     basis_functions_index()
     {
@@ -281,8 +299,8 @@ class basis_functions_index
                 /* angular momentum */
                 auto am = indexr_.am(idxrf);
 
-//                int l = indexr_[idxrf].aqn.l();
-//                int o = indexr_[idxrf].order;
+                offset_.push_back(size_);
+
                 for (int m = -am.l(); m <= am.l(); m++) {
                     idxrf_.push_back(idxrf);
                     lm_.push_back(utils::lm(am.l(), m));
@@ -327,11 +345,16 @@ class basis_functions_index
         return lm_[xi__];
     }
 
-    inline auto idxrf() const
+    inline auto& indexr() const
     {
-        return idxrf_;
+        return indexr_;
     }
-        
+
+    inline auto offset(int idxrf__) const
+    {
+        return offset_[idxrf__];
+    }
+
 //
 //    inline int l(int xi__) const
 //    {
