@@ -130,7 +130,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                        I know that the index of the hubbard wave functions (indexb_....) is
                        consistent with the index of the hubbard orbitals
                     */
-                    const int lmmax_at = 2 * atom.type().indexr_hub()[0].aqn.l() + 1;
+                    const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
                     for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                         for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                             int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
@@ -196,7 +196,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                 const auto& atom = ctx_.unit_cell().atom(ia);
                 if (atom.type().hubbard_correction()) {
                     //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().indexr_hub()[0].aqn.l() + 1;
+                        const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
                         for (int mp = 0; mp < lmmax_at; mp++) {
                             const int mmp = r.second[ia] + mp;
                             for (int m = 0; m < lmmax_at; m++) {
@@ -233,7 +233,7 @@ void Occupation_matrix::access(std::string const& what__, double_complex* occ__,
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().indexr_hub()[0].aqn.l();
+            const int l = ctx_.unit_cell().atom(ia).type().indexr_hub().am(0).l();
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what__ == "get") {
@@ -262,7 +262,7 @@ void Occupation_matrix::init()
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().indexr_hub()[0].aqn.l() + 1;
+            const int lmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
             if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {

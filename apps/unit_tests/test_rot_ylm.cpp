@@ -4,7 +4,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args& args)
+template <typename T>
+int run_test_impl(cmd_args& args)
 {
     matrix3d<double> lattice;
     lattice(0, 0) = 7;
@@ -17,87 +18,74 @@ int run_test(cmd_args& args)
 
     mdarray<double, 2> spins(3, num_atoms);
     spins.zero();
-    
+
     std::vector<int> types(num_atoms, 0);
 
-    Unit_cell_symmetry symmetry(lattice, num_atoms, types, positions, spins, false, 1e-4, true);
+    bool const spin_orbit{false};
+    bool const use_sym{true};
+    double const spg_tol{1e-4};
 
-    //printf("num_sym_op: %i\n", symmetry.num_mag_sym());
+    Unit_cell_symmetry symmetry(lattice, num_atoms, types, positions, spins, spin_orbit, spg_tol, use_sym);
 
     for (int iter = 0; iter < 10; iter++) {
         for (int isym = 0; isym < symmetry.num_mag_sym(); isym++) {
-            //printf("\n");
-            //printf("symmetry operation: %i\n", isym);
 
-            vector3d<double> ang = symmetry.magnetic_group_symmetry(isym).spg_op.euler_angles;
-
-            //std::cout << "Euler angles : " << ang[0] / pi << " " << ang[1] / pi << " " << ang[2] / pi << std::endl;
+            auto ang = symmetry.magnetic_group_symmetry(isym).spg_op.euler_angles;
 
             int proper_rotation = symmetry.magnetic_group_symmetry(isym).spg_op.proper;
 
+            /* random Cartesian vector */
             vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
-            vector3d<double> scoord;
-            scoord = SHT::spherical_coordinates(coord);
+            auto scoord = SHT::spherical_coordinates(coord);
 
-            int lmax = 10;
-            mdarray<double_complex, 1> ylm(utils::lmmax(lmax));
-            mdarray<double, 1> rlm(utils::lmmax(lmax));
+            int lmax{10};
+            sddk::mdarray<T, 1> ylm(utils::lmmax(lmax));
+            /* compute spherical harmonics at original coordinate */
             sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
-            sf::spherical_harmonics(lmax, scoord[1], scoord[2], &rlm(0));
 
             /* rotate coordinates with inverse operation */
-            matrix3d<double> rotm = inverse(symmetry.magnetic_group_symmetry(isym).spg_op.rotation * double(proper_rotation));
-            //printf("3x3 rotation matrix\n");
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    for (int j = 0; j < 3; j++) printf("%8.4f ", rotm(i, j));
-            //    printf("\n");
-            //}
+            auto rotm = inverse(symmetry.magnetic_group_symmetry(isym).spg_op.rotation * double(proper_rotation));
 
-            vector3d<double> coord2 = dot(rotm, coord);
-            vector3d<double> scoord2;
-            scoord2 = SHT::spherical_coordinates(coord2);
+            /* rotated coordinates */
+            auto coord2 = dot(rotm, coord);
+            auto scoord2 = SHT::spherical_coordinates(coord2);
 
-            mdarray<double_complex, 1> ylm2(utils::lmmax(lmax));
-            mdarray<double, 1> rlm2(utils::lmmax(lmax));
+            sddk::mdarray<T, 1> ylm2(utils::lmmax(lmax));
+            /* compute spherical harmonics at rotated coordinates */
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
-            sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &rlm2(0));
 
-            mdarray<double_complex, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
-            mdarray<double, 2> rlm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
+            /* generate rotation matrices; they are block-diagonal in l- index */
+            sddk::mdarray<T, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
             SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
-            SHT::rotation_matrix(lmax, ang, proper_rotation, rlm_rot_mtrx);
 
-            mdarray<double_complex, 1> ylm1(utils::lmmax(lmax));
+            sddk::mdarray<T, 1> ylm1(utils::lmmax(lmax));
             ylm1.zero();
 
-            mdarray<double, 1> rlm1(utils::lmmax(lmax));
-            rlm1.zero();
-
+            /* rotate original sperical harmonics */
             for (int i = 0; i < utils::lmmax(lmax); i++) {
                 for (int j = 0; j < utils::lmmax(lmax); j++) {
                     ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
                 }
-
-                for (int j = 0; j < utils::lmmax(lmax); j++) {
-                    rlm1(i) += rlm_rot_mtrx(j, i) * rlm(j);
-                }
             }
 
+            /* compute the difference with the reference */
             double d1{0};
-            double d2{0};
             for (int i = 0; i < utils::lmmax(lmax); i++) {
                 d1 += std::abs(ylm1(i) - ylm2(i));
-                d2 += std::abs(rlm1(i) - rlm2(i));
             }
-            //printf("diff: %18.12f %18.12f\n", d1, d2);
-            if (d1 > 1e-10 || d2 > 1e-10) {
-                //printf("Fail!\n");
+            if (d1 > 1e-10) {
                 return 1;
             }
         }
     }
     return 0;
+}
+
+
+int run_test(cmd_args& args)
+{
+    int result = run_test_impl<double>(args);
+    result += run_test_impl<double_complex>(args);
 }
 
 int main(int argn, char** argv)

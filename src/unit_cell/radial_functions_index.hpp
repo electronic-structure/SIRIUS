@@ -340,6 +340,11 @@ class basis_functions_index
         return idxrf_[xi__];
     }
 
+    inline auto l(int xi__) const
+    {
+        return indexr_.am(idxrf(xi__)).l();
+    }
+
     inline auto lm(int xi__) const
     {
         return lm_[xi__];
@@ -355,13 +360,6 @@ class basis_functions_index
         return offset_[idxrf__];
     }
 
-//
-//    inline int l(int xi__) const
-//    {
-//        return indexr_[(*this)[xi__].idxrf].aqn.l();
-//    }
-//
-//
 //    inline int order(int xi__) const
 //    {
 //        return indexr_[(*this)[xi__].idxrf].order;

@@ -415,13 +415,13 @@ Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions& dphi__, sddk:
                 auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
                 auto phase_factor = std::exp(double_complex(0.0, phase));
                 int offset = this->offset_[ia];
-                for (int xi = 0; xi < static_cast<int>(atom_type.indexb_hub().size()); xi++) {
+                for (int xi = 0; xi < atom_type.indexb_hub().size(); xi++) {
                     /*  orbital quantum  number of this atomic orbital */
                     int l = atom_type.indexb_hub().l(xi);
                     /*  composite l,m index */
-                    int lm = atom_type.indexb_hub()[xi].lm;
+                    int lm = atom_type.indexb_hub().lm(xi);
                     /* index of the radial function */
-                    int idxrf = atom_type.indexb_hub()[xi].idxrf;
+                    int idxrf = atom_type.indexb_hub().idxrf(xi);
 
                     auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
