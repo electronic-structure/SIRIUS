@@ -16,7 +16,7 @@ call sirius_create_context(MPI_COMM_WORLD, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "pseudopotential"},&
-      "control" : {"verbosity" : 2, "verification" : 0}}')
+      "control" : {"verbosity" : 1, "verification" : 0}}')
 
 ! atomic units are used everywhere
 ! plane-wave cutoffs are provided in a.u.^-1
@@ -70,6 +70,8 @@ do i = 1, 3
   write(*,*)stress(i,:)
 enddo
 write(*,*)"Total energy: ",energy + scf_correction, " Ha"
+
+call MPI_BARRIER(MPI_COMM_WORLD, i)
 
 
 call sirius_free_handler(dft)
