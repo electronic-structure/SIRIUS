@@ -1,23 +1,22 @@
 program test_fortran_api
+use mpi
 use sirius
+implicit none
 type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft
 integer i
 real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
-integer comm
 
 ! initialize the library
 call sirius_initialize(call_mpi_init=.true.)
 
 ! create simulation context using a specified communicator
-comm = MPI_COMM_WORLD
-write(*,*)'comm=',comm
-call sirius_create_context(comm, handler)
+call sirius_create_context(MPI_COMM_WORLD, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "pseudopotential"},&
-      "control" : {"verbosity" : 0, "verification" : 0}}')
+      "control" : {"verbosity" : 2, "verification" : 0}}')
 
 ! atomic units are used everywhere
 ! plane-wave cutoffs are provided in a.u.^-1
