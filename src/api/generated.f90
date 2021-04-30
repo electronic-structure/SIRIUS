@@ -283,11 +283,10 @@ end subroutine sirius_context_initialized
 subroutine sirius_create_context(fcomm,handler,error_code)
 implicit none
 !
-integer, target, intent(in) :: fcomm
+integer, value, intent(in) :: fcomm
 type(C_PTR), target, intent(out) :: handler
 integer, optional, target, intent(out) :: error_code
 !
-type(C_PTR) :: fcomm_ptr
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: error_code_ptr
 !
@@ -295,21 +294,19 @@ interface
 subroutine sirius_create_context_aux(fcomm,handler,error_code)&
 &bind(C, name="sirius_create_context")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: fcomm
+integer(C_INT), value :: fcomm
 type(C_PTR), value :: handler
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
-fcomm_ptr = C_NULL_PTR
-fcomm_ptr = C_LOC(fcomm)
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_create_context_aux(fcomm_ptr,handler_ptr,error_code_ptr)
+call sirius_create_context_aux(fcomm,handler_ptr,error_code_ptr)
 end subroutine sirius_create_context
 
 !
@@ -2127,7 +2124,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_beta
-real(8), target, dimension(num_beta,num_beta), intent(in) :: dion
+real(8), target, dimension(num_beta, num_beta), intent(in) :: dion
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2312,7 +2309,7 @@ character(*), target, intent(in) :: label
 complex(8), target, dimension(*), intent(in) :: pw_coeffs
 logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3,*), intent(in) :: gvl
+integer, optional, target, dimension(3, *), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2387,7 +2384,7 @@ type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 complex(8), target, dimension(*), intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3,*), intent(in) :: gvl
+integer, optional, target, dimension(3, *), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2453,7 +2450,7 @@ character(*), target, intent(in) :: atom_type
 character(*), target, intent(in) :: label
 real(8), target, dimension(*), intent(out) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3,*), intent(in) :: gvl
+integer, optional, target, dimension(3, *), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2876,7 +2873,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: ispn
-real(8), target, dimension(ld,ld), intent(out) :: d_mtrx
+real(8), target, dimension(ld, ld), intent(out) :: d_mtrx
 integer, target, intent(in) :: ld
 !
 type(C_PTR) :: handler_ptr
@@ -3013,7 +3010,7 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(ld,ld), intent(out) :: q_mtrx
+real(8), target, dimension(ld, ld), intent(out) :: q_mtrx
 integer, target, intent(in) :: ld
 !
 type(C_PTR) :: handler_ptr
@@ -3179,7 +3176,7 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(3,*), intent(out) :: forces
+real(8), target, dimension(3, *), intent(out) :: forces
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3226,7 +3223,7 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(3,3), intent(out) :: stress_tensor
+real(8), target, dimension(3, 3), intent(out) :: stress_tensor
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3326,7 +3323,7 @@ character(*), target, intent(in) :: label
 integer, target, intent(in) :: xi1
 integer, target, intent(in) :: xi2
 integer, target, intent(in) :: ngv
-integer, target, dimension(3,ngv), intent(in) :: gvl
+integer, target, dimension(3, ngv), intent(in) :: gvl
 complex(8), target, dimension(ngv), intent(out) :: q_pw
 !
 type(C_PTR) :: handler_ptr
@@ -4096,8 +4093,8 @@ subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-integer, optional, target, dimension(3,*), intent(in) :: gvec
-real(8), optional, target, dimension(3,*), intent(in) :: gvec_cart
+integer, optional, target, dimension(3, *), intent(in) :: gvec
+real(8), optional, target, dimension(3, *), intent(in) :: gvec_cart
 real(8), optional, target, dimension(*), intent(in) :: gvec_len
 integer, optional, target, intent(in) :: index_by_gvec
 !

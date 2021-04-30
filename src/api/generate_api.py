@@ -33,15 +33,167 @@ type_info = {
     }
 }
 
-# named constants
-i_arg_name = 0
-i_arg_type = 1
-i_arg_intent = 2
-i_arg_requirement = 3
-i_arg_doc = 4
-i_arg_f_type = 5
-i_arg_c_type = 6
-i_arg_dims = 7
+class ArgumentAttribute:
+    def __init__(self, attr_str):
+        idx = attr_str.find('dimension')
+        if idx >= 0:
+            idx1 = attr_str.find('(', idx)
+            idx2 = attr_str.find(')', idx1)
+            if idx1 != -1 and idx2 != -1 and idx2 > idx1:
+                self.dimension_ = attr_str[idx:idx2+1]
+                attr_str = attr_str[:idx] + attr_str[idx2+1:]
+            else:
+                raise Exception(f'wrong attribute string: {attr_str}')
+        else:
+            self.dimension_ = 'scalar'
+
+        attr = attr_str.replace(' ', '').split(',')
+        valid_attr = ['', 'in', 'out', 'inout', 'optional', 'required', 'value', 'ptr']
+        # default is inout
+        self.intent_ = 'inout'
+        # required by default
+        self.required_ = 'required'
+        # pass by pointer by default
+        self.pass_by_ = 'ptr'
+        for a in attr:
+            if a not in valid_attr:
+                raise Exception(f'wrong attribute: {a}')
+            if a in ['in', 'out', 'inout']:
+                self.intent_ = a
+            if a in ['required', 'optional']:
+                self.required_ = a
+            if a in ['value', 'ptr']:
+                self.pass_by_ = a
+
+    def dimension(self):
+        return self.dimension_
+
+    def intent(self):
+        return self.intent_
+
+    def required(self):
+        return self.required_
+
+    def pass_by(self):
+        return self.pass_by_
+
+
+class Argument:
+    def __init__(self, name, arg_dict):
+        self.attr_ = ArgumentAttribute(arg_dict['attr'])
+        self.type_id_ = arg_dict['type']
+        self.doc_ = arg_dict['doc']
+        self.name_ = name
+        if self.type_id_ == 'func' and not (self.attr_.intent() == 'in' and
+            self.attr_.required() == 'required' and self.attr_.pass_by() == 'value'):
+            raise Exception("wroing attributes for function pointer")
+        if self.attr_.intent() in ['out', 'inout'] and self.attr_.pass_by() == 'value':
+            raise Exception("wroing 'value' attribute for output variables")
+        if self.attr_.required() == 'optional' and self.attr_.pass_by() == 'value':
+            raise Exception("can't pass optional argument by value")
+        if self.type_id() == 'string' and self.attr_.pass_by() == 'value':
+            raise Exception("can't pass string by value")
+
+    def name(self):
+        return self.name_
+
+    def attr(self):
+        return self.attr_
+
+    def type_id(self):
+        return self.type_id_
+
+    def c_type(self):
+        return type_info[self.type_id()]['c_type']
+
+    def f_type(self):
+        return type_info[self.type_id()]['f_type']
+
+    def doc(self):
+        return self.doc_
+
+    def write_fortran_api_arg(self, out):
+        # write delcartion of Fortran type
+        out.write(self.f_type())
+        # attributes
+        if self.attr().required() == 'optional':
+            out.write(', optional')
+        # pass function pointers by value
+        if self.attr().pass_by() == 'value':
+            out.write(', value')
+        else:
+            out.write(', target')
+        if self.attr().dimension() != 'scalar':
+            out.write(f', {self.attr().dimension()}')
+
+        out.write(f', intent({self.attr().intent()}) :: {self.name()}\n')
+
+    def write_interface_api_arg(self, out):
+        if self.type_id() == 'func':
+            out.write(f'type(C_FUNPTR), value :: {self.name()}\n')
+        else:
+            if self.attr().pass_by() == 'value':
+                out.write(f'{self.c_type()}, value :: {self.name()}\n')
+            else:
+                out.write(f'type(C_PTR), value :: {self.name()}\n')
+
+    def write_tmp_vars(self, out):
+        if self.attr().pass_by() == 'ptr':
+            out.write(f'type(C_PTR) :: {self.name()}_ptr\n')
+        if self.type_id() == 'string':
+            out.write(f'{self.c_type()}, target, allocatable :: {self.name()}_c_type(:)\n')
+        if self.type_id() == 'bool':
+            out.write(f'{self.c_type()}, target :: {self.name()}_c_type\n')
+
+    def prepend_interface_call(self, out):
+
+        # do nothing for function pointers
+        if self.type_id() == 'func':
+            return
+
+        if self.attr().pass_by() == 'ptr':
+            out.write(f'{self.name()}_ptr = C_NULL_PTR\n')
+            if self.attr().required() == 'optional':
+                out.write(f'if (present({self.name()})) then\n')
+
+        if self.type_id() == 'string':
+            out.write(f'allocate({self.name()}_c_type(len({self.name()})+1))\n')
+            if self.attr().intent() in ('in', 'inout'):
+                out.write(f'{self.name()}_c_type = string_f2c({self.name()})\n')
+            if self.attr().pass_by() == 'ptr':
+                out.write(f'{self.name()}_ptr = C_LOC({self.name()}_c_type)\n')
+        elif self.type_id() == 'bool':
+            if self.attr().intent() in ('in', 'inout'):
+                out.write(f'{self.name()}_c_type = {self.name()}\n')
+            if self.attr().pass_by() == 'ptr':
+                out.write(f'{self.name()}_ptr = C_LOC({self.name()}_c_type)\n')
+        else:
+            if self.attr().pass_by() == 'ptr':
+                out.write(f'{self.name()}_ptr = C_LOC({self.name()})\n')
+
+        if self.attr().pass_by() == 'ptr' and self.attr().required() == 'optional':
+            out.write("endif\n")
+
+    def append_interface_call(self, out):
+
+        if self.type_id() in ('bool', 'string'):
+
+            if self.attr().required() == 'optional':
+                out.write(f'if (present({self.name()})) then\n')
+
+            if self.type_id() == 'string':
+                if self.attr().intent() in ['inout', 'out']:
+                    out.write(f'{self.name()} = string_c2f({self.name()}_c_type)\n')
+                out.write(f'deallocate({self.name()}_c_type)\n')
+            elif self.type_id() == 'bool':
+                if self.attr().intent() in ['inout', 'out']:
+                    out.write(f'{self.name()} = {self.name()}_c_type\n')
+            else:
+                pass
+
+            if self.attr().required() == 'optional':
+                out.write("endif\n")
+
 
 def write_str_to_f90(o, string):
     p = 0
@@ -59,37 +211,21 @@ def write_str_to_f90(o, string):
             p = 0
 
 
-def get_arg_attr(arg):
-    if 'attr' in arg:
-        attr = arg['attr'].replace(' ', '').split(',', 2)
-        if len(attr) > 3:
-            raise Exception("too many attributes")
-        if attr[0] not in ('in', 'out', 'inout'):
-            raise Exception('wrong intent attribute')
-        if attr[1] not in ('optional', 'required'):
-            raise Exception('wrong requirement attribute')
-        if len(attr) == 2:
-            attr.append("scalar")
-        return attr
-    else:
-        raise Exception('argment attributes are not provided')
-
-
 def write_function_doc(o, func_doc, details, func_args):
     '''
     Write a comment block with function documentation
     '''
     # write documentation header
-    o.write("!> @brief %s\n"%func_doc)
+    o.write(f'!> @brief {func_doc}\n')
     if details:
-        o.write("!> @details\n")
+        o.write('!> @details\n')
         for l in details.split('\n'):
-            o.write(f"!> {l}\n")
+            o.write(f'!> {l}\n')
         #for l in details:
         #    o.write("!> %s\n"%l)
 
     for a in func_args:
-        o.write("!> @param [%s] %s %s\n"%(a[i_arg_intent], a[i_arg_name], a[i_arg_doc]))
+        o.write(f'!> @param [{a.attr().intent()}] {a.name()} {a.doc()}\n')
 
 def write_interface(o, func_name, func_type, args):
     '''
@@ -100,7 +236,7 @@ def write_interface(o, func_name, func_type, args):
     o.write('interface\n')
 
     string = 'subroutine ' if func_type == 'void' else 'function '
-    string = string + func_name + '_aux(' + ','.join([a[i_arg_name] for a in args]) + ')'
+    string = string + func_name + '_aux(' + ','.join([a.name() for a in args]) + ')'
 
     if (func_type == 'void'):
         string = string + '&'
@@ -112,11 +248,7 @@ def write_interface(o, func_name, func_type, args):
     o.write('use, intrinsic :: ISO_C_BINDING\n')
     # declare arguments of the interface (as seen by C code)
     for a in args:
-        if a[i_arg_type] == 'func':
-            o.write('type(C_FUNPTR)')
-        else:
-            o.write('type(C_PTR)')
-        o.write(", value :: %s\n"%a[i_arg_name])
+        a.write_interface_api_arg(o)
 
     if func_type != 'void':
         o.write("%s :: res\n"%type_info[func_type]['c_type'])
@@ -135,24 +267,14 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
     '''
 
     # build internal list of function arguments
-    args = []
-    if func_args:
-        for a in func_args:
-            attr = get_arg_attr(func_args[a])
-            is_optional = (attr[1] == 'optional')
-            t = func_args[a]['type']
-            # check that function pointers are always in and required
-            if t == 'func' and not (attr[0] == 'in' and attr[1] == 'required'):
-                raise Exception("wroing attributes for function pointer")
-            doc = func_args[a]['doc']
-            args.append((a, t, attr[0], attr[1], doc, type_info[t]['f_type'], type_info[t]['c_type'], attr[2]))
+    args = [Argument(a, func_args[a]) for a in func_args] if func_args else []
 
     # write documentation header
     write_function_doc(o, func_doc, details, args)
 
     # write declaration of function or subroutine
     string = 'subroutine ' if func_type == 'void' else 'function '
-    string = string + func_name + '(' + ','.join([a[i_arg_name] for a in args]) + ')'
+    string = string + func_name + '(' + ','.join([a.name() for a in args]) + ')'
     if func_type != 'void':
         string = string + ' result(res)'
     write_str_to_f90(o, string)
@@ -161,20 +283,7 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
 
     # write list of arguments as seen by fortran.
     for a in args:
-        # write delcartion of Fortran type
-        o.write(a[i_arg_f_type])
-        # attributes
-        if a[i_arg_requirement] == 'optional':
-            o.write(', optional')
-        # pass function pointers by value
-        if a[i_arg_type] == 'func':
-            o.write(', value')
-        else:
-            o.write(', target')
-        if a[i_arg_dims] != 'scalar':
-            o.write(', %s'%a[i_arg_dims])
-
-        o.write(", intent(%s) :: %s\n"%(a[i_arg_intent], a[i_arg_name]))
+        a.write_fortran_api_arg(o)
 
     # result type if this is a function
     if func_type != 'void':
@@ -184,16 +293,10 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
         o.write('!\n')
 
     # declare auxiliary vaiables
-    #   for string type we need to allocate new sotrage space and add tailing null character
+    #   for string type we need to allocate new storage space and add tailing null character
     #   for bool type we need to convert it to C-type
     for a in args:
-        t = a[i_arg_type]
-        if t != 'func':
-            o.write("type(C_PTR) :: %s_ptr\n"%a[i_arg_name])
-        if t == 'string':
-            o.write("%s, target, allocatable :: %s_c_type(:)\n"%(a[i_arg_c_type], a[i_arg_name]))
-        if t == 'bool':
-            o.write("%s, target :: %s_c_type\n"%(a[i_arg_c_type], a[i_arg_name]))
+        a.write_tmp_vars(o)
 
     if len(args) > 0:
         o.write('!\n')
@@ -203,41 +306,14 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
     # build a list of names for the C-interface call
     c_arg_names = []
     for a in args:
-        t = a[i_arg_type]
-        n = a[i_arg_name]
-        if t == 'func':
-            c_arg_names.append("%s"%n)
+        if a.attr().pass_by() == 'value':
+            c_arg_names.append(f'{a.name()}')
         else:
-            c_arg_names.append("%s_ptr"%n)
+            c_arg_names.append(f'{a.name()}_ptr')
 
     # before the call
     for a in args:
-        t = a[i_arg_type]
-        n = a[i_arg_name]
-
-        # do nothing for function pointers
-        if t == 'func':
-            continue
-
-        o.write("%s_ptr = C_NULL_PTR\n"%n)
-        if a[i_arg_requirement] == 'optional':
-            o.write("if (present(%s)) then\n"%n)
-
-        if t == 'string':
-            o.write("allocate(%s_c_type(len(%s)+1))\n"%(n, n))
-            if a[i_arg_intent] in ('in', 'inout'):
-                o.write("%s_c_type = string_f2c(%s)\n"%(n, n))
-            o.write("%s_ptr = C_LOC(%s_c_type)\n"%(n, n))
-        elif t == 'bool':
-            if a[i_arg_intent] in ('in', 'inout'):
-                o.write("%s_c_type = %s\n"%(n, n))
-            o.write("%s_ptr = C_LOC(%s_c_type)\n"%(n, n))
-        else:
-            o.write("%s_ptr = C_LOC(%s)\n"%(n, n))
-
-        if a[i_arg_requirement] == 'optional':
-            o.write("endif\n")
-
+        a.prepend_interface_call(o)
 
     # make a function call
     string = 'call ' if func_type == 'void' else 'res = '
@@ -246,26 +322,7 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
 
     # after the call
     for a in args:
-        t = a[i_arg_type]
-        n = a[i_arg_name]
-        if t in ('bool', 'string'):
-
-            if a[i_arg_requirement] == 'optional':
-                o.write("if (present(%s)) then\n"%n)
-
-            if t == 'string':
-                if a[i_arg_intent] in ('inout', 'out'):
-                    o.write("%s = string_c2f(%s_c_type)\n"%(n, n))
-                o.write("deallocate(%s_c_type)\n"%n)
-            elif t == 'bool':
-                if a[i_arg_intent] in ('inout', 'out'):
-                    o.write("%s = %s_c_type\n"%(n, n))
-            else:
-                pass
-
-            if a[i_arg_requirement] == 'optional':
-                o.write("endif\n")
-
+        a.append_interface_call(o)
 
     if func_type == 'void':
         o.write('end subroutine ')
@@ -275,6 +332,7 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
 
 
 def main():
+
     o = open('generated.f90', 'w')
     o.write('! Warning! This file is automatically generated from sirius_api.cpp using generate_api.py script!\n\n')
     o.write('!> @file generated.f90\n')
@@ -290,7 +348,6 @@ def main():
             func_args = di[func_name].get('arguments', {})
 
             write_function(o, func_name, func_type, func_args, func_doc, details)
-
 
     o.close()
 
