@@ -5,7 +5,7 @@ implicit none
 type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft
-integer i
+integer i, rank
 real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
 
 ! initialize the library
@@ -61,15 +61,19 @@ call sirius_get_stress_tensor(dft, "total", stress)
 call sirius_get_energy(dft, "total", energy)
 call sirius_get_energy(dft, "descf", scf_correction)
 
-write(*,*)'Forces:'
-do i = 1, 5
-  write(*,*)'atom=',i, ' force=',forces(:,i)
-enddo
-write(*,*)'Stress:'
-do i = 1, 3
-  write(*,*)stress(i,:)
-enddo
-write(*,*)"Total energy: ",energy + scf_correction, " Ha"
+call MPI_COMM_RANK(MPI_COMM_WORLD, rank, i)
+
+if (rank.eq.0) then
+  write(*,*)'Forces:'
+  do i = 1, 5
+    write(*,*)'atom=',i, ' force=',forces(:,i)
+  enddo
+  write(*,*)'Stress:'
+  do i = 1, 3
+    write(*,*)stress(i,:)
+  enddo
+  write(*,*)"Total energy: ",energy + scf_correction, " Ha"
+endif
 
 call MPI_BARRIER(MPI_COMM_WORLD, i)
 
