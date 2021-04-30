@@ -1,5 +1,7 @@
 program test_fortran_api
+use mpi
 use sirius
+implicit none
 type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft

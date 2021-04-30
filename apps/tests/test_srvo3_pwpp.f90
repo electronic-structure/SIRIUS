@@ -1,23 +1,22 @@
 program test_fortran_api
+use mpi
 use sirius
+implicit none
 type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft
-integer i
+integer i, rank
 real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
-integer comm
 
 ! initialize the library
 call sirius_initialize(call_mpi_init=.true.)
 
 ! create simulation context using a specified communicator
-comm = MPI_COMM_WORLD
-write(*,*)'comm=',comm
-call sirius_create_context(comm, handler)
+call sirius_create_context(MPI_COMM_WORLD, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "pseudopotential"},&
-      "control" : {"verbosity" : 0, "verification" : 0}}')
+      "control" : {"verbosity" : 1, "verification" : 0}}')
 
 ! atomic units are used everywhere
 ! plane-wave cutoffs are provided in a.u.^-1
@@ -62,15 +61,21 @@ call sirius_get_stress_tensor(dft, "total", stress)
 call sirius_get_energy(dft, "total", energy)
 call sirius_get_energy(dft, "descf", scf_correction)
 
-write(*,*)'Forces:'
-do i = 1, 5
-  write(*,*)'atom=',i, ' force=',forces(:,i)
-enddo
-write(*,*)'Stress:'
-do i = 1, 3
-  write(*,*)stress(i,:)
-enddo
-write(*,*)"Total energy: ",energy + scf_correction, " Ha"
+call MPI_COMM_RANK(MPI_COMM_WORLD, rank, i)
+
+if (rank.eq.0) then
+  write(*,*)'Forces:'
+  do i = 1, 5
+    write(*,*)'atom=',i, ' force=',forces(:,i)
+  enddo
+  write(*,*)'Stress:'
+  do i = 1, 3
+    write(*,*)stress(i,:)
+  enddo
+  write(*,*)"Total energy: ",energy + scf_correction, " Ha"
+endif
+
+call MPI_BARRIER(MPI_COMM_WORLD, i)
 
 
 call sirius_free_handler(dft)
