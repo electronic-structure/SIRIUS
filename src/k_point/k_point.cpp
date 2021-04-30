@@ -1040,9 +1040,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
                 /*  orbital quantum  number of this atomic orbital */
                 int l = indexb.l(xi);
                 /*  composite l,m index */
-                int lm = indexb[xi].lm;
+                int lm = indexb.lm(xi);
                 /* index of the radial function */
-                int idxrf = indexb[xi].idxrf;
+                int idxrf = indexb.idxrf(xi);
 
                 auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 

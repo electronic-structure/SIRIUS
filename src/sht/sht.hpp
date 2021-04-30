@@ -602,7 +602,7 @@ class SHT // TODO: better name
 
         for (int l = 0; l <= lmax; l++) {
             result.emplace_back(2 * l + 1, 2 * l + 1);
-            rotation_matrix_l(l, euler_angles, proper_rotation, result.back().at(memory_t::host), 2 * l + 1);
+            rotation_matrix_l(l, euler_angles, proper_rotation, result.back().at(sddk::memory_t::host), 2 * l + 1);
         }
         return result;
     }

@@ -1849,7 +1849,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
 
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
-        type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum_quantum_number(*l__),
+        type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
                 std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
