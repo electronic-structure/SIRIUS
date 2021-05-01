@@ -842,6 +842,9 @@ void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_co
                         for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
                             int nbf = kp__->beta_projectors().chunk(chunk).desc_(
                                 static_cast<int>(beta_desc_idx::nbf), ia);
+                            if (!nbf) {
+                                continue;
+                            }
                             int offs = kp__->beta_projectors().chunk(chunk).desc_(
                                 static_cast<int>(beta_desc_idx::offset), ia);
                             int ja =
@@ -899,6 +902,9 @@ void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_co
                 }
                 for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
                     int nbf  = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                    if (!nbf) {
+                        continue;
+                    }
                     int offs = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
                     int ja   = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
                     if (ctx_.unit_cell().atom(ja).type().spin_orbit_coupling()) {
