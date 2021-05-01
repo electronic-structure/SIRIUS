@@ -28,10 +28,12 @@ using namespace geometry3d;
 
 namespace sirius {
 
-Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, std::vector<int> const& types__,
-    mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
+Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__,
+    int num_atom_types__, std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
+    sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
     , num_atoms_(num_atoms__)
+    , num_atom_types_(num_atom_types__)
     , types_(types__)
     , tolerance_(tolerance__)
 {

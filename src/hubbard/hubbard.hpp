@@ -88,8 +88,8 @@ class Hubbard
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
                              mdarray<double_complex, 5>& dn__, const int index__);
 
-    void symmetrize_occupancy_matrix_noncolinear_case();
-    void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
+    //void symmetrize_occupancy_matrix_noncolinear_case();
+    //void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
 
     void calculate_wavefunction_with_U_offset();
 

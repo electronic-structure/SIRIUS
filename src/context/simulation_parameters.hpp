@@ -309,7 +309,7 @@ class Simulation_parameters
     /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
     inline int num_mag_comp() const // TODO: rename; current name does not reflect the meaning
     {
-        return (num_mag_dims() == 3) ? 3 : num_spins();
+        return (num_mag_dims() == 3) ? 3 : num_spins(); // std::max(mag_dims, spins)
     }
 
     /// Number of non-zero spinor components.

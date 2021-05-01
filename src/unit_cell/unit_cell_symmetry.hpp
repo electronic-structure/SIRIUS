@@ -96,6 +96,9 @@ class Unit_cell_symmetry
     /// Number of atoms in the unit cell.
     int num_atoms_;
 
+    /// Number of atom types.
+    int num_atom_types_;
+
     /// Atom types.
     std::vector<int> types_;
 
@@ -123,9 +126,9 @@ class Unit_cell_symmetry
 
   public:
 
-    Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, std::vector<int> const& types__,
-                       mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__, bool spin_orbit__,
-                       double tolerance__, bool use_sym__);
+    Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
+        std::vector<int> const& types__, mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__,
+        bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Unit_cell_symmetry()
     {
@@ -230,9 +233,19 @@ class Unit_cell_symmetry
         return inverse_lattice_vectors_;
     }
 
-    inline int num_atoms() const
+    inline auto num_atoms() const
     {
         return num_atoms_;
+    }
+
+    inline auto num_atom_types() const
+    {
+        return num_atom_types_;
+    }
+
+    inline auto atom_type(int ia__) const
+    {
+        return types_[ia__];
     }
 };
 
