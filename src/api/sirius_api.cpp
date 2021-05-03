@@ -354,7 +354,7 @@ sirius_create_context:
   arguments:
     fcomm:
       type: int
-      attr: in, required
+      attr: in, required, value
       doc: Entire communicator of the simulation.
     handler:
       type: void*
@@ -366,11 +366,11 @@ sirius_create_context:
       doc: Error code.
 @api end
 */
-void sirius_create_context(int const* fcomm__, void** handler__, int* error_code__)
+void sirius_create_context(int fcomm__, void** handler__, int* error_code__)
 {
     call_sirius([&]()
     {
-        auto& comm = Communicator::map_fcomm(*fcomm__);
+        auto& comm = Communicator::map_fcomm(fcomm__);
         *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
     }, error_code__);
 }
@@ -6034,7 +6034,7 @@ sirius_set_callback_function:
       doc: Lable of the callback function.
     fptr:
       type: func
-      attr: in, required
+      attr: in, required, value
       doc: Pointer to callback function.
     error_code:
       type: int

@@ -92,6 +92,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
         for (int iat = 0; iat < uc.num_atom_types(); iat++) {
             auto& atom_type = uc.atom_type(iat);
             int nbf = atom_type.mt_basis_size();
+            if (!nbf) {
+                continue;
+            }
 
             matrix<double_complex> d_sum;
             if (what & 1) {
