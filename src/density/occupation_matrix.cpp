@@ -343,12 +343,12 @@ void Occupation_matrix::init()
         }
     }
 
-    print_occupancies();
+    print_occupancies(2);
 }
 
-void Occupation_matrix::print_occupancies() const
+void Occupation_matrix::print_occupancies(int min_verbosity__) const
 {
-    if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0 && data_.size()) {
+    if (ctx_.verbosity() >= min_verbosity__ && ctx_.comm().rank() == 0 && data_.size()) {
         std::printf("\n");
         for (int ci = 0; ci < 10; ci++) {
             std::printf("--------");
@@ -364,13 +364,13 @@ void Occupation_matrix::print_occupancies() const
                 const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                        std::printf("%.3lf ", std::abs(this->data_(m1, m2, 0, ia)));
+                        std::printf("%8.3f ", std::abs(this->data_(m1, m2, 0, ia)));
                     }
 
                     if (ctx_.num_mag_dims() == 3) {
                         std::printf(" ");
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            std::printf("%.3lf ", std::abs(this->data_(m1, m2, 2, ia)));
+                            std::printf("%8.3f ", std::abs(this->data_(m1, m2, 2, ia)));
                         }
                     }
                     std::printf("\n");
@@ -380,12 +380,12 @@ void Occupation_matrix::print_occupancies() const
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         if (ctx_.num_mag_dims() == 3) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                std::printf("%.3lf ", std::abs(this->data_(m1, m2, 3, ia)));
+                                std::printf("%8.3f ", std::abs(this->data_(m1, m2, 3, ia)));
                             }
                             std::printf(" ");
                         }
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            std::printf("%.3lf ", std::abs(this->data_(m1, m2, 1, ia)));
+                            std::printf("%8.3f ", std::abs(this->data_(m1, m2, 1, ia)));
                         }
                         std::printf("\n");
                     }

@@ -25,7 +25,7 @@ int run_test_impl(cmd_args& args)
     bool const use_sym{true};
     double const spg_tol{1e-4};
 
-    Unit_cell_symmetry symmetry(lattice, num_atoms, types, positions, spins, spin_orbit, spg_tol, use_sym);
+    Unit_cell_symmetry symmetry(lattice, num_atoms, 1, types, positions, spins, spin_orbit, spg_tol, use_sym);
 
     for (int iter = 0; iter < 10; iter++) {
         for (int isym = 0; isym < symmetry.num_mag_sym(); isym++) {
@@ -56,7 +56,7 @@ int run_test_impl(cmd_args& args)
 
             /* generate rotation matrices; they are block-diagonal in l- index */
             sddk::mdarray<T, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
-            SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
+            sht::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
 
             sddk::mdarray<T, 1> ylm1(utils::lmmax(lmax));
             ylm1.zero();
@@ -86,6 +86,7 @@ int run_test(cmd_args& args)
 {
     int result = run_test_impl<double>(args);
     result += run_test_impl<double_complex>(args);
+    return result;
 }
 
 int main(int argn, char** argv)

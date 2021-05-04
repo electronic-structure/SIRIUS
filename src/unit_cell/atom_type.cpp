@@ -96,10 +96,22 @@ void Atom_type::init(int offset_lo__)
 
     /* initialize index for wave functions */
     if (ps_atomic_wfs_.size()) {
-        for (auto& e: ps_atomic_wfs_) {
-            /* add angular quantum number to the list */
-            indexr_wfs_.add(e.am);
+        for (size_t i = 0; i < ps_atomic_wfs_.size(); i++) {
+            if (ps_atomic_wfs_[i].am.s()) {
+                if (ps_atomic_wfs_[i].am.l() == 0) {
+                    indexr_wfs_.add(ps_atomic_wfs_[i].am);
+                } else {
+                    indexr_wfs_.add(ps_atomic_wfs_[i].am, ps_atomic_wfs_[i + 1].am);
+                    i += 1;
+                }
+            } else {
+                indexr_wfs_.add(ps_atomic_wfs_[i].am);
+            }
         }
+        //for (auto& e: ps_atomic_wfs_) {
+        //    /* add angular quantum number to the list */
+        //    indexr_wfs_.add(e.am);
+        //}
         indexb_wfs_ = sirius::experimental::basis_functions_index(indexr_wfs_, false);
         if (static_cast<int>(ps_atomic_wfs_.size()) != indexr_wfs_.size()) {
             TERMINATE("[sirius::Atom_type::init] wrong size of atomic orbital list");
@@ -107,10 +119,6 @@ void Atom_type::init(int offset_lo__)
     }
 
     if (hubbard_correction_) {
-        /* circus for the hubbard orbitals */
-        //hubbard_indexr_.init(hubbard_lo_descriptors_);
-        //hubbard_indexb_.init(hubbard_indexr_);
-
         indexb_hub_ = sirius::experimental::basis_functions_index(indexr_hub_, false);
     }
 
@@ -699,10 +707,10 @@ void Atom_type::generate_f_coefficients()
 
                         int jj1 = static_cast<int>(2.0 * j1 + 1e-8);
                         for (int mj = -jj1; mj <= jj1; mj += 2) {
-                            coef += SHT::calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
-                                SHT::ClebschGordan(l1, j1, mj / 2.0, sigma1) *
-                                std::conj(SHT::calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
-                                SHT::ClebschGordan(l2, j2, mj / 2.0, sigma2);
+                            coef += sht::calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
+                                sht::ClebschGordan(l1, j1, mj / 2.0, sigma1) *
+                                std::conj(sht::calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
+                                sht::ClebschGordan(l2, j2, mj / 2.0, sigma2);
                         }
                         f_coefficients_(xi1, xi2, sigma1, sigma2) = coef;
                     }

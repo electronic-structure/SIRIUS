@@ -352,7 +352,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = sym__.magnetic_group_symmetry(i).isym;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
             int ja = sym__.sym_table(ia, isym);
@@ -399,7 +399,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = sym__.magnetic_group_symmetry(i).isym;
         auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
             int ja = sym__.sym_table(ia, isym);
@@ -448,7 +448,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = sym__.magnetic_group_symmetry(i).isym;
         auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
             int ja = sym__.sym_table(ia, isym);
@@ -621,40 +621,46 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
 }
 
 inline void
-symmetrize(sddk::mdarray<double_complex, 4> const& dm__, Unit_cell_symmetry const& sym__,
-           std::function<sirius::experimental::basis_functions_index const&(int)> indexb__,
-           sddk::mdarray<double_complex, 4>& dmsym__)
+symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell_symmetry const& sym__,
+           std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
     if (sym__.num_mag_sym() == 1) {
         return;
     }
 
-    dmsym__.zero();
+    sddk::mdarray<double_complex, 4> dmsym(dm__.size(0), dm__.size(1), dm__.size(2), dm__.size(3));
+
+    dmsym.zero();
 
     int lmax{0};
     for (int iat = 0; iat < sym__.num_atom_types(); iat++) {
-        lmax = std::max(lmax, indexb__(iat).indexr().lmax());
+        if (indexb__(iat)) {
+            lmax = std::max(lmax, indexb__(iat)->indexr().lmax());
+        }
     }
-
-    int num_mag_comp = static_cast<int>(dm__.size(2));
 
     /* loop over symmetry operations */
     for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
         int  pr   = sym__.magnetic_group_symmetry(isym).spg_op.proper;
         auto eang = sym__.magnetic_group_symmetry(isym).spg_op.euler_angles;
-        auto rotm = SHT::rotation_matrix<double>(lmax, eang, pr);
+        auto rotm = sht::rotation_matrix<double>(lmax, eang, pr);
         auto spin_rot_su2 = rotation_matrix_su2(sym__.magnetic_group_symmetry(isym).spin_rotation);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
             int iat = sym__.atom_type(ia);
+
+            if (!indexb__(iat)) {
+                continue;
+            }
+
             int ja = sym__.sym_table(ia, isym);
 
-            auto& indexb = indexb__(iat);
+            auto& indexb = *indexb__(iat);
             auto& indexr = indexb.indexr();
 
-            int mmax = 2 * indexb__(iat).indexr().lmax() + 1;
-            sddk::mdarray<double_complex, 3> dm_ia(mmax, mmax, num_mag_comp);
+            int mmax = 2 * indexb.indexr().lmax() + 1;
+            sddk::mdarray<double_complex, 3> dm_ia(mmax, mmax, num_mag_comp__);
 
             /* loop over radial functions */
             for (int idxrf1 = 0; idxrf1 < indexr.size(); idxrf1++) {
@@ -665,11 +671,11 @@ symmetrize(sddk::mdarray<double_complex, 4> const& dm__, Unit_cell_symmetry cons
                 for (int idxrf2 = 0; idxrf2 < indexr.size(); idxrf2++) {
                     /* angular momentum of radial function */
                     auto am2 = indexr.am(idxrf2);
-                    auto ss2 = am1.subshell_size();
+                    auto ss2 = am2.subshell_size();
                     auto offset2 = indexb.offset(idxrf2);
 
                     dm_ia.zero();
-                    for (int j = 0; j < num_mag_comp; j++) {
+                    for (int j = 0; j < num_mag_comp__; j++) {
                         /* apply spacial rootation */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
@@ -683,188 +689,195 @@ symmetrize(sddk::mdarray<double_complex, 4> const& dm__, Unit_cell_symmetry cons
                             }
                         }
                     }
-
-
                     /* magnetic symmetry */
-                    if (num_mag_comp == 1) { /* trivial non-magnetic case */
+                    if (num_mag_comp__ == 1) { /* trivial non-magnetic case */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
-                                dmsym__(m1 + offset1, m2 + offset2, 0, ia) += dm_ia(m1, m2, 0);
+                                dmsym(m1 + offset1, m2 + offset2, 0, ia) += dm_ia(m1, m2, 0);
                             }
                         }
                     } else {
                         int const map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
-                        for (int j = 0; j < num_mag_comp; j++) {
+                        for (int j = 0; j < num_mag_comp__; j++) {
                             int s1 = map_s[j][0];
                             int s2 = map_s[j][1];
 
                             for (int m1 = 0; m1 < ss1; m1++) {
                                 for (int m2 = 0; m2 < ss2; m2++) {
                                     double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
-                                    if (num_mag_comp == 3) {
+                                    if (num_mag_comp__ == 3) {
                                         dm[0][1] = dm_ia(m1, m2, 2);
                                         dm[1][0] = std::conj(dm[0][1]);
                                     }
+                                    assert(dm[0][0] == dm[0][0]);
+                                    assert(dm[1][1] == dm[1][1]);
+                                    assert(dm[1][0] == dm[1][0]);
+                                    assert(dm[0][1] == dm[0][1]);
 
                                     for (int s1p = 0; s1p < 2; s1p++) {
                                         for (int s2p = 0; s2p < 2; s2p++) {
-                                            dmsym__(m1 + offset1, m2 + offset2, j, ia) +=
+                                            dmsym(m1 + offset1, m2 + offset2, j, ia) +=
                                                 spin_rot_su2(s1, s1p) * dm[s1p][s2p] *
                                                 std::conj(spin_rot_su2(s2, s2p));
                                         }
                                     }
+                                    if (num_mag_comp__ == 3) {
+                                        dmsym(m1 + offset1, m2 + offset2, 3, ia) =
+                                            std::conj(dmsym(m1 + offset1, m2 + offset2, 2, ia));
+                                    }
                                 }
                             }
                         }
                     }
-
-
-
 
                 }
             }
         }
     }
 
+    double alpha = 1.0 / sym__.num_mag_sym();
 
-}
-
-inline void
-symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::basis_functions_index const& indexb__,
-           int const ia__, int const ja__, int const ndm__, std::vector<sddk::mdarray<double, 2>> const& rotm__,
-           sddk::mdarray<double_complex, 2> const& spin_rot_su2__, sddk::mdarray<double_complex, 4>& dm__,
-           bool const hubbard__) // TODO: revisit the implementation, also think about off-site occupation matrix 
-{
-    int mmax = 2 * indexb__.indexr().lmax() + 1;
-    sddk::mdarray<double_complex, 3> dmsym(mmax, mmax, ndm__);
-    /* loop over radial functions */
-    for (int idxrf1 = 0; idxrf1 < indexb__.indexr().size(); idxrf1++) {
-        /* angular momentum of radial function */
-        auto am1 = indexb__.indexr().am(idxrf1);
-        auto ss1 = am1.subshell_size();
-        auto offset1 = indexb__.offset(idxrf1);
-        for (int idxrf2 = 0; idxrf2 < indexb__.indexr().size(); idxrf2++) {
-            /* angular momentum of radial function */
-            auto am2 = indexb__.indexr().am(idxrf2);
-            auto ss2 = am1.subshell_size();
-            auto offset2 = indexb__.offset(idxrf2);
-
-            dmsym.zero();
-            for (int j = 0; j < ndm__; j++) {
-                /* apply spacial rootation */
-                for (int m1 = 0; m1 < ss1; m1++) {
-                    for (int m2 = 0; m2 < ss2; m2++) {
-                        for (int m1p = 0; m1p < ss1; m1p++) {
-                            for (int m2p = 0; m2p < ss2; m2p++) {
-                                dmsym(m1, m2, j) += rotm__[am1.l()](m1, m1p) * ns__(offset1 + m1p, offset2 + m2p, j, ja__) *
-                                    rotm__[am2.l()](m2, m2p);
-                            }
-                        }
-                    }
-                }
-            }
-            /* magnetic symmetry */
-            if (ndm__ == 1) {
-                for (int m1 = 0; m1 < ss1; m1++) {
-                    for (int m2 = 0; m2 < ss2; m2++) {
-                        dm__(m1 + offset1, m2 + offset2, ia__, 0) += dmsym(m1, m2, 0);
-                    }
-                }
-            } else {
-                const int map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
-                for (int j = 0; j < ndm__; j++) {
-                    int s1 = map_s[j][0];
-                    int s2 = map_s[j][1];
-
-                    for (int m1 = 0; m1 < ss1; m1++) {
-                        for (int m2 = 0; m2 < ss2; m2++) {
-                            double_complex dm[2][2] = {{dmsym(m1, m2, 0), 0}, {0, dmsym(m1, m2, 1)}};
-                            if (ndm__ == 3) {
-                                dm[0][1] = dmsym(m1, m2, 2);
-                            }
-
-                            for (int s1p = 0; s1p < 2; s1p++) {
-                                for (int s2p = 0; s2p < 2; s2p++) {
-                                    dm__(m1 + offset1, m2 + offset2, j, ia__) +=
-                                        spin_rot_su2__(s1, s1p) * dm[s1p][s2p] *
-                                        std::conj(spin_rot_su2__(s2, s2p));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
+    for (size_t i = 0; i < dm__.size(); i++) {
+        dm__[i] = dmsym[i] * alpha;
     }
-
-    //for (int xi1 = 0; xi1 < static_cast<int>(indexb__.size()); xi1++) {
-    //    int l1  = indexb__.l(xi1);
-    //    int lm1 = indexb__.lm(xi1);
-    //    int o1  = indexb__.order(xi1);
-
-    //    if (hubbard__ && (xi1 >= (2 * l1 + 1))) {
-    //        break;
-    //    }
-
-    //    for (int xi2 = 0; xi2 < static_cast<int>(indexb__.size()); xi2++) {
-    //        int l2  = indexb__.l(xi2);
-    //        int lm2 = indexb__.lm(xi2);
-    //        int o2  = indexb__.order(xi2);
-    //        std::array<double_complex, 3> dm_rot_spatial = {0, 0, 0};
-
-    //        //} the hubbard treatment when spin orbit coupling is present is
-    //        // foundamentally wrong since we consider the full hubbard
-    //        // correction with a averaged wave function (meaning we neglect the
-    //        // L.S correction within hubbard). A better option (although still
-    //        // wrong from physics pov) would be to consider a multi orbital case.
-
-    //        if (hubbard__ && (xi2 >= (2 * l2 + 1))) {
-    //            break;
-    //        }
-
-    //        //      if (l1 == l2) {
-    //        // the rotation matrix of the angular momentum is block
-    //        // diagonal and does not couple different l.
-    //        for (int j = 0; j < ndm__; j++) {
-    //            for (int m3 = -l1; m3 <= l1; m3++) {
-    //                int lm3 = utils::lm(l1, m3);
-    //                int xi3 = indexb__.index_by_lm_order(lm3, o1);
-    //                for (int m4 = -l2; m4 <= l2; m4++) {
-    //                    int lm4 = utils::lm(l2, m4);
-    //                    int xi4 = indexb__.index_by_lm_order(lm4, o2);
-    //                    dm_rot_spatial[j] += ns__(xi3, xi4, j, ia__) *
-    //                        rotm__(lm1, lm3) * rotm__(lm2, lm4);
-    //                }
-    //            }
-    //        }
-
-    //        /* magnetic symmetrization */
-    //        if (ndm__ == 1) {
-    //            dm__(xi1, xi2, 0, ja__) += dm_rot_spatial[0];
-    //        } else {
-    //            double_complex spin_dm[2][2] = {
-    //                {dm_rot_spatial[0], dm_rot_spatial[2]},
-    //                {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
-
-    //            /* spin blocks of density matrix are: uu, dd, ud
-    //               the mapping from linear index (0, 1, 2) of density matrix components is:
-    //               for the first spin index: k & 1, i.e. (0, 1, 2) -> (0, 1, 0)
-    //               for the second spin index: min(k, 1), i.e. (0, 1, 2) -> (0, 1, 1)
-    //            */
-    //            for (int k = 0; k < ndm__; k++) {
-    //                for (int is = 0; is < 2; is++) {
-    //                    for (int js = 0; js < 2; js++) {
-    //                        dm__(xi1, xi2, k, ja__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
-    //                            std::conj(spin_rot_su2__(std::min(k, 1), js));
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 }
+
+//inline void
+//symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::basis_functions_index const& indexb__,
+//           int const ia__, int const ja__, int const ndm__, std::vector<sddk::mdarray<double, 2>> const& rotm__,
+//           sddk::mdarray<double_complex, 2> const& spin_rot_su2__, sddk::mdarray<double_complex, 4>& dm__,
+//           bool const hubbard__) // TODO: revisit the implementation, also think about off-site occupation matrix 
+//{
+//    int mmax = 2 * indexb__.indexr().lmax() + 1;
+//    sddk::mdarray<double_complex, 3> dmsym(mmax, mmax, ndm__);
+//    /* loop over radial functions */
+//    for (int idxrf1 = 0; idxrf1 < indexb__.indexr().size(); idxrf1++) {
+//        /* angular momentum of radial function */
+//        auto am1 = indexb__.indexr().am(idxrf1);
+//        auto ss1 = am1.subshell_size();
+//        auto offset1 = indexb__.offset(idxrf1);
+//        for (int idxrf2 = 0; idxrf2 < indexb__.indexr().size(); idxrf2++) {
+//            /* angular momentum of radial function */
+//            auto am2 = indexb__.indexr().am(idxrf2);
+//            auto ss2 = am1.subshell_size();
+//            auto offset2 = indexb__.offset(idxrf2);
+//
+//            dmsym.zero();
+//            for (int j = 0; j < ndm__; j++) {
+//                /* apply spacial rootation */
+//                for (int m1 = 0; m1 < ss1; m1++) {
+//                    for (int m2 = 0; m2 < ss2; m2++) {
+//                        for (int m1p = 0; m1p < ss1; m1p++) {
+//                            for (int m2p = 0; m2p < ss2; m2p++) {
+//                                dmsym(m1, m2, j) += rotm__[am1.l()](m1, m1p) * ns__(offset1 + m1p, offset2 + m2p, j, ja__) *
+//                                    rotm__[am2.l()](m2, m2p);
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            /* magnetic symmetry */
+//            if (ndm__ == 1) {
+//                for (int m1 = 0; m1 < ss1; m1++) {
+//                    for (int m2 = 0; m2 < ss2; m2++) {
+//                        dm__(m1 + offset1, m2 + offset2, ia__, 0) += dmsym(m1, m2, 0);
+//                    }
+//                }
+//            } else {
+//                const int map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
+//                for (int j = 0; j < ndm__; j++) {
+//                    int s1 = map_s[j][0];
+//                    int s2 = map_s[j][1];
+//
+//                    for (int m1 = 0; m1 < ss1; m1++) {
+//                        for (int m2 = 0; m2 < ss2; m2++) {
+//                            double_complex dm[2][2] = {{dmsym(m1, m2, 0), 0}, {0, dmsym(m1, m2, 1)}};
+//                            if (ndm__ == 3) {
+//                                dm[0][1] = dmsym(m1, m2, 2);
+//                            }
+//
+//                            for (int s1p = 0; s1p < 2; s1p++) {
+//                                for (int s2p = 0; s2p < 2; s2p++) {
+//                                    dm__(m1 + offset1, m2 + offset2, j, ia__) +=
+//                                        spin_rot_su2__(s1, s1p) * dm[s1p][s2p] *
+//                                        std::conj(spin_rot_su2__(s2, s2p));
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//
+//    }
+//
+//    //for (int xi1 = 0; xi1 < static_cast<int>(indexb__.size()); xi1++) {
+//    //    int l1  = indexb__.l(xi1);
+//    //    int lm1 = indexb__.lm(xi1);
+//    //    int o1  = indexb__.order(xi1);
+//
+//    //    if (hubbard__ && (xi1 >= (2 * l1 + 1))) {
+//    //        break;
+//    //    }
+//
+//    //    for (int xi2 = 0; xi2 < static_cast<int>(indexb__.size()); xi2++) {
+//    //        int l2  = indexb__.l(xi2);
+//    //        int lm2 = indexb__.lm(xi2);
+//    //        int o2  = indexb__.order(xi2);
+//    //        std::array<double_complex, 3> dm_rot_spatial = {0, 0, 0};
+//
+//    //        //} the hubbard treatment when spin orbit coupling is present is
+//    //        // foundamentally wrong since we consider the full hubbard
+//    //        // correction with a averaged wave function (meaning we neglect the
+//    //        // L.S correction within hubbard). A better option (although still
+//    //        // wrong from physics pov) would be to consider a multi orbital case.
+//
+//    //        if (hubbard__ && (xi2 >= (2 * l2 + 1))) {
+//    //            break;
+//    //        }
+//
+//    //        //      if (l1 == l2) {
+//    //        // the rotation matrix of the angular momentum is block
+//    //        // diagonal and does not couple different l.
+//    //        for (int j = 0; j < ndm__; j++) {
+//    //            for (int m3 = -l1; m3 <= l1; m3++) {
+//    //                int lm3 = utils::lm(l1, m3);
+//    //                int xi3 = indexb__.index_by_lm_order(lm3, o1);
+//    //                for (int m4 = -l2; m4 <= l2; m4++) {
+//    //                    int lm4 = utils::lm(l2, m4);
+//    //                    int xi4 = indexb__.index_by_lm_order(lm4, o2);
+//    //                    dm_rot_spatial[j] += ns__(xi3, xi4, j, ia__) *
+//    //                        rotm__(lm1, lm3) * rotm__(lm2, lm4);
+//    //                }
+//    //            }
+//    //        }
+//
+//    //        /* magnetic symmetrization */
+//    //        if (ndm__ == 1) {
+//    //            dm__(xi1, xi2, 0, ja__) += dm_rot_spatial[0];
+//    //        } else {
+//    //            double_complex spin_dm[2][2] = {
+//    //                {dm_rot_spatial[0], dm_rot_spatial[2]},
+//    //                {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
+//
+//    //            /* spin blocks of density matrix are: uu, dd, ud
+//    //               the mapping from linear index (0, 1, 2) of density matrix components is:
+//    //               for the first spin index: k & 1, i.e. (0, 1, 2) -> (0, 1, 0)
+//    //               for the second spin index: min(k, 1), i.e. (0, 1, 2) -> (0, 1, 1)
+//    //            */
+//    //            for (int k = 0; k < ndm__; k++) {
+//    //                for (int is = 0; is < 2; is++) {
+//    //                    for (int js = 0; js < 2; js++) {
+//    //                        dm__(xi1, xi2, k, ja__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
+//    //                            std::conj(spin_rot_su2__(std::min(k, 1), js));
+//    //                    }
+//    //                }
+//    //            }
+//    //        }
+//    //    }
+//    //}
+//}
 } // namespace
 
 #endif // __SYMMETRIZE_HPP__

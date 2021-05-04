@@ -1073,7 +1073,22 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             this->symmetrize_density_matrix();
+            if (ctx_.hubbard_correction()) {
+                auto f = [&](int iat) -> sirius::experimental::basis_functions_index const* {
+                    if (ctx_.unit_cell().atom_type(iat).hubbard_correction()) {
+                        return &ctx_.unit_cell().atom_type(iat).indexb_hub();
+                    } else {
+                        return nullptr;
+                    }
+                };
+
+                sirius::symmetrize(occupation_matrix_->data(), ctx_.num_mag_comp(), ctx_.unit_cell().symmetry(), f);
+            }
         }
+    }
+
+    if (occupation_matrix_) {
+        occupation_matrix_->print_occupancies(2);
     }
 
     generate_paw_loc_density();
@@ -1218,8 +1233,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+    }
+
+    if (occupation_matrix_ && occupation_matrix_->data().size()) {
         occupation_matrix_->reduce();
-        occupation_matrix_->print_occupancies();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
@@ -1632,7 +1649,7 @@ void Density::symmetrize_density_matrix()
         int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym  = sym.magnetic_group_symmetry(i).isym;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
         auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {

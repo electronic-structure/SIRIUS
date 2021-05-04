@@ -61,7 +61,7 @@ class Occupation_matrix {
      *  spin first and the remaining electrons distributed among the minority states. */
     void init();
 
-    void print_occupancies() const;
+    void print_occupancies(int min_verbosity__) const;
 
     sddk::mdarray<double_complex, 4>& data()
     {
