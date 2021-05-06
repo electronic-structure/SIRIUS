@@ -54,12 +54,6 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    //double hubbard_energy_{0.0};
-    //double hubbard_energy_u_{0.0};
-    //double hubbard_energy_dc_contribution_{0.0};
-    //double hubbard_energy_noflip_{0.0};
-    //double hubbard_energy_flip_{0.0};
-
     sddk::mdarray<double_complex, 4> hubbard_potential_;
 
     /// Type of hubbard correction to be considered.
@@ -86,10 +80,7 @@ class Hubbard
     std::string wave_function_file_;
 
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
-                             mdarray<double_complex, 5>& dn__, const int index__);
-
-    //void symmetrize_occupancy_matrix_noncolinear_case();
-    //void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
+                             mdarray<double_complex, 5>& dn__, const int index__); // TODO: how this connects to occupation matrix?
 
     void calculate_wavefunction_with_U_offset();
 
@@ -116,9 +107,6 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
 
-    //void calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
-    //void calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
-
     double calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
 
     void generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__);
@@ -129,13 +117,7 @@ class Hubbard
 
     void generate_potential(sddk::mdarray<double_complex, 4> const& om__)
     {
-        //this->hubbard_energy_                 = 0.0;
-        //this->hubbard_energy_u_               = 0.0;
-        //this->hubbard_energy_dc_contribution_ = 0.0;
-        //this->hubbard_energy_noflip_          = 0.0;
-        //this->hubbard_energy_flip_            = 0.0;
-        // the hubbard potential has the same structure than the occupation
-        // numbers
+        /* the hubbard potential has the same structure than the occupation numbers */
         this->hubbard_potential_.zero();
 
         if (ctx_.num_mag_dims() != 3) {

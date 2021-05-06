@@ -25,16 +25,11 @@
 #ifndef __RADIAL_FUNCTIONS_INDEX_HPP__
 #define __RADIAL_FUNCTIONS_INDEX_HPP__
 
+#include "utils/rte.hpp"
+
 namespace sirius {
 
 namespace experimental {
-
-#define THROW(msg)                                                                                    \
-{                                                                                                     \
-    do {                                                                                              \
-        throw std::runtime_error(std::string("[") + std::string(__func__) + std::string("] ") + msg); \
-    } while(0);                                                                                       \
-}
 
 /// Angular momentum quantum number.
 /** This class handles orbital or total angluar momentum quantum number. */
@@ -57,7 +52,7 @@ class angular_momentum
       : l_(l__)
     {
         if (l__ < 0) {
-            THROW("l can't be negative");
+            RTE_THROW("l can't be negative");
         }
     }
 
@@ -67,13 +62,13 @@ class angular_momentum
       , s_(s__)
     {
         if (l__ < 0) {
-            THROW("l can't be negative");
+            RTE_THROW("l can't be negative");
         }
         if (s__ != -1 && s__ != 0 && s__ != 1) {
-            THROW("wrong value of s");
+            RTE_THROW("wrong value of s");
         }
         if (l__ == 0 && s__ == -1) {
-            THROW("incompatible combination of l and s quantum numbers");
+            RTE_THROW("incompatible combination of l and s quantum numbers");
         }
     }
 
@@ -127,7 +122,7 @@ class radial_functions_index
         auto s = am__.s();
 
         if (s != 0 && l > 0) {
-            THROW("for l > 0 full-j radial functions are added in pairs");
+            RTE_THROW("for l > 0 full-j radial functions are added in pairs");
         }
 
         /* make sure that the space is available */
@@ -159,15 +154,15 @@ class radial_functions_index
         auto s2 = am2__.s();
 
         if (l1 != l2) {
-            THROW("orbital quantum numbers are different");
+            RTE_THROW("orbital quantum numbers are different");
         }
 
         if (s1 == s2) {
-            THROW("spin quantum numbers are the same");
+            RTE_THROW("spin quantum numbers are the same");
         }
 
         if (s1 * s2 == 0) {
-            THROW("spin quantum numbers can't be zero in case of full orbital momentum");
+            RTE_THROW("spin quantum numbers can't be zero in case of full orbital momentum");
         }
 
         /* make sure that the space is available */
@@ -289,7 +284,7 @@ class basis_functions_index
         : indexr_(indexr__)
     {
         if (expand_full_j__) {
-            THROW("j,mj expansion of the full angular momentum index is not implemented");
+            RTE_THROW("j,mj expansion of the full angular momentum index is not implemented");
         }
 
         if (!expand_full_j__) {

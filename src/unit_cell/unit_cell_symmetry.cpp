@@ -92,7 +92,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             /* sanity check */
             int p = sym_op.R.det();
             if (!(p == 1 || p == -1)) {
-                TERMINATE("wrong rotation matrix");
+                RTE_THROW("wrong rotation matrix");
             }
             /* inverse of the rotation matrix */
             sym_op.invR = inverse(sym_op.R);
@@ -107,7 +107,17 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             /* proper rotation in cartesian Coordinates */
             sym_op.rotation = dot(dot(lattice_vectors_, matrix3d<double>(sym_op.R * p)), inverse_lattice_vectors_);
             /* get Euler angles of the rotation */
-            sym_op.euler_angles = euler_angles(sym_op.rotation);
+            try {
+                sym_op.euler_angles = euler_angles(sym_op.rotation);
+            } catch(std::exception const& e) {
+                std::stringstream s;
+                s << "number of symmetry operations: " << spg_dataset_->n_operations << std::endl
+                  << "symmetry operation: " << isym << std::endl
+                  << "rotation matrix in lattice coordinates: " << sym_op.R << std::endl
+                  << "rotation matrix in Cartesian coordinates: " << sym_op.rotation << std::endl
+                  << "lattice vectors: " << lattice_vectors_;
+                RTE_THROW(s, e.what());
+            }
             /* add symmetry operation to a list */
             space_group_symmetry_.push_back(sym_op);
         }

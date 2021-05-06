@@ -30,7 +30,6 @@ set(_SOURSES
   "hubbard/apply_hubbard_potential.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
-  "hubbard/hubbard_occupancy.cpp"
   "hubbard/hubbard_potential_energy.cpp"
   "potential/generate_d_operator_matrix.cpp"
   "potential/generate_pw_coeffs.cpp"
@@ -131,6 +130,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/utils>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
