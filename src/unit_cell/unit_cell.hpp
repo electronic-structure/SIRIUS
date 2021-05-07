@@ -227,8 +227,6 @@ class Unit_cell
         return paw_atom_index_[ipaw__];
     }
 
-    void print_symmetry_info(int verbosity__) const;
-
     /// Print basic info.
     void print_info(int verbosity__) const;
 

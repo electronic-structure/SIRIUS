@@ -242,5 +242,66 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     PROFILE_STOP("sirius::Unit_cell_symmetry|mag");
 }
 
+void
+Unit_cell_symmetry::print_info(int verbosity__) const
+{
+    std::printf("\n");
+    std::printf("space group number   : %i\n", this->spacegroup_number());
+    std::printf("international symbol : %s\n", this->international_symbol().c_str());
+    std::printf("Hall symbol          : %s\n", this->hall_symbol().c_str());
+    std::printf("number of operations : %i\n", this->num_mag_sym());
+    std::printf("transformation matrix : \n");
+    auto tm = this->transformation_matrix();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            std::printf("%12.6f ", tm(i, j));
+        }
+        std::printf("\n");
+    }
+    std::printf("origin shift : \n");
+    auto t = this->origin_shift();
+    std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+    std::printf("metric tensor error: %18.12f\n", this->metric_tensor_error());
+    std::printf("rotation matrix error: %18.12f\n", this->sym_op_R_error());
+
+    if (verbosity__ >= 2) {
+        std::printf("symmetry operations  : \n");
+        for (int isym = 0; isym < this->num_mag_sym(); isym++) {
+            auto R = this->magnetic_group_symmetry(isym).spg_op.R;
+            auto t = this->magnetic_group_symmetry(isym).spg_op.t;
+            auto S = this->magnetic_group_symmetry(isym).spin_rotation;
+
+            std::printf("isym : %i\n", isym);
+            std::printf("R : ");
+            for (int i = 0; i < 3; i++) {
+                if (i) {
+                    std::printf("    ");
+                }
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%3i ", R(i, j));
+                }
+                std::printf("\n");
+            }
+            std::printf("T : ");
+            for (int j = 0; j < 3; j++) {
+                std::printf("%8.4f ", t[j]);
+            }
+            std::printf("\n");
+            std::printf("S : ");
+            for (int i = 0; i < 3; i++) {
+                if (i) {
+                    std::printf("    ");
+                }
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%8.4f ", S(i, j));
+                }
+                std::printf("\n");
+            }
+            printf("proper: %i\n", this->magnetic_group_symmetry(isym).spg_op.proper);
+            std::printf("\n");
+        }
+    }
+}
+
 } // namespace
 

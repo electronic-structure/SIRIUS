@@ -137,7 +137,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline int atom_symmetry_class(int ia__)
+    inline int atom_symmetry_class(int ia__) const
     {
         if (spg_dataset_) {
             return spg_dataset_->equivalent_atoms[ia__];
@@ -146,7 +146,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline int spacegroup_number()
+    inline int spacegroup_number() const
     {
         if (spg_dataset_) {
             return spg_dataset_->spacegroup_number;
@@ -155,7 +155,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline std::string international_symbol()
+    inline std::string international_symbol() const
     {
         if (spg_dataset_) {
             return spg_dataset_->international_symbol;
@@ -164,7 +164,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline std::string hall_symbol()
+    inline std::string hall_symbol() const
     {
         if (spg_dataset_) {
             return spg_dataset_->hall_symbol;
@@ -223,12 +223,12 @@ class Unit_cell_symmetry
         return sym_table_(ia__, isym__);
     }
 
-    matrix3d<double> const& lattice_vectors() const
+    auto const& lattice_vectors() const
     {
         return lattice_vectors_;
     }
 
-    matrix3d<double> const& inverse_lattice_vectors() const
+    auto const& inverse_lattice_vectors() const
     {
         return inverse_lattice_vectors_;
     }
@@ -247,6 +247,55 @@ class Unit_cell_symmetry
     {
         return types_[ia__];
     }
+
+    /// Get an error in metric tensor.
+    /** Metric tensor in transformed under lattice symmetry operations and compareed with
+     *  the initial value. It should stay invariant under transformation. This, however,
+     *  is not always guaranteed numerically, especially when spglib uses large tolerance
+     *  and find more symmeetry operations.
+     *
+     *  The error is the maximum value of \f$ |M_{ij} - \tilde M_{ij}| \f$ where \f$ M_{ij} \f$
+     *  is the initial metric tensor and \f$ \tilde M_{ij} \f$ is the transformed tensor. */
+    inline double metric_tensor_error() const
+    {
+        auto mt = dot(transpose(lattice_vectors_), lattice_vectors_);
+
+        double diff{0};
+        for (int isym = 0; isym < this->num_mag_sym(); isym++) {
+            /* rotation matrix in lattice coordinates */
+            auto R = this->magnetic_group_symmetry(isym).spg_op.R;
+            auto mt1 = dot(dot(transpose(R), mt), R);
+            for (int i: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
+                }
+            }
+        }
+        return diff;
+    }
+
+    /// Get error in rotation matrix of the symmetry operation.
+    /** Comparte rotation matrix in Cartesian coordinates with its inverse transpose. They should match.
+     *
+     *  The error is the maximum value of \f$ |R_{ij} - R_{ij}^{-T}| \f$, where \f$ R_{ij} \f$ is the rotation
+     *  matrix and \f$  R_{ij}^{-T} \f$ inverse transpose of the rotation matrix. */
+    inline double sym_op_R_error() const
+    {
+        double diff{0};
+        for (int isym = 0; isym < this->num_mag_sym(); isym++) {
+            auto R = this->magnetic_group_symmetry(isym).spg_op.rotation;
+            auto R1 = inverse(transpose(R));
+            for (int i: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    diff = std::max(diff, std::abs(R1(i, j) - R(i, j)));
+                }
+            }
+        }
+        return diff;
+    }
+
+    /// Print information about the unit cell symmetry.
+    void print_info(int verbosity__) const;
 };
 
 } // namespace

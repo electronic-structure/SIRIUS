@@ -194,39 +194,40 @@ inline vector3d<double> euler_angles(matrix3d<double> const& rot__)
     auto rit = inverse(transpose(rot__));
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            if (std::abs(rot__(i, j) - rit(i, j)) > 1e-8) {
-                std::stringstream s;
-                s << "rotation matrix is not unitary" << std::endl
-                  << "initial symmetry matrix:" << std::endl
-                  << rot__ << std::endl
-                  << "inverse transpose matrix:" << std::endl
-                  << rit;
-                RTE_THROW(s);
-            }
+            rit(i, j) = (rit(i, j) + rot__(i, j)) / 2.0;
+            //if (std::abs(rot__(i, j) - rit(i, j)) > 1e-8) {
+            //    std::stringstream s;
+            //    s << "rotation matrix is not unitary" << std::endl
+            //      << "initial symmetry matrix:" << std::endl
+            //      << rot__ << std::endl
+            //      << "inverse transpose matrix:" << std::endl
+            //      << rit;
+            //    RTE_THROW(s);
+            //}
         }
     }
 
-    if (std::abs(rot__(2, 2) - 1.0) < 1e-10) { // cos(beta) == 1, beta = 0
-        angles[0] = utils::phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
-    } else if (std::abs(rot__(2, 2) + 1.0) < 1e-10) { // cos(beta) == -1, beta = Pi
-        angles[0] = utils::phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
+    if (std::abs(rit(2, 2) - 1.0) < 1e-10) { // cos(beta) == 1, beta = 0
+        angles[0] = utils::phi_by_sin_cos(rit(1, 0), rit(0, 0));
+    } else if (std::abs(rit(2, 2) + 1.0) < 1e-10) { // cos(beta) == -1, beta = Pi
+        angles[0] = utils::phi_by_sin_cos(-rit(0, 1), rit(1, 1));
         angles[1] = pi;
     } else {
-        double beta = std::acos(rot__(2, 2));
-        angles[0] = utils::phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
+        double beta = std::acos(rit(2, 2));
+        angles[0] = utils::phi_by_sin_cos(rit(1, 2) / std::sin(beta), rit(0, 2) / std::sin(beta));
         angles[1] = beta;
-        angles[2] = utils::phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
+        angles[2] = utils::phi_by_sin_cos(rit(2, 1) / std::sin(beta), -rit(2, 0) / std::sin(beta));
     }
 
     auto rm1 = rot_mtrx_cart(angles);
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-8) {
+            if (std::abs(rit(i, j) - rm1(i, j)) > 1e-8) {
                 std::stringstream s;
                 s << "matrices don't match" << std::endl
                   << "initial symmetry matrix: " << std::endl
-                  << rot__ << std::endl
+                  << rit << std::endl
                   << "euler angles : " << angles[0] / pi << " " << angles[1] / pi << " " << angles[2] / pi << std::endl
                   << "computed symmetry matrix : " << std::endl
                   << rm1;
