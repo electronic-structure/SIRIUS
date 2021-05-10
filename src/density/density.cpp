@@ -1078,7 +1078,9 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
     if (symmetrize__) {
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
+            //write_to_json_file(density_matrix_, "density_matrix_before_sym.json");
             this->symmetrize_density_matrix();
+            //write_to_json_file(density_matrix_, "density_matrix_after_sym.json");
             if (ctx_.hubbard_correction()) {
                 auto f = [&](int iat) -> sirius::experimental::basis_functions_index const* {
                     if (ctx_.unit_cell().atom_type(iat).hubbard_correction()) {
@@ -1088,7 +1090,9 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
                     }
                 };
 
+                //write_to_json_file(occupation_matrix_->data(), "occupation_matrix_before_sym.json");
                 sirius::symmetrize(occupation_matrix_->data(), ctx_.num_mag_comp(), ctx_.unit_cell().symmetry(), f);
+                //write_to_json_file(occupation_matrix_->data(), "occupation_matrix_after_sym.json");
             }
         }
     }
@@ -1651,22 +1655,21 @@ void Density::symmetrize_density_matrix()
     int lmmax = utils::lmmax(lmax);
     mdarray<double, 2> rotm(lmmax, lmmax);
 
-    for (int i = 0; i < sym.num_mag_sym(); i++) {
-        int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
-        auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym  = sym.magnetic_group_symmetry(i).isym;
+    for (int i = 0; i < sym.size(); i++) {
+        int pr    = sym[i].spg_op.proper;
+        auto eang = sym[i].spg_op.euler_angles;
         sht::rotation_matrix(lmax, eang, pr, rotm);
-        auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
+        auto spin_rot_su2 = rotation_matrix_su2(sym[i].spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int ja = sym.sym_table(ia, isym);
+            int ja = sym[i].spg_op.sym_atom[ia];
 
             sirius::symmetrize(density_matrix_, unit_cell_.atom(ia).type().indexb(), ia, ja, ndm, rotm, spin_rot_su2,
                                dm, false);
         }
     }
 
-    double alpha = 1.0 / double(sym.num_mag_sym());
+    double alpha = 1.0 / double(sym.size());
     /* multiply by alpha which is the inverse of the number of symmetries */
     auto a = dm.at(memory_t::host);
     for (auto i = 0u; i < dm.size(); i++) {

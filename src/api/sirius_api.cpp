@@ -850,7 +850,7 @@ void sirius_get_parameters(void* const* handler__,
         }
         if (num_sym_op__) {
             if (sim_ctx.use_symmetry()) {
-                *num_sym_op__ = sim_ctx.unit_cell().symmetry().num_mag_sym();
+                *num_sym_op__ = sim_ctx.unit_cell().symmetry().size();
             } else {
                 *num_sym_op__ = 0;
             }

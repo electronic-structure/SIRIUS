@@ -108,13 +108,9 @@ void Atom_type::init(int offset_lo__)
                 indexr_wfs_.add(ps_atomic_wfs_[i].am);
             }
         }
-        //for (auto& e: ps_atomic_wfs_) {
-        //    /* add angular quantum number to the list */
-        //    indexr_wfs_.add(e.am);
-        //}
         indexb_wfs_ = sirius::experimental::basis_functions_index(indexr_wfs_, false);
         if (static_cast<int>(ps_atomic_wfs_.size()) != indexr_wfs_.size()) {
-            TERMINATE("[sirius::Atom_type::init] wrong size of atomic orbital list");
+            RTE_THROW("wrong size of atomic orbital list");
         }
     }
 
@@ -325,7 +321,7 @@ void Atom_type::read_input_core(json const& parser)
         if (size % 2) {
             std::stringstream s;
             s << "wrong core configuration string : " << core_str;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         int j = 0;
         while (j < size) {
@@ -744,7 +740,7 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     // TODO: pass radial function for l or for j=l+1/2 j=l-1/2 and don't rely on the list of pseudoatomic wfs
 
     if (n__ <= 0) {
-        TERMINATE("negative principal quantum number");
+        RTE_THROW("negative principal quantum number");
     }
 
     /* we have to find one (or two in case of spin-orbit) atomic functions and construct hubbard orbital */
@@ -763,7 +759,7 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     }
     if (idx_rf.size() == 0) {
         std::stringstream s;
-        s << "[add_hubbard_orbital] atomic radial function is not found for atom type " << label_ << std::endl
+        s << "atomic radial function is not found for atom type " << label_ << std::endl
           << "  the following atomic wave-functions are set: " << std::endl;
         for (int k = 0; k < (int)ps_atomic_wfs_.size(); k++) {
             auto& e = ps_atomic_wfs_[k];
@@ -772,12 +768,12 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
             s << "  n=" << n << " l=" << aqn.l() << " j=" << aqn.j() << std::endl;
         }
         s << "  the following atomic orbital is requested for U-correction: n=" << n__ << " l=" << l__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     if (idx_rf.size() > 2) {
         std::stringstream s;
-        s << "[add_hubbard_orbital] number of atomic functions > 2";
-        TERMINATE(s);
+        s << "number of atomic functions > 2";
+        RTE_THROW(s);
     }
 
     /* create a scalar hubbard wave-function from one or two atomic radial functions */
@@ -793,11 +789,8 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     /* add a record in radial function index */
     indexr_hub_.add(sirius::experimental::angular_momentum(l__));
 
-    /* add radial function of Hubbard orbital to a list */
-    hubbard_radial_functions_.push_back(std::move(s.interpolate()));
-
     /* add Hubbard orbital descriptor to a list */
-    lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
+    lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__, std::move(s.interpolate()));
 }
 
 } // namespace
