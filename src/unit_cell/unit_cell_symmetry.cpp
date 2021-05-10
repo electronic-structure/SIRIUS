@@ -28,6 +28,65 @@ using namespace geometry3d;
 
 namespace sirius {
 
+static std::vector<int>
+find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matrix3d<int> const& R__,
+              vector3d<double> const& t__, double tolerance__)
+{
+    PROFILE("sirius::find_sym_atom");
+
+    std::vector<int> sym_atom(num_atoms__);
+
+    auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
+    {
+        auto diff = a - b;
+        for (int x: {0, 1, 2}) {
+            double dl = std::abs(diff[x]);
+            diff[x] = std::min(dl, 1 - dl);
+        }
+        return diff.length();
+    };
+
+    for (int ia = 0; ia < num_atoms__; ia++) {
+        /* spatial transform */
+        vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
+        /* apply crystal symmetry */
+        auto v = reduce_coordinates(dot(R__, pos) + t__);
+        double d0{1e10};
+        double j0{-1};
+        vector3d<double> p0;
+
+        int ja{-1};
+        /* check for equivalent atom; remember that the atomic positions are not necessarily in [0,1) interval
+           and the reduction of coordinates is required */
+        for (int k = 0; k < num_atoms__; k++) {
+            vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
+            /* find the distance between original and trasformed atoms */
+            double dist = distance(v.first, reduce_coordinates(pos1).first);
+            if (dist < tolerance__) {
+                ja = k;
+                break;
+            }
+            if (dist < d0) {
+                d0 = dist;
+                j0 = k;
+                p0 = pos1;
+            }
+        }
+
+        if (ja == -1) {
+            std::stringstream s;
+            s << "equivalent atom was not found\n"
+              << "  initial atom: " << ia << ", position : " << pos << ", reduced: " << v.first << "\n"
+              << "  nearest atom: " << j0 << ", position : " << p0 << ", reduced: " << reduce_coordinates(p0).first << "\n"
+              << "  distance between atoms: " << d0 << "\n"
+              << "  tolerance: " << tolerance__;
+            TERMINATE(s);
+        }
+        sym_atom[ia] = ja;
+    }
+    return sym_atom;
+}
+
 Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, std::vector<int> const& types__,
     mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
@@ -106,6 +165,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             sym_op.rotation = dot(dot(lattice_vectors_, matrix3d<double>(sym_op.R * p)), inverse_lattice_vectors_);
             /* get Euler angles of the rotation */
             sym_op.euler_angles = euler_angles(sym_op.rotation);
+            sym_op.sym_atom = find_sym_atom(num_atoms_, positions__, sym_op.R, sym_op.t, tolerance_);
             /* add symmetry operation to a list */
             space_group_symmetry_.push_back(sym_op);
         }
@@ -124,69 +184,71 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         sym_op.rotation = matrix3d<double>({{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}});
         /* get Euler angles of the rotation */
         sym_op.euler_angles = euler_angles(sym_op.rotation);
+        sym_op.sym_atom = std::vector<int>(num_atoms_);
+        std::iota(sym_op.sym_atom.begin(), sym_op.sym_atom.end(), 0);
         /* add symmetry operation to a list */
         space_group_symmetry_.push_back(sym_op);
     }
 
-    PROFILE_START("sirius::Unit_cell_symmetry|equiv");
-    sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
-    /* loop over spatial symmetries */
-    #pragma omp parallel for schedule(static)
-    for (int isym = 0; isym < num_spg_sym(); isym++) {
-        for (int ia = 0; ia < num_atoms_; ia++) {
-            auto R = space_group_symmetry(isym).R;
-            auto t = space_group_symmetry(isym).t;
-            /* spatial transform */
-            vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
-            /* apply crystal symmetry */
-            auto v = reduce_coordinates(dot(R, pos) + t);
-            auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
-            {
-                auto diff = a - b;
-                for (int x: {0, 1, 2}) {
-                    double dl = std::abs(diff[x]);
-                    diff[x] = std::min(dl, 1 - dl);
-                }
-                return diff.length();
-            };
+    //PROFILE_START("sirius::Unit_cell_symmetry|equiv");
+    //sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
+    ///* loop over spatial symmetries */
+    //#pragma omp parallel for schedule(static)
+    //for (int isym = 0; isym < num_spg_sym(); isym++) {
+    //    for (int ia = 0; ia < num_atoms_; ia++) {
+    //        auto R = space_group_symmetry(isym).R;
+    //        auto t = space_group_symmetry(isym).t;
+    //        /* spatial transform */
+    //        vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
+    //        /* apply crystal symmetry */
+    //        auto v = reduce_coordinates(dot(R, pos) + t);
+    //        auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
+    //        {
+    //            auto diff = a - b;
+    //            for (int x: {0, 1, 2}) {
+    //                double dl = std::abs(diff[x]);
+    //                diff[x] = std::min(dl, 1 - dl);
+    //            }
+    //            return diff.length();
+    //        };
 
-            double d0{1e10};
-            double j0{-1};
-            vector3d<double> p0;
+    //        double d0{1e10};
+    //        double j0{-1};
+    //        vector3d<double> p0;
 
-            int ja{-1};
-            /* check for equivalent atom; remember that the atomic positions are not necessarily in [0,1) interval
-               and the reduction of coordinates is required */
-            for (int k = 0; k < num_atoms_; k++) {
-                vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-                /* find the distance between original and trasformed atoms */
-                double dist = distance(v.first, reduce_coordinates(pos1).first);
-                if (dist < tolerance_) {
-                    ja = k;
-                    break;
-                }
-                if (dist < d0) {
-                    d0 = dist;
-                    j0 = k;
-                    p0 = pos1;
-                }
-            }
+    //        int ja{-1};
+    //        /* check for equivalent atom; remember that the atomic positions are not necessarily in [0,1) interval
+    //           and the reduction of coordinates is required */
+    //        for (int k = 0; k < num_atoms_; k++) {
+    //            vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
+    //            /* find the distance between original and trasformed atoms */
+    //            double dist = distance(v.first, reduce_coordinates(pos1).first);
+    //            if (dist < tolerance_) {
+    //                ja = k;
+    //                break;
+    //            }
+    //            if (dist < d0) {
+    //                d0 = dist;
+    //                j0 = k;
+    //                p0 = pos1;
+    //            }
+    //        }
 
-            if (ja == -1) {
-                std::stringstream s;
-                s << "[sirius::Unit_cell_symmetry] equivalent atom was not found\n"
-                  << "  initial atom: " << ia << " (type: " << types_[ia] << ", position : " << pos
-                  << ", reduced: " << v.first << ")\n"
-                  << "  nearest atom: " << j0 << " (type: " << types_[j0] << ", position : " << p0
-                  << ", reduced: " << reduce_coordinates(p0).first << ")\n"
-                  << "  distance between atoms: " << d0 << "\n"
-                  << "  tolerance: " << tolerance_;
-                TERMINATE(s);
-            }
-            sym_table_(ia, isym) = ja;
-        }
-    }
-    PROFILE_STOP("sirius::Unit_cell_symmetry|equiv");
+    //        if (ja == -1) {
+    //            std::stringstream s;
+    //            s << "[sirius::Unit_cell_symmetry] equivalent atom was not found\n"
+    //              << "  initial atom: " << ia << " (type: " << types_[ia] << ", position : " << pos
+    //              << ", reduced: " << v.first << ")\n"
+    //              << "  nearest atom: " << j0 << " (type: " << types_[j0] << ", position : " << p0
+    //              << ", reduced: " << reduce_coordinates(p0).first << ")\n"
+    //              << "  distance between atoms: " << d0 << "\n"
+    //              << "  tolerance: " << tolerance_;
+    //            TERMINATE(s);
+    //        }
+    //        sym_table_(ia, isym) = ja;
+    //    }
+    //}
+    //PROFILE_STOP("sirius::Unit_cell_symmetry|equiv");
 
     PROFILE_START("sirius::Unit_cell_symmetry|mag");
     /* loop over spatial symmetries */
@@ -204,7 +266,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             int n{0};
             /* check if all atoms transform under spatial and spin symmetries */
             for (int ia = 0; ia < num_atoms_; ia++) {
-                int ja = sym_table_(ia, isym);
+                int ja = space_group_symmetry(isym).sym_atom[ia]; //sym_table_(ia, isym);
 
                 /* now check that vector field transforms from atom ia to atom ja */
                 /* vector field of atom is expected to be in Cartesian coordinates */

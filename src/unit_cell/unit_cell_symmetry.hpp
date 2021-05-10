@@ -61,6 +61,8 @@ struct space_group_symmetry_descriptor
 
     /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
+
+    std::vector<int> sym_atom;
 };
 
 /// Descriptor of the magnetic group symmetry operation.
@@ -113,7 +115,7 @@ class Unit_cell_symmetry
     /// Symmetry table for atoms.
     /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
      *  transforms under symmetry operation. */
-    mdarray<int, 2> sym_table_;
+    //mdarray<int, 2> sym_table_;
 
     /// List of all space group symmetry operations.
     std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
@@ -217,7 +219,7 @@ class Unit_cell_symmetry
 
     inline int sym_table(int ia__, int isym__) const
     {
-        return sym_table_(ia__, isym__);
+        return space_group_symmetry_[isym__].sym_atom[ia__]; //sym_table_(ia__, isym__);
     }
 
     matrix3d<double> const& lattice_vectors() const
