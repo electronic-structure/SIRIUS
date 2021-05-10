@@ -112,11 +112,6 @@ class Unit_cell_symmetry
     /// Crystal structure descriptor returned by spglib.
     SpglibDataset* spg_dataset_{nullptr};
 
-    /// Symmetry table for atoms.
-    /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
-     *  transforms under symmetry operation. */
-    //mdarray<int, 2> sym_table_;
-
     /// List of all space group symmetry operations.
     std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
@@ -172,7 +167,7 @@ class Unit_cell_symmetry
         }
     }
 
-    matrix3d<double> transformation_matrix() const
+    inline auto transformation_matrix() const
     {
         if (spg_dataset_) {
             return matrix3d<double>(spg_dataset_->transformation_matrix);
@@ -181,7 +176,7 @@ class Unit_cell_symmetry
         }
     }
 
-    vector3d<double> origin_shift() const
+    inline auto origin_shift() const
     {
         if (spg_dataset_) {
             return vector3d<double>(spg_dataset_->origin_shift[0],
@@ -222,12 +217,12 @@ class Unit_cell_symmetry
         return space_group_symmetry_[isym__].sym_atom[ia__]; //sym_table_(ia__, isym__);
     }
 
-    matrix3d<double> const& lattice_vectors() const
+    auto const& lattice_vectors() const
     {
         return lattice_vectors_;
     }
 
-    matrix3d<double> const& inverse_lattice_vectors() const
+    auto const& inverse_lattice_vectors() const
     {
         return inverse_lattice_vectors_;
     }

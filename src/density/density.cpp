@@ -1078,7 +1078,22 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
     if (symmetrize__) {
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
+            std::vector<double_complex> dm_ref;
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
+                dm_ref = std::vector<double_complex>(density_matrix_.size());
+                std::copy(density_matrix_.at(memory_t::host),
+                          density_matrix_.at(memory_t::host) + density_matrix_.size(), dm_ref.begin());
+            }
             this->symmetrize_density_matrix();
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
+                double diff{0};
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                    diff = std::max(diff, std::abs(dm_ref[i] - density_matrix_[i]));
+                }
+                std::string status = (diff > 1e-8) ? "Fail" : "OK";
+                ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n",
+                        diff, status.c_str());
+            }
         }
     }
 
