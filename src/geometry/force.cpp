@@ -61,7 +61,7 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             vector3d<double> force_ia(&forces__(0, ia));
-            int ja = ctx_.unit_cell().symmetry().sym_table(ia, isym);
+            int ja = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.sym_atom[ia];
             auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
             if (location.rank == ctx_.comm().rank()) {
                 auto force_ja = dot(Rc, force_ia);

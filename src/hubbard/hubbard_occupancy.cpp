@@ -55,13 +55,12 @@ void Hubbard::symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__
         for (int i = 0; i < sym.num_mag_sym(); i++) {
             int  pr   = sym.magnetic_group_symmetry(i).spg_op.proper;
             auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
-            int isym  = sym.magnetic_group_symmetry(i).isym;
             SHT::rotation_matrix(lmax, eang, pr, rotm);
             auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 auto& atom_type = unit_cell_.atom(ia).type();
-                int   ja        = sym.sym_table(ia, isym);
+                int   ja        = sym.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
                 if (atom_type.hubbard_correction()) {
                     sirius::symmetrize(om__, unit_cell_.atom(ia).type().indexb_hub(), ia, ja,
                                        ctx_.num_mag_comp(), rotm, spin_rot_su2, dm, true);

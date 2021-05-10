@@ -74,7 +74,7 @@ struct magnetic_group_symmetry_descriptor
     /// Index of the space group symmetry operation.
     /** This index is used to search for the transfomation of atoms under the current space group operation
      *  in the precomputed symmetry table. */
-    int isym;
+    //int isym;
 
     /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation;
@@ -212,10 +212,10 @@ class Unit_cell_symmetry
         return magnetic_group_symmetry_[isym__];
     }
 
-    inline int sym_table(int ia__, int isym__) const
-    {
-        return space_group_symmetry_[isym__].sym_atom[ia__]; //sym_table_(ia__, isym__);
-    }
+    //inline int sym_table(int ia__, int isym__) const
+    //{
+    //    return space_group_symmetry_[isym__].sym_atom[ia__]; //sym_table_(ia__, isym__);
+    //}
 
     auto const& lattice_vectors() const
     {

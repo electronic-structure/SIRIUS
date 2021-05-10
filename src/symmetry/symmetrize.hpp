@@ -351,11 +351,10 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         /* full space-group symmetry operation is {R|t} */
         int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
@@ -397,12 +396,11 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         /* full space-group symmetry operation is {R|t} */
         int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
         auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 double a = alpha * S(2, 2);
@@ -446,12 +444,11 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         /* full space-group symmetry operation is {R|t} */
         int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
         auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {

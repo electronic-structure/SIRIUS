@@ -1652,12 +1652,11 @@ void Density::symmetrize_density_matrix()
     for (int i = 0; i < sym.num_mag_sym(); i++) {
         int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym  = sym.magnetic_group_symmetry(i).isym;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
         auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int ja = sym.sym_table(ia, isym);
+            int ja = sym.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
 
             sirius::symmetrize(density_matrix_, unit_cell_.atom(ia).type().indexb(), ia, ja, ndm, rotm, spin_rot_su2,
                                dm, false);
