@@ -71,11 +71,6 @@ struct magnetic_group_symmetry_descriptor
     /// Element of space group symmetry.
     space_group_symmetry_descriptor spg_op;
 
-    /// Index of the space group symmetry operation.
-    /** This index is used to search for the transfomation of atoms under the current space group operation
-     *  in the precomputed symmetry table. */
-    //int isym;
-
     /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation;
 
