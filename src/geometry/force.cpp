@@ -54,14 +54,14 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
     sddk::mdarray<double, 2> sym_forces(3, ctx_.unit_cell().spl_num_atoms().local_size());
     sym_forces.zero();
 
-    for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
+    for (int isym = 0; isym < ctx_.unit_cell().symmetry().size(); isym++) {
         auto Rc = dot(dot(ctx_.unit_cell().symmetry().lattice_vectors(),
-                  matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R)),
+                  matrix3d<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
                   ctx_.unit_cell().symmetry().inverse_lattice_vectors());
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             vector3d<double> force_ia(&forces__(0, ia));
-            int ja = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.sym_atom[ia];
+            int ja = ctx_.unit_cell().symmetry()[isym].spg_op.sym_atom[ia];
             auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
             if (location.rank == ctx_.comm().rank()) {
                 auto force_ja = dot(Rc, force_ia);
@@ -72,7 +72,7 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
         }
     }
 
-    double alpha = 1.0 / double(ctx_.unit_cell().symmetry().num_mag_sym());
+    double alpha = 1.0 / double(ctx_.unit_cell().symmetry().size());
     for (int ia = 0; ia < ctx_.unit_cell().spl_num_atoms().local_size(); ia++) {
         for (int x: {0, 1, 2}) {
             sym_forces(x, ia) *= alpha;

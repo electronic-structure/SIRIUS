@@ -102,10 +102,10 @@ class Unit_cell_symmetry
     std::vector<int> types_;
 
     /// Atomic positions.
-    mdarray<double, 2> positions_;
+    sddk::mdarray<double, 2> positions_;
 
     /// Magnetic moments of atoms.
-    mdarray<double, 2> magnetization_;
+    sddk::mdarray<double, 2> magnetization_;
 
     double tolerance_;
 
@@ -118,11 +118,23 @@ class Unit_cell_symmetry
     /// List of all magnetic group symmetry operations.
     std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
+    /// Number of crystal symmetries without magnetic configuration.
+    inline int num_spg_sym() const
+    {
+        return static_cast<int>(space_group_symmetry_.size());
+    }
+
+    inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
+    {
+        assert(isym__ >= 0 && isym__ < num_spg_sym());
+        return space_group_symmetry_[isym__];
+    }
+
   public:
 
     Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, std::vector<int> const& types__,
-                       mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__, bool spin_orbit__,
-                       double tolerance__, bool use_sym__);
+                       sddk::mdarray<double, 2> const& positions__, sddk::mdarray<double, 2> const& spins__,
+                       bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Unit_cell_symmetry()
     {
@@ -149,19 +161,19 @@ class Unit_cell_symmetry
         }
     }
 
-    inline std::string international_symbol()
+    inline auto international_symbol()
     {
         if (spg_dataset_) {
-            return spg_dataset_->international_symbol;
+            return std::string(spg_dataset_->international_symbol);
         } else {
             return std::string("n/a");
         }
     }
 
-    inline std::string hall_symbol()
+    inline auto hall_symbol()
     {
         if (spg_dataset_) {
-            return spg_dataset_->hall_symbol;
+            return std::string(spg_dataset_->hall_symbol);
         } else {
             return std::string("n/a");
         }
@@ -187,35 +199,18 @@ class Unit_cell_symmetry
         }
     }
 
-    /// Number of crystal symmetries without magnetic configuration.
-    inline int num_spg_sym() const
-    {
-        return static_cast<int>(space_group_symmetry_.size());
-    }
-
-    inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
-    {
-        assert(isym__ >= 0 && isym__ < num_spg_sym());
-        return space_group_symmetry_[isym__];
-    }
-
     /// Number of symmetries including the magnetic configuration.
     /** This is less or equal to the number of crystal symmetries. */
-    inline int num_mag_sym() const
+    inline int size() const
     {
         return static_cast<int>(magnetic_group_symmetry_.size());
     }
 
-    inline magnetic_group_symmetry_descriptor const& magnetic_group_symmetry(int isym__) const
+    inline auto const& operator[](int isym__) const
     {
-        assert(isym__ >= 0 && isym__ < num_mag_sym());
+        assert(isym__ >= 0 && isym__ < this->size());
         return magnetic_group_symmetry_[isym__];
     }
-
-    //inline int sym_table(int ia__, int isym__) const
-    //{
-    //    return space_group_symmetry_[isym__].sym_atom[ia__]; //sym_table_(ia__, isym__);
-    //}
 
     auto const& lattice_vectors() const
     {

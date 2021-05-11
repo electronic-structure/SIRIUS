@@ -35,11 +35,11 @@ get_irreducible_reciprocal_mesh(Unit_cell_symmetry const& sym__, vector3d<int> k
     using M = std::array<std::array<int, 3>, 3>;
     std::map<M, int> sym_map;
 
-    for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+    for (int isym = 0; isym < sym__.size(); isym++) {
         M s;
         for (int x: {0, 1, 2}) {
             for (int y: {0, 1, 2}) {
-                s[x][y] = sym__.magnetic_group_symmetry(isym).spg_op.R(x, y);
+                s[x][y] = sym__[isym].spg_op.R(x, y);
             }
         }
         sym_map[s] = 1;

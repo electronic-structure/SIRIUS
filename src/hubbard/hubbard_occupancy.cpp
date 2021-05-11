@@ -41,26 +41,26 @@ void Hubbard::symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__
 {
     auto& sym = unit_cell_.symmetry();
 
-    // check if we have some symmetries
-    if (sym.num_mag_sym()) {
+    /* check if we have some symmetries */
+    if (sym.size()) {
         int lmax  = unit_cell_.lmax();
         int lmmax = utils::lmmax(lmax);
 
         mdarray<double, 2> rotm(lmmax, lmmax);
         mdarray<double_complex, 4> dm(om__.size(0), om__.size(1), om__.size(2), unit_cell_.num_atoms());
-        double alpha = 1.0 / static_cast<double>(sym.num_mag_sym());
+        double alpha = 1.0 / static_cast<double>(sym.size());
 
         dm.zero();
 
-        for (int i = 0; i < sym.num_mag_sym(); i++) {
-            int  pr   = sym.magnetic_group_symmetry(i).spg_op.proper;
-            auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
+        for (int i = 0; i < sym.size(); i++) {
+            int  pr   = sym[i].spg_op.proper;
+            auto eang = sym[i].spg_op.euler_angles;
             SHT::rotation_matrix(lmax, eang, pr, rotm);
-            auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
+            auto spin_rot_su2 = rotation_matrix_su2(sym[i].spin_rotation);
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 auto& atom_type = unit_cell_.atom(ia).type();
-                int   ja        = sym.magnetic_group_symmetry(i).spg_op.sym_atom[ia];
+                int   ja        = sym[i].spg_op.sym_atom[ia];
                 if (atom_type.hubbard_correction()) {
                     sirius::symmetrize(om__, unit_cell_.atom(ia).type().indexb_hub(), ia, ja,
                                        ctx_.num_mag_comp(), rotm, spin_rot_su2, dm, true);
