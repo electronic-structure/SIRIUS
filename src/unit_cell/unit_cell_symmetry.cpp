@@ -247,7 +247,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
                 mag_op.spin_rotation_inv = inverse(Rspin);
                 mag_op.spin_rotation_su2 = rotation_matrix_su2(Rspin);
                 /* add symmetry to the list */
-                magnetic_group_symmetry_.push_back(mag_op);
+                magnetic_group_symmetry_.push_back(std::move(mag_op));
                 break;
             }
         }
