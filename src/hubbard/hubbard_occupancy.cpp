@@ -56,7 +56,7 @@ void Hubbard::symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__
             int  pr   = sym[i].spg_op.proper;
             auto eang = sym[i].spg_op.euler_angles;
             SHT::rotation_matrix(lmax, eang, pr, rotm);
-            auto spin_rot_su2 = rotation_matrix_su2(sym[i].spin_rotation);
+            auto spin_rot_su2 = sym[i].spin_rotation_su2;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 auto& atom_type = unit_cell_.atom(ia).type();

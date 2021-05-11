@@ -242,9 +242,10 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             /* if all atoms transform under spin rotaion, add it to a list */
             if (n == num_atoms_) {
                 magnetic_group_symmetry_descriptor mag_op;
-                mag_op.spg_op        = space_group_symmetry(isym);
-                mag_op.spin_rotation = Rspin;
+                mag_op.spg_op            = space_group_symmetry(isym);
+                mag_op.spin_rotation     = Rspin;
                 mag_op.spin_rotation_inv = inverse(Rspin);
+                mag_op.spin_rotation_su2 = rotation_matrix_su2(Rspin);
                 /* add symmetry to the list */
                 magnetic_group_symmetry_.push_back(mag_op);
                 break;

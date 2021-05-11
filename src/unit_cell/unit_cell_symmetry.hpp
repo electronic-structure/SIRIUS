@@ -76,6 +76,8 @@ struct magnetic_group_symmetry_descriptor
 
     /// Inverse of proper spin rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation_inv;
+
+    sddk::mdarray<std::complex<double>, 2> spin_rotation_su2;
 };
 
 /// Representation of the unit cell symmetry.
