@@ -151,7 +151,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
            have two. The inner product takes care of this case internally. */
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
+            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|1");
             dmatrix<double_complex> dm(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
@@ -163,9 +163,9 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             //if (is_device_memory(mem)) {
             //    dm.copy_to(memory_t::host);
             //}
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
+            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
 
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
+            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");
             dmatrix<double_complex> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
@@ -176,21 +176,22 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             if (is_device_memory(mem)) {
                 dm1.allocate(ctx_.mem_pool(mem)).copy_to(mem);
             }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|2");
+            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|2");
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
             /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
              * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
              * band occupancies. We need to compensate for it because it is taken into account in the
              * calculation of the hubbard potential */
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|3");
+            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|3");
             auto alpha = double_complex(kp__.weight() / ctx_.max_occupancy(), 0.0);
             linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
                 dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(memory_t::host);
             }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|3");
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|4");
+            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|3");
+
+            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|4");
             #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 const auto& atom = ctx_.unit_cell().atom(ia);
@@ -207,7 +208,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                     //}
                 }
             }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|4");
+            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|4");
         } // ispn
     }
 }

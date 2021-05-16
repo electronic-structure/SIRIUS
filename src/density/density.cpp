@@ -1180,7 +1180,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
     density_matrix_.zero();
 
-    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+    if (occupation_matrix_) {
         occupation_matrix_->zero();
     }
 
@@ -1234,7 +1234,7 @@ void Density::generate_valence(K_point_set const& ks__)
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
             }
-            if (ctx_.hubbard_correction()) {
+            if (occupation_matrix_) {
                 occupation_matrix_->add_k_point_contribution(*kp);
             }
         }

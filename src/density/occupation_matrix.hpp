@@ -30,8 +30,6 @@
 namespace sirius {
 
 class Occupation_matrix : public Hubbard_matrix {
-  private:
-    sddk::mdarray<double_complex, 4> data_;
   public:
     Occupation_matrix(Simulation_context& ctx__);
 
