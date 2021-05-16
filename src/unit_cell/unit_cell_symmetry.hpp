@@ -61,6 +61,8 @@ struct space_group_symmetry_descriptor
 
     /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
+
+    std::vector<int> sym_atom;
 };
 
 /// Descriptor of the magnetic group symmetry operation.
@@ -69,16 +71,13 @@ struct magnetic_group_symmetry_descriptor
     /// Element of space group symmetry.
     space_group_symmetry_descriptor spg_op;
 
-    /// Index of the space group symmetry operation.
-    /** This index is used to search for the transfomation of atoms under the current space group operation
-     *  in the precomputed symmetry table. */
-    int isym;
-
     /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation;
 
     /// Inverse of proper spin rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation_inv;
+
+    sddk::mdarray<std::complex<double>, 2> spin_rotation_su2;
 };
 
 /// Representation of the unit cell symmetry.
@@ -103,26 +102,33 @@ class Unit_cell_symmetry
     std::vector<int> types_;
 
     /// Atomic positions.
-    mdarray<double, 2> positions_;
+    sddk::mdarray<double, 2> positions_;
 
     /// Magnetic moments of atoms.
-    mdarray<double, 2> magnetization_;
+    sddk::mdarray<double, 2> magnetization_;
 
     double tolerance_;
 
     /// Crystal structure descriptor returned by spglib.
     SpglibDataset* spg_dataset_{nullptr};
 
-    /// Symmetry table for atoms.
-    /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
-     *  transforms under symmetry operation. */
-    mdarray<int, 2> sym_table_;
-
     /// List of all space group symmetry operations.
     std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
     /// List of all magnetic group symmetry operations.
     std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
+
+    /// Number of crystal symmetries without magnetic configuration.
+    inline int num_spg_sym() const
+    {
+        return static_cast<int>(space_group_symmetry_.size());
+    }
+
+    inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
+    {
+        assert(isym__ >= 0 && isym__ < num_spg_sym());
+        return space_group_symmetry_[isym__];
+    }
 
   public:
 
@@ -155,25 +161,25 @@ class Unit_cell_symmetry
         }
     }
 
-    inline std::string international_symbol() const
+    inline auto international_symbol() const
     {
         if (spg_dataset_) {
-            return spg_dataset_->international_symbol;
+            return std::string(spg_dataset_->international_symbol);
         } else {
             return std::string("n/a");
         }
     }
 
-    inline std::string hall_symbol() const
+    inline auto hall_symbol() const
     {
         if (spg_dataset_) {
-            return spg_dataset_->hall_symbol;
+            return std::string(spg_dataset_->hall_symbol);
         } else {
             return std::string("n/a");
         }
     }
 
-    matrix3d<double> transformation_matrix() const
+    inline auto transformation_matrix() const
     {
         if (spg_dataset_) {
             return matrix3d<double>(spg_dataset_->transformation_matrix);
@@ -182,7 +188,7 @@ class Unit_cell_symmetry
         }
     }
 
-    vector3d<double> origin_shift() const
+    inline auto origin_shift() const
     {
         if (spg_dataset_) {
             return vector3d<double>(spg_dataset_->origin_shift[0],
@@ -193,34 +199,17 @@ class Unit_cell_symmetry
         }
     }
 
-    /// Number of crystal symmetries without magnetic configuration.
-    inline int num_spg_sym() const
-    {
-        return static_cast<int>(space_group_symmetry_.size());
-    }
-
-    inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
-    {
-        assert(isym__ >= 0 && isym__ < num_spg_sym());
-        return space_group_symmetry_[isym__];
-    }
-
     /// Number of symmetries including the magnetic configuration.
     /** This is less or equal to the number of crystal symmetries. */
-    inline int num_mag_sym() const
+    inline int size() const
     {
         return static_cast<int>(magnetic_group_symmetry_.size());
     }
 
-    inline magnetic_group_symmetry_descriptor const& magnetic_group_symmetry(int isym__) const
+    inline auto const& operator[](int isym__) const
     {
-        assert(isym__ >= 0 && isym__ < num_mag_sym());
+        assert(isym__ >= 0 && isym__ < this->size());
         return magnetic_group_symmetry_[isym__];
-    }
-
-    inline int sym_table(int ia__, int isym__) const
-    {
-        return sym_table_(ia__, isym__);
     }
 
     auto const& lattice_vectors() const
@@ -261,9 +250,9 @@ class Unit_cell_symmetry
         auto mt = dot(transpose(lattice_vectors_), lattice_vectors_);
 
         double diff{0};
-        for (int isym = 0; isym < this->num_mag_sym(); isym++) {
+        for (auto const& e: magnetic_group_symmetry_) {
             /* rotation matrix in lattice coordinates */
-            auto R = this->magnetic_group_symmetry(isym).spg_op.R;
+            auto R = e.spg_op.R;
             auto mt1 = dot(dot(transpose(R), mt), R);
             for (int i: {0, 1, 2}) {
                 for (int j: {0, 1, 2}) {
@@ -282,8 +271,8 @@ class Unit_cell_symmetry
     inline double sym_op_R_error() const
     {
         double diff{0};
-        for (int isym = 0; isym < this->num_mag_sym(); isym++) {
-            auto R = this->magnetic_group_symmetry(isym).spg_op.rotation;
+        for (auto const& e: magnetic_group_symmetry_) {
+            auto R = e.spg_op.rotation;
             auto R1 = inverse(transpose(R));
             for (int i: {0, 1, 2}) {
                 for (int j: {0, 1, 2}) {

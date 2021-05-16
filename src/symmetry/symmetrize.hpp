@@ -116,7 +116,7 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
 
     std::vector<bool> is_done(ngv, false);
 
-    double norm = 1 / double(sym__.num_mag_sym());
+    double norm = 1 / double(sym__.size());
 
     auto phase_factor = [&](int isym, vector3d<int> G)
     {
@@ -152,10 +152,10 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
 
                 /* find the symmetrized PW coefficient */
 
-                for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    auto G1 = dot(G, sym__.magnetic_group_symmetry(i).spg_op.R);
+                for (int i = 0; i < sym__.size(); i++) {
+                    auto G1 = dot(G, sym__[i].spg_op.R);
 
-                    auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
+                    auto S = sym__[i].spin_rotation;
 
                     auto phase = std::conj(phase_factor(i, G));
 
@@ -212,10 +212,10 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
 
                 /* apply symmetry operation and get all other plane-wave coefficients */
 
-                for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-                    auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
+                for (int isym = 0; isym < sym__.size(); isym++) {
+                    auto S = sym__[isym].spin_rotation;
 
-                    auto G1 = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
+                    auto G1 = dot(sym__[isym].spg_op.invRT, G);
                     /* index of a rotated G-vector */
                     int ig1 = gvec_shells__.index_by_gvec(G1);
 
@@ -292,9 +292,9 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
     double diff{0};
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
         auto G = gvec_shells__.gvec_remapped(igloc);
-        for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-            auto S = sym__.magnetic_group_symmetry(isym).spin_rotation;
-            auto gv_rot = dot(sym__.magnetic_group_symmetry(isym).spg_op.invRT, G);
+        for (int isym = 0; isym < sym__.size(); isym++) {
+            auto S = sym__[isym].spin_rotation;
+            auto gv_rot = dot(sym__[isym].spg_op.invRT, G);
             /* index of a rotated G-vector */
             int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
             double_complex phase = std::conj(phase_factor(isym, gv_rot));
@@ -345,17 +345,16 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
     mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
     fsym.zero();
 
-    double alpha = 1.0 / double(sym__.num_mag_sym());
+    double alpha = 1.0 / double(sym__.size());
 
-    for (int i = 0; i < sym__.num_mag_sym(); i++) {
+    for (int i = 0; i < sym__.size(); i++) {
         /* full space-group symmetry operation is {R|t} */
-        int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
-        auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
+        int pr = sym__[i].spg_op.proper;
+        auto eang = sym__[i].spg_op.euler_angles;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__[i].spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
@@ -391,18 +390,17 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
     mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
     fsym.zero();
 
-    double alpha = 1.0 / double(sym__.num_mag_sym());
+    double alpha = 1.0 / double(sym__.size());
 
-    for (int i = 0; i < sym__.num_mag_sym(); i++) {
+    for (int i = 0; i < sym__.size(); i++) {
         /* full space-group symmetry operation is {R|t} */
-        int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
-        auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
-        auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
+        int pr = sym__[i].spg_op.proper;
+        auto eang = sym__[i].spg_op.euler_angles;
+        auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__[i].spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 double a = alpha * S(2, 2);
@@ -438,20 +436,19 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
 
     mdarray<double, 3> vtmp(lmmax, nrmax, 3);
 
-    double alpha = 1.0 / double(sym__.num_mag_sym());
+    double alpha = 1.0 / double(sym__.size());
 
     std::vector<mdarray<double, 3>*> vrlm({&vx_rlm__, &vy_rlm__, &vz_rlm__});
 
-    for (int i = 0; i < sym__.num_mag_sym(); i++) {
+    for (int i = 0; i < sym__.size(); i++) {
         /* full space-group symmetry operation is {R|t} */
-        int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
-        auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym = sym__.magnetic_group_symmetry(i).isym;
-        auto S = sym__.magnetic_group_symmetry(i).spin_rotation;
+        int pr = sym__[i].spg_op.proper;
+        auto eang = sym__[i].spg_op.euler_angles;
+        auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__[i].spg_op.sym_atom[ia];
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
@@ -625,7 +622,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
            std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
-    if (sym__.num_mag_sym() == 1) {
+    if (sym__.size() == 1) {
         return;
     }
 
@@ -641,11 +638,11 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
     }
 
     /* loop over symmetry operations */
-    for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-        int  pr   = sym__.magnetic_group_symmetry(isym).spg_op.proper;
-        auto eang = sym__.magnetic_group_symmetry(isym).spg_op.euler_angles;
+    for (int isym = 0; isym < sym__.size(); isym++) {
+        int  pr   = sym__[isym].spg_op.proper;
+        auto eang = sym__[isym].spg_op.euler_angles;
         auto rotm = sht::rotation_matrix<double>(lmax, eang, pr);
-        auto spin_rot_su2 = rotation_matrix_su2(sym__.magnetic_group_symmetry(isym).spin_rotation);
+        auto spin_rot_su2 = rotation_matrix_su2(sym__[isym].spin_rotation);
 
         for (int ia = 0; ia < sym__.num_atoms(); ia++) {
             int iat = sym__.atom_type(ia);
@@ -654,7 +651,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                 continue;
             }
 
-            int ja = sym__.sym_table(ia, isym);
+            int ja = sym__[isym].spg_op.sym_atom[ia];
 
             auto& indexb = *indexb__(iat);
             auto& indexr = indexb.indexr();
@@ -735,7 +732,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
         }
     }
 
-    double alpha = 1.0 / sym__.num_mag_sym();
+    double alpha = 1.0 / sym__.size();
 
     for (size_t i = 0; i < dm__.size(); i++) {
         dm__[i] = dmsym[i] * alpha;

@@ -917,7 +917,9 @@ inline void copy(Density const& src__, Density& dest__)
         }
     }
     copy(src__.density_matrix(), dest__.density_matrix());
-    copy(src__.occupation_matrix(), dest__.occupation_matrix());
+    if (src__.ctx().hubbard_correction()) {
+        copy(src__.occupation_matrix(), dest__.occupation_matrix());
+    }
 }
 
 template <bool add_pseudo_core__>

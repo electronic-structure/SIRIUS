@@ -35,8 +35,8 @@ inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& sym__)
     int gvec_offset = gvec__.offset();
 
     #pragma omp parallel for
-    for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
-        auto sm = sym__.magnetic_group_symmetry(isym).spg_op.R;
+    for (int isym = 0; isym < sym__.size(); isym++) {
+        auto sm = sym__[isym].spg_op.R;
 
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
@@ -95,8 +95,8 @@ inline void check_gvec(Gvec_shells const& gvec_shells__, Unit_cell_symmetry cons
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
         auto G = gvec_shells__.gvec_remapped(igloc);
 
-        for (int i = 0; i < sym__.num_mag_sym(); i++) {
-            auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
+        for (int i = 0; i < sym__.size(); i++) {
+            auto& invRT = sym__[i].spg_op.invRT;
             auto gv_rot = dot(invRT, G);
 
             /* local index of a rotated G-vector */

@@ -28,11 +28,11 @@ int run_test_impl(cmd_args& args)
     Unit_cell_symmetry symmetry(lattice, num_atoms, 1, types, positions, spins, spin_orbit, spg_tol, use_sym);
 
     for (int iter = 0; iter < 10; iter++) {
-        for (int isym = 0; isym < symmetry.num_mag_sym(); isym++) {
+        for (int isym = 0; isym < symmetry.size(); isym++) {
 
-            auto ang = symmetry.magnetic_group_symmetry(isym).spg_op.euler_angles;
+            auto ang = symmetry[isym].spg_op.euler_angles;
 
-            int proper_rotation = symmetry.magnetic_group_symmetry(isym).spg_op.proper;
+            int proper_rotation = symmetry[isym].spg_op.proper;
 
             /* random Cartesian vector */
             vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
@@ -43,14 +43,14 @@ int run_test_impl(cmd_args& args)
             /* compute spherical harmonics at original coordinate */
             sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
 
-            /* rotate coordinates with inverse operation */
-            auto rotm = inverse(symmetry.magnetic_group_symmetry(isym).spg_op.rotation * double(proper_rotation));
+            auto rotm = inverse(symmetry[isym].spg_op.rotation * double(proper_rotation));
 
             /* rotated coordinates */
             auto coord2 = dot(rotm, coord);
             auto scoord2 = SHT::spherical_coordinates(coord2);
 
             sddk::mdarray<T, 1> ylm2(utils::lmmax(lmax));
+
             /* compute spherical harmonics at rotated coordinates */
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 

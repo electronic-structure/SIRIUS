@@ -398,8 +398,8 @@ void Simulation_context::initialize()
         auto lat_sym = find_lat_sym(lv, 1e-6);
 
         #pragma omp parallel for
-        for (int i = 0; i < unit_cell().symmetry().num_mag_sym(); i++) {
-            auto& spgR = unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.R;
+        for (int i = 0; i < unit_cell().symmetry().size(); i++) {
+            auto& spgR = unit_cell().symmetry()[i].spg_op.R;
             bool found{false};
             for (size_t i = 0; i < lat_sym.size(); i++) {
                 auto latR = lat_sym[i];
@@ -1182,12 +1182,12 @@ void Simulation_context::update()
     }
 
     if (use_symmetry()) {
-        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
+        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().size());
 
         #pragma omp parallel for
         for (int i = limits.first; i <= limits.second; i++) {
-            for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
-                auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
+            for (int isym = 0; isym < unit_cell().symmetry().size(); isym++) {
+                auto t = unit_cell().symmetry()[isym].spg_op.t;
                 for (int x : {0, 1, 2}) {
                     sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
                 }

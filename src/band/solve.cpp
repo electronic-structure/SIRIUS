@@ -90,7 +90,7 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
     }
 
     /* check residuals */
-    if (ctx_.cfg().control().verification() >= 1) {
+    if (ctx_.cfg().control().verification() >= 2) {
         check_residuals<T>(Hk__);
         check_wave_functions<T>(Hk__);
     }
