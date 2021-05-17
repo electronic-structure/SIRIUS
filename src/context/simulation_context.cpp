@@ -929,13 +929,13 @@ void Simulation_context::update()
 
     /* create or update radial integrals */
     if (!full_potential()) {
-        try {
-            /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1
-               and we need to adjust the cutoff */
-            double d = omega0_ / unit_cell().omega();
-            double new_gk_cutoff = d * this->gk_cutoff();
-            double new_pw_cutoff = d * this->pw_cutoff();
+        /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1
+           and we need to adjust the cutoff */
+        double d = omega0_ / unit_cell().omega();
+        double new_gk_cutoff = d * this->gk_cutoff();
+        double new_pw_cutoff = d * this->pw_cutoff();
 
+        try {
             /* radial integrals with pw_cutoff */
             if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
                 aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
