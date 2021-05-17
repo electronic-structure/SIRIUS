@@ -1078,7 +1078,22 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
     if (symmetrize__) {
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
+            std::vector<double_complex> dm_ref;
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
+                dm_ref = std::vector<double_complex>(density_matrix_.size());
+                std::copy(density_matrix_.at(memory_t::host),
+                          density_matrix_.at(memory_t::host) + density_matrix_.size(), dm_ref.begin());
+            }
             this->symmetrize_density_matrix();
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
+                double diff{0};
+                for (size_t i = 0; i < density_matrix_.size(); i++) {
+                    diff = std::max(diff, std::abs(dm_ref[i] - density_matrix_[i]));
+                }
+                std::string status = (diff > 1e-8) ? "Fail" : "OK";
+                ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n",
+                        diff, status.c_str());
+            }
         }
     }
 
@@ -1634,22 +1649,21 @@ void Density::symmetrize_density_matrix()
     int lmmax = utils::lmmax(lmax);
     mdarray<double, 2> rotm(lmmax, lmmax);
 
-    for (int i = 0; i < sym.num_mag_sym(); i++) {
-        int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
-        auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
-        int isym  = sym.magnetic_group_symmetry(i).isym;
+    for (int i = 0; i < sym.size(); i++) {
+        int pr    = sym[i].spg_op.proper;
+        auto eang = sym[i].spg_op.euler_angles;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
-        auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
+        auto& spin_rot_su2 = sym[i].spin_rotation_su2;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int ja = sym.sym_table(ia, isym);
+            int ja = sym[i].spg_op.sym_atom[ia];
 
             sirius::symmetrize(density_matrix_, unit_cell_.atom(ia).type().indexb(), ia, ja, ndm, rotm, spin_rot_su2,
                                dm, false);
         }
     }
 
-    double alpha = 1.0 / double(sym.num_mag_sym());
+    double alpha = 1.0 / double(sym.size());
     /* multiply by alpha which is the inverse of the number of symmetries */
     auto a = dm.at(memory_t::host);
     for (auto i = 0u; i < dm.size(); i++) {

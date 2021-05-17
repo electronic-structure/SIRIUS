@@ -467,7 +467,7 @@ inline matrix3d<T> inverse(matrix3d<T> src)
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
+inline std::ostream& operator<<(std::ostream& out, matrix3d<T> const& v)
 {
     out << "{";
     for (int i = 0; i < 3; i++) {

@@ -34,7 +34,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     PROFILE("sirius::Field4D::symmetrize");
 
     /* quick exit: the only symmetry operation is identity */
-    if (ctx_.unit_cell().symmetry().num_mag_sym() == 1) {
+    if (ctx_.unit_cell().symmetry().size() == 1) {
         return;
     }
 
