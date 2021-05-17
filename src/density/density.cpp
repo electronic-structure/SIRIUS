@@ -1083,12 +1083,20 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             std::vector<double_complex> dm_ref;
+            std::vector<double_complex> om_ref;
+
             /* copy density matrix for future comparison */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
                 dm_ref = std::vector<double_complex>(density_matrix_.size());
-                std::copy(density_matrix_.at(memory_t::host),
-                          density_matrix_.at(memory_t::host) + density_matrix_.size(), dm_ref.begin());
+                std::copy(density_matrix_.begin(), density_matrix_.end(), dm_ref.begin());
             }
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
+                occupation_matrix_) {
+                om_ref = std::vector<double_complex>(occupation_matrix_->data().size());
+                std::copy(occupation_matrix_->data().begin(), occupation_matrix_->data().end(), om_ref.begin());
+            }
+
+            /* symmetrize */
             this->symmetrize_density_matrix();
 
             if (ctx_.hubbard_correction()) {
@@ -1102,6 +1110,7 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
 
                 sirius::symmetrize(occupation_matrix_->data(), ctx_.num_mag_comp(), ctx_.unit_cell().symmetry(), f);
             }
+
             /* compare with reference density matrix */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
                 double diff{0};
@@ -1110,7 +1119,17 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
                 ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n",
-                        diff, status.c_str());
+                             diff, status.c_str());
+            }
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
+                occupation_matrix_) {
+                double diff{0};
+                for (size_t i = 0; i < occupation_matrix_->data().size(); i++) {
+                    diff = std::max(diff, std::abs(om_ref[i] - occupation_matrix_->data()[i]));
+                }
+                std::string status = (diff > 1e-8) ? "Fail" : "OK";
+                ctx_.message(1, __function_name__, "error of the LDA+U occupation matrix symmetrization: %12.6e %s\n",
+                             diff, status.c_str());
             }
         }
     }

@@ -27,30 +27,32 @@ int run_test_impl(cmd_args& args)
 
     Unit_cell_symmetry symmetry(lattice, num_atoms, 1, types, positions, spins, spin_orbit, spg_tol, use_sym);
 
+    /* test P^{-1} R_{lm}(r) = R_{lm}(P r) */
+
     for (int iter = 0; iter < 10; iter++) {
         for (int isym = 0; isym < symmetry.size(); isym++) {
 
-            auto ang = symmetry[isym].spg_op.euler_angles;
-
             int proper_rotation = symmetry[isym].spg_op.proper;
+            /* rotation matrix in lattice coordinates */
+            auto R = symmetry[isym].spg_op.R;
+            /* rotation in Cartesian coord */
+            auto Rc = dot(dot(lattice, R), inverse(lattice));
+            /* Euler angles of the proper part of rotation */
+            auto ang = symmetry[isym].spg_op.euler_angles;
 
             /* random Cartesian vector */
             vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
             auto scoord = SHT::spherical_coordinates(coord);
+            /* rotated coordinates */
+            auto coord2 = dot(Rc, coord);
+            auto scoord2 = SHT::spherical_coordinates(coord2);
 
             int lmax{10};
             sddk::mdarray<T, 1> ylm(utils::lmmax(lmax));
             /* compute spherical harmonics at original coordinate */
             sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
 
-            auto rotm = inverse(symmetry[isym].spg_op.rotation * double(proper_rotation));
-
-            /* rotated coordinates */
-            auto coord2 = dot(rotm, coord);
-            auto scoord2 = SHT::spherical_coordinates(coord2);
-
             sddk::mdarray<T, 1> ylm2(utils::lmmax(lmax));
-
             /* compute spherical harmonics at rotated coordinates */
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 
@@ -61,10 +63,10 @@ int run_test_impl(cmd_args& args)
             sddk::mdarray<T, 1> ylm1(utils::lmmax(lmax));
             ylm1.zero();
 
-            /* rotate original sperical harmonics */
+            /* rotate original sperical harmonics with P^{-1} */
             for (int i = 0; i < utils::lmmax(lmax); i++) {
                 for (int j = 0; j < utils::lmmax(lmax); j++) {
-                    ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
+                    ylm1(i) += utils::conj(ylm_rot_mtrx(i, j)) * ylm(j);
                 }
             }
 
@@ -74,6 +76,11 @@ int run_test_impl(cmd_args& args)
                 d1 += std::abs(ylm1(i) - ylm2(i));
             }
             if (d1 > 1e-10) {
+                for (int i = 0; i < utils::lmmax(lmax); i++) {
+                    if (std::abs(ylm1(i) - ylm2(i)) > 1e-10) {
+                        std::cout << "lm="<< i << " " << ylm1(i) << " " << ylm2(i) << " " << std::abs(ylm1(i) - ylm2(i)) << std::endl;
+                    }
+                }
                 return 1;
             }
         }

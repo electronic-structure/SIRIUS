@@ -679,7 +679,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                                 for (int m1p = 0; m1p < ss1; m1p++) {
                                     for (int m2p = 0; m2p < ss2; m2p++) {
                                         dm_ia(m1, m2, j) += rotm[am1.l()](m1, m1p) *
-                                            dm__(offset1 + m1p, offset2 + m2p, j, ja) *
+                                            dm__(offset1 + m1p, offset2 + m2p, j, ia) *
                                             rotm[am2.l()](m2, m2p);
                                     }
                                 }
@@ -690,7 +690,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                     if (num_mag_comp__ == 1) { /* trivial non-magnetic case */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
-                                dmsym(m1 + offset1, m2 + offset2, 0, ia) += dm_ia(m1, m2, 0);
+                                dmsym(m1 + offset1, m2 + offset2, 0, ja) += dm_ia(m1, m2, 0);
                             }
                         }
                     } else {
@@ -706,20 +706,16 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                                         dm[0][1] = dm_ia(m1, m2, 2);
                                         dm[1][0] = std::conj(dm[0][1]);
                                     }
-                                    assert(dm[0][0] == dm[0][0]);
-                                    assert(dm[1][1] == dm[1][1]);
-                                    assert(dm[1][0] == dm[1][0]);
-                                    assert(dm[0][1] == dm[0][1]);
 
                                     for (int s1p = 0; s1p < 2; s1p++) {
                                         for (int s2p = 0; s2p < 2; s2p++) {
-                                            dmsym(m1 + offset1, m2 + offset2, j, ia) +=
+                                            dmsym(m1 + offset1, m2 + offset2, j, ja) +=
                                                 spin_rot_su2(s1, s1p) * dm[s1p][s2p] *
                                                 std::conj(spin_rot_su2(s2, s2p));
                                         }
                                     }
                                     if (num_mag_comp__ == 3) {
-                                        dmsym(m1 + offset1, m2 + offset2, 3, ia) =
+                                        dmsym(m1 + offset1, m2 + offset2, 3, ja) =
                                             std::conj(dmsym(m1 + offset1, m2 + offset2, 2, ia));
                                     }
                                 }
