@@ -223,16 +223,16 @@ class radial_functions_index
         }
     }
 
-    auto spins(int l__, int o__) const
+    auto subshell(int l__, int o__) const
     {
         if (full_j(l__, o__)) {
             if (l__ == 0) {
-                return std::vector<int>({1});
+                return std::vector<angular_momentum>({angular_momentum(l__, 1)});
             } else {
-                return std::vector<int>({-1, 1});
+                return std::vector<angular_momentum>({angular_momentum(l__, -1), angular_momentum(l__, 1)});
             }
         } else {
-            return std::vector<int>({0});
+            return std::vector<angular_momentum>({angular_momentum(l__)});
         }
     }
 
@@ -244,8 +244,8 @@ class radial_functions_index
     inline auto subshell_size(int l__, int o__) const
     {
         int size{0};
-        for (auto s: spins(l__, o__)) {
-            size += angular_momentum(l__, s).subshell_size();
+        for (auto j: subshell(l__, o__)) {
+            size += j.subshell_size();
         }
         return size;
     }

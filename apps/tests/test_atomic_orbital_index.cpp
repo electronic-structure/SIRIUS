@@ -34,8 +34,8 @@ int run_test(cmd_args& args)
 
     for (int l = 0; l < 3; l++) {
         for (int o = 0; o < ri.max_order(l); o++) {
-            for (auto s: ri.spins(l, o)) {
-                int idx = ri.index_of(sirius::experimental::angular_momentum(l, s), o);
+            for (auto j: ri.subshell(l, o)) {
+                int idx = ri.index_of(j, o);
                 std::cout << idx << " " << ri.am(idx).l() << " " << ri.am(idx).s() << std::endl;
             }
         }

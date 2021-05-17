@@ -1078,4 +1078,27 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
     }
 }
 
+void
+K_point::compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
+                                         Wave_functions& dphi, const int starting_position_j, const int direction)
+{
+    std::vector<double_complex> qalpha(this->num_gkvec_loc());
+
+    for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+        auto G = this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc);
+
+        qalpha[igk_loc] = double_complex(0.0, -G[direction]);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int nphi = 0; nphi < num_wf; nphi++) {
+        for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+            for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+                dphi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_j) =
+                    qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_i);
+            }
+        }
+    }
+}
+
 }
