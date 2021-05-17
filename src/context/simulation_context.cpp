@@ -390,6 +390,8 @@ void Simulation_context::initialize()
     unit_cell().initialize();
     /* save the volume of the initial unit cell */
     omega0_ = unit_cell().omega();
+    /* save initial lattice vectors */
+    lattice_vectors0_ = unit_cell().lattice_vectors();
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
@@ -927,101 +929,113 @@ void Simulation_context::update()
 
     /* create or update radial integrals */
     if (!full_potential()) {
-        /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1
-           and we need to adjust the cutoff */
-        double d = omega0_ / unit_cell().omega();
-        double new_gk_cutoff = d * this->gk_cutoff();
-        double new_pw_cutoff = d * this->pw_cutoff();
+        try {
+            /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1
+               and we need to adjust the cutoff */
+            double d = omega0_ / unit_cell().omega();
+            double new_gk_cutoff = d * this->gk_cutoff();
+            double new_pw_cutoff = d * this->pw_cutoff();
 
-        /* radial integrals with pw_cutoff */
-        if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
-            aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_callback_));
+            /* radial integrals with pw_cutoff */
+            if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
+                aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
+                    new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_callback_));
+            }
+
+            if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
+                aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
+                    new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_djl_callback_));
+            }
+
+            if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
+                ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
+                    new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
+                        rhoc_ri_callback_));
+            }
+
+            if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
+                ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
+                    new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
+                        rhoc_ri_djl_callback_));
+            }
+
+            if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
+                ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
+                    new Radial_integrals_rho_pseudo(unit_cell(), new_pw_cutoff, 20, ps_rho_ri_callback_));
+            }
+
+            if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
+                vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
+                    new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
+                        vloc_ri_callback_));
+            }
+
+            if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {
+                vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
+                    new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
+                        vloc_ri_djl_callback_));
+            }
+
+            /* radial integrals with pw_cutoff */
+            if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
+                beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
+                    new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_callback_));
+            }
+
+            if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
+                beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
+                    new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
+            }
+
+            auto idxr_wf = [&](int iat)->sirius::experimental::radial_functions_index const&
+            {
+                return unit_cell().atom_type(iat).indexr_wfs();
+            };
+
+            auto ps_wf = [&](int iat, int i)->Spline<double> const&
+            {
+                return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
+            };
+
+            if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
+                atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                    new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
+            }
+
+            if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
+                atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                    new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
+            }
+
+            auto idxr_wf_hub = [&](int iat)->sirius::experimental::radial_functions_index const&
+            {
+                return unit_cell().atom_type(iat).indexr_hub();
+            };
+
+            auto ps_wf_hub = [&](int iat, int i)->Spline<double> const&
+            {
+                return unit_cell().atom_type(iat).hubbard_radial_function(i);
+            };
+
+            if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() < new_gk_cutoff) {
+                hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                    new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
+            }
+
+            if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() < new_gk_cutoff) {
+                hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                    new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
+            }
         }
-
-        if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
-            aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_djl_callback_));
-        }
-
-        if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
-            ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
-                    rhoc_ri_callback_));
-        }
-
-        if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
-            ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
-                    rhoc_ri_djl_callback_));
-        }
-
-        if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
-            ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
-                new Radial_integrals_rho_pseudo(unit_cell(), new_pw_cutoff, 20, ps_rho_ri_callback_));
-        }
-
-        if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
-            vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
-                    vloc_ri_callback_));
-        }
-
-        if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {
-            vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
-                    vloc_ri_djl_callback_));
-        }
-
-        /* radial integrals with pw_cutoff */
-        if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
-            beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_callback_));
-        }
-
-        if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
-            beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
-        }
-
-        auto idxr_wf = [&](int iat)->sirius::experimental::radial_functions_index const&
-        {
-            return unit_cell().atom_type(iat).indexr_wfs();
-        };
-
-        auto ps_wf = [&](int iat, int i)->Spline<double> const&
-        {
-            return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
-        };
-
-        if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
-        }
-
-        if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
-        }
-
-        auto idxr_wf_hub = [&](int iat)->sirius::experimental::radial_functions_index const&
-        {
-            return unit_cell().atom_type(iat).indexr_hub();
-        };
-
-        auto ps_wf_hub = [&](int iat, int i)->Spline<double> const&
-        {
-            return unit_cell().atom_type(iat).hubbard_radial_function(i);
-        };
-
-        if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
-        }
-
-        if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
+        catch (std::runtime_error const& e) {
+            std::stringstream s;
+            s << "error computing radial integrals" << std::endl
+              << "  new_gk_cutoff : " << new_gk_cutoff << std::endl
+              << "  new_pw_cutoff : " << new_pw_cutoff << std::endl
+              << "  initial unit cell volume : " << omega0_ << std::endl
+              << "  intital lattice vectors : " << lattice_vectors0_ << std::endl
+              << "  current lattice vectors : " << this->unit_cell().lattice_vectors();
+            RTE_THROW(s, e.what());
         }
     }
 
