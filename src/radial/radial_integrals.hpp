@@ -27,6 +27,7 @@
 
 #include "unit_cell/unit_cell.hpp"
 #include "specfunc/sbessel.hpp"
+#include "utils/rte.hpp"
 
 namespace sirius {
 
@@ -72,10 +73,12 @@ class Radial_integrals_base
     {
         if (q__ > grid_q_.last()) {
             std::stringstream s;
-            s << "[sirius::Radial_integrals_base::iqdq] q-point is out of range" << std::endl
+            s << "q-point is out of range" << std::endl
               << "  q : " << q__ << std::endl
-              << "  last point of the q-grid : " << grid_q_.last();
-            TERMINATE(s);
+              << "  last point of the q-grid : " << grid_q_.last() << std::endl;
+            auto uc = unit_cell_.serialize();
+            s << "unit cell: " << uc;
+            RTE_THROW(s);
         }
         std::pair<int, double> result;
         /* find index of q-point */
