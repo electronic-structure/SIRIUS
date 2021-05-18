@@ -50,14 +50,17 @@ struct space_group_symmetry_descriptor
     /// Inverse transposed of R.
     matrix3d<int> invRT;
 
+    /// Proper rotation matrix in Cartesian coordinates.
+    matrix3d<double> Rcp;
+
+    /// (Im)proper Rotation matrix in Cartesian coordinates.
+    matrix3d<double> Rc;
+
     /// Fractional translation.
     vector3d<double> t;
 
     /// Proper (+1) or improper (-1) rotation.
     int proper;
-
-    /// Proper rotation matrix in Cartesian coordinates.
-    matrix3d<double> rotation;
 
     /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
@@ -272,7 +275,7 @@ class Unit_cell_symmetry
     {
         double diff{0};
         for (auto const& e: magnetic_group_symmetry_) {
-            auto R = e.spg_op.rotation;
+            auto R = e.spg_op.Rcp;
             auto R1 = inverse(transpose(R));
             for (int i: {0, 1, 2}) {
                 for (int j: {0, 1, 2}) {
