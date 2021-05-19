@@ -670,8 +670,10 @@ void Unit_cell::import(config_t::unit_cell_t const &inp__)
     set_lattice_vectors(vector3d<double>(lv(0, 0), lv(0, 1), lv(0, 2)),
                         vector3d<double>(lv(1, 0), lv(1, 1), lv(1, 2)),
                         vector3d<double>(lv(2, 0), lv(2, 1), lv(2, 2)));
-
-    auto ilv = inverse(lv);
+    /* here lv are copied from the JSON dictionary as three row vectors; however
+       in the code the lattice vectors are stored as three column vectors, so
+       transposition is needed here */
+    auto ilvT = transpose(inverse(lv));
 
     auto units = inp__.atom_coordinate_units();
 
@@ -695,7 +697,7 @@ void Unit_cell::import(config_t::unit_cell_t const &inp__)
             }
             /* convert from Cartesian to lattice coordinates */
             if (units == "au" || units == "A") {
-                p = dot(ilv, p);
+                p = dot(ilvT, p);
                 auto rc = reduce_coordinates(p);
                 for (int x : {0, 1, 2}) {
                     p[x] = rc.first[x];
