@@ -35,30 +35,6 @@ Hubbard_input::read(json const& parser)
     }
     auto section = parser["hubbard"];
 
-    orthogonalize_hubbard_orbitals_ = section.value("orthogonalize", orthogonalize_hubbard_orbitals_);
-
-    normalize_hubbard_orbitals_ = section.value("normalize", normalize_hubbard_orbitals_);
-
-    simplified_hubbard_correction_ = section.value("simplified", simplified_hubbard_correction_);
-
-    if (section.count("projection_method")) {
-        std::string projection_method = parser["hubbard"]["projection_method"].get<std::string>();
-        if (projection_method == "file") {
-            // they are provided by a external file
-            if (parser["hubbard"].count("wave_function_file")) {
-                this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
-                this->projection_method_  = 1;
-            } else {
-                throw std::runtime_error(
-                    "The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
-            }
-        }
-
-        if (projection_method == "pseudo") {
-            this->projection_method_ = 2;
-        }
-    }
-
     hubbard_U_plus_V_ = parser["hubbard"].value("hubbard_u_plus_v", hubbard_U_plus_V_);
 
     auto v = parser["unit_cell"]["atom_types"].get<std::vector<std::string>>();
@@ -70,7 +46,7 @@ Hubbard_input::read(json const& parser)
             "The Hubbard correction section is defined but contain no information about atoms with U-correction");
     }
 
-    for (int elem = 0; elem < sec.size(); elem++) {
+    for (int elem = 0; elem < static_cast<int>(sec.size()); elem++) {
         std::string label;
         label = sec[elem].value("atom_type", label);
         if (species_with_U.count(label)) {

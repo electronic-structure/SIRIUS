@@ -43,13 +43,13 @@ struct Hubbard_input
 {
     int number_of_species{0};
     bool hubbard_correction_{false};
-    bool simplified_hubbard_correction_{false};
-    bool orthogonalize_hubbard_orbitals_{false};
-    bool normalize_hubbard_orbitals_{false};
+    //bool simplified_hubbard_correction_{false};
+    //bool orthogonalize_hubbard_orbitals_{false};
+    //bool normalize_hubbard_orbitals_{false};
     bool hubbard_U_plus_V_{false};
 
     /** by default we use the atomic orbitals given in the pseudo potentials */
-    int projection_method_{0};
+    //int projection_method_{0};
 
     struct hubbard_orbital_t
     {
@@ -61,7 +61,7 @@ struct Hubbard_input
         std::vector<double> initial_occupancy;
     };
 
-    std::string wave_function_file_;
+    //std::string wave_function_file_;
     std::map<std::string, hubbard_orbital_t> species_with_U;
 
     bool hubbard_correction() const

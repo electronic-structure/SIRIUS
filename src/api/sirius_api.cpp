@@ -622,16 +622,16 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (hubbard_correction_kind__ != nullptr) {
             if (*hubbard_correction_kind__ == 0) {
-                sim_ctx.set_hubbard_simplified_version();
+                sim_ctx.cfg().hubbard().simplified(true);
             }
         }
         if (hubbard_orbitals__ != nullptr) {
             std::string s(hubbard_orbitals__);
             if (s == "ortho-atomic") {
-                sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+                sim_ctx.cfg().hubbard().orthogonalize(true);
             }
             if (s == "norm-atomic") {
-                sim_ctx.set_normalize_hubbard_orbitals(true);
+                 sim_ctx.cfg().hubbard().normalize(true);
             }
         }
         if (fft_grid_size__ != nullptr) {

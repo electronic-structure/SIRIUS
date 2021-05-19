@@ -1549,6 +1549,10 @@ class config_t
             {
                 return dict_.at("atom_pair").get<std::array<int, 2>>();
             }
+            auto T() const
+            {
+                return dict_.at("T").get<std::array<int, 3>>();
+            }
             auto l() const
             {
                 return dict_.at("l").get<std::array<int, 2>>();

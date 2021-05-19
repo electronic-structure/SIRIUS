@@ -265,7 +265,7 @@ K_point::generate_hubbard_orbitals()
     /* now compute the hubbard wfc from the atomic orbitals */
     orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
 
-    ///* all calculations on GPU then we need to copy the final result back to the CPUs */
+    /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_->dismiss(sr, true);
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
@@ -280,7 +280,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
 {
     int nwfu = phi__.num_wf();
 
-    if (!(ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ || ctx_.hubbard_input().normalize_hubbard_orbitals_)) {
+    if (!(ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().normalize())) {
         for (int s = 0; s < ctx_.num_spins(); s++) {
             sphi_hub__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
         }
@@ -306,7 +306,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
 
         /* create transformation matrix */
 
-        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
+        if (ctx_.cfg().hubbard().orthogonalize()) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory("lapack", nullptr);

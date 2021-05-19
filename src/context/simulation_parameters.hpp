@@ -136,23 +136,23 @@ class Simulation_parameters
     void set_hubbard_correction(bool hubbard_correction__)
     {
         cfg().parameters().hubbard_correction(hubbard_correction__);
-        hubbard_input_.simplified_hubbard_correction_ = false;
+        cfg().hubbard().simplified(false);
     }
 
-    void set_hubbard_simplified_version()
-    {
-        hubbard_input_.simplified_hubbard_correction_ = true;
-    }
+    //void set_hubbard_simplified_version()
+    //{
+    //    hubbard_input_.simplified_hubbard_correction_ = true;
+    //}
 
-    void set_orthogonalize_hubbard_orbitals(const bool test)
-    {
-        hubbard_input_.orthogonalize_hubbard_orbitals_ = true;
-    }
+    //void set_orthogonalize_hubbard_orbitals(const bool test)
+    //{
+    //    hubbard_input_.orthogonalize_hubbard_orbitals_ = true;
+    //}
 
-    void set_normalize_hubbard_orbitals(const bool test)
-    {
-        hubbard_input_.normalize_hubbard_orbitals_ = true;
-    }
+    //void set_normalize_hubbard_orbitals(const bool test)
+    //{
+    //    hubbard_input_.normalize_hubbard_orbitals_ = true;
+    //}
 
     /// Set flag for Gamma-point calculation.
     bool gamma_point(bool gamma_point__)

@@ -61,7 +61,7 @@ class Hubbard
     bool approximation_{false};
 
     /// Orthogonalize and/or normalize the projectors.
-    bool orthogonalize_hubbard_orbitals_{false};
+    //bool orthogonalize_hubbard_orbitals_{false};
 
     /// True if localized orbitals have to be normalized.
     bool normalize_orbitals_only_{false};
@@ -69,15 +69,8 @@ class Hubbard
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
 
-    /// hubbard projection method. By default we use the wave functions
-    /// provided by the pseudo potentials.
-    int projection_method_{0};
-
     /// Hubbard with multi channels (not implemented yet) TODO: generalize in LDA+U+V case
     bool multi_channels_{false};
-
-    /// file containing the hubbard wave functions
-    std::string wave_function_file_;
 
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
                              mdarray<double_complex, 5>& dn__, const int index__); // TODO: how this connects to occupation matrix?
@@ -144,10 +137,10 @@ class Hubbard
         return max_number_of_orbitals_per_atom_;
     }
 
-    void set_orthogonalize_hubbard_orbitals(const bool test)
-    {
-        orthogonalize_hubbard_orbitals_ = test;
-    }
+    //void set_orthogonalize_hubbard_orbitals(const bool test)
+    //{
+    //    orthogonalize_hubbard_orbitals_ = test;
+    //}
 
     void set_normalize_hubbard_orbitals(const bool test)
     {
@@ -164,10 +157,10 @@ class Hubbard
         return hubbard_potential_(m1, m2, m3, m4);
     }
 
-    bool orthogonalize_hubbard_orbitals() const
-    {
-        return orthogonalize_hubbard_orbitals_;
-    }
+    //bool orthogonalize_hubbard_orbitals() const
+    //{
+    //    return orthogonalize_hubbard_orbitals_;
+    //}
 
     bool normalize_hubbard_orbitals() const
     {
