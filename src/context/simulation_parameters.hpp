@@ -88,10 +88,7 @@ class Simulation_parameters
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 
-    /// NLCG input parameters
-    //NLCG_input nlcg_input_;
-
-    /// json dictionary containing all runtime options set up through the interface
+    /// JSON dictionary containing all runtime options set up through the interface.
     json runtime_options_dictionary_;
 
     /// Storage for various memory pools.

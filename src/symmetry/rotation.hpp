@@ -36,9 +36,10 @@ using namespace sddk;
 namespace sirius {
 
 /// Generate SU(2) rotation matrix from the axes and angle.
-inline mdarray<std::complex<double>, 2> rotation_matrix_su2(std::array<double, 3> u__, double theta__)
+inline auto
+rotation_matrix_su2(std::array<double, 3> u__, double theta__)
 {
-    mdarray<std::complex<double>, 2> rotm(2, 2);
+    sddk::mdarray<std::complex<double>, 2> rotm(2, 2);
 
     auto cost = std::cos(theta__ / 2);
     auto sint = std::sin(theta__ / 2);
@@ -57,13 +58,14 @@ inline mdarray<std::complex<double>, 2> rotation_matrix_su2(std::array<double, 3
  *
  *  See https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
  *  and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm */
-inline mdarray<std::complex<double>, 2> rotation_matrix_su2(matrix3d<double> R__)
+inline auto
+rotation_matrix_su2(matrix3d<double> R__)
 {
     double det = R__.det() > 0 ? 1.0 : -1.0;
 
     matrix3d<double> mat = R__ * det;
 
-    mdarray<std::complex<double>, 2> su2mat(2, 2);
+    sddk::mdarray<std::complex<double>, 2> su2mat(2, 2);
 
     su2mat.zero();
 
@@ -86,7 +88,8 @@ inline mdarray<std::complex<double>, 2> rotation_matrix_su2(matrix3d<double> R__
 }
 
 /// Get axis and angle from rotation matrix.
-inline std::pair<vector3d<double>, double> axis_angle(matrix3d<double> R__)
+inline std::pair<vector3d<double>, double>
+axis_angle(matrix3d<double> R__)
 {
     vector3d<double> u;
     /* make proper rotation */

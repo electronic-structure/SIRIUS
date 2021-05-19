@@ -786,7 +786,7 @@ void Unit_cell::print_symmetry_info(int verbosity__) const
         std::printf("space group number   : %i\n", symmetry_->spacegroup_number());
         std::printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
         std::printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        std::printf("number of operations : %i\n", symmetry_->num_mag_sym());
+        std::printf("number of operations : %i\n", symmetry_->size());
         std::printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++) {
@@ -801,10 +801,10 @@ void Unit_cell::print_symmetry_info(int verbosity__) const
 
         if (verbosity__ >= 2) {
             std::printf("symmetry operations  : \n");
-            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
-                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+            for (int isym = 0; isym < symmetry_->size(); isym++) {
+                auto R = symmetry_->operator[](isym).spg_op.R;
+                auto t = symmetry_->operator[](isym).spg_op.t;
+                auto S = symmetry_->operator[](isym).spin_rotation;
 
                 std::printf("isym : %i\n", isym);
                 std::printf("R : ");
@@ -832,7 +832,7 @@ void Unit_cell::print_symmetry_info(int verbosity__) const
                     }
                     std::printf("\n");
                 }
-                printf("proper: %i\n", symmetry_->magnetic_group_symmetry(isym).spg_op.proper);
+                printf("proper: %i\n", symmetry_->operator[](isym).spg_op.proper);
                 std::printf("\n");
             }
         }
