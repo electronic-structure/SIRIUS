@@ -27,22 +27,19 @@
 
 namespace sirius {
 
-void Hubbard_input::read(json const& parser)
+void
+Hubbard_input::read(json const& parser)
 {
     if (!parser.count("hubbard")) {
         return;
     }
-
     auto section = parser["hubbard"];
 
-    orthogonalize_hubbard_orbitals_ =
-        section.value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
+    orthogonalize_hubbard_orbitals_ = section.value("orthogonalize", orthogonalize_hubbard_orbitals_);
 
-    normalize_hubbard_orbitals_ =
-        section.value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
+    normalize_hubbard_orbitals_ = section.value("normalize", normalize_hubbard_orbitals_);
 
-    simplified_hubbard_correction_ =
-        section.value("simplified_hubbard_correction", simplified_hubbard_correction_);
+    simplified_hubbard_correction_ = section.value("simplified", simplified_hubbard_correction_);
 
     if (section.count("projection_method")) {
         std::string projection_method = parser["hubbard"]["projection_method"].get<std::string>();
@@ -66,63 +63,77 @@ void Hubbard_input::read(json const& parser)
 
     auto v = parser["unit_cell"]["atom_types"].get<std::vector<std::string>>();
 
-    for (auto& label : v) {
-        if (section.count(label)) {
-            if (species_with_U.count(label)) {
-                throw std::runtime_error("U-correction for atom " + label + " has already been defined");
-            }
+    auto sec = parser["hubbard"]["local"];
 
-            hubbard_correction_ = true;
+    if (sec.size() == 0) {
+        throw std::runtime_error(
+            "The Hubbard correction section is defined but contain no information about atoms with U-correction");
+    }
 
-            hubbard_orbital_t ho;
+    for (int elem = 0; elem < sec.size(); elem++) {
+        std::string label;
+        label = sec[elem].value("atom_type", label);
+        if (species_with_U.count(label)) {
+            throw std::runtime_error("U-correction for atom " + label + " has already been defined");
+        }
 
-            ho.coeff[0] = section[label].value("U", ho.coeff[0]);
-            ho.coeff[1] = section[label].value("J", ho.coeff[1]);
-            ho.coeff[2] = section[label].value("B", ho.coeff[2]);
-            ho.coeff[2] = section[label].value("E2", ho.coeff[2]);
-            ho.coeff[3] = section[label].value("E3", ho.coeff[3]);
-            ho.coeff[4] = section[label].value("alpha", ho.coeff[4]);
-            ho.coeff[5] = section[label].value("beta", ho.coeff[5]);
+        // check that the atom type is actually defined
 
-            /* now convert eV in Ha */
-            for (int s = 0; s < 6; s++) {
-                ho.coeff[s] /= ha2ev;
-            }
-            ho.l = section[label].value("l", ho.l);
-            ho.n = section[label].value("n", ho.n);
+        auto found = std::find(v.begin(), v.end(), label);
 
-            if (ho.l == -1 || ho.n == -1) {
-                std::string level;
-                section[label].value("hubbard_orbital", level);
-                std::map<char, int> const map_l = {{'s', 0},{'p', 1}, {'d', 2}, {'f', 3}};
+        if (found == v.end()) {
+            throw std::runtime_error("The atom type " + label + " can not be found in the unit cell declaration");
+        }
 
-                std::istringstream iss(std::string(1, level[0]));
-                iss >> ho.n;
-                if (ho.n <= 0 || iss.fail()) {
-                    std::stringstream s;
-                    s << "wrong principal quantum number : " << std::string(1, level[0]);
-                    throw std::runtime_error(s.str());
-                }
-                ho.l = map_l.at(level[1]);
-            }
+        hubbard_correction_ = true;
 
-            if (!section[label].count("occupancy")) {
-                throw std::runtime_error("initial occupancy of the Hubbard orbital is not set");
-            }
-            ho.occupancy = section[label].value("occupancy", ho.occupancy);
-            ho.initial_occupancy = section[label].value("initial_occupancy", ho.initial_occupancy);
+        hubbard_orbital_t ho;
 
-            int sz = static_cast<int>(ho.initial_occupancy.size());
-            int lmmax = 2 * ho.l + 1;
+        ho.coeff[0] = sec[elem].value("U", ho.coeff[0]);
+        ho.coeff[1] = sec[elem].value("J", ho.coeff[1]);
+        ho.coeff[2] = sec[elem].value("B", ho.coeff[2]);
+        ho.coeff[2] = sec[elem].value("E2", ho.coeff[2]);
+        ho.coeff[3] = sec[elem].value("E3", ho.coeff[3]);
+        ho.coeff[4] = sec[elem].value("alpha", ho.coeff[4]);
+        ho.coeff[5] = sec[elem].value("beta", ho.coeff[5]);
 
-            if (!(sz == 0 || sz == lmmax || sz == 2 * lmmax)) {
+        /* now convert eV in Ha */
+        for (int s = 0; s < 6; s++) {
+            ho.coeff[s] /= ha2ev;
+        }
+        ho.l = sec[elem].value("l", ho.l);
+        ho.n = sec[elem].value("n", ho.n);
+        if (ho.l == -1 || ho.n == -1) {
+            std::string level;
+            sec[elem].value("hubbard_orbital", level);
+            std::map<char, int> const map_l = {{'s', 0}, {'p', 1}, {'d', 2}, {'f', 3}};
+
+            std::istringstream iss(std::string(1, level[0]));
+            iss >> ho.n;
+            if (ho.n <= 0 || iss.fail()) {
                 std::stringstream s;
-                s << "wrong size of initial occupacies vector (" << sz << ") for l = " << ho.l;
+                s << "wrong principal quantum number : " << std::string(1, level[0]);
                 throw std::runtime_error(s.str());
             }
-
-            species_with_U[label] = ho;
+            ho.l = map_l.at(level[1]);
         }
+
+        if (!sec[elem].count("occupancy")) {
+            throw std::runtime_error("initial occupancy of the Hubbard orbital is not set");
+        }
+        ho.occupancy         = sec[elem].value("occupancy", ho.occupancy);
+        ho.initial_occupancy = sec[elem].value("initial_occupancy", ho.initial_occupancy);
+
+        int sz    = static_cast<int>(ho.initial_occupancy.size());
+        int lmmax = 2 * ho.l + 1;
+
+        if (!(sz == 0 || sz == lmmax || sz == 2 * lmmax)) {
+            std::stringstream s;
+            s << "wrong size of initial occupacies vector (" << sz << ") for l = " << ho.l;
+            throw std::runtime_error(s.str());
+        }
+
+        species_with_U[label] = ho;
     }
 }
 

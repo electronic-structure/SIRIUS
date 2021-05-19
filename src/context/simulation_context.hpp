@@ -143,6 +143,9 @@ class Simulation_context : public Simulation_parameters
     /** This is needed to estimate the new cutoff for radial integrals. */
     double omega0_;
 
+    /// Initial lattice vectors.
+    matrix3d<double> lattice_vectors0_;
+
     /// Radial integrals of beta-projectors.
     std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
 
