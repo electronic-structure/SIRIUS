@@ -6,10 +6,13 @@ type(C_PTR) :: handler
 type(C_PTR) :: kset
 type(C_PTR) :: dft
 integer i, rank
-real(8) :: lat_vec(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
+real(8) :: lat_vec(3,3), lat_vec1(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
+real(8) :: alpha
 
 ! initialize the library
 call sirius_initialize(call_mpi_init=.true.)
+
+call MPI_COMM_RANK(MPI_COMM_WORLD, rank, i)
 
 ! create simulation context using a specified communicator
 call sirius_create_context(MPI_COMM_WORLD, handler)
@@ -20,7 +23,7 @@ call sirius_import_parameters(handler, &
 
 ! atomic units are used everywhere
 ! plane-wave cutoffs are provided in a.u.^-1
-call sirius_set_parameters(handler, pw_cutoff=20.d0, gk_cutoff=7.d0)
+call sirius_set_parameters(handler, pw_cutoff=40.d0, gk_cutoff=7.d0)
 
 lat_vec = 0.d0
 do i = 1, 3
@@ -50,18 +53,60 @@ call sirius_add_xc_functional(handler, "XC_LDA_C_VWN")
 ! initialize the simulation handler
 call sirius_initialize_context(handler)
 
+! test different lattice updates
+do i = 1, 11, 2
+  alpha =  (1.0+(i-6)*0.3/5.0)
+  lat_vec1 = lat_vec
+  lat_vec1(1,1) = lat_vec(1,1) * alpha
+  lat_vec1(2,2) = lat_vec(2,2) / alpha
+  write(*,*)'new lattice:',lat_vec1
+  call sirius_set_lattice_vectors(handler, lat_vec1(:, 1), lat_vec1(:, 2), lat_vec1(:, 3))
+  call sirius_update_context(handler)
+enddo
+
+call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
+call sirius_update_context(handler)
+
 ! create [2,2,2] k-grid with [0,0,0] offset and use symmetry to get irreducible set of k-points
 call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
 
 call sirius_create_ground_state(kset, dft)
 call sirius_find_ground_state(dft)
 
+if (rank.eq.0) then
+  write(*,*)'running new DFT with updated lattice vectors'
+endif
+call sirius_set_parameters(handler, iter_solver_tol=1d-2)
+lat_vec = lat_vec * 0.9d0
+call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
+call sirius_update_context(handler)
+call sirius_find_ground_state(dft)
+
+if (rank.eq.0) then
+  write(*,*)'running new DFT with updated lattice vectors'
+endif
+call sirius_set_parameters(handler, iter_solver_tol=1d-2)
+lat_vec = lat_vec * 0.9d0
+call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
+call sirius_update_context(handler)
+call sirius_find_ground_state(dft)
+
+if (rank.eq.0) then
+  write(*,*)'running new DFT with updated lattice vectors'
+endif
+call sirius_set_parameters(handler, iter_solver_tol=1d-2)
+lat_vec = lat_vec * 0.8d0
+call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
+call sirius_update_context(handler)
+call sirius_find_ground_state(dft)
+
+
+
 call sirius_get_forces(dft, "total", forces)
 call sirius_get_stress_tensor(dft, "total", stress)
 call sirius_get_energy(dft, "total", energy)
 call sirius_get_energy(dft, "descf", scf_correction)
 
-call MPI_COMM_RANK(MPI_COMM_WORLD, rank, i)
 
 if (rank.eq.0) then
   write(*,*)'Forces:'
