@@ -26,6 +26,9 @@
 
 namespace sirius {
 
+  /* we can use Ref PRB {\bf 102}, 235159 (2020) as reference for the colinear
+   * case.
+   */
 void
 Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__)
 {
@@ -55,12 +58,15 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
                     // is = 0 up-up
                     // is = 1 down-down
 
+                  /* Expression Eq.7 without the P_IJ which is applied when we
+                   * actually apply the potential to the wave functions. Also
+                   * note the presence of alpha  */
                     for (int m1 = 0; m1 < lmax_at; m1++) {
-                        this->hubbard_potential_(m1, m1, is, ia) +=
+                        this->hubbard_potential_(m1, m1, is, ia) =
                             (atom.type().lo_descriptor_hub(0).Hubbard_alpha() + 0.5 * U_effective);
 
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            this->hubbard_potential_(m1, m2, is, ia) -= U_effective * om__(m2, m1, is, ia);
+                            this->hubbard_potential_(m2, m1, is, ia) -= U_effective * om__(m2, m1, is, ia);
                         }
                     }
                 }
@@ -313,7 +319,7 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
     }
 
     if ((ctx_.verbosity() >= 1) && (ctx_.comm().rank() == 0)) {
-        std::printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", hubbard_energy, hubbard_energy_dc_contribution);
+        std::printf("hub Energy (total) %.5lf  (dc) %.5lf\n", hubbard_energy, hubbard_energy_dc_contribution);
     }
     return hubbard_energy;
 }

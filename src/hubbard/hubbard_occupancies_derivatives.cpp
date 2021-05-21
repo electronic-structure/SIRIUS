@@ -22,11 +22,15 @@
  *  \brief Generate derivatives of occupancy matrix.
  */
 
-// compute the forces for the simplex LDA+U method not the fully
+// compute the forces for the simple LDA+U method not the fully
 // rotationally invariant one. It can not be used for LDA+U+SO either
 
-// It is based on this reference : PRB 84, 161102(R) (2011)
-
+// this code is based on two papers :
+//
+// - PRB 84, 161102(R) (2011) : https://journals.aps.org/prb/abstract/10.1103/PhysRevB.84.161102
+// - PRB 102, 235159 (2020) : https://journals.aps.org/prb/abstract/10.1103/PhysRevB.102.235159
+//
+// note that this code only apply for the colinear case
 #include "hubbard.hpp"
 
 namespace sirius {
@@ -39,7 +43,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
     dn__.zero();
     // check if we have a norm conserving pseudo potential only. Only
     // derivatives of the hubbard wave functions are needed.
-    auto& phi = kp.hubbard_wave_functions();
+    auto& phi = kp.hubbard_wave_functions_without_S();
 
     Beta_projectors_gradient bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     bp_grad.prepare();
@@ -106,7 +110,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
     }
 
 
-    for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
+    for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) { // loop over the atom displacement.
         dn_tmp.zero(memory_t::host);
         dn_tmp.zero(memory_t::device);
         for (int dir = 0; dir < 3; dir++) {
@@ -114,7 +118,12 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
             dphi.pw_coeffs(0).prime().zero(memory_t::host);
             dphi.pw_coeffs(0).prime().zero(memory_t::device);
 
+            // compute S|d\phi>. Will be zero if the atom has no hubbard
+            // correction
             if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
+                phitmp.pw_coeffs(0).prime().zero(memory_t::host);
+                phitmp.pw_coeffs(0).prime().zero(memory_t::device);
+
                 // atom atom_id has hubbard correction so we need to compute the
                 // derivatives of the hubbard orbitals associated to the atom
                 // atom_id, the derivatives of the others hubbard orbitals been
@@ -129,17 +138,20 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
 
                 kp.compute_gradient_wave_functions(phi, this->offset_[atom_id], lmax_at, phitmp, this->offset_[atom_id], dir);
 
+                // phitmp contains the derivatives of the hubbard wave functions of atom I compared to a displacement of atom I.
                 if (ctx_.processing_unit() == device_t::GPU) {
                     phitmp.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
                 }
 
-                /* for norm conserving pp, it is enough to have the derivatives of |phi^J_m> (J = atom_id) */
+                /* for norm conserving pp, it is enough to have the derivatives
+                 * of |phi^J_m> (J = atom_id) and the next line will be
+                 * ignored */
                 sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0,
                                                          this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                                                          phitmp, &q_op, dphi);
             }
 
-            // compute d S/ dr^I_a |phi> and add to dphi
+            // compute (d S/ d R_K) |phi> and add to dphi. It is Eq.18 of Ref PRB 102, 235159 (2020)
             if (!ctx_.full_potential() && augment) {
                 // it is equal to
                 // \sum Q^I_ij <d \beta^I_i|phi> |\beta^I_j> + < \beta^I_i|phi> |d\beta^I_j>
@@ -174,6 +186,8 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
                 }
             }
 
+            // d\phi now contains (\partial_{R^K} S) |\phi> + S d|\phi>. The
+            // second term is only present if the atom has hubbard correction.
             compute_occupancies(kp,
                                 phi_s_psi,
                                 dphi,

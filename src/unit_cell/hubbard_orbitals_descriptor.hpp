@@ -51,7 +51,7 @@ class hubbard_orbital_descriptor
         hubbard_coefficients_[3]
         hubbard_coefficients[4] = U_alpha
         hubbard_coefficients[5] = U_beta */
-    double hubbard_coefficients_[4];
+  double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
 
     mdarray<double, 4> hubbard_matrix_;
 
@@ -68,7 +68,7 @@ class hubbard_orbital_descriptor
 
         // Note that for consistency, the ak are calculated with complex
         // harmonics in the gaunt coefficients <R_lm|Y_l'm'|R_l''m''>.
-        // we need to keep it that way because of the hubbard potential
+        // we need to keep it that way because of the hubbard potential.
         // With a spherical one it does not really matter-
         ak.zero();
 
