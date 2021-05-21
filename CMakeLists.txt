@@ -131,8 +131,8 @@ find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
-find_package(SpFFT 0.9.13 CONFIG REQUIRED)
-find_package(SPLA 1.1.0 CONFIG REQUIRED)
+find_package(SpFFT 1.0.3 CONFIG REQUIRED)
+find_package(SPLA 1.4.0 CONFIG REQUIRED)
 
 # Either find std::filesystem or boost::filesystem
 find_package(Filesystem COMPONENTS Final Experimental)
