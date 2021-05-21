@@ -170,6 +170,9 @@ K_point::initialize()
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
+            hubbard_wave_functions_without_S_ = std::unique_ptr<Wave_functions>(
+              new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+                                 ctx_.preferred_memory_t(), ctx_.num_spins()));
             atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
@@ -195,6 +198,7 @@ K_point::generate_hubbard_orbitals()
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         hubbard_wave_functions_->pw_coeffs(ispn).prime().zero();
+        hubbard_wave_functions_without_S_->pw_coeffs(ispn).prime().zero();
         s_phi.pw_coeffs(ispn).prime().zero();
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -263,7 +267,7 @@ K_point::generate_hubbard_orbitals()
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
-    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
+    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_without_S_, *hubbard_wave_functions_);
 
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_->dismiss(sr, true);
@@ -276,7 +280,7 @@ K_point::generate_hubbard_orbitals()
 }
 
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__)
+K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& phi_hub__, Wave_functions& sphi_hub__)
 {
     int nwfu = phi__.num_wf();
 
@@ -285,6 +289,11 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
             sphi_hub__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
         }
         return;
+    }
+
+    // needed to compute the forces
+    for (int s = 0; s < ctx_.num_spins(); s++) {
+        phi_hub__.copy_from(ctx_.processing_unit(), nwfu, phi__, s, 0, s, 0);
     }
 
     dmatrix<double_complex> S(nwfu, nwfu);
