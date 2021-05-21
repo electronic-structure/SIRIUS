@@ -56,17 +56,7 @@ class Hubbard
 
     sddk::mdarray<double_complex, 4> hubbard_potential_;
 
-    /// Type of hubbard correction to be considered.
-    /** True if we consider a simple hubbard correction. Not valid if spin orbit coupling is included */
-    bool approximation_{false};
-
-    /// Orthogonalize and/or normalize the projectors.
-    //bool orthogonalize_hubbard_orbitals_{false};
-
-    /// True if localized orbitals have to be normalized.
-    bool normalize_orbitals_only_{false};
-
-    /// hubbard correction with next nearest neighbors
+    /// Hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
 
     /// Hubbard with multi channels (not implemented yet) TODO: generalize in LDA+U+V case
@@ -127,24 +117,9 @@ class Hubbard
         hubbard_U_plus_V_ = true;
     }
 
-    void set_hubbard_simple_correction()
-    {
-        approximation_ = true;
-    }
-
     inline int max_number_of_orbitals_per_atom() const
     {
         return max_number_of_orbitals_per_atom_;
-    }
-
-    //void set_orthogonalize_hubbard_orbitals(const bool test)
-    //{
-    //    orthogonalize_hubbard_orbitals_ = test;
-    //}
-
-    void set_normalize_hubbard_orbitals(const bool test)
-    {
-        this->normalize_orbitals_only_ = test;
     }
 
     double_complex U(int m1, int m2, int m3, int m4) const
@@ -155,16 +130,6 @@ class Hubbard
     double_complex& U(int m1, int m2, int m3, int m4)
     {
         return hubbard_potential_(m1, m2, m3, m4);
-    }
-
-    //bool orthogonalize_hubbard_orbitals() const
-    //{
-    //    return orthogonalize_hubbard_orbitals_;
-    //}
-
-    bool normalize_hubbard_orbitals() const
-    {
-        return normalize_orbitals_only_;
     }
 
     inline double hubbard_energy(sddk::mdarray<double_complex, 4> const& om__) const

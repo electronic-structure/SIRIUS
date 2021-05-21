@@ -238,15 +238,15 @@ class Atom_type
     /// Generate coefficients used in spin-orbit case.
     void generate_f_coefficients();
 
-    inline void read_input_core(json const& parser);
+    inline void read_input_core(nlohmann::json const& parser);
 
-    inline void read_input_aw(json const& parser);
+    inline void read_input_aw(nlohmann::json const& parser);
 
-    inline void read_input_lo(json const& parser);
+    inline void read_input_lo(nlohmann::json const& parser);
 
-    inline void read_pseudo_uspp(json const& parser);
+    inline void read_pseudo_uspp(nlohmann::json const& parser);
 
-    inline void read_pseudo_paw(json const& parser);
+    inline void read_pseudo_paw(nlohmann::json const& parser);
 
     /// Read atomic parameters from json file or string.
     inline void read_input(std::string const& str__);

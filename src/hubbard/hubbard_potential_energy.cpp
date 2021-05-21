@@ -31,7 +31,7 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
 {
     this->hubbard_potential_.zero();
 
-    if (this->approximation_ == 1) {
+    if (this->ctx_.cfg().hubbard().simplified()) {
         for (int ia = 0; ia < this->unit_cell_.num_atoms(); ia++) {
             auto const& atom = this->unit_cell_.atom(ia);
             if (!atom.type().hubbard_correction()) {
@@ -176,7 +176,7 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
     double hubbard_energy_u{0};
     double hubbard_energy_dc_contribution{0};
 
-    if (this->approximation_ == 1) {
+    if (this->ctx_.cfg().hubbard().simplified()) {
         for (int ia = 0; ia < this->unit_cell_.num_atoms(); ia++) {
             const auto& atom = this->unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {

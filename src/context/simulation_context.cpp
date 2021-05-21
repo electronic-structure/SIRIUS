@@ -603,6 +603,14 @@ void Simulation_context::initialize()
 
     iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
 
+    if (this->hubbard_correction()) {
+        /* if spin orbit coupling or non colinear magnetisms are activated, then
+           we consider the full spherical hubbard correction */
+        if (this->so_correction() || this->num_mag_dims() == 3) {
+            this->cfg().hubbard().simplified(false);
+        }
+    }
+
     initialized_ = true;
     cfg().lock();
 }

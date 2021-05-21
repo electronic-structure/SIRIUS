@@ -9,8 +9,6 @@ Hubbard::Hubbard(Simulation_context& ctx__)
     if (!ctx_.hubbard_correction()) {
         return;
     }
-    //orthogonalize_hubbard_orbitals_ = ctx_.hubbard_input().orthogonalize_hubbard_orbitals_;
-    //normalize_orbitals_only_        = ctx_.hubbard_input().normalize_hubbard_orbitals_;
 
     int indexb_max = -1;
 
@@ -21,13 +19,6 @@ Hubbard::Hubbard(Simulation_context& ctx__)
     }
 
     max_number_of_orbitals_per_atom_ = indexb_max;
-
-    /* if spin orbit coupling or non colinear magnetisms are activated, then
-     we consider the full spherical hubbard correction */
-
-    if ((ctx_.so_correction()) || (ctx_.num_mag_dims() == 3)) {
-        approximation_ = false;
-    }
 
     hubbard_potential_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
             memory_t::host, "hubbard_potential_");

@@ -36,15 +36,18 @@ void test_sym(cmd_args const& args__)
     }
 
     /* lattice constant */
-    double a{8};
+    double a{6};
     /* set lattice vectors */
     ctx.unit_cell().set_lattice_vectors({{a, 0, 0},
                                          {0, a, 0},
                                          {0, 0, a}});
-    ctx.unit_cell().add_atom("Cu", {0.113500, 0.613500, 0.886500});
-    ctx.unit_cell().add_atom("Cu", {0.613500, 0.886500, 0.113500});
-    ctx.unit_cell().add_atom("Cu", {0.886500, 0.113500, 0.613500});
-    ctx.unit_cell().add_atom("Cu", {0.386500, 0.386500, 0.386500});
+    //ctx.unit_cell().add_atom("Cu", {0.113500, 0.613500, 0.886500});
+    //ctx.unit_cell().add_atom("Cu", {0.613500, 0.886500, 0.113500});
+    //ctx.unit_cell().add_atom("Cu", {0.886500, 0.113500, 0.613500});
+    //ctx.unit_cell().add_atom("Cu", {0.386500, 0.386500, 0.386500});
+    //
+    ctx.unit_cell().add_atom("Cu", {1.0/2, 1.0/2, 0});
+    ctx.unit_cell().add_atom("Cu", {1.0/3, 1.0/3, 0});
 
     /* initialize the context */
     ctx.verbosity(2);
@@ -56,7 +59,7 @@ void test_sym(cmd_args const& args__)
     /* initialize simulation context */
     ctx.initialize();
 
-    vector3d<int> k_grid(4, 4, 4);
+    vector3d<int> k_grid(4, 4, 1);
     vector3d<int> k_shift(0, 0, 0);
 
     K_point_set kset_sym(ctx, k_grid, k_shift, true);

@@ -47,7 +47,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
     };
 
     for (int ia = 0; ia < num_atoms__; ia++) {
-        /* spatial transform */
+        /* position of atom ia */
         vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
         /* apply crystal symmetry */
         auto v = reduce_coordinates(dot(R__, pos) + t__);
@@ -60,7 +60,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
            and the reduction of coordinates is required */
         for (int k = 0; k < num_atoms__; k++) {
             vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-            /* find the distance between original and trasformed atoms */
+            /* find the distance between atom k and trasformed atoms ia */
             double dist = distance(v.first, reduce_coordinates(pos1).first);
             if (dist < tolerance__) {
                 ja = k;

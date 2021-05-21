@@ -118,7 +118,7 @@ void Config::import(nlohmann::json const& in__)
 }
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
-json const& get_options_dictionary()
+nlohmann::json const& get_options_dictionary()
 {
     if (all_options_dictionary_.size() == 0) {
         throw std::runtime_error("Dictionary not initialized\n");
@@ -132,13 +132,9 @@ void Simulation_parameters::import(std::string const& str__)
     import(json);
 }
 
-void Simulation_parameters::import(json const& dict__)
+void Simulation_parameters::import(nlohmann::json const& dict__)
 {
     cfg_.import(dict__);
-    /* read hubbard parameters */
-    hubbard_input_.read(dict__);
-    /* read nlcg parameters */
-    //nlcg_input_.read(dict__);
 }
 
 void Simulation_parameters::import(cmd_args const& args__)
@@ -198,7 +194,7 @@ void Simulation_parameters::smearing(std::string name__)
 
 void Simulation_parameters::print_options() const
 {
-    json const& dict = get_options_dictionary();
+    auto const& dict = get_options_dictionary();
 
     if (Communicator::world().rank() == 0) {
         std::printf("The SIRIUS library or the mini apps can be initialized through the interface\n");

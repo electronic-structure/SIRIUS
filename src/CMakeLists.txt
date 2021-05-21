@@ -78,7 +78,6 @@ set(_SOURSES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
-  "context/input.cpp"
   )
 
 

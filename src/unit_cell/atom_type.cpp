@@ -314,7 +314,7 @@ void Atom_type::print_info() const
     std::printf("spin-orbit coupling              : %s\n", utils::boolstr(this->spin_orbit_coupling()).c_str());
 }
 
-void Atom_type::read_input_core(json const& parser)
+void Atom_type::read_input_core(nlohmann::json const& parser)
 {
     std::string core_str = std::string(parser["core"]);
     if (int size = (int)core_str.size()) {
@@ -375,7 +375,7 @@ void Atom_type::read_input_core(json const& parser)
     }
 }
 
-void Atom_type::read_input_aw(json const& parser)
+void Atom_type::read_input_aw(nlohmann::json const& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -404,7 +404,7 @@ void Atom_type::read_input_aw(json const& parser)
     }
 }
 
-void Atom_type::read_input_lo(json const& parser)
+void Atom_type::read_input_lo(nlohmann::json const& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -434,7 +434,7 @@ void Atom_type::read_input_lo(json const& parser)
 }
 
 
-void Atom_type::read_pseudo_uspp(json const& parser)
+void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 {
     symbol_ = parser["pseudo_potential"]["header"]["element"].get<std::string>();
 
@@ -563,7 +563,7 @@ void Atom_type::read_pseudo_uspp(json const& parser)
     }
 }
 
-void Atom_type::read_pseudo_paw(json const& parser)
+void Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 {
     is_paw_ = true;
 
@@ -618,7 +618,7 @@ void Atom_type::read_pseudo_paw(json const& parser)
 
 void Atom_type::read_input(std::string const& str__)
 {
-    json parser = utils::read_json_from_file_or_string(str__);
+    auto parser = utils::read_json_from_file_or_string(str__);
 
     if (parser.empty()) {
         return;
@@ -718,19 +718,56 @@ void Atom_type::generate_f_coefficients()
 
 void Atom_type::read_hubbard_input()
 {
-    if (!parameters_.hubbard_input().hubbard_correction_) {
+    if (!parameters_.cfg().parameters().hubbard_correction()) {
         return;
     }
 
     this->hubbard_correction_ = false;
 
-    if (parameters_.hubbard_input().species_with_U.count(symbol_)) {
-        auto const& ho = parameters_.hubbard_input().species_with_U.at(symbol_);
+    for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
+        auto ho = parameters_.cfg().hubbard().local(i);
+        if (ho.atom_type() == this->label()) {
+            std::array<double, 6> coeff{0, 0, 0, 0, 0, 0};
+            if (ho.contains("U")) {
+                coeff[0] = ho.U();
+            }
+            if (ho.contains("J")) {
+                coeff[1] = ho.J();
+            }
+            if (ho.contains("BE2")) {
+                coeff[2] = ho.BE2();
+            }
+            if (ho.contains("E3")) {
+                coeff[3] = ho.E3();
+            }
+            if (ho.contains("alpha")) {
+                coeff[4] = ho.alpha();
+            }
+            if (ho.contains("beta")) {
+                coeff[5] = ho.beta();
+            }
+            /* now convert eV in Ha */
+            for (int s = 0; s < 6; s++) {
+                coeff[s] /= ha2ev;
+            }
+            std::vector<double> initial_occupancy;
+            if (ho.contains("initial_occupancy")) {
+                initial_occupancy = ho.initial_occupancy();
 
-        add_hubbard_orbital(ho.n, ho.l, ho.occupancy, ho.coeff[0], ho.coeff[1], &ho.coeff[0], ho.coeff[4],
-                ho.coeff[5], 0.0, ho.initial_occupancy);
+                int sz = static_cast<int>(initial_occupancy.size());
+                int lmmax = 2 * ho.l() + 1;
+                if (!(sz == 0 || sz == lmmax || sz == 2 * lmmax)) {
+                    std::stringstream s;
+                    s << "wrong size of initial occupacies vector (" << sz << ") for l = " << ho.l();
+                    RTE_THROW(s);
+                }
+            }
 
-        this->hubbard_correction_ = true;
+            add_hubbard_orbital(ho.n(), ho.l(), ho.total_initial_occupancy(), coeff[0], coeff[1], &coeff[0],
+                    coeff[4], coeff[5], 0.0, initial_occupancy);
+
+            this->hubbard_correction_ = true;
+        }
     }
 }
 

@@ -705,18 +705,28 @@
                                 "type" : "integer"
                             },
                             "U" : {
-                                "type" : "number"
+                                "type" : "number",
+                                "default" : 0
                             },
                             "J" : {
-                                "type" : "number"
+                                "type" : "number",
+                                "default" : 0
                             },
-                            "coeff" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "number"
-                                },
-                                "minItems" : 6,
-                                "maxItems" : 6
+                            "BE2" : {
+                                "type" : "number",
+                                "default" : 0
+                            },
+                            "E3" : {
+                                "type" : "number",
+                                "default" : 0
+                            },
+                            "alpha" : {
+                                "type" : "number",
+                                "default" : 0
+                            },
+                            "beta" : {
+                                "type" : "number",
+                                "default" : 0
                             },
                             "initial_occupancy" : {
                                 "type" : "array",

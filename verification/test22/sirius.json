@@ -82,7 +82,7 @@
                 "l": 2,
                 "n" : 3,
                 "hubbard_orbital": "3d",
-                "occupancy" : 8
+                "total_initial_occupancy" : 8
             }
         ]
     }
