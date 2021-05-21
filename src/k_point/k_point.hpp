@@ -90,6 +90,9 @@ class K_point
     /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
     std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
 
+    /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
+    std::unique_ptr<Wave_functions> hubbard_wave_functions_without_S_{nullptr};
+
     /// Two-component (spinor) atomic orbitals used to compute the hubbard wave functions
     std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
 
@@ -351,7 +354,7 @@ class K_point
         }
     }
 
-    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__);
+    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& phi_hub__, Wave_functions& sphi_hub__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
@@ -476,6 +479,7 @@ class K_point
         return spinor_wave_functions_;
     }
 
+   // the S operator is applied on these functions
     inline Wave_functions& hubbard_wave_functions()
     {
         assert(hubbard_wave_functions_ != nullptr);
@@ -486,6 +490,18 @@ class K_point
     {
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
+    }
+
+    inline Wave_functions& hubbard_wave_functions_without_S()
+    {
+        assert(hubbard_wave_functions_ != nullptr);
+        return *hubbard_wave_functions_without_S_;
+    }
+
+    inline Wave_functions const& hubbard_wave_functions_without_S() const
+    {
+        assert(hubbard_wave_functions_ != nullptr);
+        return *hubbard_wave_functions_without_S_;
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
