@@ -22,6 +22,7 @@
  *  \brief Base class for Hubbard occupancy and potential matrices.
  */
 
+#include <iomanip>
 #include "hubbard_matrix.hpp"
 
 namespace sirius {
@@ -88,82 +89,77 @@ void Hubbard_matrix::access(std::string const& what__, double_complex* occ__, in
     }
 }
 
-void Hubbard_matrix::print(int min_verbosity__) const
+void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
 {
-    if (ctx_.verbosity() >= min_verbosity__ && ctx_.comm().rank() == 0 && data_.size()) {
-        std::printf("\n");
-        for (int ci = 0; ci < 10; ci++) {
-            std::printf("--------");
-        }
-        std::printf("\n");
-        //std::printf("hubbard occupancies\n");
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            std::printf("Atom : %d\n", ia);
-            std::printf("Mag Dim : %d\n", ctx_.num_mag_dims());
-            const auto& atom = ctx_.unit_cell().atom(ia);
+    auto const& atom = ctx_.unit_cell().atom(ia__);
+    if (!atom.type().hubbard_correction()) {
+        return;
+    }
+    int const prec{5};
+    int const width{10};
+    auto draw_bar = [&](int w)
+    {
+        out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
+    };
+    auto print_number = [&](double x)
+    {
+        out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x;
+    };
 
-            if (atom.type().hubbard_correction()) {
-                const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
-                for (int m1 = 0; m1 < lmax_at; m1++) {
-                    for (int m2 = 0; m2 < lmax_at; m2++) {
-                        std::printf("%8.3f ", std::abs(this->data_(m1, m2, 0, ia)));
+    if (ctx_.num_mag_dims() != 3) {
+        int l = atom.type().indexr_hub().am(0).l();
+        int mmax = 2 *l + 1;
+        for (int is = 0; is < ctx_.num_spins(); is++) {
+            draw_bar(width * mmax);
+            bool has_imag{false};
+            for (int m = 0; m < mmax; m++) {
+                for (int mp = 0; mp < mmax; mp++) {
+                    if (std::abs(std::imag(data_(m, mp, is, ia__))) > 1e-12) {
+                        has_imag = true;
                     }
-
-                    if (ctx_.num_mag_dims() == 3) {
-                        std::printf(" ");
-                        for (int m2 = 0; m2 < lmax_at; m2++) {
-                            std::printf("%8.3f ", std::abs(this->data_(m1, m2, 2, ia)));
-                        }
+                    print_number(std::real(data_(m, mp, is, ia__)));
+                }
+                out__ << std::endl;
+            }
+            if (has_imag) {
+                out__ << "imaginary part:" << std::endl;
+                for (int m = 0; m < mmax; m++) {
+                    for (int mp = 0; mp < mmax; mp++) {
+                        print_number(std::imag(data_(m, mp, is, ia__)));
                     }
-                    std::printf("\n");
+                    out__ << std::endl;
                 }
-
-                if (ctx_.num_spins() == 2) {
-                    for (int m1 = 0; m1 < lmax_at; m1++) {
-                        if (ctx_.num_mag_dims() == 3) {
-                            for (int m2 = 0; m2 < lmax_at; m2++) {
-                                std::printf("%8.3f ", std::abs(this->data_(m1, m2, 3, ia)));
-                            }
-                            std::printf(" ");
-                        }
-                        for (int m2 = 0; m2 < lmax_at; m2++) {
-                            std::printf("%8.3f ", std::abs(this->data_(m1, m2, 1, ia)));
-                        }
-                        std::printf("\n");
-                    }
-                }
-
-                //double n_up, n_down, n_total;
-                //n_up   = 0.0;
-                //n_down = 0.0;
-                //for (int m1 = 0; m1 < lmax_at; m1++) {
-                //    n_up += this->data_(m1, m1, 0, ia).real();
-                //}
-
-                //if (ctx_.num_spins() == 2) {
-                //    for (int m1 = 0; m1 < lmax_at; m1++) {
-                //        n_down += this->data_(m1, m1, 1, ia).real();
-                //    }
-                //}
-                //std::printf("\n");
-                //n_total = n_up + n_down;
-                //if (ctx_.num_spins() == 2) {
-                //    std::printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up, n_down, n_up - n_down);
-                //} else {
-                //    std::printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
-                //}
-
-                std::printf("\n");
-                for (int ci = 0; ci < 10; ci++) {
-                    std::printf("--------");
-                }
-                std::printf("\n");
             }
         }
+        draw_bar(width * mmax);
+    } else {
+        int l = atom.type().indexr_hub().am(0).l();
+        int mmax = 2 *l + 1;
+        draw_bar(2 * width * mmax + 3);
+        for (int m = 0; m < mmax; m++) {
+            for (int mp = 0; mp < mmax; mp++) {
+                print_number(std::real(data_(m, mp, 0, ia__)));
+            }
+            out__ << " | ";
+            for (int mp = 0; mp < mmax; mp++) {
+                print_number(std::real(data_(m, mp, 2, ia__)));
+            }
+            out__ << std::endl;
+        }
+        draw_bar(2 * width * mmax + 3);
+        for (int m = 0; m < mmax; m++) {
+            for (int mp = 0; mp < mmax; mp++) {
+                print_number(std::real(data_(m, mp, 3, ia__)));
+            }
+            out__ << " | ";
+            for (int mp = 0; mp < mmax; mp++) {
+                print_number(std::real(data_(m, mp, 1, ia__)));
+            }
+            out__ << std::endl;
+        }
+        draw_bar(2 * width * mmax + 3);
     }
 }
-
-
 
 }
 

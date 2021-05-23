@@ -308,4 +308,31 @@ void Occupation_matrix::init()
     print_occupancies(2);
 }
 
+void Occupation_matrix::print_occupancies(int verbosity__) const
+{
+    if (verbosity__ >= 1 && ctx_.comm().rank() == 0) {
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                std::stringstream s;
+                s << "atom : " << ia << std::endl;
+                Hubbard_matrix::print_local(ia, s);
+                double occ[2] = {0, 0};
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    for (int m = 0; m < ctx_.unit_cell().atom(ia).type().indexr_hub().am(0).l() * 2 + 1; m++) {
+                        occ[ispn] += this->data_(m, m, ispn, ia).real();
+                    }
+                }
+                if (ctx_.num_spins() == 2) {
+                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) "
+                      << occ[1] << " (mz) " << occ[0] - occ[1] << std::endl;
+                } else {
+                    s << "Atom charge (total) " << 2 * occ[0] << std::endl;
+                }
+                ctx_.message(1, "occ.mtrx", s);
+            }
+        }
+    }
+
+}
+
 }

@@ -54,7 +54,7 @@ class Hubbard_matrix {
      * \return return the occupancy matrix if the first parameter is set to "get". */
     void access(std::string const& what__, double_complex* occ__, int ld__);
 
-    void print(int min_verbosity__) const;
+    void print_local(int ia__, std::ostream& out__) const;
 
     sddk::mdarray<double_complex, 4>& data()
     {

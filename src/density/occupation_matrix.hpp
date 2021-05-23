@@ -48,10 +48,7 @@ class Occupation_matrix : public Hubbard_matrix {
         }
     }
 
-    void print_occupancies(int verbosity__) const
-    {
-        Hubbard_matrix::print(verbosity__);
-    }
+    void print_occupancies(int verbosity__) const;
 };
 
 inline void copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
