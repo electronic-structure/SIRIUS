@@ -86,8 +86,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
         }
 
         /* non-local H contribution */
-        auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
-        matrix<double_complex> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
+        if (kp_.beta_projectors().num_beta_t() != 0) {
+    	   auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
+           matrix<double_complex> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
 
         for (int iat = 0; iat < uc.num_atom_types(); iat++) {
             auto& atom_type = uc.atom_type(iat);
@@ -156,6 +157,7 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
+        }
         }
     }
     if (H0_.ctx().processing_unit() == device_t::GPU) {
