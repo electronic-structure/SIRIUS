@@ -25,6 +25,7 @@
 #ifndef __SERIALIZER_HPP__
 #define __SERIALIZER_HPP__
 
+#include <limits>
 #include "mpi/communicator.hpp"
 
 namespace sddk {
