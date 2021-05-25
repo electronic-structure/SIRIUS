@@ -42,18 +42,15 @@ class Occupation_matrix : public Hubbard_matrix {
 
     void reduce()
     {
-        if (data_.size()) {
         /* global reduction over k points */
-            ctx_.comm_k().allreduce(data_.at(memory_t::host), static_cast<int>(data_.size()));
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                ctx_.comm_k().allreduce(this->local(ia).at(memory_t::host), static_cast<int>(this->local(ia).size()));
+            }
         }
     }
 
     void print_occupancies(int verbosity__) const;
 };
-
-inline void copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
-{
-    copy(src__.data(), dest__.data());
-}
 
 } // namespace

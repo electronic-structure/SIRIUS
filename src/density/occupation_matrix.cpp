@@ -29,24 +29,6 @@ namespace sirius {
 Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
     : Hubbard_matrix(ctx__)
 {
-    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
-
-        int indexb_max = -1;
-
-        // TODO: move detection of indexb_max to unit_cell
-        // Don't forget that Hubbard class has the same code
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                indexb_max = std::max(indexb_max, static_cast<int>(ctx_.unit_cell().atom(ia).type().indexb_hub().size()));
-            }
-        }
-
-        // TODO: work on the general definition of the occupation matrix with offsite terms
-        // store it as list of small matrices, thewn indexb_max is not needed
-        data_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
-                memory_t::host, "Occupation_matrix.data_");
-        data_.zero();
-    }
 }
 
 void Occupation_matrix::add_k_point_contribution(K_point& kp__)
@@ -136,7 +118,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                             int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
                             for (int mp = 0; mp < lmmax_at; mp++) {
                                 for (int m = 0; m < lmmax_at; m++) {
-                                    data_(m, mp, s, ia) +=
+                                    local_[ia](m, mp, s) +=
                                         occ_mtrx(r.first * s1 + r.second[ia] + m, r.first * s2 + r.second[ia] + mp);
                                 }
                             }
@@ -202,7 +184,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                             const int mmp = r.second[ia] + mp;
                             for (int m = 0; m < lmmax_at; m++) {
                                 const int mm = r.second[ia] + m;
-                                data_(m, mp, ispn, ia) += occ_mtrx(mm, mmp);
+                                local_[ia](m, mp, ispn) += occ_mtrx(mm, mmp);
                             }
                         }
                     //}
@@ -215,11 +197,11 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
 
 void Occupation_matrix::init()
 {
-    if (!data_.size()) {
+    if (!ctx_.hubbard_correction()) {
         return;
     }
 
-    data_.zero();
+    this->zero();
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const auto& atom = ctx_.unit_cell().atom(ia);
@@ -228,7 +210,7 @@ void Occupation_matrix::init()
             if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->data_(m, m, ispn, ia) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
+                        this->local_[ia](m, m, ispn) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
@@ -253,13 +235,13 @@ void Occupation_matrix::init()
                         // colinear case
                         if (charge > (lmax_at)) {
                             for (int m = 0; m < lmax_at; m++) {
-                                this->data_(m, m, majs, ia) = 1.0;
-                                this->data_(m, m, mins, ia) =
+                                this->local_[ia](m, m, majs) = 1.0;
+                                this->local_[ia](m, m, mins) =
                                     (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
                             }
                         } else {
                             for (int m = 0; m < lmax_at; m++) {
-                                data_(m, m, majs, ia) = charge / static_cast<double>(lmax_at);
+                                this->local_[ia](m, m, majs) = charge / static_cast<double>(lmax_at);
                             }
                         }
                     } else {
@@ -288,16 +270,16 @@ void Occupation_matrix::init()
                         ns[3] = mag * cs * 0.5;
 
                         for (int m = 0; m < lmax_at; m++) {
-                            this->data_(m, m, 0, ia) = ns[0];
-                            this->data_(m, m, 1, ia) = ns[1];
-                            this->data_(m, m, 2, ia) = ns[2];
-                            this->data_(m, m, 3, ia) = ns[3];
+                            this->local_[ia](m, m, 0) = ns[0];
+                            this->local_[ia](m, m, 1) = ns[1];
+                            this->local_[ia](m, m, 2) = ns[2];
+                            this->local_[ia](m, m, 3) = ns[3];
                         }
                     }
                 } else {
                     for (int s = 0; s < ctx_.num_spins(); s++) {
                         for (int m = 0; m < lmax_at; m++) {
-                            this->data_(m, m, s, ia) = charge * 0.5 / static_cast<double>(lmax_at);
+                            this->local_[ia](m, m, s) = charge * 0.5 / static_cast<double>(lmax_at);
                         }
                     }
                 }
@@ -319,7 +301,7 @@ void Occupation_matrix::print_occupancies(int verbosity__) const
                 double occ[2] = {0, 0};
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < ctx_.unit_cell().atom(ia).type().indexr_hub().am(0).l() * 2 + 1; m++) {
-                        occ[ispn] += this->data_(m, m, ispn, ia).real();
+                        occ[ispn] += this->local_[ia](m, m, ispn).real();
                     }
                 }
                 if (ctx_.num_spins() == 2) {

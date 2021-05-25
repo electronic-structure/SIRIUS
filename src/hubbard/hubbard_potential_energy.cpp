@@ -30,7 +30,7 @@ namespace sirius {
    * case.
    */
 void
-Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__)
+Hubbard::generate_potential_collinear(Hubbard_matrix const& om__)
 {
     this->hubbard_potential_.zero();
 
@@ -66,7 +66,7 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
                             (atom.type().lo_descriptor_hub(0).Hubbard_alpha() + 0.5 * U_effective);
 
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            this->hubbard_potential_(m2, m1, is, ia) -= U_effective * om__(m2, m1, is, ia);
+                            this->hubbard_potential_(m2, m1, is, ia) -= U_effective * om__.local(ia)(m2, m1, is);
                         }
                     }
                 }
@@ -88,7 +88,7 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
 
                         for (int m2 = 0; m2 < 2 * atom.type().lo_descriptor_hub(0).l + 1; m2++) {
                             this->U(m1, m2, is, ia) += atom.type().lo_descriptor_hub(0).Hubbard_J0() *
-                                om__(m2, m1, s_opposite, ia);
+                                om__.local(ia)(m2, m1, s_opposite);
                         }
                     }
                 }
@@ -114,11 +114,11 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
 
             for (int s = 0; s < ctx_.num_spins(); s++) {
                 for (int m = 0; m < lmax_at; m++) {
-                    n_total += om__(m, m, s, ia).real();
+                    n_total += om__.local(ia)(m, m, s).real();
                 }
 
                 for (int m = 0; m < lmax_at; m++) {
-                    n_updown[s] += om__(m, m, s, ia).real();
+                    n_updown[s] += om__.local(ia)(m, m, s).real();
                 }
             }
             double magnetization = 0.0;
@@ -127,7 +127,7 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
                 n_total *= 2.0; // factor two here because the occupations are <= 1
             } else {
                 for (int m = 0; m < lmax_at; m++) {
-                    magnetization += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
+                    magnetization += (om__.local(ia)(m, m, 0) - om__.local(ia)(m, m, 1)).real();
                 }
                 magnetization *= magnetization;
             }
@@ -154,18 +154,19 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
                                 if (ctx_.num_mag_dims() == 0) {
                                     this->U(m1, m2, is, ia) +=
                                         2.0 * atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m2, m4) *
-                                        om__(m3, m4, is, ia);
+                                        om__.local(ia)(m3, m4, is);
                                 } else {
                                     // colinear case
                                     for (int is2 = 0; is2 < 2; is2++) {
                                         this->U(m1, m2, is, ia) +=
                                             atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m2, m4) *
-                                            om__(m3, m4, is2, ia);
+                                            om__.local(ia)(m3, m4, is2);
                                     }
                                 }
 
                                 this->U(m1, m2, is, ia) -=
-                                    atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is, ia);
+                                    atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m4, m2) *
+                                    om__.local(ia)(m3, m4, is);
                             }
                         }
                     }
@@ -176,7 +177,7 @@ Hubbard::generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om
 }
 
 double
-Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__) const
+Hubbard::calculate_energy_collinear(Hubbard_matrix const& om__) const
 {
     double hubbard_energy{0};
     double hubbard_energy_u{0};
@@ -203,12 +204,12 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
 
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             hubbard_energy +=
-                                (atom.type().lo_descriptor_hub(0).Hubbard_alpha() + 0.5 * U_effective) * om__(m1, m1, is, ia).real();
+                                (atom.type().lo_descriptor_hub(0).Hubbard_alpha() + 0.5 * U_effective) * om__.local(ia)(m1, m1, is).real();
 
                             for (int m2 = 0; m2 < lmax_at; m2++) {
 
                                 hubbard_energy -=
-                                    0.5 * U_effective * (om__(m1, m2, is, ia) * om__(m2, m1, is, ia)).real();
+                                    0.5 * U_effective * (om__.local(ia)(m1, m2, is) * om__.local(ia)(m2, m1, is)).real();
                             }
                         }
                     }
@@ -227,13 +228,13 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
                         for (int m1 = 0; m1 < lmax_at; m1++) {
 
                             hubbard_energy += sign * atom.type().lo_descriptor_hub(0).Hubbard_beta() *
-                                                     om__(m1, m1, is, ia).real();
+                                                     om__.local(ia)(m1, m1, is).real();
 
                             for (int m2 = 0; m2 < 2 * atom.type().lo_descriptor_hub(0).l + 1; m2++) {
                                 hubbard_energy +=
                                     0.5 * atom.type().lo_descriptor_hub(0).Hubbard_J0() *
-                                    (om__(m2, m1, is, ia) *
-                                     om__(m1, m2, s_opposite, ia)).real();
+                                    (om__.local(ia)(m2, m1, is) *
+                                     om__.local(ia)(m1, m2, s_opposite)).real();
                             }
                         }
                     }
@@ -265,11 +266,11 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
 
             for (int s = 0; s < ctx_.num_spins(); s++) {
                 for (int m = 0; m < lmax_at; m++) {
-                    n_total += om__(m, m, s, ia).real();
+                    n_total += om__.local(ia)(m, m, s).real();
                 }
 
                 for (int m = 0; m < lmax_at; m++) {
-                    n_updown[s] += om__(m, m, s, ia).real();
+                    n_updown[s] += om__.local(ia)(m, m, s).real();
                 }
             }
             double magnetization = 0.0;
@@ -278,7 +279,7 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
                 n_total *= 2.0; // factor two here because the occupations are <= 1
             } else {
                 for (int m = 0; m < lmax_at; m++) {
-                    magnetization += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
+                    magnetization += (om__.local(ia)(m, m, 0) - om__.local(ia)(m, m, 1)).real();
                 }
                 magnetization *= magnetization;
             }
@@ -301,9 +302,9 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
 
                                 hubbard_energy_u +=
                                     0.5 * ((atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m3, m4) - atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m4, m3)) *
-                                               om__(m1, m3, is, ia) * om__(m2, m4, is, ia) +
-                                           atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is, ia) *
-                                               om__(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0), ia))
+                                               om__.local(ia)(m1, m3, is) * om__.local(ia)(m2, m4, is) +
+                                           atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m3, m4) * om__.local(ia)(m1, m3, is) *
+                                               om__.local(ia)(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0)))
                                               .real();
                             }
                         }
@@ -325,7 +326,7 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
 }
 
 void
-Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const& om__)
+Hubbard::generate_potential_non_collinear(Hubbard_matrix const& om__)
 {
     this->hubbard_potential_.zero();
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -337,21 +338,16 @@ Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const
             // compute the charge and magnetization of the hubbard bands for
             // calculation of the double counting term in the hubbard correction
 
-            double_complex n_total;
-            double         mx;
-            double         my;
-            double         mz;
+            double_complex n_total{0};
+            double mx{0};
+            double my{0};
+            double mz{0};
 
-            n_total = om__(0, 0, 0, ia) + om__(0, 0, 1, ia);
-            mz      = (om__(0, 0, 0, ia) - om__(0, 0, 1, ia)).real();
-            mx      = (om__(0, 0, 2, ia) + om__(0, 0, 3, ia)).real();
-            my      = (om__(0, 0, 2, ia) - om__(0, 0, 3, ia)).imag();
-
-            for (int m = 1; m < lmax_at; m++) {
-                n_total += om__(m, m, 0, ia) + om__(m, m, 1, ia);
-                mz += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
-                mx += (om__(m, m, 2, ia) + om__(m, m, 3, ia)).real();
-                my += (om__(m, m, 2, ia) - om__(m, m, 3, ia)).imag();
+            for (int m = 0; m < lmax_at; m++) {
+                n_total += om__.local(ia)(m, m, 0) + om__.local(ia)(m, m, 1);
+                mz += (om__.local(ia)(m, m, 0) - om__.local(ia)(m, m, 1)).real();
+                mx += (om__.local(ia)(m, m, 2) + om__.local(ia)(m, m, 3)).real();
+                my += (om__.local(ia)(m, m, 2) - om__.local(ia)(m, m, 3)).imag();
             }
 
             mx = n_total.real();
@@ -383,7 +379,7 @@ Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const
                                 for (int m4 = 0; m4 < lmax_at; ++m4) {
                                     this->U(m1, m2, is, ia) +=
                                         atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m2, m4) *
-                                        (om__(m3, m4, 0, ia) + om__(m3, m4, 1, ia));
+                                        (om__.local(ia)(m3, m4, 0) + om__.local(ia)(m3, m4, 1));
                                 }
                             }
                         }
@@ -394,7 +390,7 @@ Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const
 
                 double_complex n_aux = 0.0;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
-                    n_aux += om__(m1, m1, is1, ia);
+                    n_aux += om__.local(ia)(m1, m1, is1);
                 }
 
                 for (int m1 = 0; m1 < lmax_at; m1++) {
@@ -413,7 +409,7 @@ Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const
                         for (int m3 = 0; m3 < lmax_at; m3++) {
                             for (int m4 = 0; m4 < lmax_at; m4++) {
                                 this->U(m1, m2, is, ia) -=
-                                    atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is1, ia);
+                                    atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m3, m4, m2) * om__.local(ia)(m3, m4, is1);
                             }
                         }
                     }
@@ -424,7 +420,7 @@ Hubbard::generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const
 }
 
 double
-Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& om__) const
+Hubbard::calculate_energy_non_collinear(Hubbard_matrix const& om__) const
 {
     double hubbard_energy_dc_contribution{0};
     double hubbard_energy_noflip{0};
@@ -440,21 +436,16 @@ Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& 
             // compute the charge and magnetization of the hubbard bands for
             // calculation of the double counting term in the hubbard correction
 
-            double_complex n_total;
-            double         mx;
-            double         my;
-            double         mz;
+            double_complex n_total{0};
+            double mx{0};
+            double my{0};
+            double mz{0};
 
-            n_total = om__(0, 0, 0, ia) + om__(0, 0, 1, ia);
-            mz      = (om__(0, 0, 0, ia) - om__(0, 0, 1, ia)).real();
-            mx      = (om__(0, 0, 2, ia) + om__(0, 0, 3, ia)).real();
-            my      = (om__(0, 0, 2, ia) - om__(0, 0, 3, ia)).imag();
-
-            for (int m = 1; m < lmax_at; m++) {
-                n_total += om__(m, m, 0, ia) + om__(m, m, 1, ia);
-                mz += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
-                mx += (om__(m, m, 2, ia) + om__(m, m, 3, ia)).real();
-                my += (om__(m, m, 2, ia) - om__(m, m, 3, ia)).imag();
+            for (int m = 0; m < lmax_at; m++) {
+                n_total += om__.local(ia)(m, m, 0) + om__.local(ia)(m, m, 1);
+                mz += (om__.local(ia)(m, m, 0) - om__.local(ia)(m, m, 1)).real();
+                mx += (om__.local(ia)(m, m, 2) + om__.local(ia)(m, m, 3)).real();
+                my += (om__.local(ia)(m, m, 2) - om__.local(ia)(m, m, 3)).imag();
             }
 
             double magnetization = mz * mz + mx * mx + my * my;
@@ -494,9 +485,9 @@ Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& 
                                     hubbard_energy_noflip +=
                                         0.5 * ((atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m3, m4) -
                                                 atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m4, m3)) *
-                                                   om__(m1, m3, is, ia) * om__(m2, m4, is, ia) +
+                                                   om__.local(ia)(m1, m3, is) * om__.local(ia)(m2, m4, is) +
                                                atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m3, m4) *
-                                                   om__(m1, m3, is, ia) * om__(m2, m4, (is + 1) % 2, ia)).real();
+                                                   om__.local(ia)(m1, m3, is) * om__.local(ia)(m2, m4, (is + 1) % 2)).real();
                                 }
                             }
                         }
@@ -509,7 +500,7 @@ Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& 
                                 for (int m4 = 0; m4 < lmax_at; ++m4) {
                                     hubbard_energy_flip -=
                                         0.5 * (atom.type().lo_descriptor_hub(0).hubbard_matrix(m1, m2, m4, m3) *
-                                            om__(m1, m3, is, ia) * om__(m2, m4, is1, ia)).real();
+                                            om__.local(ia)(m1, m3, is) * om__.local(ia)(m2, m4, is1)).real();
                                 }
                             }
                         }
@@ -520,7 +511,7 @@ Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& 
 
                 double_complex n_aux = 0.0;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
-                    n_aux += om__(m1, m1, is1, ia);
+                    n_aux += om__.local(ia)(m1, m1, is1);
                 }
             }
         }

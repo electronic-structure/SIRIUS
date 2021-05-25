@@ -32,7 +32,8 @@ namespace sirius {
 class Hubbard_matrix {
   protected:
     Simulation_context& ctx_;
-    sddk::mdarray<double_complex, 4> data_;
+    std::vector<sddk::mdarray<double_complex, 3>> local_;
+    //sddk::mdarray<double_complex, 4> data_;
   public:
     Hubbard_matrix(Simulation_context& ctx__);
 
@@ -52,29 +53,52 @@ class Hubbard_matrix {
      * \param [inout] occ  Pointer to external occupancy tensor.
      * \param [in]    ld   Leading dimension of the outside tensor.
      * \return return the occupancy matrix if the first parameter is set to "get". */
-    void access(std::string const& what__, double_complex* occ__, int ld__);
+    void access(std::string const& what__, double_complex* ptr__, int ld__);
 
     void print_local(int ia__, std::ostream& out__) const;
 
-    sddk::mdarray<double_complex, 4>& data()
+    //sddk::mdarray<double_complex, 4>& data()
+    //{
+    //    return data_;
+    //}
+
+    //sddk::mdarray<double_complex, 4> const& data() const
+    //{
+    //    return data_;
+    //}
+
+    sddk::mdarray<double_complex, 3>& local(int ia__)
     {
-        return data_;
+        return local_[ia__];
     }
 
-    sddk::mdarray<double_complex, 4> const& data() const
+    sddk::mdarray<double_complex, 3> const& local(int ia__) const
     {
-        return data_;
+        return local_[ia__];
     }
 
     void zero()
     {
-        data_.zero();
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                local_[ia].zero();
+            }
+        }
+    }
+
+    auto const& ctx() const
+    {
+        return ctx_;
     }
 };
 
 inline void copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
-    copy(src__.data(), dest__.data());
+    for (int ia = 0; ia < src__.ctx().unit_cell().num_atoms(); ia++) {
+        if (src__.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
+            copy(src__.local(ia), dest__.local(ia));
+        }
+    }
 }
 
 }

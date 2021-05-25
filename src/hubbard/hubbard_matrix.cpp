@@ -32,21 +32,15 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 {
     if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
 
-        int indexb_max = -1;
+        local_ = std::vector<sddk::mdarray<double_complex, 3>>(ctx_.unit_cell().num_atoms());
 
-        // TODO: move detection of indexb_max to unit_cell
-        // Don't forget that Hubbard class has the same code
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                indexb_max = std::max(indexb_max, static_cast<int>(ctx_.unit_cell().atom(ia).type().indexb_hub().size()));
+                int nb = ctx_.unit_cell().atom(ia).type().indexb_hub().size();
+                local_[ia] = sddk::mdarray<double_complex, 3>(nb, nb, 4);
+                local_[ia].zero();
             }
         }
-
-        // TODO: work on the general definition of the occupation matrix with offsite terms
-        // store it as list of small matrices, thewn indexb_max is not needed
-        data_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
-                memory_t::host, "Hubbard_matrix.data_");
-        data_.zero();
     }
 }
 
@@ -76,11 +70,11 @@ void Hubbard_matrix::access(std::string const& what__, double_complex* occ__, in
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what__ == "get") {
                         for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
-                            occ_mtrx(l + m1, l + m2, j, ia) = data_(l + m1, l + m2, j, ia);
+                            occ_mtrx(l + m1, l + m2, j, ia) = this->local(ia)(l + m1, l + m2, j);
                         }
                     } else {
                         for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
-                            data_(l + m1, l + m2, j, ia) = occ_mtrx(l + m1, l + m2, j, ia);
+                            this->local(ia)(l + m1, l + m2, j) = occ_mtrx(l + m1, l + m2, j, ia);
                         }
                     }
                 }
@@ -114,10 +108,10 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
             bool has_imag{false};
             for (int m = 0; m < mmax; m++) {
                 for (int mp = 0; mp < mmax; mp++) {
-                    if (std::abs(std::imag(data_(m, mp, is, ia__))) > 1e-12) {
+                    if (std::abs(std::imag(this->local(ia__)(m, mp, is))) > 1e-12) {
                         has_imag = true;
                     }
-                    print_number(std::real(data_(m, mp, is, ia__)));
+                    print_number(std::real(this->local(ia__)(m, mp, is)));
                 }
                 out__ << std::endl;
             }
@@ -125,7 +119,7 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
                 out__ << "imaginary part:" << std::endl;
                 for (int m = 0; m < mmax; m++) {
                     for (int mp = 0; mp < mmax; mp++) {
-                        print_number(std::imag(data_(m, mp, is, ia__)));
+                        print_number(std::imag(this->local(ia__)(m, mp, is)));
                     }
                     out__ << std::endl;
                 }
@@ -138,22 +132,22 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
         draw_bar(2 * width * mmax + 3);
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
-                print_number(std::real(data_(m, mp, 0, ia__)));
+                print_number(std::real(this->local(ia__)(m, mp, 0)));
             }
             out__ << " | ";
             for (int mp = 0; mp < mmax; mp++) {
-                print_number(std::real(data_(m, mp, 2, ia__)));
+                print_number(std::real(this->local(ia__)(m, mp, 2)));
             }
             out__ << std::endl;
         }
         draw_bar(2 * width * mmax + 3);
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
-                print_number(std::real(data_(m, mp, 3, ia__)));
+                print_number(std::real(this->local(ia__)(m, mp, 3)));
             }
             out__ << " | ";
             for (int mp = 0; mp < mmax; mp++) {
-                print_number(std::real(data_(m, mp, 1, ia__)));
+                print_number(std::real(this->local(ia__)(m, mp, 1)));
             }
             out__ << std::endl;
         }

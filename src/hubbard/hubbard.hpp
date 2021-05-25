@@ -39,6 +39,7 @@
 #include "beta_projectors/beta_projectors_gradient.hpp"
 #include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "radial/radial_integrals.hpp"
+#include "hubbard_matrix.hpp"
 
 namespace sirius {
 
@@ -90,15 +91,15 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
 
-    double calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+    double calculate_energy_collinear(Hubbard_matrix const& om__) const;
 
-    void generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__);
+    void generate_potential_collinear(Hubbard_matrix const& om__);
 
-    double calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+    double calculate_energy_non_collinear(Hubbard_matrix const& om__) const;
 
-    void generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const& om__);
+    void generate_potential_non_collinear(Hubbard_matrix const& om__);
 
-    void generate_potential(sddk::mdarray<double_complex, 4> const& om__)
+    void generate_potential(Hubbard_matrix const& om__)
     {
         /* the hubbard potential has the same structure than the occupation numbers */
         this->hubbard_potential_.zero();
@@ -132,7 +133,7 @@ class Hubbard
         return hubbard_potential_(m1, m2, m3, m4);
     }
 
-    inline double hubbard_energy(sddk::mdarray<double_complex, 4> const& om__) const
+    inline double hubbard_energy(Hubbard_matrix const& om__) const
     {
         if (ctx_.num_mag_dims() != 3) {
             return calculate_energy_collinear(om__);

@@ -345,7 +345,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
 
     if (ctx_.hubbard_correction()) {
         // recompute the hubbard potential.
-        potential_.U().generate_potential(density_.occupation_matrix().data());
+        potential_.U().generate_potential(density_.occupation_matrix());
 
         Q_operator q_op(ctx_);
 

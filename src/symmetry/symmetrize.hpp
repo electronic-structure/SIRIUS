@@ -618,7 +618,8 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
 }
 
 inline void
-symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell_symmetry const& sym__,
+symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
+           int num_mag_comp__, Unit_cell_symmetry const& sym__,
            std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
@@ -626,9 +627,15 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
         return;
     }
 
-    sddk::mdarray<double_complex, 4> dmsym(dm__.size(0), dm__.size(1), dm__.size(2), dm__.size(3));
-
-    dmsym.zero();
+    //sddk::mdarray<double_complex, 4> dmsym(dm__.size(0), dm__.size(1), dm__.size(2), dm__.size(3));
+    std::vector<sddk::mdarray<double_complex, 3>> dmsym(sym__.num_atoms());
+    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+        int iat = sym__.atom_type(ia);
+        if (indexb__(iat)) {
+            dmsym[ia] = sddk::mdarray<double_complex, 3>(indexb__(iat)->size(), indexb__(iat)->size(), 4);
+            dmsym[ia].zero();
+        }
+    }
 
     int lmax{0};
     for (int iat = 0; iat < sym__.num_atom_types(); iat++) {
@@ -679,7 +686,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                                 for (int m1p = 0; m1p < ss1; m1p++) {
                                     for (int m2p = 0; m2p < ss2; m2p++) {
                                         dm_ia(m1, m2, j) += rotm[am1.l()](m1, m1p) *
-                                            dm__(offset1 + m1p, offset2 + m2p, j, ia) *
+                                            dm__(ia)(offset1 + m1p, offset2 + m2p, j) *
                                             rotm[am2.l()](m2, m2p);
                                     }
                                 }
@@ -690,7 +697,7 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
                     if (num_mag_comp__ == 1) { /* trivial non-magnetic case */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
-                                dmsym(m1 + offset1, m2 + offset2, 0, ja) += dm_ia(m1, m2, 0);
+                                dmsym[ja](m1 + offset1, m2 + offset2, 0) += dm_ia(m1, m2, 0);
                             }
                         }
                     } else {
@@ -709,14 +716,14 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
 
                                     for (int s1p = 0; s1p < 2; s1p++) {
                                         for (int s2p = 0; s2p < 2; s2p++) {
-                                            dmsym(m1 + offset1, m2 + offset2, j, ja) +=
+                                            dmsym[ja](m1 + offset1, m2 + offset2, j) +=
                                                 spin_rot_su2(s1, s1p) * dm[s1p][s2p] *
                                                 std::conj(spin_rot_su2(s2, s2p));
                                         }
                                     }
                                     if (num_mag_comp__ == 3) {
-                                        dmsym(m1 + offset1, m2 + offset2, 3, ja) =
-                                            std::conj(dmsym(m1 + offset1, m2 + offset2, 2, ia));
+                                        dmsym[ja](m1 + offset1, m2 + offset2, 3) =
+                                            std::conj(dmsym[ia](m1 + offset1, m2 + offset2, 2));
                                     }
                                 }
                             }
@@ -730,8 +737,14 @@ symmetrize(sddk::mdarray<double_complex, 4>& dm__, int num_mag_comp__, Unit_cell
 
     double alpha = 1.0 / sym__.size();
 
-    for (size_t i = 0; i < dm__.size(); i++) {
-        dm__[i] = dmsym[i] * alpha;
+    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+        int iat = sym__.atom_type(ia);
+        if (indexb__(iat)) {
+            for (size_t i = 0; i < dm__(ia).size(); i++) {
+                dm__(ia)[i] = dmsym[ia][i] * alpha;
+            }
+
+        }
     }
 }
 
