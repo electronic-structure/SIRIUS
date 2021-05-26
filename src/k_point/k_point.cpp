@@ -253,8 +253,8 @@ K_point::generate_hubbard_orbitals()
     beta_projectors().prepare();
     for (int is = 0; is < ctx_.num_spinors(); is++ ) {
         /* spin range to apply S-operator.
-         * if WFs are non-magnetic, sping range is [is] - apply to single component
-         * if WFs have two componens, S will be aplpied to both of them */
+         * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
+         * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
         sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),

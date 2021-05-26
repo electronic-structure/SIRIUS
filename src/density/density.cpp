@@ -1694,6 +1694,10 @@ void Density::symmetrize_density_matrix()
 
     int ndm = ctx_.num_mag_comp();
 
+    if (unit_cell_.mt_lo_basis_size() == 0) {
+        return;
+    }
+
     mdarray<double_complex, 4> dm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ndm,
                                   unit_cell_.num_atoms());
     dm.zero();
