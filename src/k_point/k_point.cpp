@@ -247,7 +247,7 @@ K_point::generate_hubbard_orbitals()
     phi.prepare(sr, true);
     hubbard_wave_functions_->prepare(sr, false);
     s_phi.prepare(sr, false);
-    hubbard_wave_functions_without_S_->prepart(sr, false);
+    hubbard_wave_functions_without_S_->prepare(sr, false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
