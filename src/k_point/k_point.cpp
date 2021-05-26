@@ -247,6 +247,7 @@ K_point::generate_hubbard_orbitals()
     phi.prepare(sr, true);
     hubbard_wave_functions_->prepare(sr, false);
     s_phi.prepare(sr, false);
+    hubbard_wave_functions_without_S_->prepart(sr, false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
@@ -273,6 +274,7 @@ K_point::generate_hubbard_orbitals()
     hubbard_wave_functions_->dismiss(sr, true);
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
+    hubbard_wave_functions_without_S_->dismiss(sr, true);
 
     if (ctx_.cfg().control().print_checksum()) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
