@@ -92,6 +92,9 @@ class Beta_projectors : public Beta_projectors_base
         PROFILE("sirius::Beta_projectors");
         /* generate phase-factor independent projectors for atom types */
         generate_pw_coefs_t(igk__);
+        if (!num_beta_t()) {
+            return;
+        }
         /* special treatment for beta-projectors as they are mostly often used */
         switch (ctx_.processing_unit()) {
             /* beta projectors for atom types will be stored on GPU for the entire run */

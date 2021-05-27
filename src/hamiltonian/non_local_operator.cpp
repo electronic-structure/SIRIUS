@@ -467,7 +467,7 @@ void D_operator::initialize()
         utils::print_checksum("D_operator", cs);
     }
 
-    if (this->pu_ == device_t::GPU) {
+    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
         this->op_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
@@ -583,7 +583,7 @@ void Q_operator::initialize()
         utils::print_checksum("Q_operator", cs);
     }
 
-    if (this->pu_ == device_t::GPU) {
+    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
         this->op_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
