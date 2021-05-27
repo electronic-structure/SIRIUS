@@ -64,13 +64,16 @@ class Hubbard
     bool multi_channels_{false};
 
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
-                             mdarray<double_complex, 5>& dn__, const int index__); // TODO: how this connects to occupation matrix?
+                             mdarray<double_complex, 5>& dn__,
+                             const int index__); // TODO: how this connects to occupation matrix?
 
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
     void wavefunctions_strain_deriv(K_point& kp, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
                                     mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
+    void apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
+                  Wave_functions& phi, Wave_functions& dphi);
 
   public:
     /// Constructor.
