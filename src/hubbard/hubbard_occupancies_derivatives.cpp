@@ -161,6 +161,8 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
         phitmp.allocate(spin_range(0), memory_t::device);
         phi.allocate(spin_range(0), memory_t::device);
         dphi.allocate(spin_range(0), memory_t::device);
+        kp.hubbard_wave_functions().allocate(spin_range(ctx_.num_spins()), memory_t::device);
+
         kp.hubbard_wave_functions().copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
         phi.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
         kp.spinor_wave_functions().allocate(spin_range(ctx_.num_spins()), memory_t::device);
@@ -171,15 +173,17 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
     phi_s_psi.zero(memory_t::host);
     phi_s_psi.zero(memory_t::device);
 
-    /* compute S | phi> where |phi> are the atomic orbitals */
-    sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0,
-                                             this->number_of_hubbard_orbitals(), kp.beta_projectors(), phi, &q_op,
-                                             dphi);
 
     /* compute the overlap matrix and diagonalize it */
     if (ctx_.cfg().hubbard().orthogonalize()) {
         overlap__.zero(memory_t::host);
         overlap__.zero(memory_t::device);
+        dphi.pw_coeffs(0).prime().zero(memory_t::host);
+        dphi.pw_coeffs(0).prime().zero(memory_t::device);
+        /* compute S | phi> where |phi> are the atomic orbitals */
+        sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0,
+                                                 this->number_of_hubbard_orbitals(), kp.beta_projectors(), phi, &q_op,
+                                                 dphi);
         inner(ctx_.spla_context(), sddk::spin_range(0), phi, 0, this->number_of_hubbard_orbitals(), dphi, 0,
               this->number_of_hubbard_orbitals(), overlap__, 0, 0);
 
@@ -337,6 +341,10 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
                             O__(n, m) += 1.0 / sqrt(eigenvalues[l]) * U__(n, l) * std::conj(U__(m, l));
                         }
                     }
+                }
+
+                if (ctx_.processing_unit() == device_t::GPU) {
+                    O__.copy_to(memory_t::device);
                 }
 
                 transform<double_complex>(ctx_.spla_context(), 0, phitmp, // <- contains the derivatives of |phi>
