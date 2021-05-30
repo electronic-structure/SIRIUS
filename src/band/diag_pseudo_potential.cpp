@@ -546,11 +546,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         kp.band_energy(j, ispin_step, eval[j - num_locked]);
                     }
                 } else {
-                    kp.message(2, __function_name__, "%s", "wave-functions are not recomputed\n");
+                    kp.message(3, __function_name__, "%s", "wave-functions are not recomputed\n");
                 }
 
                 if (last_iteration && !converged) {
-                    kp.message(2, __function_name__, "Warning: maximum number of iterations reached, but %i "
+                    kp.message(3, __function_name__, "Warning: maximum number of iterations reached, but %i "
                                "residual(s) did not converge for k-point %f %f %f, eigen-solver tolerance: %18.12f\n",
                                num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2], ctx_.iterative_solver_tolerance());
                 }
@@ -645,7 +645,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             ctx_.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands, 3));
 
-            kp.message(2, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+            kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             for (int i = 0; i < num_bands - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                     std::abs(eval[i] - eval_old[i]), kp.band_occupancy(i, ispin_step));
