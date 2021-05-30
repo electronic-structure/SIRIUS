@@ -1133,7 +1133,7 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
 /*
 @api begin
 sirius_set_periodic_function:
-  doc: Get values of the periodic function.
+  doc: Set values of the periodic function.
   arguments:
     handler:
       type: void*
