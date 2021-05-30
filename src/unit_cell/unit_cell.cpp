@@ -1,6 +1,7 @@
 #include "unit_cell.hpp"
 
 namespace sirius {
+
 std::vector<double> Unit_cell::find_mt_radii()
 {
     if (nearest_neighbours_.size() == 0) {
@@ -728,7 +729,7 @@ void Unit_cell::update()
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
             auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
-            std::vector<double> Rmt = find_mt_radii();
+            auto Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 double r0 = atom_type(iat).radial_grid().first();
 
