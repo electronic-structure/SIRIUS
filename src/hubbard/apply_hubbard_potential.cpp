@@ -49,7 +49,7 @@ void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
+            const int lmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
             // we apply the hubbard correction. For now I have no papers
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all

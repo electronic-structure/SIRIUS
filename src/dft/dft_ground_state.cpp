@@ -411,7 +411,7 @@ void DFT_ground_state::print_info()
         std::printf("smearing (-TS)            : %18.8f\n", s_sum);
         std::printf("SCF correction            : %18.8f\n", this->scf_energy_);
         if (ctx_.hubbard_correction()) {
-            auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());
+            auto e = potential_.U().hubbard_energy(density_.occupation_matrix());
             std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);
         }
 

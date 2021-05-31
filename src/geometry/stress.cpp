@@ -688,7 +688,7 @@ void Stress::symmetrize(matrix3d<double>& mtrx__) const
     matrix3d<double> result;
 
     for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
-        auto R = ctx_.unit_cell().symmetry()[i].spg_op.rotation;
+        auto R = ctx_.unit_cell().symmetry()[i].spg_op.Rcp;
         result = result + dot(dot(transpose(R), mtrx__), R);
     }
 

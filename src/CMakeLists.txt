@@ -30,8 +30,8 @@ set(_SOURSES
   "hubbard/apply_hubbard_potential.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
-  "hubbard/hubbard_occupancy.cpp"
   "hubbard/hubbard_potential_energy.cpp"
+  "hubbard/hubbard_matrix.cpp"
   "potential/generate_d_operator_matrix.cpp"
   "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"
@@ -46,7 +46,6 @@ set(_SOURSES
   "geometry/force.cpp"
   "geometry/stress.cpp"
   "geometry/non_local_functor.cpp"
-  "k_point/generate_atomic_wave_functions.cpp"
   "k_point/generate_fv_states.cpp"
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
@@ -79,7 +78,6 @@ set(_SOURSES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
-  "context/input.cpp"
   )
 
 

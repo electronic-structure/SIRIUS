@@ -26,11 +26,11 @@ jobs:
       - name: Run unit tests
         run: |
           cd ${GITHUB_WORKSPACE}/spack-build
-          spack --color always -e ci_run build-env $SPEC -- ctest --label-exclude integration_test
+          spack --color always -e ci_run build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
       - name: Run verification tests
         run: |
           cd ${GITHUB_WORKSPACE}/spack-build
-          spack --color always -e ci_run build-env $SPEC -- ctest -L cpu_serial
+          spack --color always -e ci_run build-env $SPEC -- ctest --output-on-failure -L cpu_serial
 
   build_rocm:
     runs-on: ubuntu-latest

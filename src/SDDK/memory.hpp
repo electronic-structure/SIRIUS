@@ -1399,6 +1399,27 @@ class mdarray
         return checksum(0, size());
     }
 
+    inline T* begin()
+    {
+        return this->at(memory_t::host);
+    }
+
+    inline T const* begin() const
+    {
+        return this->at(memory_t::host);
+    }
+
+    inline T* end()
+    {
+        return this->at(memory_t::host) + this->size();
+    }
+
+    inline T const* end() const
+    {
+        return this->at(memory_t::host) + this->size();
+    }
+
+
     //== template <device_t pu>
     //== inline T checksum() const
     //== {

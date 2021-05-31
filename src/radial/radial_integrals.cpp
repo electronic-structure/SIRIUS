@@ -53,7 +53,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
 
-            int l = indexr_(iat)[i].l();
+            int l = indexr_(iat).am(i).l();
             auto& rwf = fl__(iat, i);
 
             #pragma omp parallel for

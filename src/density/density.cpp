@@ -84,7 +84,9 @@ Density::Density(Simulation_context& ctx__)
     //    }
     //}
 
-    occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
+    if (ctx_.hubbard_correction()) {
+        occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
+    }
 
     update();
 }
@@ -134,7 +136,9 @@ void Density::initial_density()
 
         generate_paw_loc_density();
 
-        occupation_matrix_->init();
+        if (occupation_matrix_) {
+            occupation_matrix_->init();
+        }
     }
 }
 
@@ -1079,12 +1083,41 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
         this->symmetrize();
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             std::vector<double_complex> dm_ref;
+            std::unique_ptr<Occupation_matrix> om_ref;
+
+            /* copy density matrix for future comparison */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
                 dm_ref = std::vector<double_complex>(density_matrix_.size());
-                std::copy(density_matrix_.at(memory_t::host),
-                          density_matrix_.at(memory_t::host) + density_matrix_.size(), dm_ref.begin());
+                std::copy(density_matrix_.begin(), density_matrix_.end(), dm_ref.begin());
             }
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
+                occupation_matrix_) {
+                om_ref = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
+                copy(*occupation_matrix_, *om_ref);
+            }
+
+            /* symmetrize */
             this->symmetrize_density_matrix();
+
+            if (ctx_.hubbard_correction()) {
+                auto f = [&](int iat) -> sirius::experimental::basis_functions_index const*
+                {
+                    if (ctx_.unit_cell().atom_type(iat).hubbard_correction()) {
+                        return &ctx_.unit_cell().atom_type(iat).indexb_hub();
+                    } else {
+                        return nullptr;
+                    }
+                };
+
+                auto om = [&](int ia) -> sddk::mdarray<double_complex, 3>&
+                {
+                    return occupation_matrix_->local(ia);
+                };
+
+                sirius::symmetrize(om, ctx_.num_mag_comp(), ctx_.unit_cell().symmetry(), f);
+            }
+
+            /* compare with reference density matrix */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false) {
                 double diff{0};
                 for (size_t i = 0; i < density_matrix_.size(); i++) {
@@ -1092,9 +1125,27 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
                 ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n",
-                        diff, status.c_str());
+                             diff, status.c_str());
+            }
+            if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
+                occupation_matrix_) {
+                double diff{0};
+                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                    if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                        for (size_t i = 0; i < occupation_matrix_->local(ia).size(); i++) {
+                            diff = std::max(diff, std::abs(om_ref->local(ia)[i] - occupation_matrix_->local(ia)[i]));
+                        }
+                    }
+                }
+                std::string status = (diff > 1e-8) ? "Fail" : "OK";
+                ctx_.message(1, __function_name__, "error of the LDA+U occupation matrix symmetrization: %12.6e %s\n",
+                             diff, status.c_str());
             }
         }
+    }
+
+    if (occupation_matrix_) {
+        occupation_matrix_->print_occupancies(2);
     }
 
     generate_paw_loc_density();
@@ -1158,7 +1209,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
     density_matrix_.zero();
 
-    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+    if (occupation_matrix_) {
         occupation_matrix_->zero();
     }
 
@@ -1212,7 +1263,7 @@ void Density::generate_valence(K_point_set const& ks__)
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
             }
-            if (ctx_.hubbard_correction()) {
+            if (occupation_matrix_) {
                 occupation_matrix_->add_k_point_contribution(*kp);
             }
         }
@@ -1239,8 +1290,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+    }
+
+    if (occupation_matrix_) {
         occupation_matrix_->reduce();
-        occupation_matrix_->print_occupancies();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
@@ -1641,18 +1694,22 @@ void Density::symmetrize_density_matrix()
 
     int ndm = ctx_.num_mag_comp();
 
+    if (unit_cell_.mt_lo_basis_size() == 0) {
+        return;
+    }
+
     mdarray<double_complex, 4> dm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ndm,
                                   unit_cell_.num_atoms());
     dm.zero();
 
     int lmax  = unit_cell_.lmax();
     int lmmax = utils::lmmax(lmax);
-    mdarray<double, 2> rotm(lmmax, lmmax);
+    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
 
     for (int i = 0; i < sym.size(); i++) {
         int pr    = sym[i].spg_op.proper;
         auto eang = sym[i].spg_op.euler_angles;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
         auto& spin_rot_su2 = sym[i].spin_rotation_su2;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -1792,12 +1849,13 @@ void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     auto func_prop1   = mixer::periodic_function_property_modified(true);
     auto density_prop = mixer::density_function_property();
     auto paw_prop     = mixer::paw_density_function_property();
+    auto hubbard_prop = mixer::hubbard_matrix_function_property();
 
     /* create mixer */
     this->mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>,
                                         Periodic_function<double>, Periodic_function<double>,
                                         mdarray<double_complex, 4>, paw_density,
-                                        mdarray<double_complex, 4>>(mixer_cfg__);
+                                        Hubbard_matrix>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
@@ -1821,10 +1879,8 @@ void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     if (ctx_.unit_cell().num_paw_atoms()) {
         this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
     }
-    if (occupation_matrix_->data().size()) {
-        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_->data(),
-            static_cast<int>(occupation_matrix_->data().size(0)),
-            static_cast<int>(occupation_matrix_->data().size(1)), 4, unit_cell_.num_atoms());
+    if (occupation_matrix_) {
+        this->mixer_->initialize_function<6>(hubbard_prop, *occupation_matrix_, ctx_);
     }
 }
 
@@ -1847,8 +1903,8 @@ void Density::mixer_input()
         mixer_->set_input<5>(paw_density_);
     }
 
-    if (occupation_matrix_->data().size()) {
-        mixer_->set_input<6>(occupation_matrix_->data());
+    if (occupation_matrix_) {
+        mixer_->set_input<6>(*occupation_matrix_);
     }
 }
 
@@ -1871,8 +1927,8 @@ void Density::mixer_output()
         mixer_->get_output<5>(paw_density_);
     }
 
-    if (occupation_matrix_->data().size()) {
-        mixer_->get_output<6>(occupation_matrix_->data());
+    if (occupation_matrix_) {
+        mixer_->get_output<6>(*occupation_matrix_);
     }
 
     /* transform mixed density to plane-wave domain */

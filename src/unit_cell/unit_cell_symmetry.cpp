@@ -47,7 +47,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
     };
 
     for (int ia = 0; ia < num_atoms__; ia++) {
-        /* spatial transform */
+        /* position of atom ia */
         vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
         /* apply crystal symmetry */
         auto v = reduce_coordinates(dot(R__, pos) + t__);
@@ -60,7 +60,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
            and the reduction of coordinates is required */
         for (int k = 0; k < num_atoms__; k++) {
             vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-            /* find the distance between original and trasformed atoms */
+            /* find the distance between atom k and trasformed atoms ia */
             double dist = distance(v.first, reduce_coordinates(pos1).first);
             if (dist < tolerance__) {
                 ja = k;
@@ -80,7 +80,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
               << "  nearest atom: " << j0 << ", position : " << p0 << ", reduced: " << reduce_coordinates(p0).first << "\n"
               << "  distance between atoms: " << d0 << "\n"
               << "  tolerance: " << tolerance__;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         sym_atom[ia] = ja;
     }
@@ -100,7 +100,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
     /* sanity check */
     int p = sym_op.R.det();
     if (!(p == 1 || p == -1)) {
-        TERMINATE("wrong rotation matrix");
+        RTE_THROW("wrong rotation matrix");
     }
     /* inverse of the rotation matrix */
     sym_op.invR = inverse(sym_op.R);
@@ -112,12 +112,32 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
                                 spg_dataset__->translations[isym_spg__][2]);
     /* is this proper or improper rotation */
     sym_op.proper = p;
-    /* proper rotation in cartesian Coordinates */
-    sym_op.rotation = dot(dot(lattice_vectors__, matrix3d<double>(sym_op.R * p)), inverse_lattice_vectors);
-    /* get Euler angles of the rotation */
-    sym_op.euler_angles = euler_angles(sym_op.rotation);
-    /* get symmetry related atoms */
-    sym_op.sym_atom = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
+    /* rotation in Cartesian coordinates */
+    sym_op.Rc = dot(dot(lattice_vectors__, matrix3d<double>(sym_op.R)), inverse_lattice_vectors);
+    /* proper rotation in Cartesian coordinates */
+    sym_op.Rcp = sym_op.Rc * p;
+    try {
+        /* get Euler angles of the rotation */
+        sym_op.euler_angles = euler_angles(sym_op.Rcp);
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "number of symmetry operations: " << spg_dataset__->n_operations << std::endl
+          << "symmetry operation: " << isym_spg__ << std::endl
+          << "rotation matrix in lattice coordinates: " << sym_op.R << std::endl
+          << "rotation matrix in Cartesian coordinates: " << sym_op.Rc << std::endl
+          << "lattice vectors: " << lattice_vectors__;
+        RTE_THROW(s, e.what());
+    }
+    try {
+        /* get symmetry related atoms */
+        sym_op.sym_atom = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "R: " << sym_op.R << std::endl
+          << "t: " << sym_op.t << std::endl
+          << "tolerance: " << tolerance__;
+        RTE_THROW(s, e.what());
+    }
 
     return sym_op;
 }
@@ -136,10 +156,10 @@ get_identity_spg_sym_op(int num_atoms__)
     sym_op.t = vector3d<double>(0, 0, 0);
     /* is this proper or improper rotation */
     sym_op.proper = 1;
-    /* proper rotation in cartesian Coordinates */
-    sym_op.rotation = matrix3d<double>({{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}});
+    /* rotation in Cartesian coordinates */
+    sym_op.Rcp = sym_op.Rc = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     /* get Euler angles of the rotation */
-    sym_op.euler_angles = euler_angles(sym_op.rotation);
+    sym_op.euler_angles = euler_angles(sym_op.Rc);
     sym_op.sym_atom = std::vector<int>(num_atoms__);
     std::iota(sym_op.sym_atom.begin(), sym_op.sym_atom.end(), 0);
 
@@ -147,10 +167,11 @@ get_identity_spg_sym_op(int num_atoms__)
 }
 
 Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__,
-    std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
+    int num_atom_types__, std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
     sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
     , num_atoms_(num_atoms__)
+    , num_atom_types_(num_atom_types__)
     , types_(types__)
     , tolerance_(tolerance__)
 {
@@ -160,7 +181,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     if (lattice_vectors__.det() < 0 && use_sym__) {
         std::stringstream s;
         s << "spglib requires positive determinant for a matrix of lattice vectors";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     /* make inverse */
@@ -183,18 +204,18 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     if (use_sym__) {
         spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
         if (spg_dataset_ == NULL) {
-            TERMINATE("spg_get_dataset() returned NULL");
+            RTE_THROW("spg_get_dataset() returned NULL");
         }
 
         if (spg_dataset_->spacegroup_number == 0) {
-            TERMINATE("spg_get_dataset() returned 0 for the space group");
+            RTE_THROW("spg_get_dataset() returned 0 for the space group");
         }
 
         if (spg_dataset_->n_atoms != num_atoms__) {
             std::stringstream s;
             s << "spg_get_dataset() returned wrong number of atoms (" << spg_dataset_->n_atoms << ")" << std::endl
               << "expected number of atoms is " <<  num_atoms__;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
     PROFILE_STOP("sirius::Unit_cell_symmetry|spg");
@@ -223,7 +244,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         /* loop over spin symmetries */
         for (int jsym = jsym0; jsym <= jsym1; jsym++) {
             /* take proper part of rotation matrix */
-            auto Rspin = space_group_symmetry(jsym).rotation;
+            auto Rspin = space_group_symmetry(jsym).Rcp;
 
             int n{0};
             /* check if all atoms transform under spatial and spin symmetries */
@@ -253,6 +274,79 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         }
     }
     PROFILE_STOP("sirius::Unit_cell_symmetry|mag");
+}
+
+void
+Unit_cell_symmetry::print_info(int verbosity__) const
+{
+    std::printf("\n");
+    std::printf("space group number   : %i\n", this->spacegroup_number());
+    std::printf("international symbol : %s\n", this->international_symbol().c_str());
+    std::printf("Hall symbol          : %s\n", this->hall_symbol().c_str());
+    std::printf("number of space group operations  : %i\n", this->num_spg_sym());
+    std::printf("space group transformation matrix : \n");
+    auto tm = this->transformation_matrix();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            std::printf("%12.6f ", tm(i, j));
+        }
+        std::printf("\n");
+    }
+    std::printf("space group origin shift : \n");
+    auto t = this->origin_shift();
+    std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+    std::printf("metric tensor error: %18.12f\n", this->metric_tensor_error());
+    std::printf("rotation matrix error: %18.12f\n", this->sym_op_R_error());
+    std::printf("number of magnetic group operations : %i\n", this->size());
+
+    if (verbosity__ >= 2) {
+        std::printf("symmetry operations  : \n");
+        for (int isym = 0; isym < this->size(); isym++) {
+            auto R = this->operator[](isym).spg_op.R;
+            auto Rc = this->operator[](isym).spg_op.Rc;
+            auto t = this->operator[](isym).spg_op.t;
+            auto S = this->operator[](isym).spin_rotation;
+
+            std::printf("isym : %i\n", isym);
+            std::printf("R : ");
+            for (int i = 0; i < 3; i++) {
+                if (i) {
+                    std::printf("    ");
+                }
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%3i ", R(i, j));
+                }
+                std::printf("\n");
+            }
+            std::printf("Rc: ");
+            for (int i = 0; i < 3; i++) {
+                if (i) {
+                    std::printf("    ");
+                }
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%8.4f ", Rc(i, j));
+                }
+                std::printf("\n");
+            }
+            std::printf("t : ");
+            for (int j = 0; j < 3; j++) {
+                std::printf("%8.4f ", t[j]);
+            }
+            std::printf("\n");
+            std::printf("S : ");
+            for (int i = 0; i < 3; i++) {
+                if (i) {
+                    std::printf("    ");
+                }
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%8.4f ", S(i, j));
+                }
+                std::printf("\n");
+            }
+            printf("proper: %i\n", this->operator[](isym).spg_op.proper);
+            std::printf("\n");
+        }
+    }
 }
 
 } // namespace

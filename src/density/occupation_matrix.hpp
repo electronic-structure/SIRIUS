@@ -24,72 +24,33 @@
 
 #include "SDDK/memory.hpp"
 #include "SDDK/wf_inner.hpp"
-#include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
+#include "hubbard/hubbard_matrix.hpp"
 
 namespace sirius {
 
-class Occupation_matrix {
-  private:
-    Simulation_context& ctx_;
-    sddk::mdarray<double_complex, 4> data_;
+class Occupation_matrix : public Hubbard_matrix {
   public:
     Occupation_matrix(Simulation_context& ctx__);
 
     void add_k_point_contribution(K_point& kp__);
-
-    /// Retrieve or set the Hubbard occupancies.
-    /** This functions helps retrieving or setting up the hubbard occupancy
-     *  tensors from an external tensor. Retrieving it is done by specifying
-     *  "get" in the first argument of the method while setting it is done
-     *  with the parameter set up to "set". The second parameter is the
-     *  output pointer and the last parameter is the leading dimension of the
-     *  tensor.
-     *
-     *  The returned result has the same layout than SIRIUS layout, * i.e.,
-     *  the harmonic orbitals are stored from m_z = -l..l. The occupancy
-     *  matrix can also be accessed through the method occupation_matrix()
-     *
-     * \param [in]    what String to set to "set" for initializing sirius ccupancy tensor and "get" for retrieving it.
-     * \param [inout] occ  Pointer to external occupancy tensor.
-     * \param [in]    ld   Leading dimension of the outside tensor.
-     * \return return the occupancy matrix if the first parameter is set to "get". */
-    void access(std::string const& what__, double_complex* occ__, int ld__);
 
     /** The initial occupancy is calculated following Hund rules. We first
      *  fill the d (f) states according to the hund's rules and with majority
      *  spin first and the remaining electrons distributed among the minority states. */
     void init();
 
-    void print_occupancies() const;
-
-    sddk::mdarray<double_complex, 4>& data()
-    {
-        return data_;
-    }
-
-    sddk::mdarray<double_complex, 4> const& data() const
-    {
-        return data_;
-    }
-
-    void zero()
-    {
-        data_.zero();
-    }
-
     void reduce()
     {
-        if (data_.size()) {
         /* global reduction over k points */
-            ctx_.comm_k().allreduce(data_.at(memory_t::host), static_cast<int>(data_.size()));
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                ctx_.comm_k().allreduce(this->local(ia).at(memory_t::host), static_cast<int>(this->local(ia).size()));
+            }
         }
     }
-};
 
-inline void copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
-{
-    copy(src__.data(), dest__.data());
-}
+    void print_occupancies(int verbosity__) const;
+};
 
 } // namespace

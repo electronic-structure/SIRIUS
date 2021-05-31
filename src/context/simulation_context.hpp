@@ -369,6 +369,16 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
+    inline void message(int level__, char const* label__, std::stringstream& s) const
+    {
+        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
+            auto strings = ::rte::split(s.str());
+            for (auto& e: strings) {
+                std::cout << "[" << label__ << "] " << e << std::endl;
+            }
+        }
+    }
+
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update();
 

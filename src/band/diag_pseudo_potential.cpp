@@ -624,10 +624,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 double max_diff = check_hermitian(hmlt, N + expand_with - num_locked);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
-                    s << "H matrix is not Hermitian, max_err = " << max_diff;
-                    WARNING(s);
-                } else {
-                    kp.message(1, __function_name__, "OK! H matrix of size %i is Hermitian\n", N + expand_with - num_locked);
+                    kp.message(1, __function_name__, "H matrix of size %i is not Hermitian, maximum error: %18.12e\n",
+                               N + expand_with - num_locked, max_diff);
                 }
             }
 

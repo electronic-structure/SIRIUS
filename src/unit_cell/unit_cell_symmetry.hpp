@@ -50,14 +50,17 @@ struct space_group_symmetry_descriptor
     /// Inverse transposed of R.
     matrix3d<int> invRT;
 
+    /// Proper rotation matrix in Cartesian coordinates.
+    matrix3d<double> Rcp;
+
+    /// (Im)proper Rotation matrix in Cartesian coordinates.
+    matrix3d<double> Rc;
+
     /// Fractional translation.
     vector3d<double> t;
 
     /// Proper (+1) or improper (-1) rotation.
     int proper;
-
-    /// Proper rotation matrix in Cartesian coordinates.
-    matrix3d<double> rotation;
 
     /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
@@ -95,6 +98,9 @@ class Unit_cell_symmetry
     /// Number of atoms in the unit cell.
     int num_atoms_;
 
+    /// Number of atom types.
+    int num_atom_types_;
+
     /// Atom types.
     std::vector<int> types_;
 
@@ -129,9 +135,9 @@ class Unit_cell_symmetry
 
   public:
 
-    Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, std::vector<int> const& types__,
-                       sddk::mdarray<double, 2> const& positions__, sddk::mdarray<double, 2> const& spins__,
-                       bool spin_orbit__, double tolerance__, bool use_sym__);
+    Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
+        std::vector<int> const& types__, mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__,
+        bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Unit_cell_symmetry()
     {
@@ -140,7 +146,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline int atom_symmetry_class(int ia__)
+    inline int atom_symmetry_class(int ia__) const
     {
         if (spg_dataset_) {
             return spg_dataset_->equivalent_atoms[ia__];
@@ -149,7 +155,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline int spacegroup_number()
+    inline int spacegroup_number() const
     {
         if (spg_dataset_) {
             return spg_dataset_->spacegroup_number;
@@ -158,7 +164,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline auto international_symbol()
+    inline auto international_symbol() const
     {
         if (spg_dataset_) {
             return std::string(spg_dataset_->international_symbol);
@@ -167,7 +173,7 @@ class Unit_cell_symmetry
         }
     }
 
-    inline auto hall_symbol()
+    inline auto hall_symbol() const
     {
         if (spg_dataset_) {
             return std::string(spg_dataset_->hall_symbol);
@@ -219,10 +225,69 @@ class Unit_cell_symmetry
         return inverse_lattice_vectors_;
     }
 
-    inline int num_atoms() const
+    inline auto num_atoms() const
     {
         return num_atoms_;
     }
+
+    inline auto num_atom_types() const
+    {
+        return num_atom_types_;
+    }
+
+    inline auto atom_type(int ia__) const
+    {
+        return types_[ia__];
+    }
+
+    /// Get an error in metric tensor.
+    /** Metric tensor in transformed under lattice symmetry operations and compareed with
+     *  the initial value. It should stay invariant under transformation. This, however,
+     *  is not always guaranteed numerically, especially when spglib uses large tolerance
+     *  and find more symmeetry operations.
+     *
+     *  The error is the maximum value of \f$ |M_{ij} - \tilde M_{ij}| \f$ where \f$ M_{ij} \f$
+     *  is the initial metric tensor and \f$ \tilde M_{ij} \f$ is the transformed tensor. */
+    inline double metric_tensor_error() const
+    {
+        auto mt = dot(transpose(lattice_vectors_), lattice_vectors_);
+
+        double diff{0};
+        for (auto const& e: magnetic_group_symmetry_) {
+            /* rotation matrix in lattice coordinates */
+            auto R = e.spg_op.R;
+            auto mt1 = dot(dot(transpose(R), mt), R);
+            for (int i: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
+                }
+            }
+        }
+        return diff;
+    }
+
+    /// Get error in rotation matrix of the symmetry operation.
+    /** Comparte rotation matrix in Cartesian coordinates with its inverse transpose. They should match.
+     *
+     *  The error is the maximum value of \f$ |R_{ij} - R_{ij}^{-T}| \f$, where \f$ R_{ij} \f$ is the rotation
+     *  matrix and \f$  R_{ij}^{-T} \f$ inverse transpose of the rotation matrix. */
+    inline double sym_op_R_error() const
+    {
+        double diff{0};
+        for (auto const& e: magnetic_group_symmetry_) {
+            auto R = e.spg_op.Rcp;
+            auto R1 = inverse(transpose(R));
+            for (int i: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    diff = std::max(diff, std::abs(R1(i, j) - R(i, j)));
+                }
+            }
+        }
+        return diff;
+    }
+
+    /// Print information about the unit cell symmetry.
+    void print_info(int verbosity__) const;
 };
 
 } // namespace

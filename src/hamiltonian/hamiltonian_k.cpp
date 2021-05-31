@@ -84,6 +84,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
                 o_diag(ig_loc, ispn) = 1;
             }
         }
+        if (uc.mt_lo_basis_size() == 0) {
+            continue;
+        }
 
         /* non-local H contribution */
         auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);

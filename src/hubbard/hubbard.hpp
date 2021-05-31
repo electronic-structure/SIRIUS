@@ -39,6 +39,7 @@
 #include "beta_projectors/beta_projectors_gradient.hpp"
 #include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "radial/radial_integrals.hpp"
+#include "hubbard_matrix.hpp"
 
 namespace sirius {
 
@@ -54,48 +55,25 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    //double hubbard_energy_{0.0};
-    //double hubbard_energy_u_{0.0};
-    //double hubbard_energy_dc_contribution_{0.0};
-    //double hubbard_energy_noflip_{0.0};
-    //double hubbard_energy_flip_{0.0};
-
     sddk::mdarray<double_complex, 4> hubbard_potential_;
 
-    /// Type of hubbard correction to be considered.
-    /** True if we consider a simple hubbard correction. Not valid if spin orbit coupling is included */
-    bool approximation_{false};
-
-    /// Orthogonalize and/or normalize the projectors.
-    bool orthogonalize_hubbard_orbitals_{false};
-
-    /// True if localized orbitals have to be normalized.
-    bool normalize_orbitals_only_{false};
-
-    /// hubbard correction with next nearest neighbors
+    /// Hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
-
-    /// hubbard projection method. By default we use the wave functions
-    /// provided by the pseudo potentials.
-    int projection_method_{0};
 
     /// Hubbard with multi channels (not implemented yet) TODO: generalize in LDA+U+V case
     bool multi_channels_{false};
 
-    /// file containing the hubbard wave functions
-    std::string wave_function_file_;
-
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
-                             mdarray<double_complex, 5>& dn__, const int index__);
-
-    void symmetrize_occupancy_matrix_noncolinear_case();
-    void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
+                             mdarray<double_complex, 5>& dn__,
+                             const int index__); // TODO: how this connects to occupation matrix?
 
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
     void wavefunctions_strain_deriv(K_point& kp, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
                                     mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
+    void apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
+                  Wave_functions& phi, Wave_functions& dphi);
 
   public:
     /// Constructor.
@@ -116,26 +94,17 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
 
-    //void calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
-    //void calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
+    double calculate_energy_collinear(Hubbard_matrix const& om__) const;
 
-    double calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+    void generate_potential_collinear(Hubbard_matrix const& om__);
 
-    void generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__);
+    double calculate_energy_non_collinear(Hubbard_matrix const& om__) const;
 
-    double calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+    void generate_potential_non_collinear(Hubbard_matrix const& om__);
 
-    void generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const& om__);
-
-    void generate_potential(sddk::mdarray<double_complex, 4> const& om__)
+    void generate_potential(Hubbard_matrix const& om__)
     {
-        //this->hubbard_energy_                 = 0.0;
-        //this->hubbard_energy_u_               = 0.0;
-        //this->hubbard_energy_dc_contribution_ = 0.0;
-        //this->hubbard_energy_noflip_          = 0.0;
-        //this->hubbard_energy_flip_            = 0.0;
-        // the hubbard potential has the same structure than the occupation
-        // numbers
+        /* the hubbard potential has the same structure than the occupation numbers */
         this->hubbard_potential_.zero();
 
         if (ctx_.num_mag_dims() != 3) {
@@ -152,24 +121,9 @@ class Hubbard
         hubbard_U_plus_V_ = true;
     }
 
-    void set_hubbard_simple_correction()
-    {
-        approximation_ = true;
-    }
-
     inline int max_number_of_orbitals_per_atom() const
     {
         return max_number_of_orbitals_per_atom_;
-    }
-
-    void set_orthogonalize_hubbard_orbitals(const bool test)
-    {
-        orthogonalize_hubbard_orbitals_ = test;
-    }
-
-    void set_normalize_hubbard_orbitals(const bool test)
-    {
-        this->normalize_orbitals_only_ = test;
     }
 
     double_complex U(int m1, int m2, int m3, int m4) const
@@ -182,17 +136,7 @@ class Hubbard
         return hubbard_potential_(m1, m2, m3, m4);
     }
 
-    bool orthogonalize_hubbard_orbitals() const
-    {
-        return orthogonalize_hubbard_orbitals_;
-    }
-
-    bool normalize_hubbard_orbitals() const
-    {
-        return normalize_orbitals_only_;
-    }
-
-    inline double hubbard_energy(sddk::mdarray<double_complex, 4> const& om__) const
+    inline double hubbard_energy(Hubbard_matrix const& om__) const
     {
         if (ctx_.num_mag_dims() != 3) {
             return calculate_energy_collinear(om__);

@@ -203,7 +203,10 @@ void Unit_cell::print_info(int verbosity__) const
     if (!parameters_.full_potential()) {
         std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
     }
-    print_symmetry_info(verbosity__);
+
+    if (symmetry_ != nullptr) {
+        symmetry_->print_info(verbosity__);
+    }
 }
 
 unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
@@ -626,8 +629,8 @@ void Unit_cell::get_symmetry()
     }
 
     symmetry_ = std::unique_ptr<Unit_cell_symmetry>(
-        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), types, positions, spins, parameters_.so_correction(),
-                               parameters_.spglib_tolerance(), parameters_.use_symmetry()));
+        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), num_atom_types(), types, positions, spins,
+            parameters_.so_correction(), parameters_.spglib_tolerance(), parameters_.use_symmetry()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
@@ -776,66 +779,6 @@ void Unit_cell::update()
             }
             if (parameters_.processing_unit() == device_t::GPU) {
                 atom_coord_[iat].copy_to(memory_t::device);
-            }
-        }
-    }
-}
-
-void Unit_cell::print_symmetry_info(int verbosity__) const
-{
-    if (symmetry_ != nullptr) {
-        std::printf("\n");
-        std::printf("space group number   : %i\n", symmetry_->spacegroup_number());
-        std::printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-        std::printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        std::printf("number of operations : %i\n", symmetry_->size());
-        std::printf("transformation matrix : \n");
-        auto tm = symmetry_->transformation_matrix();
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                std::printf("%12.6f ", tm(i, j));
-            }
-            std::printf("\n");
-        }
-        std::printf("origin shift : \n");
-        auto t = symmetry_->origin_shift();
-        std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
-
-        if (verbosity__ >= 2) {
-            std::printf("symmetry operations  : \n");
-            for (int isym = 0; isym < symmetry_->size(); isym++) {
-                auto R = symmetry_->operator[](isym).spg_op.R;
-                auto t = symmetry_->operator[](isym).spg_op.t;
-                auto S = symmetry_->operator[](isym).spin_rotation;
-
-                std::printf("isym : %i\n", isym);
-                std::printf("R : ");
-                for (int i = 0; i < 3; i++) {
-                    if (i) {
-                        std::printf("    ");
-                    }
-                    for (int j = 0; j < 3; j++) {
-                        std::printf("%3i ", R(i, j));
-                    }
-                    std::printf("\n");
-                }
-                std::printf("T : ");
-                for (int j = 0; j < 3; j++) {
-                    std::printf("%8.4f ", t[j]);
-                }
-                std::printf("\n");
-                std::printf("S : ");
-                for (int i = 0; i < 3; i++) {
-                    if (i) {
-                        std::printf("    ");
-                    }
-                    for (int j = 0; j < 3; j++) {
-                        std::printf("%8.4f ", S(i, j));
-                    }
-                    std::printf("\n");
-                }
-                printf("proper: %i\n", symmetry_->operator[](isym).spg_op.proper);
-                std::printf("\n");
             }
         }
     }

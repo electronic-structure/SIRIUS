@@ -28,7 +28,7 @@ int run_test(cmd_args const& args)
     }
 
     try {
-        ctx.cfg().hubbard().local(0).coeff();
+        ctx.cfg().hubbard().local(0).BE2();
     } catch (nlohmann::json::exception const& e) {
     } catch (...) {
         return 4;

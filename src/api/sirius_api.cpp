@@ -622,16 +622,16 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (hubbard_correction_kind__ != nullptr) {
             if (*hubbard_correction_kind__ == 0) {
-                sim_ctx.set_hubbard_simplified_version();
+                sim_ctx.cfg().hubbard().simplified(true);
             }
         }
         if (hubbard_orbitals__ != nullptr) {
             std::string s(hubbard_orbitals__);
             if (s == "ortho-atomic") {
-                sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+                sim_ctx.cfg().hubbard().orthogonalize(true);
             }
             if (s == "norm-atomic") {
-                sim_ctx.set_normalize_hubbard_orbitals(true);
+                 sim_ctx.cfg().hubbard().normalize(true);
             }
         }
         if (fft_grid_size__ != nullptr) {
@@ -1849,7 +1849,8 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
 
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
-        type.add_ps_atomic_wf(n, sirius::experimental::aqn(*l__), std::vector<double>(rf__, rf__ + *num_points__), occ);
+        type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
+                std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ps_rho_total") {
