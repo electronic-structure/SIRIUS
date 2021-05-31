@@ -63,7 +63,7 @@ COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
 
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
-RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
+RUN spack mirror add --scope site cscs https://spack.dev && \
     spack gpg trust ./public_key.asc
 
 # Install clingo and use the new concretizer by default (temporarily until this is the default in spack v0.17)
