@@ -260,7 +260,6 @@ K_point::generate_hubbard_orbitals()
         sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
             beta_projectors(), phi, q_op.get(), s_phi);
     }
-    beta_projectors().dismiss();
 
     if (ctx_.cfg().control().print_checksum()) {
         s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0,
@@ -270,11 +269,25 @@ K_point::generate_hubbard_orbitals()
     /* now compute the hubbard wfc from the atomic orbitals */
     orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_without_S_, *hubbard_wave_functions_);
 
+    for (int is = 0; is < ctx_.num_spinors(); is++ ) {
+      /* spin range to apply S-operator.
+       * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
+       * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
+      auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
+
+      sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
+                                               beta_projectors(), *hubbard_wave_functions_without_S_, q_op.get(), *hubbard_wave_functions_);
+    }
+
+    beta_projectors().dismiss();
+
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_->dismiss(sr, true);
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
     hubbard_wave_functions_without_S_->dismiss(sr, true);
+
+
 
     if (ctx_.cfg().control().print_checksum()) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
@@ -290,13 +303,14 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         for (int s = 0; s < ctx_.num_spins(); s++) {
             sphi_hub__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
         }
+
+        // needed to compute the forces
+        for (int s = 0; s < ctx_.num_spins(); s++) {
+          phi_hub__.copy_from(ctx_.processing_unit(), nwfu, phi__, s, 0, s, 0);
+        }
         return;
     }
 
-    // needed to compute the forces
-    for (int s = 0; s < ctx_.num_spins(); s++) {
-        phi_hub__.copy_from(ctx_.processing_unit(), nwfu, phi__, s, 0, s, 0);
-    }
 
     dmatrix<double_complex> S(nwfu, nwfu);
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -311,9 +325,9 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         inner<double_complex>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well
-        //if (ctx_.processing_unit() == device_t::GPU) {
-        //    S.copy_to(memory_t::host);
-        //}
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::host);
+        }
 
         /* create transformation matrix */
 
@@ -357,7 +371,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         }
 
         /* transform on the wave functions */
-        transform<double_complex>(ctx_.spla_context(), sr(), sphi__, 0, nwfu, S, 0, 0, sphi_hub__, 0, nwfu);
+        transform<double_complex>(ctx_.spla_context(), sr(), phi__, 0, nwfu, S, 0, 0, phi_hub__, 0, nwfu);
     }
 }
 
