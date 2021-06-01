@@ -14,7 +14,7 @@ The output should contain the line
 SIRIUS x.y.z, git hash: ...
 ```
 
-To make devices visible to the container, use e.g.
+To make devices visible to the container, use the `--gpus` flag:
 
 ```
 docker run --gpus 'all,"capabilities=compute,utility"' ...
