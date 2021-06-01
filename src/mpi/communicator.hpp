@@ -88,6 +88,24 @@ template <typename T>
 struct mpi_type_wrapper;
 
 template <>
+struct mpi_type_wrapper<float>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_FLOAT;
+    }
+};
+
+template <>
+struct mpi_type_wrapper<std::complex<float>>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_CXX_FLOAT_COMPLEX;
+    }
+};
+
+template <>
 struct mpi_type_wrapper<double>
 {
     static MPI_Datatype kind()
@@ -97,7 +115,7 @@ struct mpi_type_wrapper<double>
 };
 
 
-    template <>
+template <>
 struct mpi_type_wrapper<long double>
 {
     static MPI_Datatype kind()
