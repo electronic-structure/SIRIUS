@@ -6,8 +6,8 @@ To build the particular configuration of SIRIUS, run:
 $ docker build -t sirius .
 ```
 
-To build your application against sirius, mount or copy your sources, and use
-the spack environment view for the headers and libraries. For example:
+To build your application against SIRIUS, mount or copy your sources, and use
+the Spack environment view for the headers and libraries. For example:
 
 ```
 $ docker run -v $PWD/src:/root/src -it --rm sirius
