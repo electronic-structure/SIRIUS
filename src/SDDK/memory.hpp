@@ -1558,6 +1558,25 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
     return out;
 }
 
+// template for casting matrix with different precision
+template <typename T, typename F, int N>
+inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
+{
+    if (src__.size() == 0) {
+        return;
+    }
+    for (int i = 0; i < N; i++) {
+        if (dest__.dim(i).begin() != src__.dim(i).begin() || dest__.dim(i).end() != src__.dim(i).end()) {
+            std::stringstream s;
+            s << "error at line " << __LINE__ << " of file " << __FILE__ << " : array dimensions don't match";
+            throw std::runtime_error(s.str());
+        }
+    }
+    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+    std::cout << "    Copying matrix element with different type, possible lost of data precision" << std::endl;
+    std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
+}
+
 template <typename T, int N>
 inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
 {

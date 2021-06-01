@@ -34,6 +34,15 @@ namespace sddk {
 
 using double_complex = std::complex<double>;
 
+// define type traits for a single template implementation of both real and complex matrix
+// general case for real matrix
+template <typename T>
+struct real_type {using type = T;};
+
+// special case for complex matrix
+template <typename T>
+struct real_type<std::complex<T>> {using type = T;};
+
 /// Distributed matrix.
 template <typename T>
 class dmatrix : public matrix<T>
@@ -202,7 +211,7 @@ class dmatrix : public matrix<T>
 
     void add(const int irow_glob, const int icol_glob, T val);
 
-    void add(double beta__, const int irow_glob, const int icol_glob, T val);
+    void add(typename real_type<T>::type beta__, const int irow_glob, const int icol_glob, T val);
 
     void make_real_diag(int n__);
 
@@ -264,6 +273,15 @@ class dmatrix : public matrix<T>
         } else {
             return Communicator::self();
         }
+    }
+
+    /* copy the matrix element from another dmatrix with the possibility that they store in different data type which could
+     * which could upgrade or downgrade the precision of the element
+     * Currently only support matrix element copy of host data
+     */
+    template <typename F>
+    void copy_matrix_element(const dmatrix<F>& other_dmatrix){
+        copy(other_dmatrix, *this);
     }
 };
 

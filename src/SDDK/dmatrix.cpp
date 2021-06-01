@@ -186,7 +186,7 @@ void dmatrix<T>::add(const int irow_glob, const int icol_glob, T val)
 }
 
 template <typename T>
-void dmatrix<T>::add(double beta__, const int irow_glob, const int icol_glob, T val)
+void dmatrix<T>::add(typename real_type<T>::type beta__, const int irow_glob, const int icol_glob, T val)
 {
     auto r = spl_row_.location(irow_glob);
     if (blacs_grid_->rank_row() == r.rank) {
@@ -359,5 +359,6 @@ void dmatrix<double>::serialize(std::string name__, int n__) const
 // instantiate for required types
 template class dmatrix<double>;
 template class dmatrix<double_complex>;
-
+template class dmatrix<float>;
+template class dmatrix<std::complex<float>>;
 } // namespace sddk
