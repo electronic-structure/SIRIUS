@@ -1136,6 +1136,11 @@ void Simulation_context::update()
         /* scale the new maximum length of G+k-vectors correspondingly */
         double new_gk_cutoff = this->gk_cutoff() * new_pw_cutoff / this->pw_cutoff();
 
+        std::stringstream s;
+        s << "new_pw_cutoff : " << new_pw_cutoff << std::endl
+          << "new_gk_cutoff : " << new_gk_cutoff;
+        this->message(1, __func__, s);
+
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
             aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
