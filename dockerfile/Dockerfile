@@ -8,3 +8,7 @@ COPY spack.yaml test.f90 /root/
 # sirius itself. Make sure we do not rebuild cuda by marking it external.
 RUN spack -e . external find --not-buildable cuda && \
     spack -e . install -v
+
+RUN spack env activate --sh -d . >> /etc/profile.d/spack_environment.sh
+
+ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l"]
