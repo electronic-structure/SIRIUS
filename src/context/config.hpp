@@ -1326,6 +1326,18 @@ class config_t
             }
             dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
         }
+        /// The floating point precision used in the calculation
+        inline auto precision() const
+        {
+            return dict_.at("/parameters/precision"_json_pointer).get<std::string>();
+        }
+        inline void precision(std::string precision__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/precision"_json_pointer] = precision__;
+        }
       private:
         nlohmann::json& dict_;
     };

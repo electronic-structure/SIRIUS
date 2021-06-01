@@ -632,6 +632,12 @@
                     "type" : "boolean",
                     "default" : true,
                     "title" : "True if SCF correction to total energy should be computed."
+                },
+                "precision" : {
+                    "type" : "string",
+                    "default" : "fp64",
+                    "enum" : ["fp64", "fp32"],
+                    "title" : "The floating point precision used in the calculation"
                 }
             }
         },
