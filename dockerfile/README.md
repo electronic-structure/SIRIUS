@@ -1,13 +1,17 @@
 A simple container with CUDA and MKL backends for SIRIUS.
 
-To build and run, use the following:
+To build the particular configuration of SIRIUS, run:
 
 ```
 $ docker build -t sirius .
-$ docker run -it --rm sirius
-~ # . /opt/spack/share/spack/setup-env.sh
-~ # spack env activate .
-~ # mpifort test.f90 -Iview/include/sirius -Wl,-rpath=view/lib -Lview/lib -lsirius
+```
+
+To build your application against sirius, mount or copy your sources, and use
+the spack environment view for the headers and libraries. For example:
+
+```
+$ docker run -v $PWD/src:/root/src -it --rm sirius
+~ # mpifort src/test.f90 -Iview/include/sirius -Wl,-rpath=view/lib -Lview/lib -lsirius
 ~ # ./a.out
 ```
 
