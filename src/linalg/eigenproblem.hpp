@@ -43,15 +43,6 @@
 
 using namespace sddk;
 
-// define type traits for a single template implementation of both real and complex matrix
-// general case for real matrix
-template <typename T>
-struct scalar_type {using type = T;};
-
-// special case for complex matrix
-template <typename T>
-struct scalar_type<std::complex<T>> {using type = T;};
-
 class Eigensolver_lapack : public Eigensolver
 {
   public:
@@ -79,7 +70,7 @@ class Eigensolver_lapack : public Eigensolver
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
     template <typename T>
-    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, typename scalar_type<T>::type* eval__, dmatrix<T>& Z__)
+    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, typename real_type<T>::type* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsyevd");
@@ -95,7 +86,7 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using scalar_type = typename scalar_type<T>::type;
+        using real_type = typename real_type<T>::type;
         ftn_int info;
         ftn_int lda = A__.ld();
 
@@ -115,7 +106,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<scalar_type>(lrwork); // only required in complex
+        auto rwork = mp_h_.get_unique_ptr<real_type>(lrwork); // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsyevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork,
@@ -140,59 +131,6 @@ class Eigensolver_lapack : public Eigensolver
         }
         return info;
     }
-    /*
-    /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|dsyevd");
-
-        ftn_int info;
-        ftn_int lda = A__.ld();
-
-        ftn_int lwork  = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
-        ftn_int liwork = 3 + 5 * matrix_size__;
-
-        auto work  = mp_h_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(dsyevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork,
-                        iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
-        if (!info) {
-            for (int i = 0; i < matrix_size__; i++) {
-                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(memory_t::host, 0, i));
-            }
-        }
-        return info;
-    }
-
-    /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|zheevd");
-
-        ftn_int info;
-        ftn_int lda = A__.ld();
-
-        ftn_int lwork  = 2 * matrix_size__ + matrix_size__ * matrix_size__;
-        ftn_int lrwork = 1 + 5 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
-        ftn_int liwork = 3 + 5 * matrix_size__;
-
-        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(zheevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(),
-                        &lwork, rwork.get(), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
-        if (!info) {
-            for (int i = 0; i < matrix_size__; i++) {
-                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(memory_t::host, 0, i));
-            }
-        }
-        return info;
-    }
-    */
 
     /// wrapper for solving a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
@@ -213,7 +151,7 @@ class Eigensolver_lapack : public Eigensolver
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     template <typename T>
-    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, typename scalar_type<T>::type* eval__, dmatrix<T>& Z__)
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, typename real_type<T>::type* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsyevr");
@@ -229,21 +167,21 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using scalar_type = typename scalar_type<T>::type;
-        scalar_type vl, vu;
+        using real_type = typename real_type<T>::type;
+        real_type vl, vu;
 
         ftn_int il{1};
         ftn_int m{-1};
         ftn_int info;
 
-        auto w = mp_h_.get_unique_ptr<scalar_type>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<real_type>(matrix_size__);
         auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);      // for complex matrix
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
-        scalar_type abs_tol = 2 * linalg_base::dlamch('S');
+        real_type abs_tol = 2 * linalg_base::dlamch('S');
 
         ftn_int liwork;
         ftn_int lwork;
@@ -273,7 +211,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work     = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork     = mp_h_.get_unique_ptr<scalar_type>(lrwork);   // only required in complex
+        auto rwork     = mp_h_.get_unique_ptr<real_type>(lrwork);   // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsyevr)
@@ -320,113 +258,6 @@ class Eigensolver_lapack : public Eigensolver
 
         return info;
     }
-    /*
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|dsyevr");
-
-        double vl, vu;
-        ftn_int il{1};
-        ftn_int m{-1};
-        ftn_int info;
-
-        auto w      = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__);
-
-        ftn_int lda = A__.ld();
-        ftn_int ldz = Z__.ld();
-
-        double abs_tol = 2 * linalg_base::dlamch('S');
-
-        ftn_int liwork = 10 * matrix_size__;
-        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        int nb = std::max(linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1),
-                          linalg_base::ilaenv(1, "DORMTR", "U", matrix_size__, -1, -1, -1));
-        ftn_int lwork = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
-        auto work     = mp_h_.get_unique_ptr<double>(lwork);
-
-        FORTRAN(dsyevr)
-        ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-         Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, iwork.get(), &liwork, &info, (ftn_int)1,
-         (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m << std::endl
-              << "matrix_size : " << matrix_size__ << std::endl
-              << "lda : " << lda << std::endl
-              << "lda : " << lda << std::endl
-              << "nb : " << nb << std::endl
-              << "liwork : " << liwork << std::endl
-              << "lwork : " << lwork << std::endl;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
-    }
-
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|zheevx");
-
-        double vl, vu;
-        ftn_int il{1};
-        ftn_int m{-1};
-        ftn_int info;
-
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-
-        ftn_int lda = A__.ld();
-        ftn_int ldz = Z__.ld();
-
-        double abs_tol = 2 * linalg_base::dlamch('S');
-
-        ftn_int liwork = 5 * matrix_size__;
-        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        int nb        = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
-        ftn_int lwork = (nb + 1) * matrix_size__;
-        auto work     = mp_h_.get_unique_ptr<double_complex>(lwork);
-
-        ftn_int lrwork = 7 * matrix_size__;
-        auto rwork     = mp_h_.get_unique_ptr<double>(lrwork);
-
-        //FORTRAN(zheevr)
-        //("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-        // Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, rwork.get(), &lrwork, iwork.get(), &liwork,
-        // &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-        FORTRAN(zheevx)
-        ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-         Z__.at(memory_t::host), &ldz, work.get(), &lwork, rwork.get(), iwork.get(), ifail.get(),
-         &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
-    }
-    */
 
     /// wrapper for solving a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
@@ -452,7 +283,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__,
-              typename scalar_type<T>::type* eval__, dmatrix<T>& Z__)
+              typename real_type<T>::type* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsygvx");
@@ -468,21 +299,21 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using scalar_type = typename scalar_type<T>::type;
+        using real_type = typename real_type<T>::type;
         ftn_int info;
 
         ftn_int lda = A__.ld();
         ftn_int ldb = B__.ld();
         ftn_int ldz = Z__.ld();
 
-        scalar_type abs_tol = 2 * linalg_base::dlamch('S');
-        scalar_type vl{0};
-        scalar_type vu{0};
+        real_type abs_tol = 2 * linalg_base::dlamch('S');
+        real_type vl{0};
+        real_type vu{0};
 
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w = mp_h_.get_unique_ptr<scalar_type>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<real_type>(matrix_size__);
 
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
@@ -510,7 +341,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<scalar_type>(lrwork); // only required in complex
+        auto rwork = mp_h_.get_unique_ptr<real_type>(lrwork); // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsygvx)
@@ -550,107 +381,7 @@ class Eigensolver_lapack : public Eigensolver
 
         return info;
     }
-    /*
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-              dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|dsygvx");
 
-        ftn_int info;
-
-        ftn_int lda = A__.ld();
-        ftn_int ldb = B__.ld();
-        ftn_int ldz = Z__.ld();
-
-        double abs_tol = 2 * linalg_base::dlamch('S');
-        double vl{0};
-        double vu{0};
-        ftn_int ione{1};
-        ftn_int m{0};
-
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-
-        int nb     = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
-        int lwork  = (nb + 3) * matrix_size__ + 1024;
-        int liwork = 5 * matrix_size__;
-
-        auto work  = mp_h_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(dsygvx)
-        (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
-         &ione, &nev__, &abs_tol, &m, w.get(), Z__.at(memory_t::host), &ldz, work.get(), &lwork, iwork.get(),
-         ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
-    }
-
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
-              double* eval__, dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|zhegvx");
-
-        ftn_int info;
-
-        ftn_int lda = A__.ld();
-        ftn_int ldb = B__.ld();
-        ftn_int ldz = Z__.ld();
-
-        double abs_tol = 2 * linalg_base::dlamch('S');
-        double vl{0};
-        double vu{0};
-        ftn_int ione{1};
-        ftn_int m{0};
-
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-
-        int nb     = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, 0, 0, 0);
-        int lwork  = (nb + 1) * matrix_size__;
-        int lrwork = 7 * matrix_size__;
-        int liwork = 5 * matrix_size__;
-
-        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(zhegvx)
-        (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
-         &ione, &nev__, &abs_tol, &m, w.get(), Z__.at(memory_t::host), &ldz, work.get(), &lwork, rwork.get(),
-         iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
-    }
-     */
 };
 
 #ifdef SIRIUS_ELPA
