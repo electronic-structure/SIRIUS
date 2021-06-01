@@ -1,12 +1,21 @@
 A simple container with CUDA and MKL backends for SIRIUS.
 
-To test the environment, try to run the following command inside the container:
+To build and run, use the following:
 
 ```
-spack build-env $SIRIUS_SPEC -- mpif90 test.f90 -I$SIRIUS_ROOT/include/sirius -L$SIRIUS_ROOT/lib -lsirius && ./a.out
+$ docker build -t sirius .
+$ docker run -it --rm sirius
+# mpifort test.f90 -Iview/include/sirius -Wl,-rpath=view/lib -Lview/lib -lsirius
+# ./a.out
 ```
 
 The output should contain the line
 ```
-SIRIUS 7.2.5, git hash: d63f6defc093b64a828ec18fd88079fa76700ec6
+SIRIUS x.y.z, git hash: ...
+```
+
+To make devices visible to the container, use e.g.
+
+```
+docker run --gpus 'all,"capabilities=compute,utility"' ...
 ```
