@@ -5489,7 +5489,7 @@ void sirius_dump_runtime_setup(void* const* handler__, char* filename__, int* er
     {
         auto& sim_ctx = get_sim_ctx(handler__);
         std::ofstream fi(filename__, std::ofstream::out | std::ofstream::trunc);
-        auto conf_dict = sim_ctx.serialize(); //get_runtime_options_dictionary();
+        auto conf_dict = sim_ctx.serialize();
         fi << conf_dict.dump(4);
     }, error_code__);
 }
