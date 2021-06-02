@@ -687,12 +687,12 @@ void Stress::symmetrize(matrix3d<double>& mtrx__) const
 
     matrix3d<double> result;
 
-    for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
-        auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
+    for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
+        auto R = ctx_.unit_cell().symmetry()[i].spg_op.rotation;
         result = result + dot(dot(transpose(R), mtrx__), R);
     }
 
-    mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
+    mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().size());
 
     std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
     for (auto e : idx) {
