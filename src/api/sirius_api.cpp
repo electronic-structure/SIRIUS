@@ -1631,12 +1631,19 @@ sirius_update_ground_state:
       type: void*
       attr: in, required
       doc: Ground-state handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_update_ground_state(void** handler__)
+void sirius_update_ground_state(void** handler__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    gs.update();
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        gs.update();
+    }, error_code__);
 }
 
 /*
