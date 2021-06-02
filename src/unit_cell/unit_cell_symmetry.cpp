@@ -119,7 +119,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
     sym_op.Rcp = sym_op.Rc * p;
     try {
         /* get Euler angles of the rotation */
-        sym_op.euler_angles = euler_angles(sym_op.Rcp);
+        sym_op.euler_angles = euler_angles(sym_op.Rcp, tolerance__);
     } catch(std::exception const& e) {
         std::stringstream s;
         s << "number of symmetry operations found by spglib: " << spg_dataset__->n_operations << std::endl
@@ -163,7 +163,7 @@ get_identity_spg_sym_op(int num_atoms__)
     /* rotation in Cartesian coordinates */
     sym_op.Rcp = sym_op.Rc = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     /* get Euler angles of the rotation */
-    sym_op.euler_angles = euler_angles(sym_op.Rc);
+    sym_op.euler_angles = euler_angles(sym_op.Rc, 1e-10);
     sym_op.sym_atom = std::vector<int>(num_atoms__);
     std::iota(sym_op.sym_atom.begin(), sym_op.sym_atom.end(), 0);
 
