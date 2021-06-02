@@ -23,6 +23,7 @@
  */
 
 #include "unit_cell_symmetry.hpp"
+#include "symmetry/find_lat_sym.hpp"
 
 using namespace geometry3d;
 
@@ -121,11 +122,14 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
         sym_op.euler_angles = euler_angles(sym_op.Rcp);
     } catch(std::exception const& e) {
         std::stringstream s;
-        s << "number of symmetry operations: " << spg_dataset__->n_operations << std::endl
+        s << "number of symmetry operations found by spglib: " << spg_dataset__->n_operations << std::endl
           << "symmetry operation: " << isym_spg__ << std::endl
           << "rotation matrix in lattice coordinates: " << sym_op.R << std::endl
           << "rotation matrix in Cartesian coordinates: " << sym_op.Rc << std::endl
-          << "lattice vectors: " << lattice_vectors__;
+          << "lattice vectors: " << lattice_vectors__ << std::endl
+          << "metric tensor error: " << metric_tensor_error(lattice_vectors__, sym_op.R) << std::endl
+          << std::endl
+          << "possible solution: decrease the spglib_tolerance";
         RTE_THROW(s, e.what());
     }
     try {
@@ -194,14 +198,15 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         }
     }
 
-    positions_ = mdarray<double, 2>(3, num_atoms_);
+    positions_ = sddk::mdarray<double, 2>(3, num_atoms_);
     positions__ >> positions_;
 
-    magnetization_ = mdarray<double, 2>(3, num_atoms_);
+    magnetization_ = sddk::mdarray<double, 2>(3, num_atoms_);
     spins__ >> magnetization_;
 
     PROFILE_START("sirius::Unit_cell_symmetry|spg");
     if (use_sym__) {
+        /* make a call to spglib */
         spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
         if (spg_dataset_ == NULL) {
             RTE_THROW("spg_get_dataset() returned NULL");
@@ -221,11 +226,17 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     PROFILE_STOP("sirius::Unit_cell_symmetry|spg");
 
     if (spg_dataset_) {
+        auto lat_sym = find_lat_sym(lattice_vectors_, tolerance_);
         /* make a list of crystal symmetries */
         for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
-            auto sym_op = get_spg_sym_op(isym, spg_dataset_, lattice_vectors__, num_atoms__, positions__, tolerance__);
-            /* add symmetry operation to a list */
-            space_group_symmetry_.push_back(sym_op);
+            matrix3d<int> R(spg_dataset_->rotations[isym]);
+            for (auto& e: lat_sym) {
+                if (e == R) {
+                    auto sym_op = get_spg_sym_op(isym, spg_dataset_, lattice_vectors__, num_atoms__, positions__, tolerance__);
+                    /* add symmetry operation to a list */
+                    space_group_symmetry_.push_back(sym_op);
+                }
+            }
         }
     } else { /* add only identity element */
         auto sym_op = get_identity_spg_sym_op(num_atoms__);
@@ -280,24 +291,28 @@ void
 Unit_cell_symmetry::print_info(int verbosity__) const
 {
     std::printf("\n");
-    std::printf("space group number   : %i\n", this->spacegroup_number());
-    std::printf("international symbol : %s\n", this->international_symbol().c_str());
-    std::printf("Hall symbol          : %s\n", this->hall_symbol().c_str());
-    std::printf("number of space group operations  : %i\n", this->num_spg_sym());
-    std::printf("space group transformation matrix : \n");
-    auto tm = this->transformation_matrix();
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            std::printf("%12.6f ", tm(i, j));
+    if (this->spg_dataset_->n_operations != this->num_spg_sym()) {
+        std::printf("space group found by spglib is defferent\n");
+    } else {
+        std::printf("space group number   : %i\n", this->spacegroup_number());
+        std::printf("international symbol : %s\n", this->international_symbol().c_str());
+        std::printf("Hall symbol          : %s\n", this->hall_symbol().c_str());
+        std::printf("space group transformation matrix : \n");
+        auto tm = this->transformation_matrix();
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                std::printf("%12.6f ", tm(i, j));
+            }
+            std::printf("\n");
         }
-        std::printf("\n");
+        std::printf("space group origin shift : \n");
+        auto t = this->origin_shift();
+        std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
     }
-    std::printf("space group origin shift : \n");
-    auto t = this->origin_shift();
-    std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+    std::printf("number of space group operations  : %i\n", this->num_spg_sym());
+    std::printf("number of magnetic group operations : %i\n", this->size());
     std::printf("metric tensor error: %18.12f\n", this->metric_tensor_error());
     std::printf("rotation matrix error: %18.12f\n", this->sym_op_R_error());
-    std::printf("number of magnetic group operations : %i\n", this->size());
 
     if (verbosity__ >= 2) {
         std::printf("symmetry operations  : \n");

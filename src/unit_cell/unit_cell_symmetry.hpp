@@ -38,6 +38,20 @@ using namespace geometry3d;
 
 namespace sirius {
 
+inline double metric_tensor_error(matrix3d<double> const& lattice_vectors__, matrix3d<int> const& R__)
+{
+    auto mt = dot(transpose(lattice_vectors__), lattice_vectors__);
+
+    double diff{0};
+    auto mt1 = dot(dot(transpose(R__), mt), R__);
+    for (int i: {0, 1, 2}) {
+        for (int j: {0, 1, 2}) {
+            diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
+        }
+    }
+    return diff;
+}
+
 /// Descriptor of the space group symmetry operation.
 struct space_group_symmetry_descriptor
 {
@@ -127,7 +141,7 @@ class Unit_cell_symmetry
         return static_cast<int>(space_group_symmetry_.size());
     }
 
-    inline space_group_symmetry_descriptor const& space_group_symmetry(int isym__) const
+    inline auto const& space_group_symmetry(int isym__) const
     {
         assert(isym__ >= 0 && isym__ < num_spg_sym());
         return space_group_symmetry_[isym__];
@@ -250,18 +264,9 @@ class Unit_cell_symmetry
      *  is the initial metric tensor and \f$ \tilde M_{ij} \f$ is the transformed tensor. */
     inline double metric_tensor_error() const
     {
-        auto mt = dot(transpose(lattice_vectors_), lattice_vectors_);
-
         double diff{0};
         for (auto const& e: magnetic_group_symmetry_) {
-            /* rotation matrix in lattice coordinates */
-            auto R = e.spg_op.R;
-            auto mt1 = dot(dot(transpose(R), mt), R);
-            for (int i: {0, 1, 2}) {
-                for (int j: {0, 1, 2}) {
-                    diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
-                }
-            }
+            diff = std::max(diff, sirius::metric_tensor_error(lattice_vectors_, e.spg_op.R));
         }
         return diff;
     }

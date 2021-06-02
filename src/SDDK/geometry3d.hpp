@@ -371,6 +371,18 @@ inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>>
     return a__ * p__;
 }
 
+inline bool operator==(matrix3d<int> const& a__, matrix3d<int> const& b__)
+{
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (a__(i, j) != b__(i, j)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 /// Multiply two matrices.
 template <typename T, typename U>
 inline matrix3d<decltype(T{} * U{})> dot(matrix3d<T> const& a__, matrix3d<U> const& b__)
