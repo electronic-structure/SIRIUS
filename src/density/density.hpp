@@ -735,7 +735,7 @@ class Density : public Field4D
      *  \f]
      *  This operation rotates the orbital and centers it at the position
      *  \f[
-     *   {\bf r}_{\alpha'} = {\bf R}^{-1}{\bf r}_{\alpha} - {\bf R}^{-1}{\bf t} = \hat {\bf P}^{-1}{\bf r}_{\alpha}
+     *   {\bf r}_{\beta} = {\bf R}^{-1}{\bf r}_{\alpha} - {\bf R}^{-1}{\bf t} = \hat {\bf P}^{-1}{\bf r}_{\alpha}
      *  \f]
      *
      *
@@ -747,15 +747,15 @@ class Density : public Field4D
      *
      *  Under this symmetry operation the atom coordinate will transform into [1/2, 3/2] (red dot), but
      *  this is not(!) how the orbital is transformed. The origin of the atom will transform according to 
-     *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\alpha'} = [-1/2, -1/2] \f$ (blue dot) such that 
-     *  \f$ \hat {\bf P} {\bf r}_{\alpha'} = {\bf r}_{\alpha} \f$:
+     *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\beta} = [-1/2, -1/2] \f$ (blue dot) such that 
+     *  \f$ \hat {\bf P} {\bf r}_{\beta} = {\bf r}_{\alpha} \f$:
      *
      *  \image html sym_orbital2.png width=400px
      *
      *  To be more precise, we should highlight that the transformed atom coordinate can go out of the original
     *   unit cell and can be brought back with a translation vector:
      *  \f[
-     *   \hat {\bf P}^{-1}{\bf r}_{\alpha} = {\bf r}_{\alpha'} + {\bf T}_{P\alpha\alpha'}
+     *   \hat {\bf P}^{-1}{\bf r}_{\alpha} = {\bf r}_{\beta} + {\bf T}_{P\alpha\beta}
      *  \f]
      *
      *  Now let's derive how the inverse symmetry operation acts on the localized orbital \f$ \phi({\bf r}) \f$
@@ -765,7 +765,7 @@ class Density : public Field4D
      *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} - {\bf T} \big) = \\
      *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t})) \big) = 
      *     \tilde \phi\big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t}) \big) = 
-     *     \tilde \phi\big( {\bf r} - {\bf r}_{\alpha'} - {\bf T}_{P\alpha\alpha'} - {\bf R}^{-1}{\bf T} \big)
+     *     \tilde \phi\big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
      *  \f]
      *
      *  Now let's check how the atomic orbitals transfrom under the rotational part of the symmetry operation.
@@ -790,16 +790,16 @@ class Density : public Field4D
      *  We will use Bloch theorem to get rid of the translations in the argument of \f$ \tilde \phi \f$:
      *  \f[
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\alpha'} - {\bf T}_{P\alpha\alpha'} - {\bf R}^{-1}{\bf T} \big)
+     *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
      *    d{\bf r} = 
-     *    e^{i{\bf k}({\bf T}_{P\alpha\alpha'} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\alpha'} \big) d{\bf r}
+     *    e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} \big) d{\bf r}
      *  \f]
-     *  We can now write
+     *  and now we can write
      *  \f[
-     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = e^{i{\bf k}( {\bf R}{\bf r}_{\alpha} + {\bf t} -
-     *      {\bf r}_{\alpha_p} + {\bf R}{\bf T})} \sum_{m'} D_{mm'}^{\ell}({\bf P})
-     *       A_{\ell m' j{\bf k}}^{\alpha_p \sigma}
+     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
+     *      e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
+     *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) A_{\ell m' j{\bf k}}^{\beta \sigma}
      *  \f]
      *
      *  The final expression for the symmetrized matrix is then
@@ -810,23 +810,23 @@ class Density : public Field4D
      *       w_{\bf k} n_{j{\bf k}}
      *        A_{\ell' m' j\hat {\bf P}{\bf k}}^{\alpha' {\bf T'} \sigma'} = \\ = \sum_{\bf P} \sum_{j}
      *        \sum_{{\bf k}}^{IBZ}
-     *      e^{-i{\bf k}( {\bf R}{\bf r}_{\alpha} + {\bf t} - {\bf r}_{\alpha_p} + {\bf R}{\bf T})}
-     *      e^{i{\bf k}( {\bf R}{\bf r}_{\alpha'} + {\bf t} - {\bf r}_{{\alpha}'_p} + {\bf R}{\bf T'})}
+     *      e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
+     *      e^{i{\bf k}({\bf T}_{P\alpha'\beta'} + {\bf R}^{-1}{\bf T'})}
      *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        A_{\ell m_1 j{\bf k}}^{\alpha_p \sigma *} A_{\ell' m_2 j{\bf k}}^{\alpha'_p \sigma'} w_{\bf k} n_{j{\bf k}}
+     *        A_{\ell m_1 j{\bf k}}^{\beta \sigma *} A_{\ell' m_2 j{\bf k}}^{\beta' \sigma'} w_{\bf k} n_{j{\bf k}}
      *  \f]
      *
-     *  In the case of \f$ \alpha = \alpha' \f$ and \f$ {\bf T}={\bf T}' \f$ all the phase-factor exponents disapper
+     *  In the case of \f$ \alpha = \alpha' \f$ and \f$ {\bf T}={\bf T}' \f$ all the phase-factor exponents disappear
      *  and we get an expression for the "on-site" occupation matrix:
      *
      *  \f[
      *    n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} =
      *        \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ}
      *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        A_{\ell m_1 j{\bf k}}^{\alpha_p \sigma *} A_{\ell' m_2 j{\bf k}}^{\alpha_p \sigma'}
+     *        A_{\ell m_1 j{\bf k}}^{\beta \sigma *} A_{\ell' m_2 j{\bf k}}^{\beta \sigma'}
      *        w_{\bf k} n_{j{\bf k}} = \\ =
      *        \sum_{\bf P} \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        \tilde n_{\ell m_1 \sigma, \ell' m_2 \sigma'}^{\alpha_p}
+     *        \tilde n_{\ell m_1 \sigma, \ell' m_2 \sigma'}^{\beta}
      *  \f]
      *
      *
