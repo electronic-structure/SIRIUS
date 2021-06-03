@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file unit_cell_symmetry.hpp
+/** \file crystal_symmetry.hpp
  *
- *  \brief Contains definition and implementation of sirius::Unit_cell_symmetry class.
+ *  \brief Contains definition and partial implementation of sirius::Crystal_symmetry class.
  */
 
-#ifndef __UNIT_CELL_SYMMETRY_HPP__
-#define __UNIT_CELL_SYMMETRY_HPP__
+#ifndef __CRYSTAL_SYMMETRY_HPP__
+#define __CRYSTAL_SYMMETRY_HPP__
 
 #include <cstddef>
 
@@ -31,26 +31,14 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "symmetry/rotation.hpp"
+//#include "rotation.hpp"
+#include "SDDK/memory.hpp"
+#include "SDDK/geometry3d.hpp"
 #include "utils/profiler.hpp"
 
 using namespace geometry3d;
 
 namespace sirius {
-
-inline double metric_tensor_error(matrix3d<double> const& lattice_vectors__, matrix3d<int> const& R__)
-{
-    auto mt = dot(transpose(lattice_vectors__), lattice_vectors__);
-
-    double diff{0};
-    auto mt1 = dot(dot(transpose(R__), mt), R__);
-    for (int i: {0, 1, 2}) {
-        for (int j: {0, 1, 2}) {
-            diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
-        }
-    }
-    return diff;
-}
 
 /// Descriptor of the space group symmetry operation.
 struct space_group_symmetry_descriptor
@@ -97,8 +85,8 @@ struct magnetic_group_symmetry_descriptor
     sddk::mdarray<std::complex<double>, 2> spin_rotation_su2;
 };
 
-/// Representation of the unit cell symmetry.
-class Unit_cell_symmetry
+/// Representation of the crystal symmetry.
+class Crystal_symmetry
 {
   private:
 
@@ -149,11 +137,11 @@ class Unit_cell_symmetry
 
   public:
 
-    Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
-        std::vector<int> const& types__, mdarray<double, 2> const& positions__, mdarray<double, 2> const& spins__,
-        bool spin_orbit__, double tolerance__, bool use_sym__);
+    Crystal_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
+        std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
+        sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
 
-    ~Unit_cell_symmetry()
+    ~Crystal_symmetry()
     {
         if (spg_dataset_) {
             spg_free_dataset(spg_dataset_);
@@ -262,34 +250,14 @@ class Unit_cell_symmetry
      *
      *  The error is the maximum value of \f$ |M_{ij} - \tilde M_{ij}| \f$ where \f$ M_{ij} \f$
      *  is the initial metric tensor and \f$ \tilde M_{ij} \f$ is the transformed tensor. */
-    inline double metric_tensor_error() const
-    {
-        double diff{0};
-        for (auto const& e: magnetic_group_symmetry_) {
-            diff = std::max(diff, sirius::metric_tensor_error(lattice_vectors_, e.spg_op.R));
-        }
-        return diff;
-    }
+    double metric_tensor_error() const;
 
     /// Get error in rotation matrix of the symmetry operation.
     /** Comparte rotation matrix in Cartesian coordinates with its inverse transpose. They should match.
      *
      *  The error is the maximum value of \f$ |R_{ij} - R_{ij}^{-T}| \f$, where \f$ R_{ij} \f$ is the rotation
      *  matrix and \f$  R_{ij}^{-T} \f$ inverse transpose of the rotation matrix. */
-    inline double sym_op_R_error() const
-    {
-        double diff{0};
-        for (auto const& e: magnetic_group_symmetry_) {
-            auto R = e.spg_op.Rcp;
-            auto R1 = inverse(transpose(R));
-            for (int i: {0, 1, 2}) {
-                for (int j: {0, 1, 2}) {
-                    diff = std::max(diff, std::abs(R1(i, j) - R(i, j)));
-                }
-            }
-        }
-        return diff;
-    }
+    double sym_op_R_error() const;
 
     /// Print information about the unit cell symmetry.
     void print_info(int verbosity__) const;

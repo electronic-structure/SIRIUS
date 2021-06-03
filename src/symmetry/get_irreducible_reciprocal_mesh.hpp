@@ -30,7 +30,7 @@
 namespace sirius {
 
 inline std::tuple<int, std::vector<double>, std::vector<std::array<double, 3>>>
-get_irreducible_reciprocal_mesh(Unit_cell_symmetry const& sym__, vector3d<int> k_mesh__, vector3d<int> is_shift__)
+get_irreducible_reciprocal_mesh(Crystal_symmetry const& sym__, vector3d<int> k_mesh__, vector3d<int> is_shift__)
 {
     using M = std::array<std::array<int, 3>, 3>;
     std::map<M, int> sym_map;

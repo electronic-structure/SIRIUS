@@ -17,13 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file unit_cell_symmetry.cpp
+/** \file crystal_symmetry.cpp
  *
- *  \brief Contains implementation of sirius::Unit_cell_symmetry class.
+ *  \brief Contains implementation of sirius::Crystal_symmetry class.
  */
 
-#include "unit_cell_symmetry.hpp"
-#include "symmetry/find_lat_sym.hpp"
+#include "crystal_symmetry.hpp"
+#include "lattice.hpp"
+#include "rotation.hpp"
 
 using namespace geometry3d;
 
@@ -170,7 +171,7 @@ get_identity_spg_sym_op(int num_atoms__)
     return sym_op;
 }
 
-Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__,
+Crystal_symmetry::Crystal_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__,
     int num_atom_types__, std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
     sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
@@ -179,7 +180,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     , types_(types__)
     , tolerance_(tolerance__)
 {
-    PROFILE("sirius::Unit_cell_symmetry");
+    PROFILE("sirius::Crystal_symmetry");
 
     /* check lattice vectors */
     if (lattice_vectors__.det() < 0 && use_sym__) {
@@ -204,7 +205,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
     magnetization_ = sddk::mdarray<double, 2>(3, num_atoms_);
     spins__ >> magnetization_;
 
-    PROFILE_START("sirius::Unit_cell_symmetry|spg");
+    PROFILE_START("sirius::Crystal_symmetry|spg");
     if (use_sym__) {
         /* make a call to spglib */
         spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
@@ -223,7 +224,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             RTE_THROW(s);
         }
     }
-    PROFILE_STOP("sirius::Unit_cell_symmetry|spg");
+    PROFILE_STOP("sirius::Crystal_symmetry|spg");
 
     if (spg_dataset_) {
         auto lat_sym = find_lat_sym(lattice_vectors_, tolerance_);
@@ -244,7 +245,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         space_group_symmetry_.push_back(sym_op);
     }
 
-    PROFILE_START("sirius::Unit_cell_symmetry|mag");
+    PROFILE_START("sirius::Crystal_symmetry|mag");
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
         int jsym0 = 0;
@@ -284,11 +285,37 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             }
         }
     }
-    PROFILE_STOP("sirius::Unit_cell_symmetry|mag");
+    PROFILE_STOP("sirius::Crystal_symmetry|mag");
+}
+
+double
+Crystal_symmetry::metric_tensor_error() const
+{
+    double diff{0};
+    for (auto const& e: magnetic_group_symmetry_) {
+        diff = std::max(diff, sirius::metric_tensor_error(lattice_vectors_, e.spg_op.R));
+    }
+    return diff;
+}
+
+double
+Crystal_symmetry::sym_op_R_error() const
+{
+    double diff{0};
+    for (auto const& e: magnetic_group_symmetry_) {
+        auto R = e.spg_op.Rcp;
+        auto R1 = inverse(transpose(R));
+        for (int i: {0, 1, 2}) {
+            for (int j: {0, 1, 2}) {
+                diff = std::max(diff, std::abs(R1(i, j) - R(i, j)));
+            }
+        }
+    }
+    return diff;
 }
 
 void
-Unit_cell_symmetry::print_info(int verbosity__) const
+Crystal_symmetry::print_info(int verbosity__) const
 {
     std::printf("\n");
     if (this->spg_dataset_ && (this->spg_dataset_->n_operations != this->num_spg_sym())) {

@@ -25,7 +25,7 @@
 #ifndef __SYMMETRIZE_HPP__
 #define __SYMMETRIZE_HPP__
 
-#include "unit_cell/unit_cell_symmetry.hpp"
+#include "crystal_symmetry.hpp"
 #include "SDDK/gvec.hpp"
 #include "SDDK/omp.hpp"
 #include "typedefs.hpp"
@@ -93,7 +93,7 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
  */
-inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
+inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_shells__,
                        sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__,
                        double_complex* x_pw__, double_complex* y_pw__, double_complex* z_pw__)
 {
@@ -326,7 +326,7 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
     }
 }
 
-inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
+inline void symmetrize_function(Crystal_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -369,7 +369,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
 
 }
 
-inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
+inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
                                        mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vzlm");
@@ -416,7 +416,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             lmmax * nrmax * spl_atoms.global_offset());
 }
 
-inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
+inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
                                        mdarray<double, 3>& vx_rlm__, mdarray<double, 3>& vy_rlm__,
                                        mdarray<double, 3>& vz_rlm__)
 {
@@ -619,7 +619,7 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
 
 inline void
 symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
-           int num_mag_comp__, Unit_cell_symmetry const& sym__,
+           int num_mag_comp__, Crystal_symmetry const& sym__,
            std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
@@ -627,7 +627,6 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
         return;
     }
 
-    //sddk::mdarray<double_complex, 4> dmsym(dm__.size(0), dm__.size(1), dm__.size(2), dm__.size(3));
     std::vector<sddk::mdarray<double_complex, 3>> dmsym(sym__.num_atoms());
     for (int ia = 0; ia < sym__.num_atoms(); ia++) {
         int iat = sym__.atom_type(ia);
