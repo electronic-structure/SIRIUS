@@ -724,18 +724,51 @@ class Density : public Field4D
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
      *     \big( \hat {\bf P}^{-1} \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
      *  \f]
-     *  Symmetry operation acts on \f$ \phi \f$ in two ways: transformation of the origin of orbital to the 
-     *  symmetry-related atom \f$ \alpha_p \f$ centered at 
-     *  \f$ \tilde {\bf r}_{\alpha_p} = {\bf R}{\bf r}_{\alpha} + {\bf R}{\bf T} + {\bf t} \f$
-     *  (with <b>R</b> being a rotational part and <b>t</b> - a fractional translation) and tranformation of the
-     *  orbital itself:
-     *  \f[
-     *    \hat {\bf P}^{-1}\phi_{\ell m}({\bf r}) = \tilde \phi_{\ell m}({\bf r})
-     *  \f]
-     *  This is illustrated on the following figures:
-     *  \image html sym_orbital1.png
-     *  \image html sym_orbital2.png
      *
+     *  Let's first derive how the inverse symmetry operation acts on the localized orbital centered on the
+     *  atom inside a unit cell (no <b>T</b>):
+     *  \f[
+     *   \hat {\bf P}^{-1} \phi\big( {\bf r} -  {\bf r}_{\alpha} \big) = 
+     *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} \big) = \\
+     *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t})) \big) =
+     *     \tilde \phi \big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t}) \big)
+     *  \f]
+     *  This operation rotates the orbital and centers it at the position
+     *  \f[
+     *   {\bf r}_{\alpha'} = {\bf R}^{-1}{\bf r}_{\alpha} - {\bf R}^{-1}{\bf t} = \hat {\bf P}^{-1}{\bf r}_{\alpha}
+     *  \f]
+     *
+     *
+     *  For example, suppose thar we have y-orbital centered at \f$ {\bf r}_{\alpha} = [1, 0] \f$ (black dot)
+     *  and a symmetry operation \f$ \hat {\bf P}  = \{ {\bf R} | {\bf t} \} \f$ that rotates by
+     *  \f$ \pi/2 \f$ counterclockwise and translates by [1/2, 1/2]:
+     *
+     *  \image html sym_orbital1.png width=400px
+     *
+     *  Under this symmetry operation the atom coordinate will transform into [1/2, 3/2] (red dot), but
+     *  this is not(!) how the orbital is transformed. The origin of the atom will transform according to 
+     *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\alpha'} = [-1/2, -1/2] \f$ (blue dot) such that 
+     *  \f$ \hat {\bf P} {\bf r}_{\alpha'} = {\bf r}_{\alpha} \f$:
+     *
+     *  \image html sym_orbital2.png width=400px
+     *
+     *  To be more precise, we should highlight that the transformed atom coordinate can go out of the original
+    *   unit cell and can be brought back with a translation vector:
+     *  \f[
+     *   \hat {\bf P}^{-1}{\bf r}_{\alpha} = {\bf r}_{\alpha'} + {\bf T}_{P\alpha\alpha'}
+     *  \f]
+     *
+     *  Now let's derive how the inverse symmetry operation acts on the localized orbital \f$ \phi({\bf r}) \f$
+     *  centered on atom in the arbitrary unit cell:
+     *  \f[
+     *   \hat {\bf P}^{-1} \phi\big( {\bf r} - {\bf r}_{\alpha} - {\bf T} \big) = 
+     *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} - {\bf T} \big) = \\
+     *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t})) \big) = 
+     *     \tilde \phi\big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t}) \big) = 
+     *     \tilde \phi\big( {\bf r} - {\bf r}_{\alpha'} - {\bf T}_{P\alpha\alpha'} - {\bf R}^{-1}{\bf T} \big)
+     *  \f]
+     *
+     *  Now let's check how the atomic orbitals transfrom under the rotational part of the symmetry operation.
      *  The atomic functions of (\f$ \ell m \f$) character is expressed as a product of radial function and a
      *  spherical harmonic:
      *  \f[
@@ -754,22 +787,13 @@ class Density : public Field4D
      *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) \phi_{\ell}(r) Y_{\ell m'}(\theta, \phi)
      *  \f]
      *
-     *  Now we bring the atom's transformed origin to the initial unit cell:
-     *  \f[
-     *   \tilde {\bf r}_{\alpha_p} = {\bf r}_{\alpha_p} + {\bf T}_{\alpha_p}
-     *  \f]
-     *  where \f$ {\bf r}_{\alpha_p} \f$ belongs to the initial unit cell and
-     *  \f[
-     *    {\bf T}_{\alpha_p} = \tilde {\bf r}_{\alpha_p} - {\bf r}_{\alpha_p} = 
-     *       {\bf R}{\bf r}_{\alpha} + {\bf R}{\bf T} + {\bf t} - {\bf r}_{\alpha_p}
-     *  \f]
-     *
-     *  We will use Bloch theorem to get rid of \f$ {\bf T}_{\alpha_p} \f$ in the argument of \f$ \tilde \phi \f$:
+     *  We will use Bloch theorem to get rid of the translations in the argument of \f$ \tilde \phi \f$:
      *  \f[
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \tilde \phi_{\ell m}({\bf r} - {\bf r}_{\alpha_p} - {\bf T}_{\alpha_p}) d{\bf r} = 
-     *    e^{i{\bf k}{\bf T}_{\alpha_p}} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *       \tilde \phi_{\ell m}({\bf r} - {\bf r}_{\alpha_p}) d{\bf r}
+     *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\alpha'} - {\bf T}_{P\alpha\alpha'} - {\bf R}^{-1}{\bf T} \big)
+     *    d{\bf r} = 
+     *    e^{i{\bf k}({\bf T}_{P\alpha\alpha'} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\alpha'} \big) d{\bf r}
      *  \f]
      *  We can now write
      *  \f[

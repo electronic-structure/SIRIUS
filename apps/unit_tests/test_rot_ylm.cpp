@@ -25,7 +25,7 @@ int run_test_impl(cmd_args& args)
     bool const use_sym{true};
     double const spg_tol{1e-4};
 
-    Unit_cell_symmetry symmetry(lattice, num_atoms, 1, types, positions, spins, spin_orbit, spg_tol, use_sym);
+    Crystal_symmetry symmetry(lattice, num_atoms, 1, types, positions, spins, spin_orbit, spg_tol, use_sym);
 
     /* test P^{-1} R_{lm}(r) = R_{lm}(P r) */
 

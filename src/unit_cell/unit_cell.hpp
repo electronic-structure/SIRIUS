@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -28,7 +28,7 @@
 #include <algorithm>
 #include "atom.hpp"
 #include "mpi/mpi_grid.hpp"
-#include "unit_cell_symmetry.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 #include "context/simulation_parameters.hpp"
 #include "utils/json.hpp"
 
@@ -154,7 +154,7 @@ class Unit_cell
     /// Maximum orbital quantum number of radial functions between all atom types.
     int lmax_{-1};
 
-    std::unique_ptr<Unit_cell_symmetry> symmetry_;
+    std::unique_ptr<Crystal_symmetry> symmetry_;
 
     /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
     std::vector<mdarray<double, 2>> atom_coord_;
@@ -512,48 +512,48 @@ class Unit_cell
         return static_cast<int>(nearest_neighbours_[ia].size());
     }
 
-    inline nearest_neighbour_descriptor const& nearest_neighbour(int i, int ia) const
+    inline auto const& nearest_neighbour(int i, int ia) const
     {
         return nearest_neighbours_[ia][i];
     }
 
-    inline Unit_cell_symmetry const& symmetry() const
+    inline Crystal_symmetry const& symmetry() const
     {
         return (*symmetry_);
     }
 
-    inline matrix3d<double> const& lattice_vectors() const
+    inline auto const& lattice_vectors() const
     {
         return lattice_vectors_;
     }
 
-    inline matrix3d<double> const& inverse_lattice_vectors() const
+    inline auto const& inverse_lattice_vectors() const
     {
         return inverse_lattice_vectors_;
     }
 
-    inline matrix3d<double> const& reciprocal_lattice_vectors() const
+    inline auto const& reciprocal_lattice_vectors() const
     {
         return reciprocal_lattice_vectors_;
     }
 
     /// Return a single lattice vector.
-    inline vector3d<double> lattice_vector(int idx__) const
+    inline auto lattice_vector(int idx__) const
     {
         return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
     }
 
-    Simulation_parameters const& parameters() const
+    auto const& parameters() const
     {
         return parameters_;
     }
 
-    Communicator const& comm() const
+    auto const& comm() const
     {
         return comm_;
     }
 
-    inline mdarray<double, 2> const& atom_coord(int iat__) const
+    inline auto const& atom_coord(int iat__) const
     {
         return atom_coord_[iat__];
     }
