@@ -33,7 +33,7 @@
 #include "nlcglib/nlcglib.hpp"
 #endif
 
-static inline void sirius_exit(int error_code__, std::string msg__ = "")
+static inline void sirius_print_error(int error_code__, std::string msg__ = "")
 {
     switch (error_code__) {
         case SIRIUS_ERROR_UNKNOWN: {
@@ -57,12 +57,18 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     if (msg__.size()) {
         printf("%s\n", msg__.c_str());
     }
-    if (!Communicator::is_finalized()) {
-        Communicator::world().abort(error_code__);
-    }
     fflush(stdout);
     std::cout << std::flush;
-    std::exit(error_code__);
+}
+
+static inline void sirius_exit(int error_code__, std::string msg__ = "")
+{
+    sirius_print_error(error_code__, msg__);
+    if (!Communicator::is_finalized()) {
+        Communicator::world().abort(error_code__);
+    } else {
+        std::exit(error_code__);
+    }
 }
 
 template <typename F>
@@ -78,6 +84,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (std::runtime_error const& e) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_RUNTIME;
+            sirius_print_error(*error_code__, e.what());
             return;
        } else {
            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
@@ -86,6 +93,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (std::exception const&  e) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_EXCEPTION;
+            sirius_print_error(*error_code__, e.what());
             return;
        } else {
            sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
@@ -94,6 +102,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (...) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_UNKNOWN;
+            sirius_print_error(*error_code__);
             return;
         } else {
             sirius_exit(SIRIUS_ERROR_UNKNOWN);
