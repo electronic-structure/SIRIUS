@@ -219,7 +219,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
         if (spg_dataset_->n_atoms != num_atoms__) {
             std::stringstream s;
             s << "spg_get_dataset() returned wrong number of atoms (" << spg_dataset_->n_atoms << ")" << std::endl
-              << "expected number of atoms is " <<  num_atoms__;
+              << "expected number of atoms is " << num_atoms__;
             RTE_THROW(s);
         }
     }
@@ -291,7 +291,7 @@ void
 Unit_cell_symmetry::print_info(int verbosity__) const
 {
     std::printf("\n");
-    if (this->spg_dataset_->n_operations != this->num_spg_sym()) {
+    if (this->spg_dataset_ && (this->spg_dataset_->n_operations != this->num_spg_sym())) {
         std::printf("space group found by spglib is defferent\n");
     } else {
         std::printf("space group number   : %i\n", this->spacegroup_number());
