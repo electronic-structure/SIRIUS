@@ -27,6 +27,14 @@
 #include <spla/spla.hpp>
 namespace sddk {
 
+// define type traits for a single template implementation of both real and complex matrix
+// general case for real matrix
+template <typename T>
+struct real_type {using type = T;};
+
+// special case for complex matrix
+template <typename T>
+struct real_type<std::complex<T>> {using type = T;};
 
 /// Linear transformation of the wave-functions.
 /** The transformation matrix is expected in the CPU memory. The following operation is performed:
@@ -37,14 +45,14 @@ namespace sddk {
 template <typename T>
 void transform(::spla::Context& spla_ctx__,
                int                          ispn__,
-               double                       alpha__,
+               typename real_type<T>::type  alpha__,
                std::vector<Wave_functions*> wf_in__,
                int                          i0__,
                int                          m__,
                dmatrix<T>&                  mtrx__,
                int                          irow0__,
                int                          jcol0__,
-               double                       beta__,
+               typename real_type<T>::type  beta__,
                std::vector<Wave_functions*> wf_out__,
                int                          j0__,
                int                          n__);
