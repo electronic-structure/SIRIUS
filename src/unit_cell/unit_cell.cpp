@@ -629,8 +629,8 @@ void Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
 
-    symmetry_ = std::unique_ptr<Unit_cell_symmetry>(
-        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), num_atom_types(), types, positions, spins,
+    symmetry_ = std::unique_ptr<Crystal_symmetry>(
+        new Crystal_symmetry(lattice_vectors_, num_atoms(), num_atom_types(), types, positions, spins,
             parameters_.so_correction(), parameters_.spglib_tolerance(), parameters_.use_symmetry()));
 
     int atom_class_id{-1};
