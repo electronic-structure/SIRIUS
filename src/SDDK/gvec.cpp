@@ -27,7 +27,8 @@
 
 namespace sddk {
 
-vector3d<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
+template <typename T>
+vector3d<int> sddk::Gvec<T>::gvec_by_full_index(uint32_t idx__) const
 {
     /* index of the z coordinate of G-vector: first 12 bits */
     uint32_t j = idx__ & 0xFFF;
@@ -41,7 +42,8 @@ vector3d<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
     return vector3d<int>(x, y, z);
 }
 
-void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
+template <typename T>
+void sddk::Gvec<T>::find_z_columns(T Gmax__, const FFT3D_grid& fft_box__)
 {
     mdarray<int, 2> non_zero_columns(fft_box__.limits(0), fft_box__.limits(1));
     non_zero_columns.zero();
@@ -62,7 +64,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
             /* get z-coordinate of G-vector */
             int k = fft_box__.freq_by_coord<2>(iz);
             /* take G+k */
-            auto vgk = dot(lattice_vectors_, (vector3d<double>(i, j, k) + vk_));
+            auto vgk = dot(lattice_vectors_, (vector3d<T>(i, j, k) + vk_));
             /* add z-coordinate of G-vector to the list */
             if (vgk.length() <= Gmax__) {
                 zcol.push_back(k);
@@ -118,7 +120,8 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
               [](z_column_descriptor const& a, z_column_descriptor const& b) { return a.z.size() > b.z.size(); });
 }
 
-void Gvec::distribute_z_columns()
+template <typename T>
+void Gvec<T>::distribute_z_columns()
 {
     gvec_distr_ = block_data_descriptor(comm().size());
     zcol_distr_ = block_data_descriptor(comm().size());
@@ -182,7 +185,8 @@ void Gvec::distribute_z_columns()
     }
 }
 
-void Gvec::find_gvec_shells()
+template <typename T>
+void Gvec<T>::find_gvec_shells()
 {
     if (!bare_gvec_) {
         return;
@@ -221,7 +225,7 @@ void Gvec::find_gvec_shells()
         }
     }
 
-    gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+    gvec_shell_len_ = mdarray<T, 1>(num_gvec_shells_);
     std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, -1);
 
     for (int ig = 0; ig < num_gvec_; ig++) {
@@ -262,21 +266,21 @@ void Gvec::find_gvec_shells()
     gvec_shell_(tmp[0].second) = 0;
     num_gvec_shells_           = 1;
     /* temporary vector to store G-shell radius */
-    std::vector<double> tmp_len;
+    std::vector<T> tmp_len;
     /* radius of the first shell */
-    tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
+    tmp_len.push_back(static_cast<T>(tmp[0].first) * 1e-10);
     for (int ig = 1; ig < num_gvec_; ig++) {
         /* if this G-vector has a different length */
         if (tmp[ig].first != tmp[ig - 1].first) {
             /* increment number of shells */
             num_gvec_shells_++;
             /* save the radius of the new shell */
-            tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
+            tmp_len.push_back(static_cast<T>(tmp[ig].first) * 1e-10);
         }
         /* assign the index of the current shell */
         gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
     }
-    gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+    gvec_shell_len_ = mdarray<T, 1>(num_gvec_shells_);
     std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
 
     /* map from global index of G-shell to a list of local G-vectors */
@@ -302,16 +306,17 @@ void Gvec::find_gvec_shells()
     }
 }
 
-void Gvec::init_gvec_cart()
+template <typename T>
+void Gvec<T>::init_gvec_cart()
 {
-    gvec_cart_  = mdarray<double, 2>(3, count());
-    gkvec_cart_ = mdarray<double, 2>(3, count());
+    gvec_cart_  = mdarray<T, 2>(3, count());
+    gkvec_cart_ = mdarray<T, 2>(3, count());
 
     for (int igloc = 0; igloc < count(); igloc++) {
         int ig   = offset() + igloc;
         auto G   = gvec_by_full_index(gvec_full_index_(ig));
-        auto gc  = dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]));
-        auto gkc = dot(lattice_vectors_, (vector3d<double>(G[0], G[1], G[2]) + vk_));
+        auto gc  = dot(lattice_vectors_, vector3d<T>(G[0], G[1], G[2]));
+        auto gkc = dot(lattice_vectors_, (vector3d<T>(G[0], G[1], G[2]) + vk_));
         for (int x : {0, 1, 2}) {
             gvec_cart_(x, igloc)  = gc[x];
             gkvec_cart_(x, igloc) = gkc[x];
@@ -319,7 +324,8 @@ void Gvec::init_gvec_cart()
     }
 }
 
-void Gvec::init(FFT3D_grid const& fft_grid)
+template <typename T>
+void Gvec<T>::init(FFT3D_grid const& fft_grid)
 {
     PROFILE("sddk::Gvec::init");
 
@@ -395,7 +401,8 @@ void Gvec::init(FFT3D_grid const& fft_grid)
     // TODO: add a check for gvec_base (there is already a test for this).
 }
 
-Gvec& Gvec::operator=(Gvec&& src__)
+template <typename T>
+Gvec<T>& Gvec<T>::operator=(Gvec<T>&& src__)
 {
     if (this != &src__) {
         vk_                = src__.vk_;
@@ -417,7 +424,8 @@ Gvec& Gvec::operator=(Gvec&& src__)
     return *this;
 }
 
-std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const
+template <typename T>
+std::pair<int, bool> Gvec<T>::index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const
 {
     auto v  = g1__ - g2__;
     int idx = index_by_gvec(v);
@@ -438,7 +446,8 @@ std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<in
     return std::make_pair(idx, conj);
 }
 
-int Gvec::index_by_gvec(vector3d<int> const& G__) const
+template <typename T>
+int Gvec<T>::index_by_gvec(vector3d<int> const& G__) const
 {
     /* reduced G-vector set does not have negative z for x=y=0 */
     if (reduced() && G__[0] == 0 && G__[1] == 0 && G__[2] < 0) {
@@ -476,7 +485,8 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     return ig;
 }
 
-void Gvec::pack(serializer& s__) const
+template <typename T>
+void Gvec<T>::pack(serializer& s__) const
 {
     serialize(s__, vk_);
     serialize(s__, Gmax_);
@@ -495,7 +505,8 @@ void Gvec::pack(serializer& s__) const
     serialize(s__, gvec_base_mapping_);
 }
 
-void Gvec::unpack(serializer& s__, Gvec& gv__) const
+template <typename T>
+void Gvec<T>::unpack(serializer& s__, Gvec<T>& gv__) const
 {
     deserialize(s__, gv__.vk_);
     deserialize(s__, gv__.Gmax_);
@@ -514,7 +525,8 @@ void Gvec::unpack(serializer& s__, Gvec& gv__) const
     deserialize(s__, gv__.gvec_base_mapping_);
 }
 
-void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
+template <typename T>
+void Gvec<T>::send_recv(Communicator const& comm__, int source__, int dest__, Gvec<T>& gv__) const
 {
     serializer s;
 
@@ -529,7 +541,8 @@ void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec&
     }
 }
 
-void Gvec_partition::build_fft_distr()
+template <typename T>
+void Gvec_partition<T>::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
     gvec_distr_fft_ = block_data_descriptor(fft_comm().size());
@@ -549,7 +562,8 @@ void Gvec_partition::build_fft_distr()
     gvec_distr_fft_.calc_offsets();
 }
 
-void Gvec_partition::calc_offsets()
+template <typename T>
+void Gvec_partition<T>::calc_offsets()
 {
     zcol_offs_ = mdarray<int, 1>(gvec().num_zcol(), memory_t::host, "Gvec_partition.zcol_offs_");
     for (int rank = 0; rank < fft_comm().size(); rank++) {
@@ -565,7 +579,8 @@ void Gvec_partition::calc_offsets()
     }
 }
 
-void Gvec_partition::pile_gvec()
+template <typename T>
+void Gvec_partition<T>::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped distribution;
      * we are preparing to swap plane-wave coefficients from a default slab distribution to a FFT-friendly
@@ -589,7 +604,8 @@ void Gvec_partition::pile_gvec()
     assert(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
 }
 
-Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__)
+template <typename T>
+Gvec_partition<T>::Gvec_partition(Gvec<T> const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__)
     : gvec_(gvec__)
     , fft_comm_(fft_comm__)
     , comm_ortho_fft_(comm_ortho_fft__)
@@ -636,7 +652,8 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
     pile_gvec();
 }
 
-mdarray<int, 2> Gvec_partition::get_gvec() const
+template <typename T>
+mdarray<int, 2> Gvec_partition<T>::get_gvec() const
 {
     mdarray<int, 2> gv(3, gvec_count_fft());
     for (int i = 0; i < gvec_count_fft(); i++) {
@@ -649,7 +666,8 @@ mdarray<int, 2> Gvec_partition::get_gvec() const
     return gv;
 }
 
-void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const
+template <typename T>
+void Gvec_partition<T>::gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const
 {
     int rank = gvec().comm().rank();
     /* collect scattered PW coefficients */
@@ -657,7 +675,8 @@ void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::comp
                                gvec_fft_slab().offsets.data());
 }
 
-void Gvec_partition::gather_pw_global(std::complex<double>* f_pw_fft__, std::complex<double>* f_pw_global__) const
+template <typename T>
+void Gvec_partition<T>::gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const
 {
     for (int ig = 0; ig < gvec().count(); ig++) {
         /* position inside fft buffer */
@@ -667,7 +686,8 @@ void Gvec_partition::gather_pw_global(std::complex<double>* f_pw_fft__, std::com
     gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
 }
 
-Gvec_shells::Gvec_shells(Gvec const& gvec__)
+template <typename F>
+Gvec_shells<F>::Gvec_shells(Gvec<F> const& gvec__)
     : comm_(gvec__.comm())
     , gvec_(gvec__)
 {
@@ -744,5 +764,13 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         }
     }
 }
+
+// instantiate for supported types
+template class Gvec<double>;
+template class Gvec<float>;
+template class Gvec_partition<double>;
+template class Gvec_partition<float>;
+template class Gvec_shells<double>;
+template class Gvec_shells<float>;
 
 } // namespace sddk
