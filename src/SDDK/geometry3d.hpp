@@ -132,26 +132,6 @@ class vector3d : public std::array<T, 3>
         return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
     }
 
-    template <typename U>
-    inline vector3d<decltype(T{} + U{})> operator+(vector3d<U> const& b) const
-    {
-        vector3d<decltype(T{} + U{})> a = *this;
-        for (int x : {0, 1, 2}) {
-            a[x] += b[x];
-        }
-        return a;
-    }
-
-    template <typename U>
-    inline vector3d<decltype(T{} - U{})> operator-(vector3d<U> const& b) const
-    {
-        vector3d<decltype(T{} - U{})> a = *this;
-        for (int x : {0, 1, 2}) {
-            a[x] -= b[x];
-        }
-        return a;
-    }
-
     inline vector3d<T>& operator+=(vector3d<T> const& b)
     {
         for (int x : {0, 1, 2}) {
@@ -168,32 +148,58 @@ class vector3d : public std::array<T, 3>
         return *this;
     }
 
-    template <typename U>
-    inline friend vector3d<decltype(T{} * U{})> operator*(vector3d<T> vec, U p)
-    {
-        vector3d<decltype(T{} * U{})> a;
-        for (int x : {0, 1, 2}) {
-            a[x] = vec[x] * p;
-        }
-        return a;
-    }
-
-    template <typename U>
-    inline friend std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>> operator*(U p, vector3d<T> vec)
-    {
-        return vec * p;
-    }
-
-    template <typename U>
-    inline friend std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>> operator/(vector3d<T> vec, U p)
-    {
-        vector3d<decltype(T{} * U{})> a;
-        for (int x : {0, 1, 2}) {
-            a[x] = vec[x] / p;
-        }
-        return a;
-    }
 };
+
+template <typename T, typename U>
+inline vector3d<decltype(T{} + U{})>
+operator+(vector3d<T> const& a, vector3d<U> const& b)
+{
+    vector3d<decltype(T{} + U{})> c;
+    for (int x : {0, 1, 2}) {
+        c[x] = a[x] + b[x];
+    }
+    return c;
+}
+
+template <typename T, typename U>
+inline vector3d<decltype(T{} - U{})>
+operator-(vector3d<T> const& a, vector3d<U> const& b)
+{
+    vector3d<decltype(T{} - U{})> c;
+    for (int x : {0, 1, 2}) {
+        c[x] = a[x] - b[x];
+    }
+    return c;
+}
+
+template <typename T, typename U>
+inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
+operator*(vector3d<T> const& vec, U p)
+{
+    vector3d<decltype(T{} * U{})> a;
+    for (int x : {0, 1, 2}) {
+        a[x] = vec[x] * p;
+    }
+    return a;
+}
+
+template <typename T, typename U>
+inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
+operator*(U p, vector3d<T> const& vec)
+{
+    return vec * p;
+}
+
+template <typename T, typename U>
+inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
+operator/(vector3d<T> const& vec, U p)
+{
+    vector3d<decltype(T{} * U{})> a;
+    for (int x : {0, 1, 2}) {
+        a[x] = vec[x] / p;
+    }
+    return a;
+}
 
 template <typename T, typename U>
 inline auto dot(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})

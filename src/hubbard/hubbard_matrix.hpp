@@ -33,7 +33,7 @@ class Hubbard_matrix {
   protected:
     Simulation_context& ctx_;
     std::vector<sddk::mdarray<double_complex, 3>> local_;
-    //sddk::mdarray<double_complex, 4> data_;
+    std::vector<sddk::mdarray<double_complex, 3>> nonlocal_;
   public:
     Hubbard_matrix(Simulation_context& ctx__);
 
@@ -57,15 +57,7 @@ class Hubbard_matrix {
 
     void print_local(int ia__, std::ostream& out__) const;
 
-    //sddk::mdarray<double_complex, 4>& data()
-    //{
-    //    return data_;
-    //}
-
-    //sddk::mdarray<double_complex, 4> const& data() const
-    //{
-    //    return data_;
-    //}
+    void print_nonlocal(int idx__, std::ostream& out__) const;
 
     sddk::mdarray<double_complex, 3>& local(int ia__)
     {
@@ -75,6 +67,16 @@ class Hubbard_matrix {
     sddk::mdarray<double_complex, 3> const& local(int ia__) const
     {
         return local_[ia__];
+    }
+
+    sddk::mdarray<double_complex, 3>& nonlocal(int idx__)
+    {
+        return nonlocal_[idx__];
+    }
+
+    sddk::mdarray<double_complex, 3> const& nonlocal(int idx__) const
+    {
+        return nonlocal_[idx__];
     }
 
     void zero()

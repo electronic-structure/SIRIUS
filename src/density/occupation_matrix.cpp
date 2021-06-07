@@ -293,10 +293,9 @@ void Occupation_matrix::init()
 void Occupation_matrix::print_occupancies(int verbosity__) const
 {
     if (verbosity__ >= 1 && ctx_.comm().rank() == 0) {
+        std::stringstream s;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                std::stringstream s;
-                s << "atom : " << ia << std::endl;
                 Hubbard_matrix::print_local(ia, s);
                 double occ[2] = {0, 0};
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -310,11 +309,16 @@ void Occupation_matrix::print_occupancies(int verbosity__) const
                 } else {
                     s << "Atom charge (total) " << 2 * occ[0] << std::endl;
                 }
-                ctx_.message(1, "occ.mtrx", s);
             }
         }
+        if (ctx_.cfg().hubbard().nonlocal().size()) {
+            s << std::endl;
+        }
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+            Hubbard_matrix::print_nonlocal(i, s);
+        }
+        ctx_.message(1, "occ.mtrx", s);
     }
-
 }
 
 }

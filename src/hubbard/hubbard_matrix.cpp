@@ -41,6 +41,18 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
                 local_[ia].zero();
             }
         }
+        nonlocal_ = std::vector<sddk::mdarray<double_complex, 3>>(ctx_.cfg().hubbard().nonlocal().size());
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+            auto nl = ctx_.cfg().hubbard().nonlocal(i);
+            int ia = nl.atom_pair()[0];
+            int ja = nl.atom_pair()[1];
+            int il = nl.l()[0];
+            int jl = nl.l()[1];
+            int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+            int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+            nonlocal_[i] = sddk::mdarray<double_complex, 3>(ib, jb, 4);
+            nonlocal_[i].zero();
+        }
     }
 }
 
@@ -100,6 +112,7 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
         out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x;
     };
 
+    out__ << "atom : " << ia__ << std::endl;
     if (ctx_.num_mag_dims() != 3) {
         int l = atom.type().indexr_hub().am(0).l();
         int mmax = 2 *l + 1;
@@ -154,6 +167,91 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
         draw_bar(2 * width * mmax + 3);
     }
 }
+
+void Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
+{
+
+    auto nl = ctx_.cfg().hubbard().nonlocal(idx__);
+    int ia = nl.atom_pair()[0];
+    int ja = nl.atom_pair()[1];
+    int il = nl.l()[0];
+    int jl = nl.l()[1];
+    int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+    int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+
+    vector3d<int> T(nl.T());
+
+    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T << std::endl;
+
+    //auto const& atom = ctx_.unit_cell().atom(ia__);
+    //if (!atom.type().hubbard_correction()) {
+    //    return;
+    //}
+    int const prec{5};
+    int const width{10};
+    auto draw_bar = [&](int w)
+    {
+        out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
+    };
+    auto print_number = [&](double x)
+    {
+        out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x;
+    };
+
+    if (ctx_.num_mag_dims() != 3) {
+        for (int is = 0; is < ctx_.num_spins(); is++) {
+            draw_bar(width * jb);
+    //        bool has_imag{false};
+            for (int m = 0; m < ib; m++) {
+                for (int mp = 0; mp < jb; mp++) {
+                    //if (std::abs(std::imag(this->nonlocal(ia__)(m, mp, is))) > 1e-12) {
+                    //    has_imag = true;
+                    //}
+                    print_number(std::real(this->nonlocal(idx__)(m, mp, is)));
+                }
+                out__ << std::endl;
+            }
+    //        if (has_imag) {
+    //            out__ << "imaginary part:" << std::endl;
+    //            for (int m = 0; m < mmax; m++) {
+    //                for (int mp = 0; mp < mmax; mp++) {
+    //                    print_number(std::imag(this->local(ia__)(m, mp, is)));
+    //                }
+    //                out__ << std::endl;
+    //            }
+    //        }
+        }
+        draw_bar(width * jb);
+    }
+    //} else {
+    //    int l = atom.type().indexr_hub().am(0).l();
+    //    int mmax = 2 *l + 1;
+    //    draw_bar(2 * width * mmax + 3);
+    //    for (int m = 0; m < mmax; m++) {
+    //        for (int mp = 0; mp < mmax; mp++) {
+    //            print_number(std::real(this->local(ia__)(m, mp, 0)));
+    //        }
+    //        out__ << " | ";
+    //        for (int mp = 0; mp < mmax; mp++) {
+    //            print_number(std::real(this->local(ia__)(m, mp, 2)));
+    //        }
+    //        out__ << std::endl;
+    //    }
+    //    draw_bar(2 * width * mmax + 3);
+    //    for (int m = 0; m < mmax; m++) {
+    //        for (int mp = 0; mp < mmax; mp++) {
+    //            print_number(std::real(this->local(ia__)(m, mp, 3)));
+    //        }
+    //        out__ << " | ";
+    //        for (int mp = 0; mp < mmax; mp++) {
+    //            print_number(std::real(this->local(ia__)(m, mp, 1)));
+    //        }
+    //        out__ << std::endl;
+    //    }
+    //    draw_bar(2 * width * mmax + 3);
+    //}
+}
+
 
 }
 
