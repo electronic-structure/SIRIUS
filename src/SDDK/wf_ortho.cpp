@@ -28,6 +28,7 @@
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
 #include "linalg/eigensolver.hpp"
+#include "type_definition.hpp"
 
 namespace sddk {
 
@@ -57,13 +58,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     auto sddk_debug_ptr = utils::get_env<int>("SDDK_DEBUG");
     int sddk_debug      = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 
-    precision_type ngop{8e-9};
-    if (std::is_same<T, precision_type>::value) {
+    double ngop{8e-9};                                           // default value for complex type
+    if (std::is_same<T, typename real_type<T>::type>::value) {   // change it if it is real type
         ngop = 2e-9;
     }
-    //if (std::is_same<T, double_complex>::value) {
-    //    ngop = 8e-9;
-    //}
 
     if (sddk_pp) {
         comm.barrier();

@@ -27,6 +27,7 @@
 #include "SDDK/omp.hpp"
 #include <chrono>
 #include <spla/spla.hpp>
+#include "type_definition.hpp"
 
 #if defined(SIRIUS_GPU)
 #include "gpu/acc_blas.hpp"
@@ -35,22 +36,11 @@
 
 namespace sddk {
 
-// define type traits for a single template implementation of both real and complex matrix
-// general case for real matrix
-template <typename T>
-struct real_type {using type = T;};
-
-// special case for complex matrix
-template <typename T>
-struct real_type<std::complex<T>> {using type = T;};
-
 namespace {
-//template <typename T>
-//void scale_gamma_wf(spin_range spins, int m, int i0, double alpha, Wave_functions& bra);
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
-template <typename F, typename T>
-void scale_gamma_wf(spin_range spins, int m, int i0, T alpha, Wave_functions& bra) {
+template <typename T>
+void scale_gamma_wf(spin_range spins, int m, int i0, typename real_type<T>::type alpha, Wave_functions& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
@@ -76,12 +66,6 @@ void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float 
 template <>
 void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {}
 
-/*
-template <typename T>
-void inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-              Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<T>& result__,
-              int irow0__, int jcol0__);
-*/
 
 // general real type
 template <typename T>

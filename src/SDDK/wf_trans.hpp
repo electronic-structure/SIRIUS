@@ -25,16 +25,8 @@
 #define __WF_TRANS_HPP__
 #include "wave_functions.hpp"
 #include <spla/spla.hpp>
+#include "type_definition.hpp"
 namespace sddk {
-
-// define type traits for a single template implementation of both real and complex matrix
-// general case for real matrix
-template <typename T>
-struct real_type {using type = T;};
-
-// special case for complex matrix
-template <typename T>
-struct real_type<std::complex<T>> {using type = T;};
 
 /// Linear transformation of the wave-functions.
 /** The transformation matrix is expected in the CPU memory. The following operation is performed:
