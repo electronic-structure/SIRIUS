@@ -37,9 +37,9 @@ namespace sddk {
 
 namespace {
 template <typename T>
-void transform_mt(::spla::Context& spla_ctx__, int ispn__, typename real_type<T>::type alpha__,
+void transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
                   std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
-                  typename real_type<T>::type beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__)
+                  real_type<T> beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__)
 {
     if (wf_in__[0]->has_mt()) {
         TERMINATE("not implemented");
@@ -87,16 +87,16 @@ transform_mt(::spla::Context& spla_ctx__, int ispn__, T alpha__, std::vector<Wav
 
 template <typename T>
 void
-transform(::spla::Context& spla_ctx__, int ispn__, typename real_type<T>::type alpha__,
+transform(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
           std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
-          typename real_type<T>::type beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__)
+          real_type<T> beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__)
 {
     PROFILE("sddk::wf_trans");
     int nwf = static_cast<int>(wf_in__.size());
 
     spla::MatrixDistribution spla_mat_dist = mtrx__.spla_distribution();
 
-    int size_factor = std::is_same<T, typename real_type<T>::type>::value ? 2 : 1;
+    int size_factor = std::is_same<T, real_type<T>>::value ? 2 : 1;
 
     auto spins = spin_range(ispn__);
 

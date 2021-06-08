@@ -70,7 +70,7 @@ class Eigensolver_lapack : public Eigensolver
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
     template <typename T>
-    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, typename real_type<T>::type* eval__, dmatrix<T>& Z__)
+    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsyevd");
@@ -86,7 +86,6 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using real_type = typename real_type<T>::type;
         ftn_int info;
         ftn_int lda = A__.ld();
 
@@ -106,7 +105,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type>(lrwork); // only required in complex
+        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsyevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork,
@@ -151,7 +150,7 @@ class Eigensolver_lapack : public Eigensolver
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     template <typename T>
-    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, typename real_type<T>::type* eval__, dmatrix<T>& Z__)
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsyevr");
@@ -167,21 +166,20 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using real_type = typename real_type<T>::type;
-        real_type vl, vu;
+        real_type<T> vl, vu;
 
         ftn_int il{1};
         ftn_int m{-1};
         ftn_int info;
 
-        auto w = mp_h_.get_unique_ptr<real_type>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
         auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);      // for complex matrix
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
-        real_type abs_tol = 2 * linalg_base::dlamch('S');
+        real_type<T> abs_tol = 2 * linalg_base::dlamch('S');
 
         ftn_int liwork;
         ftn_int lwork;
@@ -211,7 +209,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work     = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork     = mp_h_.get_unique_ptr<real_type>(lrwork);   // only required in complex
+        auto rwork     = mp_h_.get_unique_ptr<real_type<T>>(lrwork);   // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsyevr)
@@ -283,7 +281,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__,
-              typename real_type<T>::type* eval__, dmatrix<T>& Z__)
+              real_type<T>* eval__, dmatrix<T>& Z__)
     {
         if constexpr (std::is_same<T, double>::value) {
             PROFILE("Eigensolver_lapack|dsygvx");
@@ -299,21 +297,20 @@ class Eigensolver_lapack : public Eigensolver
             return -1;
         }
 
-        using real_type = typename real_type<T>::type;
         ftn_int info;
 
         ftn_int lda = A__.ld();
         ftn_int ldb = B__.ld();
         ftn_int ldz = Z__.ld();
 
-        real_type abs_tol = 2 * linalg_base::dlamch('S');
-        real_type vl{0};
-        real_type vu{0};
+        real_type<T> abs_tol = 2 * linalg_base::dlamch('S');
+        real_type<T> vl{0};
+        real_type<T> vu{0};
 
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w = mp_h_.get_unique_ptr<real_type>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
 
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
@@ -341,7 +338,7 @@ class Eigensolver_lapack : public Eigensolver
 
         auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type>(lrwork); // only required in complex
+        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
         if constexpr (std::is_same<T, double>::value) {
             FORTRAN(dsygvx)

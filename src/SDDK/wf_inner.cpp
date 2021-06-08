@@ -40,7 +40,7 @@ namespace {
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
 template <typename T>
-void scale_gamma_wf(spin_range spins, int m, int i0, typename real_type<T>::type alpha, Wave_functions& bra) {
+void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
@@ -121,7 +121,7 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
                                                  ? spla::MatrixDistribution::create_mirror(bra__.comm().mpi_comm())
                                                  : result__.spla_distribution();
 
-    using precision_type = typename real_type<T>::type;
+    using precision_type = real_type<T>;
     precision_type alpha = 1.0;
     int size_factor = 1;
     if(std::is_same<T, precision_type>::value) {
