@@ -1,10 +1,10 @@
-/** \file linalg.hpp
+/** \file type_definition.hpp
  *
  *  \brief Define some common type used in SDDK::
  */
 
-#ifndef SIRIUS_LINALG_BASE_H
-#define SIRIUS_LINALG_BASE_H
+#ifndef __TYPE_DEFINITION_HPP__
+#define __TYPE_DEFINITION_HPP__
 
 using double_complex = std::complex<double>;
 
@@ -18,4 +18,4 @@ template <typename T>
 struct real_type<std::complex<T>> {using type = T;};
 
 
-#endif // SIRIUS_LINALG_BASE_H
+#endif // __TYPE_DEFINITION_HPP__
