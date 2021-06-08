@@ -53,10 +53,10 @@ class K_point
     vector3d<double> vk_;
 
     /// List of G-vectors with |G+k| < cutoff.
-    std::unique_ptr<Gvec> gkvec_;
+    std::unique_ptr<Gvec<double>> gkvec_;
 
     /// G-vector distribution for the FFT transformation.
-    std::unique_ptr<Gvec_partition> gkvec_partition_;
+    std::unique_ptr<Gvec_partition<double>> gkvec_partition_;
 
     std::unique_ptr<spfft::Transform> spfft_transform_;
 
@@ -704,12 +704,12 @@ class K_point
         std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
     }
 
-    inline Gvec const& gkvec() const
+    inline Gvec<double> const& gkvec() const
     {
         return *gkvec_;
     }
 
-    inline Gvec_partition const& gkvec_partition() const
+    inline Gvec_partition<double> const& gkvec_partition() const
     {
         return *gkvec_partition_;
     }

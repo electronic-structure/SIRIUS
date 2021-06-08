@@ -54,7 +54,7 @@ class Beta_projectors_gradient: public Beta_projectors_base
 
   public:
     Beta_projectors_gradient(Simulation_context&     ctx__,
-                             Gvec const&             gkvec__,
+                             Gvec<double> const&             gkvec__,
                              std::vector<int> const& igk__,
                              Beta_projectors&        beta__)
         : Beta_projectors_base(ctx__, gkvec__, igk__, 3)

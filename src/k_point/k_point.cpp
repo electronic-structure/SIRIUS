@@ -373,10 +373,10 @@ void K_point::generate_gkvec(double gk_cutoff__)
 
     /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
      * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-    gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(),
+    gkvec_ = std::unique_ptr<Gvec<double>>(new Gvec<double>(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(),
                                             ctx_.gamma_point()));
 
-    gkvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gkvec_, ctx_.comm_fft_coarse(),
+    gkvec_partition_ = std::unique_ptr<Gvec_partition<double>>(new Gvec_partition<double>(*gkvec_, ctx_.comm_fft_coarse(),
                                                                           ctx_.comm_band_ortho_fft_coarse()));
 
     gkvec_offset_ = gkvec().gvec_offset(comm().rank());

@@ -223,7 +223,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base
 
   public:
     Beta_projectors_strain_deriv(Simulation_context&     ctx__,
-                                 Gvec const&             gkvec__,
+                                 Gvec<double> const&             gkvec__,
                                  std::vector<int> const& igk__)
         : Beta_projectors_base(ctx__, gkvec__, igk__, 9)
     {

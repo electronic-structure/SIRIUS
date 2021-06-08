@@ -32,7 +32,7 @@ using namespace sddk;
 namespace sirius {
 
 Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform& fft_coarse__,
-                               Gvec_partition const& gvec_coarse_p__, Potential* potential__)
+                               Gvec_partition<double> const& gvec_coarse_p__, Potential* potential__)
     : ctx_(ctx__)
     , fft_coarse_(fft_coarse__)
     , gvec_coarse_p_(gvec_coarse_p__)
@@ -177,7 +177,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
     }
 }
 
-void Local_operator::prepare_k(Gvec_partition const& gkvec_p__)
+void Local_operator::prepare_k(Gvec_partition<double> const& gkvec_p__)
 {
     PROFILE("sirius::Local_operator::prepare_k");
 
@@ -275,7 +275,7 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
     }
 }
 
-void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, spin_range spins__,
+void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition<double> const& gkvec_p__, spin_range spins__,
                              Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__)
 {
     PROFILE("sirius::Local_operator::apply_h");
@@ -611,7 +611,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
        was used for the device memory allocation, device storage is destroyed */
 }
 
-void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, int N__, int n__,
+void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition<double> const& gkvec_p__, int N__, int n__,
                                Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
 {
     PROFILE("sirius::Local_operator::apply_h_o");

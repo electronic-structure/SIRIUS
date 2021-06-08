@@ -638,7 +638,7 @@ void Simulation_context::print_info() const
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
     Communicator const* comms[]   = {&comm_fft(), &comm_fft_coarse()};
     FFT3D_grid fft_grids[]        = {this->fft_grid_, this->fft_coarse_grid_};
-    Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
+    Gvec<double> const* gvecs[]           = {&gvec(), &gvec_coarse()};
 
     std::printf("\n");
     for (int i = 0; i < 2; i++) {
@@ -936,10 +936,10 @@ void Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec()));
+        gvec_coarse_ = std::unique_ptr<Gvec<double>>(new Gvec<double>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec()));
         /* create FFT friendly partiton */
-        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-            new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition<double>>(
+            new Gvec_partition<double>(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
 
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
@@ -965,8 +965,8 @@ void Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
-        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+        gvec_ = std::unique_ptr<Gvec<double>>(new Gvec<double>(pw_cutoff(), *gvec_coarse_));
+        gvec_partition_ = std::unique_ptr<Gvec_partition<double>>(new Gvec_partition<double>(*gvec_, comm_fft(), comm_ortho_fft()));
 
         auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
@@ -1011,7 +1011,7 @@ void Simulation_context::update()
     /* After each update of the lattice vectors we might get a different set of G-vector shells.
      * Always update the mapping between the canonical FFT distribution and "local G-shells"
      * distribution which is used in symmetriezation of lattice periodic functions. */
-    remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
+    remap_gvec_ = std::unique_ptr<Gvec_shells<double>>(new Gvec_shells<double>(gvec()));
 
     /* check symmetry of G-vectors */
     if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {

@@ -75,7 +75,7 @@ class Beta_projectors_base
     Simulation_context& ctx_;
 
     /// List of G+k vectors.
-    Gvec const& gkvec_;
+    Gvec<double> const& gkvec_;
 
     /// Mapping between local and global G+k vector index.
     std::vector<int> const& igk_;
@@ -111,7 +111,7 @@ class Beta_projectors_base
                          int n__, matrix<T>& beta_phi__) const;
 
   public:
-    Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int> const& igk__, int N__);
+    Beta_projectors_base(Simulation_context& ctx__, Gvec<double> const& gkvec__, std::vector<int> const& igk__, int N__);
 
     /// Calculate inner product between beta-projectors and wave-functions.
     /** The following is computed: <beta|phi> */

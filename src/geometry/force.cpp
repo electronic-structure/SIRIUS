@@ -554,7 +554,7 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvec = ctx_.gvec();
+    Gvec<double> const& gvec = ctx_.gvec();
 
     int gvec_count  = gvec.count();
     int gvec_offset = gvec.offset();
@@ -612,7 +612,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvecs = ctx_.gvec();
+    Gvec<double> const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.count();
     int gvec_offset = gvecs.offset();
@@ -697,7 +697,7 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvecs = ctx_.gvec();
+    Gvec<double> const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
