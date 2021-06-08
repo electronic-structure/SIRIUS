@@ -45,16 +45,28 @@ void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_fu
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
 #if defined(SIRIUS_GPU)
-            accblas::dscal(
-                m, &alpha,
-                reinterpret_cast<T*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), incx);
+            if (std::is_same<T, double>::value) {
+                accblas::dscal(m, &alpha,
+                               reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            } else if (std::is_same<T, float>::value) {
+                accblas::sscal(m, &alpha,
+                               reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            }
 #else
             throw std::runtime_error("not compiled with GPU support!");
 #endif
         } else {
-            FORTRAN(dscal)
-            (&m, &alpha,
-             reinterpret_cast<T*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            if (std::is_same<T, double>::value) {
+                FORTRAN(dscal)
+                (&m, reinterpret_cast<double*>(&alpha),
+                 reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            } else if (std::is_same<T, float>::value) {
+                FORTRAN(sscal)
+                (&m, reinterpret_cast<float*>(&alpha),
+                 reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            }
         }
     }
 }

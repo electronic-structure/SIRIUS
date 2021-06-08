@@ -36,7 +36,7 @@
 namespace sddk {
 
 namespace {
-template <typename T>
+template <typename T,  typename = std::enable_if_t<std::is_scalar<T>::value>>
 void transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
                   std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
                   real_type<T> beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__)
@@ -46,16 +46,17 @@ void transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
     }
 }
 
-template <typename T>
+// implemented only for complex type
+template <typename T,  typename = std::enable_if_t<!std::is_scalar<T>::value>>
 void
-transform_mt(::spla::Context& spla_ctx__, int ispn__, T alpha__, std::vector<Wave_functions*> wf_in__, int i0__,
-             int m__, dmatrix<std::complex<T>>& mtrx__, int irow0__, int jcol0__, T beta__,
+transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__, std::vector<Wave_functions*> wf_in__, int i0__,
+             int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__, T beta__,
              std::vector<Wave_functions*> wf_out__, int j0__, int n__)
 {
     spla::MatrixDistribution spla_mat_dist = mtrx__.spla_distribution();
-    int nwf                                = static_cast<int>(wf_in__.size());
-    const std::complex<T>* mtrx_ptr        = mtrx__.size_local() ? mtrx__.at(memory_t::host, 0, 0) : nullptr;
-    auto spins                             = spin_range(ispn__);
+    int nwf                  = static_cast<int>(wf_in__.size());
+    const T* mtrx_ptr        = mtrx__.size_local() ? mtrx__.at(memory_t::host, 0, 0) : nullptr;
+    auto spins               = spin_range(ispn__);
     for (int iv = 0; iv < nwf; iv++) {
         bool local_has_mt  = wf_in__[iv]->has_mt();
         bool global_has_mt = false;

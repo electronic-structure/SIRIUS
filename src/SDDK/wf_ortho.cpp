@@ -202,26 +202,26 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
             /* multiplication by triangular matrix */
             for (auto& e : wfs__) {
                 /* wave functions are complex, transformation matrix is complex */
-                if (std::is_same<T, std::complex<real_type<T>>>::value) {
+                if (!std::is_scalar<T>::value) {
                     linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
                                       reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
                                       reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                                       e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
-                                          reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
-                                          reinterpret_cast<T*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                                          e->mt_coeffs(s).prime().ld(), stream_id(sid++));
+                        linalg(la__).trmm(
+                            'R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                            reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                            reinterpret_cast<T*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                            e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
-                if (std::is_same<T, real_type<T>>::value) {
-                    linalg(la__).trmm(
-                        'R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
-                        reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
-                        reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                        2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
+                if (std::is_scalar<T>::value) {
+                    linalg(la__).trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                                      reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                                      reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                                      2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg(la__).trmm(
