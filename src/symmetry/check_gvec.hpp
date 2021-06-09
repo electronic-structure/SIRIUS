@@ -25,6 +25,8 @@
 #ifndef __CHECK_GVEC_HPP__
 #define __CHECK_GVEC_HPP__
 
+#include "symmetry/crystal_symmetry.hpp"
+
 namespace sirius {
 
 inline void check_gvec(Gvec const& gvec__, Crystal_symmetry const& sym__)

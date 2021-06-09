@@ -30,13 +30,14 @@ using namespace geometry3d;
 
 namespace sirius {
 
-static std::vector<int>
+static std::pair<std::vector<int>, std::vector<vector3d<int>>>
 find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matrix3d<int> const& R__,
-              vector3d<double> const& t__, double tolerance__)
+              vector3d<double> const& t__, double tolerance__, bool inverse__ = false)
 {
     PROFILE("sirius::find_sym_atom");
 
     std::vector<int> sym_atom(num_atoms__);
+    std::vector<vector3d<int>> sym_atom_T(num_atoms__);
 
     auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
     {
@@ -52,7 +53,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
         /* position of atom ia */
         vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
         /* apply crystal symmetry */
-        auto v = reduce_coordinates(dot(R__, pos) + t__);
+        auto v = (inverse__) ? reduce_coordinates(dot(inverse(R__), pos - t__)) : reduce_coordinates(dot(R__, pos) + t__);
         double d0{1e10};
         double j0{-1};
         vector3d<double> p0;
@@ -85,8 +86,9 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
             RTE_THROW(s);
         }
         sym_atom[ia] = ja;
+        sym_atom_T[ia] = v.second;
     }
-    return sym_atom;
+    return std::make_pair(sym_atom, sym_atom_T);
 }
 
 static space_group_symmetry_descriptor
@@ -135,7 +137,21 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
     }
     try {
         /* get symmetry related atoms */
-        sym_op.sym_atom = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
+        auto result = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
+        sym_op.sym_atom = result.first;
+        result = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__, true);
+        sym_op.inv_sym_atom = result.first;
+        sym_op.inv_sym_atom_T = result.second;
+        for (int ia = 0; ia < num_atoms__; ia++) {
+            int ja = sym_op.sym_atom[ia];
+            if (sym_op.inv_sym_atom[ja] != ia) {
+                std::stringstream s;
+                s << "atom symmetry tables are not consistent" << std::endl
+                  << "ia: " << ia << " sym_atom[ia]: " << ja << " inv_sym_atom[sym_atom[ia]]: " 
+                  << sym_op.inv_sym_atom[ja];
+                RTE_THROW(s);
+            }
+        }
     } catch(std::exception const& e) {
         std::stringstream s;
         s << "R: " << sym_op.R << std::endl
@@ -166,6 +182,8 @@ get_identity_spg_sym_op(int num_atoms__)
     /* get Euler angles of the rotation */
     sym_op.euler_angles = euler_angles(sym_op.Rc, 1e-10);
     sym_op.sym_atom = std::vector<int>(num_atoms__);
+    sym_op.inv_sym_atom = std::vector<int>(num_atoms__);
+    sym_op.inv_sym_atom_T = std::vector<vector3d<int>>(num_atoms__, vector3d<int>(0, 0, 0));
     std::iota(sym_op.sym_atom.begin(), sym_op.sym_atom.end(), 0);
 
     return sym_op;

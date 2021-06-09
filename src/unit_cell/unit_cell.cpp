@@ -24,8 +24,17 @@
 
 #include <iomanip>
 #include "unit_cell.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
+
+Unit_cell::Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__)
+    : parameters_(parameters__)
+    , comm_(comm__)
+{
+}
+
+Unit_cell::~Unit_cell() = default;
 
 std::vector<double>
 Unit_cell::find_mt_radii()

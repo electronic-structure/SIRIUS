@@ -28,13 +28,16 @@
 #include <algorithm>
 #include "atom.hpp"
 #include "mpi/mpi_grid.hpp"
-#include "symmetry/crystal_symmetry.hpp"
+//#include "symmetry/crystal_symmetry.hpp"
 #include "context/simulation_parameters.hpp"
 #include "utils/json.hpp"
 
 namespace sirius {
 
 using json = nlohmann::json;
+
+/* forward declaration */
+class Crystal_symmetry;
 
 /// Representation of a unit cell.
 class Unit_cell
@@ -172,11 +175,9 @@ class Unit_cell
     int next_atom_type_id(std::string label__);
 
   public:
-    Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__)
-        : parameters_(parameters__)
-        , comm_(comm__)
-    {
-    }
+    Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__);
+
+    ~Unit_cell();
 
     /// Initialize the unit cell data
     /** Several things must be done during this phase:

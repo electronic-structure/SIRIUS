@@ -25,7 +25,7 @@
 #ifndef __GET_IRREDUCIBLE_RECIPROCAL_MESH_HPP__
 #define __GET_IRREDUCIBLE_RECIPROCAL_MESH_HPP__
 
-// #include ...
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
 
