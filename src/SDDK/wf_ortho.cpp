@@ -47,10 +47,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
     int K{0};
-    using precision_type = typename real_type<T>::type;
+
     if (sddk_pp) {
         K = wfs__[0]->gkvec().num_gvec() + wfs__[0]->num_mt_coeffs();
-        if (std::is_same<T, precision_type>::value) {
+        if (std::is_same<T, real_type<T>>::value) {
             K *= 2;
         }
     }
@@ -59,7 +59,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     int sddk_debug      = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 
     double ngop{8e-9};                                           // default value for complex type
-    if (std::is_same<T, typename real_type<T>::type>::value) {   // change it if it is real type
+    if (std::is_same<T, real_type<T>>::value) {       // change it if it is real type
         ngop = 2e-9;
     }
 
@@ -68,7 +68,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     }
     // double time = -omp_get_wtime();
 
-    precision_type gflops{0};
+    double gflops{0};
 
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
@@ -107,7 +107,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         //    save_to_hdf5("nxn_overlap.h5", o__, n__);
         //}
 
-        std::vector<precision_type> eo(n__);
+        std::vector<real_type<T>> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
         auto solver = Eigensolver_factory("scalapack", nullptr);
@@ -138,7 +138,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         if (o__.comm().rank() == 0) {
             std::printf("check hermitian\n");
         }
-        precision_type d = check_hermitian(o__, n__);
+        real_type<T> d = check_hermitian(o__, n__);
         if (d > 1e-12 && o__.comm().rank() == 0) {
             std::stringstream s;
             s << "matrix is not hermitian, max diff = " << d;
@@ -202,28 +202,26 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
             /* multiplication by triangular matrix */
             for (auto& e : wfs__) {
                 /* wave functions are complex, transformation matrix is complex */
-                if constexpr (std::is_same<T, std::complex<precision_type>>::value) {
-                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
-                                      &linalg_const<T>::one(),
+                if (!std::is_scalar<T>::value) {
+                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
                                       reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
-                                      e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
+                                      reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                                       e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
-                                          &linalg_const<T>::one(),
-                                          reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
-                                          e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
-                                          e->mt_coeffs(s).prime().ld(), stream_id(sid++));
+                        linalg(la__).trmm(
+                            'R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                            reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                            reinterpret_cast<T*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                            e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
-                if constexpr (std::is_same<T, precision_type>::value) {
-                    linalg(la__).trmm(
-                        'R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
-                        reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
-                        reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                        2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
+                if (std::is_scalar<T>::value) {
+                    linalg(la__).trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                                      reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                                      reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                                      2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg(la__).trmm(

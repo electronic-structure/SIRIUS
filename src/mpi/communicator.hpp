@@ -101,7 +101,7 @@ struct mpi_type_wrapper<std::complex<float>>
 {
     static MPI_Datatype kind()
     {
-        return MPI_CXX_FLOAT_COMPLEX;
+        return MPI_C_FLOAT_COMPLEX;
     }
 };
 
@@ -129,7 +129,7 @@ struct mpi_type_wrapper<std::complex<double>>
 {
     static MPI_Datatype kind()
     {
-        return MPI_CXX_DOUBLE_COMPLEX;
+        return MPI_C_DOUBLE_COMPLEX;
     }
 };
 

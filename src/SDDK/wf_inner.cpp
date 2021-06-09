@@ -40,21 +40,33 @@ namespace {
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
 template <typename T>
-void scale_gamma_wf(spin_range spins, int m, int i0, typename real_type<T>::type alpha, Wave_functions& bra) {
+void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
 #if defined(SIRIUS_GPU)
-            accblas::dscal(
-                m, &alpha,
-                reinterpret_cast<T*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), incx);
+            if (std::is_same<T, double>::value) {
+                accblas::dscal(m, reinterpret_cast<double*>(&alpha),
+                               reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            } else if (std::is_same<T, float>::value) {
+                accblas::sscal(m, reinterpret_cast<float*>(&alpha),
+                               reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            }
 #else
             throw std::runtime_error("not compiled with GPU support!");
 #endif
         } else {
-            FORTRAN(dscal)
-            (&m, &alpha,
-             reinterpret_cast<T*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            if (std::is_same<T, double>::value) {
+                FORTRAN(dscal)
+                (&m, reinterpret_cast<double*>(&alpha),
+                 reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            } else if (std::is_same<T, float>::value) {
+                FORTRAN(sscal)
+                (&m, reinterpret_cast<float*>(&alpha),
+                 reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            }
         }
     }
 }
@@ -121,7 +133,7 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
                                                  ? spla::MatrixDistribution::create_mirror(bra__.comm().mpi_comm())
                                                  : result__.spla_distribution();
 
-    using precision_type = typename real_type<T>::type;
+    using precision_type = real_type<T>;
     precision_type alpha = 1.0;
     int size_factor = 1;
     if(std::is_same<T, precision_type>::value) {

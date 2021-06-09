@@ -201,7 +201,7 @@ class dmatrix : public matrix<T>
 
     void add(const int irow_glob, const int icol_glob, T val);
 
-    void add(typename real_type<T>::type beta__, const int irow_glob, const int icol_glob, T val);
+    void add(real_type<T> beta__, const int irow_glob, const int icol_glob, T val);
 
     void make_real_diag(int n__);
 

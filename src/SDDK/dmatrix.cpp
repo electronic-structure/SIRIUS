@@ -186,7 +186,7 @@ void dmatrix<T>::add(const int irow_glob, const int icol_glob, T val)
 }
 
 template <typename T>
-void dmatrix<T>::add(typename real_type<T>::type beta__, const int irow_glob, const int icol_glob, T val)
+void dmatrix<T>::add(real_type<T> beta__, const int irow_glob, const int icol_glob, T val)
 {
     auto r = spl_row_.location(irow_glob);
     if (blacs_grid_->rank_row() == r.rank) {

@@ -37,14 +37,14 @@ namespace sddk {
 template <typename T>
 void transform(::spla::Context& spla_ctx__,
                int                          ispn__,
-               typename real_type<T>::type  alpha__,
+               real_type<T>                 alpha__,
                std::vector<Wave_functions*> wf_in__,
                int                          i0__,
                int                          m__,
                dmatrix<T>&                  mtrx__,
                int                          irow0__,
                int                          jcol0__,
-               typename real_type<T>::type  beta__,
+               real_type<T>                 beta__,
                std::vector<Wave_functions*> wf_out__,
                int                          j0__,
                int                          n__);
