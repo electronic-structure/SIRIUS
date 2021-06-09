@@ -353,15 +353,22 @@ inline void symmetrize_function(Crystal_symmetry const& sym__, Communicator cons
         auto eang = sym__[i].spg_op.euler_angles;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
-                                            fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                        frlm__.at(memory_t::host, 0, 0, ja), frlm__.ld(), &linalg_const<double>::one(),
+                                        fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
+        //for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+        //    int ja = sym__[i].spg_op.sym_atom[ia];
+        //    auto location = spl_atoms.location(ja);
+        //    if (location.rank == comm__.rank()) {
+        //        linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+        //                                    frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
+        //                                    fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
+        //    }
+        //}
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
     comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
