@@ -35,7 +35,6 @@
 #include "utils/utils.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
-//#include "symmetry/check_gvec.hpp"
 #include "symmetry/rotation.hpp"
 #include "spfft/spfft.hpp"
 

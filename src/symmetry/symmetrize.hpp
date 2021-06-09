@@ -360,20 +360,10 @@ inline void symmetrize_function(Crystal_symmetry const& sym__, Communicator cons
                                         frlm__.at(memory_t::host, 0, 0, ja), frlm__.ld(), &linalg_const<double>::one(),
                                         fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
-        //for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-        //    int ja = sym__[i].spg_op.sym_atom[ia];
-        //    auto location = spl_atoms.location(ja);
-        //    if (location.rank == comm__.rank()) {
-        //        linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-        //                                    frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
-        //                                    fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-        //    }
-        //}
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
     comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
             lmmax * nrmax * spl_atoms.global_offset());
-
 }
 
 inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
