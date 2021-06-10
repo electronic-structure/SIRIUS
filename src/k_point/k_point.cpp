@@ -89,8 +89,8 @@ K_point::initialize()
                 }
             }
             /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions<double>>(
+                new Wave_functions<double>(gkvec_partition(), unit_cell_.num_atoms(),
                                    [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); },
                                    ctx_.num_fv_states(), ctx_.preferred_memory_t()));
 
@@ -126,8 +126,8 @@ K_point::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<Wave_functions>(
-                    new Wave_functions(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
+                singular_components_ = std::unique_ptr<Wave_functions<double>>(
+                    new Wave_functions<double>(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
                 singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -149,12 +149,12 @@ K_point::initialize()
                 }
             }
 
-            fv_states_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+            fv_states_ = std::unique_ptr<Wave_functions<double>>(
+                new Wave_functions<double>(gkvec_partition(), unit_cell_.num_atoms(),
                                    [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
                                    ctx_.preferred_memory_t()));
 
-            spinor_wave_functions_ = std::make_shared<Wave_functions>(
+            spinor_wave_functions_ = std::make_shared<Wave_functions<double>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
                 [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
                 ctx_.num_spins());
@@ -163,18 +163,18 @@ K_point::initialize()
         }
     } else {
         spinor_wave_functions_ =
-            std::make_shared<Wave_functions>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
+            std::make_shared<Wave_functions<double>>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
             auto r = unit_cell_.num_hubbard_wf();
-            hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
-                   new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            hubbard_wave_functions_ = std::unique_ptr<Wave_functions<double>>(
+                   new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions>(
-                   new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions<double>>(
+                   new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_S_hub_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            atomic_wave_functions_S_hub_ = std::unique_ptr<Wave_functions<double>>(
+                new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                                    ctx_.preferred_memory_t(), ctx_.num_spins()));
         }
     }
@@ -276,7 +276,7 @@ K_point::generate_hubbard_orbitals()
 }
 
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__)
+K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__, Wave_functions<double>& sphi_hub__)
 {
     int nwfu = phi__.num_wf();
 
@@ -300,13 +300,13 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         inner<double_complex>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well
-        //if (ctx_.processing_unit() == device_t::GPU) {
+        // if (ctx_.processing_unit() == device_t::GPU) {
         //    S.copy_to(memory_t::host);
         //}
 
         /* create transformation matrix */
 
-        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
+        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory("lapack", nullptr);
@@ -984,7 +984,7 @@ void K_point::load(HDF5_tree h5in, int id)
 void
 K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
                                         std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__)
+                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<double>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 

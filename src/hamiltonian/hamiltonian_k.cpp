@@ -758,8 +758,8 @@ void Hamiltonian_k::set_fv_h_o_it(dmatrix<double_complex>& h__, dmatrix<double_c
 //== }
 
 template <typename T>
-void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
-                              Wave_functions* sphi__)
+void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions<real_type<T>>& phi__,
+                               Wave_functions<real_type<T>>* hphi__, Wave_functions<real_type<T>>* sphi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
@@ -840,7 +840,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 }
 
 void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__,
-                                 Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
+                                 Wave_functions<double>& phi__, Wave_functions<double>* hphi__, Wave_functions<double>* ophi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_fv_h_o");
 
@@ -1394,7 +1394,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     //}
 }
 
-void Hamiltonian_k::apply_b(Wave_functions& psi__, std::vector<Wave_functions>& bpsi__)
+void Hamiltonian_k::apply_b(Wave_functions<double>& psi__, std::vector<Wave_functions<double>>& bpsi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_b");
 
@@ -1418,13 +1418,13 @@ void Hamiltonian_k::apply_b(Wave_functions& psi__, std::vector<Wave_functions>& 
 
 template
 void
-Hamiltonian_k::apply_h_s<double>(spin_range spins__, int N__, int n__, Wave_functions& phi__,
-                                 Wave_functions* hphi__, Wave_functions* sphi__);
+Hamiltonian_k::apply_h_s<double>(spin_range spins__, int N__, int n__, Wave_functions<double>& phi__,
+                                 Wave_functions<double>* hphi__, Wave_functions<double>* sphi__);
 
 template
 void
-Hamiltonian_k::apply_h_s<double_complex>(spin_range spins__, int N__, int n__, Wave_functions& phi__,
-                                         Wave_functions* hphi__, Wave_functions* sphi__);
+Hamiltonian_k::apply_h_s<double_complex>(spin_range spins__, int N__, int n__, Wave_functions<double>& phi__,
+                                         Wave_functions<double>* hphi__, Wave_functions<double>* sphi__);
 
 template
 std::pair<mdarray<double, 2>, mdarray<double, 2>>

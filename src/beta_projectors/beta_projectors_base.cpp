@@ -132,7 +132,7 @@ Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec<doubl
 
 template <typename T>
 matrix<T>
-Beta_projectors_base::inner(int chunk__, Wave_functions& phi__, int ispn__, int idx0__, int n__)
+Beta_projectors_base::inner(int chunk__, Wave_functions<real_type<T>>& phi__, int ispn__, int idx0__, int n__)
 {
     PROFILE("sirius::Beta_projectors_base::inner");
 
@@ -283,7 +283,7 @@ void Beta_projectors_base::dismiss()
 
 template<>
 void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_pw_coeffs_a_ptr__, int nbeta__,
-                                                           Wave_functions& phi__, int ispn__, int idx0__, int n__,
+                                                           Wave_functions<double>& phi__, int ispn__, int idx0__, int n__,
                                                            matrix<double_complex>& beta_phi__) const
 {
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
@@ -316,7 +316,7 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
 
 template<>
 void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs_a_ptr__, int nbeta__,
-                                                   Wave_functions& phi__, int ispn__, int idx0__, int n__,
+                                                   Wave_functions<double>& phi__, int ispn__, int idx0__, int n__,
                                                    matrix<double>& beta_phi__) const
 {
     linalg(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(),
@@ -357,10 +357,10 @@ void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs_a_ptr_
 
 template
 matrix<double>
-Beta_projectors_base::inner<double>(int chunk__, Wave_functions& phi__, int ispn__, int idx0__, int n__);
+Beta_projectors_base::inner<double>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
 
 template
 matrix<double_complex>
-Beta_projectors_base::inner<double_complex>(int chunk__, Wave_functions& phi__, int ispn__, int idx0__, int n__);
+Beta_projectors_base::inner<double_complex>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
 
 } // namespace

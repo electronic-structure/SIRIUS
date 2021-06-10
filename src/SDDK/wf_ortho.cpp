@@ -35,7 +35,7 @@ namespace sddk {
 template <typename T, int idx_bra__, int idx_ket__>
 void
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-              std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<T>& o__, Wave_functions& tmp__)
+              std::vector<Wave_functions<real_type<T>>*> wfs__, int N__, int n__, dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__)
 {
     PROFILE("sddk::orthogonalize");
 
@@ -283,37 +283,37 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
 
 // instantiate for required types
 template void orthogonalize<double, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                          std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<double>& o__,
-                                          Wave_functions& tmp__);
+                                          std::vector<Wave_functions<double>*> wfs__, int N__, int n__, dmatrix<double>& o__,
+                                          Wave_functions<double>& tmp__);
 
 template void orthogonalize<double, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                          std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<double>& o__,
-                                          Wave_functions& tmp__);
+                                          std::vector<Wave_functions<double>*> wfs__, int N__, int n__, dmatrix<double>& o__,
+                                          Wave_functions<double>& tmp__);
 
 template void orthogonalize<double_complex, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                  int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                  dmatrix<double_complex>& o__, Wave_functions& tmp__);
+                                                  int ispn__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
+                                                  dmatrix<double_complex>& o__, Wave_functions<double>& tmp__);
 
 template void orthogonalize<double_complex, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                  int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                  dmatrix<double_complex>& o__, Wave_functions& tmp__);
+                                                  int ispn__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
+                                                  dmatrix<double_complex>& o__, Wave_functions<double>& tmp__);
 
 // TODO: test it after Wavefunction is templated
 /*
 template void orthogonalize<float, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                         std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<float>& o__,
-                                         Wave_functions& tmp__);
+                                         std::vector<Wave_functions<float>*> wfs__, int N__, int n__, dmatrix<float>& o__,
+                                         Wave_functions<float>& tmp__);
 
 template void orthogonalize<float, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                         std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<float>& o__,
-                                         Wave_functions& tmp__);
+                                         std::vector<Wave_functions<float>*> wfs__, int N__, int n__, dmatrix<float>& o__,
+                                         Wave_functions<float>& tmp__);
 
 template void orthogonalize<std::complex<float>, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                       int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                       dmatrix<std::complex<float>>& o__, Wave_functions& tmp__);
+                                                       int ispn__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
+                                                       dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
 
 template void orthogonalize<std::complex<float>, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                       int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                       dmatrix<std::complex<float>>& o__, Wave_functions& tmp__);
+                                                       int ispn__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
+                                                       dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
 */
 } // namespace sddk

@@ -40,6 +40,7 @@ namespace sddk {
 class FFT3D;
 template <typename T>
 class Gvec_partition;
+template <typename T>
 class Wave_functions;
 class spin_range;
 }
@@ -146,7 +147,7 @@ class Local_operator
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
     void apply_h(spfft::Transform& spfftk__, sddk::Gvec_partition<double> const& gkvec_p__, sddk::spin_range spins__,
-                 sddk::Wave_functions& phi__, sddk::Wave_functions& hphi__, int idx0__, int n__);
+                 sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>& hphi__, int idx0__, int n__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -160,7 +161,7 @@ class Local_operator
      *  Only plane-wave part of output wave-functions is changed.
      */
     void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition<double> const& gkvec_p__, int N__, int n__,
-                   sddk::Wave_functions& phi__, sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);
+                   sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>* hphi__, sddk::Wave_functions<double>* ophi__);
 
     /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
@@ -173,8 +174,8 @@ class Local_operator
      *  \param [in]  phi      Input wave-functions.
      *  \param [out] bphi     Output vector of magentic field components, applied to the wave-functions.
      */
-    void apply_b(spfft::Transform& spfftk__, int N__, int n__, sddk::Wave_functions& phi__,
-                 std::vector<sddk::Wave_functions>& bphi__); // TODO: align argument order with apply_h()
+    void apply_b(spfft::Transform& spfftk__, int N__, int n__, sddk::Wave_functions<double>& phi__,
+                 std::vector<sddk::Wave_functions<double>>& bphi__); // TODO: align argument order with apply_h()
 
     inline double v0(int ispn__) const
     {

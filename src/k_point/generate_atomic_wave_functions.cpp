@@ -124,8 +124,8 @@ namespace sirius {
 //    }
 //}
 
-void K_point::compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
-                                              Wave_functions& dphi, const int starting_position_j, const int direction)
+void K_point::compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
+                                              Wave_functions<double>& dphi, const int starting_position_j, const int direction)
 {
     std::vector<double_complex> qalpha(this->num_gkvec_loc());
 

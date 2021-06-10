@@ -107,7 +107,7 @@ class Beta_projectors_base
     void split_in_chunks();
 
     template <typename T>
-    void local_inner_aux(T* beta_pw_coeffs_a_ptr__, int nbeta__, Wave_functions& phi__, int ispn__, int idx0__,
+    void local_inner_aux(T* beta_pw_coeffs_a_ptr__, int nbeta__, Wave_functions<real_type<T>>& phi__, int ispn__, int idx0__,
                          int n__, matrix<T>& beta_phi__) const;
 
   public:
@@ -116,7 +116,7 @@ class Beta_projectors_base
     /// Calculate inner product between beta-projectors and wave-functions.
     /** The following is computed: <beta|phi> */
     template <typename T>
-    matrix<T> inner(int chunk__, Wave_functions& phi__, int ispn__, int idx0__, int n__);
+    matrix<T> inner(int chunk__, Wave_functions<real_type<T>>& phi__, int ispn__, int idx0__, int n__);
 
     /// Generate beta-projectors for a chunk of atoms.
     /** Beta-projectors are always generated and stored in the memory of a processing unit.

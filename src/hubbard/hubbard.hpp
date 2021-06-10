@@ -85,7 +85,7 @@ class Hubbard
     /// file containing the hubbard wave functions
     std::string wave_function_file_;
 
-    void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
+    void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions<double>& dphi__,
                              mdarray<double_complex, 5>& dn__, const int index__);
 
     void symmetrize_occupancy_matrix_noncolinear_case();
@@ -94,7 +94,7 @@ class Hubbard
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
-    void wavefunctions_strain_deriv(K_point& kp, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
+    void wavefunctions_strain_deriv(K_point& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
                                     mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
 
   public:
@@ -104,8 +104,8 @@ class Hubbard
     std::vector<int> offset_; // TODO: make this quick fix into proper solution
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx, const int n,
-                                 Wave_functions& phi, Wave_functions& ophi);
+    void apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
+                                 Wave_functions<double>& phi, Wave_functions<double>& ophi);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 

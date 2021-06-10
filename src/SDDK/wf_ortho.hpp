@@ -30,27 +30,27 @@ namespace sddk {
 
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T, int idx_bra__, int idx_ket__>
-void orthogonalize(::spla::Context& spla_ctx__,
-                   memory_t                     mem__,
-                   linalg_t                     la__,
-                   int                          ispn__,
-                   std::vector<Wave_functions*> wfs__,
-                   int                          N__,
-                   int                          n__,
-                   dmatrix<T>&                  o__,
-                   Wave_functions&              tmp__);
+void orthogonalize(::spla::Context&                           spla_ctx__,
+                   memory_t                                   mem__,
+                   linalg_t                                   la__,
+                   int                                        ispn__,
+                   std::vector<Wave_functions<real_type<T>>*> wfs__,
+                   int                                        N__,
+                   int                                        n__,
+                   dmatrix<T>&                                o__,
+                   Wave_functions<real_type<T>>&              tmp__);
 
 template <typename T>
 inline void orthogonalize(::spla::Context& spla_ctx__,
-                          memory_t        mem__,
-                          linalg_t        la__,
-                          int             ispn__,
-                          Wave_functions& phi__,
-                          Wave_functions& hphi__,
-                          int             N__,
-                          int             n__,
-                          dmatrix<T>&     o__,
-                          Wave_functions& tmp__)
+                          memory_t                      mem__,
+                          linalg_t                      la__,
+                          int                           ispn__,
+                          Wave_functions<real_type<T>>& phi__,
+                          Wave_functions<real_type<T>>& hphi__,
+                          int                           N__,
+                          int                           n__,
+                          dmatrix<T>&                   o__,
+                          Wave_functions<real_type<T>>& tmp__)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                       std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
@@ -62,17 +62,17 @@ inline void orthogonalize(::spla::Context& spla_ctx__,
 }
 
 template <typename T>
-inline void orthogonalize(::spla::Context& spla_ctx__,
-                          memory_t        mem__,
-                          linalg_t        la__,
-                          int             ispn__,
-                          Wave_functions& phi__,
-                          Wave_functions& hphi__,
-                          Wave_functions& ophi__,
-                          int             N__,
-                          int             n__,
-                          dmatrix<T>&     o__,
-                          Wave_functions& tmp__)
+inline void orthogonalize(::spla::Context&              spla_ctx__,
+                          memory_t                      mem__,
+                          linalg_t                      la__,
+                          int                           ispn__,
+                          Wave_functions<real_type<T>>& phi__,
+                          Wave_functions<real_type<T>>& hphi__,
+                          Wave_functions<real_type<T>>& ophi__,
+                          int                           N__,
+                          int                           n__,
+                          dmatrix<T>&                   o__,
+                          Wave_functions<real_type<T>>& tmp__)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                       std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,

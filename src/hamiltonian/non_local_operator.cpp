@@ -70,7 +70,7 @@ double_complex Non_local_operator::value<double_complex>(int xi1__, int xi2__, i
 }
 
 template <>
-void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__,
+void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wave_functions<double>& op_phi__, int idx0__,
                                                int n__, Beta_projectors_base& beta__,
                                                matrix<double_complex>& beta_phi__)
 {
@@ -156,7 +156,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wa
 }
 
 template <>
-void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_block__, Wave_functions& op_phi__,
+void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_block__, Wave_functions<double>& op_phi__,
                                                int idx0__, int n__, Beta_projectors_base& beta__,
                                                matrix<double_complex>& beta_phi__)
 {
@@ -220,7 +220,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_b
 }
 
 template <>
-void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
+void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_functions<double>& op_phi__, int idx0__, int n__,
                                        Beta_projectors_base& beta__, matrix<double>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
@@ -601,8 +601,8 @@ void Q_operator::initialize()
 
 template <typename T>
 void
-apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__, Wave_functions& phi__,
-                    D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__, Wave_functions* sphi__)
+apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__, Wave_functions<real_type<T>>& phi__,
+                    D_operator* d_op__, Wave_functions<real_type<T>>* hphi__, Q_operator* q_op__, Wave_functions<real_type<T>>* sphi__)
 {
 
     for (int i = 0; i < beta__.num_chunks(); i++) {
@@ -637,7 +637,7 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta_
 template <typename T>
 void
 apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__)
+                 Wave_functions<real_type<T>>& phi__, Q_operator* q_op__, Wave_functions<real_type<T>>& sphi__)
 {
     for (auto s: spins__) {
         sphi__.copy_from(pu__, n__, phi__, s, N__, s, N__);
@@ -651,23 +651,23 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
 template
 void
 apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                            Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
-                            Q_operator* q_op__, Wave_functions* sphi__);
+                            Wave_functions<double>& phi__, D_operator* d_op__, Wave_functions<double>* hphi__,
+                            Q_operator* q_op__, Wave_functions<double>* sphi__);
 
 template
 void
 apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                                    Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
-                                    Q_operator* q_op__, Wave_functions* sphi__);
+                                    Wave_functions<double>& phi__, D_operator* d_op__, Wave_functions<double>* hphi__,
+                                    Q_operator* q_op__, Wave_functions<double>* sphi__);
 
 template
 void
 apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                         Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
+                         Wave_functions<double>& phi__, Q_operator* q_op__, Wave_functions<double>& sphi__);
 
 template
 void
 apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
+                                 Wave_functions<double>& phi__, Q_operator* q_op__, Wave_functions<double>& sphi__);
 
 } // namespace sirius

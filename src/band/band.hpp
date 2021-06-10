@@ -26,6 +26,7 @@
 #define __BAND_HPP__
 
 #include "SDDK/memory.hpp"
+#include "SDDK/type_definition.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 
 namespace sddk {
@@ -81,8 +82,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     sddk::mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
 
     ///// RMM-DIIS diagonalization.
-    //template <typename T>
-    //void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+    // template <typename T>
+    // void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
 
   public:
     /// Constructor
@@ -92,8 +93,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T>
-    void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions& phi__, sddk::Wave_functions& op_phi__,
-                           sddk::dmatrix<T>& mtrx__, sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
+    void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions<real_type<T>>& phi__,
+                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<T>& mtrx__,
+                           sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
 
     /// Solve the band eigen-problem for pseudopotential case.
     template <typename T>

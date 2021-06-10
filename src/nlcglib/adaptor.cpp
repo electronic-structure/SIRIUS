@@ -12,7 +12,7 @@ using namespace nlcglib;
 
 namespace sirius {
 
-std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave_functions>>& wfct,
+std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave_functions<double>>>& wfct,
                                     const Simulation_context& ctx,
                                     const K_point_set& kset,
                                     nlcglib::memory_type memory = nlcglib::memory_type::none)
@@ -88,9 +88,9 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
         sddk::memory_t preferred_memory_t = ctx.preferred_memory_t();
         int num_spins                     = ctx.num_spins();
         // make a new wf for Hamiltonian apply...
-        hphis[i] = std::make_shared<sddk::Wave_functions>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
+        hphis[i] = std::make_shared<sddk::Wave_functions<double>>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
         hphis[i]->allocate(sddk::spin_range(num_spins), ctx.preferred_memory_t());
-        sphis[i] = std::make_shared<sddk::Wave_functions>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
+        sphis[i] = std::make_shared<sddk::Wave_functions<double>>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
         sphis[i]->allocate(sddk::spin_range(num_spins), ctx.preferred_memory_t());
         cphis[i] = kp.spinor_wave_functions_ptr();
         // allocate on device
