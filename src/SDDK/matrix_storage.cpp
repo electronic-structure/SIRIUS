@@ -283,10 +283,10 @@ void matrix_storage<T, matrix_storage_t::slab>::scale(memory_t mem__, int i0__, 
     }
 }
 
-template <>
-double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__) const
+template <typename T>  // complex in general
+complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__) const
 {
-    double_complex cs(0, 0);
+    T cs(0, 0);
 
     switch (pu__) {
         case device_t::CPU: {
@@ -298,7 +298,7 @@ double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::che
             break;
         }
         case device_t::GPU: {
-            mdarray<double_complex, 1> cs1(n__, memory_t::host, "checksum");
+            mdarray<T, 1> cs1(n__, memory_t::host, "checksum");
             cs1.allocate(memory_t::device).zero(memory_t::device);
 #if defined(SIRIUS_GPU)
             add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
@@ -311,15 +311,23 @@ double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::che
     return cs;
 }
 
-template <>
+template <>   // real for special case
 double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int) const
 {
     TERMINATE("matrix_storage<double, ..>::checksum is not implemented for double\n");
     return 0;
 }
 
+template <>   // real for special case
+std::complex<float> matrix_storage<float, matrix_storage_t::slab>::checksum(device_t, int, int) const
+{
+    TERMINATE("matrix_storage<float, ..>::checksum is not implemented for float\n");
+    return 0;
+}
+
 // instantiate required types
 template class matrix_storage<double, matrix_storage_t::slab>;
 template class matrix_storage<double_complex, matrix_storage_t::slab>;
-
+//template class matrix_storage<float, matrix_storage_t::slab>;
+//template class matrix_storage<std::complex<float>, matrix_storage_t::slab>;
 } // namespace sddk
