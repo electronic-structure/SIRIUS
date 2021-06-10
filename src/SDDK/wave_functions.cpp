@@ -26,7 +26,8 @@
 
 namespace sddk {
 
-Wave_functions::Wave_functions(const Gvec_partition<double>& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+template <typename T>
+Wave_functions<T>::Wave_functions(const Gvec_partition<T>& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                                int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
@@ -39,12 +40,13 @@ Wave_functions::Wave_functions(const Gvec_partition<double>& gkvecp__, int num_w
     }
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
-        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-            new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_, num_wf_));
+        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(gkvecp_, num_wf_));
     }
 }
 
-Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition<double>& gkvecp__, int num_wf__,
+template <typename T>
+Wave_functions<T>::Wave_functions(memory_pool& mp__, const Gvec_partition<T>& gkvecp__, int num_wf__,
                                memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
@@ -60,12 +62,13 @@ Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition<double>& 
     }
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
-        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-            new matrix_storage<double_complex, matrix_storage_t::slab>(mp__, gkvecp_, num_wf_));
+        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(mp__, gkvecp_, num_wf_));
     }
 }
 
-Wave_functions::Wave_functions(const Gvec_partition<double>& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
+template <typename T>
+Wave_functions<T>::Wave_functions(const Gvec_partition<T>& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
                                int num_wf__, memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
@@ -79,8 +82,8 @@ Wave_functions::Wave_functions(const Gvec_partition<double>& gkvecp__, int num_a
     }
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
-        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-            new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_, num_wf_));
+        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(gkvecp_, num_wf_));
     }
 
     spl_num_atoms_   = splindex<splindex_t::block>(num_atoms__, comm_.size(), comm_.rank());
@@ -98,12 +101,13 @@ Wave_functions::Wave_functions(const Gvec_partition<double>& gkvecp__, int num_a
     num_mt_coeffs_ = mt_coeffs_distr_.offsets.back() + mt_coeffs_distr_.counts.back();
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
-        mt_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-            new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()], num_wf_));
+        mt_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()], num_wf_));
     }
 }
 
-void Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src__, int ispn__, int i0__,
+template <typename T>
+void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T>& src__, int ispn__, int i0__,
                                int jspn__, int j0__)
 {
     assert(ispn__ == 0 || ispn__ == 1);
@@ -140,7 +144,8 @@ void Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src
     }
 }
 
-void Wave_functions::copy_from(const Wave_functions& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
+template <typename T>
+void Wave_functions<T>::copy_from(const Wave_functions<T>& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
 {
     assert(ispn__ == 0 || ispn__ == 1);
     assert(jspn__ == 0 || jspn__ == 1);
@@ -156,10 +161,11 @@ void Wave_functions::copy_from(const Wave_functions& src__, int n__, int ispn__,
     }
 }
 
-double_complex Wave_functions::checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const
+template <typename T>
+std::complex<T> Wave_functions<T>::checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const
 {
     assert(n__ != 0);
-    double_complex cs(0, 0);
+    std::complex<T> cs(0, 0);
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         cs += pw_coeffs(s).checksum(pu__, i0__, n__);
     }
@@ -167,10 +173,11 @@ double_complex Wave_functions::checksum_pw(device_t pu__, int ispn__, int i0__, 
     return cs;
 }
 
-double_complex Wave_functions::checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const
+template <typename T>
+std::complex<T> Wave_functions<T>::checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const
 {
     assert(n__ != 0);
-    double_complex cs(0, 0);
+    std::complex<T> cs(0, 0);
     if (!this->has_mt_) {
         return cs;
     }
@@ -183,7 +190,8 @@ double_complex Wave_functions::checksum_mt(device_t pu__, int ispn__, int i0__, 
     return cs;
 }
 
-void Wave_functions::print_checksum(device_t pu__, std::string label__, int N__, int n__) const
+template <typename T>
+void Wave_functions<T>::print_checksum(device_t pu__, std::string label__, int N__, int n__) const
 {
     for (int ispn = 0; ispn < num_sc(); ispn++) {
         auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
@@ -200,7 +208,8 @@ void Wave_functions::print_checksum(device_t pu__, std::string label__, int N__,
     }
 }
 
-void Wave_functions::zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
+template <typename T>
+void Wave_functions<T>::zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
 {
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         switch (pu__) {
@@ -216,7 +225,8 @@ void Wave_functions::zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TO
     }
 }
 
-void Wave_functions::zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
+template <typename T>
+void Wave_functions<T>::zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
 {
     if (!has_mt()) {
         return;
@@ -235,7 +245,8 @@ void Wave_functions::zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TO
     }
 }
 
-void Wave_functions::scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__)
+template <typename T>
+void Wave_functions<T>::scale(memory_t mem__, int ispn__, int i0__, int n__, T beta__)
 {
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         pw_coeffs(s).scale(mem__, i0__, n__, beta__);
@@ -245,8 +256,8 @@ void Wave_functions::scale(memory_t mem__, int ispn__, int i0__, int n__, double
     }
 }
 
-mdarray<double, 1>
-Wave_functions::l2norm(device_t pu__, spin_range spins__, int n__) const
+template <typename T>
+mdarray<T, 1> Wave_functions<T>::l2norm(device_t pu__, spin_range spins__, int n__) const
 {
     assert(n__ != 0);
 
@@ -258,7 +269,8 @@ Wave_functions::l2norm(device_t pu__, spin_range spins__, int n__) const
     return norm;
 }
 
-void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
+template <typename T>
+void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
 {
     auto norm = this->l2norm(pu__, spins__, n__);
     for (int i = 0; i < n__; i++) {
@@ -285,13 +297,17 @@ void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
             }
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
+                using acc_precision_type = acc_complex_double_t;
+                if(std::is_same<T, float>::value){
+                    using acc_precision_type = acc_complex_float_t;
+                }
                 scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
-                                         (acc_complex_double_t*)this->pw_coeffs(ispn).prime().at(memory_t::device),
+                                         (acc_precisin_type*)this->pw_coeffs(ispn).prime().at(memory_t::device),
                                          norm.at(memory_t::device));
 
                 if (this->has_mt()) {
                     scale_matrix_columns_gpu(this->mt_coeffs(ispn).num_rows_loc(), n__,
-                                             (acc_complex_double_t*)this->mt_coeffs(ispn).prime().at(memory_t::device),
+                                             (acc_precision_type*)this->mt_coeffs(ispn).prime().at(memory_t::device),
                                              norm.at(memory_t::device));
                 }
 #endif
@@ -300,7 +316,8 @@ void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
     }
 }
 
-void Wave_functions::allocate(spin_range spins__, memory_t mem__)
+template <typename T>
+void Wave_functions<T>::allocate(spin_range spins__, memory_t mem__)
 {
     for (int s : spins__) {
         pw_coeffs(s).allocate(mem__);
@@ -310,7 +327,8 @@ void Wave_functions::allocate(spin_range spins__, memory_t mem__)
     }
 }
 
-void Wave_functions::allocate(spin_range spins__, memory_pool& mp__)
+template <typename T>
+void Wave_functions<T>::allocate(spin_range spins__, memory_pool& mp__)
 {
     for (int s : spins__) {
         pw_coeffs(s).allocate(mp__);
@@ -320,7 +338,8 @@ void Wave_functions::allocate(spin_range spins__, memory_pool& mp__)
     }
 }
 
-void Wave_functions::deallocate(spin_range spins__, memory_t mem__)
+template <typename T>
+void Wave_functions<T>::deallocate(spin_range spins__, memory_t mem__)
 {
     for (int s : spins__) {
         pw_coeffs(s).deallocate(mem__);
@@ -330,7 +349,8 @@ void Wave_functions::deallocate(spin_range spins__, memory_t mem__)
     }
 }
 
-void Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__, int n__)
+template <typename T>
+void Wave_functions<T>::copy_to(spin_range spins__, memory_t mem__, int i0__, int n__)
 {
     for (int s : spins__) {
         pw_coeffs(s).copy_to(mem__, i0__, n__);
@@ -340,10 +360,10 @@ void Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__, int n
     }
 }
 
-mdarray<double, 1>
-Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
+template <typename T>
+mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n__) const
 {
-    mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
+    mdarray<T, 1> s(n__, memory_t::host, "sumsqr");
     s.zero();
     if (pu__ == device_t::GPU) {
         s.allocate(memory_t::device).zero(memory_t::device);
@@ -394,4 +414,7 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
     return s;
 }
 
+// instantiate for required types
+template class Wave_functions<double>;
+// template class Wave_functions<float>;
 } // namespace sddk

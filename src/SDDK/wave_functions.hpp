@@ -38,6 +38,7 @@ extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc_
                                    int mpi_rank__, double* result__);
 
 extern "C" void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
+// TODO: define the the gpu function of fp32 type and also in file ../gpu/cuda_uspp_kernels.cu
 #endif
 
 const int sddk_inner_default_block_size = 1024;
@@ -151,6 +152,7 @@ class spin_range : public std::vector<int>
     }
     \endcode
  */
+template <typename T>   // template type is using real type that determine the precision, wavefunction is always complex
 class Wave_functions
 {
   private:
@@ -158,7 +160,7 @@ class Wave_functions
     Communicator const& comm_;
 
     /// G+k vectors of the wave-function.
-    Gvec_partition<double> const& gkvecp_;
+    Gvec_partition<T> const& gkvecp_;
 
     splindex<splindex_t::block> spl_num_atoms_;
 
@@ -177,11 +179,11 @@ class Wave_functions
     int num_sc_{1};
 
     /// Plane-wave part of wave-functions.
-    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> pw_coeffs_{
+    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> pw_coeffs_{
         {nullptr, nullptr}};
 
     /// Muffin-tin part of wave-functions.
-    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{
+    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> mt_coeffs_{
         {nullptr, nullptr}};
 
     bool has_mt_{false};
@@ -222,20 +224,20 @@ class Wave_functions
 
     /// Compute the sum of squares of expansion coefficients.
     /** The result is always returned in the host memory */
-    mdarray<double, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
+    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
 
   public:
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the heap. */
-    Wave_functions(Gvec_partition<double> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
+    Wave_functions(Gvec_partition<T> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the memory pool. */
-    Wave_functions(memory_pool& mp__, Gvec_partition<double> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+    Wave_functions(memory_pool& mp__, Gvec_partition<T> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                    int num_sc__ = 1);
 
     /// Constructor for LAPW wave-functions.
-    Wave_functions(Gvec_partition<double> const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
+    Wave_functions(Gvec_partition<T> const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
                    memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Communicator of the G+k vector distribution.
@@ -245,12 +247,12 @@ class Wave_functions
     }
 
     /// G+k vectors of the wave-functions.
-    Gvec<double> const& gkvec() const
+    Gvec<T> const& gkvec() const
     {
         return gkvecp_.gvec();
     }
 
-    Gvec_partition<double> const& gkvec_partition() const
+    Gvec_partition<T> const& gkvec_partition() const
     {
         return gkvecp_;
     }
@@ -260,22 +262,22 @@ class Wave_functions
         return num_mt_coeffs_;
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs(int ispn__)
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& pw_coeffs(int ispn__)
     {
         return *pw_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
     {
         return *pw_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs(int ispn__)
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& mt_coeffs(int ispn__)
     {
         return *mt_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
     {
         return *mt_coeffs_[isc(ispn__)];
     }
@@ -310,7 +312,7 @@ class Wave_functions
         return preferred_memory_t_;
     }
 
-    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
+    inline std::complex<T> checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
@@ -329,26 +331,26 @@ class Wave_functions
      *  \param [in] i0   Starting index of wave-functions in src.
      *  \param [in] jspn Spin component on destination wave-functions.
      *  \param [in] j0   Starting index of wave-functions in destination. */
-    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__, int j0__);
+    void copy_from(device_t pu__, int n__, Wave_functions<T> const& src__, int ispn__, int i0__, int jspn__, int j0__);
 
     /// Copy from and to preferred memory.
-    void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
+    void copy_from(Wave_functions<T> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
 
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
-    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
+    std::complex<T> checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
 
     /// Checksum of muffin-tin coefficients.
-    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
+    std::complex<T> checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
 
     void zero_pw(device_t pu__, int ispn__, int i0__, int n__);
 
     void zero_mt(device_t pu__, int ispn__, int i0__, int n__);
 
-    void scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__);
+    void scale(memory_t mem__, int ispn__, int i0__, int n__, T beta__);
 
-    sddk::mdarray<double, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
+    sddk::mdarray<T, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
 
     /// Normalize the functions.
     void normalize(device_t pu__, spin_range spins__, int n__);
