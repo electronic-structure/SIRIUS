@@ -181,10 +181,13 @@ get_identity_spg_sym_op(int num_atoms__)
     sym_op.Rcp = sym_op.Rc = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     /* get Euler angles of the rotation */
     sym_op.euler_angles = euler_angles(sym_op.Rc, 1e-10);
+    /* trivial atom symmetry table */
     sym_op.sym_atom = std::vector<int>(num_atoms__);
-    sym_op.inv_sym_atom = std::vector<int>(num_atoms__);
-    sym_op.inv_sym_atom_T = std::vector<vector3d<int>>(num_atoms__, vector3d<int>(0, 0, 0));
     std::iota(sym_op.sym_atom.begin(), sym_op.sym_atom.end(), 0);
+    /* trivial atom symmetry table for inverse operation */
+    sym_op.inv_sym_atom = std::vector<int>(num_atoms__);
+    std::iota(sym_op.inv_sym_atom.begin(), sym_op.inv_sym_atom.end(), 0);
+    sym_op.inv_sym_atom_T = std::vector<vector3d<int>>(num_atoms__, vector3d<int>(0, 0, 0));
 
     return sym_op;
 }
