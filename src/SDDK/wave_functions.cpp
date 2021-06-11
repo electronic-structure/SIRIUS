@@ -302,7 +302,7 @@ void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
                     using acc_precision_type = acc_complex_float_t;
                 }
                 scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
-                                         (acc_precisin_type*)this->pw_coeffs(ispn).prime().at(memory_t::device),
+                                         (acc_precision_type*)this->pw_coeffs(ispn).prime().at(memory_t::device),
                                          norm.at(memory_t::device));
 
                 if (this->has_mt()) {
