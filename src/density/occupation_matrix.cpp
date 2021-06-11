@@ -214,6 +214,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
 
                 auto& sym = ctx_.unit_cell().symmetry();
 
+                double f = 1.0 / sym.size();
+
                 for (int isym = 0; isym < sym.size(); isym++) {
                     int  pr   = sym[isym].spg_op.proper;
                     auto eang = sym[isym].spg_op.euler_angles;
@@ -226,8 +228,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                     auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                                 dot(sym[isym].spg_op.invR, vector3d<int>(T));
 
-                    /* e^{i k Ttot} */ 
-                    auto z1 = std::exp(double_complex(0, twopi * dot(Ttot, kp__.vk())));
+                    /* e^{-i k Ttot} */
+                    auto z1 = std::exp(double_complex(0, -twopi * dot(Ttot, kp__.vk()))) * f;
 
                     int idxrf1 = 0;
                     int idxrf2 = 0;
@@ -238,10 +240,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                         for (int m2 = 0; m2 < jb; m2++) {
                             for (int m1p = 0; m1p < ib; m1p++) {
                                 for (int m2p = 0; m2p < jb; m2p++) {
-                                    nonlocal_[i](m1, m2, ispn) += z1 *
-                                        rotm[il](m1, m1p) *
-                                        occ_mtrx(r.second[iap] + offset1 + m1p,  r.second[jap] + offset2 + m2p) *
-                                            rotm[jl](m2, m2p);
+                                    nonlocal_[i](m1, m2, ispn) += z1 * rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
+                                        occ_mtrx(r.second[iap] + offset1 + m1p,  r.second[jap] + offset2 + m2p);
                                 }
                             }
                         }
