@@ -186,8 +186,6 @@ template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range isp
                                     Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
                                     int irow0__, int jcol0__);
 
-// TODO: test it after Wavefunction is templated
-/*
 template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__,
                             int i0__, int m__, Wave_functions<float>& ket__, int j0__, int n__, dmatrix<float>& result__,
                             int irow0__, int jcol0__);
@@ -195,5 +193,5 @@ template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave
 template void inner<std::complex<float>>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
                                     Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<float>>& result__,
                                     int irow0__, int jcol0__);
-*/
+
 } // namespace sddk

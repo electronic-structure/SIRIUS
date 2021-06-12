@@ -136,8 +136,6 @@ template void transform<double_complex>(::spla::Context& spla_ctx__, int ispn__,
                                         dmatrix<double_complex>& mtrx__, int irow0__, int jcol0__, double beta__,
                                         std::vector<Wave_functions<double>*> wf_out__, int j0__, int n__);
 
-// TODO: test it after Wavefunction is templated
-/*
 template void transform<float>(::spla::Context& spla_ctx__, int ispn__, float alpha__,
                                std::vector<Wave_functions<float>*> wf_in__, int i0__, int m__, dmatrix<float>& mtrx__,
                                int irow0__, int jcol0__, float beta__, std::vector<Wave_functions<float>*> wf_out__, int j0__,
@@ -147,5 +145,5 @@ template void transform<std::complex<float>>(::spla::Context& spla_ctx__, int is
                                              std::vector<Wave_functions<float>*> wf_in__, int i0__, int m__,
                                              dmatrix<std::complex<float>>& mtrx__, int irow0__, int jcol0__,
                                              float beta__, std::vector<Wave_functions<float>*> wf_out__, int j0__, int n__);
-*/
+
 } // namespace sddk

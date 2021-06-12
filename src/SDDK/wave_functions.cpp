@@ -297,10 +297,9 @@ void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
             }
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                using acc_precision_type = acc_complex_double_t;
-                if(std::is_same<T, float>::value){
-                    using acc_precision_type = acc_complex_float_t;
-                }
+                using acc_precision_type = typename std::conditional<std::is_same<T, double>::value, acc_complex_double_t,
+                                                                     acc_complex_float_t>::type;
+
                 scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
                                          (acc_precision_type*)this->pw_coeffs(ispn).prime().at(memory_t::device),
                                          norm.at(memory_t::device));
@@ -416,5 +415,5 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
 
 // instantiate for required types
 template class Wave_functions<double>;
-// template class Wave_functions<float>;
+template class Wave_functions<float>;
 } // namespace sddk

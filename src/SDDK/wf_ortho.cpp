@@ -298,8 +298,6 @@ template void orthogonalize<double_complex, 0, 0>(::spla::Context& spla_ctx__, m
                                                   int ispn__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
                                                   dmatrix<double_complex>& o__, Wave_functions<double>& tmp__);
 
-// TODO: test it after Wavefunction is templated
-/*
 template void orthogonalize<float, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
                                          std::vector<Wave_functions<float>*> wfs__, int N__, int n__, dmatrix<float>& o__,
                                          Wave_functions<float>& tmp__);
@@ -315,5 +313,5 @@ template void orthogonalize<std::complex<float>, 0, 2>(::spla::Context& spla_ctx
 template void orthogonalize<std::complex<float>, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
                                                        int ispn__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
                                                        dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
-*/
+
 } // namespace sddk

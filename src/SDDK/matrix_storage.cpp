@@ -328,6 +328,6 @@ std::complex<float> matrix_storage<float, matrix_storage_t::slab>::checksum(devi
 // instantiate required types
 template class matrix_storage<double, matrix_storage_t::slab>;
 template class matrix_storage<double_complex, matrix_storage_t::slab>;
-//template class matrix_storage<float, matrix_storage_t::slab>;
-//template class matrix_storage<std::complex<float>, matrix_storage_t::slab>;
+template class matrix_storage<float, matrix_storage_t::slab>;
+template class matrix_storage<std::complex<float>, matrix_storage_t::slab>;
 } // namespace sddk
