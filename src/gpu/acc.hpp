@@ -97,6 +97,21 @@ using acc_complex_double_t = hipDoubleComplex;
 #define ACC_DYNAMIC_SHARED(type, var) HIP_DYNAMIC_SHARED(type, var)
 #endif
 
+/// helper type traits to template kernel function
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
+template <typename T>
+struct GPU_Complex;
+
+template <>
+struct GPU_Complex<double> {using type = acc_complex_double_t;};
+
+template <>
+struct GPU_Complex<float> {using type = acc_complex_float_t;};
+
+template <typename T>
+using gpu_complex_type = typename GPU_Complex<T>::type;
+#endif
+
 /// Helper class to wrap stream id (integer number).
 class stream_id
 {
