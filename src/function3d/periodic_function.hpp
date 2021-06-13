@@ -280,7 +280,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         auto v = this->gather_f_pw();
         if (ctx_.comm().rank() == 0) {
             HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
-            fout[path__].write("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+            fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 fout[path__].write("f_mt", f_mt_);
             }
@@ -289,8 +289,8 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     void hdf5_read(HDF5_tree h5f__, mdarray<int, 2>& gvec__)
     {
-        std::vector<double_complex> v(gvec_.num_gvec());
-        h5f__.read("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+        std::vector<complex_type<T>> v(gvec_.num_gvec());
+        h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
         std::map<vector3d<int>, int> local_gvec_mapping;
 
@@ -335,29 +335,29 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_local_(ialoc__);
     }
 
-    double value_rg(vector3d<double> const& vc)
+    T value_rg(vector3d<T> const& vc)
     {
-        double p{0};
+        T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            vector3d<double> vgc = gvec_.gvec_cart<index_domain_t::local>(igloc);
-            p += std::real(this->f_pw_local_(igloc) * std::exp(double_complex(0.0, dot(vc, vgc))));
+            vector3d<T> vgc = gvec_.gvec_cart<index_domain_t::local>(igloc);
+            p += std::real(this->f_pw_local_(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);
         return p;
     }
 
-    double value(vector3d<double> const& vc)
+    T value(vector3d<T> const& vc)
     {
         int    ja{-1}, jr{-1};
-        double dr{0}, tp[2];
+        T dr{0}, tp[2];
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
             int lmax = utils::lmax(angular_domain_size_);
-            std::vector<double> rlm(angular_domain_size_);
+            std::vector<T> rlm(angular_domain_size_);
             sf::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
-            double p{0};
+            T p{0};
             for (int lm = 0; lm < angular_domain_size_; lm++) {
-                double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
+                T d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
 
                 p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
             }
