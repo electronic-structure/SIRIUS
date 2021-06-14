@@ -226,7 +226,7 @@ __global__ void add_square_sum_gpu_kernel
     }
 }
 
-extern "C" void add_square_sum_gpu(acc_complex_double_t* wf__,
+extern "C" void add_square_sum_gpu_double(acc_complex_double_t* wf__,
                                    int num_rows_loc__,
                                    int nwf__,
                                    int reduced__,
@@ -237,15 +237,10 @@ extern "C" void add_square_sum_gpu(acc_complex_double_t* wf__,
     dim3 grid_b(nwf__);
 
     accLaunchKernel((add_square_sum_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0,
-        num_rows_loc__,
-        wf__,
-        reduced__,
-        mpi_rank__,
-        result__
-    );
+                    num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
 }
 
-extern "C" void add_square_sum_gpu(acc_complex_float_t* wf__,
+extern "C" void add_square_sum_gpu_float(acc_complex_float_t* wf__,
                                    int num_rows_loc__,
                                    int nwf__,
                                    int reduced__,
@@ -256,12 +251,7 @@ extern "C" void add_square_sum_gpu(acc_complex_float_t* wf__,
     dim3 grid_b(nwf__);
 
     accLaunchKernel((add_square_sum_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(float), 0,
-                    num_rows_loc__,
-                    wf__,
-                    reduced__,
-                    mpi_rank__,
-                    result__
-    );
+                    num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
 }
 
 __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,

@@ -34,15 +34,45 @@
 #include "matrix_storage.hpp"
 #include "type_definition.hpp"
 #ifdef SIRIUS_GPU
-extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+extern "C" void add_square_sum_gpu_double(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
 
-extern "C" void add_square_sum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+extern "C" void add_square_sum_gpu_float(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, float* result__);
 
-extern "C" void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
+extern "C" void add_checksum_gpu_double(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
 
-extern "C" void add_checksum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, std::complex<float>* result__);
+extern "C" void add_checksum_gpu_float(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, std::complex<float>* result__);
+
+void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+                                   int mpi_rank__, double* result__)
+{
+    add_square_sum_gpu_double(wf__, num_rows_loc__, nwf__, reduced__, mpi_rank__, result__);
+}
+
+void add_square_sum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+                                   int mpi_rank__, float* result__)
+{
+    add_square_sum_gpu_float(wf__, num_rows_loc__, nwf__, reduced__, mpi_rank__, result__);
+}
+
+void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__){
+    add_checksum_gpu_double(wf__, num_rows_loc__, nwf__, result__);
+}
+
+void add_checksum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, std::complex<float>* result__){
+    add_checksum_gpu_float(wf__, num_rows_loc__, nwf__, result__);
+}
+
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<double>* mtrx__, double* a__)
+{
+    scale_matrix_columns_gpu_double(nrow__, ncol__, mtrx__, a__);
+}
+
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__)
+{
+    scale_matrix_columns_gpu_float(nrow__, ncol__, mtrx__, a__);
+}
 #endif
 
 const int sddk_inner_default_block_size = 1024;

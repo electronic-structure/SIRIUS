@@ -499,7 +499,9 @@ inline bool check_device_ptr(void const* ptr__)
 } // namespace acc
 
 #if defined(SIRIUS_GPU)
-extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
+extern "C" void scale_matrix_columns_gpu_double(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
+
+extern "C" void scale_matrix_columns_gpu_float(int nrow, int ncol, acc_complex_float_t* mtrx, float* a);
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
 
