@@ -396,15 +396,13 @@ inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicat
         auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                double a = alpha * S(2, 2);
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
-                rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), &linalg_const<double>::one(),
-                fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            double a = alpha * S(2, 2);
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
+            rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ja), vz_rlm__.ld(), &linalg_const<double>::one(),
+            fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
 
@@ -444,23 +442,21 @@ inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicat
         auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                for (int k: {0, 1, 2}) {
-                    linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(),
-                                                &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
-                }
-                #pragma omp parallel
-                for (int k: {0, 1, 2}) {
-                    for (int j: {0, 1, 2}) {
-                        #pragma omp for
-                        for (int ir = 0; ir < nrmax; ir++) {
-                            for (int lm = 0; lm < lmmax; lm++) {
-                                v_sym(lm, ir, location.local_index, k) += S(k, j) * vtmp(lm, ir, j);
-                            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            for (int k: {0, 1, 2}) {
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                            vrlm[k]->at(memory_t::host, 0, 0, ja), vrlm[k]->ld(),
+                                            &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+            }
+            #pragma omp parallel
+            for (int k: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    #pragma omp for
+                    for (int ir = 0; ir < nrmax; ir++) {
+                        for (int lm = 0; lm < lmmax; lm++) {
+                            v_sym(lm, ir, ialoc, k) += S(k, j) * vtmp(lm, ir, j);
                         }
                     }
                 }
