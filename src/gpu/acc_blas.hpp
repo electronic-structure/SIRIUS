@@ -274,7 +274,7 @@ dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, do
 
 inline void
 ctrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, acc_complex_float_t const* alpha__,
-      acc_complex_float_t const* A__, int lda__, acc_complex_double_t* B__, int ldb__, int stream_id)
+      acc_complex_float_t const* A__, int lda__, acc_complex_float_t* B__, int ldb__, int stream_id)
 {
     ::acc::blas::side_mode_t side   = get_gpublasSideMode_t(side__);
     ::acc::blas::fill_mode_t uplo   = get_gpublasFillMode_t(uplo__);
