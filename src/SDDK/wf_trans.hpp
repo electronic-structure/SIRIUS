@@ -25,8 +25,8 @@
 #define __WF_TRANS_HPP__
 #include "wave_functions.hpp"
 #include <spla/spla.hpp>
+#include "type_definition.hpp"
 namespace sddk {
-
 
 /// Linear transformation of the wave-functions.
 /** The transformation matrix is expected in the CPU memory. The following operation is performed:
@@ -37,14 +37,14 @@ namespace sddk {
 template <typename T>
 void transform(::spla::Context& spla_ctx__,
                int                          ispn__,
-               double                       alpha__,
+               real_type<T>                 alpha__,
                std::vector<Wave_functions*> wf_in__,
                int                          i0__,
                int                          m__,
                dmatrix<T>&                  mtrx__,
                int                          irow0__,
                int                          jcol0__,
-               double                       beta__,
+               real_type<T>                 beta__,
                std::vector<Wave_functions*> wf_out__,
                int                          j0__,
                int                          n__);

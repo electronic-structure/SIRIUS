@@ -252,6 +252,15 @@ inline auto dscal(ARGS&&... args) -> status_t {
 #endif // SIRIUS_ROCM
 }
 
+template <typename... ARGS>
+inline auto sscal(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+    return rocblas_sscal(std::forward<ARGS>(args)...);
+#else
+    return cublasSscal(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
 }  // namespace blas
 }  // namespace acc
 
