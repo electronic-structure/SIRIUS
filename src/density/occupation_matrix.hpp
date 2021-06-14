@@ -30,6 +30,8 @@
 namespace sirius {
 
 class Occupation_matrix : public Hubbard_matrix {
+  private:
+    std::map<vector3d<int>, sddk::mdarray<double_complex, 3>> occ_mtrx_T_;
   public:
     Occupation_matrix(Simulation_context& ctx__);
 
@@ -49,6 +51,16 @@ class Occupation_matrix : public Hubbard_matrix {
             }
         }
     }
+
+    void zero()
+    {
+        Hubbard_matrix::zero();
+        for (auto& e: occ_mtrx_T_) {
+            e.second.zero();
+        }
+    }
+
+    void symmetrize();
 
     void print_occupancies(int verbosity__) const;
 };
