@@ -316,6 +316,14 @@ dscal(int n__, double const* alpha__, double * x__, int incx__)
                   (null_stream_handle(), n__, alpha__, x__, incx__));
 }
 
+inline void
+sscal(int n__, float const* alpha__, float * x__, int incx__)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::sscal,
+                  (null_stream_handle(), n__, alpha__, x__, incx__));
+}
+
 #if defined(SIRIUS_CUDA)
 namespace xt {
 

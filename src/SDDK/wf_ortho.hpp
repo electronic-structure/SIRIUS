@@ -52,7 +52,9 @@ inline void orthogonalize(::spla::Context& spla_ctx__,
                           dmatrix<T>&     o__,
                           Wave_functions& tmp__)
 {
-    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
+                      std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
+                  "wrong type");
 
     auto wfs = {&phi__, &hphi__};
 
@@ -72,7 +74,9 @@ inline void orthogonalize(::spla::Context& spla_ctx__,
                           dmatrix<T>&     o__,
                           Wave_functions& tmp__)
 {
-    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
+                      std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
+                  "wrong type");
 
     auto wfs = {&phi__, &hphi__, &ophi__};
 
