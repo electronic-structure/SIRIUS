@@ -32,6 +32,7 @@
 #include "beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
 

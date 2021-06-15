@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -32,6 +32,7 @@
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
 #endif
+#include "symmetry/crystal_symmetry.hpp"
 
 static inline void sirius_print_error(int error_code__, std::string msg__ = "")
 {

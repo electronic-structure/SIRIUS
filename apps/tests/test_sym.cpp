@@ -1,4 +1,5 @@
 #include <sirius.hpp>
+#include "symmetry/crystal_symmetry.hpp"
 
 using namespace sirius;
 

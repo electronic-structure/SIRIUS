@@ -353,20 +353,17 @@ inline void symmetrize_function(Crystal_symmetry const& sym__, Communicator cons
         auto eang = sym__[i].spg_op.euler_angles;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
-                                            fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                        frlm__.at(memory_t::host, 0, 0, ja), frlm__.ld(), &linalg_const<double>::one(),
+                                        fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
     comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
             lmmax * nrmax * spl_atoms.global_offset());
-
 }
 
 inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
@@ -399,15 +396,13 @@ inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicat
         auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                double a = alpha * S(2, 2);
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
-                rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), &linalg_const<double>::one(),
-                fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            double a = alpha * S(2, 2);
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
+            rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ja), vz_rlm__.ld(), &linalg_const<double>::one(),
+            fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
 
@@ -447,23 +442,21 @@ inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicat
         auto S = sym__[i].spin_rotation;
         sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                for (int k: {0, 1, 2}) {
-                    linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(),
-                                                &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
-                }
-                #pragma omp parallel
-                for (int k: {0, 1, 2}) {
-                    for (int j: {0, 1, 2}) {
-                        #pragma omp for
-                        for (int ir = 0; ir < nrmax; ir++) {
-                            for (int lm = 0; lm < lmmax; lm++) {
-                                v_sym(lm, ir, location.local_index, k) += S(k, j) * vtmp(lm, ir, j);
-                            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            for (int k: {0, 1, 2}) {
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                            vrlm[k]->at(memory_t::host, 0, 0, ja), vrlm[k]->ld(),
+                                            &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+            }
+            #pragma omp parallel
+            for (int k: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    #pragma omp for
+                    for (int ir = 0; ir < nrmax; ir++) {
+                        for (int lm = 0; lm < lmmax; lm++) {
+                            v_sym(lm, ir, ialoc, k) += S(k, j) * vtmp(lm, ir, j);
                         }
                     }
                 }
@@ -657,7 +650,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
                 continue;
             }
 
-            int ja = sym__[isym].spg_op.sym_atom[ia];
+            int ja = sym__[isym].spg_op.inv_sym_atom[ia];
 
             auto& indexb = *indexb__(iat);
             auto& indexr = indexb.indexr();
@@ -685,7 +678,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
                                 for (int m1p = 0; m1p < ss1; m1p++) {
                                     for (int m2p = 0; m2p < ss2; m2p++) {
                                         dm_ia(m1, m2, j) += rotm[am1.l()](m1, m1p) *
-                                            dm__(ia)(offset1 + m1p, offset2 + m2p, j) *
+                                            dm__(ja)(offset1 + m1p, offset2 + m2p, j) *
                                             rotm[am2.l()](m2, m2p);
                                     }
                                 }
@@ -696,7 +689,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
                     if (num_mag_comp__ == 1) { /* trivial non-magnetic case */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
-                                dmsym[ja](m1 + offset1, m2 + offset2, 0) += dm_ia(m1, m2, 0);
+                                dmsym[ia](m1 + offset1, m2 + offset2, 0) += dm_ia(m1, m2, 0);
                             }
                         }
                     } else {
@@ -715,15 +708,19 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
 
                                     for (int s1p = 0; s1p < 2; s1p++) {
                                         for (int s2p = 0; s2p < 2; s2p++) {
-                                            dmsym[ja](m1 + offset1, m2 + offset2, j) +=
+                                            dmsym[ia](m1 + offset1, m2 + offset2, j) +=
                                                 spin_rot_su2(s1, s1p) * dm[s1p][s2p] *
                                                 std::conj(spin_rot_su2(s2, s2p));
                                         }
                                     }
-                                    if (num_mag_comp__ == 3) {
-                                        dmsym[ja](m1 + offset1, m2 + offset2, 3) =
-                                            std::conj(dmsym[ia](m1 + offset1, m2 + offset2, 2));
-                                    }
+                                }
+                            }
+                        }
+                        if (num_mag_comp__ == 3) {
+                            for (int m1 = 0; m1 < ss1; m1++) {
+                                for (int m2 = 0; m2 < ss2; m2++) {
+                                    dmsym[ia](m1 + offset1, m2 + offset2, 3) =
+                                        std::conj(dmsym[ia](m1 + offset1, m2 + offset2, 2));
                                 }
                             }
                         }

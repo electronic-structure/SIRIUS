@@ -31,6 +31,8 @@
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
+#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/check_gvec.hpp"
 
 namespace sirius {
 

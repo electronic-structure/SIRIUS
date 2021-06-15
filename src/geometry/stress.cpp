@@ -28,6 +28,7 @@
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
 #include "dft/energy.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
 

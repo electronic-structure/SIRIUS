@@ -31,7 +31,6 @@ extern "C" {
 #include <spglib.h>
 }
 
-//#include "rotation.hpp"
 #include "SDDK/memory.hpp"
 #include "SDDK/geometry3d.hpp"
 #include "utils/profiler.hpp"
@@ -67,7 +66,14 @@ struct space_group_symmetry_descriptor
     /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
 
+    /// Symmetry table.
     std::vector<int> sym_atom;
+
+    /// Invere symmetry table.
+    std::vector<int> inv_sym_atom;
+
+    /// Translation vector that prings symmetry-transformed atom back to the unit cell.
+    std::vector<vector3d<int>> inv_sym_atom_T;
 };
 
 /// Descriptor of the magnetic group symmetry operation.

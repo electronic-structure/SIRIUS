@@ -1,4 +1,5 @@
 #include <sirius.hpp>
+#include "symmetry/crystal_symmetry.hpp"
 
 /* test rotation of spherical harmonics */
 
