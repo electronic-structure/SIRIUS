@@ -43,7 +43,6 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
         auto& sym = ctx_.unit_cell().symmetry();
 
         for (int isym = 0; isym < sym.size(); isym++) {
-
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                         dot(sym[isym].spg_op.invR, vector3d<int>(T));
             if (!occ_mtrx_T_.count(Ttot)) {
@@ -235,7 +234,7 @@ void
 Occupation_matrix::symmetrize()
 {
     if (ctx_.cfg().hubbard().nonlocal().size() && ctx_.num_mag_dims() == 3) {
-        RTE_THROW("non-collinearr nonlocal occupancy symmetrization is not implemented");
+        RTE_THROW("non-collinear nonlocal occupancy symmetrization is not implemented");
     }
 
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */
