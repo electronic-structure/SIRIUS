@@ -309,7 +309,7 @@ void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
                             reinterpret_cast<std::complex<double>*>(this->mt_coeffs(ispn).prime().at(memory_t::device)),
                             reinterpret_cast<double*>(norm.at(memory_t::device)));
                     }
-                } else id (std::is_same<T, float>::value) {
+                } else if (std::is_same<T, float>::value) {
                     scale_matrix_columns_gpu_float(
                         this->pw_coeffs(ispn).num_rows_loc(), n__,
                         reinterpret_cast<std::complex<float>*>(this->pw_coeffs(ispn).prime().at(memory_t::device)),
@@ -412,7 +412,7 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
                 if(std::is_same<T, double>::value) {
-                    add_square_sum_gpu_doule(
+                    add_square_sum_gpu_double(
                         reinterpret_cast<std::complex<double> const*>(pw_coeffs(is).prime().at(memory_t::device)),
                         pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
                         reinterpret_cast<double*>(s.at(memory_t::device)));
@@ -428,7 +428,7 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
                         pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
                         reinterpret_cast<float*>(s.at(memory_t::device)));
                     if (has_mt()) {
-                        add_square_sum_gpu_double(
+                        add_square_sum_gpu_float(
                             reinterpret_cast<std::complex<float> const*>(mt_coeffs(is).prime().at(memory_t::device)),
                             mt_coeffs(is).num_rows_loc(), n__, 0, comm_.rank(),
                             reinterpret_cast<float*>(s.at(memory_t::device)));

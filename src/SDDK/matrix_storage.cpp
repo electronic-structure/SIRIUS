@@ -306,7 +306,7 @@ complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu_
                     reinterpret_cast<std::complex<double> const*>(prime().at(memory_t::device, 0, i0__)),
                     num_rows_loc(), n__, reinterpret_cast<std::complex<double>*>(cs1.at(memory_t::device)));
             } else if (std::is_same<T, float>::value) {
-                add_checksum_gpu_flaot(
+                add_checksum_gpu_float(
                     reinterpret_cast<std::complex<float> const*>(prime().at(memory_t::device, 0, i0__)),
                     num_rows_loc(), n__, reinterpret_cast<std::complex<float>*>(cs1.at(memory_t::device)));
             } else {
