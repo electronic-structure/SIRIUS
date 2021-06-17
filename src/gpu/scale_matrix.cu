@@ -55,15 +55,15 @@ __global__ void scale_matrix_columns_gpu_kernel<float>
     int irow = blockIdx.x * blockDim.x + threadIdx.x;
     if (irow < nrow) {
         mtrx[array2D_offset(irow, icol, nrow)] =
-            accCmul(mtrx[array2D_offset(irow, icol, nrow)], make_accFloatComplex(a[icol], 0));
+            accCmulf(mtrx[array2D_offset(irow, icol, nrow)], make_accFloatComplex(a[icol], 0));
     }
 }
 
 // scale each column of the matrix by a column-dependent constant
 extern "C" void scale_matrix_columns_gpu_double(int nrow,
-                                         int ncol,
-                                         acc_complex_double_t* mtrx,
-                                         double* a)
+                                                 int ncol,
+                                                 acc_complex_double_t* mtrx,
+                                                 double* a)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
@@ -72,9 +72,9 @@ extern "C" void scale_matrix_columns_gpu_double(int nrow,
 }
 
 extern "C" void scale_matrix_columns_gpu_float(int nrow,
-                                         int ncol,
-                                         acc_complex_float_t* mtrx,
-                                         float* a)
+                                                int ncol,
+                                                acc_complex_float_t* mtrx,
+                                                float* a)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);

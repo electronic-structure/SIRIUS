@@ -82,6 +82,11 @@ using acc_complex_double_t = cuDoubleComplex;
 #define accCmul cuCmul
 #define accCdiv cuCdiv
 #define accConj cuConj
+#define accCaddf cuCaddf
+#define accCsubf cuCsubf
+#define accCmulf cuCmulf
+#define accCdivf cuCdivf
+#define accConjf cuConjf
 #define ACC_DYNAMIC_SHARED(type, var) extern __shared__ type var[];
 
 #elif defined(SIRIUS_ROCM)
@@ -94,6 +99,11 @@ using acc_complex_double_t = hipDoubleComplex;
 #define accCmul hipCmul
 #define accCdiv hipCdiv
 #define accConj hipConj
+#define accCaddf hipCaddf
+#define accCsubf hipCsubf
+#define accCmulf hipCmulf
+#define accCdivf hipCdivf
+#define accConjf hipConjf
 #define ACC_DYNAMIC_SHARED(type, var) HIP_DYNAMIC_SHARED(type, var)
 #endif
 
@@ -499,9 +509,9 @@ inline bool check_device_ptr(void const* ptr__)
 } // namespace acc
 
 #if defined(SIRIUS_GPU)
-extern "C" void scale_matrix_columns_gpu_double(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
+// extern "C" void scale_matrix_columns_gpu_double(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
 
-extern "C" void scale_matrix_columns_gpu_float(int nrow, int ncol, acc_complex_float_t* mtrx, float* a);
+// extern "C" void scale_matrix_columns_gpu_float(int nrow, int ncol, acc_complex_float_t* mtrx, float* a);
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
 

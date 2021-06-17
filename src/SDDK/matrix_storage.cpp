@@ -301,7 +301,18 @@ complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu_
             mdarray<T, 1> cs1(n__, memory_t::host, "checksum");
             cs1.allocate(memory_t::device).zero(memory_t::device);
 #if defined(SIRIUS_GPU)
-            add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
+            if (std::is_same<T, double>::value) {
+                add_checksum_gpu_double(
+                    reinterpret_cast<std::complex<double> const*>(prime().at(memory_t::device, 0, i0__)),
+                    num_rows_loc(), n__, reinterpret_cast<std::complex<double>*>(cs1.at(memory_t::device)));
+            } else if (std::is_same<T, float>::value) {
+                add_checksum_gpu_flaot(
+                    reinterpret_cast<std::complex<float> const*>(prime().at(memory_t::device, 0, i0__)),
+                    num_rows_loc(), n__, reinterpret_cast<std::complex<float>*>(cs1.at(memory_t::device)));
+            } else {
+                fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
+                TERMINATE("Precision type not yet implemented");
+            }
             cs1.copy_to(memory_t::host);
             cs = cs1.checksum();
 #endif

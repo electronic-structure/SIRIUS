@@ -191,7 +191,7 @@ __global__ void add_square_sum_gpu_kernel
     int N = num_blocks(num_rows_loc__, blockDim.x);
 
     ACC_DYNAMIC_SHARED( char, sdata_ptr)
-    T* sdata = (T)&sdata_ptr[0];
+    T* sdata = (T*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
 

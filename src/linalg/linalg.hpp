@@ -1041,6 +1041,32 @@ inline int linalg::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_d
 }
 
 template<>
+inline void linalg::tranc<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_complex>& A,
+                           ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_complex>& C, ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ic++; jc++;
+
+            FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&linalg_const<ftn_complex>::one()),
+                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             const_cast<ftn_complex*>(&linalg_const<ftn_complex>::zero()),
+                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
 inline void linalg::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double_complex>& A,
     ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
 {
@@ -1080,6 +1106,31 @@ inline void linalg::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
                              A.at(memory_t::host), &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
                              C.at(memory_t::host), &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg::tranc<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja,
+                                      sddk::dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ic++; jc++;
+
+            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A.at(memory_t::host),
+                            &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&linalg_const<ftn_single>::zero()),
+                            C.at(memory_t::host), &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif

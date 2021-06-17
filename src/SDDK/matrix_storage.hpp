@@ -39,14 +39,6 @@ extern "C" void add_checksum_gpu_float(std::complex<float> const* wf__,
                                        int                        num_rows_loc__,
                                        int                        nwf__,
                                        std::complex<float>*       result__);
-
-void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__){
-    add_checksum_gpu_double(wf__, num_rows_loc__, nwf__, result__);
-}
-
-void add_checksum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, std::complex<float>* result__){
-    add_checksum_gpu_float(wf__, num_rows_loc__, nwf__, result__);
-}
 #endif
 
 namespace sddk {

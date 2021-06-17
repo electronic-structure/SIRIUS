@@ -380,7 +380,7 @@ __global__ void add_checksum_gpu_kernel<float>
         __syncthreads();
     }
 
-    result__[blockIdx.x] = accCadd(result__[blockIdx.x], make_accFloatComplex(sdata_x[0], sdata_y[0]));
+    result__[blockIdx.x] = accCaddf(result__[blockIdx.x], make_accFloatComplex(sdata_x[0], sdata_y[0]));
 }
 
 extern "C" void add_checksum_gpu_double(acc_complex_double_t* wf__,
