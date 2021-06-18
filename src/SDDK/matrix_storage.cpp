@@ -24,6 +24,7 @@
  */
 #include "matrix_storage.hpp"
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
@@ -310,8 +311,9 @@ complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu_
                     reinterpret_cast<std::complex<float> const*>(prime().at(memory_t::device, 0, i0__)),
                     num_rows_loc(), n__, reinterpret_cast<std::complex<float>*>(cs1.at(memory_t::device)));
             } else {
-                fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-                TERMINATE("Precision type not yet implemented");
+                std::stringstream s;
+                s << "Precision type not yet implemented";
+                RTE_THRHOW(s);
             }
             cs1.copy_to(memory_t::host);
             cs = cs1.checksum();
@@ -325,14 +327,14 @@ complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu_
 template <>   // real for special case
 double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int) const
 {
-    TERMINATE("matrix_storage<double, ..>::checksum is not implemented for double\n");
+    RTE_THROW("checksum is not implemented for double.");
     return 0;
 }
 
 template <>   // real for special case
 std::complex<float> matrix_storage<float, matrix_storage_t::slab>::checksum(device_t, int, int) const
 {
-    TERMINATE("matrix_storage<float, ..>::checksum is not implemented for float\n");
+    RTE_THROW("checksum is not implemented for float.");
     return 0;
 }
 
@@ -341,4 +343,5 @@ template class matrix_storage<double, matrix_storage_t::slab>;
 template class matrix_storage<double_complex, matrix_storage_t::slab>;
 template class matrix_storage<float, matrix_storage_t::slab>;
 template class matrix_storage<std::complex<float>, matrix_storage_t::slab>;
+
 } // namespace sddk
