@@ -6,8 +6,7 @@
 
 namespace sddk {
 
-template <typename T>
-inline void serialize(serializer& s__, Gvec<T>& gv__)
+inline void serialize(serializer& s__, Gvec& gv__)
 {
     serialize(s__, gv__.vk_);
     serialize(s__, gv__.Gmax_);
@@ -26,8 +25,7 @@ inline void serialize(serializer& s__, Gvec<T>& gv__)
     serialize(s__, gv__.gvec_base_mapping_);
 }
 
-template <typename T>
-inline void deserialize(serializer& s__, Gvec<T>& gv__)
+inline void deserialize(serializer& s__, Gvec& gv__)
 {
     deserialize(s__, gv__.vk_);
     deserialize(s__, gv__.Gmax_);

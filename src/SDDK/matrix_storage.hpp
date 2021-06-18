@@ -27,7 +27,6 @@
 
 #include "gvec.hpp"
 #include "dmatrix.hpp"
-#include "type_definition.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void add_checksum_gpu_double(std::complex<double> const* wf__,
@@ -61,7 +60,7 @@ class matrix_storage<T, matrix_storage_t::slab>
   private:
 
     /// G-vector partitioning.
-    Gvec_partition<real_type<T>> const* gvp_{nullptr};
+    Gvec_partition const* gvp_{nullptr};
 
     /// Local number of rows.
     int num_rows_loc_{0};
@@ -87,7 +86,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 
   public:
     /// Constructor.
-    matrix_storage(Gvec_partition<real_type<T>> const& gvp__, int num_cols__)
+    matrix_storage(Gvec_partition const& gvp__, int num_cols__)
         : gvp_(&gvp__)
         , num_rows_loc_(gvp__.gvec().count())
         , num_cols_(num_cols__)
@@ -107,7 +106,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 
     /// Constructor.
     /** Memory for prime storage is allocated from the memory pool */
-    matrix_storage(memory_pool& mp__, Gvec_partition<real_type<T>> const& gvp__, int num_cols__)
+    matrix_storage(memory_pool& mp__, Gvec_partition const& gvp__, int num_cols__)
         : gvp_(&gvp__)
         , num_rows_loc_(gvp__.gvec().count())
         , num_cols_(num_cols__)

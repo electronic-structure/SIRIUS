@@ -27,8 +27,7 @@
 
 namespace sirius {
 
-template <typename T>
-inline void check_gvec(Gvec<T> const& gvec__, Unit_cell_symmetry const& sym__)
+inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& sym__)
 {
     PROFILE("sirius::check_gvec");
 
@@ -90,8 +89,7 @@ inline void check_gvec(Gvec<T> const& gvec__, Unit_cell_symmetry const& sym__)
     }
 }
 
-template <typename T>
-inline void check_gvec(Gvec_shells<T> const& gvec_shells__, Unit_cell_symmetry const& sym__)
+inline void check_gvec(Gvec_shells const& gvec_shells__, Unit_cell_symmetry const& sym__)
 {
     /* check G-vector symmetries */
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {

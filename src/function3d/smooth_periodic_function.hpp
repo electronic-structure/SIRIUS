@@ -52,7 +52,7 @@ class Smooth_periodic_function
     spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition<T> const* gvecp_{nullptr};
+    sddk::Gvec_partition const* gvecp_{nullptr};
 
     /// Function on the regular real-space grid.
     sddk::mdarray<T, 1> f_rg_;
@@ -79,7 +79,7 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition<T> const& gvecp__, sddk::memory_pool* mp__ = nullptr)
+    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
@@ -190,13 +190,13 @@ class Smooth_periodic_function
         return *spfft_;
     }
 
-    sddk::Gvec<T> const& gvec() const
+    sddk::Gvec const& gvec() const
     {
         assert(gvecp_ != nullptr);
         return gvecp_->gvec();
     }
 
-    sddk::Gvec_partition<T> const& gvec_partition() const
+    sddk::Gvec_partition const& gvec_partition() const
     {
         return *gvecp_;
     }
@@ -313,7 +313,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition<T> const* gvecp_{nullptr};
+    sddk::Gvec_partition const* gvecp_{nullptr};
 
     Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
@@ -324,7 +324,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(spfft::Transform& spfft__, sddk::Gvec_partition<T> const& gvecp__)
+    Smooth_periodic_vector_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
@@ -342,7 +342,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     }
 
 
-    sddk::Gvec_partition<T> const& gvec_partition() const
+    sddk::Gvec_partition const& gvec_partition() const
     {
         assert(gvecp_ != nullptr);
         return *gvecp_;

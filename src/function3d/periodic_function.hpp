@@ -63,7 +63,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Global muffin-tin array
     sddk::mdarray<T, 3> f_mt_;
 
-    Gvec<T> const& gvec_;
+    Gvec const& gvec_;
 
     /// Size of the muffin-tin functions angular domain size.
     int angular_domain_size_;
