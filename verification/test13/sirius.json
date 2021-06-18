@@ -65,9 +65,8 @@
                 "l": 2,
                 "n" : 5,
                 "hubbard_orbital" : "5d",
-                "occupancy" : 10
+                "total_initial_occupancy" : 10
             }
-	]
-	}
+        ]
     }
 }

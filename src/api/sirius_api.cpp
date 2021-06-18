@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -32,8 +32,9 @@
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
 #endif
+#include "symmetry/crystal_symmetry.hpp"
 
-static inline void sirius_exit(int error_code__, std::string msg__ = "")
+static inline void sirius_print_error(int error_code__, std::string msg__ = "")
 {
     switch (error_code__) {
         case SIRIUS_ERROR_UNKNOWN: {
@@ -57,12 +58,18 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     if (msg__.size()) {
         printf("%s\n", msg__.c_str());
     }
-    if (!Communicator::is_finalized()) {
-        Communicator::world().abort(error_code__);
-    }
     fflush(stdout);
     std::cout << std::flush;
-    std::exit(error_code__);
+}
+
+static inline void sirius_exit(int error_code__, std::string msg__ = "")
+{
+    sirius_print_error(error_code__, msg__);
+    if (!Communicator::is_finalized()) {
+        Communicator::world().abort(error_code__);
+    } else {
+        std::exit(error_code__);
+    }
 }
 
 template <typename F>
@@ -78,6 +85,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (std::runtime_error const& e) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_RUNTIME;
+            sirius_print_error(*error_code__, e.what());
             return;
        } else {
            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
@@ -86,6 +94,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (std::exception const&  e) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_EXCEPTION;
+            sirius_print_error(*error_code__, e.what());
             return;
        } else {
            sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
@@ -94,6 +103,7 @@ static void call_sirius(F&& f__, int* error_code__)
     catch (...) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_UNKNOWN;
+            sirius_print_error(*error_code__);
             return;
         } else {
             sirius_exit(SIRIUS_ERROR_UNKNOWN);
@@ -622,16 +632,16 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (hubbard_correction_kind__ != nullptr) {
             if (*hubbard_correction_kind__ == 0) {
-                sim_ctx.set_hubbard_simplified_version();
+                sim_ctx.cfg().hubbard().simplified(true);
             }
         }
         if (hubbard_orbitals__ != nullptr) {
             std::string s(hubbard_orbitals__);
             if (s == "ortho-atomic") {
-                sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+                sim_ctx.cfg().hubbard().orthogonalize(true);
             }
             if (s == "norm-atomic") {
-                sim_ctx.set_normalize_hubbard_orbitals(true);
+                 sim_ctx.cfg().hubbard().normalize(true);
             }
         }
         if (fft_grid_size__ != nullptr) {
@@ -1133,7 +1143,7 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
 /*
 @api begin
 sirius_set_periodic_function:
-  doc: Get values of the periodic function.
+  doc: Set values of the periodic function.
   arguments:
     handler:
       type: void*
@@ -1631,12 +1641,19 @@ sirius_update_ground_state:
       type: void*
       attr: in, required
       doc: Ground-state handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_update_ground_state(void** handler__)
+void sirius_update_ground_state(void** handler__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    gs.update();
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(handler__);
+        gs.update();
+    }, error_code__);
 }
 
 /*
@@ -1849,7 +1866,8 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
 
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
-        type.add_ps_atomic_wf(n, sirius::experimental::aqn(*l__), std::vector<double>(rf__, rf__ + *num_points__), occ);
+        type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
+                std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ps_rho_total") {
@@ -5488,7 +5506,7 @@ void sirius_dump_runtime_setup(void* const* handler__, char* filename__, int* er
     {
         auto& sim_ctx = get_sim_ctx(handler__);
         std::ofstream fi(filename__, std::ofstream::out | std::ofstream::trunc);
-        auto conf_dict = sim_ctx.serialize(); //get_runtime_options_dictionary();
+        auto conf_dict = sim_ctx.serialize();
         fi << conf_dict.dump(4);
     }, error_code__);
 }

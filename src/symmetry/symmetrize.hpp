@@ -25,7 +25,7 @@
 #ifndef __SYMMETRIZE_HPP__
 #define __SYMMETRIZE_HPP__
 
-#include "unit_cell/unit_cell_symmetry.hpp"
+#include "crystal_symmetry.hpp"
 #include "SDDK/gvec.hpp"
 #include "SDDK/omp.hpp"
 #include "typedefs.hpp"
@@ -93,7 +93,7 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
  */
-inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
+inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_shells__,
                        sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__,
                        double_complex* x_pw__, double_complex* y_pw__, double_complex* z_pw__)
 {
@@ -326,7 +326,7 @@ inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_
     }
 }
 
-inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
+inline void symmetrize_function(Crystal_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -351,25 +351,22 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         /* full space-group symmetry operation is {R|t} */
         int pr = sym__[i].spg_op.proper;
         auto eang = sym__[i].spg_op.euler_angles;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
-                                            fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                        frlm__.at(memory_t::host, 0, 0, ja), frlm__.ld(), &linalg_const<double>::one(),
+                                        fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
     comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
             lmmax * nrmax * spl_atoms.global_offset());
-
 }
 
-inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
+inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
                                        mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vzlm");
@@ -397,17 +394,15 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         int pr = sym__[i].spg_op.proper;
         auto eang = sym__[i].spg_op.euler_angles;
         auto S = sym__[i].spin_rotation;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                double a = alpha * S(2, 2);
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
-                rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), &linalg_const<double>::one(),
-                fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            double a = alpha * S(2, 2);
+            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
+            rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ja), vz_rlm__.ld(), &linalg_const<double>::one(),
+            fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
 
@@ -416,7 +411,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             lmmax * nrmax * spl_atoms.global_offset());
 }
 
-inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
+inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__,
                                        mdarray<double, 3>& vx_rlm__, mdarray<double, 3>& vy_rlm__,
                                        mdarray<double, 3>& vz_rlm__)
 {
@@ -445,25 +440,23 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
         int pr = sym__[i].spg_op.proper;
         auto eang = sym__[i].spg_op.euler_angles;
         auto S = sym__[i].spin_rotation;
-        SHT::rotation_matrix(lmax, eang, pr, rotm);
+        sht::rotation_matrix(lmax, eang, pr, rotm);
 
-        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-            int ja = sym__[i].spg_op.sym_atom[ia];
-            auto location = spl_atoms.location(ja);
-            if (location.rank == comm__.rank()) {
-                for (int k: {0, 1, 2}) {
-                    linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(),
-                                                &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
-                }
-                #pragma omp parallel
-                for (int k: {0, 1, 2}) {
-                    for (int j: {0, 1, 2}) {
-                        #pragma omp for
-                        for (int ir = 0; ir < nrmax; ir++) {
-                            for (int lm = 0; lm < lmmax; lm++) {
-                                v_sym(lm, ir, location.local_index, k) += S(k, j) * vtmp(lm, ir, j);
-                            }
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            for (int k: {0, 1, 2}) {
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                            vrlm[k]->at(memory_t::host, 0, 0, ja), vrlm[k]->ld(),
+                                            &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+            }
+            #pragma omp parallel
+            for (int k: {0, 1, 2}) {
+                for (int j: {0, 1, 2}) {
+                    #pragma omp for
+                    for (int ir = 0; ir < nrmax; ir++) {
+                        for (int lm = 0; lm < lmmax; lm++) {
+                            v_sym(lm, ir, ialoc, k) += S(k, j) * vtmp(lm, ir, j);
                         }
                     }
                 }
@@ -618,77 +611,139 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
 }
 
 inline void
-symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::basis_functions_index const& indexb__,
-           int const ia__, int const ja__, int const ndm__, sddk::mdarray<double, 2> const& rotm__,
-           sddk::mdarray<double_complex, 2> const& spin_rot_su2__, sddk::mdarray<double_complex, 4>& dm__,
-           bool const hubbard__) // TODO: revisit the implementation, also thnik about off-site occupation matrix 
+symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
+           int num_mag_comp__, Crystal_symmetry const& sym__,
+           std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
-    for (int xi1 = 0; xi1 < static_cast<int>(indexb__.size()); xi1++) {
-        int l1  = indexb__.l(xi1);
-        int lm1 = indexb__.lm(xi1);
-        int o1  = indexb__.order(xi1);
+    /* quick exit */
+    if (sym__.size() == 1) {
+        return;
+    }
 
-        if (hubbard__ && (xi1 >= (2 * l1 + 1))) {
-            break;
+    std::vector<sddk::mdarray<double_complex, 3>> dmsym(sym__.num_atoms());
+    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+        int iat = sym__.atom_type(ia);
+        if (indexb__(iat)) {
+            dmsym[ia] = sddk::mdarray<double_complex, 3>(indexb__(iat)->size(), indexb__(iat)->size(), 4);
+            dmsym[ia].zero();
         }
+    }
 
-        for (int xi2 = 0; xi2 < static_cast<int>(indexb__.size()); xi2++) {
-            int l2  = indexb__.l(xi2);
-            int lm2 = indexb__.lm(xi2);
-            int o2  = indexb__.order(xi2);
-            std::array<double_complex, 3> dm_rot_spatial = {0, 0, 0};
+    int lmax{0};
+    for (int iat = 0; iat < sym__.num_atom_types(); iat++) {
+        if (indexb__(iat)) {
+            lmax = std::max(lmax, indexb__(iat)->indexr().lmax());
+        }
+    }
 
-            //} the hubbard treatment when spin orbit coupling is present is
-            // foundamentally wrong since we consider the full hubbard
-            // correction with a averaged wave function (meaning we neglect the
-            // L.S correction within hubbard). A better option (although still
-            // wrong from physics pov) would be to consider a multi orbital case.
+    /* loop over symmetry operations */
+    for (int isym = 0; isym < sym__.size(); isym++) {
+        int  pr   = sym__[isym].spg_op.proper;
+        auto eang = sym__[isym].spg_op.euler_angles;
+        auto rotm = sht::rotation_matrix<double>(lmax, eang, pr);
+        auto spin_rot_su2 = rotation_matrix_su2(sym__[isym].spin_rotation);
 
-            if (hubbard__ && (xi2 >= (2 * l2 + 1))) {
-                break;
+        for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+            int iat = sym__.atom_type(ia);
+
+            if (!indexb__(iat)) {
+                continue;
             }
 
-            //      if (l1 == l2) {
-            // the rotation matrix of the angular momentum is block
-            // diagonal and does not couple different l.
-            for (int j = 0; j < ndm__; j++) {
-                for (int m3 = -l1; m3 <= l1; m3++) {
-                    int lm3 = utils::lm(l1, m3);
-                    int xi3 = indexb__.index_by_lm_order(lm3, o1);
-                    for (int m4 = -l2; m4 <= l2; m4++) {
-                        int lm4 = utils::lm(l2, m4);
-                        int xi4 = indexb__.index_by_lm_order(lm4, o2);
-                        dm_rot_spatial[j] += ns__(xi3, xi4, j, ia__) *
-                            rotm__(lm1, lm3) * rotm__(lm2, lm4);
-                    }
-                }
-            }
+            int ja = sym__[isym].spg_op.inv_sym_atom[ia];
 
-            /* magnetic symmetrization */
-            if (ndm__ == 1) {
-                dm__(xi1, xi2, 0, ja__) += dm_rot_spatial[0];
-            } else {
-                double_complex spin_dm[2][2] = {
-                    {dm_rot_spatial[0], dm_rot_spatial[2]},
-                    {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
+            auto& indexb = *indexb__(iat);
+            auto& indexr = indexb.indexr();
 
-                /* spin blocks of density matrix are: uu, dd, ud
-                   the mapping from linear index (0, 1, 2) of density matrix components is:
-                   for the first spin index: k & 1, i.e. (0, 1, 2) -> (0, 1, 0)
-                   for the second spin index: min(k, 1), i.e. (0, 1, 2) -> (0, 1, 1)
-                */
-                for (int k = 0; k < ndm__; k++) {
-                    for (int is = 0; is < 2; is++) {
-                        for (int js = 0; js < 2; js++) {
-                            dm__(xi1, xi2, k, ja__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
-                                std::conj(spin_rot_su2__(std::min(k, 1), js));
+            int mmax = 2 * indexb.indexr().lmax() + 1;
+            sddk::mdarray<double_complex, 3> dm_ia(mmax, mmax, num_mag_comp__);
+
+            /* loop over radial functions */
+            for (int idxrf1 = 0; idxrf1 < indexr.size(); idxrf1++) {
+                /* angular momentum of radial function */
+                auto am1 = indexr.am(idxrf1);
+                auto ss1 = am1.subshell_size();
+                auto offset1 = indexb.offset(idxrf1);
+                for (int idxrf2 = 0; idxrf2 < indexr.size(); idxrf2++) {
+                    /* angular momentum of radial function */
+                    auto am2 = indexr.am(idxrf2);
+                    auto ss2 = am2.subshell_size();
+                    auto offset2 = indexb.offset(idxrf2);
+
+                    dm_ia.zero();
+                    for (int j = 0; j < num_mag_comp__; j++) {
+                        /* apply spacial rootation */
+                        for (int m1 = 0; m1 < ss1; m1++) {
+                            for (int m2 = 0; m2 < ss2; m2++) {
+                                for (int m1p = 0; m1p < ss1; m1p++) {
+                                    for (int m2p = 0; m2p < ss2; m2p++) {
+                                        dm_ia(m1, m2, j) += rotm[am1.l()](m1, m1p) *
+                                            dm__(ja)(offset1 + m1p, offset2 + m2p, j) *
+                                            rotm[am2.l()](m2, m2p);
+                                    }
+                                }
+                            }
                         }
                     }
+                    /* magnetic symmetry */
+                    if (num_mag_comp__ == 1) { /* trivial non-magnetic case */
+                        for (int m1 = 0; m1 < ss1; m1++) {
+                            for (int m2 = 0; m2 < ss2; m2++) {
+                                dmsym[ia](m1 + offset1, m2 + offset2, 0) += dm_ia(m1, m2, 0);
+                            }
+                        }
+                    } else {
+                        int const map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
+                        for (int j = 0; j < num_mag_comp__; j++) {
+                            int s1 = map_s[j][0];
+                            int s2 = map_s[j][1];
+
+                            for (int m1 = 0; m1 < ss1; m1++) {
+                                for (int m2 = 0; m2 < ss2; m2++) {
+                                    double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
+                                    if (num_mag_comp__ == 3) {
+                                        dm[0][1] = dm_ia(m1, m2, 2);
+                                        dm[1][0] = std::conj(dm[0][1]);
+                                    }
+
+                                    for (int s1p = 0; s1p < 2; s1p++) {
+                                        for (int s2p = 0; s2p < 2; s2p++) {
+                                            dmsym[ia](m1 + offset1, m2 + offset2, j) +=
+                                                spin_rot_su2(s1, s1p) * dm[s1p][s2p] *
+                                                std::conj(spin_rot_su2(s2, s2p));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (num_mag_comp__ == 3) {
+                            for (int m1 = 0; m1 < ss1; m1++) {
+                                for (int m2 = 0; m2 < ss2; m2++) {
+                                    dmsym[ia](m1 + offset1, m2 + offset2, 3) =
+                                        std::conj(dmsym[ia](m1 + offset1, m2 + offset2, 2));
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
         }
     }
+
+    double alpha = 1.0 / sym__.size();
+
+    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
+        int iat = sym__.atom_type(ia);
+        if (indexb__(iat)) {
+            for (size_t i = 0; i < dm__(ia).size(); i++) {
+                dm__(ia)[i] = dmsym[ia][i] * alpha;
+            }
+
+        }
+    }
 }
+
 } // namespace
 
 #endif // __SYMMETRIZE_HPP__

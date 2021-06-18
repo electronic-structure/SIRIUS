@@ -28,6 +28,7 @@
 #include "memory.hpp"
 #include "geometry3d.hpp"
 #include "utils/utils.hpp"
+#include "utils/rte.hpp"
 #include "constants.hpp"
 
 using namespace geometry3d;
@@ -183,14 +184,29 @@ inline matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__)
 }
 
 /// Compute Euler angles corresponding to the proper rotation matrix.
-inline vector3d<double> euler_angles(matrix3d<double> const& rot__)
+inline vector3d<double> euler_angles(matrix3d<double> const& rot__, double tolerance__)
 {
     vector3d<double> angles(0, 0, 0);
 
     if (std::abs(rot__.det() - 1) > 1e-10) {
         std::stringstream s;
         s << "determinant of rotation matrix is " << rot__.det();
-        TERMINATE(s);
+        RTE_THROW(s);
+    }
+
+    auto rit = inverse(transpose(rot__));
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (std::abs(rot__(i, j) - rit(i, j)) > tolerance__) {
+                std::stringstream s;
+                s << "rotation matrix is not unitary" << std::endl
+                  << "initial symmetry matrix:" << std::endl
+                  << rot__ << std::endl
+                  << "inverse transpose matrix:" << std::endl
+                  << rit;
+                RTE_THROW(s);
+            }
+        }
     }
 
     if (std::abs(rot__(2, 2) - 1.0) < 1e-10) { // cos(beta) == 1, beta = 0
@@ -209,19 +225,15 @@ inline vector3d<double> euler_angles(matrix3d<double> const& rot__)
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-8) {
+            if (std::abs(rot__(i, j) - rm1(i, j)) > tolerance__) {
                 std::stringstream s;
                 s << "matrices don't match" << std::endl
                   << "initial symmetry matrix: " << std::endl
-                  << rot__(0, 0) << " " << rot__(0, 1) << " " << rot__(0, 2) << std::endl
-                  << rot__(1, 0) << " " << rot__(1, 1) << " " << rot__(1, 2) << std::endl
-                  << rot__(2, 0) << " " << rot__(2, 1) << " " << rot__(2, 2) << std::endl
+                  << rot__ << std::endl
                   << "euler angles : " << angles[0] / pi << " " << angles[1] / pi << " " << angles[2] / pi << std::endl
                   << "computed symmetry matrix : " << std::endl
-                  << rm1(0, 0) << " " << rm1(0, 1) << " " << rm1(0, 2) << std::endl
-                  << rm1(1, 0) << " " << rm1(1, 1) << " " << rm1(1, 2) << std::endl
-                  << rm1(2, 0) << " " << rm1(2, 1) << " " << rm1(2, 2) << std::endl;
-                TERMINATE(s);
+                  << rm1;
+                RTE_THROW(s);
             }
         }
     }

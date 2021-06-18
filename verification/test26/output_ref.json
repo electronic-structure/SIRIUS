@@ -1,0 +1,446 @@
+{
+    "comm_world_size": 1,
+    "context": {
+        "chemical_formula": "Ni2O2",
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 2,
+                "fft_mode": "serial",
+                "gen_evp_solver_name": "lapack",
+                "memory_usage": "high",
+                "mpi_grid_dims": [
+                    1,
+                    1
+                ],
+                "num_bands_to_print": 10,
+                "print_checksum": false,
+                "print_forces": true,
+                "print_hash": false,
+                "print_memory_usage": false,
+                "print_neighbors": true,
+                "print_performance": false,
+                "print_stress": true,
+                "print_timers": true,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 0.0001,
+                "std_evp_solver_name": "lapack",
+                "use_second_variation": true,
+                "verbosity": 1,
+                "verification": 0
+            },
+            "hubbard": {
+                "local": [
+                    {
+                        "J": 0.0,
+                        "U": 7.5,
+                        "atom_type": "Ni",
+                        "hubbard_orbital": "3d",
+                        "l": 2,
+                        "n": 3,
+                        "total_initial_occupancy": 8
+                    },
+                    {
+                        "J": 0.0,
+                        "U": 0.0,
+                        "atom_type": "O",
+                        "hubbard_orbital": "2p",
+                        "l": 1,
+                        "n": 2,
+                        "total_initial_occupancy": 6
+                    }
+                ],
+                "nonlocal": [
+                    {
+                        "T": [
+                            -1,
+                            0,
+                            -1
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            -1,
+                            -1
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            0,
+                            0
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            -1,
+                            0
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            -1
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            -1,
+                            0
+                        ],
+                        "V": 0.0,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ]
+                    }
+                ],
+                "normalize": false,
+                "orthogonalize": false,
+                "simplified": false
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 0,
+                "energy_tolerance": 0.01,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 4,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.75,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": false
+            },
+            "nlcg": {
+                "T": 300,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-05,
+                "electronic_structure_method": "pseudopotential",
+                "energy_tol": 1e-08,
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 6.0,
+                "hubbard_correction": true,
+                "lmax_apw": -1,
+                "lmax_pot": 4,
+                "lmax_rho": 4,
+                "molecule": false,
+                "ngridk": [
+                    2,
+                    2,
+                    2
+                ],
+                "nn_radius": -1,
+                "num_bands": 34,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 1,
+                "pw_cutoff": 20.0,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.025,
+                "so_correction": false,
+                "use_ibz": true,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_LDA_X",
+                    "XC_LDA_C_PZ"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    64,
+                    64,
+                    64
+                ],
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.5
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ni": "ni_lda_v1.4.uspp.F.UPF.json",
+                    "O": "o_lda_v1.2.uspp.F.UPF.json"
+                },
+                "atom_types": [
+                    "Ni",
+                    "O"
+                ],
+                "atoms": {
+                    "Ni": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.5,
+                            0.5,
+                            0.5
+                        ]
+                    ],
+                    "O": [
+                        [
+                            0.25,
+                            0.25,
+                            0.25
+                        ],
+                        [
+                            0.75,
+                            0.75,
+                            0.75
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        7.89357814,
+                        3.94678907,
+                        3.94678907
+                    ],
+                    [
+                        3.94678907,
+                        7.89357814,
+                        3.94678907
+                    ],
+                    [
+                        3.94678907,
+                        3.94678907,
+                        7.89357814
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            }
+        },
+        "fft_coarse_grid": [
+            40,
+            40,
+            40
+        ],
+        "mpi_grid": [
+            1,
+            1
+        ],
+        "num_atoms": 4,
+        "omega": 245.91880614106773
+    },
+    "counters": {
+        "band_evp_work_count": 3278.478933441883,
+        "local_operator_num_applied": 12785
+    },
+    "git_hash": "805017c37ea35ec206d6180dc1320c60ddc0fe60",
+    "ground_state": {
+        "band_gap": 0.11065693025291101,
+        "converged": true,
+        "core_leakage": 0.0,
+        "efermi": 0.5190557735795074,
+        "energy": {
+            "bxc": -0.14755247092949147,
+            "core_eval_sum": 0.0,
+            "entropy_sum": -4.7568894046251985e-05,
+            "enuc": 0.0,
+            "eval_sum": -26.78601277002341,
+            "ewald": -238.91986829593924,
+            "exc": -42.28299558497758,
+            "kin": 114.60386171872594,
+            "scf_correction": 5.508712774826563e-08,
+            "total": -377.2823257239195,
+            "veff": -141.24232201781984,
+            "vha": 245.71593486548934,
+            "vloc": -333.6713247750155,
+            "vxc": -53.28693210828456
+        },
+        "etot_history": [
+            -358.5950531498207,
+            -371.55003245431107,
+            -375.04697165192505,
+            -376.25107713285007,
+            -376.68568558538186,
+            -376.73864700906535,
+            -377.2460088935403,
+            -377.27816183065005,
+            -377.2837870739703,
+            -377.2832537959772,
+            -377.28275787082936,
+            -377.2822967241744,
+            -377.2822744372378,
+            -377.2823698458544,
+            -377.2823583453812,
+            -377.28232947536486,
+            -377.2823260261902,
+            -377.28232576061737,
+            -377.2823256155581,
+            -377.28232568015056,
+            -377.2823257228042,
+            -377.2823257239195
+        ],
+        "forces": [
+            [
+                -2.7651628587863454e-11,
+                2.41953534867204e-11,
+                -8.658369645110009e-12
+            ],
+            [
+                -1.649867982398573e-11,
+                3.317789097482405e-11,
+                -2.4976502812822652e-12
+            ],
+            [
+                1.1983910737400124e-13,
+                -5.5196586064536884e-14,
+                4.5642229464161154e-14
+            ],
+            [
+                8.99000858023229e-14,
+                -2.589793410647889e-14,
+                6.369572336584322e-14
+            ]
+        ],
+        "num_scf_iterations": 21,
+        "rms_history": [
+            0.26198949563746315,
+            0.4349655549178162,
+            0.15905884862556965,
+            0.03891487584372407,
+            0.026438715295908632,
+            0.03902064353051876,
+            0.011769494286168369,
+            0.003501376102999913,
+            0.00067451321247491,
+            0.00028513077928219333,
+            0.00018011607610387745,
+            0.00011280052515139735,
+            3.8450184447943396e-05,
+            7.292119563828281e-06,
+            3.4416172993708407e-06,
+            1.3607914064587085e-06,
+            2.5116436394839545e-07,
+            7.403569450042355e-08,
+            1.1798757853259302e-08,
+            1.047191739815609e-08,
+            5.5158004214631255e-09,
+            1.7118985644553462e-09
+        ],
+        "scf_time": 51.861938,
+        "stress": [
+            [
+                -0.017354461177232335,
+                0.00014146761441371667,
+                0.00014146761441371695
+            ],
+            [
+                0.00014146761441371667,
+                -0.017354461177232335,
+                0.00014146761441371594
+            ],
+            [
+                0.00014146761441371695,
+                0.00014146761441371594,
+                -0.017354461177232307
+            ]
+        ]
+    },
+    "task": 0,
+    "threads_per_rank": 8
+}

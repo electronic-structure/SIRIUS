@@ -28,6 +28,7 @@
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
 #include "dft/energy.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
 
@@ -511,25 +512,17 @@ matrix3d<double> Stress::calc_stress_ewald()
 
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         for (int i = 1; i < uc.num_nearest_neighbours(ia); i++) {
-            int ja   = uc.nearest_neighbour(i, ia).atom_id;
-            double d = uc.nearest_neighbour(i, ia).distance;
+            auto ja = uc.nearest_neighbour(i, ia).atom_id;
+            auto d  = uc.nearest_neighbour(i, ia).distance;
+            auto rc = uc.nearest_neighbour(i, ia).rc;
 
-            vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() +
-                                  vector3d<int>(uc.nearest_neighbour(i, ia).translation);
-            auto r1    = uc.get_cartesian_coordinates(v1);
-            double len = r1.length();
-
-            if (std::abs(d - len) > 1e-12) {
-                STOP();
-            }
-
-            double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
-                        (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len -
-                         std::erfc(std::sqrt(lambda) * len));
+            double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(d, 3)) *
+                        (-2 * std::exp(-lambda * std::pow(d, 2)) * std::sqrt(lambda / pi) * d -
+                         std::erfc(std::sqrt(lambda) * d));
 
             for (int mu : {0, 1, 2}) {
                 for (int nu : {0, 1, 2}) {
-                    stress_ewald_(mu, nu) += a1 * r1[mu] * r1[nu];
+                    stress_ewald_(mu, nu) += a1 * rc[mu] * rc[nu];
                 }
             }
         }
@@ -688,7 +681,7 @@ void Stress::symmetrize(matrix3d<double>& mtrx__) const
     matrix3d<double> result;
 
     for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
-        auto R = ctx_.unit_cell().symmetry()[i].spg_op.rotation;
+        auto R = ctx_.unit_cell().symmetry()[i].spg_op.Rcp;
         result = result + dot(dot(transpose(R), mtrx__), R);
     }
 

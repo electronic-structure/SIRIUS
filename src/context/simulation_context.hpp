@@ -35,7 +35,6 @@
 #include "utils/utils.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
-#include "symmetry/check_gvec.hpp"
 #include "symmetry/rotation.hpp"
 #include "spfft/spfft.hpp"
 
@@ -366,6 +365,16 @@ class Simulation_context : public Simulation_parameters
                 std::printf("[%s] ", label__);
             }
             std::printf(args...);
+        }
+    }
+
+    inline void message(int level__, char const* label__, std::stringstream& s) const
+    {
+        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
+            auto strings = ::rte::split(s.str());
+            for (auto& e: strings) {
+                std::cout << "[" << label__ << "] " << e << std::endl;
+            }
         }
     }
 

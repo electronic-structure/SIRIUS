@@ -634,7 +634,9 @@ class Potential : public Field4D
         if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
             HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
             for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
-                fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
+                    fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                }
             }
         }
         comm_.barrier();

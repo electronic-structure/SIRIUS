@@ -170,6 +170,9 @@ K_point::initialize()
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions<double>>(
                    new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
+            hubbard_wave_functions_without_S_ = std::unique_ptr<Wave_functions<double>>(
+              new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+                                 ctx_.preferred_memory_t(), ctx_.num_spins()));
             atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions<double>>(
                    new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
@@ -195,6 +198,7 @@ K_point::generate_hubbard_orbitals()
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         hubbard_wave_functions_->pw_coeffs(ispn).prime().zero();
+        hubbard_wave_functions_without_S_->pw_coeffs(ispn).prime().zero();
         s_phi.pw_coeffs(ispn).prime().zero();
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -243,19 +247,19 @@ K_point::generate_hubbard_orbitals()
     phi.prepare(sr, true);
     hubbard_wave_functions_->prepare(sr, false);
     s_phi.prepare(sr, false);
+    hubbard_wave_functions_without_S_->prepare(sr, false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
     for (int is = 0; is < ctx_.num_spinors(); is++ ) {
         /* spin range to apply S-operator.
-         * if WFs are non-magnetic, sping range is [is] - apply to single component
-         * if WFs have two componens, S will be aplpied to both of them */
+         * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
+         * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
         sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
             beta_projectors(), phi, q_op.get(), s_phi);
     }
-    beta_projectors().dismiss();
 
     if (ctx_.cfg().control().print_checksum()) {
         s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0,
@@ -263,12 +267,27 @@ K_point::generate_hubbard_orbitals()
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
-    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
+    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_without_S_, *hubbard_wave_functions_);
 
-    ///* all calculations on GPU then we need to copy the final result back to the CPUs */
+    for (int is = 0; is < ctx_.num_spinors(); is++ ) {
+      /* spin range to apply S-operator.
+       * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
+       * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
+      auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
+
+      sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
+                                               beta_projectors(), *hubbard_wave_functions_without_S_, q_op.get(), *hubbard_wave_functions_);
+    }
+
+    beta_projectors().dismiss();
+
+    /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_->dismiss(sr, true);
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
+    hubbard_wave_functions_without_S_->dismiss(sr, true);
+
+
 
     if (ctx_.cfg().control().print_checksum()) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
@@ -276,16 +295,23 @@ K_point::generate_hubbard_orbitals()
 }
 
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__, Wave_functions<double>& sphi_hub__)
+K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
+                                        Wave_functions<double>& phi_hub__, Wave_functions<double>& sphi_hub__)
 {
     int nwfu = phi__.num_wf();
 
-    if (!(ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ || ctx_.hubbard_input().normalize_hubbard_orbitals_)) {
+    if (!(ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().normalize())) {
         for (int s = 0; s < ctx_.num_spins(); s++) {
             sphi_hub__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
         }
+
+        // needed to compute the forces
+        for (int s = 0; s < ctx_.num_spins(); s++) {
+          phi_hub__.copy_from(ctx_.processing_unit(), nwfu, phi__, s, 0, s, 0);
+        }
         return;
     }
+
 
     dmatrix<double_complex> S(nwfu, nwfu);
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -304,9 +330,9 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
         //    S.copy_to(memory_t::host);
         //}
 
-        /* create transformation matrix */
 
-        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_) {
+        /* create transformation matrix */
+        if (ctx_.cfg().hubbard().orthogonalize()) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory("lapack", nullptr);
@@ -346,7 +372,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
         }
 
         /* transform on the wave functions */
-        transform<double_complex>(ctx_.spla_context(), sr(), sphi__, 0, nwfu, S, 0, 0, sphi_hub__, 0, nwfu);
+        transform<double_complex>(ctx_.spla_context(), sr(), phi__, 0, nwfu, S, 0, 0, phi_hub__, 0, nwfu);
     }
 }
 
@@ -1040,9 +1066,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
                 /*  orbital quantum  number of this atomic orbital */
                 int l = indexb.l(xi);
                 /*  composite l,m index */
-                int lm = indexb[xi].lm;
+                int lm = indexb.lm(xi);
                 /* index of the radial function */
-                int idxrf = indexb[xi].idxrf;
+                int idxrf = indexb.idxrf(xi);
 
                 auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
@@ -1073,6 +1099,29 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             #pragma omp for schedule(static) nowait
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                 wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
+            }
+        }
+    }
+}
+
+void
+K_point::compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
+                                         Wave_functions<double>& dphi, const int starting_position_j, const int direction)
+{
+    std::vector<double_complex> qalpha(this->num_gkvec_loc());
+
+    for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+        auto G = this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc);
+
+        qalpha[igk_loc] = double_complex(0.0, -G[direction]);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int nphi = 0; nphi < num_wf; nphi++) {
+        for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+            for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+                dphi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_j) =
+                    qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_i);
             }
         }
     }

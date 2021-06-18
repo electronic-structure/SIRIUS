@@ -92,7 +92,7 @@ void test_davidson(cmd_args const& args__)
             ps_wf[i] = std::exp(-x) * std::pow(x, l);
         }
         /* add radial function for l */
-        atype.add_ps_atomic_wf(3, sirius::experimental::aqn(l), ps_wf);
+        atype.add_ps_atomic_wf(3, sirius::experimental::angular_momentum(l), ps_wf);
     }
 
     /* set local part of potential */

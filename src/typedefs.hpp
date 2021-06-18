@@ -158,6 +158,9 @@ struct nearest_neighbour_descriptor
 
     /// Distance from the central atom.
     double distance;
+
+    /// Vector connecting central atom with the neighbour in Cartesian coordinates.
+    std::array<double, 3> rc;
 };
 
 struct unit_cell_parameters_descriptor
