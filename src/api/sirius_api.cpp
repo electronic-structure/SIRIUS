@@ -3388,7 +3388,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
     std::vector<int> igmap;
 
-    auto gvec_mapping = [&](Gvec<double> const& gkvec)
+    auto gvec_mapping = [&](Gvec const& gkvec)
     {
         std::vector<int> igm(*npw__, std::numeric_limits<int>::max());
 
@@ -3468,12 +3468,12 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     evc.zero();
                 }
 
-                std::unique_ptr<Gvec_partition<double>> gvp;
+                std::unique_ptr<Gvec_partition> gvp;
                 std::unique_ptr<Wave_functions<double>> wf;
 
                 if (my_rank == r) {
-                    gvp = std::unique_ptr<Gvec_partition<double>>(
-                        new Gvec_partition<double>(gkvec, sim_ctx.comm_fft_coarse(), sim_ctx.comm_band_ortho_fft_coarse()));
+                    gvp = std::unique_ptr<Gvec_partition>(
+                        new Gvec_partition(gkvec, sim_ctx.comm_fft_coarse(), sim_ctx.comm_band_ortho_fft_coarse()));
                     wf = std::unique_ptr<Wave_functions<double>>(
                         new Wave_functions<double>(*gvp, sim_ctx.num_bands(), sim_ctx.preferred_memory_t()));
                 }
