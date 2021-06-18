@@ -38,7 +38,6 @@ class Smooth_periodic_function;
 }
 namespace sddk {
 class FFT3D;
-template <typename T>
 class Gvec_partition;
 template <typename T>
 class Wave_functions;
@@ -82,7 +81,7 @@ class Local_operator
     spfft::Transform& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
-    sddk::Gvec_partition<double> const& gvec_coarse_p_;
+    sddk::Gvec_partition const& gvec_coarse_p_;
 
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<double, 1> pw_ekin_;
@@ -123,12 +122,12 @@ class Local_operator
      */
     Local_operator(Simulation_context   const& ctx__,
                    spfft::Transform&           fft_coarse__,
-                   sddk::Gvec_partition<double> const& gvec_coarse_p__,
+                   sddk::Gvec_partition const& gvec_coarse_p__,
                    Potential*                  potential__ = nullptr);
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
-    void prepare_k(sddk::Gvec_partition<double> const& gkvec_p__);
+    void prepare_k(sddk::Gvec_partition const& gkvec_p__);
 
     /// Apply local part of Hamiltonian to pseudopotential wave-functions.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -146,7 +145,7 @@ class Local_operator
      *
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    void apply_h(spfft::Transform& spfftk__, sddk::Gvec_partition<double> const& gkvec_p__, sddk::spin_range spins__,
+    void apply_h(spfft::Transform& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
                  sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>& hphi__, int idx0__, int n__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
@@ -160,7 +159,7 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition<double> const& gkvec_p__, int N__, int n__,
+    void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
                    sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>* hphi__, sddk::Wave_functions<double>* ophi__);
 
     /// Apply magnetic field to the full-potential wave-functions.

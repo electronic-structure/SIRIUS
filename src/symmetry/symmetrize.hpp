@@ -93,7 +93,7 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
  */
-inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells<double> const& gvec_shells__,
+inline void symmetrize(Unit_cell_symmetry const& sym__, Gvec_shells const& gvec_shells__,
                        sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__,
                        double_complex* x_pw__, double_complex* y_pw__, double_complex* z_pw__)
 {

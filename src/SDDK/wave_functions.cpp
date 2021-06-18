@@ -27,7 +27,7 @@
 namespace sddk {
 
 template <typename T>
-Wave_functions<T>::Wave_functions(const Gvec_partition<T>& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                                int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
@@ -46,7 +46,7 @@ Wave_functions<T>::Wave_functions(const Gvec_partition<T>& gkvecp__, int num_wf_
 }
 
 template <typename T>
-Wave_functions<T>::Wave_functions(memory_pool& mp__, const Gvec_partition<T>& gkvecp__, int num_wf__,
+Wave_functions<T>::Wave_functions(memory_pool& mp__, const Gvec_partition& gkvecp__, int num_wf__,
                                memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
@@ -68,7 +68,7 @@ Wave_functions<T>::Wave_functions(memory_pool& mp__, const Gvec_partition<T>& gk
 }
 
 template <typename T>
-Wave_functions<T>::Wave_functions(const Gvec_partition<T>& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
+Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
                                int num_wf__, memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)

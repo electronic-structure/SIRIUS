@@ -63,7 +63,7 @@ class Matching_coefficients // TODO: compute on GPU
     std::vector<int>& igk_;
 
     /// Description of the G+k vectors.
-    Gvec<double> const& gkvec_;
+    Gvec const& gkvec_;
 
     /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
     sddk::mdarray<double_complex, 2> gkvec_ylm_;
@@ -119,7 +119,7 @@ class Matching_coefficients // TODO: compute on GPU
   public:
     /// Constructor
     Matching_coefficients(Unit_cell const& unit_cell__, int lmax_apw__, int num_gkvec__, std::vector<int>& igk__,
-                          Gvec<double> const& gkvec__)
+                          Gvec const& gkvec__)
         : unit_cell_(unit_cell__)
         , num_gkvec_(num_gkvec__)
         , igk_(igk__)

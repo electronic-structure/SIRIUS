@@ -164,7 +164,7 @@ class Wave_functions
     Communicator const& comm_;
 
     /// G+k vectors of the wave-function.
-    Gvec_partition<T> const& gkvecp_;
+    Gvec_partition const& gkvecp_;
 
     splindex<splindex_t::block> spl_num_atoms_;
 
@@ -233,15 +233,15 @@ class Wave_functions
   public:
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the heap. */
-    Wave_functions(Gvec_partition<T> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
+    Wave_functions(Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the memory pool. */
-    Wave_functions(memory_pool& mp__, Gvec_partition<T> const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                    int num_sc__ = 1);
 
     /// Constructor for LAPW wave-functions.
-    Wave_functions(Gvec_partition<T> const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
+    Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
                    memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Communicator of the G+k vector distribution.
@@ -251,12 +251,12 @@ class Wave_functions
     }
 
     /// G+k vectors of the wave-functions.
-    Gvec<T> const& gkvec() const
+    Gvec const& gkvec() const
     {
         return gkvecp_.gvec();
     }
 
-    Gvec_partition<T> const& gkvec_partition() const
+    Gvec_partition const& gkvec_partition() const
     {
         return gkvecp_;
     }

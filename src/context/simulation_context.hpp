@@ -107,16 +107,16 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
 
     /// G-vectors within the Gmax cutoff.
-    std::unique_ptr<Gvec<double>> gvec_;
+    std::unique_ptr<Gvec> gvec_;
 
-    std::unique_ptr<Gvec_partition<double>> gvec_partition_;
+    std::unique_ptr<Gvec_partition> gvec_partition_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::unique_ptr<Gvec<double>> gvec_coarse_;
+    std::unique_ptr<Gvec> gvec_coarse_;
 
-    std::unique_ptr<Gvec_partition<double>> gvec_coarse_partition_;
+    std::unique_ptr<Gvec_partition> gvec_coarse_partition_;
 
-    std::unique_ptr<Gvec_shells<double>> remap_gvec_;
+    std::unique_ptr<Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -387,27 +387,27 @@ class Simulation_context : public Simulation_parameters
         return *unit_cell_;
     }
 
-    Gvec<double> const& gvec() const
+    Gvec const& gvec() const
     {
         return *gvec_;
     }
 
-    Gvec_partition<double> const& gvec_partition() const
+    Gvec_partition const& gvec_partition() const
     {
         return *gvec_partition_;
     }
 
-    Gvec<double> const& gvec_coarse() const
+    Gvec const& gvec_coarse() const
     {
         return *gvec_coarse_;
     }
 
-    Gvec_partition<double> const& gvec_coarse_partition() const
+    Gvec_partition const& gvec_coarse_partition() const
     {
         return *gvec_coarse_partition_;
     }
 
-    Gvec_shells<double> const& remap_gvec() const
+    Gvec_shells const& remap_gvec() const
     {
         return *remap_gvec_;
     }

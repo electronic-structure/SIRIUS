@@ -100,7 +100,7 @@ void Beta_projectors_base::split_in_chunks()
     }
 }
 
-Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec<double> const& gkvec__,
+Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__,
                                            std::vector<int> const& igk__, int N__)
     : ctx_(ctx__)
     , gkvec_(gkvec__)
