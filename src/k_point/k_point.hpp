@@ -91,7 +91,7 @@ class K_point
     std::unique_ptr<Wave_functions<double>> hubbard_wave_functions_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
-    std::unique_ptr<Wave_functions> hubbard_wave_functions_without_S_{nullptr};
+    std::unique_ptr<Wave_functions<double>> hubbard_wave_functions_without_S_{nullptr};
 
     /// Two-component (spinor) atomic orbitals used to compute the hubbard wave functions
     std::unique_ptr<Wave_functions<double>> atomic_wave_functions_hub_{nullptr};
@@ -493,13 +493,13 @@ class K_point
         return *hubbard_wave_functions_;
     }
 
-    inline Wave_functions& hubbard_wave_functions_without_S()
+    inline Wave_functions<double>& hubbard_wave_functions_without_S()
     {
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_without_S_;
     }
 
-    inline Wave_functions const& hubbard_wave_functions_without_S() const
+    inline Wave_functions<double> const& hubbard_wave_functions_without_S() const
     {
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_without_S_;

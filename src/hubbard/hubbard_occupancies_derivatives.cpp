@@ -39,7 +39,7 @@ namespace sirius {
  * compared to atom_id displacement. we can also use lambda */
 void
 Hubbard::apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
-                  Wave_functions& phi, Wave_functions& dphi)
+                  Wave_functions<double>& phi, Wave_functions<double>& dphi)
 {
     // compute d S/ dr^I_a |phi> and add to dphi
     if (!ctx_.full_potential() && ctx_.unit_cell().augment()) {
