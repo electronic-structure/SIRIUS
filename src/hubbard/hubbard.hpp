@@ -73,7 +73,7 @@ class Hubbard
     void wavefunctions_strain_deriv(K_point& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
                                     mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
     void apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
-                  Wave_functions& phi, Wave_functions& dphi);
+                  Wave_functions<double>& phi, Wave_functions<double>& dphi);
 
   public:
     /// Constructor.
