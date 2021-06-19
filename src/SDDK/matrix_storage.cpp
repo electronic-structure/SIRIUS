@@ -313,7 +313,7 @@ complex_type<T> matrix_storage<T, matrix_storage_t::slab>::checksum(device_t pu_
             } else {
                 std::stringstream s;
                 s << "Precision type not yet implemented";
-                RTE_THRHOW(s);
+                RTE_THROW(s);
             }
             cs1.copy_to(memory_t::host);
             cs = cs1.checksum();
