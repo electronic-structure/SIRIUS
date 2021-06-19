@@ -108,7 +108,7 @@ Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_atoms_
 
 template <typename T>
 void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T>& src__, int ispn__, int i0__,
-                               int jspn__, int j0__)
+                                  int jspn__, int j0__)
 {
     assert(ispn__ == 0 || ispn__ == 1);
     assert(jspn__ == 0 || jspn__ == 1);
