@@ -792,13 +792,13 @@ class Density : public Field4D
      *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
      *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
      *    d{\bf r} = 
-     *    e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
+     *    e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
      *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} \big) d{\bf r}
      *  \f]
-     *  and now we can write
+     *  (the "-" in the phase factor appears because KS wave-functions are complex conjugate) and now we can write
      *  \f[
      *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
-     *      e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
+     *      e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
      *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) A_{\ell m' j{\bf k}}^{\beta \sigma}
      *  \f]
      *
@@ -810,8 +810,8 @@ class Density : public Field4D
      *       w_{\bf k} n_{j{\bf k}}
      *        A_{\ell' m' j\hat {\bf P}{\bf k}}^{\alpha' {\bf T'} \sigma'} = \\ = \sum_{\bf P} \sum_{j}
      *        \sum_{{\bf k}}^{IBZ}
-     *      e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
-     *      e^{i{\bf k}({\bf T}_{P\alpha'\beta'} + {\bf R}^{-1}{\bf T'})}
+     *      e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
+     *      e^{-i{\bf k}({\bf T}_{P\alpha'\beta'} + {\bf R}^{-1}{\bf T'})}
      *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
      *        A_{\ell m_1 j{\bf k}}^{\beta \sigma *} A_{\ell' m_2 j{\bf k}}^{\beta' \sigma'} w_{\bf k} n_{j{\bf k}}
      *  \f]

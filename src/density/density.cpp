@@ -1145,6 +1145,8 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
     }
 
     if (occupation_matrix_) {
+        /* non-local part; TODO: move to symmetrize.hpp */
+        occupation_matrix_->symmetrize();
         occupation_matrix_->print_occupancies(2);
     }
 
