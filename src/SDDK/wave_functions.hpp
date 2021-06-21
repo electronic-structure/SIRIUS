@@ -362,14 +362,7 @@ class Wave_functions
             break;
         }
         case device_t::GPU: {
-            /* copy PW part */
-            acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
-                      src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), ngv * n__);
-            /* copy MT part */
-            if (has_mt()) {
-                acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
-                          src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
-            }
+            throw std::runtime_error("Copy mixed precision type not supported in device memory");
             break;
         }
     }
