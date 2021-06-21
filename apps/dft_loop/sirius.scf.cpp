@@ -188,12 +188,13 @@ double ground_state(Simulation_context& ctx,
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
         auto lv = ctx.unit_cell().lattice_vectors();
+        auto a = std::pow(ctx.unit_cell().omega(), 1.0 / 3);
         for (int i = 0; i < repeat_update; i++) {
             double t = static_cast<double>(i) / repeat_update;
             auto lv1 = lv;
             for (int x: {0, 1, 2}) {
-                lv1(x, 0) = lv(x, 0) * 0.1 * std::sin(t * twopi);
-                lv1(x, 1) = lv(x, 1) * 0.1 * std::cos(t * twopi);
+                lv1(x, 0) = lv(x, 0) + 0.15 * a * std::sin(t * twopi);
+                lv1(x, 1) = lv(x, 1) + 0.15 * a * std::cos(t * twopi);
             }
             ctx.unit_cell().set_lattice_vectors(lv1);
             dft.update();
