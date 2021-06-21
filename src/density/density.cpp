@@ -1245,13 +1245,13 @@ void Density::generate_valence(K_point_set const& ks__)
             }
         }
         if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
-            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
-            int nwfu = kp->hubbard_wave_functions().num_wf();
-            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+            is_device_memory(kp->wave_functions_S_hub().preferred_memory_t())) {
+            int nwfu = kp->wave_functions_S_hub().num_wf();
+            for (int ispn = 0; ispn < kp->wave_functions_S_hub().num_sc(); ispn++) {
                 /* allocate GPU memory */
-                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                kp->wave_functions_S_hub().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
                 /* copy to GPU */
-                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nwfu);
+                kp->wave_functions_S_hub().pw_coeffs(ispn).copy_to(memory_t::device, 0, nwfu);
             }
         }
 
@@ -1283,9 +1283,9 @@ void Density::generate_valence(K_point_set const& ks__)
             }
         }
         if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
-            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
-            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
-                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            is_device_memory(kp->wave_functions_S_hub().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->wave_functions_S_hub().num_sc(); ispn++) {
+                kp->wave_functions_S_hub().pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
     }

@@ -809,21 +809,8 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
     /* apply the hubbard potential if relevant */
      if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
 
-       // copy the hubbard wave functions on GPU (if needed) and
-       // return afterwards, or if they are not already calculated
-       // compute the wave functions and copy them on GPU (if needed)
-
-        //this->U().generate_atomic_orbitals(*kp__, Q());
-
-        // Apply the hubbard potential and deallocate the hubbard wave
-        // functions on GPU (if needed)
-        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__, N__, n__, phi__, *hphi__);
-
-        //if (ctx_.processing_unit() == device_t::GPU) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
-        //    }
-        //}
+        /* apply the hubbard potential and deallocate the hubbard wave functions on GPU (if needed) */
+        H0().potential().U().apply_hubbard_potential(kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
     }
 
     // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
