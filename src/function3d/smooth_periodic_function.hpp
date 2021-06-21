@@ -34,6 +34,24 @@
 
 namespace sirius {
 
+// type traits to handle Spfft driver for different precision type
+template <typename T>
+struct SPFFT_driver {};
+
+template <>
+struct SPFFT_driver<double> {using type = spfft::Transform;};
+
+template <>
+struct SPFFT_driver<std::complex<double>> {using type = spfft::Transform;};
+
+template <>
+struct SPFFT_driver<float> {using type = spfft::TransformFloat;};
+
+template <>
+struct SPFFT_driver<std::complex<float>> {using type = spfft::TransformFloat;};
+
+template <typename T>
+using spfft_transform_type = typename SPFFT_driver<T>::type;
 
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
@@ -49,7 +67,7 @@ class Smooth_periodic_function
 {
   protected:
     /// FFT driver.
-    spfft::Transform* spfft_{nullptr};
+    spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
     sddk::Gvec_partition const* gvecp_{nullptr};
@@ -79,7 +97,7 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
+    Smooth_periodic_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
@@ -178,13 +196,13 @@ class Smooth_periodic_function
         return z;
     }
 
-    spfft::Transform& spfft()
+    spfft_transform_type<T>& spfft()
     {
         assert(spfft_ != nullptr);
         return *spfft_;
     }
 
-    spfft::Transform const& spfft() const
+    spfft_transform_type<T> const& spfft() const
     {
         assert(spfft_ != nullptr);
         return *spfft_;
@@ -310,7 +328,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 {
   private:
     /// FFT driver.
-    spfft::Transform* spfft_{nullptr};
+    spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
     sddk::Gvec_partition const* gvecp_{nullptr};
@@ -324,7 +342,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
+    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
