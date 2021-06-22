@@ -672,10 +672,12 @@ void Simulation_context::print_info() const
     for (int i = 0; i < unit_cell().num_atom_types(); i++) {
         unit_cell().atom_type(i).print_info();
     }
-    std::printf("\n");
-    std::stringstream s;
-    unit_cell().print_nearest_neighbours(s);
-    this->message(1, "nghbr", s);
+    if (this->cfg().control().print_neighbors()) {
+        std::stringstream s;
+        s << std::endl;
+        unit_cell().print_nearest_neighbours(s);
+        this->message(1, "nghbr", s);
+    }
 
     std::printf("\n");
     std::printf("Basic information\n");

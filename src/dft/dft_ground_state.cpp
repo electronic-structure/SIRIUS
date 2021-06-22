@@ -179,9 +179,17 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
     Density rho1(ctx_);
 
+    std::stringstream s;
+    s << "density_tol       : " << density_tol << std::endl
+      << "energy_tol        : " << energy_tol << std::endl
+      << "initial_tolerance : " << initial_tolerance << std::endl
+      << "num_dft_iter      : " << num_dft_iter;
+    ctx_.message(1, __func__, s);
+
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
-        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 2) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
             std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -237,8 +245,8 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         rms_hist.push_back(rms);
 
         /* write some information */
-        print_info();
-        ctx_.message(1, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
+        print_info(2);
+        ctx_.message(2, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
                 rms, etot - eold);
         /* check if the calculation has converged */
         if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
@@ -249,6 +257,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
         eold = etot;
     }
+    print_info(1);
 
     if (write_state) {
         ctx_.create_storage_file();
@@ -288,7 +297,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     return dict;
 }
 
-void DFT_ground_state::print_info()
+void DFT_ground_state::print_info(int level__) const
 {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum(ctx_.unit_cell());
@@ -320,7 +329,7 @@ void DFT_ground_state::print_info()
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
+    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= level__) {
         std::printf("\n");
         std::printf("Charges and magnetic moments\n");
         for (int i = 0; i < 80; i++) {
@@ -421,28 +430,6 @@ void DFT_ground_state::print_info()
         std::printf("band gap (eV) : %18.8f\n", gap);
         std::printf("Efermi        : %18.8f\n", ef);
         std::printf("\n");
-        // if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
-        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //        std::printf("atom: %i\n", ia);
-        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
-        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
-        //            //printf("component of density matrix: %i\n", j);
-        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
-        //            //        std::printf("(%f, %f) ", z.real(), z.imag());
-        //            //    }
-        //            //    std::printf("\n");
-        //            //}
-        //            std::printf("diagonal components of density matrix: %i\n", j);
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
-        //                std::printf("(%10.6f, %10.6f) ", z.real(), z.imag());
-        //            }
-        //            std::printf("\n");
-        //        }
-        //    }
-        //}
     }
 }
 
