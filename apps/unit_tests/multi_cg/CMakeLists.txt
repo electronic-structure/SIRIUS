@@ -1,0 +1,5 @@
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+ 
+add_executable (test_multi_cg test_multi_cg.cpp)
+target_link_libraries (test_multi_cg Eigen3::Eigen sirius)
+add_test(NAME test_multi_cg COMMAND test_multi_cg)
