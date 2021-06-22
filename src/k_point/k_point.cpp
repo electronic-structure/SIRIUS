@@ -170,7 +170,7 @@ K_point::initialize()
             wave_functions_S_hub_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            hubbard_wave_functions_without_S_ = std::unique_ptr<Wave_functions>(
+            wave_functions_hub_ = std::unique_ptr<Wave_functions>(
               new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                                  ctx_.preferred_memory_t(), ctx_.num_spins()));
             atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions>(
@@ -198,7 +198,7 @@ K_point::generate_hubbard_orbitals()
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         wave_functions_S_hub_->pw_coeffs(ispn).prime().zero();
-        hubbard_wave_functions_without_S_->pw_coeffs(ispn).prime().zero();
+        wave_functions_hub_->pw_coeffs(ispn).prime().zero();
         s_phi.pw_coeffs(ispn).prime().zero();
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -247,7 +247,7 @@ K_point::generate_hubbard_orbitals()
     phi.prepare(sr, true);
     wave_functions_S_hub_->prepare(sr, false);
     s_phi.prepare(sr, false);
-    hubbard_wave_functions_without_S_->prepare(sr, false);
+    wave_functions_hub_->prepare(sr, false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
@@ -267,7 +267,7 @@ K_point::generate_hubbard_orbitals()
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
-    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_without_S_, *wave_functions_S_hub_);
+    orthogonalize_hubbard_orbitals(phi, s_phi, *wave_functions_hub_, *wave_functions_S_hub_);
 
     for (int is = 0; is < ctx_.num_spinors(); is++ ) {
       /* spin range to apply S-operator.
@@ -276,7 +276,7 @@ K_point::generate_hubbard_orbitals()
       auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
       sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
-                                               beta_projectors(), *hubbard_wave_functions_without_S_, q_op.get(),
+                                               beta_projectors(), *wave_functions_hub_, q_op.get(),
                                                *wave_functions_S_hub_);
     }
 
@@ -286,7 +286,7 @@ K_point::generate_hubbard_orbitals()
     wave_functions_S_hub_->dismiss(sr, true);
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
-    hubbard_wave_functions_without_S_->dismiss(sr, true);
+    wave_functions_hub_->dismiss(sr, true);
 
 
 

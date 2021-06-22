@@ -91,8 +91,9 @@ class K_point
     /** This wave-functions are not necessarily equal to atomic wave-functions. S-operator is applied to this WFs. */
     std::unique_ptr<Wave_functions> wave_functions_S_hub_{nullptr};
 
-    /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
-    std::unique_ptr<Wave_functions> hubbard_wave_functions_without_S_{nullptr};
+    /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
+    /** This wave-functions are not necessarily equal to atomic wave-functions. */
+    std::unique_ptr<Wave_functions> wave_functions_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals used to compute the Hubbard wave functions
     std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
@@ -492,23 +493,15 @@ class K_point
         return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
     }
 
-    inline Wave_functions& hubbard_wave_functions_without_S()
+    inline Wave_functions const& wave_functions_hub() const
     {
-        assert(hubbard_wave_functions_without_S_ != nullptr);
-        return *hubbard_wave_functions_without_S_;
+        assert(wave_functions_hub_!= nullptr);
+        return *wave_functions_hub_;
     }
 
-    inline Wave_functions const& hubbard_wave_functions_without_S() const
+    inline Wave_functions& wave_functions_hub()
     {
-        assert(hubbard_wave_functions_without_S_ != nullptr);
-        return *hubbard_wave_functions_without_S_;
-    }
-
-    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
-    inline Wave_functions& atomic_wave_functions_S_hub()
-    {
-        assert(atomic_wave_functions_S_hub_ != nullptr);
-        return *atomic_wave_functions_S_hub_;
+        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_hub());
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
@@ -518,11 +511,10 @@ class K_point
         return *atomic_wave_functions_S_hub_;
     }
 
-    /// return the atomic wave functions used to compute the hubbard wave functions.
-    inline Wave_functions & atomic_wave_functions_hub()
+    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions& atomic_wave_functions_S_hub()
     {
-        assert(atomic_wave_functions_hub_ != nullptr);
-        return *atomic_wave_functions_hub_;
+        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
@@ -530,6 +522,12 @@ class K_point
     {
         assert(atomic_wave_functions_hub_ != nullptr);
         return *atomic_wave_functions_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions.
+    inline Wave_functions& atomic_wave_functions_hub()
+    {
+        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
     }
 
     inline Wave_functions& singular_components()
