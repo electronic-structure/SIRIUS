@@ -88,12 +88,12 @@ class K_point
     std::shared_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
-    /** This wave-functions are not necessarily equal to atomic wave-functions. S-operator is applied to this WFs. */
-    std::unique_ptr<Wave_functions> wave_functions_S_hub_{nullptr};
-
-    /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
     /** This wave-functions are not necessarily equal to atomic wave-functions. */
     std::unique_ptr<Wave_functions> wave_functions_hub_{nullptr};
+
+    /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
+    /** This wave-functions are not necessarily equal to atomic wave-functions. S-operator is applied to this WFs. */
+    std::unique_ptr<Wave_functions> wave_functions_S_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals used to compute the Hubbard wave functions
     std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
