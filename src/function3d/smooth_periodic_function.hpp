@@ -28,30 +28,12 @@
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/type_definition.hpp"
+#include "SDDK/fft.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
 
 namespace sirius {
-
-// type traits to handle Spfft driver for different precision type
-template <typename T>
-struct SPFFT_driver {};
-
-template <>
-struct SPFFT_driver<double> {using type = spfft::Transform;};
-
-template <>
-struct SPFFT_driver<std::complex<double>> {using type = spfft::Transform;};
-
-template <>
-struct SPFFT_driver<float> {using type = spfft::TransformFloat;};
-
-template <>
-struct SPFFT_driver<std::complex<float>> {using type = spfft::TransformFloat;};
-
-template <typename T>
-using spfft_transform_type = typename SPFFT_driver<T>::type;
 
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.

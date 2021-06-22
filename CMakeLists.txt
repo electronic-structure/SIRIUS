@@ -27,6 +27,10 @@ set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override 
 set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
 set(CUDA_ARCH "none"        CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
+set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
+set_property(CACHE USE_FP32 PROPERTY STRINGS
+  "AUTO" "ON" "OFF"
+	)
 
 # set language and standard
 
@@ -82,15 +86,15 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2 -DSPFFT_SINGLE_PRECISION=ON")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DSPFFT_SINGLE_PRECISION=ON")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2 -DSPFFT_SINGLE_PRECISION=ON")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 endif()
 
 # Makes the build directory relocatable: requires CMake 3.14.7
@@ -133,6 +137,16 @@ find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
+
+# Check if SpFFT support single precision if required
+set(USE_FP32_BOOL OFF)
+if(NOT USE_FP32 STREQUAL "OFF")
+  if(SPFFT_SINGLE_PRECISION)
+    set(USE_FP32_BOOL ON)
+  elseif(USE_FP32 STREQUAL "ON")
+    message(FATAL_ERROR "Single precision option enabled, but SpFFT not compiled with single precision support.")
+  endif()
+endif()
 
 # Either find std::filesystem or boost::filesystem
 find_package(Filesystem COMPONENTS Final Experimental)

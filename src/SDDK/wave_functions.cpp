@@ -451,5 +451,7 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
 
 // instantiate for required types
 template class Wave_functions<double>;
+#ifdef USE_FP32
 template class Wave_functions<float>;
+#endif
 } // namespace sddk
