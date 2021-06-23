@@ -181,6 +181,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     Density rho1(ctx_);
 
     std::stringstream s;
+    s << std::endl;
     s << "density_tol       : " << density_tol << std::endl
       << "energy_tol        : " << energy_tol << std::endl
       << "initial_tolerance : " << initial_tolerance << std::endl
@@ -223,8 +224,10 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 
-        /* check number of electrons */
-        density_.check_num_electrons();
+        if (ctx_.cfg().control().verification() >= 1) {
+            /* check number of electrons */
+            density_.check_num_electrons();
+        }
 
         /* compute new potential */
         potential_.generate(density_, ctx_.use_symmetry(), true);
@@ -260,6 +263,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
             out << std::endl;
             out << "converged after " << iter + 1 << " SCF iterations!";
             ctx_.message(1, __func__, out);
+            density_.check_num_electrons();
             num_iter = iter;
             break;
         }
