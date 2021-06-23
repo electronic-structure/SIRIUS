@@ -276,7 +276,7 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
 }
 
 void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, spin_range spins__,
-                             Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__)
+                             Wave_functions<double>& phi__, Wave_functions<double>& hphi__, int idx0__, int n__)
 {
     PROFILE("sirius::Local_operator::apply_h");
 
@@ -612,7 +612,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
 }
 
 void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, int N__, int n__,
-                               Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
+                               Wave_functions<double>& phi__, Wave_functions<double>* hphi__, Wave_functions<double>* ophi__)
 {
     PROFILE("sirius::Local_operator::apply_h_o");
 
@@ -772,7 +772,7 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const&
     //}
 }
 
-void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_functions& phi__, std::vector<Wave_functions>& bphi__)
+void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_functions<double>& phi__, std::vector<Wave_functions<double>>& bphi__)
 {
     PROFILE("sirius::Local_operator::apply_b");
 

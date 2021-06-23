@@ -67,10 +67,10 @@ class K_point
     dmatrix<double_complex> fv_eigen_vectors_;
 
     /// First-variational eigen vectors, distributed in slabs.
-    std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
+    std::unique_ptr<Wave_functions<double>> fv_eigen_vectors_slab_;
 
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
-    std::unique_ptr<Wave_functions> singular_components_;
+    std::unique_ptr<Wave_functions<double>> singular_components_;
 
     /// Second-variational eigen vectors.
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -82,24 +82,24 @@ class K_point
     mdarray<double_complex, 2> fd_eigen_vectors_;
 
     /// First-variational states.
-    std::unique_ptr<Wave_functions> fv_states_{nullptr};
+    std::unique_ptr<Wave_functions<double>> fv_states_{nullptr};
 
     /// Two-component (spinor) wave functions describing the bands.
-    std::shared_ptr<Wave_functions> spinor_wave_functions_{nullptr};
+    std::shared_ptr<Wave_functions<double>> spinor_wave_functions_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
     /** This wave-functions are not necessarily equal to atomic wave-functions. */
-    std::unique_ptr<Wave_functions> wave_functions_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> wave_functions_hub_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
     /** This wave-functions are not necessarily equal to atomic wave-functions. S-operator is applied to this WFs. */
-    std::unique_ptr<Wave_functions> wave_functions_S_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> wave_functions_S_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals used to compute the Hubbard wave functions
-    std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> atomic_wave_functions_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals (with the S operator applied for uspp) used to compute the Hubbard wave functions
-    std::unique_ptr<Wave_functions> atomic_wave_functions_S_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> atomic_wave_functions_S_hub_{nullptr};
 
     /// Band occupation numbers.
     sddk::mdarray<double, 2> band_occupancies_;
@@ -328,10 +328,10 @@ class K_point
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
                                         std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__);
+                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<double>& wf__);
 
-    void compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
-                                         Wave_functions& dphi, const int starting_position_j, const int direction);
+    void compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
+                                         Wave_functions<double>& dphi, const int starting_position_j, const int direction);
 
     void generate_hubbard_orbitals();
 
@@ -356,7 +356,8 @@ class K_point
         }
     }
 
-    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& phi_hub__, Wave_functions& sphi_hub__);
+    void orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
+                                        Wave_functions<double>& phi_hub__, Wave_functions<double>& sphi_hub__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
@@ -464,73 +465,74 @@ class K_point
         return weight_;
     }
 
-    inline Wave_functions& fv_states()
+    inline Wave_functions<double>& fv_states()
     {
         assert(fv_states_ != nullptr);
         return *fv_states_;
     }
 
-    inline Wave_functions& spinor_wave_functions()
+    inline Wave_functions<double>& spinor_wave_functions()
     {
         assert(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline std::shared_ptr<Wave_functions> spinor_wave_functions_ptr()
+    inline std::shared_ptr<Wave_functions<double>> spinor_wave_functions_ptr()
     {
         return spinor_wave_functions_;
     }
 
-    inline Wave_functions const& wave_functions_S_hub() const
+   // the S operator is applied on these functions
+    inline Wave_functions<double> const& wave_functions_S_hub() const
     {
         /* the S operator is applied on these functions */
         assert(wave_functions_S_hub_ != nullptr);
         return *wave_functions_S_hub_;
     }
 
-    inline Wave_functions& wave_functions_S_hub()
+    inline Wave_functions<double>& wave_functions_S_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
     }
 
-    inline Wave_functions const& wave_functions_hub() const
+    inline Wave_functions<double> const& wave_functions_hub() const
     {
         assert(wave_functions_hub_!= nullptr);
         return *wave_functions_hub_;
     }
 
-    inline Wave_functions& wave_functions_hub()
+    inline Wave_functions<double>& wave_functions_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_hub());
     }
 
-    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
-    inline Wave_functions const& atomic_wave_functions_S_hub() const
+    /// Return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions<double> const& atomic_wave_functions_S_hub() const
     {
         assert(atomic_wave_functions_S_hub_ != nullptr);
         return *atomic_wave_functions_S_hub_;
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
-    inline Wave_functions& atomic_wave_functions_S_hub()
+    inline Wave_functions<double>& atomic_wave_functions_S_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
-    inline Wave_functions const& atomic_wave_functions_hub() const
+    inline Wave_functions<double> const& atomic_wave_functions_hub() const
     {
         assert(atomic_wave_functions_hub_ != nullptr);
         return *atomic_wave_functions_hub_;
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
-    inline Wave_functions& atomic_wave_functions_hub()
+    inline Wave_functions<double>& atomic_wave_functions_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
     }
 
-    inline Wave_functions& singular_components()
+    inline Wave_functions<double>& singular_components()
     {
         return *singular_components_;
     }
@@ -698,7 +700,7 @@ class K_point
         return fv_eigen_vectors_;
     }
 
-    inline Wave_functions& fv_eigen_vectors_slab()
+    inline Wave_functions<double>& fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
     }

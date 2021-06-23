@@ -28,8 +28,28 @@
 #include "splindex.hpp"
 #include "mpi/communicator.hpp"
 #include "spfft/spfft.hpp"
+#include "SDDK/type_definition.hpp"
 
-using double_complex = std::complex<double>;
+// type traits to handle Spfft driver for different precision type
+template <typename T>
+struct SpFFT_Transform {};
+
+template <>
+struct SpFFT_Transform<double> {using type = spfft::Transform;};
+
+template <>
+struct SpFFT_Transform<std::complex<double>> {using type = spfft::Transform;};
+
+#ifdef USE_FP32
+template <>
+struct SpFFT_Transform<float> {using type = spfft::TransformFloat;};
+
+template <>
+struct SpFFT_Transform<std::complex<float>> {using type = spfft::TransformFloat;};
+#endif
+
+template <typename T>
+using spfft_transform_type = typename SpFFT_Transform<T>::type;
 
 const std::map<SpfftProcessingUnitType, sddk::memory_t> spfft_memory_t = {
     {SPFFT_PU_HOST, sddk::memory_t::host},

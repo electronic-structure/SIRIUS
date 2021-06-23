@@ -28,8 +28,8 @@ namespace sirius {
 
 /** This function computes the Hubbard contribution to the hamiltonian and add it to ophi.
  *  The S matrix is already applied to phi_i */
-void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx__, const int n__,
-                                      Wave_functions& phi, Wave_functions& hphi)
+void Hubbard::apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx__, const int n__,
+                                      Wave_functions<double>& phi, Wave_functions<double>& hphi)
 {
     dmatrix<double_complex> dm(hub_wf.num_wf(), n__);
     dm.zero();

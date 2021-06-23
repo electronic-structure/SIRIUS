@@ -211,6 +211,19 @@ inline void deallocate(void* ptr__, memory_t M__)
 }
 
 /// Copy between different memory types.
+template <typename T, typename F>
+inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F* to_ptr__, size_t n__)
+{
+    if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
+        std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
+        return;
+    }
+#if defined(SIRIUS_GPU)
+    throw std::runtime_error("Copy mixed precision type not supported in device memory");
+    return;
+#endif
+}
+
 template <typename T>
 inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {

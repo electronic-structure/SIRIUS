@@ -29,10 +29,15 @@
 #include "dmatrix.hpp"
 
 #ifdef SIRIUS_GPU
-extern "C" void add_checksum_gpu(std::complex<double> const* wf__,
-                                 int                   num_rows_loc__,
-                                 int                   nwf__,
-                                 std::complex<double>* result__);
+extern "C" void add_checksum_gpu_double(std::complex<double> const* wf__,
+                                        int                         num_rows_loc__,
+                                        int                         nwf__,
+                                        std::complex<double>*       result__);
+
+extern "C" void add_checksum_gpu_float(std::complex<float> const* wf__,
+                                       int                        num_rows_loc__,
+                                       int                        nwf__,
+                                       std::complex<float>*       result__);
 #endif
 
 namespace sddk {
@@ -225,7 +230,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
-    double_complex checksum(device_t pu__, int i0__, int n__) const;
+    complex_type<T> checksum(device_t pu__, int i0__, int n__) const;
 };
 
 } // namespace sddk

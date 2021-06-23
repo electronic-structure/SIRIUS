@@ -33,7 +33,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     int nsp{1};
-    Wave_functions phi(gvp, num_bands__, memory_t::host, nsp);
+    Wave_functions<double> phi(gvp, num_bands__, memory_t::host, nsp);
 
     for (int is = 0; is < nsp; is++) {
         phi.zero(device_t::CPU, is, 0, num_bands__);

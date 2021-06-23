@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void init_wf(K_point* kp__, Wave_functions& phi__, int num_bands__, int num_mag_dims__)
+void init_wf(K_point* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {

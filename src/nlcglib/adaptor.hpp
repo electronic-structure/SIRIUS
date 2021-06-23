@@ -187,9 +187,9 @@ class Energy : public nlcglib::EnergyBase
     K_point_set& kset;
     Density& density;
     Potential& potential;
-    std::vector<std::shared_ptr<sddk::Wave_functions>> hphis;
-    std::vector<std::shared_ptr<sddk::Wave_functions>> sphis;
-    std::vector<std::shared_ptr<sddk::Wave_functions>> cphis;
+    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> hphis;
+    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> sphis;
+    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> cphis;
     double etot{std::nan("1")};
 };
 

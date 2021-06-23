@@ -3487,13 +3487,13 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                 }
 
                 std::unique_ptr<Gvec_partition> gvp;
-                std::unique_ptr<Wave_functions> wf;
+                std::unique_ptr<Wave_functions<double>> wf;
 
                 if (my_rank == r) {
                     gvp = std::unique_ptr<Gvec_partition>(
                         new Gvec_partition(gkvec, sim_ctx.comm_fft_coarse(), sim_ctx.comm_band_ortho_fft_coarse()));
-                    wf = std::unique_ptr<Wave_functions>(
-                        new Wave_functions(*gvp, sim_ctx.num_bands(), sim_ctx.preferred_memory_t()));
+                    wf = std::unique_ptr<Wave_functions<double>>(
+                        new Wave_functions<double>(*gvp, sim_ctx.num_bands(), sim_ctx.preferred_memory_t()));
                 }
 
                 int ispn0{0};
