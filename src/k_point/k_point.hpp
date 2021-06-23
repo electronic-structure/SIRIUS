@@ -492,7 +492,7 @@ class K_point
 
     inline Wave_functions<double>& wave_functions_S_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
     }
 
     inline Wave_functions<double> const& wave_functions_hub() const
@@ -503,7 +503,7 @@ class K_point
 
     inline Wave_functions<double>& wave_functions_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_hub());
     }
 
     /// Return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
@@ -516,7 +516,7 @@ class K_point
     /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
     inline Wave_functions<double>& atomic_wave_functions_S_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
@@ -529,7 +529,7 @@ class K_point
     /// return the atomic wave functions used to compute the hubbard wave functions.
     inline Wave_functions<double>& atomic_wave_functions_hub()
     {
-        return const_cast<Wave_functions&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
     }
 
     inline Wave_functions<double>& singular_components()
