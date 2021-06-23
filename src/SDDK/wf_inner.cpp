@@ -40,7 +40,7 @@ namespace {
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
 template <typename T>
-void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions& bra) {
+void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions<real_type<T>>& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
@@ -73,17 +73,17 @@ void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_fu
 
 // If complex type, no scaling required
 template <>
-void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions& bra) {}
+void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions<float>& bra) {}
 
 template <>
-void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {}
+void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions<double>& bra) {}
 
 
 // general real type
 template <typename T>
 void
 inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-      Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
+      Wave_functions<real_type<T>>& bra__, int i0__, int m__, Wave_functions<real_type<T>>& ket__,
       int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
 {
 }
@@ -92,7 +92,7 @@ inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist_
 template <typename T>
 void
 inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-    Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
+    Wave_functions<T>& bra__, int i0__, int m__, Wave_functions<T>& ket__,
     int j0__, int n__, dmatrix<std::complex<T>>& result__, int irow0__, int jcol0__)
 {
     bool local_has_mt  = bra__.has_mt();
@@ -102,7 +102,7 @@ inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist_
     MPI_Allreduce(&local_has_mt, &global_has_mt, 1, MPI_C_BOOL, MPI_LOR, bra__.comm().mpi_comm());
     if (global_has_mt) {
         std::complex<T>* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
-        auto spins = spin_range(ispn__);
+        auto spins                  = spin_range(ispn__);
         for (auto s : spins) {
             PROFILE("sddk::wf_inner|mt");
             if (local_has_mt) {
@@ -124,8 +124,8 @@ inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist_
 
 template <typename T>
 void
-inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-      int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
+      Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
 {
     PROFILE("sddk::wf_inner");
 
@@ -135,9 +135,9 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
 
     using precision_type = real_type<T>;
     precision_type alpha = 1.0;
-    int size_factor = 1;
-    if(std::is_same<T, precision_type>::value) {
-        alpha = 2.0;
+    int size_factor      = 1;
+    if (std::is_same<T, precision_type>::value) {
+        alpha       = 2.0;
         size_factor = 2;
     }
 
@@ -172,28 +172,28 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
     inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__, i0__, m__, ket__, j0__, n__, result__, irow0__, jcol0__);
 
     // make sure result is updated on device as well
-    if(result__.on_device()) {
+    if (result__.on_device()) {
         result__.copy_to(memory_t::device);
     }
 }
 
 // instantiate for required types
-template void inner<double>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__,
-                            int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<double>& result__,
+template void inner<double>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<double>& bra__,
+                            int i0__, int m__, Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double>& result__,
                             int irow0__, int jcol0__);
 
-template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__, int i0__, int m__,
-                                    Wave_functions& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
+template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<double>& bra__, int i0__, int m__,
+                                    Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
                                     int irow0__, int jcol0__);
 
-// TODO: test it after Wavefunction is templated
-/*
-template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__,
-                            int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<float>& result__,
+#ifdef USE_FP32
+template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__,
+                            int i0__, int m__, Wave_functions<float>& ket__, int j0__, int n__, dmatrix<float>& result__,
                             int irow0__, int jcol0__);
 
-template void inner<std::complex<float>>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__, int i0__, int m__,
-                                    Wave_functions& ket__, int j0__, int n__, dmatrix<std::complex<float>>& result__,
+template void inner<std::complex<float>>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+                                    Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<float>>& result__,
                                     int irow0__, int jcol0__);
-*/
- } // namespace sddk
+#endif
+
+} // namespace sddk

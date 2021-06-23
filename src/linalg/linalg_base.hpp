@@ -178,6 +178,10 @@ void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, f
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc,
                        ftn_int* icsrc, ftn_int* ictxt, ftn_int* lld, ftn_int* info);
 
+void FORTRAN(pctranc)(ftn_int* m, ftn_int* n, ftn_complex* alpha, ftn_complex* a, ftn_int* ia,
+                      ftn_int* ja, ftn_int const* desca, ftn_complex* beta, ftn_complex* c, ftn_int* ic,
+                      ftn_int* jc, ftn_int const* descc);
+
 void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia,
                       ftn_int* ja, ftn_int const* desca, ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic,
                       ftn_int* jc, ftn_int const* descc);
@@ -185,6 +189,10 @@ void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_dou
 void FORTRAN(pztranu)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia,
                       ftn_int* ja, ftn_int const* desca, ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic,
                       ftn_int* jc, ftn_int const* descc);
+
+void FORTRAN(pstran)(ftn_int* m, ftn_int* n, ftn_single* alpha, ftn_single* a, ftn_int* ia, ftn_int* ja,
+                     ftn_int const* desca, ftn_single* beta, ftn_single* c, ftn_int* ic, ftn_int* jc,
+                     ftn_int const* descc);
 
 void FORTRAN(pdtran)(ftn_int* m, ftn_int* n, ftn_double* alpha, ftn_double* a, ftn_int* ia, ftn_int* ja,
                      ftn_int const* desca, ftn_double* beta, ftn_double* c, ftn_int* ic, ftn_int* jc,

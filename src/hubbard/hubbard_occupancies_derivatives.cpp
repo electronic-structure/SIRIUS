@@ -39,7 +39,7 @@ namespace sirius {
  * compared to atom_id displacement. we can also use lambda */
 void
 Hubbard::apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
-                  Wave_functions& phi, Wave_functions& dphi)
+                  Wave_functions<double>& phi, Wave_functions<double>& dphi)
 {
     // compute d S/ dr^I_a |phi> and add to dphi
     if (!ctx_.full_potential() && ctx_.unit_cell().augment()) {
@@ -118,9 +118,9 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
     */
 
     /* temporary wave functions */
-    Wave_functions dphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), 1);
+    Wave_functions<double> dphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), 1);
     /* temporary wave functions */
-    Wave_functions phitmp(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), 1);
+    Wave_functions<double> phitmp(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), 1);
 
     int HowManyBands = kp.num_occupied_bands(0);
     if (ctx_.num_spins() == 2) {
@@ -427,9 +427,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
       ]
 
     */
-    Wave_functions dphi(kp__.gkvec_partition(), phi.num_wf(), ctx_.preferred_memory_t(), 1);
+    Wave_functions<double> dphi(kp__.gkvec_partition(), phi.num_wf(), ctx_.preferred_memory_t(), 1);
 
-    Wave_functions phitmp(kp__.gkvec_partition(), phi.num_wf(), ctx_.preferred_memory_t(), 1);
+    Wave_functions<double> phitmp(kp__.gkvec_partition(), phi.num_wf(), ctx_.preferred_memory_t(), 1);
 
     Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp__.gkvec(), kp__.igk_loc());
 
@@ -595,7 +595,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
 }
 
 void
-Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions& dphi__, sddk::mdarray<double, 2> const& rlm_g__,
+Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions<double>& dphi__, sddk::mdarray<double, 2> const& rlm_g__,
                                     sddk::mdarray<double, 3> const& rlm_dg__, int nu__, int mu__)
 {
     PROFILE("sirius::Hubbard::wavefunctions_strain_deriv");
@@ -661,7 +661,7 @@ Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions& dphi__, sddk:
 }
 
 void
-Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& psi_s_phi__, Wave_functions& dphi__,
+Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& psi_s_phi__, Wave_functions<double>& dphi__,
                              sddk::mdarray<double_complex, 5>& dn__, const int index__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies");

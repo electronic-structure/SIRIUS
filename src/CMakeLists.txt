@@ -143,6 +143,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_MAGMA}>:SIRIUS_MAGMA>
   $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
   $<$<BOOL:${USE_VDWXC}>:SIRIUS_USE_VDWXC>
+  $<$<BOOL:${USE_FP32_BOOL}>:USE_FP32>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )

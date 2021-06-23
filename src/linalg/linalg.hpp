@@ -479,9 +479,42 @@ inline void linalg::trmm<ftn_double>(char side, char uplo, char transa, ftn_int 
 }
 
 template <>
+inline void linalg::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_single const* alpha,
+                                     ftn_single const* A, ftn_int lda, ftn_single* B, ftn_int ldb, stream_id sid) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(strmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_single*>(alpha),
+                           const_cast<ftn_single*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case  linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            accblas::xt::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
 inline void linalg::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
-                                              ftn_double_complex const* alpha, ftn_double_complex const* A,
-                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb, stream_id sid) const
+                                             ftn_double_complex const* alpha, ftn_double_complex const* A,
+                                             ftn_int lda, ftn_double_complex* B, ftn_int ldb, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
@@ -504,6 +537,45 @@ inline void linalg::trmm<ftn_double_complex>(char side, char uplo, char transa, 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             accblas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                               reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
+                                      ftn_complex const* alpha, ftn_complex const* A,
+                                      ftn_int lda, ftn_complex* B, ftn_int ldb, stream_id sid) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(ctrmm)
+                (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_complex*>(alpha), const_cast<ftn_complex*>(A), &lda, B,
+                 &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
+                           reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                           reinterpret_cast<acc_complex_float_t*>(B), ldb, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            accblas::xt::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
+                               reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                               reinterpret_cast<acc_complex_float_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -541,6 +613,45 @@ inline int linalg::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
             ftn_int ja{1};
             ftn_int info;
             FORTRAN(pdpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
+            return info;
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(spotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
+            return magma::spotrf('U', n, A, lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(desca != nullptr);
+            ftn_int ia{1};
+            ftn_int ja{1};
+            ftn_int info;
+            FORTRAN(pspotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -595,6 +706,45 @@ inline int linalg::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
 }
 
 template<>
+inline int linalg::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(cpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(desca != nullptr);
+            ftn_int ia{1};
+            ftn_int ja{1};
+            ftn_int info;
+            FORTRAN(pcpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
+            return info;
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
+            return magma::cpotrf('U', n, reinterpret_cast<magmaFloatComplex*>(A), lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
 inline int linalg::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
@@ -634,6 +784,45 @@ inline int linalg::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
 }
 
 template<>
+inline int linalg::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(strtri)("U", "N", &n, A, &lda, &info, (ftn_len)1, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(desca != nullptr);
+            ftn_int ia{1};
+            ftn_int ja{1};
+            ftn_int info;
+            FORTRAN(pstrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
+            return info;
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
+            return magma::strtri('U', n, A, lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
 inline int linalg::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
@@ -659,6 +848,45 @@ inline int linalg::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
         case linalg_t::magma: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::ztrtri('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(ctrtri)("U", "N", &n, A, &lda, &info, (ftn_len)1, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(desca != nullptr);
+            ftn_int ia{1};
+            ftn_int ja{1};
+            ftn_int info;
+            FORTRAN(pctrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
+            return info;
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
+            return magma::ctrtri('U', n, reinterpret_cast<magmaFloatComplex*>(A), lda);
 #else
             throw std::runtime_error("not compiled with magma");
 #endif
@@ -813,6 +1041,32 @@ inline int linalg::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_d
 }
 
 template<>
+inline void linalg::tranc<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_complex>& A,
+                           ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_complex>& C, ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ic++; jc++;
+
+            FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&linalg_const<ftn_complex>::one()),
+                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             const_cast<ftn_complex*>(&linalg_const<ftn_complex>::zero()),
+                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
 inline void linalg::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double_complex>& A,
     ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
 {
@@ -852,6 +1106,31 @@ inline void linalg::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
                              A.at(memory_t::host), &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
                              C.at(memory_t::host), &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg::tranc<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja,
+                                      sddk::dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ic++; jc++;
+
+            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A.at(memory_t::host),
+                            &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&linalg_const<ftn_single>::zero()),
+                            C.at(memory_t::host), &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1109,9 +1388,9 @@ inline void check_hermitian(const std::string& name, matrix<T> const& mtrx, int 
 }
 
 template <typename T>
-inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
+inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
-    double max_diff{0};
+    real_type<T> max_diff{0};
 #ifdef SIRIUS_SCALAPACK
     dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
     linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
@@ -1120,7 +1399,7 @@ inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
             max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
         }
     }
-    mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
 #else
     for (int i = 0; i < n__; i++) {
         for (int j = 0; j < n__; j++) {
@@ -1130,6 +1409,12 @@ inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
 #endif
     return max_diff;
 }
+
+// instantiate for the function of required types
+template double check_hermitian<double>(dmatrix<double>& mtrx__, int n__);
+template double check_hermitian<std::complex<double>>(dmatrix<std::complex<double>>& mtrx__, int n__);
+template float  check_hermitian<float>(dmatrix<float>& mtrx__, int n__);
+template float  check_hermitian<std::complex<float>>(dmatrix<std::complex<float>>& mtrx__, int n__);
 
 template <typename T>
 inline double check_identity(dmatrix<T>& mtrx__, int n__)
@@ -1173,7 +1458,7 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 
             }
         }
     }
-    mtrx__.comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    mtrx__.comm().template allreduce<double,  mpi_op_t::max>(&max_diff, 1);
     return max_diff;
 }
 

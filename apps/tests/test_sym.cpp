@@ -83,14 +83,14 @@ void test_sym(cmd_args const& args__)
     int na = ctx.unit_cell().num_atoms();
     int nwf = 5 * na;
 
-    std::vector<Wave_functions> phi_sym;
+    std::vector<Wave_functions<double>> phi_sym;
 
     for (int ik = 0; ik < kset_sym.num_kpoints(); ik++) {
         phi_sym.emplace_back(kset_sym[ik]->gkvec_partition(), nwf, memory_t::host);
         kset_sym[ik]->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_sym.back());
     }
 
-    std::vector<Wave_functions> phi_nosym;
+    std::vector<Wave_functions<double>> phi_nosym;
 
     for (int ik = 0; ik < kset_nosym.num_kpoints(); ik++) {
         phi_nosym.emplace_back(kset_nosym[ik]->gkvec_partition(), nwf, memory_t::host);
@@ -130,7 +130,7 @@ void test_sym(cmd_args const& args__)
 
             /* now rotate the coefficients from the initial k-point */
             /* we know <G+k|phi>, we need to find <G+k|P^{-1} phi> */
-            Wave_functions phi1(kset_sym[ik]->gkvec_partition(), nwf, memory_t::host);
+            Wave_functions<double> phi1(kset_sym[ik]->gkvec_partition(), nwf, memory_t::host);
             for (int ia = 0; ia < na; ia++) {
                 int ja = sym[isym].spg_op.sym_atom[ia];
                 int i_a = ia;

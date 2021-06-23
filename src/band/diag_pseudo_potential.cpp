@@ -294,22 +294,22 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to new Psi wave-functions, plus some extra space */
-    Wave_functions hpsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hpsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -568,7 +568,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
                         transform<T>(ctx_.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                     std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked, evec, 0,
+                                     std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked, N - num_locked, evec, 0,
                                      0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
                     }
 
@@ -724,7 +724,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* eigen-vectors */
-    Wave_functions psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
     for (int i = 0; i < nevec; i++) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
@@ -761,16 +761,16 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     }
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 

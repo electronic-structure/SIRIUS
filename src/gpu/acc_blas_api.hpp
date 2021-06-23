@@ -199,11 +199,29 @@ inline auto zgemv(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
+inline auto strmm(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+  return rocblas_strmm(std::forward<ARGS>(args)...);
+#else
+  return cublasStrmm(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
 inline auto dtrmm(ARGS&&... args) -> status_t {
 #if defined(SIRIUS_ROCM)
-  return rocblas_dtrmm(std::forward<ARGS>(args)...);
+    return rocblas_dtrmm(std::forward<ARGS>(args)...);
 #else
-  return cublasDtrmm(std::forward<ARGS>(args)...);
+    return cublasDtrmm(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
+inline auto ctrmm(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+    return rocblas_ctrmm(std::forward<ARGS>(args)...);
+#else
+    return cublasCtrmm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 

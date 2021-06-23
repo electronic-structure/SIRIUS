@@ -24,7 +24,11 @@
 #include "cuda_common.hpp"
 #include "acc_runtime.hpp"
 
-__global__ void scale_matrix_columns_gpu_kernel
+template <typename T>
+__global__ void scale_matrix_columns_gpu_kernel(int nrow, gpu_complex_type<T>* mtrx, T* a);
+
+template <>
+__global__ void scale_matrix_columns_gpu_kernel<double>
 (
     int nrow,
     acc_complex_double_t* mtrx,
@@ -33,27 +37,49 @@ __global__ void scale_matrix_columns_gpu_kernel
 {
     int icol = blockIdx.y;
     int irow = blockIdx.x * blockDim.x + threadIdx.x;
-    if (irow < nrow) 
-    {
+    if (irow < nrow) {
         mtrx[array2D_offset(irow, icol, nrow)] =
             accCmul(mtrx[array2D_offset(irow, icol, nrow)], make_accDoubleComplex(a[icol], 0));
     }
 }
 
+template <>
+__global__ void scale_matrix_columns_gpu_kernel<float>
+    (
+        int nrow,
+        acc_complex_float_t* mtrx,
+        float* a
+    )
+{
+    int icol = blockIdx.y;
+    int irow = blockIdx.x * blockDim.x + threadIdx.x;
+    if (irow < nrow) {
+        mtrx[array2D_offset(irow, icol, nrow)] =
+            accCmulf(mtrx[array2D_offset(irow, icol, nrow)], make_accFloatComplex(a[icol], 0));
+    }
+}
+
 // scale each column of the matrix by a column-dependent constant
-extern "C" void scale_matrix_columns_gpu(int nrow,
-                                         int ncol,
-                                         acc_complex_double_t* mtrx,
-                                         double* a)
+extern "C" void scale_matrix_columns_gpu_double(int nrow,
+                                                 int ncol,
+                                                 acc_complex_double_t* mtrx,
+                                                 double* a)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
 
-    accLaunchKernel((scale_matrix_columns_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
-        nrow,
-        mtrx,
-        a
-    );
+    accLaunchKernel((scale_matrix_columns_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, nrow, mtrx, a);
+}
+
+extern "C" void scale_matrix_columns_gpu_float(int nrow,
+                                                int ncol,
+                                                acc_complex_float_t* mtrx,
+                                                float* a)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
+
+    accLaunchKernel((scale_matrix_columns_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, nrow, mtrx, a);
 }
 
 __global__ void scale_matrix_rows_gpu_kernel

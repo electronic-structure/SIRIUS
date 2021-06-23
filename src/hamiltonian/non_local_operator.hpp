@@ -26,8 +26,10 @@
 #define __NON_LOCAL_OPERATOR_HPP__
 
 #include "SDDK/memory.hpp"
+#include "SDDK/type_definition.hpp"
 
 namespace sddk {
+template <typename T>
 class Wave_functions;
 class spin_range;
 };
@@ -69,12 +71,12 @@ class Non_local_operator
 
     /// Apply chunk of beta-projectors to all wave functions.
     template <typename T>
-    void apply(int chunk__, int ispn_block__, sddk::Wave_functions& op_phi__, int idx0__, int n__,
+    void apply(int chunk__, int ispn_block__, sddk::Wave_functions<real_type<T>>& op_phi__, int idx0__, int n__,
                Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename T>
-    void apply(int chunk__, int ia__, int ispn_block__, sddk::Wave_functions& op_phi__, int idx0__, int n__,
+    void apply(int chunk__, int ia__, int ispn_block__, sddk::Wave_functions<real_type<T>>& op_phi__, int idx0__, int n__,
                Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
 
     template <typename T>
@@ -158,13 +160,13 @@ class Q_operator : public Non_local_operator
 template <typename T>
 void
 apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                    sddk::Wave_functions& phi__, D_operator* d_op__, sddk::Wave_functions* hphi__, Q_operator* q_op__,
-                    sddk::Wave_functions* sphi__);
+                    sddk::Wave_functions<real_type<T>>& phi__, D_operator* d_op__, sddk::Wave_functions<real_type<T>>* hphi__, Q_operator* q_op__,
+                    sddk::Wave_functions<real_type<T>>* sphi__);
 
 template <typename T>
 void
 apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                 sddk::Wave_functions& phi__, Q_operator* q_op__, sddk::Wave_functions& sphi__);
+                 sddk::Wave_functions<real_type<T>>& phi__, Q_operator* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
 
 } // namespace sirius
 
