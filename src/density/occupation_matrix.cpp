@@ -72,7 +72,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         }
     }
 
-    int nwfu = kp__.hubbard_wave_functions().num_wf();
+    int nwfu = kp__.wave_functions_S_hub().num_wf();
 
     sddk::matrix<double_complex> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
     if (is_device_memory(mem)) {
@@ -91,7 +91,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             dm.allocate(ctx_.mem_pool(mem));
         }
         sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0,
-            kp__.num_occupied_bands(), kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
+            kp__.num_occupied_bands(), kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
 
@@ -161,13 +161,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                 dm.allocate(ctx_.mem_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
-            sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
-                  kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
-            // TODO: check if inner() already moved data to CPU
-
-            //if (is_device_memory(mem)) {
-            //    dm.copy_to(memory_t::host);
-            //}
+            sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0,
+                        kp__.num_occupied_bands(ispn), kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");
