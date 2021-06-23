@@ -346,13 +346,21 @@ void DFT_ground_state::print_info(std::ostream& out__) const
         out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
     };
 
+    auto write_vector = [&](vector3d<double> v__)
+    {
+        out__ << "["
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", "
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[1] << ", "
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[2] << "]";
+    };
+
     out__ << "Charges and magnetic moments" << std::endl;
     draw_bar(80);
     if (ctx_.full_potential()) {
         double total_core_leakage{0.0};
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
-            out__ << "              moment                |moment|";
+            out__ << "                 moment                |moment|";
         }
         out__ << std::endl;
         draw_bar(80);
@@ -361,22 +369,24 @@ void DFT_ground_state::print_info(std::ostream& out__) const
             double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
             total_core_leakage += core_leakage;
             out__ << std::setw(4) << ia
-                  << std::setw(10) << std::setprecision(6) << std::fixed << mt_charge[ia]
-                  << std::setw(10) << std::setprecision(6) << std::scientific << core_leakage;
+                  << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
+                  << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
             if (ctx_.num_mag_dims()) {
                 vector3d<double> v(mt_mag[ia]);
-                out__ << std::setprecision(4) << std::fixed << v
-                      << std::setprecision(6) << std::fixed << v.length();
+                out__ << "  ";
+                write_vector(v);
+                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
             }
             out__ << std::endl;
         }
         out__ << std::endl;
-        out__ << "total core leakage    : " << std::setprecision(8) << std::setw(20) << total_core_leakage << std::endl
-              << "interstitial charge   : " << std::setprecision(6) << std::setw(20) << it_charge << std::endl;
+        out__ << "total core leakage    : " << std::setprecision(8) << std::scientific << total_core_leakage << std::endl
+              << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
         if (ctx_.num_mag_dims()) {
             vector3d<double> v(it_mag);
-            out__ << "interstitial moment : " <<  std::setprecision(4) << std::fixed << v
-                  <<  ", magnitude : " << std::setprecision(6) << std::fixed << v.length();
+            out__ << "interstitial moment   : ";
+            write_vector(v);
+            out__ <<  ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
         }
     } else {
         if (ctx_.num_mag_dims()) {
@@ -385,9 +395,9 @@ void DFT_ground_state::print_info(std::ostream& out__) const
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 vector3d<double> v(mt_mag[ia]);
-                out__ << std::setw(6) << ia
-                      << std::setprecision(4) << std::fixed << v
-                      << std::setprecision(6) << std::fixed << v.length() << std::endl;
+                out__ << std::setw(6) << ia;
+                write_vector(v);
+                out__ << std::setprecision(6) << std::fixed << v.length() << std::endl;
             }
             out__ << std::endl;
         }
@@ -396,8 +406,9 @@ void DFT_ground_state::print_info(std::ostream& out__) const
 
     if (ctx_.num_mag_dims()) {
         vector3d<double> v(total_mag);
-        out__ << "total moment          : " << std::setprecision(4) << v << ", magnitude : "
-              << std::setprecision(6) << v.length() << std::endl;
+        out__ << "total moment          : ";
+        write_vector(v);
+        out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
     }
 
     out__ << std::endl;
