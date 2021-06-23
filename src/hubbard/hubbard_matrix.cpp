@@ -201,25 +201,25 @@ void Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     if (ctx_.num_mag_dims() != 3) {
         for (int is = 0; is < ctx_.num_spins(); is++) {
             draw_bar(width * jb);
-    //        bool has_imag{false};
+            bool has_imag{false};
             for (int m = 0; m < ib; m++) {
                 for (int mp = 0; mp < jb; mp++) {
-                    //if (std::abs(std::imag(this->nonlocal(ia__)(m, mp, is))) > 1e-12) {
-                    //    has_imag = true;
-                    //}
+                    if (std::abs(std::imag(this->nonlocal(idx__)(m, mp, is))) > 1e-12) {
+                        has_imag = true;
+                    }
                     print_number(std::real(this->nonlocal(idx__)(m, mp, is)));
                 }
                 out__ << std::endl;
             }
-    //        if (has_imag) {
-    //            out__ << "imaginary part:" << std::endl;
-    //            for (int m = 0; m < mmax; m++) {
-    //                for (int mp = 0; mp < mmax; mp++) {
-    //                    print_number(std::imag(this->local(ia__)(m, mp, is)));
-    //                }
-    //                out__ << std::endl;
-    //            }
-    //        }
+            if (has_imag) {
+                out__ << "imaginary part:" << std::endl;
+                for (int m = 0; m < ib; m++) {
+                    for (int mp = 0; mp < jb; mp++) {
+                        print_number(std::imag(this->nonlocal(idx__)(m, mp, is)));
+                    }
+                    out__ << std::endl;
+                }
+            }
         }
         draw_bar(width * jb);
     }
@@ -252,6 +252,17 @@ void Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     //}
 }
 
+void Hubbard_matrix::zero()
+{
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+            local_[ia].zero();
+        }
+    }
+    for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+        nonlocal_[i].zero();
+    }
+}
 
 }
 

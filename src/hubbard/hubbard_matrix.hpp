@@ -59,6 +59,8 @@ class Hubbard_matrix {
 
     void print_nonlocal(int idx__, std::ostream& out__) const;
 
+    void zero();
+
     sddk::mdarray<double_complex, 3>& local(int ia__)
     {
         return local_[ia__];
@@ -79,15 +81,6 @@ class Hubbard_matrix {
         return nonlocal_[idx__];
     }
 
-    void zero()
-    {
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                local_[ia].zero();
-            }
-        }
-    }
-
     auto const& ctx() const
     {
         return ctx_;
@@ -98,8 +91,11 @@ inline void copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
     for (int ia = 0; ia < src__.ctx().unit_cell().num_atoms(); ia++) {
         if (src__.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-            copy(src__.local(ia), dest__.local(ia));
+            ::sddk::copy(src__.local(ia), dest__.local(ia));
         }
+    }
+    for (int i = 0; i < src__.ctx().cfg().hubbard().nonlocal().size(); i++) {
+        ::sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
 }
 

@@ -163,8 +163,8 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
         phi.allocate(spin_range(ctx_.num_spins()), memory_t::device);
         dphi.allocate(spin_range(0), memory_t::device);
 
-        kp.hubbard_wave_functions().allocate(spin_range(ctx_.num_spins()), memory_t::device);
-        kp.hubbard_wave_functions().copy_to(spin_range(ctx_.num_spins()), memory_t::device, 0, this->number_of_hubbard_orbitals());
+        kp.wave_functions_S_hub().allocate(spin_range(ctx_.num_spins()), memory_t::device);
+        kp.wave_functions_S_hub().copy_to(spin_range(ctx_.num_spins()), memory_t::device, 0, this->number_of_hubbard_orbitals());
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
           phi.copy_to(spin_range(ispn), memory_t::device, 0, this->number_of_hubbard_orbitals());
@@ -208,7 +208,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
     /* compute <phi (O)^(-1/2)| S | psi_{nk}> where |phi (O)^(-1/2)> are the hubbard wavefunctions */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         inner(ctx_.spla_context(), spin_range(ispn), kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
-              kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), phi_s_psi, 0,
+              kp.wave_functions_S_hub(), 0, this->number_of_hubbard_orbitals(), phi_s_psi, 0,
               ispn * this->number_of_hubbard_orbitals());
     }
 

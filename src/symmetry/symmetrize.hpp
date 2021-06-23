@@ -672,7 +672,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__,
 
                     dm_ia.zero();
                     for (int j = 0; j < num_mag_comp__; j++) {
-                        /* apply spacial rootation */
+                        /* apply spatial rotation */
                         for (int m1 = 0; m1 < ss1; m1++) {
                             for (int m2 = 0; m2 < ss2; m2++) {
                                 for (int m1p = 0; m1p < ss1; m1p++) {
