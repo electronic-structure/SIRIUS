@@ -148,7 +148,7 @@ class DFT_ground_state
     json find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
 
     /// Print the basic information (total energy, charges, moments, etc.).
-    void print_info();
+    void print_info(std::ostream& out__) const;
 
     double energy_kin_sum_pw() const;
 

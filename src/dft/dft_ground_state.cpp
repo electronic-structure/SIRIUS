@@ -22,6 +22,7 @@
  *  \brief Contains implementation of sirius::DFT_ground_state class.
  */
 
+#include <iomanip>
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
 
@@ -179,14 +180,24 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
     Density rho1(ctx_);
 
+    std::stringstream s;
+    s << std::endl;
+    s << "density_tol       : " << density_tol << std::endl
+      << "energy_tol        : " << energy_tol << std::endl
+      << "initial_tolerance : " << initial_tolerance << std::endl
+      << "num_dft_iter      : " << num_dft_iter;
+    ctx_.message(1, __func__, s);
+
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
-        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
-            std::printf("\n");
-            std::printf("+------------------------------+\n");
-            std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
-            std::printf("+------------------------------+\n");
-        }
+        std::stringstream s;
+        s << std::endl;
+        s << "+------------------------------+" << std::endl
+          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter << std::endl
+          << "+------------------------------+" << std::endl;
+        ctx_.message(2, __func__, s);
+
         Hamiltonian0 H0(potential_);
         /* find new wave-functions */
         Band(ctx_).solve(kset_, H0, true);
@@ -213,8 +224,10 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 
-        /* check number of electrons */
-        density_.check_num_electrons();
+        if (ctx_.cfg().control().verification() >= 1) {
+            /* check number of electrons */
+            density_.check_num_electrons();
+        }
 
         /* compute new potential */
         potential_.generate(density_, ctx_.use_symmetry(), true);
@@ -237,18 +250,30 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         rms_hist.push_back(rms);
 
         /* write some information */
-        print_info();
-        ctx_.message(1, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
-                rms, etot - eold);
+        std::stringstream out;
+        out << std::endl;
+        print_info(out);
+        out << std::endl;
+        out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
+            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold;
+        ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
         if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
-            ctx_.message(1, __function_name__,"converged after %i SCF iterations!\n", iter + 1); 
+            std::stringstream out;
+            out << std::endl;
+            out << "converged after " << iter + 1 << " SCF iterations!";
+            ctx_.message(1, __func__, out);
+            density_.check_num_electrons();
             num_iter = iter;
             break;
         }
 
         eold = etot;
     }
+    std::stringstream out;
+    out << std::endl;
+    print_info(out);
+    ctx_.message(1, __func__, out);
 
     if (write_state) {
         ctx_.create_storage_file();
@@ -288,7 +313,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     return dict;
 }
 
-void DFT_ground_state::print_info()
+void DFT_ground_state::print_info(std::ostream& out__) const
 {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum(ctx_.unit_cell());
@@ -320,130 +345,120 @@ void DFT_ground_state::print_info()
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
-        std::printf("\n");
-        std::printf("Charges and magnetic moments\n");
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
+    auto draw_bar = [&](int w)
+    {
+        out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
+    };
+
+    auto write_vector = [&](vector3d<double> v__)
+    {
+        out__ << "["
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", "
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[1] << ", "
+              << std::setw(9) << std::setprecision(5) << std::fixed << v__[2] << "]";
+    };
+
+    out__ << "Charges and magnetic moments" << std::endl;
+    draw_bar(80);
+    if (ctx_.full_potential()) {
+        double total_core_leakage{0.0};
+        out__ << "atom      charge    core leakage";
+        if (ctx_.num_mag_dims()) {
+            out__ << "                 moment                |moment|";
         }
-        std::printf("\n");
-        if (ctx_.full_potential()) {
-            double total_core_leakage{0.0};
-            std::printf("atom      charge    core leakage");
+        out__ << std::endl;
+        draw_bar(80);
+
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
+            total_core_leakage += core_leakage;
+            out__ << std::setw(4) << ia
+                  << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
+                  << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
             if (ctx_.num_mag_dims()) {
-                std::printf("              moment                |moment|");
+                vector3d<double> v(mt_mag[ia]);
+                out__ << "  ";
+                write_vector(v);
+                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
             }
-            std::printf("\n");
-            for (int i = 0; i < 80; i++) {
-                std::printf("-");
-            }
-            std::printf("\n");
+            out__ << std::endl;
+        }
+        out__ << std::endl;
+        out__ << "total core leakage    : " << std::setprecision(8) << std::scientific << total_core_leakage << std::endl
+              << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
+        if (ctx_.num_mag_dims()) {
+            vector3d<double> v(it_mag);
+            out__ << "interstitial moment   : ";
+            write_vector(v);
+            out__ <<  ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
+        }
+    } else {
+        if (ctx_.num_mag_dims()) {
+            out__ << "atom              moment                |moment|" << std::endl;
+            draw_bar(80);
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
-                total_core_leakage += core_leakage;
-                std::printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
-                if (ctx_.num_mag_dims()) {
-                    vector3d<double> v(mt_mag[ia]);
-                    std::printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
-                }
-                std::printf("\n");
+                vector3d<double> v(mt_mag[ia]);
+                out__ << std::setw(6) << ia;
+                write_vector(v);
+                out__ << std::setprecision(6) << std::fixed << v.length() << std::endl;
             }
-
-            std::printf("\n");
-            std::printf("total core leakage    : %10.8e\n", total_core_leakage);
-            std::printf("interstitial charge   : %10.6f\n", it_charge);
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v(it_mag);
-                std::printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2],
-                       v.length());
-            }
-        } else {
-            if (ctx_.num_mag_dims()) {
-                std::printf("atom              moment                |moment|");
-                std::printf("\n");
-                for (int i = 0; i < 80; i++) {
-                    std::printf("-");
-                }
-                std::printf("\n");
-
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    vector3d<double> v(mt_mag[ia]);
-                    std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
-                    std::printf("\n");
-                }
-
-                std::printf("\n");
-            }
+            out__ << std::endl;
         }
-        std::printf("total charge          : %10.6f\n", total_charge);
-
-        if (ctx_.num_mag_dims()) {
-            vector3d<double> v(total_mag);
-            std::printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2], v.length());
-        }
-
-        std::printf("\n");
-        std::printf("Energy\n");
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
-        }
-        std::printf("\n");
-
-        std::printf("valence_eval_sum          : %18.8f\n", evalsum1);
-        if (ctx_.full_potential()) {
-            std::printf("core_eval_sum             : %18.8f\n", evalsum2);
-            std::printf("kinetic energy            : %18.8f\n", ekin);
-            std::printf("enuc                      : %18.8f\n", enuc);
-        }
-        std::printf("<rho|V^{XC}>              : %18.8f\n", evxc);
-        std::printf("<rho|E^{XC}>              : %18.8f\n", eexc);
-        std::printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
-        std::printf("<rho|V^{H}>               : %18.8f\n", evha);
-        if (!ctx_.full_potential()) {
-            std::printf("one-electron contribution : %18.8f (Ha), %18.8f (Ry)\n", one_elec_en,
-                   one_elec_en * 2); // eband + deband in QE
-            std::printf("hartree contribution      : %18.8f\n", 0.5 * evha);
-            std::printf("xc contribution           : %18.8f\n", eexc);
-            std::printf("ewald contribution        : %18.8f\n", ewald_energy_);
-            std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
-        }
-        std::printf("smearing (-TS)            : %18.8f\n", s_sum);
-        std::printf("SCF correction            : %18.8f\n", this->scf_energy_);
-        if (ctx_.hubbard_correction()) {
-            auto e = potential_.U().hubbard_energy(density_.occupation_matrix());
-            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);
-        }
-
-        std::printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);
-
-        std::printf("\n");
-        std::printf("band gap (eV) : %18.8f\n", gap);
-        std::printf("Efermi        : %18.8f\n", ef);
-        std::printf("\n");
-        // if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
-        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //        std::printf("atom: %i\n", ia);
-        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
-        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
-        //            //printf("component of density matrix: %i\n", j);
-        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
-        //            //        std::printf("(%f, %f) ", z.real(), z.imag());
-        //            //    }
-        //            //    std::printf("\n");
-        //            //}
-        //            std::printf("diagonal components of density matrix: %i\n", j);
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
-        //                std::printf("(%10.6f, %10.6f) ", z.real(), z.imag());
-        //            }
-        //            std::printf("\n");
-        //        }
-        //    }
-        //}
     }
+    out__ << "total charge          : " << std::setprecision(6) << std::fixed << total_charge << std::endl;
+
+    if (ctx_.num_mag_dims()) {
+        vector3d<double> v(total_mag);
+        out__ << "total moment          : ";
+        write_vector(v);
+        out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
+    }
+
+    out__ << std::endl;
+    out__ << "Energy" << std::endl;
+    draw_bar(80);
+
+    auto write_energy = [&](std::string label__, double value__)
+    {
+        out__ << std::left << std::setw(30) << label__ << " : "
+              << std::right << std::setw(16) << std::setprecision(8) << std::fixed << value__ << std::endl;
+    };
+
+    auto write_energy2 = [&](std::string label__, double value__)
+    {
+        out__ << std::left << std::setw(30) << label__ << " : "
+              << std::right << std::setw(16) << std::setprecision(8) << std::fixed
+              << value__ << " (Ha), " << value__ * 2 << " (Ry)" << std::endl;
+    };
+
+    write_energy("valence_eval_sum", evalsum1);
+    if (ctx_.full_potential()) {
+        write_energy("core_eval_sum", evalsum2);
+        write_energy("kinetic energy", ekin);
+        write_energy("enuc", enuc);
+    }
+    write_energy("<rho|V^{XC}>", evxc);
+    write_energy("<rho|E^{XC}>", eexc);
+    write_energy("<mag|B^{XC}>", ebxc);
+    write_energy("<rho|V^{H}>", evha);
+    if (!ctx_.full_potential()) {
+        write_energy2("one-electron contribution", one_elec_en); // eband + deband in QE
+        write_energy("hartree contribution", 0.5 * evha);
+        write_energy("xc contribution", eexc);
+        write_energy("ewald contribution", ewald_energy_);
+        write_energy("PAW contribution", potential_.PAW_total_energy());
+    }
+    write_energy("smearing (-TS)", s_sum);
+    write_energy("SCF correction", this->scf_energy_);
+    if (ctx_.hubbard_correction()) {
+        auto e = potential_.U().hubbard_energy(density_.occupation_matrix());
+        write_energy2("Hubbard energy", e);
+    }
+    write_energy2("Total energy", etot);
+    out__ << std::endl;
+    write_energy("band gap (eV)", gap);
+    write_energy("Efermi", ef);
 }
 
 } // namespace sirius
