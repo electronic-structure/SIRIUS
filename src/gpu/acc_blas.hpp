@@ -211,6 +211,21 @@ zgemv(char transa, int32_t m, int32_t n, acc_complex_double_t* alpha, acc_comple
 }
 
 inline void
+cgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_float_t const* alpha,
+      acc_complex_float_t const* a, int32_t lda, acc_complex_float_t const* b, int32_t ldb,
+      acc_complex_float_t const* beta, acc_complex_float_t* c, int32_t ldc, int stream_id)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::cgemm,
+                  (stream_handle(stream_id), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m, n, k,
+                   reinterpret_cast<const ::acc::blas::complex_float_t*>(alpha),
+                   reinterpret_cast<const ::acc::blas::complex_float_t*>(a), lda,
+                   reinterpret_cast<const ::acc::blas::complex_float_t*>(b), ldb,
+                   reinterpret_cast<const ::acc::blas::complex_float_t*>(beta),
+                   reinterpret_cast<::acc::blas::complex_float_t*>(c), ldc));
+}
+
+inline void
 zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_double_t const* alpha,
       acc_complex_double_t const* a, int32_t lda, acc_complex_double_t const* b, int32_t ldb,
       acc_complex_double_t const* beta, acc_complex_double_t* c, int32_t ldc, int stream_id)
@@ -218,11 +233,20 @@ zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_dou
     // acc::set_device();
     CALL_GPU_BLAS(::acc::blas::zgemm,
                   (stream_handle(stream_id), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m, n, k,
-                   reinterpret_cast<const ::acc::blas::complex_double_t*>(alpha),
-                   reinterpret_cast<const ::acc::blas::complex_double_t*>(a), lda,
-                   reinterpret_cast<const ::acc::blas::complex_double_t*>(b), ldb,
-                   reinterpret_cast<const ::acc::blas::complex_double_t*>(beta),
-                   reinterpret_cast<::acc::blas::complex_double_t*>(c), ldc));
+                      reinterpret_cast<const ::acc::blas::complex_double_t*>(alpha),
+                      reinterpret_cast<const ::acc::blas::complex_double_t*>(a), lda,
+                      reinterpret_cast<const ::acc::blas::complex_double_t*>(b), ldb,
+                      reinterpret_cast<const ::acc::blas::complex_double_t*>(beta),
+                      reinterpret_cast<::acc::blas::complex_double_t*>(c), ldc));
+}
+
+inline void
+sgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, float const* alpha, float const* a, int32_t lda,
+      float const* b, int32_t ldb, float const* beta, float* c, int32_t ldc, int stream_id)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::sgemm, (stream_handle(stream_id), get_gpublasOperation_t(transa),
+                                       get_gpublasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 inline void
@@ -389,12 +413,31 @@ destroy_handle()
 }
 
 inline void
+cgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_float_t const* alpha,
+      acc_complex_float_t const* a, int32_t lda, acc_complex_float_t const* b, int32_t ldb,
+      acc_complex_float_t const* beta, acc_complex_float_t* c, int32_t ldc)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(cublasXtCgemm, (cublasxt_handle(), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m,
+                                  n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
+inline void
 zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_double_t const* alpha,
       acc_complex_double_t const* a, int32_t lda, acc_complex_double_t const* b, int32_t ldb,
       acc_complex_double_t const* beta, acc_complex_double_t* c, int32_t ldc)
 {
     // acc::set_device();
     CALL_GPU_BLAS(cublasXtZgemm, (cublasxt_handle(), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m,
+                                  n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
+inline void
+sgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, float const* alpha, float const* a, int32_t lda,
+      float const* b, int32_t ldb, float const* beta, float* c, int32_t ldc)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(cublasXtSgemm, (cublasxt_handle(), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m,
                                   n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 

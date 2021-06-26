@@ -163,11 +163,29 @@ inline auto get_stream(ARGS&&... args) -> status_t {
 
 
 template <typename... ARGS>
+inline auto sgemm(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+  return rocblas_sgemm(std::forward<ARGS>(args)...);
+#else
+  return cublasSgemm(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
 inline auto dgemm(ARGS&&... args) -> status_t {
 #if defined(SIRIUS_ROCM)
-  return rocblas_dgemm(std::forward<ARGS>(args)...);
+    return rocblas_dgemm(std::forward<ARGS>(args)...);
 #else
-  return cublasDgemm(std::forward<ARGS>(args)...);
+    return cublasDgemm(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
+inline auto cgemm(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+    return rocblas_cgemm(std::forward<ARGS>(args)...);
+#else
+    return cublasCgemm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
