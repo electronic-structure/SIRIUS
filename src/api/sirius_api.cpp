@@ -2442,7 +2442,7 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 {
     auto& gs = get_gs(gs_handler__);
     auto& ks = get_ks(ks_handler__);
-    sirius::Hamiltonian0 H0(gs.potential());
+    sirius::Hamiltonian0<double> H0(gs.potential());
     sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
 }
 
@@ -2491,7 +2491,7 @@ void sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler
         if (iter_solver_tol__ != nullptr) {
             ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
         }
-        sirius::Hamiltonian0 H0(gs.potential());
+        sirius::Hamiltonian0<double> H0(gs.potential());
         if (precompute_pw__ && *precompute_pw__) {
             H0.potential().generate_pw_coefs();
         }

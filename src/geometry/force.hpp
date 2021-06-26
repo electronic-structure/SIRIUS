@@ -34,6 +34,7 @@ class Density;
 class Potential;
 class K_point;
 class K_point_set;
+template <typename T>
 class Hamiltonian_k;
 
 /// Compute atomic forces.
@@ -98,7 +99,7 @@ class Force
      */
     void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, sddk::mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point* kp__, Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
 
   public:
     Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__);

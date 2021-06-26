@@ -267,7 +267,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0 H0(potential_);
+    Hamiltonian0<double> H0(potential_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_[ik]);
@@ -754,7 +754,7 @@ mdarray<double, 2> const& Force::calc_forces_usnl()
     return forces_usnl_;
 }
 
-void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
+void Force::add_ibs_force(K_point* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 

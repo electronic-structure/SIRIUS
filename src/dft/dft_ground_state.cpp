@@ -33,7 +33,7 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
-        Hamiltonian0 H0(potential_);
+        Hamiltonian0<double> H0(potential_);
         Band(ctx_).initialize_subspace(kset_, H0);
     }
 }
@@ -133,7 +133,7 @@ json DFT_ground_state::check_scf_density()
     /* generate potential from existing density */
     pot.generate(density_, ctx_.use_symmetry(), true);
     /* create new Hamiltonian */
-    Hamiltonian0 H0(pot);
+    Hamiltonian0<double> H0(pot);
     /* set the high tolerance */
     ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
@@ -198,7 +198,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        Hamiltonian0 H0(potential_);
+        Hamiltonian0<double> H0(potential_);
         /* find new wave-functions */
         Band(ctx_).solve(kset_, H0, true);
         /* find band occupancies */

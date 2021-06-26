@@ -27,7 +27,7 @@
 namespace sirius {
 
 void
-Band::solve_full_potential(Hamiltonian_k& Hk__) const
+Band::solve_full_potential(Hamiltonian_k<double>& Hk__) const
 {
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
@@ -51,7 +51,7 @@ Band::solve_full_potential(Hamiltonian_k& Hk__) const
 
 template <typename T>
 int
-Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
+Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -101,7 +101,7 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
 }
 
 void
-Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
+Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve");
 

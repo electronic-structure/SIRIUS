@@ -365,7 +365,7 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
-        Hamiltonian0 H0(potential);
+        Hamiltonian0<double> H0(potential);
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {

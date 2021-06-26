@@ -41,7 +41,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 namespace sirius {
 
 template <typename T>
-int Band::diag_pseudo_potential(Hamiltonian_k& Hk__) const
+int Band::diag_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -89,7 +89,7 @@ int Band::diag_pseudo_potential(Hamiltonian_k& Hk__) const
 
 template <typename T>
 void
-Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
+Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
@@ -111,7 +111,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
     auto& gen_solver = ctx_.gen_evp_solver();
 
     for (int ig = 0; ig < kp.num_gkvec(); ig++) {
-        hmlt.set(ig, ig, 0.5 * std::pow(kp.gkvec().gkvec_cart<index_domain_t::global>(ig).length(), 2));
+        hmlt.set(ig, ig, 0.5 * std::pow(kp.gkvec().template gkvec_cart<index_domain_t::global>(ig).length(), 2));
         ovlp.set(ig, ig, 1);
     }
 
@@ -178,8 +178,8 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    dop(xi1, xi2) = Dop.value<T>(xi1, xi2, ispn__, ia);
-                    qop(xi1, xi2) = Qop.value<T>(xi1, xi2, ispn__, ia);
+                    dop(xi1, xi2) = Dop.template value<T>(xi1, xi2, ispn__, ia);
+                    qop(xi1, xi2) = Qop.template value<T>(xi1, xi2, ispn__, ia);
                 }
             }
             /* compute <G+k|beta> D */
@@ -253,7 +253,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
 
 template <typename T>
 int
-Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
+Band::diag_pseudo_potential_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -355,7 +355,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* get diagonal elements for preconditioning */
-    auto h_o_diag = Hk__.get_h_o_diag_pw<T, 3>();
+    auto h_o_diag = Hk__.template get_h_o_diag_pw<T, 3>();
 
     if (ctx_.print_checksum()) {
         auto cs1 = h_o_diag.first.checksum();
@@ -429,7 +429,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
          * this is done before the main iterative loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
+        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
 
         orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
                          hphi, sphi, 0, num_bands, ovlp, res);
@@ -608,7 +608,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
+            Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
@@ -690,7 +690,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
 template <typename T>
 sddk::mdarray<double, 1>
-Band::diag_S_davidson(Hamiltonian_k& Hk__) const
+Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
 
@@ -807,7 +807,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     /* allocate memory for the hubbard orbitals on device */
     Hk__.kp().copy_hubbard_orbitals_on_device();
 
-    auto o_diag = Hk__.get_h_o_diag_pw<T, 2>().second;
+    auto o_diag = Hk__.template get_h_o_diag_pw<T, 2>().second;
 
     mdarray<double, 2> o_diag1(kp.num_gkvec_loc(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -845,7 +845,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     for (int k = 0; k < itso.num_steps(); k++) {
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
+        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
 
         orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
                          sphi, N, n, ovlp, res);
@@ -1580,22 +1580,22 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 
 template
 mdarray<double, 1>
-Band::diag_S_davidson<double>(Hamiltonian_k& Hk__) const;
+Band::diag_S_davidson<double>(Hamiltonian_k<double>& Hk__) const;
 
 template
 mdarray<double, 1>
-Band::diag_S_davidson<double_complex>(Hamiltonian_k& Hk__) const;
+Band::diag_S_davidson<double_complex>(Hamiltonian_k<double>& Hk__) const;
 
 template
 void
-Band::diag_pseudo_potential_exact<double_complex>(int ispn__, Hamiltonian_k& Hk__) const;
+Band::diag_pseudo_potential_exact<double_complex>(int ispn__, Hamiltonian_k<double>& Hk__) const;
 
 template
 int
-Band::diag_pseudo_potential_davidson<double>(Hamiltonian_k& Hk__) const;
+Band::diag_pseudo_potential_davidson<double>(Hamiltonian_k<double>& Hk__) const;
 
 template
 int
-Band::diag_pseudo_potential_davidson<double_complex>(Hamiltonian_k& Hk__) const;
+Band::diag_pseudo_potential_davidson<double_complex>(Hamiltonian_k<double>& Hk__) const;
 
 }

@@ -10,7 +10,7 @@
 
 namespace sirius {
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
                        std::shared_ptr<Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
