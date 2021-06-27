@@ -25,15 +25,15 @@
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
-template <typename T>residuals_aux_gpu
+template <typename T>
 __global__ void compute_residuals_gpu_kernel
-    (
-        int const num_rows_loc__,
-        T const* eval__,
-        gpu_complex_type<T> const* hpsi__,
-        gpu_complex_type<T> const* opsi__,
-        gpu_complex_type<T>* res__
-    );
+(
+    int const num_rows_loc__,
+    T const* eval__,
+    gpu_complex_type<T> const* hpsi__,
+    gpu_complex_type<T> const* opsi__,
+    gpu_complex_type<T>* res__
+);
 
 template <>
 __global__ void compute_residuals_gpu_kernel<double>

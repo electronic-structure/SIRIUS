@@ -64,12 +64,12 @@ extern "C" void compute_residuals_gpu_double(double_complex* hpsi__,
                                               int num_bands__,
                                               double* eval__);
 
-extern "C" void compute_residuals_gpu_flaot(std::complex<float>* hpsi__,
+extern "C" void compute_residuals_gpu_float(std::complex<float>* hpsi__,
                                              std::complex<float>* opsi__,
                                              std::complex<float>* res__,
                                              int num_gvec_loc__,
                                              int num_bands__,
-                                             flaot* eval__);
+                                             float* eval__);
 
 extern "C" void apply_preconditioner_gpu_double(double_complex* res__,
                                                  int num_rows_loc__,
@@ -89,7 +89,7 @@ extern "C" void make_real_g0_gpu_double(double_complex* res__,
                                          int ld__,
                                          int n__);
 
-extern "C" void make_real_g0_gpu_float(std::complex>float>* res__,
+extern "C" void make_real_g0_gpu_float(std::complex<float>* res__,
                                          int ld__,
                                          int n__);
 #endif
