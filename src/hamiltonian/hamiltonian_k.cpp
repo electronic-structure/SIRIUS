@@ -1470,7 +1470,7 @@ Hamiltonian_k<float>::apply_h_s<float>(spin_range spins__, int N__, int n__, Wav
 template
 void
 Hamiltonian_k<float>::apply_h_s<std::complex<float>>(spin_range spins__, int N__, int n__, Wave_functions<float>& phi__,
-                                                     Wave_functions<float>* hphi__, Wave_functions<dfloat* sphi__);
+                                                     Wave_functions<float>* hphi__, Wave_functions<float>* sphi__);
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
@@ -1485,15 +1485,15 @@ Hamiltonian_k<float>::get_h_o_diag_pw<float, 3>() const;
 
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<Float>, 1>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 1>() const;
 
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<Float>, 2>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 2>() const;
 
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<Float>, 3>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 3>() const;
 
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>

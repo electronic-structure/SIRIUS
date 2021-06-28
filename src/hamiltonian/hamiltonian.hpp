@@ -454,7 +454,8 @@ Hamiltonian0<T>::operator()(K_point& kp__)
 
 template Hamiltonian_k<double> Hamiltonian0<double>::operator()(K_point& kp__);
 #ifdef USE_FP32
-template Hamiltonian_k<float> Hamiltonian0<float>::operator()(K_point& kp__);
+// TODO: not enough supported to initialize this yet
+// template Hamiltonian_k<float> Hamiltonian0<float>::operator()(K_point& kp__);
 #endif
 }
 
