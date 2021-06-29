@@ -44,8 +44,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
         gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
     }
 
-    local_op_ = std::unique_ptr<Local_operator>(
-        new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
+    local_op_ = std::unique_ptr<Local_operator<T>>(
+        new Local_operator<T>(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));

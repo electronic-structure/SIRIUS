@@ -46,6 +46,7 @@ class Atom;
 class Simulation_context;
 class Potential;
 class Unit_cell;
+template <typename T>
 class Local_operator;
 class D_operator;
 class Q_operator;
@@ -81,7 +82,7 @@ class Hamiltonian0
     Unit_cell& unit_cell_;
 
     /// Local part of the Hamiltonian operator.
-    std::unique_ptr<Local_operator> local_op_;
+    std::unique_ptr<Local_operator<T>> local_op_;
 
     /// Non-zero Gaunt coefficients
     std::unique_ptr<Gaunt_coefficients<std::complex<T>>> gaunt_coefs_;
@@ -122,7 +123,7 @@ class Hamiltonian0
         return *potential_;
     }
 
-    Local_operator& local_op() const
+    Local_operator<T>& local_op() const
     {
         return *local_op_;
     }
