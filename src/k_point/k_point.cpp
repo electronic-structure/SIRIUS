@@ -241,7 +241,7 @@ K_point::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<double>>(new Q_operator<double>(ctx_)) : nullptr;
 
     auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
     phi.prepare(sr, true);

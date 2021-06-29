@@ -48,8 +48,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
         new Local_operator<T>(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
 
     if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
-        q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
+        q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
     }
 }
 

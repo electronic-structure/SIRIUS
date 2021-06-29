@@ -348,7 +348,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
         // recompute the hubbard potential.
         potential_.U().generate_potential(density_.occupation_matrix());
 
-        Q_operator q_op(ctx_);
+        Q_operator<double> q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
@@ -655,7 +655,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());

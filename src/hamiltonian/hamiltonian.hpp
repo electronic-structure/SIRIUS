@@ -48,7 +48,9 @@ class Potential;
 class Unit_cell;
 template <typename T>
 class Local_operator;
+template <typename T>
 class D_operator;
+template <typename T>
 class Q_operator;
 class K_point;
 template <typename T>
@@ -88,10 +90,10 @@ class Hamiltonian0
     std::unique_ptr<Gaunt_coefficients<std::complex<T>>> gaunt_coefs_;
 
     /// D operator (non-local part of Hamiltonian).
-    std::unique_ptr<D_operator> d_op_;
+    std::unique_ptr<D_operator<T>> d_op_;
 
     /// Q operator (non-local part of S-operator).
-    std::unique_ptr<Q_operator> q_op_;
+    std::unique_ptr<Q_operator<T>> q_op_;
 
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
@@ -133,12 +135,12 @@ class Hamiltonian0
         return *gaunt_coefs_;
     }
 
-    inline Q_operator& Q() const
+    inline Q_operator<T>& Q() const
     {
         return *q_op_;
     }
 
-    inline D_operator& D() const
+    inline D_operator<T>& D() const
     {
         return *d_op_;
     }

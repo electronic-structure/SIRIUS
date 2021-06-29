@@ -97,7 +97,7 @@ class Force
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, sddk::mdarray<double, 2>& forceh_);
+    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator<double>& q_op__, sddk::mdarray<double, 2>& forceh_);
 
     void add_ibs_force(K_point* kp__, Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
 

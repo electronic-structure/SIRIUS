@@ -145,7 +145,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
                                   potential_.U().max_number_of_orbitals_per_atom(),
                                   2, ctx_.unit_cell().num_atoms(), 9);
 
-    Q_operator q_op(ctx_);
+    Q_operator<double> q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();

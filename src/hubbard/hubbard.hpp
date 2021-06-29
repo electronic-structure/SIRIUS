@@ -72,7 +72,7 @@ class Hubbard
     /// Compute the strain gradient of the hubbard wave functions.
     void wavefunctions_strain_deriv(K_point& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
                                     mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
-    void apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
+    void apply_dS(K_point& kp, Q_operator<double>& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
                   Wave_functions<double>& phi, Wave_functions<double>& dphi);
 
   public:
@@ -85,14 +85,14 @@ class Hubbard
     void apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
                                  Wave_functions<double>& phi, Wave_functions<double>& ophi);
 
-    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
+    void compute_occupancies_derivatives(K_point& kp, Q_operator<double>& q_op, mdarray<double_complex, 6>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
      *  \param [in]  q_op Overlap operator.
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
-    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
+    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator<double>& q_op, sddk::mdarray<double_complex, 5>& dn);
 
     double calculate_energy_collinear(Hubbard_matrix const& om__) const;
 
