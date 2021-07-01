@@ -38,7 +38,9 @@ class spin_range;
 
 namespace sirius {
 /* forward declaration */
+template <typename T>
 class Beta_projectors;
+template <typename T>
 class Beta_projectors_base;
 class Simulation_context;
 
@@ -75,7 +77,7 @@ class Non_local_operator
     /// Apply chunk of beta-projectors to all wave functions.
     template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
     void apply(int chunk__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, matrix<F>& beta_phi__)
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
     {
         PROFILE("sirius::Non_local_operator::apply");
 
@@ -156,7 +158,7 @@ class Non_local_operator
 
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
     void apply(int chunk__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, matrix<F>& beta_phi__)
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
     {
         PROFILE("sirius::Non_local_operator::apply");
 
@@ -242,7 +244,7 @@ class Non_local_operator
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
     void apply(int chunk__, int ia__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, matrix<F>& beta_phi__)
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
     {
         if (is_null_) {
             return;
@@ -399,13 +401,13 @@ class Q_operator : public Non_local_operator<T>
  */
 template <typename T>
 void
-apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
                     sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__, sddk::Wave_functions<real_type<T>>* hphi__,
                     Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>* sphi__);
 
 template <typename T>
 void
-apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
                  sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
 
 } // namespace sirius

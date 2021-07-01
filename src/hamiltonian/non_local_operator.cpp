@@ -358,7 +358,7 @@ void Q_operator<T>::initialize()
 
 template <typename T>
 void
-apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__, Wave_functions<real_type<T>>& phi__,
+apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__, Wave_functions<real_type<T>>& phi__,
                     D_operator<real_type<T>>* d_op__, Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
                     Wave_functions<real_type<T>>* sphi__)
 {
@@ -368,7 +368,7 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta_
         beta__.generate(i);
 
         for (int ispn : spins__) {
-            auto beta_phi = beta__.inner<T>(i, phi__, ispn, N__, n__);
+            auto beta_phi = beta__.template inner<T>(i, phi__, ispn, N__, n__);
 
             if (hphi__ && d_op__) {
                 /* apply diagonal spin blocks */
@@ -394,7 +394,7 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta_
 /// Compute |sphi> = (1 + Q)|phi>
 template <typename T>
 void
-apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
                  Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, Wave_functions<real_type<T>>& sphi__)
 {
     for (auto s: spins__) {
@@ -414,24 +414,24 @@ template class Q_operator<double>;
 
 template
 void
-apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
                             Wave_functions<double>& phi__, D_operator<double>* d_op__, Wave_functions<double>* hphi__,
                             Q_operator<double>* q_op__, Wave_functions<double>* sphi__);
 
 template
 void
-apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
                                     Wave_functions<double>& phi__, D_operator<double>* d_op__, Wave_functions<double>* hphi__,
                                     Q_operator<double>* q_op__, Wave_functions<double>* sphi__);
 
 template
 void
-apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
                          Wave_functions<double>& phi__, Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
 
 template
 void
-apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
                                  Wave_functions<double>& phi__, Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
 
 #ifdef USE_FP32
@@ -445,24 +445,24 @@ template class Q_operator<float>
 
 template
 void
-apply_non_local_d_q<float>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_non_local_d_q<float>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
                             Wave_functions<float>& phi__, D_operator<float>* d_op__, Wave_functions<float>* hphi__,
                             Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
 
 template
 void
-apply_non_local_d_q<std::complex<float>>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_non_local_d_q<std::complex<float>>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
                                          Wave_functions<float>& phi__, D_operator<float>* d_op__, Wave_functions<float>* hphi__,
                                          Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
 
 template
 void
-apply_S_operator<float>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator<float>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
                          Wave_functions<float>& phi__, Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
 
 template
 void
-apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
                                       Wave_functions<float>& phi__, Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
 */
 #endif

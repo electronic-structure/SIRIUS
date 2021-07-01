@@ -38,8 +38,8 @@ namespace sirius {
 /* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
  * compared to atom_id displacement. we can also use lambda */
 void
-Hubbard::apply_dS(K_point& kp, Q_operator<double>& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
-                  Wave_functions<double>& phi, Wave_functions<double>& dphi)
+Hubbard::apply_dS(K_point& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad, const int atom_id,
+                  const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi)
 {
     // compute d S/ dr^I_a |phi> and add to dphi
     if (!ctx_.full_potential() && ctx_.unit_cell().augment()) {
@@ -105,7 +105,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator<double>& q_op, 
     // derivatives of the atomic wave functions are needed.
     auto& phi = kp.atomic_wave_functions_hub();
 
-    Beta_projectors_gradient bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
+    Beta_projectors_gradient<double> bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     bp_grad.prepare();
 
     /*
@@ -431,7 +431,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator<double
 
     Wave_functions<double> phitmp(kp__.gkvec_partition(), phi.num_wf(), ctx_.preferred_memory_t(), 1);
 
-    Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp__.gkvec(), kp__.igk_loc());
+    Beta_projectors_strain_deriv<double> bp_strain_deriv(ctx_, kp__.gkvec(), kp__.igk_loc());
 
     /* maximum number of occupied bands */
     int nbnd = (ctx_.num_mag_dims() == 1) ? std::max(kp__.num_occupied_bands(0), kp__.num_occupied_bands(1))

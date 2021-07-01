@@ -148,7 +148,7 @@ void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces
         return;
     }
 
-    Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

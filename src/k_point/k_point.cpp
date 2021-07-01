@@ -437,11 +437,11 @@ void K_point::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_loc_));
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
+            beta_projectors_row_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_row_));
+            beta_projectors_col_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_col_));
 
         }
 
