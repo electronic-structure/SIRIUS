@@ -601,6 +601,35 @@ linalg::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn
 }
 
 template<>
+inline void linalg::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha, ftn_single const* x, ftn_int incx,
+                                    ftn_single const* y, ftn_int incy, ftn_single* A, ftn_int lda, stream_id sid) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(sger)(&m, &n, const_cast<ftn_single*>(alpha), const_cast<ftn_single*>(x), &incx,
+                          const_cast<ftn_single*>(y), &incy, A, &lda);
+            break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::sger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+            throw std::runtime_error("(s,c)ger is not implemented in cublasxt");
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
 inline void linalg::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
                                      ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, stream_id sid) const
 {

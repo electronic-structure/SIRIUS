@@ -345,11 +345,31 @@ ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, ac
 }
 
 inline void
+sger(int m, int n, float const* alpha, float const* x, int incx, float const* y, int incy, float* A, int lda,
+     int stream_id)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::sger, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
+}
+
+inline void
 dger(int m, int n, double const* alpha, double const* x, int incx, double const* y, int incy, double* A, int lda,
      int stream_id)
 {
     // acc::set_device();
     CALL_GPU_BLAS(::acc::blas::dger, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
+}
+
+inline void
+cgeru(int m, int n, acc_complex_float_t const* alpha, acc_complex_float_t const* x, int incx,
+      acc_complex_float_t const* y, int incy, acc_complex_float_t* A, int lda, int stream_id)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::cgeru,
+                  (stream_handle(stream_id), m, n, reinterpret_cast<const ::acc::blas::complex_float_t*>(alpha),
+                      reinterpret_cast<const ::acc::blas::complex_float_t*>(x), incx,
+                      reinterpret_cast<const ::acc::blas::complex_float_t*>(y), incy,
+                      reinterpret_cast<::acc::blas::complex_float_t*>(A), lda));
 }
 
 inline void

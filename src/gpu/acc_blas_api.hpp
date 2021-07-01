@@ -253,11 +253,29 @@ inline auto ztrmm(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
+inline auto sger(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+  return rocblas_sger(std::forward<ARGS>(args)...);
+#else
+  return cublasSger(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
 inline auto dger(ARGS&&... args) -> status_t {
 #if defined(SIRIUS_ROCM)
-  return rocblas_dger(std::forward<ARGS>(args)...);
+    return rocblas_dger(std::forward<ARGS>(args)...);
 #else
-  return cublasDger(std::forward<ARGS>(args)...);
+    return cublasDger(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
+template <typename... ARGS>
+inline auto cgeru(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+    return rocblas_cgeru(std::forward<ARGS>(args)...);
+#else
+    return cublasCgeru(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
