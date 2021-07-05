@@ -51,9 +51,10 @@ class hubbard_orbital_descriptor
         hubbard_coefficients_[3]
         hubbard_coefficients[4] = U_alpha
         hubbard_coefficients[5] = U_beta */
-  double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
+    double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
 
-    sddk::mdarray<double, 4> hubbard_matrix_;
+    sddk::mdarray<double, 4> hubbard_matrix_; // TODO: in case of multiorbital U correction is this matrix
+                                              // diagonal in orbital index?
 
     // simplifed hubbard theory
     double hubbard_alpha_{0.0};
