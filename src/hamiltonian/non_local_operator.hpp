@@ -112,6 +112,16 @@ class Q_operator : public Non_local_operator
     Q_operator(Simulation_context const& ctx__);
 };
 
+template <typename T>
+class U_operator
+{
+  private:
+    Simulation_context const& ctx_;
+    sddk::mdarray<T, 3> um_;
+  public:
+    U_operator(Simulation_context const& ctx__);
+};
+
 //template <typename T>
 //class P_operator : public Non_local_operator<T>
 //{
