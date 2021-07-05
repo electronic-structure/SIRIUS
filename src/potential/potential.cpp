@@ -31,6 +31,7 @@ Potential::Potential(Simulation_context& ctx__)
     : Field4D(ctx__, ctx__.lmmax_pot())
     , unit_cell_(ctx__.unit_cell())
     , comm_(ctx__.comm())
+    , hubbard_potential_(ctx__)
 {
     PROFILE("sirius::Potential");
 
