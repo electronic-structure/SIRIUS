@@ -346,7 +346,8 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
 
     if (ctx_.hubbard_correction()) {
         // recompute the hubbard potential.
-        potential_.U().generate_potential(density_.occupation_matrix());
+        //potential_.U().generate_potential(density_.occupation_matrix());
+        ::sirius::hubbard::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
 
         Q_operator q_op(ctx_);
 
@@ -674,7 +675,7 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                d += potential_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir, ia);
+                                d += potential_.hubbard_potential().local(ia1)(m2, m1, ispn) * dn(m1, m2, ispn, ia1, dir, ia);
                             }
                         }
                     }

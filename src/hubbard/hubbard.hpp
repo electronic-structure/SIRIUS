@@ -43,6 +43,14 @@
 
 namespace sirius {
 
+namespace hubbard {
+
+void generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
+
+double energy(Hubbard_matrix const& om__);
+
+}
+
 /// Apply Hubbard correction in the colinear case
 class Hubbard
 {
@@ -55,7 +63,7 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    sddk::mdarray<double_complex, 4> hubbard_potential_;
+    //sddk::mdarray<double_complex, 4> hubbard_potential_;
 
     /// Hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
@@ -82,7 +90,7 @@ class Hubbard
     std::vector<int> offset_; // TODO: make this quick fix into proper solution
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
+    void apply_hubbard_potential(Hubbard_matrix const& um__, Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
                                  Wave_functions<double>& phi, Wave_functions<double>& ophi);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
@@ -102,17 +110,17 @@ class Hubbard
 
     void generate_potential_non_collinear(Hubbard_matrix const& om__);
 
-    void generate_potential(Hubbard_matrix const& om__)
-    {
-        /* the hubbard potential has the same structure than the occupation numbers */
-        this->hubbard_potential_.zero();
+    //void generate_potential(Hubbard_matrix const& om__)
+    //{
+    //    /* the hubbard potential has the same structure than the occupation numbers */
+    //    this->hubbard_potential_.zero();
 
-        if (ctx_.num_mag_dims() != 3) {
-            generate_potential_collinear(om__);
-        } else {
-            generate_potential_non_collinear(om__);
-        }
-    }
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        generate_potential_collinear(om__);
+    //    } else {
+    //        generate_potential_non_collinear(om__);
+    //    }
+    //}
 
     void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
 
@@ -126,34 +134,34 @@ class Hubbard
         return max_number_of_orbitals_per_atom_;
     }
 
-    double_complex U(int m1, int m2, int m3, int m4) const
-    {
-        return hubbard_potential_(m1, m2, m3, m4);
-    }
+    //double_complex U(int m1, int m2, int m3, int m4) const
+    //{
+    //    return hubbard_potential_(m1, m2, m3, m4);
+    //}
 
-    double_complex& U(int m1, int m2, int m3, int m4)
-    {
-        return hubbard_potential_(m1, m2, m3, m4);
-    }
+    //double_complex& U(int m1, int m2, int m3, int m4)
+    //{
+    //    return hubbard_potential_(m1, m2, m3, m4);
+    //}
 
-    inline double hubbard_energy(Hubbard_matrix const& om__) const
-    {
-        if (ctx_.num_mag_dims() != 3) {
-            return calculate_energy_collinear(om__);
-        } else {
-            return calculate_energy_non_collinear(om__);
-        }
-    }
+    //inline double hubbard_energy(Hubbard_matrix const& om__) const
+    //{
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        return calculate_energy_collinear(om__);
+    //    } else {
+    //        return calculate_energy_non_collinear(om__);
+    //    }
+    //}
 
     inline int number_of_hubbard_orbitals() const
     {
         return number_of_hubbard_orbitals_;
     }
 
-    sddk::mdarray<double_complex, 4>& potential_matrix()
-    {
-        return hubbard_potential_;
-    }
+    //sddk::mdarray<double_complex, 4>& potential_matrix()
+    //{
+    //    return hubbard_potential_;
+    //}
 };
 
 } // namespace sirius

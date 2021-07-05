@@ -167,7 +167,8 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
     }
 
     if (ctx.hubbard_correction()) {
-        tot_en += potential.U().hubbard_energy(density.occupation_matrix());
+        //tot_en += potential.U().hubbard_energy(density.occupation_matrix());
+        tot_en += ::sirius::hubbard::energy(density.occupation_matrix());
     }
 
     return tot_en;
@@ -183,7 +184,8 @@ double energy_potential(Density const& density, Potential const& potential)
 {
     double e = energy_veff(density, potential) + energy_bxc(density, potential) + potential.PAW_one_elec_energy(density);
     if (potential.ctx().hubbard_correction()) {
-        e += potential.U().hubbard_energy(density.occupation_matrix());
+        //e += potential.U().hubbard_energy(density.occupation_matrix());
+        e += ::sirius::hubbard::energy(density.occupation_matrix());
     }
     return e;
 }

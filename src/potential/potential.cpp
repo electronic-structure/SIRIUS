@@ -335,7 +335,8 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     }
 
     if (ctx_.hubbard_correction()) {
-        this->U().generate_potential(density__.occupation_matrix());
+        //this->U().generate_potential(density__.occupation_matrix());
+        ::sirius::hubbard::generate_potential(density__.occupation_matrix(), this->hubbard_potential());
     }
 
     if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {

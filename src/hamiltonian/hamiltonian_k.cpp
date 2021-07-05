@@ -810,7 +810,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
      if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
 
         /* apply the hubbard potential and deallocate the hubbard wave functions on GPU (if needed) */
-        H0().potential().U().apply_hubbard_potential(kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
+        H0().potential().U().apply_hubbard_potential(H0().potential().hubbard_potential(), kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
     }
 
     // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {

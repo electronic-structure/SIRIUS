@@ -20,8 +20,8 @@ Hubbard::Hubbard(Simulation_context& ctx__)
 
     max_number_of_orbitals_per_atom_ = indexb_max;
 
-    hubbard_potential_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
-            memory_t::host, "hubbard_potential_");
+    //hubbard_potential_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
+    //        memory_t::host, "hubbard_potential_");
 
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
