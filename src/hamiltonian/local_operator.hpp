@@ -159,7 +159,7 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
+    void apply_h_o(spfft::Transform& spfftk__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
                    sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>* hphi__, sddk::Wave_functions<double>* ophi__);
 
     /// Apply magnetic field to the full-potential wave-functions.
