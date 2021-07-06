@@ -26,8 +26,6 @@
 
 namespace sirius {
 
-namespace hubbard {
-
 static void
 generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__,
     sddk::mdarray<double_complex, 3> const& om__, sddk::mdarray<double_complex, 3>& um__)
@@ -520,9 +518,6 @@ energy(Hubbard_matrix const& om__)
     }
     return energy;
 }
-
-} // namespace "hubbard".
-
 
 
 /* we can use Ref PRB {\bf 102}, 235159 (2020) as reference for the colinear case.  */
