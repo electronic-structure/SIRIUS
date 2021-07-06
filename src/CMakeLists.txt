@@ -27,7 +27,6 @@ set(_SOURSES
   "dft/dft_ground_state.cpp"
   "dft/energy.cpp"
   "beta_projectors/beta_projectors_base.cpp"
-  "hubbard/apply_hubbard_potential.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
   "hubbard/hubbard_potential_energy.cpp"
