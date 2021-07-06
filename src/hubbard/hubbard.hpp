@@ -43,6 +43,14 @@
 
 namespace sirius {
 
+namespace hubbard {
+
+void generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
+
+double energy(Hubbard_matrix const& om__);
+
+}
+
 /// Apply Hubbard correction in the colinear case
 class Hubbard
 {
@@ -82,8 +90,8 @@ class Hubbard
     std::vector<int> offset_; // TODO: make this quick fix into proper solution
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
-                                 Wave_functions<double>& phi, Wave_functions<double>& ophi);
+    //void apply_hubbard_potential(Wave_functions<double>& hub_wf, spin_range spins__, const int idx, const int n,
+    //                             Wave_functions<double>& phi, Wave_functions<double>& ophi);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 
