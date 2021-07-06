@@ -22,7 +22,10 @@
  *  \brief Contains implementation of sirius::Non_local_operator class.
  */
 
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 #include "non_local_operator.hpp"
+#include "hubbard/hubbard_matrix.hpp"
 
 namespace sirius {
 
@@ -406,6 +409,76 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
     }
 }
 
+template <typename T>
+void
+apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
+                 Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__)
+{
+    dmatrix<std::complex<T>> dm(hub_wf__.num_wf(), n__);
+    dm.zero();
+
+    if (ctx__.processing_unit() == device_t::GPU) {
+        dm.allocate(memory_t::device);
+    }
+
+    /* First calculate the local part of the projections
+       dm(i, n) = <phi_i| S |psi_{nk}> */
+    sddk::inner(ctx__.spla_context(), spins__, hub_wf__, 0, hub_wf__.num_wf(), phi__, N__, n__, dm, 0, 0);
+
+    dmatrix<std::complex<T>> Up(hub_wf__.num_wf(), n__);
+    Up.zero();
+
+    //auto nhwf = um__.nhwf();
+
+#pragma omp parallel for schedule(static)
+    for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
+        auto& atom = ctx__.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int lmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
+            // we apply the hubbard correction. For now I have no papers
+            // giving me the formula for the SO case so I rely on QE for it
+            // but I do not like it at all
+            if (ctx__.num_mag_dims() == 3) {
+                for (int s1 = 0; s1 < ctx__.num_spins(); s1++) {
+                    for (int s2 = 0; s2 < ctx__.num_spins(); s2++) {
+                        const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
+
+                        // TODO: replace this with matrix matrix multiplication
+
+                        for (int nbd = 0; nbd < n__; nbd++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                for (int m2 = 0; m2 < lmax_at; m2++) {
+                                    Up(um__.nhwf() * s1 + um__.offset(ia) + m1, nbd) +=
+                                        um__(um__.offset(ia) + m2, um__.offset(ia) + m1, ind) *
+                                        dm(um__.nhwf() * s2 + um__.offset(ia) + m2, nbd);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Conventional LDA or colinear magnetism
+                for (int nbd = 0; nbd < n__; nbd++) {
+                    for (int m1 = 0; m1 < lmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmax_at; m2++) {
+                            Up(um__.offset(ia) + m1, nbd) += um__(um__.offset(ia) + m2, um__.offset(ia) + m1, spins__()) *
+                                                             dm(um__.offset(ia) + m2, nbd);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (ctx__.processing_unit() == device_t::GPU) {
+        Up.allocate(memory_t::device);
+        Up.copy_to(memory_t::device);
+    }
+
+    transform<std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
+        Up, 0, 0, 1.0, {&hphi__}, N__, n__);
+}
+
 template class Non_local_operator<double>;
 
 template class D_operator<double>;
@@ -433,6 +506,11 @@ template
 void
 apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
                                  Wave_functions<double>& phi__, Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
+
+template
+void
+apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<double>& hub_wf__,
+                         Wave_functions<double>& phi__, U_operator<double>& um__, Wave_functions<double>& hphi__);
 
 #ifdef USE_FP32
 // TODO: not yet have enough support to initialize it
@@ -464,6 +542,11 @@ template
 void
 apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
                                       Wave_functions<float>& phi__, Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
+
+template
+void
+apply_U_operator<float>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<float>& hub_wf__,
+                         Wave_functions<float>& phi__, U_operator<float>& um__, Wave_functions<float>& hphi__);
 */
 #endif
 } // namespace sirius

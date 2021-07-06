@@ -245,11 +245,8 @@ Occupation_matrix::symmetrize()
         int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
         auto T = nl.T();
 
-        int mmax_i = 2 * il + 1;
-        int mmax_j = 2 * jl + 1;
-
-        assert(ib == mmax_i);
-        assert(jb == mmax_j);
+        assert(ib == 2 * il + 1);
+        assert(jb == 2 * jl + 1);
 
         auto& sym = ctx_.unit_cell().symmetry();
 
@@ -420,7 +417,7 @@ Occupation_matrix::init()
 
 void Occupation_matrix::print_occupancies(int verbosity__) const
 {
-    if (verbosity__ >= 1 && ctx_.comm().rank() == 0) {
+    if ((ctx_.verbosity() >= verbosity__) && (ctx_.comm().rank() == 0)) {
         std::stringstream s;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {

@@ -46,6 +46,8 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point& kp__) // TODO: m
         if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().prepare();
         }
+        u_op_ = std::shared_ptr<U_operator<T>>(
+                new U_operator<T>(H0__.ctx(), H0__.potential().U().potential_matrix(), kp__.vk()));
     }
 }
 
@@ -58,6 +60,9 @@ Hamiltonian_k<T>::~Hamiltonian_k()
         }
     }
 }
+
+template <typename T>
+Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
 template <typename T> template <typename F, int what>
 std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>>
@@ -808,7 +813,8 @@ void Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_func
      if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
 
         /* apply the hubbard potential and deallocate the hubbard wave functions on GPU (if needed) */
-        H0().potential().U().apply_hubbard_potential(kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
+        //H0().potential().U().apply_hubbard_potential(kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
+        apply_U_operator(H0().ctx(), spins__, N__, n__, kp().wave_functions_S_hub(), phi__, this->U(), *hphi__);
     }
 
     // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {

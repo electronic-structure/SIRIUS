@@ -52,6 +52,8 @@ template <typename T>
 class D_operator;
 template <typename T>
 class Q_operator;
+template <typename T>
+class U_operator;
 class K_point;
 template <typename T>
 class Gaunt_coefficients;
@@ -101,9 +103,6 @@ class Hamiltonian0
     Hamiltonian0<T>& operator=(Hamiltonian0<T> const& src) = delete;
 
   public:
-    /// Constructor.
-    // Hamiltonian0(Simulation_context& ctx__);
-
     /// Constructor.
     Hamiltonian0(Potential& potential__);
 
@@ -180,6 +179,9 @@ class Hamiltonian_k
   private:
     Hamiltonian0<T>& H0_;
     K_point& kp_;
+    /// Hubbard correction.
+    /** In general case it is a k-dependent matrix */
+    std::shared_ptr<U_operator<T>> u_op_;
 
     /// Copy constructor is forbidden.
     Hamiltonian_k(Hamiltonian_k<T> const& src__) = delete;
@@ -189,6 +191,8 @@ class Hamiltonian_k
 
   public:
     Hamiltonian_k(Hamiltonian0<T>& H0__, K_point& kp__);
+
+    Hamiltonian_k(Hamiltonian_k<T>&& src__);
 
     ~Hamiltonian_k();
 
@@ -207,13 +211,16 @@ class Hamiltonian_k
         return kp_;
     }
 
-    Hamiltonian_k(Hamiltonian_k<T>&& src__) = default;
-
     template <typename F, int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_pw() const;
 
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
+
+    U_operator<T>& U()
+    {
+        return *u_op_;
+    }
 
     /// Apply first-variational LAPW Hamiltonian and overlap matrices.
     /** Check the documentation of Hamiltonain::set_fv_h_o() for the expressions of Hamiltonian and overlap

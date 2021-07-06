@@ -29,6 +29,7 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
 #include "beta_projectors/beta_projectors.hpp"
+#include "context/simulation_context.hpp"
 
 namespace sddk {
 template <typename T>
@@ -42,7 +43,8 @@ template <typename T>
 class Beta_projectors;
 template <typename T>
 class Beta_projectors_base;
-class Simulation_context;
+//class Simulation_context;
+class Hubbard_matrix;
 
 /// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
 template <typename T>
@@ -354,6 +356,63 @@ class Q_operator : public Non_local_operator<T>
     Q_operator(Simulation_context const& ctx__);
 };
 
+template <typename T>
+class U_operator
+{
+  private:
+    Simulation_context const& ctx_;
+    sddk::mdarray<std::complex<T>, 3> um_;
+    std::vector<int> offset_;
+    int nhwf_;
+  public:
+
+    U_operator(Simulation_context const& ctx__, sddk::mdarray<complex_type<T>, 4> const& um__, std::array<double, 3> vk__)
+        : ctx_(ctx__)
+    {
+        /* a pair of "total number, offests" for the Hubbard orbitals idexing */
+        auto r = ctx_.unit_cell().num_hubbard_wf();
+        this->nhwf_ = r.first;
+        this->offset_ = r.second;
+        um_ = sddk::mdarray<std::complex<T>, 3>(this->nhwf_, this->nhwf_, ctx_.num_mag_dims() + 1);
+        um_.zero();
+
+        /* copy only local blocks */
+        // TODO: implement Fourier-transfomation of the T-dependent occupancy matrix
+        // to get the generic k-dependent matrix
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                int nb = ctx_.unit_cell().atom(ia).type().indexb_hub().size();
+                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                    for (int m1 = 0; m1 < nb; m1++) {
+                        for (int m2 = 0; m2 < nb; m2++) {
+                            um_(this->offset_[ia] + m1, this->offset_[ia] + m2, j) = um__(m1, m2, j, ia); //om__.local(ia)(m1, m2, j);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ~U_operator()
+    {
+    }
+
+    inline auto nhwf() const
+    {
+        return nhwf_;
+    }
+
+    inline auto offset(int ia__) const
+    {
+        return offset_[ia__];
+    }
+
+    std::complex<T> operator()(int m1, int m2, int j)
+    {
+        return um_(m1, m2, j);
+    }
+};
+
 //template <typename T>
 //class P_operator : public Non_local_operator<T>
 //{
@@ -409,6 +468,11 @@ template <typename T>
 void
 apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
                  sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
+
+template <typename T>
+void
+apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
+    Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__);
 
 } // namespace sirius
 

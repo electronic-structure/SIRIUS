@@ -394,14 +394,14 @@ void DFT_ground_state::print_info(std::ostream& out__) const
         }
     } else {
         if (ctx_.num_mag_dims()) {
-            out__ << "atom              moment                |moment|" << std::endl;
+            out__ << "atom                moment                |moment|" << std::endl;
             draw_bar(80);
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 vector3d<double> v(mt_mag[ia]);
-                out__ << std::setw(6) << ia;
+                out__ << std::setw(4) << ia << " ";
                 write_vector(v);
-                out__ << std::setprecision(6) << std::fixed << v.length() << std::endl;
+                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length() << std::endl;
             }
             out__ << std::endl;
         }
@@ -427,9 +427,9 @@ void DFT_ground_state::print_info(std::ostream& out__) const
 
     auto write_energy2 = [&](std::string label__, double value__)
     {
-        out__ << std::left << std::setw(30) << label__ << " : "
-              << std::right << std::setw(16) << std::setprecision(8) << std::fixed
-              << value__ << " (Ha), " << value__ * 2 << " (Ry)" << std::endl;
+        out__ << std::left << std::setw(30) << label__ << " : " << std::right
+              << std::setw(16) << std::setprecision(8) << std::fixed << value__ << " (Ha), " 
+              << std::setw(16) << std::setprecision(8) << std::fixed << value__ * 2 << " (Ry)" << std::endl;
     };
 
     write_energy("valence_eval_sum", evalsum1);
