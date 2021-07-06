@@ -491,9 +491,9 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
         auto& atype = ctx.unit_cell().atom(ia).type();
         if (atype.hubbard_correction()) {
             if (ctx.num_mag_dims() != 3) {
-                ::sirius::hubbard::generate_potential_collinear_local(ctx, atype, om__.local(ia), um__.local(ia));
+                ::sirius::generate_potential_collinear_local(ctx, atype, om__.local(ia), um__.local(ia));
             } else {
-                ::sirius::hubbard::generate_potential_non_collinear_local(ctx, atype, om__.local(ia), um__.local(ia));
+                ::sirius::generate_potential_non_collinear_local(ctx, atype, om__.local(ia), um__.local(ia));
             }
         }
     }
@@ -510,9 +510,9 @@ energy(Hubbard_matrix const& om__)
         auto& atype = ctx.unit_cell().atom(ia).type();
         if (atype.hubbard_correction()) {
             if (ctx.num_mag_dims() != 3) {
-                energy += ::sirius::hubbard::calculate_energy_collinear_local(ctx, atype, om__.local(ia));
+                energy += ::sirius::calculate_energy_collinear_local(ctx, atype, om__.local(ia));
             } else {
-                energy += ::sirius::hubbard::calculate_energy_non_collinear_local(ctx, atype, om__.local(ia));
+                energy += ::sirius::calculate_energy_non_collinear_local(ctx, atype, om__.local(ia));
             }
         }
     }
