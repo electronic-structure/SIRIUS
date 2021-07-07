@@ -47,7 +47,7 @@ void generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
 
 double energy(Hubbard_matrix const& om__);
 
-/// Apply Hubbard correction in the colinear case
+/// Apply Hubbard correction in the collinear case
 class Hubbard
 {
   private:

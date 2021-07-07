@@ -358,7 +358,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
             if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
             }
-            hubbard_force_add_k_contribution_colinear(*kp, q_op, forces_hubbard_);
+            hubbard_force_add_k_contribution_collinear(*kp, q_op, forces_hubbard_);
             kp->beta_projectors().dismiss();
         }
 
@@ -655,7 +655,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());

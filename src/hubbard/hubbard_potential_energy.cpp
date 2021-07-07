@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-/* we can use Ref PRB {\bf 102}, 235159 (2020) as reference for the colinear case.  */
+/* we can use Ref PRB {\bf 102}, 235159 (2020) as reference for the collinear case.  */
 
 static void
 generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__,
@@ -129,7 +129,7 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
                             if (ctx__.num_mag_dims() == 0) {
                                 um__(m1, m2, is) += 2.0 * hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is);
                             } else {
-                                /* colinear case */
+                                /* collinear case */
                                 for (int is2 = 0; is2 < ctx__.num_spins(); is2++) {
                                     um__(m1, m2, is) += hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is2);
                                 }
@@ -483,6 +483,15 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
             }
         }
     }
+    for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
+        auto nl = ctx_.cfg().hubbard().nonlocal(i);
+
+        //if (ctx.num_mag_dims() != 3) {
+        //    ::sirius::generate_potential_collinear_nonlocal(ctx, nl, om__.nonlocal(i), um__.nonlocal(i));
+        //} else {
+        //    ::sirius::generate_potential_non_collinear_nonlocal(ctx, nl, om__.nonlocal(i), um__.nonlocal(i));
+        //}
+    }
 }
 
 double
@@ -501,6 +510,15 @@ energy(Hubbard_matrix const& om__)
                 energy += ::sirius::calculate_energy_non_collinear_local(ctx, atype, om__.local(ia));
             }
         }
+    }
+    for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
+        auto nl = ctx_.cfg().hubbard().nonlocal(i);
+
+        //if (ctx.num_mag_dims() != 3) {
+        //    energy += ::sirius::calculate_energy_collinear_nonlocal(ctx, nl, om__.nonlocal(i));
+        //} else {
+        //    energy += ::sirius::calculate_energy_noncollinear_nonlocal(ctx, nl, om__.nonlocal(i));
+        //}
     }
     return energy;
 }

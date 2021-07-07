@@ -84,7 +84,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
 
     // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
 
-    /* full non colinear magnetism */
+    /* full non collinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
         dmatrix<double_complex> dm(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
@@ -357,7 +357,7 @@ Occupation_matrix::init()
 
                 if (!nm) {
                     if (ctx_.num_mag_dims() != 3) {
-                        // colinear case
+                        // collinear case
                         if (charge > (lmax_at)) {
                             for (int m = 0; m < lmax_at; m++) {
                                 this->local_[ia](m, m, majs) = 1.0;
