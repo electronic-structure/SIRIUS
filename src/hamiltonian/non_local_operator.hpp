@@ -123,8 +123,7 @@ class U_operator
     int nhwf_;
   public:
 
-    U_operator(Simulation_context const& ctx__, sddk::mdarray<double_complex, 4> const& um__, Hubbard_matrix& um1__,
-        std::array<double, 3> vk__)
+    U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
         : ctx_(ctx__)
     {
         /* a pair of "total number, offests" for the Hubbard orbitals idexing */
