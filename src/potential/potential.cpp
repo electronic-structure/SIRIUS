@@ -31,6 +31,7 @@ Potential::Potential(Simulation_context& ctx__)
     : Field4D(ctx__, ctx__.lmmax_pot())
     , unit_cell_(ctx__.unit_cell())
     , comm_(ctx__.comm())
+    , hubbard_potential_(ctx__)
 {
     PROFILE("sirius::Potential");
 
@@ -335,6 +336,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (ctx_.hubbard_correction()) {
         this->U().generate_potential(density__.occupation_matrix());
+        ::sirius::generate_potential(density__.occupation_matrix(), this->hubbard_potential());
     }
 
     if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {

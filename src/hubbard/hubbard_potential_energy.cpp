@@ -297,18 +297,9 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
     // calculation of the double counting term in the hubbard correction
 
     double_complex n_total{0};
-    //double mx{0};
-    //double my{0};
-    //double mz{0};
-
-    //for (int m = 0; m < lmax_at; m++) {
-    //    n_total += om__(m, m, 0) + om__(m, m, 1);
-    //    mz += (om__(m, m, 0) - om__(m, m, 1)).real();
-    //    mx += (om__(m, m, 2) + om__(m, m, 3)).real();
-    //    my += (om__(m, m, 2) - om__(m, m, 3)).imag();
-    //}
-
-    //mx = n_total.real();
+    for (int m = 0; m < lmax_at; m++) {
+        n_total += om__(m, m, 0) + om__(m, m, 1);
+    }
 
     for (int is = 0; is < 4; is++) {
 
