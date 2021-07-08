@@ -30,6 +30,27 @@
 #include "spfft/spfft.hpp"
 #include "SDDK/type_definition.hpp"
 
+// type traits to handle Spfft grid for different precision type
+template <typename T>
+struct SpFFT_Grid {};
+
+template <>
+struct SpFFT_Grid<double> {using type = spfft::Grid;};
+
+template <>
+struct SpFFT_Grid<std::complex<double>> {using type = spfft::Grid;};
+
+#ifdef USE_FP32
+template <>
+struct SpFFT_Grid<std::complex<float>> {using type = spfft::GridFloat;};
+
+template <>
+struct SpFFT_Grid<float> {using type = spfft::GridFloat;};
+#endif
+
+template <typename T>
+using spfft_grid_type = typename SpFFT_Grid<T>::type;
+
 // type traits to handle Spfft driver for different precision type
 template <typename T>
 struct SpFFT_Transform {};

@@ -412,10 +412,16 @@ void K_point::generate_gkvec(double gk_cutoff__)
     const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto gv = gkvec_partition_->get_gvec();
     /* create transformation */
-    spfft_transform_.reset(new spfft::Transform(ctx_.spfft_grid_coarse().create_transform(
+    spfft_transform_.reset(new spfft::Transform(ctx_.spfft_grid_coarse<double>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
-        ctx_.spfft_coarse().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host))));
+#ifdef USE_FP32
+    spfft_transformFloat_.reset(new spfft::TransformFloat(ctx_.spfft_grid_coarse<float>().create_transform(
+        spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
+        ctx_.spfft_coarse<float>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gv.at(memory_t::host))));
+#endif
 }
 
 void K_point::update()
