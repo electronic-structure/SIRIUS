@@ -517,7 +517,7 @@ template class Non_local_operator<float>;
 
 template class D_operator<float>;
 
-template class Q_operator<float>
+template class Q_operator<float>;
 
 template
 void

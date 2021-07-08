@@ -204,7 +204,7 @@ class Non_local_operator
 
                 if (nbf) {
                     linalg(la).gemm(
-                        'N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                        'N', 'N', nbf, n__, nbf, &linalg_const<std::complex<T>>::one(),
                         reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
                         beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<std::complex<T>>::zero(),
                         work.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));

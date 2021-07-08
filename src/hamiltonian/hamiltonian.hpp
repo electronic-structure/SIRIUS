@@ -89,7 +89,7 @@ class Hamiltonian0
     std::unique_ptr<Local_operator<T>> local_op_;
 
     /// Non-zero Gaunt coefficients
-    std::unique_ptr<Gaunt_coefficients<std::complex<T>>> gaunt_coefs_;
+    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
     /// D operator (non-local part of Hamiltonian).
     std::unique_ptr<D_operator<T>> d_op_;
@@ -464,8 +464,7 @@ Hamiltonian0<T>::operator()(K_point& kp__)
 
 template Hamiltonian_k<double> Hamiltonian0<double>::operator()(K_point& kp__);
 #ifdef USE_FP32
-// TODO: not enough supported to initialize this yet
-// template Hamiltonian_k<float> Hamiltonian0<float>::operator()(K_point& kp__);
+template Hamiltonian_k<float> Hamiltonian0<float>::operator()(K_point& kp__);
 #endif
 }
 

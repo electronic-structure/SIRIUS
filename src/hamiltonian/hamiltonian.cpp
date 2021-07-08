@@ -40,12 +40,12 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
     PROFILE("sirius::Hamiltonian0");
 
     if (ctx_.full_potential()) {
-        using gc_z = Gaunt_coefficients<std::complex<T>>;
+        using gc_z = Gaunt_coefficients<double_complex>;
         gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
     }
 
     local_op_ = std::unique_ptr<Local_operator<T>>(
-        new Local_operator<T>(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
+        new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_partition(), &potential__));
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
@@ -104,7 +104,7 @@ Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdar
             for (int order = 0; order < type.aw_order(l); order++) {
                 int j1     = type.indexb().index_by_lm_order(lm, order);
                 int idxrf1 = type.indexr().index_by_l_order(l, order);
-                oalm[j] += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1) * alm[j1];
+                oalm[j] += static_cast<const T>(atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1)) * alm[j1];
             }
         }
         for (int j = 0; j < type.mt_aw_basis_size(); j++) {

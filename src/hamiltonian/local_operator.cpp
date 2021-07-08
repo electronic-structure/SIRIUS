@@ -81,11 +81,11 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
 
         if (ctx_.full_potential()) {
 
-            auto& fft_dense    = ctx_.spfft();
+            auto& fft_dense    = ctx_.spfft<T>();
             auto& gvec_dense_p = ctx_.gvec_partition();
 
-            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft(), gvec_dense_p,
-                                                  &ctx_.mem_pool(memory_t::host));
+            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft<T>(), gvec_dense_p,
+                                             &ctx_.mem_pool(memory_t::host));
 
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */
@@ -769,7 +769,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                     int ig = gkvec_p__.idx_gvec(igloc);
                     /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
                     buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) *
-                                    gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x];
+                                    static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
                 spfftk__.backward(reinterpret_cast<T const*>(&buf_pw[0]), spfft_mem);
@@ -796,7 +796,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
                     int ig = gkvec_p__.idx_gvec(igloc);
                     hphi__->pw_coeffs(0).extra()(igloc, j) +=
-                        0.5 * buf_pw[igloc] * gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x];
+                        0.5 * buf_pw[igloc] * static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
                 }
             }
         }
@@ -914,6 +914,6 @@ void Local_operator<T>::apply_b(spfft_transform_type<T>& spfftk__, int N__, int 
 // instantiate for supported precision
 template class Local_operator<double>;
 #ifdef USE_FP32
-template class Local_operator<float>
+template class Local_operator<float>;
 #endif
 } // namespace sirius

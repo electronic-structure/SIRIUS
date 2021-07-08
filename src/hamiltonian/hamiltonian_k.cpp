@@ -773,7 +773,16 @@ void Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_func
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        H0().local_op().apply_h(kp().spfft_transform(), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+#ifdef USE_FP32
+        if (std::is_same<T, float>::value) {
+            H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transformFloat()),
+                                    kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+        } else {
+#endif
+            H0().local_op().apply_h(kp().spfft_transform(), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+#ifdef USE_FP32
+        }
+#endif
     }
 
     t1 += omp_get_wtime();
@@ -869,7 +878,15 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+#ifdef USE_FP32
+        if(std::is_same<T, float>::value) {
+            H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transformFloat()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+        } else {
+#endif
+            H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+#ifdef USE_FP32
+        }
+#endif
         // if (ctx.control().print_checksum_) {
         //     if (hphi__) {
         //         hphi__->print_checksum(pu, "hloc_phi", N__, n__);
@@ -1236,7 +1253,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                         for (int igloc = 0; igloc < ngv; igloc++) {
                             halm_block(igloc, offsets_lo[ialoc] + ilo) +=
                                 alm_block(igloc, offsets_aw[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw)) *
-                                atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
+                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
                         } // TODO: block copy to GPU
                     }
                 }
@@ -1325,7 +1342,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                 for (int i = 0; i < n__; i++) {
                                     ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
                                         phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                        atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
+                                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
                                 }
                             }
                             if (hphi__ != nullptr) {
@@ -1346,7 +1363,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size();
                                          order_aw++) {
                                         ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                            atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
+                                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw)) *
                                             alm_phi(offsets_aw[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw), i);
                                     }
                                 }
