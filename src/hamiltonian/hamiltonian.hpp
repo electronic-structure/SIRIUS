@@ -72,7 +72,7 @@ template <typename T>
 class Hamiltonian_k;
 
 /// Represent the k-point independent part of Hamiltonian.
-template <typename T> // type is real tpe precision
+template <typename T> // type is real type precision
 class Hamiltonian0
 {
   private:

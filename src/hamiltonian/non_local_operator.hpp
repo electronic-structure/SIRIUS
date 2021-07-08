@@ -364,9 +364,9 @@ class U_operator
     sddk::mdarray<std::complex<T>, 3> um_;
     std::vector<int> offset_;
     int nhwf_;
-  public:
 
-    U_operator(Simulation_context const& ctx__, sddk::mdarray<complex_type<T>, 4> const& um__, std::array<double, 3> vk__)
+  public:
+    U_operator(Simulation_context const& ctx__, sddk::mdarray<double_complex, 4> const& um__, std::array<double, 3> vk__)
         : ctx_(ctx__)
     {
         /* a pair of "total number, offests" for the Hubbard orbitals idexing */
