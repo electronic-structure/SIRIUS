@@ -484,7 +484,7 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
         }
     }
     for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
-        auto nl = ctx_.cfg().hubbard().nonlocal(i);
+        auto nl = ctx.cfg().hubbard().nonlocal(i);
 
         //if (ctx.num_mag_dims() != 3) {
         //    ::sirius::generate_potential_collinear_nonlocal(ctx, nl, om__.nonlocal(i), um__.nonlocal(i));
@@ -512,7 +512,7 @@ energy(Hubbard_matrix const& om__)
         }
     }
     for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
-        auto nl = ctx_.cfg().hubbard().nonlocal(i);
+        auto nl = ctx.cfg().hubbard().nonlocal(i);
 
         //if (ctx.num_mag_dims() != 3) {
         //    energy += ::sirius::calculate_energy_collinear_nonlocal(ctx, nl, om__.nonlocal(i));
