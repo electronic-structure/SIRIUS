@@ -34,7 +34,7 @@ void Potential::generate_pw_coefs()
 
     int gv_count  = ctx_.gvec_partition().gvec_count_fft();
 
-    auto& fft = ctx_.spfft();
+    auto& fft = ctx_.spfft<double>();
 
     /* temporaty output buffer */
     mdarray<double_complex, 1> fpw_fft(gv_count);

@@ -953,12 +953,12 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     PROFILE("sirius::get_rho_up_dn");
 
     auto& ctx = const_cast<Simulation_context&>(density__.ctx());
-    int num_points = ctx.spfft().local_slice_size();
+    int num_points = ctx.spfft<double>().local_slice_size();
 
     auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
     auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
@@ -981,7 +981,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         rho_dn->f_rg(ir) = rud.second;
     }
 
-    Communicator(ctx.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
     if (rhomin< 0.0 && ctx.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
