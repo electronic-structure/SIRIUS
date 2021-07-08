@@ -513,8 +513,6 @@ apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__,
                          Wave_functions<double>& phi__, U_operator<double>& um__, Wave_functions<double>& hphi__);
 
 #ifdef USE_FP32
-// TODO: not yet have enough support to initialize it
-/*
 template class Non_local_operator<float>;
 
 template class D_operator<float>;
@@ -547,6 +545,5 @@ template
 void
 apply_U_operator<float>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<float>& hub_wf__,
                          Wave_functions<float>& phi__, U_operator<float>& um__, Wave_functions<float>& hphi__);
-*/
 #endif
 } // namespace sirius

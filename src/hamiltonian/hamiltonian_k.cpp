@@ -1465,7 +1465,6 @@ std::pair<mdarray<double, 2>, mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 
 #ifdef USE_FP32
-/* TODO : not yet have enough support to initialize it
 template class Hamiltonian_k<float>;
 
 template
@@ -1512,6 +1511,5 @@ Hamiltonian_k<float>::get_h_o_diag_lapw<2>() const;
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_lapw<3>() const;
-*/
 #endif
 } // namespace

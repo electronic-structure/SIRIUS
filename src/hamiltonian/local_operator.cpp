@@ -914,7 +914,6 @@ void Local_operator<T>::apply_b(spfft_transform_type<T>& spfftk__, int N__, int 
 // instantiate for supported precision
 template class Local_operator<double>;
 #ifdef USE_FP32
-// not enough support yet
-// template class Local_operator<float>
+template class Local_operator<float>
 #endif
 } // namespace sirius
