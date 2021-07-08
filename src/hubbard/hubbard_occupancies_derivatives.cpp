@@ -30,7 +30,7 @@
 // - PRB 84, 161102(R) (2011) : https://journals.aps.org/prb/abstract/10.1103/PhysRevB.84.161102
 // - PRB 102, 235159 (2020) : https://journals.aps.org/prb/abstract/10.1103/PhysRevB.102.235159
 //
-// note that this code only apply for the colinear case
+// note that this code only apply for the collinear case
 #include "hubbard.hpp"
 
 namespace sirius {

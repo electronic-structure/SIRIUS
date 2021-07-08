@@ -46,7 +46,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
             kp_.beta_projectors().prepare();
         }
         u_op_ = std::shared_ptr<U_operator<double>>(
-                new U_operator<double>(H0__.ctx(), H0__.potential().U().potential_matrix(), kp__.vk()));
+                new U_operator<double>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
 }
 

@@ -47,7 +47,7 @@ void generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
 
 double energy(Hubbard_matrix const& om__);
 
-/// Apply Hubbard correction in the colinear case
+/// Apply Hubbard correction in the collinear case
 class Hubbard
 {
   private:
@@ -94,28 +94,6 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
 
-    double calculate_energy_collinear(Hubbard_matrix const& om__) const;
-
-    void generate_potential_collinear(Hubbard_matrix const& om__);
-
-    double calculate_energy_non_collinear(Hubbard_matrix const& om__) const;
-
-    void generate_potential_non_collinear(Hubbard_matrix const& om__);
-
-    void generate_potential(Hubbard_matrix const& om__)
-    {
-        /* the hubbard potential has the same structure than the occupation numbers */
-        this->hubbard_potential_.zero();
-
-        if (ctx_.num_mag_dims() != 3) {
-            generate_potential_collinear(om__);
-        } else {
-            generate_potential_non_collinear(om__);
-        }
-    }
-
-    void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
-
     void set_hubbard_U_plus_V()
     {
         hubbard_U_plus_V_ = true;
@@ -126,33 +104,9 @@ class Hubbard
         return max_number_of_orbitals_per_atom_;
     }
 
-    double_complex U(int m1, int m2, int m3, int m4) const
-    {
-        return hubbard_potential_(m1, m2, m3, m4);
-    }
-
-    double_complex& U(int m1, int m2, int m3, int m4)
-    {
-        return hubbard_potential_(m1, m2, m3, m4);
-    }
-
-    inline double hubbard_energy(Hubbard_matrix const& om__) const
-    {
-        if (ctx_.num_mag_dims() != 3) {
-            return calculate_energy_collinear(om__);
-        } else {
-            return calculate_energy_non_collinear(om__);
-        }
-    }
-
     inline int number_of_hubbard_orbitals() const
     {
         return number_of_hubbard_orbitals_;
-    }
-
-    sddk::mdarray<double_complex, 4>& potential_matrix()
-    {
-        return hubbard_potential_;
     }
 };
 

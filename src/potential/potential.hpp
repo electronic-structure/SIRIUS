@@ -155,6 +155,8 @@ class Potential : public Field4D
     /// Hubbard potential correction.
     std::unique_ptr<Hubbard> U_;
 
+    Hubbard_matrix hubbard_potential_;
+
     /// Add extra charge to the density.
     /** This is used to verify the variational derivative of Exc w.r.t. density rho */
     double add_delta_rho_xc_{0};
@@ -933,6 +935,16 @@ class Potential : public Field4D
     Hubbard& U() const
     {
         return *U_;
+    }
+
+    Hubbard_matrix& hubbard_potential()
+    {
+        return hubbard_potential_;
+    }
+
+    Hubbard_matrix const& hubbard_potential() const
+    {
+        return hubbard_potential_;
     }
 };
 

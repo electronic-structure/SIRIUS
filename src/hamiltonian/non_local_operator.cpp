@@ -724,7 +724,7 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
                     }
                 }
             } else {
-                // Conventional LDA or colinear magnetism
+                // Conventional LDA or collinear magnetism
                 for (int nbd = 0; nbd < n__; nbd++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
