@@ -4159,23 +4159,23 @@ sirius_get_gkvec_arrays:
       doc: Number of G+k vectors.
     gvec_index:
       type: int
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Index of the G-vector part of G+k vector.
     gkvec:
       type: double
-      attr: out, required
+      attr: out, required, dimension(3, *)
       doc: G+k vectors in fractional coordinates.
     gkvec_cart:
       type: double
-      attr: out, required
+      attr: out, required, dimension(3, *)
       doc: G+k vectors in Cartesian coordinates.
     gkvec_len:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Length of G+k vectors.
     gkvec_tp:
       type: double
-      attr: out, required
+      attr: out, required, dimension(2, *)
       doc: Theta and Phi angles of G+k vectors.
 @api end
 */

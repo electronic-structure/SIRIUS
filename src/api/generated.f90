@@ -4134,11 +4134,11 @@ implicit none
 type(C_PTR), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(out) :: num_gkvec
-integer, target, intent(out) :: gvec_index
-real(8), target, intent(out) :: gkvec
-real(8), target, intent(out) :: gkvec_cart
-real(8), target, intent(out) :: gkvec_len
-real(8), target, intent(out) :: gkvec_tp
+integer, target, dimension(*), intent(out) :: gvec_index
+real(8), target, dimension(3, *), intent(out) :: gkvec
+real(8), target, dimension(3, *), intent(out) :: gkvec_cart
+real(8), target, dimension(*), intent(out) :: gkvec_len
+real(8), target, dimension(2, *), intent(out) :: gkvec_tp
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
