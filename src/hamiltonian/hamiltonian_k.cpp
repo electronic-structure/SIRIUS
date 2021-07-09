@@ -671,7 +671,7 @@ void Hamiltonian_k<T>::set_fv_h_o_it(dmatrix<std::complex<T>>& h__, dmatrix<std:
             auto gkvec_row_cart = kp.gkvec().template gkvec_cart<index_domain_t::global>(ig_row);
             int ig12 = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
-            T t1 = 0.5 * geometry3d::dot(gkvec_row_cart, gkvec_col_cart);
+            double t1 = 0.5 * geometry3d::dot(gkvec_row_cart, gkvec_col_cart);
 
             h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);
@@ -779,7 +779,7 @@ void Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_func
                                     kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
         } else {
 #endif
-            H0().local_op().apply_h(kp().spfft_transform(), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+            H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
 #ifdef USE_FP32
         }
 #endif
@@ -883,7 +883,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transformFloat()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
         } else {
 #endif
-            H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+            H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
 #ifdef USE_FP32
         }
 #endif
@@ -1417,7 +1417,7 @@ void Hamiltonian_k<T>::apply_b(Wave_functions<T>& psi__, std::vector<Wave_functi
 
     assert(bpsi__.size() == 2 || bpsi__.size() == 3);
 
-    H0().local_op().apply_b(kp().spfft_transform(), 0, H0().ctx().num_fv_states(), psi__, bpsi__);
+    H0().local_op().apply_b(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), 0, H0().ctx().num_fv_states(), psi__, bpsi__);
     H0().apply_bmt(psi__, bpsi__);
 
     /* copy Bz|\psi> to -Bz|\psi> */

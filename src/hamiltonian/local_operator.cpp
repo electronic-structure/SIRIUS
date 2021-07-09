@@ -796,7 +796,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
                     int ig = gkvec_p__.idx_gvec(igloc);
                     hphi__->pw_coeffs(0).extra()(igloc, j) +=
-                        0.5 * buf_pw[igloc] * static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
+                        static_cast<T>(0.5) * buf_pw[igloc] * static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
                 }
             }
         }
