@@ -169,7 +169,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    stress_hubbard_(dir1, dir2) -= (potential_.U().U(m2, m1, ispn, ia1) *
+                                    stress_hubbard_(dir1, dir2) -= (potential_.hubbard_potential().local(ia1)(m2, m1, ispn) *
                                                                     dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() /
                                                                     ctx_.unit_cell().omega();
                                 }

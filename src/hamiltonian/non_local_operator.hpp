@@ -30,6 +30,7 @@
 #include "SDDK/type_definition.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "context/simulation_context.hpp"
+#include "hubbard/hubbard_matrix.hpp"
 
 namespace sddk {
 template <typename T>
@@ -43,8 +44,6 @@ template <typename T>
 class Beta_projectors;
 template <typename T>
 class Beta_projectors_base;
-//class Simulation_context;
-class Hubbard_matrix;
 
 /// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
 template <typename T>
@@ -366,7 +365,7 @@ class U_operator
     int nhwf_;
 
   public:
-    U_operator(Simulation_context const& ctx__, sddk::mdarray<double_complex, 4> const& um__, std::array<double, 3> vk__)
+    U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
         : ctx_(ctx__)
     {
         /* a pair of "total number, offests" for the Hubbard orbitals idexing */
@@ -385,7 +384,7 @@ class U_operator
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int m1 = 0; m1 < nb; m1++) {
                         for (int m2 = 0; m2 < nb; m2++) {
-                            um_(this->offset_[ia] + m1, this->offset_[ia] + m2, j) = um__(m1, m2, j, ia); //om__.local(ia)(m1, m2, j);
+                            um_(this->offset_[ia] + m1, this->offset_[ia] + m2, j) = um1__.local(ia)(m1, m2, j);
                         }
                     }
                 }

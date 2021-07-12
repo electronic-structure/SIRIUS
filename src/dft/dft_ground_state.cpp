@@ -452,7 +452,7 @@ void DFT_ground_state::print_info(std::ostream& out__) const
     write_energy("smearing (-TS)", s_sum);
     write_energy("SCF correction", this->scf_energy_);
     if (ctx_.hubbard_correction()) {
-        auto e = potential_.U().hubbard_energy(density_.occupation_matrix());
+        auto e = ::sirius::energy(density_.occupation_matrix());
         write_energy2("Hubbard energy", e);
     }
     write_energy2("Total energy", etot);

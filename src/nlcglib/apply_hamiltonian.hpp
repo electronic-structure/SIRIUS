@@ -38,7 +38,7 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point& kp, Wave_functions<dou
     int N = 0;
     int n = num_wf;
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
-        // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
+        // sping_range: 2 for non-collinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         H.apply_h_s<std::complex<double>>(spin_range, N, n, wf, &wf_out, swf.get());
     }

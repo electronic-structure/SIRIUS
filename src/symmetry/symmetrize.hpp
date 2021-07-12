@@ -503,7 +503,7 @@ inline void symmetrize_vector_function(Crystal_symmetry const& sym__, Communicat
 //                    res_(lm1, lm2, j) += dm_rot_spatial[j];
 //                }
 //            else {
-//                // full non colinear magnetism
+//                // full non collinear magnetism
 //                double_complex spin_dm[2][2] = {
 //                    {dm_rot_spatial[0], dm_rot_spatial[2]},
 //                    {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};

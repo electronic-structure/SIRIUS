@@ -3445,146 +3445,6 @@ call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k
 end subroutine sirius_get_wave_functions
 
 !
-!> @brief Set occupation matrix for LDA+U.
-!> @param [in] handler Ground state handler.
-!> @param [inout] occ Occupation matrix.
-!> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_set_hubbard_occupancies(handler,occ,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-complex(8), target, intent(inout) :: occ
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: occ_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
-&bind(C, name="sirius_set_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: occ
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-occ_ptr = C_NULL_PTR
-occ_ptr = C_LOC(occ)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_set_hubbard_occupancies_aux(handler_ptr,occ_ptr,ld_ptr)
-end subroutine sirius_set_hubbard_occupancies
-
-!
-!> @brief Get occupation matrix for LDA+U.
-!> @param [in] handler Ground state handler.
-!> @param [inout] occ Occupation matrix.
-!> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_get_hubbard_occupancies(handler,occ,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-complex(8), target, intent(inout) :: occ
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: occ_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
-&bind(C, name="sirius_get_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: occ
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-occ_ptr = C_NULL_PTR
-occ_ptr = C_LOC(occ)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_get_hubbard_occupancies_aux(handler_ptr,occ_ptr,ld_ptr)
-end subroutine sirius_get_hubbard_occupancies
-
-!
-!> @brief Set LDA+U potential matrix.
-!> @param [in] handler Ground state handler.
-!> @param [inout] pot Potential correction matrix.
-!> @param [in] ld Leading dimensions of the matrix.
-subroutine sirius_set_hubbard_potential(handler,pot,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-complex(8), target, intent(inout) :: pot
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: pot_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
-&bind(C, name="sirius_set_hubbard_potential")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: pot
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-pot_ptr = C_NULL_PTR
-pot_ptr = C_LOC(pot)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_set_hubbard_potential_aux(handler_ptr,pot_ptr,ld_ptr)
-end subroutine sirius_set_hubbard_potential
-
-!
-!> @brief Set LDA+U potential matrix.
-!> @param [in] handler Ground state handler.
-!> @param [inout] pot Potential correction matrix.
-!> @param [in] ld Leading dimensions of the matrix.
-subroutine sirius_get_hubbard_potential(handler,pot,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-complex(8), target, intent(inout) :: pot
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: pot_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_get_hubbard_potential_aux(handler,pot,ld)&
-&bind(C, name="sirius_get_hubbard_potential")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: pot
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-pot_ptr = C_NULL_PTR
-pot_ptr = C_LOC(pot)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_get_hubbard_potential_aux(handler_ptr,pot_ptr,ld_ptr)
-end subroutine sirius_get_hubbard_potential
-
-!
 !> @brief Add descriptor of the augmented wave radial function.
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
@@ -4274,11 +4134,11 @@ implicit none
 type(C_PTR), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(out) :: num_gkvec
-integer, target, intent(out) :: gvec_index
-real(8), target, intent(out) :: gkvec
-real(8), target, intent(out) :: gkvec_cart
-real(8), target, intent(out) :: gkvec_len
-real(8), target, intent(out) :: gkvec_tp
+integer, target, dimension(*), intent(out) :: gvec_index
+real(8), target, dimension(3, *), intent(out) :: gkvec
+real(8), target, dimension(3, *), intent(out) :: gkvec_cart
+real(8), target, dimension(*), intent(out) :: gkvec_len
+real(8), target, dimension(2, *), intent(out) :: gkvec_tp
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
