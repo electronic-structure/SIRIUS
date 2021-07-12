@@ -3,7 +3,7 @@
 
 namespace sirius {
 template <typename T>
-inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
+inline dmatrix<T> pseudopotential_hmatrix(K_point<double>& kp__,
                                           int ispn__,
                                           Hamiltonian& H__)
 {
