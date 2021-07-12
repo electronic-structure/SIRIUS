@@ -541,7 +541,7 @@ void Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<s
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_row(); igkloc++) {
-                    h__(igkloc, kp().num_gkvec_col() + icol) += zsum * alm_row__(igkloc, j1);
+                    h__(igkloc, kp().num_gkvec_col() + icol) += static_cast<std::complex<T>>(zsum) * alm_row__(igkloc, j1);
                 }
             }
         }
@@ -582,7 +582,7 @@ void Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<s
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_col(); igkloc++) {
-                    ztmp[igkloc] += zsum * alm_col__(igkloc, j1);
+                    ztmp[igkloc] += static_cast<std::complex<T>>(zsum) * alm_col__(igkloc, j1);
                 }
             }
         }
@@ -1350,7 +1350,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                 for (int i = 0; i < n__; i++) {
                                     hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
                                         phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                        atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc);
+                                        static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
                                 }
                             }
                         }
@@ -1376,7 +1376,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                         int lm_aw    = type.indexb(xi).lm;
                                         int idxrf_aw = type.indexb(xi).idxrf;
                                         auto& gc     = H0_.gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
-                                        z += atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc) *
+                                        z += static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc)) *
                                              alm_phi(offsets_aw[ialoc] + xi, i);
                                     }
                                     /* lo-APW contribution to hphi */

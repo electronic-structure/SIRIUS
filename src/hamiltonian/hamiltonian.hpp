@@ -129,7 +129,7 @@ class Hamiltonian0
         return *local_op_;
     }
 
-    inline Gaunt_coefficients<std::complex<T>> const& gaunt_coefs() const
+    inline Gaunt_coefficients<std::complex<double>> const& gaunt_coefs() const
     {
         return *gaunt_coefs_;
     }
