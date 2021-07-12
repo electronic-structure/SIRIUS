@@ -84,7 +84,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
         #pragma omp parallel for schedule(static)
         for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
             if (what & 1) {
-                auto ekin = 0.5 * kp_.gkvec().gkvec_cart<index_domain_t::local>(ig_loc).length2();
+                auto ekin = 0.5 * kp_.gkvec().template gkvec_cart<index_domain_t::local>(ig_loc).length2();
                 h_diag(ig_loc, ispn) = ekin + H0_.local_op().v0(ispn);
             }
             if (what & 2) {
@@ -200,7 +200,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
         if (what & 1) {
-            auto gvc = kp_.gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            auto gvc = kp_.gkvec().template gkvec_cart<index_domain_t::local>(igloc);
             T ekin = 0.5 * dot(gvc, gvc);
             h_diag[igloc] = H0_.local_op().v0(0) + ekin * H0_.ctx().theta_pw(0).real();
         }
