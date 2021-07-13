@@ -46,11 +46,18 @@ class K_point_base // TODO: good name? maybe k_point?
 
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
-    Communicator const& comm_;
+    sddk::Communicator const& comm_;
 
   public:
-    K_point_base(Communicator const& comm__)
-        : comm_(comm__)
+    K_point_base(std::array<double, 3> vk__)
+        : vk_(vk__)
+        , comm_(sddk::Communicator::self())
+    {
+    }
+
+    K_point_base(std::array<double, 3> vk__, sddk::Communicator const& comm__)
+        : vk_(vk__)
+        , comm_(comm__)
     {
     }
 };
@@ -240,8 +247,8 @@ class K_point : public K_point_base
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, T weight__, int id__)
-        : K_point_base(ctx__.comm_band())
+    K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
+        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.comm_band())
         , ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , id_(id__)
