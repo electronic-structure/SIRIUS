@@ -270,8 +270,8 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
     Hamiltonian0<double> H0(potential_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
-        auto hk = H0(*kset_.operator[]<double>(ik));
-        add_ibs_force(kset_.operator[]<double>(ik), hk, ffac, forces_ibs_);
+        auto hk = H0(*kset_[ik]);
+        add_ibs_force(kset_[ik], hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
@@ -353,7 +353,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
             int ik  = kset_.spl_num_kpoints(ikloc);
-            auto kp = kset_.operator[]<double>(ik);
+            auto kp = kset_[ik];
             kp->beta_projectors().prepare();
             if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
@@ -916,7 +916,7 @@ mdarray<double, 2> const& Force::calc_forces_nonloc()
     auto& spl_num_kp = kset_.spl_num_kpoints();
 
     for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-        K_point<double>* kp = kset_.operator[]<double>(spl_num_kp[ikploc]);
+        K_point<double>* kp = kset_[spl_num_kp[ikploc]];
 
         if (ctx_.gamma_point()) {
             add_k_point_contribution<double>(*kp, forces_nonloc_);

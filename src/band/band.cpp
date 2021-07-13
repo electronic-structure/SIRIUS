@@ -149,7 +149,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__.operator[]<double>(ik);
+        auto kp = kset__[ik];
         auto Hk = H0__(*kp);
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             initialize_subspace<double>(Hk, N);
@@ -162,8 +162,8 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__.operator[]<double>(ik)->band_energy(i, ispn, 0);
-                kset__.operator[]<double>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
+                kset__[ik]->band_energy(i, ispn, 0);
+                kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
             }
         }
     }

@@ -396,13 +396,13 @@ void run_tasks(cmd_args const& args)
                 json bnd_k;
                 bnd_k["kpoint"] = std::vector<double>(3, 0);
                 for (int x = 0; x < 3; x++) {
-                    bnd_k["kpoint"][x] = ks.operator[]<double>(ik)->vk()[x];
+                    bnd_k["kpoint"][x] = ks[ik]->vk()[x];
                 }
                 std::vector<double> bnd_e;
 
                 for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
                     for (int j = 0; j < ctx->num_bands(); j++) {
-                        bnd_e.push_back(ks.operator[]<double>(ik)->band_energy(j, ispn));
+                        bnd_e.push_back(ks[ik]->band_energy(j, ispn));
                     }
                 }
                 //ks.get_band_energies(ik, bnd_e.data());

@@ -122,7 +122,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__.operator[]<double>(ik);
+        auto kp = kset__[ik];
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
@@ -150,12 +150,12 @@ Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) 
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             std::printf("ik : %2i, ", ik);
             for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                std::printf("%12.6f", kset__.operator[]<double>(ik)->band_energy(j, 0));
+                std::printf("%12.6f", kset__[ik]->band_energy(j, 0));
             }
             if (ctx_.num_mag_dims() == 1) {
                 std::printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                    std::printf("%12.6f", kset__.operator[]<double>(ik)->band_energy(j, 1));
+                    std::printf("%12.6f", kset__[ik]->band_energy(j, 1));
                 }
             }
             std::printf("\n");
