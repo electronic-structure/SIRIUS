@@ -231,7 +231,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             auto& atom = uc.atom(ia);
             int nmt = atom.mt_aw_basis_size();
 
-            kp_.alm_coeffs_loc().generate<false>(atom, alm);
+            kp_.alm_coeffs_loc().template generate<false>(atom, alm);
             if (what & 1) {
                 H0_.template apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
             }
