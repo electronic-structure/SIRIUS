@@ -559,7 +559,7 @@ void Density::generate_paw_loc_density()
     }
 }
 
-void Density::add_k_point_contribution_rg(K_point<double>* kp__)
+void Density::add_k_point_contribution_rg(K_point* kp__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
@@ -739,7 +739,7 @@ void Density::add_k_point_contribution_rg(K_point<double>* kp__)
 }
 
 template <typename T>
-void Density::add_k_point_contribution_dm(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
 

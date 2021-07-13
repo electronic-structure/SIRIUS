@@ -141,7 +141,7 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
 
 
 template <typename T>
-void Force::add_k_point_contribution(K_point<double>& kpoint, mdarray<double, 2>& forces__) const
+void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
@@ -169,7 +169,7 @@ void Force::add_k_point_contribution(K_point<double>& kpoint, mdarray<double, 2>
     }
 }
 
-void Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
+void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
 {
     dm__.zero();
 
@@ -655,7 +655,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
@@ -755,7 +755,7 @@ mdarray<double, 2> const& Force::calc_forces_usnl()
     return forces_usnl_;
 }
 
-void Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
+void Force::add_ibs_force(K_point* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 
@@ -916,7 +916,7 @@ mdarray<double, 2> const& Force::calc_forces_nonloc()
     auto& spl_num_kp = kset_.spl_num_kpoints();
 
     for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-        K_point<double>* kp = kset_[spl_num_kp[ikploc]];
+        K_point* kp = kset_[spl_num_kp[ikploc]];
 
         if (ctx_.gamma_point()) {
             add_k_point_contribution<double>(*kp, forces_nonloc_);

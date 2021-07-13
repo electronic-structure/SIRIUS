@@ -265,10 +265,10 @@ class Density : public Field4D
         the occupancy operator written in spectral representation.
      */
     template <typename T>
-    void add_k_point_contribution_dm(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
-    void add_k_point_contribution_rg(K_point<double>* kp__);
+    void add_k_point_contribution_rg(K_point* kp__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();

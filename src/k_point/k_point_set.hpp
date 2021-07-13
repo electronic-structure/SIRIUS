@@ -44,7 +44,7 @@ class K_point_set
     Simulation_context& ctx_;
 
     /// List of k-points.
-    std::vector<std::unique_ptr<K_point<double>>> kpoints_;
+    std::vector<std::unique_ptr<K_point>> kpoints_;
 
     /// Split index of k-points.
     splindex<splindex_t::chunk> spl_num_kpoints_;
@@ -153,7 +153,7 @@ class K_point_set
     void add_kpoint(double const* vk__, double weight__)
     {
         int id = static_cast<int>(kpoints_.size());
-        kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__, id)));
+        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__, id)));
     }
 
     /// Add multiple k-points to the set.
@@ -164,13 +164,13 @@ class K_point_set
         }
     }
 
-    inline K_point<double>* operator[](int i)
+    inline K_point* operator[](int i)
     {
         assert(i >= 0 && i < (int)kpoints_.size());
         return kpoints_[i].get();
     }
 
-    inline K_point<double>* operator[](int i) const
+    inline K_point* operator[](int i) const
     {
         assert(i >= 0 && i < (int)kpoints_.size());
 

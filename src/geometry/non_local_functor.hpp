@@ -47,7 +47,7 @@ class Non_local_functor
     }
 
     /// Collect summation result in an array
-    void add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2>& collect_res__);
+    void add_k_point_contribution(K_point& kpoint__, sddk::mdarray<double, 2>& collect_res__);
 };
 }
 

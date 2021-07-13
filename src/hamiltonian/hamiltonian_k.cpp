@@ -36,7 +36,7 @@
 namespace sirius {
 
 template <typename T>
-Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__) // TODO: move kinetic part from local_op to here
+Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point& kp__) // TODO: move kinetic part from local_op to here
     : H0_(H0__)
     , kp_(kp__)
 {
@@ -231,7 +231,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             auto& atom = uc.atom(ia);
             int nmt = atom.mt_aw_basis_size();
 
-            kp_.alm_coeffs_loc().template generate<false>(atom, alm);
+            kp_.alm_coeffs_loc().generate<false>(atom, alm);
             if (what & 1) {
                 H0_.template apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
             }
@@ -773,7 +773,16 @@ void Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_func
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        H0().local_op().apply_h(kp().spfft_transform(), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+#ifdef USE_FP32
+        if (std::is_same<T, float>::value) {
+            H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transformFloat()),
+                                    kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+        } else {
+#endif
+            H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+#ifdef USE_FP32
+        }
+#endif
     }
 
     t1 += omp_get_wtime();
@@ -869,8 +878,15 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
-
+#ifdef USE_FP32
+        if(std::is_same<T, float>::value) {
+            H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transformFloat()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+        } else {
+#endif
+            H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+#ifdef USE_FP32
+        }
+#endif
         // if (ctx.control().print_checksum_) {
         //     if (hphi__) {
         //         hphi__->print_checksum(pu, "hloc_phi", N__, n__);
@@ -1401,7 +1417,7 @@ void Hamiltonian_k<T>::apply_b(Wave_functions<T>& psi__, std::vector<Wave_functi
 
     assert(bpsi__.size() == 2 || bpsi__.size() == 3);
 
-    H0().local_op().apply_b(kp().spfft_transform(), 0, H0().ctx().num_fv_states(), psi__, bpsi__);
+    H0().local_op().apply_b(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), 0, H0().ctx().num_fv_states(), psi__, bpsi__);
     H0().apply_bmt(psi__, bpsi__);
 
     /* copy Bz|\psi> to -Bz|\psi> */
