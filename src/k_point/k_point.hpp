@@ -31,6 +31,13 @@
 
 namespace sirius {
 
+class K_point_base // TODO: good name? maybe k_point?
+{
+  protected:
+    std::array<double, 3> vk_;
+ 
+};
+
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors"
