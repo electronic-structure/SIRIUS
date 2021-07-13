@@ -26,8 +26,7 @@
 
 namespace sirius {
 
-template <typename T>
-void K_point<T>::generate_gklo_basis()
+void K_point::generate_gklo_basis()
 {
     /* find local number of row G+k vectors */
     splindex<splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
@@ -108,8 +107,4 @@ void K_point<T>::generate_gklo_basis()
     }
 }
 
-template void K_point<double>::generate_gklo_basis();
-#ifdef USE_FP32
-template void K_point<float>::generate_gklo_basis();
-#endif
 } // namespace sirius

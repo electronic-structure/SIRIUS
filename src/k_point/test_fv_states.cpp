@@ -26,8 +26,7 @@
 
 namespace sirius {
 
-template <typename T>
-void K_point<T>::test_fv_states()
+void K_point::test_fv_states()
 {
     PROFILE("sirius::K_point::test_fv_states");
 
@@ -93,10 +92,5 @@ void K_point<T>::test_fv_states()
     //        vk_[0], vk_[1], vk_[2], max_err);
     //}
 }
-/*
-template void K_point<double>::test_fv_states();
-#ifdef USE_FP32
-template void K_point<double>::test_fv_states();
-#endif
-*/
+
 } // namespace sirius

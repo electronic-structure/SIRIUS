@@ -29,13 +29,11 @@
 #include "beta_projectors/beta_projectors.hpp"
 #include "wave_functions.hpp"
 
-
 namespace sirius {
 
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors" */
-template <typename T>
 class K_point
 {
   private:
@@ -49,10 +47,10 @@ class K_point
     int id_{-1};
 
     /// Weight of k-point.
-    T weight_{1.0};
+    double weight_{1.0};
 
     /// Fractional k-point coordinates.
-    vector3d<T> vk_;
+    vector3d<double> vk_;
 
     /// List of G-vectors with |G+k| < cutoff.
     std::unique_ptr<Gvec> gkvec_;
@@ -60,54 +58,58 @@ class K_point
     /// G-vector distribution for the FFT transformation.
     std::unique_ptr<Gvec_partition> gkvec_partition_;
 
-    std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
+    std::unique_ptr<spfft::Transform> spfft_transform_;
 
+    /// A float type fft transform to supprt fp32 calculation
+#ifdef USE_FP32
+    std::unique_ptr<spfft::TransformFloat> spfft_transformFloat_;
+#endif
     /// First-variational eigen values
-    std::vector<T> fv_eigen_values_;
+    std::vector<double> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
-    dmatrix<std::complex<T>> fv_eigen_vectors_;
+    dmatrix<double_complex> fv_eigen_vectors_;
 
     /// First-variational eigen vectors, distributed in slabs.
-    std::unique_ptr<Wave_functions<T>> fv_eigen_vectors_slab_;
+    std::unique_ptr<Wave_functions<double>> fv_eigen_vectors_slab_;
 
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
-    std::unique_ptr<Wave_functions<T>> singular_components_;
+    std::unique_ptr<Wave_functions<double>> singular_components_;
 
     /// Second-variational eigen vectors.
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
      *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
      *  matrix in case of general non-collinear magnetism. */
-    dmatrix<std::complex<T>> sv_eigen_vectors_[2];
+    dmatrix<double_complex> sv_eigen_vectors_[2];
 
     /// Full-diagonalization eigen vectors.
-    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
+    mdarray<double_complex, 2> fd_eigen_vectors_;
 
     /// First-variational states.
-    std::unique_ptr<Wave_functions<T>> fv_states_{nullptr};
+    std::unique_ptr<Wave_functions<double>> fv_states_{nullptr};
 
     /// Two-component (spinor) wave functions describing the bands.
-    std::shared_ptr<Wave_functions<T>> spinor_wave_functions_{nullptr};
+    std::shared_ptr<Wave_functions<double>> spinor_wave_functions_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
     /** This wave-functions are not necessarily equal to atomic wave-functions. */
-    std::unique_ptr<Wave_functions<T>> wave_functions_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> wave_functions_hub_{nullptr};
 
     /// Two-component (spinor) wave functions used to compute the Hubbard corrections.
     /** This wave-functions are not necessarily equal to atomic wave-functions. S-operator is applied to this WFs. */
-    std::unique_ptr<Wave_functions<T>> wave_functions_S_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> wave_functions_S_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals used to compute the Hubbard wave functions
-    std::unique_ptr<Wave_functions<T>> atomic_wave_functions_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> atomic_wave_functions_hub_{nullptr};
 
     /// Two-component (spinor) atomic orbitals (with the S operator applied for uspp) used to compute the Hubbard wave functions
-    std::unique_ptr<Wave_functions<T>> atomic_wave_functions_S_hub_{nullptr};
+    std::unique_ptr<Wave_functions<double>> atomic_wave_functions_S_hub_{nullptr};
 
     /// Band occupation numbers.
-    sddk::mdarray<T, 2> band_occupancies_;
+    sddk::mdarray<double, 2> band_occupancies_;
 
     /// Band energies.
-    sddk::mdarray<T, 2> band_energies_;
+    sddk::mdarray<double, 2> band_energies_;
 
     /// LAPW matching coefficients for the row G+k vectors.
     /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
@@ -174,18 +176,18 @@ class K_point
     int num_ranks_row_;
 
     /// Beta projectors for a local set of G+k vectors.
-    std::unique_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
+    std::unique_ptr<Beta_projectors<double>> beta_projectors_{nullptr};
 
     /// Beta projectors for row G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
-    std::unique_ptr<Beta_projectors<T>> beta_projectors_row_{nullptr};
+    std::unique_ptr<Beta_projectors<double>> beta_projectors_row_{nullptr};
 
     /// Beta projectors for column G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
-    std::unique_ptr<Beta_projectors<T>> beta_projectors_col_{nullptr};
+    std::unique_ptr<Beta_projectors<double>> beta_projectors_col_{nullptr};
 
     /// Preconditioner matrix for Chebyshev solver.
-    mdarray<std::complex<T>, 3> p_mtrx_;
+    mdarray<double_complex, 3> p_mtrx_;
 
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
@@ -218,7 +220,7 @@ class K_point
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, T weight__, int id__)
+    K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
         : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , id_(id__)
@@ -233,9 +235,9 @@ class K_point
             vk_[x] = vk__[x];
         }
 
-        band_occupancies_ = mdarray<T, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_occupancies_.zero();
-        band_energies_ = mdarray<T, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_energies_.zero();
 
         num_ranks_row_ = comm_row_.size();
@@ -330,10 +332,10 @@ class K_point
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
                                         std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__);
+                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<double>& wf__);
 
-    void compute_gradient_wave_functions(Wave_functions<T>& phi, const int starting_position_i, const int num_wf,
-                                         Wave_functions<T>& dphi, const int starting_position_j, const int direction);
+    void compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
+                                         Wave_functions<double>& dphi, const int starting_position_j, const int direction);
 
     void generate_hubbard_orbitals();
 
@@ -358,8 +360,8 @@ class K_point
         }
     }
 
-    void orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
-                                        Wave_functions<T>& phi_hub__, Wave_functions<T>& sphi_hub__);
+    void orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
+                                        Wave_functions<double>& phi_hub__, Wave_functions<double>& sphi_hub__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
@@ -371,10 +373,10 @@ class K_point
     //== void load_wave_functions(int id);
 
     /// Collect distributed first-variational vectors into a global array.
-    void get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
+    void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec__) const;
 
     /// Collect distributed second-variational vectors into a global array.
-    void get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
+    void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec__) const
     {
         assert((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
         assert((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
@@ -428,118 +430,118 @@ class K_point
     }
 
     /// Get band energy.
-    inline T band_energy(int j__, int ispn__) const
+    inline double band_energy(int j__, int ispn__) const
     {
         return band_energies_(j__, get_ispn(ispn__));
     }
 
     /// Set band energy.
-    inline void band_energy(int j__, int ispn__, T e__)
+    inline void band_energy(int j__, int ispn__, double e__)
     {
         band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
     /// Get band occupancy.
-    inline T band_occupancy(int j__, int ispn__) const
+    inline double band_occupancy(int j__, int ispn__) const
     {
         return band_occupancies_(j__, get_ispn(ispn__));
     }
 
     /// Set band occupancy.
-    inline void band_occupancy(int j__, int ispn__, T occ__)
+    inline void band_occupancy(int j__, int ispn__, double occ__)
     {
         band_occupancies_(j__, get_ispn(ispn__)) = occ__;
     }
 
-    inline T fv_eigen_value(int i) const
+    inline double fv_eigen_value(int i) const
     {
         return fv_eigen_values_[i];
     }
 
-    void set_fv_eigen_values(T* eval)
+    void set_fv_eigen_values(double* eval)
     {
-        std::memcpy(&fv_eigen_values_[0], eval, ctx_.num_fv_states() * sizeof(T));
+        std::memcpy(&fv_eigen_values_[0], eval, ctx_.num_fv_states() * sizeof(double));
     }
 
     /// Return weight of k-point.
-    inline T weight() const
+    inline double weight() const
     {
         return weight_;
     }
 
-    inline Wave_functions<T>& fv_states()
+    inline Wave_functions<double>& fv_states()
     {
         assert(fv_states_ != nullptr);
         return *fv_states_;
     }
 
-    inline Wave_functions<T>& spinor_wave_functions()
+    inline Wave_functions<double>& spinor_wave_functions()
     {
         assert(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline std::shared_ptr<Wave_functions<T>> spinor_wave_functions_ptr()
+    inline std::shared_ptr<Wave_functions<double>> spinor_wave_functions_ptr()
     {
         return spinor_wave_functions_;
     }
 
    // the S operator is applied on these functions
-    inline Wave_functions<T> const& wave_functions_S_hub() const
+    inline Wave_functions<double> const& wave_functions_S_hub() const
     {
         /* the S operator is applied on these functions */
         assert(wave_functions_S_hub_ != nullptr);
         return *wave_functions_S_hub_;
     }
 
-    inline Wave_functions<T>& wave_functions_S_hub()
+    inline Wave_functions<double>& wave_functions_S_hub()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_S_hub());
     }
 
-    inline Wave_functions<T> const& wave_functions_hub() const
+    inline Wave_functions<double> const& wave_functions_hub() const
     {
         assert(wave_functions_hub_!= nullptr);
         return *wave_functions_hub_;
     }
 
-    inline Wave_functions<T>& wave_functions_hub()
+    inline Wave_functions<double>& wave_functions_hub()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).wave_functions_hub());
     }
 
     /// Return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
-    inline Wave_functions<T> const& atomic_wave_functions_S_hub() const
+    inline Wave_functions<double> const& atomic_wave_functions_S_hub() const
     {
         assert(atomic_wave_functions_S_hub_ != nullptr);
         return *atomic_wave_functions_S_hub_;
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
-    inline Wave_functions<T>& atomic_wave_functions_S_hub()
+    inline Wave_functions<double>& atomic_wave_functions_S_hub()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_hub());
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
-    inline Wave_functions<T> const& atomic_wave_functions_hub() const
+    inline Wave_functions<double> const& atomic_wave_functions_hub() const
     {
         assert(atomic_wave_functions_hub_ != nullptr);
         return *atomic_wave_functions_hub_;
     }
 
     /// return the atomic wave functions used to compute the hubbard wave functions.
-    inline Wave_functions<T>& atomic_wave_functions_hub()
+    inline Wave_functions<double>& atomic_wave_functions_hub()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
+        return const_cast<Wave_functions<double>&>(static_cast<K_point const&>(*this).atomic_wave_functions_hub());
     }
 
-    inline Wave_functions<T>& singular_components()
+    inline Wave_functions<double>& singular_components()
     {
         return *singular_components_;
     }
 
-    inline vector3d<T> vk() const
+    inline vector3d<double> vk() const
     {
         return vk_;
     }
@@ -697,29 +699,29 @@ class K_point
         return atom_lo_rows_[ia][i];
     }
 
-    inline dmatrix<std::complex<T>>& fv_eigen_vectors()
+    inline dmatrix<double_complex>& fv_eigen_vectors()
     {
         return fv_eigen_vectors_;
     }
 
-    inline Wave_functions<T>& fv_eigen_vectors_slab()
+    inline Wave_functions<double>& fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
     }
 
-    inline dmatrix<std::complex<T>>& sv_eigen_vectors(int ispn)
+    inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
     {
         return sv_eigen_vectors_[ispn];
     }
 
-    inline mdarray<std::complex<T>, 2>& fd_eigen_vectors()
+    inline mdarray<double_complex, 2>& fd_eigen_vectors()
     {
         return fd_eigen_vectors_;
     }
 
     void bypass_sv()
     {
-        std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(T));
+        std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(double));
     }
 
     inline Gvec const& gkvec() const
@@ -762,35 +764,35 @@ class K_point
         return comm_col_;
     }
 
-    inline std::complex<T> p_mtrx(int xi1, int xi2, int iat) const
+    inline double_complex p_mtrx(int xi1, int xi2, int iat) const
     {
         return p_mtrx_(xi1, xi2, iat);
     }
 
-    inline mdarray<std::complex<T>, 3>& p_mtrx()
+    inline mdarray<double_complex, 3>& p_mtrx()
     {
         return p_mtrx_;
     }
 
-    Beta_projectors<T>& beta_projectors()
+    Beta_projectors<double>& beta_projectors()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<T> const& beta_projectors() const
+    Beta_projectors<double> const& beta_projectors() const
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<T>& beta_projectors_row()
+    Beta_projectors<double>& beta_projectors_row()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_row_;
     }
 
-    Beta_projectors<T>& beta_projectors_col()
+    Beta_projectors<double>& beta_projectors_col()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_col_;
@@ -813,16 +815,27 @@ class K_point
         }
     }
 
-    spfft_transform_type<T>& spfft_transform()
+    spfft::Transform& spfft_transform()
     {
         return *spfft_transform_;
     }
 
-    spfft_transform_type<T> const& spfft_transform() const
+    spfft::Transform const& spfft_transform() const
     {
         return *spfft_transform_;
     }
 
+#ifdef USE_FP32
+    spfft::TransformFloat& spfft_transformFloat()
+    {
+        return *spfft_transformFloat_;
+    }
+
+    spfft::TransformFloat const& spfft_transformFloat() const
+    {
+        return *spfft_transformFloat_;
+    }
+#endif
 };
 
 } // namespace sirius
