@@ -34,6 +34,7 @@ namespace sirius {
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors" */
+template <typename T>
 class K_point
 {
   private:
