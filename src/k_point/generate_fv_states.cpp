@@ -127,4 +127,7 @@ void K_point<T>::generate_fv_states()
         fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
     }
 }
+
+template void K_point<double>::generate_fv_states();
+
 } // namespace sirius

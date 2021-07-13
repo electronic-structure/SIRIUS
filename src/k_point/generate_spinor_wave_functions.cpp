@@ -90,4 +90,6 @@ void K_point<T>::generate_spinor_wave_functions()
     }
 }
 
+template void K_point<double>::generate_spinor_wave_functions();
+
 } // namespace sirius

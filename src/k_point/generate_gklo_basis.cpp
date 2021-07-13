@@ -109,4 +109,6 @@ K_point<T>::generate_gklo_basis()
     }
 }
 
+template void K_point<double>::generate_gklo_basis();
+
 } // namespace sirius

@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void init_wf(K_point* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
+void init_wf(K_point<double>* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -169,7 +169,7 @@ void test_davidson(cmd_args const& args__)
 
     for (int r = 0; r < 2; r++) {
         double vk[] = {0.1, 0.1, 0.1};
-        K_point kp(ctx, vk, 1.0, 0);
+        K_point<double> kp(ctx, vk, 1.0, 0);
         kp.initialize();
         std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
         for (int i = 0; i < ctx.num_bands(); i++) {

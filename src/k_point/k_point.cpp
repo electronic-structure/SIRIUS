@@ -1061,7 +1061,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = geometry3d::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
+        auto vs = geometry3d::spherical_coordinates(this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
@@ -1129,7 +1129,7 @@ K_point<T>::compute_gradient_wave_functions(Wave_functions<double>& phi, const i
     std::vector<double_complex> qalpha(this->num_gkvec_loc());
 
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-        auto G = this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc);
+        auto G = this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc);
 
         qalpha[igk_loc] = double_complex(0.0, -G[direction]);
     }
@@ -1144,5 +1144,7 @@ K_point<T>::compute_gradient_wave_functions(Wave_functions<double>& phi, const i
         }
     }
 }
+
+template class K_point<double>;
 
 }
