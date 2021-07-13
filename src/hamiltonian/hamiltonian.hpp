@@ -462,10 +462,6 @@ Hamiltonian0<T>::operator()(K_point& kp__)
     return Hamiltonian_k<T>(*this, kp__);
 }
 
-template Hamiltonian_k<double> Hamiltonian0<double>::operator()(K_point& kp__);
-#ifdef USE_FP32
-template Hamiltonian_k<float> Hamiltonian0<float>::operator()(K_point& kp__);
-#endif
 }
 
 #endif

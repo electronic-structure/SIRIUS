@@ -232,15 +232,15 @@ void
 Hamiltonian0<double>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__, sddk::mdarray<double_complex, 2>& alm__,
                                                          sddk::mdarray<double_complex, 2>& halm__) const;
 
-
-
 #ifdef USE_FP32
+/* TODO:
 template class Hamiltonian0<float>;
 
 template
 void
 Hamiltonian0<float>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__, sddk::mdarray<std::complex<float>, 2>& alm__,
                                                         sddk::mdarray<std::complex<float>, 2>& halm__) const;
-#endif
+*/
+ #endif
 
 } // namespace
