@@ -28,7 +28,7 @@
 namespace sirius {
 
 template<typename T>
-void Non_local_functor<T>::add_k_point_contribution(K_point& kpoint__, sddk::mdarray<double, 2>& collect_res__)
+void Non_local_functor<T>::add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2>& collect_res__)
 {
     PROFILE("sirius::Non_local_functor::add_k_point");
 
@@ -166,9 +166,9 @@ void Non_local_functor<T>::add_k_point_contribution(K_point& kpoint__, sddk::mda
 }
 
 template void
-Non_local_functor<double>::add_k_point_contribution(K_point &kpoint__, sddk::mdarray<double, 2> &collect_res__);
+Non_local_functor<double>::add_k_point_contribution(K_point<double> &kpoint__, sddk::mdarray<double, 2> &collect_res__);
 
 template void
-Non_local_functor<double_complex>::add_k_point_contribution(K_point &kpoint__, sddk::mdarray<double, 2> &collect_res__);
+Non_local_functor<double_complex>::add_k_point_contribution(K_point<double> &kpoint__, sddk::mdarray<double, 2> &collect_res__);
 
 }
