@@ -1559,20 +1559,20 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
 #ifdef SIRIUS_NLCGLIB
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
     gs.initial_state();
 
-    double rho_tol = inp.density_tol_;
+    double rho_tol = inp.density_tol();
     if (scf_density_tol__) {
         rho_tol = *scf_density_tol__;
     }
 
-    double etol = inp.energy_tol_;
+    double etol = inp.energy_tol();
     if (scf_energy_tol__) {
         etol = *scf_energy_tol__;
     }
 
-    int niter = inp.num_dft_iter_;
+    int niter = inp.num_dft_iter();
     if (scf_ninit__) {
         niter = *scf_ninit__;
     }
@@ -1588,15 +1588,15 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
 
     auto& kset = get_ks(ks_handler__);
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+    std::string smear = ctx.cfg().parameters().smearing();
+    std::string pu    = ctx.cfg().control().processing_unit();
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -6024,15 +6024,15 @@ void sirius_nlcg(void* const* handler__,
     auto& kset = get_ks(ks_handler__);
     auto& ctx = kset.ctx();
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+    std::string smear = ctx.cfg().parameters().smearing();
+    std::string pu    = ctx.cfg().control().processing_unit();
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -6156,7 +6156,7 @@ void sirius_nlcg_params(void* const* handler__,
 
     if(pu.compare("none") == 0) {
       // use same processing unit as SIRIUS
-      pu = ctx.control().processing_unit_;
+      pu = ctx.cfg().control().processing_unit();
     }
 
     nlcglib::nlcg_info info;
