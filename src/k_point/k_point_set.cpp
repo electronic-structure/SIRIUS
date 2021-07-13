@@ -135,6 +135,9 @@ void K_point_set::initialize(std::vector<int> const& counts)
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+#ifdef USE_FP32
+        kpoints_float_[spl_num_kpoints_[ikloc]]->initialize();
+#endif
     }
 
     if (ctx_.verbosity() > 0) {
@@ -167,7 +170,15 @@ void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    energy_fermi_ = std::max(energy_fermi_, kpoints_[ik]->band_energy(j, ispn));
+#ifdef USE_FP32
+                    if (access_fp64) {
+#endif
+                        energy_fermi_ = std::max(energy_fermi_, kpoints_[ik]->band_energy(j, ispn));
+#ifdef USE_FP32
+                    } else {
+                        energy_fermi_ = std::max(energy_fermi_, static_cast<double>(kpoints_float_[ik]->band_energy(j, ispn)));
+                    }
+#endif
                 }
             }
         }
@@ -176,7 +187,15 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp parallel for
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    kpoints_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
+#ifdef USE_FP32
+                    if (access_fp64) {
+#endif
+                        kpoints_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
+#ifdef USE_FP32
+                    } else {
+                        kpoints_float_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
+                    }
+#endif
                 }
             }
         }
@@ -198,8 +217,17 @@ void K_point_set::find_band_occupancies()
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            emin = std::min(emin, kpoints_[ik]->band_energy(0, ispn));
-            emax = std::max(emax, kpoints_[ik]->band_energy(ctx_.num_bands() - 1, ispn));
+#ifdef USE_FP32
+            if (access_fp64) {
+#endif
+                emin = std::min(emin, kpoints_[ik]->band_energy(0, ispn));
+                emax = std::max(emax, kpoints_[ik]->band_energy(ctx_.num_bands() - 1, ispn));
+#ifdef USE_FP32
+            } else {
+                emin = std::min(emin, static_cast<double>(kpoints_float_[ik]->band_energy(0, ispn)));
+                emax = std::max(emax, static_cast<double>(kpoints_float_[ik]->band_energy(ctx_.num_bands() - 1, ispn)));
+            }
+#endif
         }
     }
     comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
@@ -225,7 +253,15 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
-                    tmp += f(energy_fermi_ - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+#ifdef USE_FP32
+                    if (access_fp64) {
+#endif
+                        tmp += f(energy_fermi_ - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+#ifdef USE_FP32
+                    } else {
+                        tmp += f(energy_fermi_ - kpoints_float_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+                    }
+#endif
                 }
             }
             ne += tmp * kpoints_[ik]->weight();
@@ -250,8 +286,17 @@ void K_point_set::find_band_occupancies()
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                kpoints_[ik]->band_occupancy(j, ispn, o);
+#ifdef USE_FP32
+                if (access_fp64) {
+#endif
+                    auto o = f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
+                    kpoints_[ik]->band_occupancy(j, ispn, o);
+#ifdef USE_FP32
+                } else {
+                    auto o = f(energy_fermi_ - kpoints_float_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
+                    kpoints_float_[ik]->band_occupancy(j, ispn, o);
+                }
+#endif
             }
         }
     }
@@ -273,8 +318,17 @@ void K_point_set::find_band_occupancies()
                 eminmax.second = std::numeric_limits<double>::lowest();
 
                 for (int ik = 0; ik < num_kpoints(); ik++) {
-                    eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
-                    eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
+#ifdef USE_FP32
+                    if (access_fp64) {
+#endif
+                        eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
+                        eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
+#ifdef USE_FP32
+                    } else {
+                        eminmax.first  = std::min(eminmax.first, kpoints_float_[ik]->band_energy(j, ispn));
+                        eminmax.second = std::max(eminmax.second, kpoints_float_[ik]->band_energy(j, ispn));
+                    }
+#endif
                 }
 
                 eband[j + ispn * ctx_.num_bands()] = eminmax;
@@ -307,7 +361,15 @@ double K_point_set::valence_eval_sum() const
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
+#ifdef USE_FP32
+                if (access_fp64) {
+#endif
+                    tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
+#ifdef USE_FP32
+                } else {
+                    tmp += kpoints_float_[ik]->band_energy(splb[j], ispn) * kpoints_float_[ik]->band_occupancy(splb[j], ispn);
+                }
+#endif
             }
         }
         eval_sum += kp->weight() * tmp;
@@ -341,7 +403,15 @@ double K_point_set::entropy_sum() const
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
+#ifdef USE_FP32
+                if (access_fp64) {
+#endif
+                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
+#ifdef USE_FP32
+                } else {
+                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kpoints_float_[ik]->band_energy(splb[j], ispn));
+                }
+#endif
             }
         }
         s_sum += kp->weight() * tmp;
@@ -401,7 +471,15 @@ void K_point_set::save(std::string const& name__) const
     for (int ik = 0; ik < num_kpoints(); ik++) {
         /* check if this ranks stores the k-point */
         if (ctx_.comm_k().rank() == spl_num_kpoints_.local_rank(ik)) {
-            kpoints_[ik]->save(name__, ik);
+#ifdef USE_FP32
+            if (access_fp64) {
+#endif
+                kpoints_[ik]->save(name__, ik);
+#ifdef USE_FP32
+            } else {
+                kpoints_float_[ik]->save(name__, ik);
+            }
+#endif
         }
         /* wait for all */
         ctx_.comm().barrier();
