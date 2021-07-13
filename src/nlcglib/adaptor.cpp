@@ -83,7 +83,7 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
     cphis.resize(nk);
     for (int i = 0; i < nk; ++i) {
         auto global_kpoint_index = kset.spl_num_kpoints(i);
-        auto& kp = *kset[global_kpoint_index];
+        auto& kp = *kset.get<double>(global_kpoint_index);
         int num_wf                        = ctx.num_bands();
         sddk::memory_t preferred_memory_t = ctx.preferred_memory_t();
         int num_spins                     = ctx.num_spins();
@@ -135,7 +135,7 @@ void Energy::compute()
     auto H0 = Hamiltonian0(potential);
     // apply Hamiltonian
     for (int i = 0; i < nk; ++i) {
-        auto& kp = *kset[kset.spl_num_kpoints(i)];
+        auto& kp = *kset.get<double>(kset.spl_num_kpoints(i));
         std::vector<double> band_energies(num_bands);
 
         if (is_device_memory(ctx.preferred_memory_t())) {
@@ -208,7 +208,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_fn()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp = *kset[gidk];
+        auto& kp = *kset.get<double>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> fn_local(nbands);
             for (int i = 0; i < nbands; ++i) {
@@ -235,7 +235,7 @@ void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vec
         // global k-point index
         int gidk= keys[iloc].first;
         int ispn = keys[iloc].second;
-        auto& kp  = *kset[gidk];
+        auto& kp  = *kset.get<double>(gidk);
         const auto& fn_loc = fn[iloc];
         assert(static_cast<int>(fn_loc.size()) == nbands);
         for (int i = 0; i < nbands; ++i) {
@@ -256,7 +256,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_ek()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp  = *kset[gidk];
+        auto& kp  = *kset.get<double>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> ek_local(nbands);
             for (int i = 0; i < nbands; ++i) {
@@ -278,7 +278,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_gkvec_ekin()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp  = *kset[gidk];
+        auto& kp  = *kset.get<double>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             int gkvec_count = kp.gkvec().count();
             auto& gkvec = kp.gkvec();
@@ -302,7 +302,7 @@ std::shared_ptr<nlcglib::ScalarBaseZ> Energy::get_kpoint_weights()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp  = *kset[gidk];
+        auto& kp  = *kset.get<double>(gidk);
 
         // also return weights for every spin index
         for (int ispn = 0; ispn < ns; ++ispn) {

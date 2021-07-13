@@ -1184,10 +1184,10 @@ void Density::generate_valence(K_point_set const& ks__)
     double wt{0};
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
-        wt += ks__[ik]->weight();
+        wt += ks__.get<double>(ik)->weight();
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
+                occ_val += ks__.get<double>(ik)->weight() * ks__.get<double>(ik)->band_occupancy(j, ispn);
             }
         }
     }
@@ -1224,7 +1224,7 @@ void Density::generate_valence(K_point_set const& ks__)
     /* start the main loop over k-points */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = ks__.spl_num_kpoints(ikloc);
-        auto kp = ks__[ik];
+        auto kp = ks__.get<double>(ik);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);

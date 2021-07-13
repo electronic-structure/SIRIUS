@@ -53,7 +53,7 @@ void Stress::calc_stress_nonloc_aux()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
         if (is_device_memory(ctx_.preferred_memory_t())) {
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -150,7 +150,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();
         int ik = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
 
         kp->beta_projectors().prepare();
 
@@ -633,7 +633,7 @@ matrix3d<double> Stress::calc_stress_kin()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
 
         double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
         fact *=  kp->weight();
