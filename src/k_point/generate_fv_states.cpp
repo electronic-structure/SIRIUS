@@ -26,7 +26,8 @@
 
 namespace sirius {
 
-void K_point::generate_fv_states()
+template <typename T>
+void K_point<T>::generate_fv_states()
 {
     PROFILE("sirius::K_point::generate_fv_states");
 

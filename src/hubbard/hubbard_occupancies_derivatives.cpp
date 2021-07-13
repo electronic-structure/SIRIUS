@@ -38,7 +38,7 @@ namespace sirius {
 /* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
  * compared to atom_id displacement. we can also use lambda */
 void
-Hubbard::apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
+Hubbard::apply_dS(K_point<double>& kp, Q_operator& q_op, Beta_projectors_gradient& bp_grad, const int atom_id, const int dir,
                   Wave_functions<double>& phi, Wave_functions<double>& dphi)
 {
     // compute d S/ dr^I_a |phi> and add to dphi
@@ -78,7 +78,7 @@ Hubbard::apply_dS(K_point& kp, Q_operator& q_op, Beta_projectors_gradient& bp_gr
 }
 
 void
-Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 6>& dn__)
+Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator& q_op, sddk::mdarray<double_complex, 6>& dn__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies_derivatives");
 
@@ -412,7 +412,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
 }
 
 void
-Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op__, mdarray<double_complex, 5>& dn__)
+Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operator& q_op__, mdarray<double_complex, 5>& dn__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies_stress_derivatives");
 
@@ -595,7 +595,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
 }
 
 void
-Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions<double>& dphi__, sddk::mdarray<double, 2> const& rlm_g__,
+Hubbard::wavefunctions_strain_deriv(K_point<double>& kp__, Wave_functions<double>& dphi__, sddk::mdarray<double, 2> const& rlm_g__,
                                     sddk::mdarray<double, 3> const& rlm_dg__, int nu__, int mu__)
 {
     PROFILE("sirius::Hubbard::wavefunctions_strain_deriv");
@@ -661,7 +661,7 @@ Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions<double>& dphi_
 }
 
 void
-Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& psi_s_phi__, Wave_functions<double>& dphi__,
+Hubbard::compute_occupancies(K_point<double>& kp__, dmatrix<double_complex>& psi_s_phi__, Wave_functions<double>& dphi__,
                              sddk::mdarray<double_complex, 5>& dn__, const int index__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies");

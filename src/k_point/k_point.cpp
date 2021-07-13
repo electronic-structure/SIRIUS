@@ -29,8 +29,9 @@
 
 namespace sirius {
 
+template <typename T>
 void
-K_point::initialize()
+K_point<T>::initialize()
 {
     PROFILE("sirius::K_point::initialize");
 
@@ -185,8 +186,9 @@ K_point::initialize()
     update();
 }
 
+template <typename T>
 void
-K_point::generate_hubbard_orbitals()
+K_point<T>::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
@@ -295,8 +297,9 @@ K_point::generate_hubbard_orbitals()
     }
 }
 
+template <typename T>
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
+K_point<T>::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
                                         Wave_functions<double>& phi_hub__, Wave_functions<double>& sphi_hub__)
 {
     int nwfu = phi__.num_wf();
@@ -377,7 +380,9 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
     }
 }
 
-void K_point::generate_gkvec(double gk_cutoff__)
+template <typename T>
+void
+K_point<T>::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
@@ -418,7 +423,9 @@ void K_point::generate_gkvec(double gk_cutoff__)
         gv.at(memory_t::host))));
 }
 
-void K_point::update()
+template <typename T>
+void
+K_point<T>::update()
 {
     PROFILE("sirius::K_point::update");
 
@@ -495,7 +502,9 @@ void K_point::update()
 
 }
 
-void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
+template <typename T>
+void
+K_point<T>::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
 {
     assert((int) fv_evec__.size(0) >= gklo_basis_size());
     assert((int) fv_evec__.size(1) == ctx_.num_fv_states());
@@ -735,7 +744,9 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
 //==     }
 //== }
 
-void K_point::test_spinor_wave_functions(int use_fft)
+template <typename T>
+void
+K_point<T>::test_spinor_wave_functions(int use_fft)
 {
         STOP();
 
@@ -876,7 +887,9 @@ void K_point::test_spinor_wave_functions(int use_fft)
   /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/mt
   \endverbatim
 */
-void K_point::save(std::string const& name__, int id__) const
+template <typename T>
+void
+K_point<T>::save(std::string const& name__, int id__) const
 {
     /* rank 0 creates placeholders in the HDF5 file */
     if (comm().rank() == 0) {
@@ -937,7 +950,9 @@ void K_point::save(std::string const& name__, int id__) const
     }
 }
 
-void K_point::load(HDF5_tree h5in, int id)
+template <typename T>
+void
+K_point<T>::load(HDF5_tree h5in, int id)
 {
     STOP();
     //== band_energies_.resize(ctx_.num_bands());
@@ -1008,8 +1023,9 @@ void K_point::load(HDF5_tree h5in, int id)
 //==     }
 //== }
 
+template <typename T>
 void
-K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
+K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
                                         std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
                                         Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<double>& wf__)
 {
@@ -1105,8 +1121,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
     }
 }
 
+template <typename T>
 void
-K_point::compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
+K_point<T>::compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
                                          Wave_functions<double>& dphi, const int starting_position_j, const int direction)
 {
     std::vector<double_complex> qalpha(this->num_gkvec_loc());

@@ -33,7 +33,10 @@ namespace sirius {
 
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
- *  \image html fv_eigen_vectors.png "First-variational eigen vectors" */
+ *  \image html fv_eigen_vectors.png "First-variational eigen vectors"
+ *
+ *   \tparam T  Precision of the wave-functions (float or double).
+ */
 template <typename T>
 class K_point
 {

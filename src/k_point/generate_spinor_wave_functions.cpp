@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-void K_point::generate_spinor_wave_functions()
+template <typename T>
+void K_point<T>::generate_spinor_wave_functions()
 {
     PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
