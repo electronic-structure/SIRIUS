@@ -171,11 +171,12 @@ inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
 }
 
 /// Output CPU data from the CPU buffer of SpFFT.
-inline void spfft_output(spfft::Transform& spfft__, double* data__)
+template <typename T>
+inline void spfft_output(spfft_transform_type<T>& spfft__, T* data__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
-            auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<std::complex<T>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 data__[i] = std::real(ptr[i]);
@@ -183,7 +184,7 @@ inline void spfft_output(spfft::Transform& spfft__, double* data__)
             break;
         }
         case SPFFT_TRANS_R2C: {
-            auto ptr = reinterpret_cast<double*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<T*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 data__[i] = ptr[i];
@@ -196,11 +197,12 @@ inline void spfft_output(spfft::Transform& spfft__, double* data__)
     }
 }
 
-inline void spfft_output(spfft::Transform& spfft__, double_complex* data__)
+template <typename T>
+inline void spfft_output(spfft_transform_type<T>& spfft__, std::complex<T>* data__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
-            auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<std::complex<T>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 data__[i] = ptr[i];
@@ -216,7 +218,8 @@ inline void spfft_output(spfft::Transform& spfft__, double_complex* data__)
     }
 }
 
-inline size_t spfft_grid_size(spfft::Transform const& spfft__)
+template <typename T>
+inline size_t spfft_grid_size(T const& spfft__)
 {
     return spfft__.dim_x() * spfft__.dim_y() * spfft__.dim_z();
 }

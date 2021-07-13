@@ -741,9 +741,11 @@ class Gvec_partition
 
     mdarray<int, 2> get_gvec() const;
 
-    void gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const;
+    template <typename T>
+    void gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const;
 
-    void gather_pw_global(std::complex<double>* f_pw_fft__, std::complex<double>* f_pw_global__) const;
+    template <typename T>
+    void gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const;
 };
 
 /// Helper class to manage G-vector shells and redistribute G-vectors for symmetrization.
