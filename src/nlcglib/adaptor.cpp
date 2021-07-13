@@ -231,7 +231,7 @@ void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vec
     #endif
 
     assert(static_cast<int>(fn.size()) == nk*ns);
-    for (int iloc = 0; iloc < fn.size(); ++iloc) {
+    for (size_t iloc = 0; iloc < fn.size(); ++iloc) {
         // global k-point index
         int gidk= keys[iloc].first;
         int ispn = keys[iloc].second;
