@@ -35,8 +35,24 @@ namespace sirius {
 class K_point_base // TODO: good name? maybe k_point?
 {
   protected:
+    /// Fractional k-point coordinates.
     std::array<double, 3> vk_;
- 
+
+    /// List of G-vectors with |G+k| < cutoff.
+    std::unique_ptr<Gvec> gkvec_;
+
+    /// G-vector distribution for the FFT transformation.
+    std::unique_ptr<Gvec_partition> gkvec_partition_;
+
+    /// Communicator for parallelization inside k-point.
+    /** This communicator is used to split G+k vectors and wave-functions. */
+    Communicator const& comm_;
+
+  public:
+    K_point_base(Communicator const& comm__)
+        : comm_(comm__)
+    {
+    }
 };
 
 /// K-point related variables and methods.
@@ -46,7 +62,7 @@ class K_point_base // TODO: good name? maybe k_point?
  *   \tparam T  Precision of the wave-functions (float or double).
  */
 template <typename T>
-class K_point
+class K_point : public K_point_base
 {
   private:
     /// Simulation context.
@@ -59,16 +75,16 @@ class K_point
     int id_{-1};
 
     /// Weight of k-point.
-    T weight_{1.0};
+    double weight_{1.0};
 
     /// Fractional k-point coordinates.
-    vector3d<T> vk_;
+    //vector3d<T> vk_;
 
     /// List of G-vectors with |G+k| < cutoff.
-    std::unique_ptr<Gvec> gkvec_;
+    //std::unique_ptr<Gvec> gkvec_;
 
     /// G-vector distribution for the FFT transformation.
-    std::unique_ptr<Gvec_partition> gkvec_partition_;
+    //std::unique_ptr<Gvec_partition> gkvec_partition_;
 
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
@@ -197,10 +213,6 @@ class K_point
     /// Preconditioner matrix for Chebyshev solver.
     mdarray<std::complex<T>, 3> p_mtrx_;
 
-    /// Communicator for parallelization inside k-point.
-    /** This communicator is used to split G+k vectors and wave-functions. */
-    Communicator const& comm_;
-
     /// Communicator between(!!) rows.
     Communicator const& comm_row_;
 
@@ -229,11 +241,11 @@ class K_point
   public:
     /// Constructor
     K_point(Simulation_context& ctx__, double const* vk__, T weight__, int id__)
-        : ctx_(ctx__)
+        : K_point_base(ctx__.comm_band())
+        , ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , id_(id__)
         , weight_(weight__)
-        , comm_(ctx_.comm_band())
         , comm_row_(ctx_.blacs_grid().comm_row())
         , comm_col_(ctx_.blacs_grid().comm_col())
     {
