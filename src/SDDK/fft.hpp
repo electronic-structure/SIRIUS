@@ -83,11 +83,11 @@ using enable_return = typename std::enable_if<std::is_same<typename std::result_
 /// Load data from real-valued lambda.
 template <typename F>
 inline enable_return<F, double, int>
-spfft_input(spfft::Transform& spfft__, F&& fr__)
+spfft_input(spfft_transform_type<double>& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
-            auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<std::complex<double>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 ptr[i] = double_complex(fr__(i), 0.0);
@@ -111,11 +111,11 @@ spfft_input(spfft::Transform& spfft__, F&& fr__)
 /// Load data from complex-valued lambda.
 template <typename F>
 inline enable_return<F, std::complex<double>, int>
-spfft_input(spfft::Transform& spfft__, F&& fr__)
+spfft_input(spfft_transform_type<double>& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
-            auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<std::complex<double>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 ptr[i] = fr__(i);
@@ -132,10 +132,17 @@ spfft_input(spfft::Transform& spfft__, F&& fr__)
 
 /// Input CPU data to CPU buffer of SpFFT.
 template <typename T>
-inline void spfft_input(spfft::Transform& spfft__, T const* data__)
+inline void spfft_input(spfft_transform_type<T>& spfft__, T const* data__)
 {
     spfft_input(spfft__, [&](int ir){return data__[ir];});
 }
+
+template <typename T>
+inline void spfft_input(spfft_transform_type<T>& spfft__, std::complex<T> const* data__)
+{
+    spfft_input(spfft__, [&](int ir){return data__[ir];});
+}
+
 
 template <typename F>
 inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
