@@ -91,5 +91,8 @@ void K_point<T>::generate_spinor_wave_functions()
 }
 
 template void K_point<double>::generate_spinor_wave_functions();
+#ifdef USE_FP32
+template void K_point<float>::generate_spinor_wave_functions();
+#endif
 
 } // namespace sirius
