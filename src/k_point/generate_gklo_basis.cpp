@@ -110,5 +110,7 @@ K_point<T>::generate_gklo_basis()
 }
 
 template void K_point<double>::generate_gklo_basis();
-
+#ifdef USE_FP32
+template void K_point<float>::generate_gklo_basis();
+#endif
 } // namespace sirius
