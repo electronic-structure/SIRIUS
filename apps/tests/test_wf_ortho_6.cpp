@@ -32,8 +32,8 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
         return 123;
     };
 
-    Wave_functions phi(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
-    Wave_functions tmp(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+    Wave_functions<double> phi(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+    Wave_functions<double> tmp(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
 
     for (int is = 0; is < nsp; is++) {
         phi.pw_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};

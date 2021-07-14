@@ -42,6 +42,37 @@
 
 namespace sirius {
 
+namespace sht {
+
+sddk::mdarray<double, 2>
+wigner_d_matrix(int l, double beta);
+
+template <typename T>
+sddk::mdarray<T, 2>
+rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+
+template <typename T>
+void
+rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation, sddk::mdarray<T, 2>& rotm);
+
+template <typename T>
+std::vector<sddk::mdarray<T, 2>>
+rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+
+double
+ClebschGordan(const int l, const double j, const double mj, const int spin);
+
+// this function computes the U^sigma_{ljm mj} coefficient that
+// rotates the complex spherical harmonics to the real one for the
+// spin orbit case
+
+// mj is normally half integer from -j to j but to avoid computation
+// error it is considered as integer so mj = 2 mj
+double_complex
+calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
+
+}
+
 /// Spherical harmonics transformations and related oprtations.
 /** This class is responsible for the generation of complex and real spherical harmonics, generation of transformation
  *  matrices, transformation between spectral and real-space representations, generation of Gaunt and Clebsch-Gordan
@@ -572,37 +603,6 @@ class SHT // TODO: better name
         return lmmax_;
     }
 
-    static void wigner_d_matrix(int l, double beta, sddk::mdarray<double, 2>& d_mtrx__);
-
-    static void rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation,
-                                  double_complex* rot_mtrx__, int ld);
-
-    static void rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation,
-                                  double* rot_mtrx__, int ld);
-
-    template <typename T>
-    static void rotation_matrix(int              lmax,
-                                geometry3d::vector3d<double> euler_angles,
-                                int              proper_rotation,
-                                sddk::mdarray<T, 2>&   rotm)
-    {
-        rotm.zero();
-
-        for (int l = 0; l <= lmax; l++) {
-            rotation_matrix_l(l, euler_angles, proper_rotation, &rotm(l * l, l * l), rotm.ld());
-        }
-    }
-
-    static double ClebschGordan(const int l, const double j, const double mj, const int spin);
-
-    // this function computes the U^sigma_{ljm mj} coefficient that
-    // rotates the complex spherical harmonics to the real one for the
-    // spin orbit case
-
-    // mj is normally half integer from -j to j but to avoid computation
-    // error it is considered as integer so mj = 2 mj
-    static double_complex
-    calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
 };
 } // namespace sirius
 

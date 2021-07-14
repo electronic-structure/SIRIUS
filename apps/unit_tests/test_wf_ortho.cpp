@@ -26,9 +26,9 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         return 20;
     };
 
-    Wave_functions phi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
-    Wave_functions hphi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
-    Wave_functions tmp(gvecp, num_atoms, nmt, num_bands__, memory_t::host);
+    Wave_functions<double> phi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
+    Wave_functions<double> hphi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
+    Wave_functions<double> tmp(gvecp, num_atoms, nmt, num_bands__, memory_t::host);
 
     phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
     phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};

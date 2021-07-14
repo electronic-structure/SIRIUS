@@ -28,13 +28,14 @@
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
 #include "linalg/eigensolver.hpp"
+#include "type_definition.hpp"
 
 namespace sddk {
 
 template <typename T, int idx_bra__, int idx_ket__>
 void
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-              std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<T>& o__, Wave_functions& tmp__)
+              std::vector<Wave_functions<real_type<T>>*> wfs__, int N__, int n__, dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__)
 {
     PROFILE("sddk::orthogonalize");
 
@@ -46,9 +47,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
     int K{0};
+
     if (sddk_pp) {
         K = wfs__[0]->gkvec().num_gvec() + wfs__[0]->num_mt_coeffs();
-        if (std::is_same<T, double>::value) {
+        if (std::is_same<T, real_type<T>>::value) {
             K *= 2;
         }
     }
@@ -56,12 +58,9 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     auto sddk_debug_ptr = utils::get_env<int>("SDDK_DEBUG");
     int sddk_debug      = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 
-    double ngop{0};
-    if (std::is_same<T, double>::value) {
+    double ngop{8e-9};                                           // default value for complex type
+    if (std::is_same<T, real_type<T>>::value) {       // change it if it is real type
         ngop = 2e-9;
-    }
-    if (std::is_same<T, double_complex>::value) {
-        ngop = 8e-9;
     }
 
     if (sddk_pp) {
@@ -84,20 +83,20 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     }
 
     if (sddk_debug >= 2) {
-        //if (o__.comm().rank() == 0) {
-        //    std::printf("check QR decomposition, matrix size : %i\n", n__);
-        //}
-        //inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        // if (o__.comm().rank() == 0) {
+        //     std::printf("check QR decomposition, matrix size : %i\n", n__);
+        // }
+        // inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        //linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
-        //auto diag = o__.get_diag(n__);
-        //if (o__.comm().rank() == 0) {
-        //    for (int i = 0; i < n__; i++) {
-        //        if (std::abs(diag[i]) < 1e-6) {
-        //            std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-        //        }
-        //    }
-        //}
+        // linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
+        // auto diag = o__.get_diag(n__);
+        // if (o__.comm().rank() == 0) {
+        //     for (int i = 0; i < n__; i++) {
+        //         if (std::abs(diag[i]) < 1e-6) {
+        //             std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+        //         }
+        //     }
+        // }
 
         if (o__.comm().rank() == 0) {
             std::printf("check eigen-values, matrix size : %i\n", n__);
@@ -108,7 +107,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         //    save_to_hdf5("nxn_overlap.h5", o__, n__);
         //}
 
-        std::vector<double> eo(n__);
+        std::vector<real_type<T>> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
         auto solver = Eigensolver_factory("scalapack", nullptr);
@@ -139,7 +138,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         if (o__.comm().rank() == 0) {
             std::printf("check hermitian\n");
         }
-        double d = check_hermitian(o__, n__);
+        real_type<T> d = check_hermitian(o__, n__);
         if (d > 1e-12 && o__.comm().rank() == 0) {
             std::stringstream s;
             s << "matrix is not hermitian, max diff = " << d;
@@ -203,34 +202,32 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
             /* multiplication by triangular matrix */
             for (auto& e : wfs__) {
                 /* wave functions are complex, transformation matrix is complex */
-                if (std::is_same<T, double_complex>::value) {
-                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
-                                       &linalg_const<double_complex>::one(),
-                                       reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
-                                       e->pw_coeffs(s).prime().ld(), stream_id(sid++));
-
-                    if (e->has_mt()) {
-                        linalg(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
-                                           &linalg_const<double_complex>::one(),
-                                           reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
-                                           e->mt_coeffs(s).prime().ld(), stream_id(sid++));
-                    }
-                }
-                /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
-                if (std::is_same<T, double>::value) {
-                    linalg(la__).trmm(
-                        'R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
-                        reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
-                        reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                        2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
+                if (!std::is_scalar<T>::value) {
+                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                                      reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                                      reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                                      e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg(la__).trmm(
-                            'R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
-                            reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
-                            reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                            'R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                            reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                            reinterpret_cast<T*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                            e->mt_coeffs(s).prime().ld(), stream_id(sid++));
+                    }
+                }
+                /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
+                if (std::is_scalar<T>::value) {
+                    linalg(la__).trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                                      reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                                      reinterpret_cast<T*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
+                                      2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
+
+                    if (e->has_mt()) {
+                        linalg(la__).trmm(
+                            'R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<T>::one(),
+                            reinterpret_cast<T*>(o__.at(mem__)), o__.ld(),
+                            reinterpret_cast<T*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                             2 * e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
@@ -286,18 +283,37 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
 
 // instantiate for required types
 template void orthogonalize<double, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                          std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<double>& o__,
-                                          Wave_functions& tmp__);
+                                          std::vector<Wave_functions<double>*> wfs__, int N__, int n__, dmatrix<double>& o__,
+                                          Wave_functions<double>& tmp__);
 
 template void orthogonalize<double, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
-                                          std::vector<Wave_functions*> wfs__, int N__, int n__, dmatrix<double>& o__,
-                                          Wave_functions& tmp__);
+                                          std::vector<Wave_functions<double>*> wfs__, int N__, int n__, dmatrix<double>& o__,
+                                          Wave_functions<double>& tmp__);
 
 template void orthogonalize<double_complex, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                  int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                  dmatrix<double_complex>& o__, Wave_functions& tmp__);
+                                                  int ispn__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
+                                                  dmatrix<double_complex>& o__, Wave_functions<double>& tmp__);
 
 template void orthogonalize<double_complex, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
-                                                  int ispn__, std::vector<Wave_functions*> wfs__, int N__, int n__,
-                                                  dmatrix<double_complex>& o__, Wave_functions& tmp__);
+                                                  int ispn__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
+                                                  dmatrix<double_complex>& o__, Wave_functions<double>& tmp__);
+
+#ifdef USE_FP32
+template void orthogonalize<float, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
+                                         std::vector<Wave_functions<float>*> wfs__, int N__, int n__, dmatrix<float>& o__,
+                                         Wave_functions<float>& tmp__);
+
+template void orthogonalize<float, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
+                                         std::vector<Wave_functions<float>*> wfs__, int N__, int n__, dmatrix<float>& o__,
+                                         Wave_functions<float>& tmp__);
+
+template void orthogonalize<std::complex<float>, 0, 2>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
+                                                       int ispn__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
+                                                       dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
+
+template void orthogonalize<std::complex<float>, 0, 0>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__,
+                                                       int ispn__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
+                                                       dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
+#endif
+
 } // namespace sddk

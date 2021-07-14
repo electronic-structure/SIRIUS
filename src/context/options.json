@@ -335,7 +335,7 @@
             "default_value" :  false
         },
         "spin_orbit" : {
-            "description" :  "include spin orbit coupling (imply full non colinear magnetism)" ,
+            "description" :  "include spin orbit coupling (imply full non collinear magnetism)" ,
             "usage" :  "spin_orbit (false)" ,
             "default_value" :  false
         },

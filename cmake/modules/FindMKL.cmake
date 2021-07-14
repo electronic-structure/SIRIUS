@@ -70,7 +70,7 @@ else()
   set(COR_LIB "libmkl_core.so")
   set(SCA_LIB "libmkl_scalapack_lp64.so")
   set(BLACS_LIB "libmkl_blacs_intelmpi_lp64.so")
-  set(DEF_LIB "libmkl_def.so")
+  set(DEF_LIB "libmkl_def.so;libmkl_def.so.1")
 endif()
 
 find_path(MKL_INCLUDE_DIR NAMES mkl.h HINTS $ENV{MKLROOT}/include)

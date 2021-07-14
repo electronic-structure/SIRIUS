@@ -1,7 +1,7 @@
 # We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
 cmake_minimum_required(VERSION 3.14)
 
-project(SIRIUS VERSION 7.2.4)
+project(SIRIUS VERSION 7.2.5)
 
 # user variables
 set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
@@ -27,6 +27,10 @@ set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override 
 set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
 set(CUDA_ARCH "none"        CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
+set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
+set_property(CACHE USE_FP32 PROPERTY STRINGS
+  "AUTO" "ON" "OFF"
+	)
 
 # set language and standard
 
@@ -131,8 +135,18 @@ find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
-find_package(SpFFT 0.9.13 CONFIG REQUIRED)
-find_package(SPLA 1.1.0 CONFIG REQUIRED)
+find_package(SpFFT 1.0.2 CONFIG REQUIRED)
+find_package(SPLA 1.4.0 CONFIG REQUIRED)
+
+# Check if SpFFT support single precision if required
+set(USE_FP32_BOOL OFF)
+if(NOT USE_FP32 STREQUAL "OFF")
+  if(SPFFT_SINGLE_PRECISION)
+    set(USE_FP32_BOOL ON)
+  elseif(USE_FP32 STREQUAL "ON")
+    message(FATAL_ERROR "Single precision option enabled, but SpFFT not compiled with single precision support.")
+  endif()
+endif()
 
 # Either find std::filesystem or boost::filesystem
 find_package(Filesystem COMPONENTS Final Experimental)

@@ -25,12 +25,14 @@
 #include <gsl/gsl_sf_bessel.h>
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
-#include "symmetry/find_lat_sym.hpp"
+#include "symmetry/lattice.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
+#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/check_gvec.hpp"
 
 namespace sirius {
 
@@ -603,6 +605,14 @@ void Simulation_context::initialize()
 
     iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
 
+    if (this->hubbard_correction()) {
+        /* if spin orbit coupling or non collinear magnetisms are activated, then
+           we consider the full spherical hubbard correction */
+        if (this->so_correction() || this->num_mag_dims() == 3) {
+            this->cfg().hubbard().simplified(false);
+        }
+    }
+
     initialized_ = true;
     cfg().lock();
 }
@@ -661,6 +671,12 @@ void Simulation_context::print_info() const
     unit_cell().print_info(verbosity());
     for (int i = 0; i < unit_cell().num_atom_types(); i++) {
         unit_cell().atom_type(i).print_info();
+    }
+    if (this->cfg().control().print_neighbors()) {
+        std::stringstream s;
+        s << std::endl;
+        unit_cell().print_nearest_neighbours(s);
+        this->message(1, "nghbr", s);
     }
 
     std::printf("\n");
@@ -1125,8 +1141,11 @@ void Simulation_context::update()
             new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len(ig));
         }
         gvec().comm().allreduce<double, mpi_op_t::max>(&new_pw_cutoff, 1);
-        /* scale the new maximum length of G+k-vectors correspondingly */
-        double new_gk_cutoff = this->gk_cutoff() * new_pw_cutoff / this->pw_cutoff();
+        /* estimate new G+k-vectors cutoff */
+        double new_gk_cutoff = this->gk_cutoff();
+        if (new_pw_cutoff > this->pw_cutoff()) {
+            new_gk_cutoff += (new_pw_cutoff - this->pw_cutoff());
+        }
 
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {

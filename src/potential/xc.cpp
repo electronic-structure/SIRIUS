@@ -143,7 +143,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc->get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), &vxc.at(memory_t::host), &vsigma.f_rg(0),
+                ixc->get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(memory_t::host), &vsigma.f_rg(0),
                              exc.at(memory_t::host));
             } else {
                 ixc->get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);

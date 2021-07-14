@@ -294,22 +294,22 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to new Psi wave-functions, plus some extra space */
-    Wave_functions hpsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hpsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -546,11 +546,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         kp.band_energy(j, ispin_step, eval[j - num_locked]);
                     }
                 } else {
-                    kp.message(2, __function_name__, "%s", "wave-functions are not recomputed\n");
+                    kp.message(3, __function_name__, "%s", "wave-functions are not recomputed\n");
                 }
 
                 if (last_iteration && !converged) {
-                    kp.message(2, __function_name__, "Warning: maximum number of iterations reached, but %i "
+                    kp.message(3, __function_name__, "Warning: maximum number of iterations reached, but %i "
                                "residual(s) did not converge for k-point %f %f %f, eigen-solver tolerance: %18.12f\n",
                                num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2], ctx_.iterative_solver_tolerance());
                 }
@@ -568,7 +568,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
                         transform<T>(ctx_.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                     std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked, evec, 0,
+                                     std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked, N - num_locked, evec, 0,
                                      0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
                     }
 
@@ -624,10 +624,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 double max_diff = check_hermitian(hmlt, N + expand_with - num_locked);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
-                    s << "H matrix is not Hermitian, max_err = " << max_diff;
-                    WARNING(s);
-                } else {
-                    kp.message(1, __function_name__, "OK! H matrix of size %i is Hermitian\n", N + expand_with - num_locked);
+                    kp.message(1, __function_name__, "H matrix of size %i is not Hermitian, maximum error: %18.12e\n",
+                               N + expand_with - num_locked, max_diff);
                 }
             }
 
@@ -647,7 +645,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             ctx_.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands, 3));
 
-            kp.message(2, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+            kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             for (int i = 0; i < num_bands - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                     std::abs(eval[i] - eval_old[i]), kp.band_occupancy(i, ispin_step));
@@ -726,7 +724,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* eigen-vectors */
-    Wave_functions psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
     for (int i = 0; i < nevec; i++) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
@@ -763,16 +761,16 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     }
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 

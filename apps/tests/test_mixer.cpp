@@ -1,7 +1,6 @@
 #include "mixer/anderson_stable_mixer.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/cmd_args.hpp"
-#include "context/input.hpp"
 #include <iomanip>
 
 
@@ -107,7 +106,7 @@ int main(int argn, char** argv)
         }
     );
 
-    json mixer_dict = R"mixer(
+    nlohmann::json mixer_dict = R"mixer(
     {
       "mixer" : {
         "type" : "linear",

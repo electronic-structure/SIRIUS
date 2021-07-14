@@ -22,7 +22,7 @@
  *  \brief Contains the implementation of Gvec class.
  *
  */
-#include "symmetry/find_lat_sym.hpp"
+#include "symmetry/lattice.hpp"
 #include "gvec.hpp"
 
 namespace sddk {
@@ -356,7 +356,7 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         }
     }
 
-    /* first G-vector must be (0, 0, 0); never reomove this check!!! */
+    /* first G-vector must be (0, 0, 0); never remove this check!!! */
     auto g0 = gvec_by_full_index(gvec_full_index_(0));
     if (g0[0] || g0[1] || g0[2]) {
         throw std::runtime_error("first G-vector is not zero");

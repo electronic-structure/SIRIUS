@@ -34,7 +34,7 @@ namespace sirius {
 
 static void
 compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::mdarray<double, 1>& eval__,
-                  sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__)
+                  sddk::Wave_functions<double>& hpsi__, sddk::Wave_functions<double>& opsi__, sddk::Wave_functions<double>& res__)
 {
     for (int ispn: spins__) {
         if (is_host_memory(mem_type__)) {
@@ -75,7 +75,7 @@ compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_b
 
 /// Apply preconditioner to the residuals.
 static void
-apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions& res__,
+apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<double>& res__,
                      sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
                      sddk::mdarray<double, 1>& eval__)
 {
@@ -121,8 +121,8 @@ apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int nu
 template <typename T>
 static int
 normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__,
-                                    sddk::mdarray<double,1>& eval__, sddk::Wave_functions& hpsi__,
-                                    sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,
+                                    sddk::mdarray<double,1>& eval__, sddk::Wave_functions<real_type<T>>& hpsi__,
+                                    sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__,
                                     sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
                                     double norm_tolerance__, sddk::mdarray<double, 1> &residual_norms__)
 {
@@ -183,8 +183,8 @@ template <typename T>
 residual_result
 residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__, int N__,
           int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__,
-          sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
-          sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
+          sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__, sddk::Wave_functions<real_type<T>>& hpsi__,
+          sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<double, 2> const& h_diag__,
           sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
           std::function<bool(int, int)> is_converged__)
 {
@@ -304,8 +304,8 @@ template residual_result
 residuals<double>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__,
                   sddk::spin_range ispn__, int N__,
                   int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__, sddk::dmatrix<double>& evec__,
-                  sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
-                  sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
+                  sddk::Wave_functions<double>& hphi__, sddk::Wave_functions<double>& ophi__, sddk::Wave_functions<double>& hpsi__,
+                  sddk::Wave_functions<double>& opsi__, sddk::Wave_functions<double>& res__, sddk::mdarray<double, 2> const& h_diag__,
                   sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
                   std::function<bool(int, int)> is_converged__);
 
@@ -313,9 +313,9 @@ template residual_result
 residuals<double_complex>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__,
                           sddk::spin_range ispn__,
                           int N__, int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__,
-                          sddk::dmatrix<double_complex>& evec__, sddk::Wave_functions& hphi__,
-                          sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__,
-                          sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
+                          sddk::dmatrix<double_complex>& evec__, sddk::Wave_functions<double>& hphi__,
+                          sddk::Wave_functions<double>& ophi__, sddk::Wave_functions<double>& hpsi__, sddk::Wave_functions<double>& opsi__,
+                          sddk::Wave_functions<double>& res__, sddk::mdarray<double, 2> const& h_diag__,
                           sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
                           std::function<bool(int, int)> is_converged__);
 

@@ -235,6 +235,25 @@ dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, double const* a
 }
 
 inline void
+strmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, float const* alpha__, float const* A__,
+      int lda__, float* B__, int ldb__, int stream_id)
+{
+    ::acc::blas::side_mode_t side   = get_gpublasSideMode_t(side__);
+    ::acc::blas::fill_mode_t uplo   = get_gpublasFillMode_t(uplo__);
+    ::acc::blas::operation_t transa = get_gpublasOperation_t(transa__);
+    ::acc::blas::diagonal_t diag    = get_gpublasDiagonal_t(diag__);
+    // acc::set_device();
+#ifdef SIRIUS_CUDA
+    CALL_GPU_BLAS(::acc::blas::strmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__,
+                                       lda__, B__, ldb__, B__, ldb__));
+#else
+    // rocblas trmm function does not take three matrices
+    CALL_GPU_BLAS(::acc::blas::strmm,
+                  (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__));
+#endif
+}
+
+inline void
 dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, double const* alpha__, double const* A__,
       int lda__, double* B__, int ldb__, int stream_id)
 {
@@ -250,6 +269,30 @@ dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, do
     // rocblas trmm function does not take three matrices
     CALL_GPU_BLAS(::acc::blas::dtrmm,
                   (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__));
+#endif
+}
+
+inline void
+ctrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, acc_complex_float_t const* alpha__,
+      acc_complex_float_t const* A__, int lda__, acc_complex_float_t* B__, int ldb__, int stream_id)
+{
+    ::acc::blas::side_mode_t side   = get_gpublasSideMode_t(side__);
+    ::acc::blas::fill_mode_t uplo   = get_gpublasFillMode_t(uplo__);
+    ::acc::blas::operation_t transa = get_gpublasOperation_t(transa__);
+    ::acc::blas::diagonal_t diag    = get_gpublasDiagonal_t(diag__);
+    // acc::set_device();
+#ifdef SIRIUS_CUDA
+    CALL_GPU_BLAS(::acc::blas::ctrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
+                                       reinterpret_cast<const ::acc::blas::complex_float_t*>(alpha__),
+                                       reinterpret_cast<const ::acc::blas::complex_float_t*>(A__), lda__,
+                                       reinterpret_cast<::acc::blas::complex_float_t*>(B__), ldb__,
+                                       reinterpret_cast<::acc::blas::complex_float_t*>(B__), ldb__));
+#else
+    // rocblas trmm function does not take three matrices
+    CALL_GPU_BLAS(::acc::blas::ctrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
+        reinterpret_cast<const ::acc::blas::complex_float_t*>(alpha__),
+        reinterpret_cast<const ::acc::blas::complex_float_t*>(A__), lda__,
+        reinterpret_cast<::acc::blas::complex_float_t*>(B__), ldb__));
 #endif
 }
 
@@ -316,6 +359,14 @@ dscal(int n__, double const* alpha__, double * x__, int incx__)
                   (null_stream_handle(), n__, alpha__, x__, incx__));
 }
 
+inline void
+sscal(int n__, float const* alpha__, float * x__, int incx__)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::sscal,
+                  (null_stream_handle(), n__, alpha__, x__, incx__));
+}
+
 #if defined(SIRIUS_CUDA)
 namespace xt {
 
@@ -357,6 +408,19 @@ dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, double const* a
 }
 
 inline void
+strmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, float const* alpha__, float const* A__,
+      int lda__, float* B__, int ldb__)
+{
+    ::acc::blas::side_mode_t side   = get_gpublasSideMode_t(side__);
+    ::acc::blas::fill_mode_t uplo   = get_gpublasFillMode_t(uplo__);
+    ::acc::blas::operation_t transa = get_gpublasOperation_t(transa__);
+    ::acc::blas::diagonal_t diag    = get_gpublasDiagonal_t(diag__);
+    // acc::set_device();
+    CALL_GPU_BLAS(cublasXtStrmm,
+                  (cublasxt_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+}
+
+inline void
 dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, double const* alpha__, double const* A__,
       int lda__, double* B__, int ldb__)
 {
@@ -366,6 +430,19 @@ dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, do
     ::acc::blas::diagonal_t diag    = get_gpublasDiagonal_t(diag__);
     // acc::set_device();
     CALL_GPU_BLAS(cublasXtDtrmm,
+                  (cublasxt_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+}
+
+inline void
+ctrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, acc_complex_float_t const* alpha__,
+      acc_complex_float_t const* A__, int lda__, acc_complex_float_t* B__, int ldb__)
+{
+    ::acc::blas::side_mode_t side   = get_gpublasSideMode_t(side__);
+    ::acc::blas::fill_mode_t uplo   = get_gpublasFillMode_t(uplo__);
+    ::acc::blas::operation_t transa = get_gpublasOperation_t(transa__);
+    ::acc::blas::diagonal_t diag    = get_gpublasDiagonal_t(diag__);
+    // acc::set_device();
+    CALL_GPU_BLAS(cublasXtCtrmm,
                   (cublasxt_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 

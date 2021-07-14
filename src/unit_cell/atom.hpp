@@ -32,6 +32,8 @@
 
 namespace sirius {
 
+using namespace geometry3d;
+
 /// Data and methods specific to the actual atom in the unit cell.
 class Atom
 {

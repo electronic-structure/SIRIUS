@@ -1326,6 +1326,18 @@ class config_t
             }
             dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
         }
+        /// The floating point precision used in the calculation
+        inline auto precision() const
+        {
+            return dict_.at("/parameters/precision"_json_pointer).get<std::string>();
+        }
+        inline void precision(std::string precision__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/precision"_json_pointer] = precision__;
+        }
       private:
         nlohmann::json& dict_;
     };
@@ -1490,9 +1502,21 @@ class config_t
             {
                 return dict_.at("J").get<double>();
             }
-            auto coeff() const
+            auto BE2() const
             {
-                return dict_.at("coeff").get<std::array<double, 6>>();
+                return dict_.at("BE2").get<double>();
+            }
+            auto E3() const
+            {
+                return dict_.at("E3").get<double>();
+            }
+            auto alpha() const
+            {
+                return dict_.at("alpha").get<double>();
+            }
+            auto beta() const
+            {
+                return dict_.at("beta").get<double>();
             }
             auto initial_occupancy() const
             {
@@ -1530,7 +1554,17 @@ class config_t
             nlohmann::json::json_pointer ptr("/hubbard/local");
             return local_t(dict_.at(ptr / idx__));
         }
+        local_t local(int idx__) const
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/local");
+            return local_t(dict_.at(ptr / idx__));
+        }
         local_list_t local()
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/local");
+            return local_list_t(dict_.at(ptr));
+        }
+        local_list_t local() const
         {
             nlohmann::json::json_pointer ptr("/hubbard/local");
             return local_list_t(dict_.at(ptr));
@@ -1548,6 +1582,10 @@ class config_t
             auto atom_pair() const
             {
                 return dict_.at("atom_pair").get<std::array<int, 2>>();
+            }
+            auto T() const
+            {
+                return dict_.at("T").get<std::array<int, 3>>();
             }
             auto l() const
             {
@@ -1585,7 +1623,17 @@ class config_t
             nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
             return nonlocal_t(dict_.at(ptr / idx__));
         }
+        nonlocal_t nonlocal(int idx__) const
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
+            return nonlocal_t(dict_.at(ptr / idx__));
+        }
         nonlocal_list_t nonlocal()
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
+            return nonlocal_list_t(dict_.at(ptr));
+        }
+        nonlocal_list_t nonlocal() const
         {
             nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
             return nonlocal_list_t(dict_.at(ptr));

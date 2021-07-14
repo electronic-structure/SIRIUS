@@ -304,8 +304,11 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
     );
 }
 
+template <typename T>
+__global__ void add_checksum_gpu_kernel(gpu_complex_type<T> const* wf__, int num_rows_loc__, gpu_complex_type<T>* result__);
 
-__global__ void add_checksum_gpu_kernel
+template <>
+__global__ void add_checksum_gpu_kernel<double>
 (
     acc_complex_double_t const* wf__,
     int num_rows_loc__,
@@ -342,7 +345,45 @@ __global__ void add_checksum_gpu_kernel
     result__[blockIdx.x] = accCadd(result__[blockIdx.x], make_accDoubleComplex(sdata_x[0], sdata_y[0]));
 }
 
-extern "C" void add_checksum_gpu(acc_complex_double_t* wf__,
+template <>
+__global__ void add_checksum_gpu_kernel<float>
+(
+    acc_complex_float_t const* wf__,
+    int num_rows_loc__,
+    acc_complex_float_t* result__
+)
+{
+    int N = num_blocks(num_rows_loc__, blockDim.x);
+
+    ACC_DYNAMIC_SHARED( char, sdata_ptr)
+    float* sdata_x = (float*)&sdata_ptr[0];
+    float* sdata_y = (float*)&sdata_ptr[blockDim.x * sizeof(float)];
+
+    sdata_x[threadIdx.x] = 0.0;
+    sdata_y[threadIdx.x] = 0.0;
+
+    for (int n = 0; n < N; n++) {
+        int j = n * blockDim.x + threadIdx.x;
+        if (j < num_rows_loc__) {
+            int k = array2D_offset(j, blockIdx.x, num_rows_loc__);
+            sdata_x[threadIdx.x] += wf__[k].x;
+            sdata_y[threadIdx.x] += wf__[k].y;
+        }
+    }
+    __syncthreads();
+
+    for (int s = 1; s < blockDim.x; s *= 2) {
+        if (threadIdx.x % (2 * s) == 0) {
+            sdata_x[threadIdx.x] = sdata_x[threadIdx.x] + sdata_x[threadIdx.x + s];
+            sdata_y[threadIdx.x] = sdata_y[threadIdx.x] + sdata_y[threadIdx.x + s];
+        }
+        __syncthreads();
+    }
+
+    result__[blockIdx.x] = accCaddf(result__[blockIdx.x], make_accFloatComplex(sdata_x[0], sdata_y[0]));
+}
+
+extern "C" void add_checksum_gpu_double(acc_complex_double_t* wf__,
                                  int num_rows_loc__,
                                  int nwf__,
                                  acc_complex_double_t* result__)
@@ -350,9 +391,19 @@ extern "C" void add_checksum_gpu(acc_complex_double_t* wf__,
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
-    accLaunchKernel((add_checksum_gpu_kernel), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), 0, 
-        wf__,
-        num_rows_loc__,
-        result__
-    );
+    accLaunchKernel((add_checksum_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), 0, wf__,
+                    num_rows_loc__, result__);
 }
+
+extern "C" void add_checksum_gpu_float(acc_complex_float_t* wf__,
+                                 int num_rows_loc__,
+                                 int nwf__,
+                                 acc_complex_float_t* result__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(nwf__);
+
+    accLaunchKernel((add_checksum_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(float), 0, wf__,
+                    num_rows_loc__, result__);
+}
+

@@ -124,7 +124,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     /* renormalize wave-functions */
     if (ctx_.valence_relativity() == relativity_t::iora) {
-        Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        Wave_functions<double> ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
                            [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                            ctx_.preferred_memory_t(), 1);
         if (ctx_.processing_unit() == device_t::GPU) {
@@ -199,10 +199,10 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     if (ctx_.cfg().control().verification() >= 2) {
         kp.message(1, __function_name__, "%s", "checking application of H and O\n");
         /* check application of H and O */
-        Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        Wave_functions<double> hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                             [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                             ctx_.preferred_memory_t());
-        Wave_functions ophi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        Wave_functions<double> ophi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                             [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                             ctx_.preferred_memory_t());
 
@@ -288,10 +288,10 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     int num_phi = itso.subspace_size() * ncomp;
 
-    Wave_functions phi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
-    Wave_functions ophi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
-    Wave_functions opsi(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
-    Wave_functions res(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+    Wave_functions<double> phi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
+    Wave_functions<double> ophi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
+    Wave_functions<double> opsi(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+    Wave_functions<double> res(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -521,26 +521,26 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* allocate wave-functions */
-    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                        [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, num_phi,
                        ctx_.preferred_memory_t());
-    Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, num_phi,
                         ctx_.preferred_memory_t());
-    Wave_functions ophi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> ophi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, num_phi,
                         ctx_.preferred_memory_t());
-    Wave_functions hpsi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> hpsi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, num_bands,
                         ctx_.preferred_memory_t());
-    Wave_functions opsi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> opsi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, num_bands,
                         ctx_.preferred_memory_t());
 
     /* residuals */
     /* res is also used as a temporary array in orthogonalize() and the first time nlo + ncomp + num_bands
      * states will be orthogonalized */
-    Wave_functions res(kp.gkvec_partition(), unit_cell_.num_atoms(),
+    Wave_functions<double> res(kp.gkvec_partition(), unit_cell_.num_atoms(),
                        [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, nlo + ncomp + num_bands,
                        ctx_.preferred_memory_t());
 
@@ -742,9 +742,9 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     sddk::mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spinors());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
-    std::vector<Wave_functions> hpsi;
+    std::vector<Wave_functions<double>> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(Wave_functions(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        hpsi.push_back(Wave_functions<double>(kp.gkvec_partition(), unit_cell_.num_atoms(),
                                       [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); },
                                       ctx_.num_fv_states(), ctx_.preferred_memory_t()));
     }

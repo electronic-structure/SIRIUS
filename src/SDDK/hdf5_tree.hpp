@@ -41,6 +41,15 @@ template <typename T>
 struct hdf5_type_wrapper;
 
 template<>
+struct hdf5_type_wrapper<float>
+{
+    static hid_t type_id()
+    {
+        return H5T_NATIVE_FLOAT;
+    }
+};
+
+template<>
 struct hdf5_type_wrapper<double>
 {
     static hid_t type_id()

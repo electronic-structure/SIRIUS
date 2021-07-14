@@ -32,12 +32,17 @@
 #include "utils/env.hpp"
 #include "SDDK/gvec.hpp"
 #include "matrix_storage.hpp"
+#include "type_definition.hpp"
 #ifdef SIRIUS_GPU
-using double_complex = std::complex<double>;
-extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+extern "C" void add_square_sum_gpu_double(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
 
-extern "C" void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
+extern "C" void add_square_sum_gpu_float(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__,
+                                   int mpi_rank__, float* result__);
+
+extern "C" void scale_matrix_columns_gpu_double(int nrow__, int ncol__, std::complex<double>* mtrx__, double* a__);
+
+extern "C" void scale_matrix_columns_gpu_float(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__);
 #endif
 
 const int sddk_inner_default_block_size = 1024;
@@ -151,6 +156,7 @@ class spin_range : public std::vector<int>
     }
     \endcode
  */
+template <typename T>   // template type is using real type that determine the precision, wavefunction is always complex
 class Wave_functions
 {
   private:
@@ -177,11 +183,11 @@ class Wave_functions
     int num_sc_{1};
 
     /// Plane-wave part of wave-functions.
-    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> pw_coeffs_{
+    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> pw_coeffs_{
         {nullptr, nullptr}};
 
     /// Muffin-tin part of wave-functions.
-    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{
+    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> mt_coeffs_{
         {nullptr, nullptr}};
 
     bool has_mt_{false};
@@ -222,7 +228,7 @@ class Wave_functions
 
     /// Compute the sum of squares of expansion coefficients.
     /** The result is always returned in the host memory */
-    mdarray<double, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
+    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
 
   public:
     /// Constructor for PW wave-functions.
@@ -260,22 +266,22 @@ class Wave_functions
         return num_mt_coeffs_;
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs(int ispn__)
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& pw_coeffs(int ispn__)
     {
         return *pw_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
     {
         return *pw_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs(int ispn__)
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& mt_coeffs(int ispn__)
     {
         return *mt_coeffs_[isc(ispn__)];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
+    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
     {
         return *mt_coeffs_[isc(ispn__)];
     }
@@ -310,7 +316,7 @@ class Wave_functions
         return preferred_memory_t_;
     }
 
-    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
+    inline std::complex<T> checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
@@ -329,26 +335,75 @@ class Wave_functions
      *  \param [in] i0   Starting index of wave-functions in src.
      *  \param [in] jspn Spin component on destination wave-functions.
      *  \param [in] j0   Starting index of wave-functions in destination. */
-    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__, int j0__);
+    void copy_from(device_t pu__, int n__, Wave_functions<T> const& src__, int ispn__, int i0__, int jspn__, int j0__);
+
+    template <typename F>
+    void copy_from(device_t pu__, int n__, Wave_functions<F> const& src__, int ispn__, int i0__, int jspn__, int j0__){
+    assert(ispn__ == 0 || ispn__ == 1);
+    assert(jspn__ == 0 || jspn__ == 1);
+    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+    std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
+
+    int ngv = pw_coeffs(jspn__).num_rows_loc();
+    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+
+    switch (pu__) {
+        case device_t::CPU: {
+            /* copy PW part */
+            std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                      src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
+                      pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
+            /* copy MT part */
+            if (has_mt()) {
+                std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                          src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
+                          mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
+            }
+            break;
+        }
+        case device_t::GPU: {
+            throw std::runtime_error("Copy mixed precision type not supported in device memory");
+            break;
+        }
+    }
+    }
 
     /// Copy from and to preferred memory.
-    void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
+    void copy_from(Wave_functions<T> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
+
+    template <typename F>
+    void copy_from(Wave_functions<F> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__){
+    assert(ispn__ == 0 || ispn__ == 1);
+    assert(jspn__ == 0 || jspn__ == 1);
+    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+    std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
+
+    int ngv = pw_coeffs(jspn__).num_rows_loc();
+    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+
+    copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+         preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
+    if (has_mt()) {
+        copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+             preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
+    }
+    }
 
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
-    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
+    std::complex<T> checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
 
     /// Checksum of muffin-tin coefficients.
-    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
+    std::complex<T> checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
 
     void zero_pw(device_t pu__, int ispn__, int i0__, int n__);
 
     void zero_mt(device_t pu__, int ispn__, int i0__, int n__);
 
-    void scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__);
+    void scale(memory_t mem__, int ispn__, int i0__, int n__, T beta__);
 
-    sddk::mdarray<double, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
+    sddk::mdarray<T, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
 
     /// Normalize the functions.
     void normalize(device_t pu__, spin_range spins__, int n__);

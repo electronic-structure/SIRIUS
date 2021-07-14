@@ -29,7 +29,7 @@
 
 namespace sirius {
 
-/// Structure containing all informations about a specific hubbard orbital (including the index of the radial function).
+/// Structure containing all informations about a specific hubbard orbital (including the radial function).
 class hubbard_orbital_descriptor
 {
   private:
@@ -38,7 +38,7 @@ class hubbard_orbital_descriptor
     /// Orbital occupancy.
     double occupancy_{-1.0};
 
-    int radial_orbital_index_{-1};
+    Spline<double> f_;
 
     double hubbard_J_{0.0};
     double hubbard_U_{0.0};
@@ -51,85 +51,18 @@ class hubbard_orbital_descriptor
         hubbard_coefficients_[3]
         hubbard_coefficients[4] = U_alpha
         hubbard_coefficients[5] = U_beta */
-    double hubbard_coefficients_[4];
+  double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
 
-    mdarray<double, 4> hubbard_matrix_;
+    sddk::mdarray<double, 4> hubbard_matrix_;
 
     // simplifed hubbard theory
     double hubbard_alpha_{0.0};
     double hubbard_beta_{0.0};
     double hubbard_J0_{0.0};
 
-    inline void calculate_ak_coefficients(mdarray<double, 5>& ak)
+    inline auto hubbard_F_coefficients() const
     {
-        // compute the ak coefficients appearing in the general treatment of
-        // hubbard corrections.  expression taken from Liechtenstein {\it et
-        // al}, PRB 52, R5467 (1995)
-
-        // Note that for consistency, the ak are calculated with complex
-        // harmonics in the gaunt coefficients <R_lm|Y_l'm'|R_l''m''>.
-        // we need to keep it that way because of the hubbard potential
-        // With a spherical one it does not really matter-
-        ak.zero();
-
-        for (int m1 = -l; m1 <= l; m1++) {
-            for (int m2 = -l; m2 <= l; m2++) {
-                for (int m3 = -l; m3 <= l; m3++) {
-                    for (int m4 = -l; m4 <= l; m4++) {
-                        for (int k = 0; k < 2 * l; k += 2) {
-                            double sum = 0.0;
-                            for (int q = -k; q <= k; q++) {
-                                sum += SHT::gaunt_rlm_ylm_rlm(l, k, l, m1, q, m2) *
-                                       SHT::gaunt_rlm_ylm_rlm(l, k, l, m3, q, m4);
-                            }
-                            // hmmm according to PRB 52, R5467 it is 4
-                            // \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
-                            // I only consider a_{k=0} a_{k=2}, a_{k=4}
-                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) =
-                                4.0 * sum * pi / static_cast<double>(2 * k + 1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// this function computes the matrix elements of the orbital part of
-    /// the electron-electron interactions. we effectively compute
-
-    /// \f[ u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
-    /// a_k(m,m',m'',m''') F_k \f] where the F_k are calculated for real
-    /// spherical harmonics
-
-    inline void compute_hubbard_matrix()
-    {
-        this->hubbard_matrix_ = mdarray<double, 4>(2 * l + 1, 2 * l + 1,
-                                                   2 * l + 1, 2 * l + 1);
-        mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1,
-                              2 * l + 1, 2 * l + 1);
         std::vector<double> F(4);
-        hubbard_F_coefficients(&F[0]);
-        calculate_ak_coefficients(ak);
-
-        // the indices are rotated around
-
-        // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
-        this->hubbard_matrix_.zero();
-        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
-            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                for (int m3 = 0; m3 < 2 * l + 1; m3++) {
-                    for (int m4 = 0; m4 < 2 * l + 1; m4++) {
-                        for (int k = 0; k < l; k++) {
-                            this->hubbard_matrix(m1, m2, m3, m4) += ak(k, m1, m3, m2, m4) * F[k];
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    void hubbard_F_coefficients(double* F)
-    {
         F[0] = Hubbard_U();
 
         switch (l) {
@@ -156,8 +89,99 @@ class hubbard_orbital_descriptor
                 std::stringstream s;
                 s << "Hubbard correction not implemented for l > 3\n"
                   << "  current l: " << l;
-                TERMINATE(s);
+                RTE_THROW(s);
                 break;
+            }
+        }
+        return F;
+    }
+
+
+    inline void calculate_ak_coefficients(sddk::mdarray<double, 5>& ak)
+    {
+        // compute the ak coefficients appearing in the general treatment of
+        // hubbard corrections.  expression taken from Liechtenstein {\it et
+        // al}, PRB 52, R5467 (1995)
+
+        // Note that for consistency, the ak are calculated with complex
+        // harmonics in the gaunt coefficients <R_lm|Y_l'm'|R_l''m''>.
+        // we need to keep it that way because of the hubbard potential.
+        // With a spherical one it does not really matter-
+        ak.zero();
+
+        for (int m1 = -l; m1 <= l; m1++) {
+            for (int m2 = -l; m2 <= l; m2++) {
+                for (int m3 = -l; m3 <= l; m3++) {
+                    for (int m4 = -l; m4 <= l; m4++) {
+                        for (int k = 0; k < 2 * l; k += 2) {
+                            double sum = 0.0;
+                            for (int q = -k; q <= k; q++) {
+                                sum += SHT::gaunt_rlm_ylm_rlm(l, k, l, m1, q, m2) *
+                                       SHT::gaunt_rlm_ylm_rlm(l, k, l, m3, q, m4);
+                            }
+                            /* according to PRB 52, R5467 it is 4 \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
+                               only a_{k=0} a_{k=2}, a_{k=4} are considered */
+                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) =
+                                4.0 * sum * pi / static_cast<double>(2 * k + 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// this function computes the matrix elements of the orbital part of
+    /// the electron-electron interactions. we effectively compute
+
+    /// \f[ u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
+    /// a_k(m,m',m'',m''') F_k \f] where the F_k are calculated for real
+    /// spherical harmonics
+
+    inline void compute_hubbard_matrix()
+    {
+        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1,
+                                                   2 * l + 1, 2 * l + 1);
+        sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        auto F = hubbard_F_coefficients();
+        calculate_ak_coefficients(ak);
+
+        // the indices are rotated around
+
+        // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
+        this->hubbard_matrix_.zero();
+        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                for (int m3 = 0; m3 < 2 * l + 1; m3++) {
+                    for (int m4 = 0; m4 < 2 * l + 1; m4++) {
+                        for (int k = 0; k < l; k++) {
+                            this->hubbard_matrix(m1, m2, m3, m4) += ak(k, m1, m3, m2, m4) * F[k];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void initialize_hubbard_matrix()
+    {
+        sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        auto F = hubbard_F_coefficients();
+        calculate_ak_coefficients(ak);
+
+        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        // the indices are rotated around
+
+        // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
+        this->hubbard_matrix_.zero();
+        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                for (int m3 = 0; m3 < 2 * l + 1; m3++) {
+                    for (int m4 = 0; m4 < 2 * l + 1; m4++) {
+                        for (int k = 0; k < l; k++) {
+                            this->hubbard_matrix(m1, m2, m3, m4) += ak(k, m1, m3, m2, m4) * F[k];
+                        }
+                    }
+                }
             }
         }
     }
@@ -170,7 +194,7 @@ class hubbard_orbital_descriptor
 
     std::vector<double> initial_occupancy;
 
-    // Constructor.
+    /// Constructor.
     hubbard_orbital_descriptor()
     {
     }
@@ -178,10 +202,11 @@ class hubbard_orbital_descriptor
     /// Constructor.
     hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
                                const double J__, const double U__, const double* hub_coef__, const double alpha__,
-                               const double beta__, const double J0__, std::vector<double> initial_occupancy__)
+                               const double beta__, const double J0__, std::vector<double> initial_occupancy__,
+                               Spline<double> f__)
         : n_(n__)
         , occupancy_(occ__)
-        , radial_orbital_index_(orbital_index__)
+        , f_(std::move(f__))
         , hubbard_J_(J__)
         , hubbard_U_(U__)
         , hubbard_alpha_(alpha__)
@@ -203,10 +228,10 @@ class hubbard_orbital_descriptor
     {
     }
 
+    /// Move constructor
     hubbard_orbital_descriptor(hubbard_orbital_descriptor&& src)
         : n_(src.n_)
         , occupancy_(src.occupancy_)
-        , radial_orbital_index_(src.radial_orbital_index_)
         , hubbard_J_(src.hubbard_J_)
         , hubbard_U_(src.hubbard_U_)
         , hubbard_alpha_(src.hubbard_alpha_)
@@ -218,6 +243,7 @@ class hubbard_orbital_descriptor
         for (int s = 0; s < 4; s++) {
             hubbard_coefficients_[s] = src.hubbard_coefficients_[s];
         }
+        f_ = std::move(src.f_);
     }
 
     inline int n() const
@@ -285,36 +311,10 @@ class hubbard_orbital_descriptor
         return occupancy_;
     }
 
-    inline int rindex() const
+    Spline<double> const& f() const
     {
-        return radial_orbital_index_;
+        return f_;
     }
-
-    void initialize_hubbard_matrix()
-    {
-        mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
-        std::vector<double> F(4);
-        hubbard_F_coefficients(&F[0]);
-        calculate_ak_coefficients(ak);
-
-        this->hubbard_matrix_ = mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
-        // the indices are rotated around
-
-        // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
-        this->hubbard_matrix_.zero();
-        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
-            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                for (int m3 = 0; m3 < 2 * l + 1; m3++) {
-                    for (int m4 = 0; m4 < 2 * l + 1; m4++) {
-                        for (int k = 0; k < l; k++) {
-                            this->hubbard_matrix(m1, m2, m3, m4) += ak(k, m1, m3, m2, m4) * F[k];
-                        }
-                    }
-                }
-            }
-        }
-    }
-
 };
 
 } // namespace sirius

@@ -45,7 +45,6 @@ using json = nlohmann::json;
 #include "utils/power.hpp"
 #endif
 
-#include "context/input.hpp"
 #include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"

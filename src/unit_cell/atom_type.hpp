@@ -95,8 +95,7 @@ class Atom_type
     /// Index of radial basis functions.
     /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
         In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
-        In pseudo_potential case this index is used to iterate over radial part of beta-projectors.
-     */
+        In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
     radial_functions_index indexr_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
@@ -109,25 +108,17 @@ class Atom_type
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
     sirius::experimental::basis_functions_index indexb_wfs_;
 
-    // TODO: think if it is possible to merge indexr_hub_, lo_descriptors_hub_ and hubbard_radial_functions_
-    // it should be possible to inherit hubbard_orbital_descriptor from sirius::experimental::radial_functions_index
-    // and also add radial function of that orbital as a member.
-
     /// List of Hubbard orbital descriptors.
-    /** List of sirius::hubbard_orbital_descriptor for each orbital. The corresponding radial functions are stored in
-        Atom_type::hubbard_radial_functions_ */
-    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_; // TODO: rename
+    /** List of sirius::hubbard_orbital_descriptor for each orbital. Each elemeent of the list contains
+     *  information about radial function and U and J parameters for the Hubbard correction. The list is
+     *  compatible with the indexr_hub_ radial index. */
+    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
 
     /// Index of radial functions for hubbard orbitals.
     sirius::experimental::radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
     sirius::experimental::basis_functions_index indexb_hub_;
-
-    /// List of radial functions for Hubbard orbitals.
-    /** Hubbard orbitals are copied from atomic wave-functions and are independent of spin. This list is compatible
-        with Atom_type::lo_descriptors_hub and with indexr_hub_ */
-    std::vector<Spline<double>> hubbard_radial_functions_;
 
     /// Radial functions of beta-projectors.
     /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit
@@ -145,8 +136,16 @@ class Atom_type
     /// Store basic information about radial pseudo wave-functions.
     struct ps_atomic_wf_descriptor
     {
+        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__,
+                Spline<double> f__)
+            : n(n__)
+            , am(am__)
+            , occ(occ__)
+            , f(std::move(f__))
+        {
+        }
         int n;
-        sirius::experimental::aqn l;
+        sirius::experimental::angular_momentum am;
         double occ;
         Spline<double> f;
     };
@@ -159,7 +158,7 @@ class Atom_type
     /// Radial functions of the Q-operator.
     /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
         Beta-projectors must be loaded before loading the Q radial functions. */
-    mdarray<Spline<double>, 2> q_radial_functions_l_;
+    sddk::mdarray<Spline<double>, 2> q_radial_functions_l_;
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
@@ -174,7 +173,7 @@ class Atom_type
     std::vector<double> ps_total_charge_density_;
 
     /// Ionic part of D-operator matrix.
-    mdarray<double, 2> d_mtrx_ion_;
+    sddk::mdarray<double, 2> d_mtrx_ion_;
 
     /// True if the pseudopotential is used for PAW.
     bool is_paw_{false};
@@ -197,8 +196,9 @@ class Atom_type
     sddk::mdarray<double, 2> ps_paw_wfs_array_;
 
     /// Occupations of PAW wave-functions.
-    /** Length of vector is the same as the number of beta projectors */
-    std::vector<double> paw_wf_occ_; // TODO: is this ever used? remove if unnecessary
+    /** Length of vector is the same as the number of beta projectors. This is used for the initial guess of
+     *  oribtal occupancies. */
+    std::vector<double> paw_wf_occ_;
 
     /// Core electron contribution to all electron charge density in PAW method.
     std::vector<double> paw_ae_core_charge_density_;
@@ -211,11 +211,11 @@ class Atom_type
 
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
-    matrix<double_complex> p_mtrx_;
+    sddk::matrix<double_complex> p_mtrx_;
 
     /// f_coefficients defined in doi:10.1103/PhysRevB.71.115106 Eq.9 only
     /// valid when SO interactions are on
-    mdarray<double_complex, 4> f_coefficients_;
+    sddk::mdarray<double_complex, 4> f_coefficients_;
 
     /// List of atom indices (global) for a given type.
     std::vector<int> atom_id_;
@@ -238,15 +238,15 @@ class Atom_type
     /// Generate coefficients used in spin-orbit case.
     void generate_f_coefficients();
 
-    inline void read_input_core(json const& parser);
+    inline void read_input_core(nlohmann::json const& parser);
 
-    inline void read_input_aw(json const& parser);
+    inline void read_input_aw(nlohmann::json const& parser);
 
-    inline void read_input_lo(json const& parser);
+    inline void read_input_lo(nlohmann::json const& parser);
 
-    inline void read_pseudo_uspp(json const& parser);
+    inline void read_pseudo_uspp(nlohmann::json const& parser);
 
-    inline void read_pseudo_paw(json const& parser);
+    inline void read_pseudo_paw(nlohmann::json const& parser);
 
     /// Read atomic parameters from json file or string.
     inline void read_input(std::string const& str__);
@@ -441,9 +441,10 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::aqn l__, std::vector<double> f__, double occ__ = 0.0)
+    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__,
+            std::vector<double> f__, double occ__ = 0.0)
     {
-        ps_atomic_wfs_.push_back({n__, l__, occ__, Spline<double>(radial_grid_, f__)});
+        ps_atomic_wfs_.emplace_back(n__, am__, occ__, Spline<double>(radial_grid_, f__));
     }
 
     /// Return a tuple describing a given atomic radial function
@@ -457,7 +458,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: ps_atomic_wfs_) {
-            auto l = e.l();
+            auto l = e.am.l();
             lmax = std::max(lmax, l);
         }
         return lmax;
@@ -525,7 +526,7 @@ class Atom_type
               << "lmax_beta: " << lmax_beta() << std::endl
               << "maximum allowed l: " << 2 * lmax_beta();
 
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         if (!augment_) {
@@ -635,7 +636,7 @@ class Atom_type
         return paw_ae_core_charge_density_;
     }
 
-    inline auto & paw_ae_core_charge_density(std::vector<double> inp__)
+    inline auto& paw_ae_core_charge_density(std::vector<double> inp__)
     {
         paw_ae_core_charge_density_ = inp__;
         return paw_ae_core_charge_density_;
@@ -900,13 +901,7 @@ class Atom_type
 
     inline Spline<double> const& hubbard_radial_function(int i) const
     {
-        return hubbard_radial_functions_[i];
-    }
-
-    inline sirius::experimental::radial_function_index_descriptor const& indexr_wfs(int i) const
-    {
-        assert(i >= 0 && i < (int)indexr_wfs_.size());
-        return indexr_wfs_[i];
+        return lo_descriptors_hub_[i].f();
     }
 
     inline void set_symbol(const std::string symbol__)

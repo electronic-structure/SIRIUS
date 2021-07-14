@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,26 +17,49 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file find_lat_sym.hpp
+/** \file lattice.hpp
  *
- *  \brief Find the lattice symmetries
+ *  \brief Crystal lattice functions.
  */
 
 #include "geometry3d.hpp"
+#include "utils/rte.hpp"
 
-#ifndef __FIND_LAT_SYM_HPP__
-#define __FIND_LAT_SYM_HPP__
+#ifndef __LATTICE_HPP__
+#define __LATTICE_HPP__
 
 namespace sirius {
 
 using namespace geometry3d;
 
-inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, double tol__)
+/// Compute a metric tensor.
+inline matrix3d<double>
+metric_tensor(matrix3d<double> const& lat_vec__)
+{
+    return dot(transpose(lat_vec__), lat_vec__);
+}
+
+/// Compute error of the symmetry-transformed metric tensor.
+inline double
+metric_tensor_error(matrix3d<double> const& lat_vec__, matrix3d<int> const& R__)
+{
+    auto mt = metric_tensor(lat_vec__);
+
+    double diff{0};
+    auto mt1 = dot(dot(transpose(R__), mt), R__);
+    for (int i: {0, 1, 2}) {
+        for (int j: {0, 1, 2}) {
+            diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
+        }
+    }
+    return diff;
+}
+
+inline std::vector<matrix3d<int>>
+find_lat_sym(matrix3d<double> const& lat_vec__, double tol__)
 {
     std::vector<matrix3d<int>> lat_sym;
 
-    /* metric tensor */
-    auto mt = dot(transpose(lat_vec__), lat_vec__);
     auto r = {-1, 0, 1};
 
     for (int i00: r) {
@@ -49,19 +72,12 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
             for (int i21: r) {
             for (int i22: r) {
                 /* build a trial symmetry operation */
-                matrix3d<int> S({{i00, i01, i02}, {i10, i11, i12}, {i20, i21, i22}});
+                matrix3d<int> R({{i00, i01, i02}, {i10, i11, i12}, {i20, i21, i22}});
                 /* valid symmetry operation has a determinant of +/- 1 */
-                if (std::abs(S.det()) == 1) {
+                if (std::abs(R.det()) == 1) {
                     /* metric tensor should be invariant under symmetry operation */
-                    auto mt1 = dot(dot(transpose(S), mt), S);
-                    double diff{0};
-                    for (int i: {0, 1, 2}) {
-                        for (int j: {0, 1, 2}) {
-                            diff = std::max(diff, std::abs(mt1(i, j) - mt(i, j)));
-                        }
-                    }
-                    if (diff < tol__) {
-                        lat_sym.push_back(S);
+                    if (metric_tensor_error(lat_vec__, R) < tol__) {
+                        lat_sym.push_back(R);
                     }
                 }
             }
@@ -76,8 +92,8 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
 
     if (lat_sym.size() == 0 || lat_sym.size() > 48) {
         std::stringstream s;
-        s << "find_lat_sym(): wrong number of lattice symmetries: " << lat_sym.size() << "\n";
-        throw std::runtime_error(s.str());
+        s << "wrong number of lattice symmetries: " << lat_sym.size();
+        RTE_THROW(s);
     }
 
     return lat_sym;

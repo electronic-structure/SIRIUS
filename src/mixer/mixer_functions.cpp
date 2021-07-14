@@ -319,14 +319,19 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 
 FunctionProperties<paw_density> paw_density_function_property()
 {
-    auto global_size_func = [](paw_density const& x) -> double { return x.ctx().unit_cell().num_paw_atoms(); };
+    auto global_size_func = [](paw_density const& x) -> double
+    {
+        return x.ctx().unit_cell().num_paw_atoms();
+    };
 
-    auto inner_prod_func = []( paw_density const& x,  paw_density const& y) -> double {
-        // do not contribute to mixing
+    auto inner_prod_func = []( paw_density const& x,  paw_density const& y) -> double
+    {
+        /* do not contribute to mixing */
         return 0.0;
     };
 
-    auto scal_function = [](double alpha, paw_density& x) -> void {
+    auto scale_func = [](double alpha, paw_density& x) -> void
+    {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
                 x.ae_density(j, i) *= alpha;
@@ -335,7 +340,8 @@ FunctionProperties<paw_density> paw_density_function_property()
         }
     };
 
-    auto copy_function = [](paw_density const& x, paw_density& y) -> void {
+    auto copy_function = [](paw_density const& x, paw_density& y) -> void
+    {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
                 x.ae_density(j, i) >> y.ae_density(j, i);
@@ -344,7 +350,8 @@ FunctionProperties<paw_density> paw_density_function_property()
         }
     };
 
-    auto axpy_function = [](double alpha, paw_density const& x, paw_density& y) -> void {
+    auto axpy_function = [](double alpha, paw_density const& x, paw_density& y) -> void
+    {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
                 y.ae_density(j, i) = x.ae_density(j, i) * alpha + y.ae_density(j, i);
@@ -353,7 +360,8 @@ FunctionProperties<paw_density> paw_density_function_property()
         }
     };
 
-    auto rotate_function = [](double c, double s, paw_density& x, paw_density& y) -> void {
+    auto rotate_function = [](double c, double s, paw_density& x, paw_density& y) -> void
+    {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
                 {
@@ -372,8 +380,70 @@ FunctionProperties<paw_density> paw_density_function_property()
         }
     };
 
-    return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scal_function, copy_function,
+    return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scale_func, copy_function,
                                            axpy_function, rotate_function);
+}
+
+FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
+{
+    auto global_size_func = [](Hubbard_matrix const& x) -> double
+    {
+        return 1.0;
+    };
+
+    auto inner_prod_func = [](Hubbard_matrix const& x, Hubbard_matrix const& y) -> double
+    {
+        /* do not contribute to mixing */
+        return 0;
+    };
+
+    auto scale_func = [](double alpha, Hubbard_matrix& x) -> void
+    {
+        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
+            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
+                for (size_t i = 0; i < x.local(ia).size(); i++) {
+                    x.local(ia)[i] *= alpha;
+                }
+            }
+        }
+    };
+
+    auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
+    {
+        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
+            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
+                x.local(ia) >> y.local(ia);
+            }
+        }
+    };
+
+    auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void
+    {
+        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
+            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
+                for (size_t i = 0; i < x.local(ia).size(); i++) {
+                    y.local(ia)[i] = alpha * x.local(ia)[i] + y.local(ia)[i];
+                }
+            }
+        }
+    };
+
+    auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void
+    {
+        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
+            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
+                for (size_t i = 0; i < x.local(ia).size(); i++) {
+                    auto xi = x.local(ia)[i];
+                    auto yi = y.local(ia)[i];
+                    x.local(ia)[i] = xi * c + yi * s;
+                    y.local(ia)[i] = yi * c - xi * s;
+                }
+            }
+        }
+    };
+
+    return FunctionProperties<Hubbard_matrix>(global_size_func, inner_prod_func, scale_func, copy_func, axpy_func,
+                                              rotate_func);
 }
 
 } // namespace mixer

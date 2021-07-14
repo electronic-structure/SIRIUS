@@ -44,7 +44,7 @@ Band::Band(Simulation_context& ctx__)
 
 template <typename T>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__, dmatrix<T>& mtrx__,
+Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& op_phi__, dmatrix<T>& mtrx__,
                         dmatrix<T>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
@@ -56,10 +56,10 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
 
     /* copy old N - num_locked x N - num_locked distributed matrix */
     if (N__ > 0) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
-                                       mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
-                                       mtrx__.bs_col());
+        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+                                                   mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+                                                   mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
         if (mtrx_old__) {
             #pragma omp parallel for schedule(static)
@@ -83,8 +83,8 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked, N__ + n__ - num_locked, op_phi__,
-          N__, n__, mtrx__, 0, N__ - num_locked);
+    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked,
+          N__ + n__ - num_locked, op_phi__, N__, n__, mtrx__, 0, N__ - num_locked);
 
     /* restore lower part */
     if (N__ > 0) {
@@ -96,7 +96,8 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
                 }
             }
         } else {
-            linalg(linalg_t::scalapack).tranc(n__, N__ - num_locked, mtrx__, 0, N__ - num_locked, mtrx__, N__ - num_locked, 0);
+            linalg(linalg_t::scalapack)
+                .tranc(n__, N__ - num_locked, mtrx__, 0, N__ - num_locked, mtrx__, N__ - num_locked, 0);
         }
     }
 
@@ -199,7 +200,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* initial basis functions */
-    Wave_functions phi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -254,10 +255,10 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
     PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
-    Wave_functions hphi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
-    Wave_functions ophi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hphi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> ophi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions wf_tmp(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> wf_tmp(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -431,9 +432,9 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
     const int num_sc = nc_mag ? 2 : 1;
 
     auto& psi = kp.spinor_wave_functions();
-    Wave_functions hpsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-    Wave_functions spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-    Wave_functions res(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hpsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -499,7 +500,7 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
         const int num_sc = nc_mag ? 2 : 1;
 
         auto& psi = kp.spinor_wave_functions();
-        Wave_functions spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+        Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
         if (is_device_memory(ctx_.preferred_memory_t())) {
             auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -542,12 +543,12 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__,
+Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                 dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__,
+Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
 }

@@ -178,19 +178,20 @@ extern "C" void compute_residuals_gpu(acc_complex_double_t* hpsi__,
     );
 }
 
+template <typename T>
 __global__ void add_square_sum_gpu_kernel
 (
     int num_rows_loc__,
-    acc_complex_double_t const* wf__,
+    gpu_complex_type<T> const* wf__,
     int reduced__,
     int mpi_rank__,
-    double* result__
+    T* result__
 )
 {
     int N = num_blocks(num_rows_loc__, blockDim.x);
 
     ACC_DYNAMIC_SHARED( char, sdata_ptr)
-    double* sdata = (double*)&sdata_ptr[0];
+    T* sdata = (T*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
 
@@ -215,7 +216,7 @@ __global__ void add_square_sum_gpu_kernel
             result__[blockIdx.x] += sdata[0];
         } else {
             if (mpi_rank__ == 0) {
-                double x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
+                T x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
                 result__[blockIdx.x] += (2 * sdata[0] - x * x);
             }
             else {
@@ -225,7 +226,7 @@ __global__ void add_square_sum_gpu_kernel
     }
 }
 
-extern "C" void add_square_sum_gpu(acc_complex_double_t* wf__,
+extern "C" void add_square_sum_gpu_double(acc_complex_double_t* wf__,
                                    int num_rows_loc__,
                                    int nwf__,
                                    int reduced__,
@@ -235,13 +236,22 @@ extern "C" void add_square_sum_gpu(acc_complex_double_t* wf__,
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
-    accLaunchKernel((add_square_sum_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
-        num_rows_loc__,
-        wf__,
-        reduced__,
-        mpi_rank__,
-        result__
-    );
+    accLaunchKernel((add_square_sum_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0,
+                    num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
+}
+
+extern "C" void add_square_sum_gpu_float(acc_complex_float_t* wf__,
+                                   int num_rows_loc__,
+                                   int nwf__,
+                                   int reduced__,
+                                   int mpi_rank__,
+                                   float* result__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(nwf__);
+
+    accLaunchKernel((add_square_sum_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(float), 0,
+                    num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
 }
 
 __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,

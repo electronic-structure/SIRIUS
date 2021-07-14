@@ -1,4 +1,7 @@
 #include <sirius.hpp>
+extern "C" {
+#include <spglib.h>
+}
 
 using namespace sirius;
 

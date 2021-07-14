@@ -36,7 +36,7 @@
 */
 template <typename T>
 inline mdarray<double, 1>
-davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,
+davidson(Hamiltonian_k& Hk__, Wave_functions<real_type<T>>& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,
          double eval_tolerance__, double eval_tolerance_empty__, double norm_tolerance__,
          std::function<double(int, int)> occupancy__, bool keep_phi_orthogonal__ = true)
 {
@@ -85,22 +85,22 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, gkvecp, num_phi, ctx.aux_preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> phi(mp, gkvecp, num_phi, ctx.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> sphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hpsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
 
     const int bs = ctx.cyclic_block_size();
 
@@ -288,7 +288,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (estimate_eval) {
                         transform<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                                     std::vector<Wave_functions*>({&hphi, &sphi}), 0, N, evec, 0, 0, 0.0,
+                                     std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), 0, N, evec, 0, 0, 0.0,
                                      {&hpsi, &spsi}, 0, num_bands);
                     }
 

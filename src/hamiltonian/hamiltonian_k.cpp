@@ -45,6 +45,8 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
         if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().prepare();
         }
+        u_op_ = std::shared_ptr<U_operator<double>>(
+                new U_operator<double>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
 }
 
@@ -56,6 +58,8 @@ Hamiltonian_k::~Hamiltonian_k()
         }
     }
 }
+
+Hamiltonian_k::Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
 template <typename T, int what>
 std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
@@ -83,6 +87,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
             if (what & 2) {
                 o_diag(ig_loc, ispn) = 1;
             }
+        }
+        if (uc.mt_lo_basis_size() == 0) {
+            continue;
         }
 
         /* non-local H contribution */
@@ -758,8 +765,8 @@ void Hamiltonian_k::set_fv_h_o_it(dmatrix<double_complex>& h__, dmatrix<double_c
 //== }
 
 template <typename T>
-void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
-                              Wave_functions* sphi__)
+void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions<real_type<T>>& phi__,
+                               Wave_functions<real_type<T>>* hphi__, Wave_functions<real_type<T>>* sphi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
@@ -806,21 +813,9 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
     /* apply the hubbard potential if relevant */
      if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
 
-       // copy the hubbard wave functions on GPU (if needed) and
-       // return afterwards, or if they are not already calculated
-       // compute the wave functions and copy them on GPU (if needed)
-
-        //this->U().generate_atomic_orbitals(*kp__, Q());
-
-        // Apply the hubbard potential and deallocate the hubbard wave
-        // functions on GPU (if needed)
-        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__, N__, n__, phi__, *hphi__);
-
-        //if (ctx_.processing_unit() == device_t::GPU) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
-        //    }
-        //}
+        /* apply the hubbard potential and deallocate the hubbard wave functions on GPU (if needed) */
+        //H0().potential().U().apply_hubbard_potential(kp().wave_functions_S_hub(), spins__, N__, n__, phi__, *hphi__);
+        apply_U_operator(H0().ctx(), spins__, N__, n__, kp().wave_functions_S_hub(), phi__, this->U(), *hphi__);
     }
 
     // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
@@ -840,7 +835,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 }
 
 void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__,
-                                 Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
+                                 Wave_functions<double>& phi__, Wave_functions<double>* hphi__, Wave_functions<double>* ophi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_fv_h_o");
 
@@ -1394,7 +1389,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     //}
 }
 
-void Hamiltonian_k::apply_b(Wave_functions& psi__, std::vector<Wave_functions>& bpsi__)
+void Hamiltonian_k::apply_b(Wave_functions<double>& psi__, std::vector<Wave_functions<double>>& bpsi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_b");
 
@@ -1418,13 +1413,13 @@ void Hamiltonian_k::apply_b(Wave_functions& psi__, std::vector<Wave_functions>& 
 
 template
 void
-Hamiltonian_k::apply_h_s<double>(spin_range spins__, int N__, int n__, Wave_functions& phi__,
-                                 Wave_functions* hphi__, Wave_functions* sphi__);
+Hamiltonian_k::apply_h_s<double>(spin_range spins__, int N__, int n__, Wave_functions<double>& phi__,
+                                 Wave_functions<double>* hphi__, Wave_functions<double>* sphi__);
 
 template
 void
-Hamiltonian_k::apply_h_s<double_complex>(spin_range spins__, int N__, int n__, Wave_functions& phi__,
-                                         Wave_functions* hphi__, Wave_functions* sphi__);
+Hamiltonian_k::apply_h_s<double_complex>(spin_range spins__, int N__, int n__, Wave_functions<double>& phi__,
+                                         Wave_functions<double>* hphi__, Wave_functions<double>* sphi__);
 
 template
 std::pair<mdarray<double, 2>, mdarray<double, 2>>

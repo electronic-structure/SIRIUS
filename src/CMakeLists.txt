@@ -27,11 +27,10 @@ set(_SOURSES
   "dft/dft_ground_state.cpp"
   "dft/energy.cpp"
   "beta_projectors/beta_projectors_base.cpp"
-  "hubbard/apply_hubbard_potential.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
-  "hubbard/hubbard_occupancy.cpp"
   "hubbard/hubbard_potential_energy.cpp"
+  "hubbard/hubbard_matrix.cpp"
   "potential/generate_d_operator_matrix.cpp"
   "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"
@@ -41,12 +40,11 @@ set(_SOURSES
   "potential/potential.cpp"
   "potential/check_xc_potential.cpp"
   "unit_cell/unit_cell.cpp"
-  "unit_cell/unit_cell_symmetry.cpp"
   "unit_cell/atom_type.cpp"
+  "symmetry/crystal_symmetry.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"
   "geometry/non_local_functor.cpp"
-  "k_point/generate_atomic_wave_functions.cpp"
   "k_point/generate_fv_states.cpp"
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
@@ -79,7 +77,6 @@ set(_SOURSES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
-  "context/input.cpp"
   )
 
 
@@ -145,6 +142,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_MAGMA}>:SIRIUS_MAGMA>
   $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
   $<$<BOOL:${USE_VDWXC}>:SIRIUS_USE_VDWXC>
+  $<$<BOOL:${USE_FP32_BOOL}>:USE_FP32>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )

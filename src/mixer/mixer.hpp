@@ -123,7 +123,11 @@ struct InnerProduct
                 if (sx != sy) {
                     throw std::runtime_error("[sirius::mixer::InnerProduct] sizes of two functions don't match");
                 }
-                v /= sx;
+                if (sx) {
+                    v /= sx;
+                } else {
+                    v = 0;
+                }
             }
 
             result += v;
@@ -146,7 +150,11 @@ struct InnerProduct<0, normalize, FUNCS...>
                 if (sx != sy) {
                     throw std::runtime_error("[sirius::mixer::InnerProduct] sizes of two functions don't match");
                 }
-                v /= sx;
+                if (sx) {
+                    v /= sx;
+                } else {
+                    v = 0;
+                }
             }
             return v;
         } else {

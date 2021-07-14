@@ -116,21 +116,7 @@ double ground_state(Simulation_context& ctx,
 
     /* launch the calculation */
     auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
-
-    if (ctx.cfg().control().verification() >= 1) {
-        dft.check_scf_density();
-    }
-
-    auto repeat_update = args.value<int>("repeat_update", 0);
-    if (repeat_update) {
-        for (int i = 0; i < repeat_update; i++) {
-            dft.update();
-            result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
-        }
-    }
-
-    //dft.print_magnetic_moment();
-
+    /* compute forces and stress */
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
@@ -153,6 +139,92 @@ double ground_state(Simulation_context& ctx,
             }
         }
     }
+
+    if (write_state && write_output) {
+        json dict;
+        json_output_common(dict);
+
+        dict["task"] = static_cast<int>(task);
+        dict["context"] = ctx.serialize();
+        dict["ground_state"] = result;
+        //dict["timers"] = utils::timer::serialize();
+        dict["counters"] = json::object();
+        dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
+        dict["counters"]["band_evp_work_count"] = ctx.evp_work_count();
+
+        if (ctx.comm().rank() == 0) {
+            std::string output_file = args.value<std::string>("output", std::string("output_") +
+                                                              ctx.start_time_tag() + std::string(".json"));
+            std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
+        }
+
+        //if (args.exist("aiida_output")) {
+        //    json dict;
+        //    json_output_common(dict);
+        //    dict["task"] = static_cast<int>(task);
+        //    if (result >= 0) {
+        //        dict["task_status"] = "converged";
+        //        dict["num_scf_iterations"] =  result;
+        //    } else {
+        //        dict["task_status"] = "unconverged";
+        //    }
+        //    dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
+        //    dict["volume_units"] = "angstrom^3";
+        //    dict["energy"] = dft.total_energy() * ha2ev;
+        //    dict["energy_units"] = "eV";
+        //    if (ctx.comm().rank() == 0) {
+        //        std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+        //        ofs << dict.dump(4);
+        //    }
+        //}
+    }
+
+
+    if (ctx.cfg().control().verification() >= 1) {
+        dft.check_scf_density();
+    }
+
+    auto repeat_update = args.value<int>("repeat_update", 0);
+    if (repeat_update) {
+        auto lv = ctx.unit_cell().lattice_vectors();
+        auto a = std::pow(ctx.unit_cell().omega(), 1.0 / 3);
+        for (int i = 0; i < repeat_update; i++) {
+            double t = static_cast<double>(i) / repeat_update;
+            auto lv1 = lv;
+            for (int x: {0, 1, 2}) {
+                lv1(x, 0) = lv(x, 0) + 0.15 * a * std::sin(t * twopi);
+                lv1(x, 1) = lv(x, 1) + 0.15 * a * std::cos(t * twopi);
+            }
+            ctx.unit_cell().set_lattice_vectors(lv1);
+            dft.update();
+            auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+            if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
+                Stress& s       = dft.stress();
+                auto stress_tot = s.calc_stress_total();
+                auto elem = std::vector<std::vector<double>>(3, std::vector<double>(3));
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        elem[i][j] = stress_tot(j, i);
+                    }
+                }
+                r1["stress"] = elem;
+            }
+            if (ctx.cfg().control().print_forces()) {
+                Force& f         = dft.forces();
+                auto& forces_tot = f.calc_forces_total();
+                auto elem = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                    for (int j = 0; j < 3; j++) {
+                        elem[i][j] = forces_tot(j, i);
+                    }
+                }
+                r1["forces"] = elem;
+            }
+        }
+    }
+
+    //dft.print_magnetic_moment();
 
     if (ref_file.size() != 0) {
         json dict_ref;
@@ -199,50 +271,10 @@ double ground_state(Simulation_context& ctx,
         }
     }
 
-    if (write_state && write_output) {
-        json dict;
-        json_output_common(dict);
-
-        dict["task"] = static_cast<int>(task);
-        dict["context"] = ctx.serialize();
-        dict["ground_state"] = result;
-        //dict["timers"] = utils::timer::serialize();
-        dict["counters"] = json::object();
-        dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
-        dict["counters"]["band_evp_work_count"] = ctx.evp_work_count();
-
-        if (ctx.comm().rank() == 0) {
-            std::string output_file = args.value<std::string>("output", std::string("output_") +
-                                                              ctx.start_time_tag() + std::string(".json"));
-            std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
-            ofs << dict.dump(4);
-        }
-
-        //if (args.exist("aiida_output")) {
-        //    json dict;
-        //    json_output_common(dict);
-        //    dict["task"] = static_cast<int>(task);
-        //    if (result >= 0) {
-        //        dict["task_status"] = "converged";
-        //        dict["num_scf_iterations"] =  result;
-        //    } else {
-        //        dict["task_status"] = "unconverged";
-        //    }
-        //    dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-        //    dict["volume_units"] = "angstrom^3";
-        //    dict["energy"] = dft.total_energy() * ha2ev;
-        //    dict["energy_units"] = "eV";
-        //    if (ctx.comm().rank() == 0) {
-        //        std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        //        ofs << dict.dump(4);
-        //    }
-        //}
-    }
-
     /* wait for all */
     ctx.comm().barrier();
 
-    return dft.total_energy();
+    return result["energy"]["total"].get<double>();
 }
 
 /// Run a task based on a command line input.

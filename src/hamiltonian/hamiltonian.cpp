@@ -112,7 +112,7 @@ Hamiltonian0::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdarray
 }
 
 void
-Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_functions>& bpsi__) const
+Hamiltonian0::apply_bmt(sddk::Wave_functions<double>& psi__, std::vector<sddk::Wave_functions<double>>& bpsi__) const
 {
     mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
@@ -175,7 +175,7 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_func
 }
 
 void
-Hamiltonian0::apply_so_correction(sddk::Wave_functions& psi__, std::vector<sddk::Wave_functions>& hpsi__) const
+Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vector<sddk::Wave_functions<double>>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian0::apply_so_correction");
 

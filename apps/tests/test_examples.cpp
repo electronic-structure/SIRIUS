@@ -110,7 +110,7 @@ Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 /* number of wave-functions */
 int N = 100;
 /* create scalar wave-functions for N bands */
-Wave_functions wf(gvp, N, memory_t::host);
+Wave_functions<double> wf(gvp, N, memory_t::host);
 /* spin index for scalar wave-functions */
 int ispn = 0;
 /* fill with random numbers */
@@ -124,7 +124,7 @@ int bs = 16;
 /* create a distributed overlap matrix */
 dmatrix<double_complex> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
-Wave_functions tmp(gvp, N, memory_t::host);
+Wave_functions<double> tmp(gvp, N, memory_t::host);
 /* orthogonalize wave-functions */
 orthogonalize<double_complex, 0, 0>(spla_ctx, memory_t::host, linalg_t::blas, ispn, {&wf}, 0, N, o, tmp);
 /* compute overlap */

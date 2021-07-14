@@ -50,9 +50,9 @@ serialize(sddk::mdarray<T, N> const& a__)
     return dict;
 }
 
-template <int N>
+template <typename T, int N>
 inline nlohmann::json
-serialize(sddk::mdarray<double_complex, N> const& a__)
+serialize(sddk::mdarray<std::complex<T>, N> const& a__)
 {
     nlohmann::json dict;
     std::array<sddk::mdarray_index_descriptor::index_type, N> begin;
@@ -63,7 +63,7 @@ serialize(sddk::mdarray<double_complex, N> const& a__)
     }
     dict["begin"] = begin;
     dict["end"] = end;
-    dict["data"] = std::vector<double>(2 * a__.size());
+    dict["data"] = std::vector<T>(2 * a__.size());
     for (size_t i = 0; i < a__.size(); i++) {
         dict["data"][2 * i] = a__[i].real();
         dict["data"][2 * i + 1] = a__[i].imag();

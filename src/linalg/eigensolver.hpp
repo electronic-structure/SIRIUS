@@ -29,6 +29,7 @@
 #include "SDDK/dmatrix.hpp"
 
 using double_complex = std::complex<double>;
+using float_complex = std::complex<float>;
 
 /// Type of eigen-value solver.
 enum class ev_solver_t
@@ -136,6 +137,21 @@ class Eigensolver
         return -1;
     }
 
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float>& A__, float* eval__, sddk::dmatrix<float>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float_complex>& A__, float* eval__,
+                      sddk::dmatrix<float_complex>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
     {
@@ -145,6 +161,20 @@ class Eigensolver
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float>& A__, float* eval__, sddk::dmatrix<float>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float_complex>& A__, float* eval__, sddk::dmatrix<float_complex>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
@@ -166,6 +196,22 @@ class Eigensolver
         return -1;
     }
 
+    /// Solve a generalized eigen-value problem for all eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float>& A__, sddk::dmatrix<float>& B__, float* eval__,
+                      sddk::dmatrix<float>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a generalized eigen-value problem for all eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float_complex>& A__, sddk::dmatrix<float_complex>& B__,
+                      float* eval__, sddk::dmatrix<float_complex>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__,
                       double* eval__, sddk::dmatrix<double>& Z__)
@@ -177,6 +223,22 @@ class Eigensolver
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__,
                       sddk::dmatrix<double_complex>& B__, double* eval__, sddk::dmatrix<double_complex>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float>& A__, sddk::dmatrix<float>& B__,
+                      float* eval__, sddk::dmatrix<float>& Z__)
+    {
+        TERMINATE(error_msg_not_implemented);
+        return -1;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float_complex>& A__,
+                      sddk::dmatrix<float_complex>& B__, float* eval__, sddk::dmatrix<float_complex>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;

@@ -115,7 +115,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (!ctx_.full_potential()) {
-        ctx_.message(1, __function_name__, "iterative solver tolerance: %1.4e\n", ctx_.iterative_solver_tolerance());
+        ctx_.message(2, __function_name__, "iterative solver tolerance: %1.4e\n", ctx_.iterative_solver_tolerance());
     }
 
     int num_dav_iter{0};
@@ -138,7 +138,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     kset__.comm().allreduce(&num_dav_iter, 1);
     ctx_.num_itsol_steps(num_dav_iter);
     if (!ctx_.full_potential()) {
-        ctx_.message(1, __function_name__, "average number of iterations: %12.6f\n",
+        ctx_.message(2, __function_name__, "average number of iterations: %12.6f\n",
                      static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
