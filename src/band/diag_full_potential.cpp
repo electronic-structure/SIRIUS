@@ -34,7 +34,7 @@
 namespace sirius {
 
 void
-Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
+Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
@@ -263,7 +263,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     }
 }
 
-void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_diag__) const
+void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 2>& o_diag__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
@@ -478,7 +478,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
     kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", eval[0]);
 }
 
-void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) const
+void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
@@ -728,7 +728,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     kp.set_fv_eigen_values(&eval[0]);
 }
 
-void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
+void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) const
 {
     PROFILE("sirius::Band::diag_sv");
 

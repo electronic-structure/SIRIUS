@@ -136,7 +136,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
 }
 
 void
-Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
+Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
@@ -149,7 +149,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__[ik];
+        auto kp = kset__.get<double>(ik);
         auto Hk = H0__(*kp);
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             initialize_subspace<double>(Hk, N);
@@ -162,15 +162,15 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__[ik]->band_energy(i, ispn, 0);
-                kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
+                kset__.get<double>(ik)->band_energy(i, ispn, 0);
+                kset__.get<double>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
             }
         }
     }
 }
 
 template <typename T>
-void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
+void Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -311,7 +311,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        Hk__.apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
+        Hk__.template apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
         /* do some checks */
         if (ctx_.cfg().control().verification() >= 1) {
@@ -423,7 +423,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 }
 
 template <typename T>
-void Band::check_residuals(Hamiltonian_k& Hk__) const
+void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     auto& kp = Hk__.kp();
     kp.message(1, __function_name__, "%s", "checking residuals\n");
@@ -453,7 +453,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
         /* apply Hamiltonian and S operators to the wave-functions */
-        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -487,7 +487,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
 
 /// Check wave-functions for orthonormalization.
 template <typename T>
-void Band::check_wave_functions(Hamiltonian_k& Hk__) const
+void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     auto& kp = Hk__.kp();
     kp.message(1, __function_name__, "%s", "checking wave-functions\n");
@@ -520,7 +520,7 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
             auto sr = spin_range(nc_mag ? 2 : ispin_step);
             /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+            Hk__.template apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
             inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 
             double diff = check_identity(ovlp, ctx_.num_bands());

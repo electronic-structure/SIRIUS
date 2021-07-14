@@ -52,7 +52,7 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
     }
 }
 
-void Occupation_matrix::add_k_point_contribution(K_point& kp__)
+void Occupation_matrix::add_k_point_contribution(K_point<double>& kp__)
 {
     if (!ctx_.hubbard_correction()) {
         return;

@@ -86,9 +86,9 @@ class Matching_coefficients // TODO: compute on GPU
      *  \param [in] A             Inverse matrix of radial derivatives.
      *  \param [out] alm          Pointer to alm coefficients.
      */
-    template <int N, bool conjugate>
+    template <int N, bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
-                         matrix3d<double> const& A, double_complex* alm) const
+                         matrix3d<double> const& A, T* alm) const
     {
         double_complex zt;
 
@@ -202,8 +202,8 @@ class Matching_coefficients // TODO: compute on GPU
     /** \param [in]  atom      Atom, for which matching coefficients are generated.
         \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
      */
-    template <bool conjugate>
-    void generate(Atom const& atom__, sddk::mdarray<double_complex, 2>& alm__) const
+    template <bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
+    void generate(Atom const& atom__, sddk::mdarray<T, 2>& alm__) const
     {
         auto& type = atom__.type();
 

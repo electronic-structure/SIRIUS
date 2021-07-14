@@ -26,7 +26,8 @@
 
 namespace sirius {
 
-void K_point::generate_fv_states()
+template <typename T>
+void K_point<T>::generate_fv_states()
 {
     PROFILE("sirius::K_point::generate_fv_states");
 
@@ -34,8 +35,8 @@ void K_point::generate_fv_states()
         return;
     }
 
-    mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
-    mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
+    mdarray<std::complex<T>, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
+    mdarray<std::complex<T>, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
     if (ctx_.processing_unit() == device_t::GPU) {
         fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
@@ -52,7 +53,7 @@ void K_point::generate_fv_states()
         /* generate matching coefficients for all G-vectors */
         alm_coeffs_loc_->generate<false>(unit_cell_.atom(ia), alm);
 
-        double_complex* tmp_ptr_gpu{nullptr};
+        std::complex<T>* tmp_ptr_gpu{nullptr};
 
         auto la = linalg_t::none;
         auto mt = memory_t::none;
@@ -71,14 +72,14 @@ void K_point::generate_fv_states()
             }
         }
 
-        mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
+        mdarray<std::complex<T>, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
         linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-            &linalg_const<double_complex>::one(), alm.at(mt), alm.ld(),
+            &linalg_const<std::complex<T>>::one(), alm.at(mt), alm.ld(),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().at(mt),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-            &linalg_const<double_complex>::zero(), tmp1.at(mt), tmp1.ld());
+            &linalg_const<std::complex<T>>::zero(), tmp1.at(mt), tmp1.ld());
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
@@ -103,12 +104,12 @@ void K_point::generate_fv_states()
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 /* aw block */
                 std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1, i),
-                            tmp1.at(memory_t::host, 0, i), mt_aw_size * sizeof(double_complex));
+                            tmp1.at(memory_t::host, 0, i), mt_aw_size * sizeof(std::complex<T>));
                 /* lo block */
                 if (mt_lo_size) {
                     std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1 + mt_aw_size, i),
                                 fv_eigen_vectors_slab().mt_coeffs(0).prime().at(memory_t::host, offset2, i),
-                                mt_lo_size * sizeof(double_complex));
+                                mt_lo_size * sizeof(std::complex<T>));
                 }
             }
         }
@@ -119,11 +120,17 @@ void K_point::generate_fv_states()
         /* G+k block */
         std::memcpy(fv_states().pw_coeffs(0).prime().at(memory_t::host, 0, i),
                     fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host, 0, i),
-                    num_gkvec_loc() * sizeof(double_complex));
+                    num_gkvec_loc() * sizeof(std::complex<T>));
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
         fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
     }
 }
+
+template void K_point<double>::generate_fv_states();
+#ifdef USE_FP32
+template void K_point<float>::generate_fv_states();
+#endif
+
 } // namespace sirius

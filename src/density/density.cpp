@@ -47,12 +47,12 @@ Density::Density(Simulation_context& ctx__)
 
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
+        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_partition()));
     }
 
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
-        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
     }
 
     if (ctx_.full_potential()) {
@@ -184,7 +184,7 @@ void Density::initial_density_pseudo()
     }
 
     /* remove possible negative noise */
-    for (int ir = 0; ir < ctx_.spfft().local_slice_size(); ir++) {
+    for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
         rho().f_rg(ir) = std::max(rho().f_rg(ir), 0.0);
     }
     /* renormalize charge */
@@ -290,7 +290,7 @@ void Density::initial_density_full_pot()
     }
 
     /* remove possible negative noise */
-    for (int ir = 0; ir < ctx_.spfft().local_slice_size(); ir++) {
+    for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
         rho().f_rg(ir) = std::max(0.0, rho().f_rg(ir));
     }
 
@@ -559,13 +559,13 @@ void Density::generate_paw_loc_density()
     }
 }
 
-void Density::add_k_point_contribution_rg(K_point* kp__)
+void Density::add_k_point_contribution_rg(K_point<double>* kp__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
     double omega = unit_cell_.omega();
 
-    auto& fft = ctx_.spfft_coarse();
+    auto& fft = ctx_.spfft_coarse<double>();
 
     /* local number of real-space points */
     int nr = fft.local_slice_size();
@@ -739,7 +739,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 }
 
 template <typename T>
-void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_dm(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
 
@@ -1011,7 +1011,7 @@ void Density::normalize()
     double scale = unit_cell_.num_electrons() / nel;
 
     /* renormalize interstitial part */
-    for (int ir = 0; ir < ctx_.spfft().local_slice_size(); ir++) {
+    for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
         rho().f_rg(ir) *= scale;
     }
     if (ctx_.full_potential()) {
@@ -1184,10 +1184,10 @@ void Density::generate_valence(K_point_set const& ks__)
     double wt{0};
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
-        wt += ks__[ik]->weight();
+        wt += ks__.get<double>(ik)->weight();
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
+                occ_val += ks__.get<double>(ik)->weight() * ks__.get<double>(ik)->band_occupancy(j, ispn);
             }
         }
     }
@@ -1224,7 +1224,7 @@ void Density::generate_valence(K_point_set const& ks__)
     /* start the main loop over k-points */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = ks__.spl_num_kpoints(ikloc);
-        auto kp = ks__[ik];
+        auto kp = ks__.get<double>(ik);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
@@ -1300,14 +1300,14 @@ void Density::generate_valence(K_point_set const& ks__)
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        auto ptr = (ctx_.spfft_coarse().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
+        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
-        comm.allreduce(ptr, ctx_.spfft_coarse().local_slice_size());
+        comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
         /* print checksum if needed */
         if (ctx_.cfg().control().print_checksum()) {
-            auto cs = mdarray<double, 1>(ptr, ctx_.spfft_coarse().local_slice_size()).checksum();
-            Communicator(ctx_.spfft_coarse().communicator()).allreduce(&cs, 1);
+            auto cs = mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
+            Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("rho_mag_coarse_rg", cs);
             }
@@ -1766,10 +1766,10 @@ mdarray<double, 2> Density::compute_atomic_mag_mom() const
         }
 
         for (int j : {0, 1, 2}) {
-            mmom(j, ia) *= (unit_cell_.omega() / spfft_grid_size(ctx_.spfft()));
+            mmom(j, ia) *= (unit_cell_.omega() / spfft_grid_size(ctx_.spfft<double>()));
         }
     }
-    Communicator(ctx_.spfft().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+    Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
     return mmom;
 }
 

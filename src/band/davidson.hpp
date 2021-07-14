@@ -36,8 +36,8 @@
 */
 template <typename T>
 inline mdarray<double, 1>
-davidson(Hamiltonian_k& Hk__, Wave_functions<real_type<T>>& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,
-         double eval_tolerance__, double eval_tolerance_empty__, double norm_tolerance__,
+davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__, int num_mag_dims__, int subspace_size__,
+         int num_steps__, double eval_tolerance__, double eval_tolerance_empty__, double norm_tolerance__,
          std::function<double(int, int)> occupancy__, bool keep_phi_orthogonal__ = true)
 {
     PROFILE("sirius::davidson");

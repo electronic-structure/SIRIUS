@@ -25,8 +25,10 @@
 #ifndef __NON_LOCAL_OPERATOR_HPP__
 #define __NON_LOCAL_OPERATOR_HPP__
 
+#include "SDDK/omp.hpp"
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
+#include "beta_projectors/beta_projectors.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
@@ -38,10 +40,13 @@ class spin_range;
 
 namespace sirius {
 /* forward declaration */
+template <typename T>
 class Beta_projectors;
+template <typename T>
 class Beta_projectors_base;
 
 /// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
+template <typename T>
 class Non_local_operator
 {
   protected:
@@ -54,7 +59,7 @@ class Non_local_operator
     sddk::mdarray<int, 1> packed_mtrx_offset_;
 
     /// Non-local operator matrix.
-    sddk::mdarray<double, 3> op_;
+    sddk::mdarray<T, 3> op_;
 
     bool is_null_{false};
 
@@ -62,40 +67,276 @@ class Non_local_operator
     bool is_diag_{true};
 
     /* copy assignment operrator is forbidden */
-    Non_local_operator& operator=(Non_local_operator const& src) = delete;
+    Non_local_operator<T>& operator=(Non_local_operator<T> const& src) = delete;
     /* copy constructor is forbidden */
-    Non_local_operator(Non_local_operator const& src) = delete;
+    Non_local_operator(Non_local_operator<T> const& src) = delete;
 
   public:
     /// Constructor.
     Non_local_operator(Simulation_context const& ctx__);
 
     /// Apply chunk of beta-projectors to all wave functions.
-    template <typename T>
-    void apply(int chunk__, int ispn_block__, sddk::Wave_functions<real_type<T>>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
-
-    /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
-    template <typename T>
-    void apply(int chunk__, int ia__, int ispn_block__, sddk::Wave_functions<real_type<T>>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
-
-    template <typename T>
-    inline T value(int xi1__, int xi2__, int ia__)
+    template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
+    void apply(int chunk__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
     {
-        return this->value<T>(xi1__, xi2__, 0, ia__);
+        PROFILE("sirius::Non_local_operator::apply");
+
+        if (is_null_) {
+            return;
+        }
+
+        auto& beta_gk     = beta__.pw_coeffs_a();
+        int num_gkvec_loc = beta__.num_gkvec_loc();
+        int nbeta         = beta__.chunk(chunk__).num_beta_;
+
+        /* setup linear algebra parameters */
+        memory_t mem{memory_t::none};
+        linalg_t la{linalg_t::none};
+        switch (pu_) {
+            case device_t::CPU: {
+                mem = memory_t::host;
+                la  = linalg_t::blas;
+                break;
+            }
+            case device_t::GPU: {
+                mem = memory_t::device;
+                la  = linalg_t::gpublas;
+                break;
+            }
+        }
+
+        auto work = mdarray<T, 1>(nbeta * n__, ctx_.mem_pool(mem));
+
+        /* compute O * <beta|phi> for atoms in a chunk */
+#pragma omp parallel for
+        for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
+            /* number of beta functions for a given atom */
+            int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+            int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
+            int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
+
+            if (nbf == 0) {
+                continue;
+            }
+            linalg(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<T>::one(),
+                            op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0),
+                            beta_phi__.ld(), &linalg_const<T>::zero(), work.at(mem, offs), nbeta,
+                            stream_id(omp_get_thread_num()));
+        }
+        switch (pu_) {
+            case device_t::GPU: {
+                /* wait for previous zgemms */
+#pragma omp parallel
+                acc::sync_stream(stream_id(omp_get_thread_num()));
+                break;
+            }
+            case device_t::CPU: {
+                break;
+            }
+        }
+
+        int jspn = ispn_block__ & 1;
+
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg(ctx_.blas_linalg_t())
+            .gemm('N', 'N', 2 * num_gkvec_loc, n__, nbeta, &linalg_const<T>::one(),
+                  reinterpret_cast<T*>(beta_gk.at(mem)), 2 * num_gkvec_loc, work.at(mem), nbeta,
+                  &linalg_const<T>::one(),
+                  reinterpret_cast<T*>(op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__)),
+                  2 * op_phi__.pw_coeffs(jspn).prime().ld());
+
+        switch (pu_) {
+            case device_t::GPU: {
+                acc::sync_stream(stream_id(-1));
+                break;
+            }
+            case device_t::CPU: {
+                break;
+            }
+        }
     }
 
-    template <typename T>
-    T value(int xi1__, int xi2__, int ispn__, int ia__);
+    template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
+    void apply(int chunk__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
+    {
+        PROFILE("sirius::Non_local_operator::apply");
+
+        if (is_null_) {
+            return;
+        }
+
+        auto& beta_gk     = beta__.pw_coeffs_a();
+        int num_gkvec_loc = beta__.num_gkvec_loc();
+        int nbeta         = beta__.chunk(chunk__).num_beta_;
+
+        /* setup linear algebra parameters */
+        memory_t mem{memory_t::none};
+        linalg_t la{linalg_t::none};
+        switch (pu_) {
+            case device_t::CPU: {
+                mem = memory_t::host;
+                la  = linalg_t::blas;
+                break;
+            }
+            case device_t::GPU: {
+                mem = memory_t::device;
+                la  = linalg_t::gpublas;
+                break;
+            }
+        }
+
+        auto work = mdarray<std::complex<T>, 1>(nbeta * n__, ctx_.mem_pool(mem));
+
+/* compute O * <beta|phi> for atoms in a chunk */
+#pragma omp parallel
+        {
+            acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
+
+#pragma omp for
+            for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
+                /* number of beta functions for a given atom */
+                int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+                int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
+                int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
+
+                if (nbf) {
+                    linalg(la).gemm(
+                        'N', 'N', nbf, n__, nbf, &linalg_const<std::complex<T>>::one(),
+                        reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
+                        beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<std::complex<T>>::zero(),
+                        work.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
+                }
+            }
+        }
+        switch (pu_) {
+            case device_t::GPU: {
+/* wait for previous zgemms */
+#pragma omp parallel
+                acc::sync_stream(stream_id(omp_get_thread_num()));
+                break;
+            }
+            case device_t::CPU: {
+                break;
+            }
+        }
+
+        int jspn = ispn_block__ & 1;
+
+        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        linalg(ctx_.blas_linalg_t())
+            .gemm('N', 'N', num_gkvec_loc, n__, nbeta, &linalg_const<std::complex<T>>::one(), beta_gk.at(mem),
+                  num_gkvec_loc, work.at(mem), nbeta, &linalg_const<std::complex<T>>::one(),
+                  op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
+                  op_phi__.pw_coeffs(jspn).prime().ld());
+
+        switch (pu_) {
+            case device_t::GPU: {
+                acc::sync_stream(stream_id(-1));
+                break;
+            }
+            case device_t::CPU: {
+                break;
+            }
+        }
+    }
+
+    /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
+    template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
+    void apply(int chunk__, int ia__, int ispn_block__, Wave_functions<T>& op_phi__, int idx0__, int n__,
+               Beta_projectors_base<T>& beta__, matrix<F>& beta_phi__)
+    {
+        if (is_null_) {
+            return;
+        }
+
+        auto& beta_gk     = beta__.pw_coeffs_a();
+        int num_gkvec_loc = beta__.num_gkvec_loc();
+
+        int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), ia__);
+        int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), ia__);
+        int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), ia__);
+
+        if (nbf == 0) {
+            return;
+        }
+
+        /* setup linear algebra parameters */
+        memory_t mem{memory_t::none};
+        linalg_t la{linalg_t::none};
+
+        switch (pu_) {
+            case device_t::CPU: {
+                mem = memory_t::host;
+                la  = linalg_t::blas;
+                break;
+            }
+            case device_t::GPU: {
+                mem = memory_t::device;
+                la  = linalg_t::gpublas;
+                break;
+            }
+        }
+
+        auto work = mdarray<std::complex<T>, 1>(nbf * n__, ctx_.mem_pool(mem));
+
+        linalg(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<std::complex<T>>::one(),
+                        reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
+                        beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<std::complex<T>>::zero(), work.at(mem),
+                        nbf);
+
+        int jspn = ispn_block__ & 1;
+
+        linalg(ctx_.blas_linalg_t())
+            .gemm('N', 'N', num_gkvec_loc, n__, nbf, &linalg_const<std::complex<T>>::one(), beta_gk.at(mem, 0, offs),
+                  num_gkvec_loc, work.at(mem), nbf, &linalg_const<std::complex<T>>::one(),
+                  op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
+                  op_phi__.pw_coeffs(jspn).prime().ld());
+        switch (pu_) {
+            case device_t::CPU: {
+                break;
+            }
+            case device_t::GPU: {
+#ifdef SIRIUS_GPU
+                acc::sync_stream(stream_id(-1));
+#endif
+                break;
+            }
+        }
+    }
+
+    template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
+    inline F value(int xi1__, int xi2__, int ia__)
+    {
+        return this->value<F>(xi1__, xi2__, 0, ia__);
+    }
+
+    template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
+    F value(int xi1__, int xi2__, int ispn__, int ia__)
+    {
+        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
+        return this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
+    }
+
+    template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
+    F value(int xi1__, int xi2__, int ispn__, int ia__)
+    {
+        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
+        return std::complex<T>(this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__),
+                               this->op_(1, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__));
+    }
 
     inline bool is_diag() const
     {
         return is_diag_;
     }
+
 };
 
-class D_operator : public Non_local_operator
+
+template <typename T>
+class D_operator : public Non_local_operator<T>
 {
   private:
     void initialize();
@@ -104,7 +345,8 @@ class D_operator : public Non_local_operator
     D_operator(Simulation_context const& ctx_);
 };
 
-class Q_operator : public Non_local_operator
+template <typename T>
+class Q_operator : public Non_local_operator<T>
 {
   private:
     void initialize();
@@ -121,8 +363,8 @@ class U_operator
     sddk::mdarray<std::complex<T>, 3> um_;
     std::vector<int> offset_;
     int nhwf_;
-  public:
 
+  public:
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
         : ctx_(ctx__)
     {
@@ -217,14 +459,14 @@ class U_operator
  */
 template <typename T>
 void
-apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                    sddk::Wave_functions<real_type<T>>& phi__, D_operator* d_op__, sddk::Wave_functions<real_type<T>>* hphi__, Q_operator* q_op__,
-                    sddk::Wave_functions<real_type<T>>* sphi__);
+apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                    sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__, sddk::Wave_functions<real_type<T>>* hphi__,
+                    Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>* sphi__);
 
 template <typename T>
 void
-apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                 sddk::Wave_functions<real_type<T>>& phi__, Q_operator* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
+apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                 sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
 
 template <typename T>
 void

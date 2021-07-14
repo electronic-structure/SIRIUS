@@ -27,7 +27,7 @@
 namespace sirius {
 
 void
-Band::solve_full_potential(Hamiltonian_k& Hk__) const
+Band::solve_full_potential(Hamiltonian_k<double>& Hk__) const
 {
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
@@ -51,7 +51,7 @@ Band::solve_full_potential(Hamiltonian_k& Hk__) const
 
 template <typename T>
 int
-Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
+Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -101,7 +101,7 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
 }
 
 void
-Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
+Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve");
 
@@ -122,7 +122,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__[ik];
+        auto kp = kset__.get<double>(ik);
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
@@ -150,12 +150,12 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             std::printf("ik : %2i, ", ik);
             for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                std::printf("%12.6f", kset__[ik]->band_energy(j, 0));
+                std::printf("%12.6f", kset__.get<double>(ik)->band_energy(j, 0));
             }
             if (ctx_.num_mag_dims() == 1) {
                 std::printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                    std::printf("%12.6f", kset__[ik]->band_energy(j, 1));
+                    std::printf("%12.6f", kset__.get<double>(ik)->band_energy(j, 1));
                 }
             }
             std::printf("\n");

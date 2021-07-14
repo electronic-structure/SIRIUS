@@ -228,6 +228,51 @@ class linalg
 };
 
 template <>
+inline void linalg::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha,
+                                     ftn_single const* A, ftn_int lda, ftn_single const* B, ftn_int ldb,
+                                     ftn_single const* beta, ftn_single* C, ftn_int ldc, stream_id sid) const
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(sgemm)
+            (&transa, &transb, &m, &n, &k, const_cast<float*>(alpha), const_cast<float*>(A), &lda,
+             const_cast<float*>(B), &ldb, const_cast<float*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            accblas::xt::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        case linalg_t::spla: {
+            splablas::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
 inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
                                       ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
                                       ftn_double const* beta, ftn_double* C, ftn_int ldc, stream_id sid) const
@@ -263,6 +308,59 @@ inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_in
         }
         case linalg_t::spla: {
             splablas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha,
+                                      ftn_complex const* A, ftn_int lda, ftn_complex const* B, ftn_int ldb, ftn_complex const *beta,
+                                      ftn_complex* C, ftn_int ldc, stream_id sid) const
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(cgemm)
+            (&transa, &transb, &m, &n, &k, const_cast<ftn_complex*>(alpha), const_cast<ftn_complex*>(A), &lda,
+             const_cast<ftn_complex*>(B), &ldb, const_cast<ftn_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
+                           reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                           reinterpret_cast<acc_complex_float_t const*>(B), ldb,
+                           reinterpret_cast<acc_complex_float_t const*>(beta),
+                           reinterpret_cast<acc_complex_float_t*>(C), ldc, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            accblas::xt::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
+                               reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                               reinterpret_cast<acc_complex_float_t const*>(B), ldb,
+                               reinterpret_cast<acc_complex_float_t const*>(beta),
+                               reinterpret_cast<acc_complex_float_t*>(C), ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        case linalg_t::spla: {
+            splablas::cgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
             break;
         }
         default: {
@@ -329,9 +427,40 @@ inline void linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m
 
 template<>
 inline void
+linalg::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha,
+                          sddk::dmatrix<ftn_single> const& A, ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_single> const& B,
+                          ftn_int ib, ftn_int jb, ftn_single const* beta, sddk::dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(A.ld() != 0);
+            assert(B.ld() != 0);
+            assert(C.ld() != 0);
+
+            ia++; ja++;
+            ib++; jb++;
+            ic++; jc++;
+            FORTRAN(psgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
+                            (ftn_len)1, (ftn_len)1);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void
 linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
-                          sddk::dmatrix<ftn_double> const& A, ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double> const& B,
-                          ftn_int ib, ftn_int jb, ftn_double const* beta, sddk::dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+                         sddk::dmatrix<ftn_double> const& A, ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double> const& B,
+                         ftn_int ib, ftn_int jb, ftn_double const* beta, sddk::dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
 {
     switch (la_) {
         case linalg_t::scalapack: {
@@ -344,6 +473,37 @@ linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int
             ib++; jb++;
             ic++; jc++;
             FORTRAN(pdgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
+                            (ftn_len)1, (ftn_len)1);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void
+linalg::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha,
+                          sddk::dmatrix<ftn_complex> const& A, ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_complex> const& B,
+                          ftn_int ib, ftn_int jb, ftn_complex const* beta, sddk::dmatrix<ftn_complex>& C, ftn_int ic, ftn_int jc)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            assert(A.ld() != 0);
+            assert(B.ld() != 0);
+            assert(C.ld() != 0);
+
+            ia++; ja++;
+            ib++; jb++;
+            ic++; jc++;
+            FORTRAN(pcgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
                             B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
@@ -393,6 +553,30 @@ linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n,
 
 template<>
 inline void
+linalg::hemm<ftn_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_complex const* alpha, ftn_complex const* A,
+                          ftn_len lda, ftn_complex const* B, ftn_len ldb, ftn_complex const* beta, ftn_complex* C, ftn_len ldc)
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(chemm)
+            (&side, &uplo, &m, &n, const_cast<ftn_complex*>(alpha), const_cast<ftn_complex*>(A), &lda,
+             const_cast<ftn_complex*>(B), &ldb, const_cast<ftn_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void
 linalg::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_double_complex const* alpha,
                                   ftn_double_complex const* A, ftn_len lda, ftn_double_complex const* B, ftn_len ldb,
                                   ftn_double_complex const* beta, ftn_double_complex* C, ftn_len ldc)
@@ -407,6 +591,35 @@ linalg::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn
             FORTRAN(zhemm)(&side, &uplo, &m, &n, const_cast<ftn_double_complex*>(alpha),
                            const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
                            const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void linalg::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha, ftn_single const* x, ftn_int incx,
+                                    ftn_single const* y, ftn_int incy, ftn_single* A, ftn_int lda, stream_id sid) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(sger)(&m, &n, const_cast<ftn_single*>(alpha), const_cast<ftn_single*>(x), &incx,
+                          const_cast<ftn_single*>(y), &incy, A, &lda);
+            break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU)
+            accblas::sger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+            throw std::runtime_error("(s,c)ger is not implemented in cublasxt");
             break;
         }
         default: {

@@ -36,7 +36,7 @@
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "spfft/spfft.hpp"
+#include "SDDK/fft.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -97,6 +97,10 @@ class Simulation_context : public Simulation_parameters
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<spfft::Transform> spfft_transform_;
     std::unique_ptr<spfft::Grid> spfft_grid_;
+#ifdef USE_FP32
+    std::unique_ptr<spfft::TransformFloat> spfft_transform_float_;
+    std::unique_ptr<spfft::GridFloat> spfft_grid_float_;
+#endif
 
     /// Grid descriptor for the coarse-grained FFT transform.
     sddk::FFT3D_grid fft_coarse_grid_;
@@ -104,6 +108,10 @@ class Simulation_context : public Simulation_parameters
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
+#ifdef USE_FP32
+    std::unique_ptr<spfft::TransformFloat> spfft_transform_coarse_float_;
+    std::unique_ptr<spfft::GridFloat> spfft_grid_coarse_float_;
+#endif
 
     /// G-vectors within the Gmax cutoff.
     std::unique_ptr<Gvec> gvec_;
@@ -754,30 +762,20 @@ class Simulation_context : public Simulation_parameters
         cfg().settings().fft_grid_size(fft_grid_size__);
     }
 
-    spfft::Grid& spfft_grid_coarse()
-    {
-        return *spfft_grid_coarse_;
-    }
+    template <typename T>
+    spfft_grid_type<T>& spfft_grid_coarse();
 
-    spfft::Transform& spfft()
-    {
-        return *spfft_transform_;
-    }
+    template <typename T>
+    spfft_transform_type<T>& spfft();
 
-    spfft::Transform const& spfft() const
-    {
-        return *spfft_transform_;
-    }
+    template <typename T>
+    spfft_transform_type<T> const& spfft() const;
 
-    spfft::Transform& spfft_coarse()
-    {
-        return *spfft_transform_coarse_;
-    }
+    template <typename T>
+    spfft_transform_type<T>& spfft_coarse();
 
-    spfft::Transform const& spfft_coarse() const
-    {
-        return *spfft_transform_coarse_;
-    }
+    template <typename T>
+    spfft_transform_type<T> const& spfft_coarse() const;
 
     sddk::FFT3D_grid const& fft_grid() const
     {
@@ -907,7 +905,7 @@ class Simulation_context : public Simulation_parameters
         dict["config"] = cfg().dict();
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid = {spfft_coarse().dim_x(), spfft_coarse().dim_y(), spfft_coarse().dim_z()};
+        auto fftgrid = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(), spfft_transform_coarse_->dim_z()};
         dict["fft_coarse_grid"] = fftgrid;
         dict["mpi_grid"] = mpi_grid_dims();
         dict["omega"] = unit_cell().omega();

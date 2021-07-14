@@ -25,18 +25,43 @@
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
+template <typename T>
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
-                                       double alpha__,
-                                       double const* pw_ekin__,
-                                       acc_complex_double_t const* phi__,
-                                       acc_complex_double_t const* vphi__,
-                                       acc_complex_double_t* hphi__)
+                                       T alpha__,
+                                       T const* pw_ekin__,
+                                       gpu_complex_type<T> const* phi__,
+                                       gpu_complex_type<T> const* vphi__,
+                                       gpu_complex_type<T>* hphi__);
+
+template <>
+__global__ void add_pw_ekin_gpu_kernel<float>(int num_gvec__,
+                                              float alpha__,
+                                              float const* pw_ekin__,
+                                              acc_complex_float_t const* phi__,
+                                              acc_complex_float_t const* vphi__,
+                                              acc_complex_float_t* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        acc_complex_double_t z1 = accCadd(vphi__[ig], make_accDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x, 
-                                                                     alpha__ * pw_ekin__[ig] * phi__[ig].y));
-        hphi__[ig] = accCadd(hphi__[ig], z1);
+        acc_complex_float_t z1 = accCaddf(vphi__[ig], make_accFloatComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x,
+                                                                           alpha__ * pw_ekin__[ig] * phi__[ig].y));
+        hphi__[ig]             = accCaddf(hphi__[ig], z1);
+    }
+}
+
+template <>
+__global__ void add_pw_ekin_gpu_kernel<double>(int num_gvec__,
+                                               double alpha__,
+                                               double const* pw_ekin__,
+                                               acc_complex_double_t const* phi__,
+                                               acc_complex_double_t const* vphi__,
+                                               acc_complex_double_t* hphi__)
+{
+    int ig = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ig < num_gvec__) {
+        acc_complex_double_t z1 = accCadd(vphi__[ig], make_accDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x,
+                                                                            alpha__ * pw_ekin__[ig] * phi__[ig].y));
+        hphi__[ig]              = accCadd(hphi__[ig], z1);
     }
 }
 
@@ -44,7 +69,21 @@ __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
 /** The following operation is performed:
  *    hphi[ig] += (alpha *  pw_ekin[ig] * phi[ig] + vphi[ig])
  */
-extern "C" void add_pw_ekin_gpu(int num_gvec__,
+extern "C" void add_pw_ekin_gpu_float(int num_gvec__,
+                                       float alpha__,
+                                       float const* pw_ekin__,
+                                       acc_complex_float_t const* phi__,
+                                       acc_complex_float_t const* vphi__,
+                                       acc_complex_float_t* hphi__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
+
+    accLaunchKernel((add_pw_ekin_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, alpha__, pw_ekin__,
+                    phi__, vphi__, hphi__);
+}
+
+extern "C" void add_pw_ekin_gpu_double(int num_gvec__,
                                 double alpha__,
                                 double const* pw_ekin__,
                                 acc_complex_double_t const* phi__,
@@ -54,13 +93,6 @@ extern "C" void add_pw_ekin_gpu(int num_gvec__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
 
-    accLaunchKernel((add_pw_ekin_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
-        num_gvec__,
-        alpha__,
-        pw_ekin__,
-        phi__,
-        vphi__,
-        hphi__
-    );
-
+    accLaunchKernel((add_pw_ekin_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, alpha__, pw_ekin__,
+                    phi__, vphi__, hphi__);
 }

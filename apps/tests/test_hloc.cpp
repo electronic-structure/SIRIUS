@@ -32,7 +32,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     auto& gvec = params.gvec();
     auto& gvecp = params.gvec_partition();
-    auto& fft = params.spfft();
+    auto& fft = params.spfft<double>();
 
     if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -44,7 +44,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of z-columns: %i\n", gvec.num_zcol());
     }
 
-    Local_operator hloc(params, fft, gvecp);
+    Local_operator<double> hloc(params, fft, gvecp);
 
     Wave_functions<double> phi(gvecp, 4 * num_bands__, memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {

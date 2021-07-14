@@ -210,7 +210,7 @@ class Smooth_periodic_function
         auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
 
 #if defined(USE_FP32)
-        using precision_type = typename std::conditional<std::is_same<T, double>::value, double, float>::type;
+        using precision_type = typename std::conditional<std::is_same<real_type<T>, double>::value, double, float>::type;
 #else
         using precision_type = double;
 #endif 

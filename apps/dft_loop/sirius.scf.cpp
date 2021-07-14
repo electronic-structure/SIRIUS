@@ -365,7 +365,7 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
-        Hamiltonian0 H0(potential);
+        Hamiltonian0<double> H0(potential);
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
@@ -396,13 +396,13 @@ void run_tasks(cmd_args const& args)
                 json bnd_k;
                 bnd_k["kpoint"] = std::vector<double>(3, 0);
                 for (int x = 0; x < 3; x++) {
-                    bnd_k["kpoint"][x] = ks[ik]->vk()[x];
+                    bnd_k["kpoint"][x] = ks.get<double>(ik)->vk()[x];
                 }
                 std::vector<double> bnd_e;
 
                 for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
                     for (int j = 0; j < ctx->num_bands(); j++) {
-                        bnd_e.push_back(ks[ik]->band_energy(j, ispn));
+                        bnd_e.push_back(ks.get<double>(ik)->band_energy(j, ispn));
                     }
                 }
                 //ks.get_band_energies(ik, bnd_e.data());

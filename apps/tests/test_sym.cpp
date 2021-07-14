@@ -86,15 +86,15 @@ void test_sym(cmd_args const& args__)
     std::vector<Wave_functions<double>> phi_sym;
 
     for (int ik = 0; ik < kset_sym.num_kpoints(); ik++) {
-        phi_sym.emplace_back(kset_sym[ik]->gkvec_partition(), nwf, memory_t::host);
-        kset_sym[ik]->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_sym.back());
+        phi_sym.emplace_back(kset_sym.get<double>(ik)->gkvec_partition(), nwf, memory_t::host);
+        kset_sym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_sym.back());
     }
 
     std::vector<Wave_functions<double>> phi_nosym;
 
     for (int ik = 0; ik < kset_nosym.num_kpoints(); ik++) {
-        phi_nosym.emplace_back(kset_nosym[ik]->gkvec_partition(), nwf, memory_t::host);
-        kset_nosym[ik]->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_nosym.back());
+        phi_nosym.emplace_back(kset_nosym.get<double>(ik)->gkvec_partition(), nwf, memory_t::host);
+        kset_nosym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_nosym.back());
     }
 
     auto& sym = ctx.unit_cell().symmetry();
@@ -107,9 +107,9 @@ void test_sym(cmd_args const& args__)
 
             auto rotm = sht::rotation_matrix<double>(2, eang, pr);
 
-            auto vk1 = geometry3d::reduce_coordinates(dot(R, kset_sym[ik]->vk())).first;
+            auto vk1 = geometry3d::reduce_coordinates(dot(R, kset_sym.get<double>(ik)->vk())).first;
 
-            std::cout << "isym: " << isym << " k: " << kset_sym[ik]->vk() << " k1: " << vk1 << std::endl;
+            std::cout << "isym: " << isym << " k: " << kset_sym.get<double>(ik)->vk() << " k1: " << vk1 << std::endl;
 
             /* compute <phi|G+k>w<G+k|phi> using k1 from the irreducible set */
             sddk::mdarray<double_complex, 3> dm(5, 5, na);
@@ -119,8 +119,8 @@ void test_sym(cmd_args const& args__)
             for (int ia = 0; ia < na; ia++) {
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
-                        for (int ig = 0; ig < kset_nosym[ik1]->num_gkvec(); ig++) {
-                            double w = 1.0 / (1.0 + kset_nosym[ik1]->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
+                        for (int ig = 0; ig < kset_nosym.get<double>(ik1)->num_gkvec(); ig++) {
+                            double w = 1.0 / (1.0 + kset_nosym.get<double>(ik1)->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
                             dm(m1, m2, ia) += std::conj(phi_nosym[ik1].pw_coeffs(0).prime(ig, m1 + offset[ia])) *
                                 phi_nosym[ik1].pw_coeffs(0).prime(ig, m2 + offset[ia]) * w;
                         }
@@ -130,21 +130,21 @@ void test_sym(cmd_args const& args__)
 
             /* now rotate the coefficients from the initial k-point */
             /* we know <G+k|phi>, we need to find <G+k|P^{-1} phi> */
-            Wave_functions<double> phi1(kset_sym[ik]->gkvec_partition(), nwf, memory_t::host);
+            Wave_functions<double> phi1(kset_sym.get<double>(ik)->gkvec_partition(), nwf, memory_t::host);
             for (int ia = 0; ia < na; ia++) {
                 int ja = sym[isym].spg_op.sym_atom[ia];
                 int i_a = ia;
                 int j_a = ja;
 
-                double phase = twopi * dot(kset_sym[ik]->vk(), ctx.unit_cell().atom(i_a).position());
+                double phase = twopi * dot(kset_sym.get<double>(ik)->vk(), ctx.unit_cell().atom(i_a).position());
                 auto dephase_k = std::exp(double_complex(0.0, phase));
 
-                phase = twopi * dot(kset_sym[ik]->vk(), ctx.unit_cell().atom(j_a).position());
+                phase = twopi * dot(kset_sym.get<double>(ik)->vk(), ctx.unit_cell().atom(j_a).position());
                 auto phase_k = std::exp(double_complex(0.0, phase));
 
                 std::cout << "ia : " << i_a << " -> " << j_a << std::endl;
 
-                for (int ig = 0; ig < kset_sym[ik]->num_gkvec(); ig++) {
+                for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {
                     sddk::mdarray<double_complex, 1> v1(5);
                     v1.zero();
                     for (int m = 0; m < 5; m++) {
@@ -164,8 +164,8 @@ void test_sym(cmd_args const& args__)
             for (int ia = 0; ia < na; ia++) {
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
-                        for (int ig = 0; ig < kset_sym[ik]->num_gkvec(); ig++) {
-                            double w = 1.0 / (1.0 + kset_sym[ik]->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
+                        for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {
+                            double w = 1.0 / (1.0 + kset_sym.get<double>(ik)->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
                             dm1(m1, m2, ia) += std::conj(phi1.pw_coeffs(0).prime(ig, m1 + offset[ia])) *
                                 phi1.pw_coeffs(0).prime(ig, m2 + offset[ia]) * w;
                         }
