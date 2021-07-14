@@ -90,7 +90,7 @@ spfft_input(spfft_transform_type<T>& spfft__, F&& fr__)
             auto ptr = reinterpret_cast<std::complex<T>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
-                ptr[i] = double_complex(fr__(i), 0.0);
+                ptr[i] = std::complex<T>(fr__(i), 0.0);
             }
             break;
         }
@@ -137,12 +137,12 @@ inline void spfft_input(spfft_transform_type<T>& spfft__, T const* data__)
     spfft_input<T>(spfft__, [&](int ir){return data__[ir];});
 }
 
-template <typename F>
-inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
+template <typename T, typename F>
+inline void spfft_multiply(spfft_transform_type<T>& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
-            auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<std::complex<T>*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 ptr[i] *= fr__(i);
@@ -150,7 +150,7 @@ inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
             break;
         }
         case SPFFT_TRANS_R2C: {
-            auto ptr = reinterpret_cast<double*>(spfft__.space_domain_data(SPFFT_PU_HOST));
+            auto ptr = reinterpret_cast<T*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
                 ptr[i] *= fr__(i);
