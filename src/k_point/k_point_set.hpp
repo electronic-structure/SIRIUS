@@ -44,7 +44,15 @@ class K_point_set
     Simulation_context& ctx_;
 
     /// List of k-points.
-    std::vector<std::unique_ptr<K_point>> kpoints_;
+    std::vector<std::unique_ptr<K_point<double>>> kpoints_;
+
+#ifdef USE_FP32
+    /// List of k-points in fp32 type, most calculation and assertion in this class only rely on fp64 type kpoints_
+    std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
+
+    /// bool variable to store last access of kpoints using fp32 or fp64 type
+    bool access_fp64{true};
+#endif
 
     /// Split index of k-points.
     splindex<splindex_t::chunk> spl_num_kpoints_;
@@ -124,6 +132,9 @@ class K_point_set
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             kpoints_[ik]->update();
+#ifdef USE_FP32
+            kpoints_float_[ik]->update();
+#endif
         }
     }
 
@@ -132,7 +143,15 @@ class K_point_set
     {
         std::vector<double> bnd_e(ctx_.num_bands());
         for (int j = 0; j < ctx_.num_bands(); j++) {
-            bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
+#ifdef USE_FP32
+            if (access_fp64) {
+#endif
+                bnd_e[j] = (*this).get<double>(ik__)->band_energy(j, ispn__);
+#ifdef USE_FP32
+            } else {
+                bnd_e[j] = (*this).get<float>(ik__)->band_energy(j, ispn__);
+            }
+#endif
         }
         return bnd_e;
     }
@@ -153,7 +172,10 @@ class K_point_set
     void add_kpoint(double const* vk__, double weight__)
     {
         int id = static_cast<int>(kpoints_.size());
-        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__, id)));
+        kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__, id)));
+#ifdef USE_FP32
+        kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, static_cast<float>(weight__), id)));
+#endif
     }
 
     /// Add multiple k-points to the set.
@@ -164,17 +186,40 @@ class K_point_set
         }
     }
 
-    inline K_point* operator[](int i)
+    template <typename T>
+    inline K_point<T>* get(int i)
     {
         assert(i >= 0 && i < (int)kpoints_.size());
-        return kpoints_[i].get();
+
+#ifdef USE_FP32
+        if(std::is_same<T, double>::value) {
+            access_fp64 = true;
+#endif
+            return kpoints_[i].get();
+#ifdef USE_FP32
+        } else {
+            access_fp64 = false;
+            return kpoints_float_[i].get();
+        }
+#endif
     }
 
-    inline K_point* operator[](int i) const
+    template <typename T>
+    inline K_point<T>* get(int i) const
     {
         assert(i >= 0 && i < (int)kpoints_.size());
 
-        return kpoints_[i].get();
+#ifdef USE_FP32
+        if(std::is_same<T, double>::value) {
+            access_fp64 = true;
+#endif
+            return kpoints_[i].get();
+#ifdef USE_FP32
+        } else {
+            access_fp64 = false;
+            return kpoints_float_[i].get();
+        }
+#endif
     }
 
     /// Return total number of k-points.
@@ -246,6 +291,10 @@ class K_point_set
         if (jrank == my_rank) {
             auto kp = kpoints_[jk__].get();
             kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+#ifdef USE_FP32
+            auto kp_float = kpoints_float_[jk__].get();
+            kp_float->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+#endif
         }
         /* this rank receives the k-point */
         if (rank__ == my_rank) {

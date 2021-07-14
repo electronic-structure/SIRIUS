@@ -51,6 +51,7 @@ class D_operator;
 class Q_operator;
 template <typename T>
 class U_operator;
+template <typename T>
 class K_point;
 template <typename T>
 class Gaunt_coefficients;
@@ -107,7 +108,7 @@ class Hamiltonian0
     Hamiltonian0(Hamiltonian0&& src) = default;
 
     /// Return a Hamiltonian for the given k-point.
-    inline Hamiltonian_k operator()(K_point& kp__);
+    inline Hamiltonian_k operator()(K_point<double>& kp__);
 
     Simulation_context& ctx() const
     {
@@ -171,7 +172,7 @@ class Hamiltonian_k
 {
   private:
     Hamiltonian0& H0_;
-    K_point& kp_;
+    K_point<double>& kp_;
     /// Hubbard correction.
     /** In general case it is a k-dependent matrix */
     std::shared_ptr<U_operator<double>> u_op_;
@@ -183,7 +184,7 @@ class Hamiltonian_k
     Hamiltonian_k& operator=(Hamiltonian_k const& src__) = delete;
 
   public:
-    Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__);
+    Hamiltonian_k(Hamiltonian0& H0__, K_point<double>& kp__);
 
     Hamiltonian_k(Hamiltonian_k&& src__);
 
@@ -194,12 +195,12 @@ class Hamiltonian_k
         return H0_;
     }
 
-    K_point& kp()
+    K_point<double>& kp()
     {
         return kp_;
     }
 
-    K_point const& kp() const
+    K_point<double> const& kp() const
     {
         return kp_;
     }
@@ -450,7 +451,7 @@ class Hamiltonian_k
     void apply_b(sddk::Wave_functions<double>& psi__, std::vector<sddk::Wave_functions<double>>& bpsi__);
 };
 
-Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
+Hamiltonian_k Hamiltonian0::operator()(K_point<double>& kp__)
 {
     return Hamiltonian_k(*this, kp__);
 }

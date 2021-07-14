@@ -35,7 +35,7 @@
 
 namespace sirius {
 
-Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move kinetic part from local_op to here
+Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point<double>& kp__) // TODO: move kinetic part from local_op to here
     : H0_(H0__)
     , kp_(kp__)
 {

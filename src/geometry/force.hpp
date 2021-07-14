@@ -32,6 +32,7 @@ namespace sirius {
 class Simulation_context;
 class Density;
 class Potential;
+template <typename T>
 class K_point;
 class K_point_set;
 class Hamiltonian_k;
@@ -73,7 +74,7 @@ class Force
     sddk::mdarray<double, 2> forces_total_;
 
     template <typename T>
-    void add_k_point_contribution(K_point& kp__, sddk::mdarray<double, 2>& forces__) const;
+    void add_k_point_contribution(K_point<double>& kp__, sddk::mdarray<double, 2>& forces__) const;
 
     void symmetrize(sddk::mdarray<double, 2>& forces__) const;
 
@@ -89,16 +90,16 @@ class Force
      *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
      *  \f]
      */
-    void compute_dmat(K_point* kp__, sddk::dmatrix<double_complex>& dm__) const;
+    void compute_dmat(K_point<double>* kp__, sddk::dmatrix<double_complex>& dm__) const;
 
     /** Compute the forces for the simplex LDA+U method not the fully rotationally invariant one.
      *  It can not be used for LDA+U+SO either.
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator& q_op__, sddk::mdarray<double, 2>& forceh_);
+    void hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator& q_op__, sddk::mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point<double>* kp__, Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
 
   public:
     Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__);

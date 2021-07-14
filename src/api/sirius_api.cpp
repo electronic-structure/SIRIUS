@@ -1559,20 +1559,20 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
 #ifdef SIRIUS_NLCGLIB
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
     gs.initial_state();
 
-    double rho_tol = inp.density_tol_;
+    double rho_tol = inp.density_tol();
     if (scf_density_tol__) {
         rho_tol = *scf_density_tol__;
     }
 
-    double etol = inp.energy_tol_;
+    double etol = inp.energy_tol();
     if (scf_energy_tol__) {
         etol = *scf_energy_tol__;
     }
 
-    int niter = inp.num_dft_iter_;
+    int niter = inp.num_dft_iter();
     if (scf_ninit__) {
         niter = *scf_ninit__;
     }
@@ -1588,15 +1588,15 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
 
     auto& kset = get_ks(ks_handler__);
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+    std::string smear = ctx.cfg().parameters().smearing();
+    std::string pu    = ctx.cfg().control().processing_unit();
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -2626,7 +2626,7 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     auto& ks = get_ks(ks_handler__);
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        ks[ik]->band_occupancy(i, *ispn__, band_occupancies__[i]);
+        ks.get<double>(ik)->band_occupancy(i, *ispn__, band_occupancies__[i]);
     }
 }
 
@@ -2660,7 +2660,7 @@ sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int cons
     auto& ks = get_ks(ks_handler__);
     int ik   = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
+        band_occupancies__[i] = ks.get<double>(ik)->band_occupancy(i, *ispn__);
     }
 }
 
@@ -2695,7 +2695,7 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     auto& ks = get_ks(ks_handler__);
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        band_energies__[i] = ks[ik]->band_energy(i, *ispn__);
+        band_energies__[i] = ks.get<double>(ik)->band_energy(i, *ispn__);
     }
 }
 
@@ -3512,7 +3512,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                         int send_size;
                         int send_size1;
                         if (my_rank == rank_with_jk[r]) {
-                            auto kp = kset[this_jk];
+                            auto kp = kset.get<double>(this_jk);
                             int gkvec_count = kp->gkvec().count();
                             send_size = gkvec_count * sim_ctx.num_bands();
                             req = kset.comm().isend(&send_size, 1, r, tag);
@@ -3535,7 +3535,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     }
 
                     if (my_rank == rank_with_jk[r]) {
-                        auto kp = kset[this_jk];
+                        auto kp = kset.get<double>(this_jk);
                         int gkvec_count = kp->gkvec().count();
                         /* send wave-functions */
                         req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
@@ -4191,7 +4191,7 @@ void sirius_get_gkvec_arrays(void* const* ks_handler__,
 
     auto& ks = get_ks(ks_handler__);
 
-    auto kp = ks[*ik__ - 1];
+    auto kp = ks.get<double>(*ik__ - 1);
 
     /* get rank that stores a given k-point */
     int rank = ks.spl_num_kpoints().local_rank(*ik__ - 1);
@@ -5446,7 +5446,7 @@ void sirius_get_fv_eigen_vectors(void*          const* handler__,
     auto& ks = get_ks(handler__);
     mdarray<std::complex<double>, 2> fv_evec(fv_evec__, *ld__, *num_fv_states__);
     int ik = *ik__ - 1;
-    ks[ik]->get_fv_eigen_vectors(fv_evec);
+    ks.get<double>(ik)->get_fv_eigen_vectors(fv_evec);
 }
 
 /*
@@ -5483,7 +5483,7 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     }
     int ik = *ik__ - 1;
     for (int i = 0; i < *num_fv_states__; i++) {
-        fv_eval__[i] = ks[ik]->fv_eigen_value(i);
+        fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
     }
 }
 
@@ -5518,7 +5518,7 @@ void sirius_get_sv_eigen_vectors(void*          const* handler__,
     auto& ks = get_ks(handler__);
     mdarray<std::complex<double>, 2> sv_evec(sv_evec__, *num_bands__, *num_bands__);
     int ik = *ik__ - 1;
-    ks[ik]->get_sv_eigen_vectors(sv_evec);
+    ks.get<double>(ik)->get_sv_eigen_vectors(sv_evec);
 }
 
 /*
@@ -5878,12 +5878,12 @@ void sirius_get_kpoint_properties(void* const* handler__,
     {
         auto& ks = get_ks(handler__);
         int ik = *ik__;
-        *weight__ = ks[ik]->weight();
+        *weight__ = ks.get<double>(ik)->weight();
 
         if (coordinates__) {
-            coordinates__[0] = ks[ik]->vk()[0];
-            coordinates__[1] = ks[ik]->vk()[1];
-            coordinates__[2] = ks[ik]->vk()[2];
+            coordinates__[0] = ks.get<double>(ik)->vk()[0];
+            coordinates__[1] = ks.get<double>(ik)->vk()[1];
+            coordinates__[2] = ks.get<double>(ik)->vk()[2];
         }
     }, error_code__);
 }
@@ -5921,7 +5921,7 @@ void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, s
         auto& sctx = ks.ctx();
 
         auto& uc = sctx.unit_cell();
-        auto& kp = *ks[*ik__ - 1];
+        auto& kp = *ks.get<double>(*ik__ - 1);
         auto& gk = kp.gkvec();
 
         std::vector<int> igk(gk.num_gvec());
@@ -6024,15 +6024,15 @@ void sirius_nlcg(void* const* handler__,
     auto& kset = get_ks(ks_handler__);
     auto& ctx = kset.ctx();
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+    std::string smear = ctx.cfg().parameters().smearing();
+    std::string pu    = ctx.cfg().control().processing_unit();
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -6156,7 +6156,7 @@ void sirius_nlcg_params(void* const* handler__,
 
     if(pu.compare("none") == 0) {
       // use same processing unit as SIRIUS
-      pu = ctx.control().processing_unit_;
+      pu = ctx.cfg().control().processing_unit();
     }
 
     nlcglib::nlcg_info info;
