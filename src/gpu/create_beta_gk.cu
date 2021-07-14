@@ -36,7 +36,7 @@ __global__ void create_beta_gk_gpu_kernel
     int const* beta_desc__,
     gpu_complex_type<T> const* beta_gk_t,
     T const* gkvec,
-    T const* atom_pos,
+    double const* atom_pos,
     gpu_complex_type<T>* beta_gk
 );
 
@@ -47,7 +47,7 @@ __global__ void create_beta_gk_gpu_kernel<float>
     int const* beta_desc__,
     acc_complex_float_t const* beta_gk_t,
     float const* gkvec,
-    float const* atom_pos,
+    double const* atom_pos,
     acc_complex_float_t* beta_gk
 )
 {
@@ -117,7 +117,7 @@ extern "C" void create_beta_gk_gpu_float(int num_atoms,
                                          int const* beta_desc,
                                          acc_complex_float_t const* beta_gk_t,
                                          float const* gkvec,
-                                         float const* atom_pos,
+                                         double const* atom_pos,
                                          acc_complex_float_t* beta_gk)
 {
 #ifdef SIRIUS_CUDA

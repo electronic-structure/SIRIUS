@@ -36,7 +36,7 @@ extern "C" void create_beta_gk_gpu_float(int                        num_atoms,
                                          int const*                 beta_desc,
                                          std::complex<float> const* beta_gk_t,
                                          float const*               gkvec,
-                                         float const*               atom_pos,
+                                         double const*              atom_pos,
                                          std::complex<float>*       beta_gk);
 
 extern "C" void create_beta_gk_gpu_double(int                   num_atoms,
