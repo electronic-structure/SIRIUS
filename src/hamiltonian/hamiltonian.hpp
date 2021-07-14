@@ -202,12 +202,12 @@ class Hamiltonian_k
         return H0_;
     }
 
-    K_point<double>& kp()
+    K_point<T>& kp()
     {
         return kp_;
     }
 
-    K_point<double> const& kp() const
+    K_point<T> const& kp() const
     {
         return kp_;
     }
