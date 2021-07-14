@@ -41,7 +41,7 @@ void Potential::generate_pw_coefs()
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {
-            spfft_input(fft, [&](int ir) -> double
+            spfft_input<double>(fft, [&](int ir) -> double
                              {
                                  double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
                                  return ctx_.theta(ir) / std::pow(M, 2);
@@ -50,7 +50,7 @@ void Potential::generate_pw_coefs()
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
         }
         case relativity_t::zora: {
-            spfft_input(fft, [&](int ir)
+            spfft_input<double>(fft, [&](int ir)
                              {
                                  double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
                                  return ctx_.theta(ir) / M;
@@ -59,7 +59,7 @@ void Potential::generate_pw_coefs()
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
-            spfft_input(fft, [&](int ir)
+            spfft_input<double>(fft, [&](int ir)
                              {
                                  return effective_potential().f_rg(ir) * ctx_.theta(ir);
                              });
