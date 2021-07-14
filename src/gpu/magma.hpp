@@ -371,6 +371,18 @@ inline void finalize()
 //==     return 1;
 //== }
 
+inline int spotrf(char uplo, int n, float* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L')) {
+        printf("magma_spotrf_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_spotrf_gpu(magma_uplo, n, A, lda, &info);
+    return info;
+}
+
 inline int dpotrf(char uplo, int n, double* A, int lda)
 {
     if (!(uplo == 'U' || uplo == 'L')) {
@@ -380,6 +392,18 @@ inline int dpotrf(char uplo, int n, double* A, int lda)
     magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
     magma_int_t info;
     magma_dpotrf_gpu(magma_uplo, n, A, lda, &info);
+    return info;
+}
+
+inline int cpotrf(char uplo, int n, magmaFloatComplex* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L')) {
+        printf("magma_cpotrf_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_cpotrf_gpu(magma_uplo, n, A, lda, &info);
     return info;
 }
 
@@ -395,6 +419,18 @@ inline int zpotrf(char uplo, int n, magmaDoubleComplex* A, int lda)
     return info;
 }
 
+inline int strtri(char uplo, int n, float* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L')) {
+        printf("magma_strtri_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_strtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
+    return info;
+}
+
 inline int dtrtri(char uplo, int n, double* A, int lda)
 {
     if (!(uplo == 'U' || uplo == 'L')) {
@@ -404,6 +440,18 @@ inline int dtrtri(char uplo, int n, double* A, int lda)
     magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
     magma_int_t info;
     magma_dtrtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
+    return info;
+}
+
+inline int ctrtri(char uplo, int n, magmaFloatComplex* A, int lda)
+{
+    if (!(uplo == 'U' || uplo == 'L')) {
+        printf("magma_ctrtri_wrapper: wrong uplo\n");
+        exit(-1);
+    }
+    magma_uplo_t magma_uplo = (uplo == 'U') ? MagmaUpper : MagmaLower;
+    magma_int_t info;
+    magma_ctrtri_gpu(magma_uplo, MagmaNonUnit, n, A, lda, &info);
     return info;
 }
 

@@ -21,8 +21,13 @@
 
 namespace sirius {
 
-void SHT::wigner_d_matrix(int l, double beta, sddk::mdarray<double, 2>& d_mtrx__)
+namespace sht { // TODO: move most of this to special functions
+
+sddk::mdarray<double, 2>
+wigner_d_matrix(int l, double beta)
 {
+    sddk::mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
+
     long double cos_b2 = std::cos((long double)beta / 2.0L);
     long double sin_b2 = std::sin((long double)beta / 2.0L);
 
@@ -38,17 +43,20 @@ void SHT::wigner_d_matrix(int l, double beta, sddk::mdarray<double, 2>& d_mtrx__
                     d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
                 }
             }
-            d_mtrx__(m1 + l, m2 + l) = (double)d;
+            d_mtrx(m1 + l, m2 + l) = (double)d;
         }
     }
+
+    return d_mtrx;
 }
 
-void SHT::rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation,
-                            double_complex *rot_mtrx__, int ld) {
-    sddk::mdarray<double_complex, 2> rot_mtrx(rot_mtrx__, ld, 2 * l + 1);
+template <>
+sddk::mdarray<double_complex, 2>
+rotation_matrix_l<double_complex>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+{
+    sddk::mdarray<double_complex, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
 
-    sddk::mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
-    wigner_d_matrix(l, euler_angles[1], d_mtrx);
+    auto d_mtrx = wigner_d_matrix(l, euler_angles[1]);
 
     for (int m1 = -l; m1 <= l; m1++) {
         for (int m2 = -l; m2 <= l; m2++) {
@@ -56,23 +64,19 @@ void SHT::rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, in
                                        d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
         }
     }
+
+    return rot_mtrx;
 }
 
-void SHT::rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation,
-                            double *rot_mtrx__, int ld) {
-    sddk::mdarray<double, 2> rot_mtrx_rlm(rot_mtrx__, ld, 2 * l + 1);
-    sddk::mdarray<double_complex, 2> rot_mtrx_ylm(2 * l + 1, 2 * l + 1);
+template <>
+sddk::mdarray<double, 2>
+rotation_matrix_l<double>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+{
+    auto rot_mtrx_ylm = rotation_matrix_l<double_complex>(l, euler_angles, proper_rotation);
 
-    sddk::mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
-    wigner_d_matrix(l, euler_angles[1], d_mtrx);
+    sddk::mdarray<double, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
+    rot_mtrx.zero();
 
-    for (int m1 = -l; m1 <= l; m1++) {
-        for (int m2 = -l; m2 <= l; m2++) {
-            rot_mtrx_ylm(m1 + l, m2 + l) =
-                    std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) *
-                    d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
-        }
-    }
     for (int m1 = -l; m1 <= l; m1++) {
         auto i13 = (m1 == 0) ? std::vector<int>({0}) : std::vector<int>({-m1, m1});
 
@@ -81,16 +85,69 @@ void SHT::rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, in
 
             for (int m3 : i13) {
                 for (int m4 : i24) {
-                    rot_mtrx_rlm(m1 + l, m2 + l) += std::real(rlm_dot_ylm(l, m1, m3) *
-                                                              rot_mtrx_ylm(m3 + l, m4 + l) *
-                                                              ylm_dot_rlm(l, m4, m2));
+                    rot_mtrx(m1 + l, m2 + l) += std::real(SHT::rlm_dot_ylm(l, m1, m3) *
+                                                          rot_mtrx_ylm(m3 + l, m4 + l) *
+                                                          SHT::ylm_dot_rlm(l, m4, m2));
                 }
+            }
+        }
+    }
+    return rot_mtrx;
+}
+
+
+// TODO: this is used in rotatin rlm spherical functions, but this is wrong.
+// the rotation must happen inside l-shells
+template <typename T>
+void
+rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+                sddk::mdarray<T, 2>& rotm)
+{
+    rotm.zero();
+
+    for (int l = 0; l <= lmax; l++) {
+        auto rl = rotation_matrix_l<T>(l, euler_angles, proper_rotation);
+        for (int m = 0; m < 2 * l + 1; m++) {
+            for (int mp = 0; mp < 2 * l + 1; mp++) {
+                rotm(l * l + m, l * l + mp) = rl(m, mp);
             }
         }
     }
 }
 
-double SHT::ClebschGordan(const int l, const double j, const double mj, const int spin) {
+template
+void
+rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+                        sddk::mdarray<double, 2>& rotm);
+
+template
+void
+rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+                                sddk::mdarray<double_complex, 2>& rotm);
+
+template <typename T>
+std::vector<sddk::mdarray<T, 2>>
+rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+{
+    std::vector<sddk::mdarray<T, 2>> result(lmax + 1);
+
+    for (int l = 0; l <= lmax; l++) {
+        result[l] = rotation_matrix_l<T>(l, euler_angles, proper_rotation);
+    }
+    return result;
+}
+
+template
+std::vector<sddk::mdarray<double, 2>>
+rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+
+template
+std::vector<sddk::mdarray<double_complex, 2>>
+rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+
+double
+ClebschGordan(const int l, const double j, const double mj, const int spin)
+{
     // l : orbital angular momentum
     // m:  projection of the total angular momentum $m \pm /frac12$
     // spin: Component of the spinor, 0 up, 1 down
@@ -141,8 +198,8 @@ double SHT::ClebschGordan(const int l, const double j, const double mj, const in
 // error it is considered as integer so mj = 2 mj
 
 double_complex
-SHT::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma) {
-
+calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
+{
     if ((sigma != 0) && (sigma != 1)) {
         std::printf("SphericalIndex function : unknown spin direction\n");
         return 0;
@@ -180,6 +237,8 @@ SHT::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp
         }
     }
 }
+
+} // namespace sht
 
 template<>
 void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmmax, double *ftp) const

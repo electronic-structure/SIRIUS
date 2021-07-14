@@ -3,7 +3,7 @@ set(unit_tests "test_init;test_nan;test_ylm;test_rlm;test_sinx_cosx;test_gvec;te
 test_fft_correctness_2;test_fft_real_1;test_fft_real_2;test_fft_real_3;test_rlm_deriv;\
 test_spline;test_rot_ylm;test_linalg;test_wf_ortho;test_serialize;test_mempool;test_sim_ctx;test_roundoff;\
 test_sht_lapl;test_sht;test_spheric_function;test_splindex;test_gaunt_coeff_1;test_gaunt_coeff_2;\
-test_init_ctx;test_cmd_args")
+test_init_ctx;test_cmd_args;test_geom3d")
 
 foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")

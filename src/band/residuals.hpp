@@ -30,6 +30,7 @@
 namespace sddk {
 template <typename T>
 class dmatrix;
+template <typename T>
 class Wave_functions;
 class spin_range;
 };
@@ -87,8 +88,8 @@ template <typename T>
 residual_result
 residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__,
           int N__, int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__,
-          sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__,
-          sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,
+          sddk::dmatrix<T>& evec__, sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__,
+          sddk::Wave_functions<real_type<T>>& hpsi__, sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__,
           sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
           bool estimate_eval__, double norm_tolerance__, std::function<bool(int, int)> is_converged__);
 }

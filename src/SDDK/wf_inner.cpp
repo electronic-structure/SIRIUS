@@ -27,6 +27,7 @@
 #include "SDDK/omp.hpp"
 #include <chrono>
 #include <spla/spla.hpp>
+#include "type_definition.hpp"
 
 #if defined(SIRIUS_GPU)
 #include "gpu/acc_blas.hpp"
@@ -36,52 +37,63 @@
 namespace sddk {
 
 namespace {
-template <typename T>
-void scale_gamma_wf(spin_range spins, int m, int i0, double alpha, Wave_functions& bra);
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
-template <>
-void scale_gamma_wf<double>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {
+template <typename T>
+void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions<real_type<T>>& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
 #if defined(SIRIUS_GPU)
-            accblas::dscal(
-                m, &alpha,
-                reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), incx);
+            if (std::is_same<T, double>::value) {
+                accblas::dscal(m, reinterpret_cast<double*>(&alpha),
+                               reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            } else if (std::is_same<T, float>::value) {
+                accblas::sscal(m, reinterpret_cast<float*>(&alpha),
+                               reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+                               incx);
+            }
 #else
             throw std::runtime_error("not compiled with GPU support!");
 #endif
         } else {
-            FORTRAN(dscal)
-            (&m, &alpha,
-             reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            if (std::is_same<T, double>::value) {
+                FORTRAN(dscal)
+                (&m, reinterpret_cast<double*>(&alpha),
+                 reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            } else if (std::is_same<T, float>::value) {
+                FORTRAN(sscal)
+                (&m, reinterpret_cast<float*>(&alpha),
+                 reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+            }
         }
     }
 }
 
 // If complex type, no scaling required
 template <>
-void scale_gamma_wf<double_complex>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {}
-
-template <typename T>
-void inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-              Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<T>& result__,
-              int irow0__, int jcol0__);
+void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions<float>& bra) {}
 
 template <>
+void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions<double>& bra) {}
+
+
+// general real type
+template <typename T>
 void
-inner_mt<double>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-      Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-      int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
+inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+      Wave_functions<real_type<T>>& bra__, int i0__, int m__, Wave_functions<real_type<T>>& ket__,
+      int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
 {
 }
 
-template <>
+// special for complex type
+template <typename T>
 void
-inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
-    Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-    int j0__, int n__, dmatrix<double_complex>& result__, int irow0__, int jcol0__)
+inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+    Wave_functions<T>& bra__, int i0__, int m__, Wave_functions<T>& ket__,
+    int j0__, int n__, dmatrix<std::complex<T>>& result__, int irow0__, int jcol0__)
 {
     bool local_has_mt  = bra__.has_mt();
     bool global_has_mt = false;
@@ -89,8 +101,8 @@ inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution
     // Not all ranks may have mt, but all must call spla if at least one does
     MPI_Allreduce(&local_has_mt, &global_has_mt, 1, MPI_C_BOOL, MPI_LOR, bra__.comm().mpi_comm());
     if (global_has_mt) {
-        double_complex* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
-        auto spins = spin_range(ispn__);
+        std::complex<T>* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
+        auto spins                  = spin_range(ispn__);
         for (auto s : spins) {
             PROFILE("sddk::wf_inner|mt");
             if (local_has_mt) {
@@ -112,8 +124,8 @@ inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution
 
 template <typename T>
 void
-inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-      int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
+      Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
 {
     PROFILE("sddk::wf_inner");
 
@@ -121,10 +133,11 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
                                                  ? spla::MatrixDistribution::create_mirror(bra__.comm().mpi_comm())
                                                  : result__.spla_distribution();
 
-    double alpha = 1.0;
-    int size_factor = 1;
-    if(std::is_same<T, double>::value) {
-        alpha = 2.0;
+    using precision_type = real_type<T>;
+    precision_type alpha = 1.0;
+    int size_factor      = 1;
+    if (std::is_same<T, precision_type>::value) {
+        alpha       = 2.0;
         size_factor = 2;
     }
 
@@ -134,7 +147,7 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
         scale_gamma_wf<T>(spins__, m__, i0__, 0.5, bra__);
     }
 
-    double beta = 0.0;
+    precision_type beta = 0.0;
 
     T* result_ptr = reinterpret_cast<T*>(result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr);
 
@@ -159,17 +172,28 @@ inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& b
     inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__, i0__, m__, ket__, j0__, n__, result__, irow0__, jcol0__);
 
     // make sure result is updated on device as well
-    if(result__.on_device()) {
+    if (result__.on_device()) {
         result__.copy_to(memory_t::device);
     }
 }
 
 // instantiate for required types
-template void inner<double>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__,
-                            int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<double>& result__,
+template void inner<double>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<double>& bra__,
+                            int i0__, int m__, Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double>& result__,
                             int irow0__, int jcol0__);
 
-template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__, int i0__, int m__,
-                                    Wave_functions& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
+template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<double>& bra__, int i0__, int m__,
+                                    Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
                                     int irow0__, int jcol0__);
+
+#ifdef USE_FP32
+template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__,
+                            int i0__, int m__, Wave_functions<float>& ket__, int j0__, int n__, dmatrix<float>& result__,
+                            int irow0__, int jcol0__);
+
+template void inner<std::complex<float>>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+                                    Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<float>>& result__,
+                                    int irow0__, int jcol0__);
+#endif
+
 } // namespace sddk

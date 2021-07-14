@@ -36,31 +36,27 @@
 namespace sddk {
 
 namespace {
-template <typename T>
-void transform_mt(::spla::Context& spla_ctx__, int ispn__, double alpha__,
-                  std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
-                  double beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__);
-
-template <>
-void transform_mt<double>(::spla::Context& spla_ctx__, int ispn__, double alpha__,
-                  std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<double>& mtrx__, int irow0__, int jcol0__,
-                  double beta__, std::vector<Wave_functions*> wf_out__, int j0__, int n__) {
+template <typename T,  typename = std::enable_if_t<std::is_scalar<T>::value>>
+void transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
+                  std::vector<Wave_functions<T>*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
+                  real_type<T> beta__, std::vector<Wave_functions<T>*> wf_out__, int j0__, int n__)
+{
     if (wf_in__[0]->has_mt()) {
         TERMINATE("not implemented");
     }
 }
 
-template <>
+// implemented only for complex type
+template <typename T,  typename = std::enable_if_t<!std::is_scalar<T>::value>>
 void
-transform_mt<double_complex>(::spla::Context& spla_ctx__, int ispn__,
-                             double alpha__, std::vector<Wave_functions*> wf_in__, int i0__, int m__,
-                             dmatrix<double_complex>& mtrx__, int irow0__, int jcol0__, double beta__,
-                             std::vector<Wave_functions*> wf_out__, int j0__, int n__)
+transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__, std::vector<Wave_functions<real_type<T>>*> wf_in__,
+             int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__, T beta__,
+             std::vector<Wave_functions<real_type<T>>*> wf_out__, int j0__, int n__)
 {
     spla::MatrixDistribution spla_mat_dist = mtrx__.spla_distribution();
-    int nwf    = static_cast<int>(wf_in__.size());
-    const double_complex* mtrx_ptr = mtrx__.size_local() ? mtrx__.at(memory_t::host, 0, 0) : nullptr;
-    auto spins = spin_range(ispn__);
+    int nwf                                = static_cast<int>(wf_in__.size());
+    const T* mtrx_ptr                      = mtrx__.size_local() ? mtrx__.at(memory_t::host, 0, 0) : nullptr;
+    auto spins                             = spin_range(ispn__);
     for (int iv = 0; iv < nwf; iv++) {
         bool local_has_mt  = wf_in__[iv]->has_mt();
         bool global_has_mt = false;
@@ -92,16 +88,16 @@ transform_mt<double_complex>(::spla::Context& spla_ctx__, int ispn__,
 
 template <typename T>
 void
-transform(::spla::Context& spla_ctx__, int ispn__, double alpha__, std::vector<Wave_functions*> wf_in__, int i0__,
-          int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__, double beta__, std::vector<Wave_functions*> wf_out__,
-          int j0__, int n__)
+transform(::spla::Context& spla_ctx__, int ispn__, real_type<T> alpha__,
+          std::vector<Wave_functions<real_type<T>>*> wf_in__, int i0__, int m__, dmatrix<T>& mtrx__, int irow0__, int jcol0__,
+          real_type<T> beta__, std::vector<Wave_functions<real_type<T>>*> wf_out__, int j0__, int n__)
 {
     PROFILE("sddk::wf_trans");
-    int nwf    = static_cast<int>(wf_in__.size());
+    int nwf = static_cast<int>(wf_in__.size());
 
     spla::MatrixDistribution spla_mat_dist = mtrx__.spla_distribution();
 
-    int size_factor = std::is_same<T, double>::value ? 2 : 1;
+    int size_factor = std::is_same<T, real_type<T>>::value ? 2 : 1;
 
     auto spins = spin_range(ispn__);
 
@@ -126,18 +122,30 @@ transform(::spla::Context& spla_ctx__, int ispn__, double alpha__, std::vector<W
         }
     }
 
-    transform_mt<T>(spla_ctx__, ispn__, alpha__, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, beta__,
-                    wf_out__, j0__, n__);
+    transform_mt<T>(spla_ctx__, ispn__, alpha__, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, beta__, wf_out__, j0__,
+                    n__);
 }
 
-
 template void transform<double>(::spla::Context& spla_ctx__, int ispn__, double alpha__,
-                                 std::vector<Wave_functions*> wf_in__, int i0__, int m__, dmatrix<double>& mtrx__,
-                                 int irow0__, int jcol0__, double beta__, std::vector<Wave_functions*> wf_out__,
-                                 int j0__, int n__);
+                                std::vector<Wave_functions<double>*> wf_in__, int i0__, int m__, dmatrix<double>& mtrx__,
+                                int irow0__, int jcol0__, double beta__, std::vector<Wave_functions<double>*> wf_out__,
+                                int j0__, int n__);
 
 template void transform<double_complex>(::spla::Context& spla_ctx__, int ispn__, double alpha__,
-                                        std::vector<Wave_functions*> wf_in__, int i0__, int m__,
+                                        std::vector<Wave_functions<double>*> wf_in__, int i0__, int m__,
                                         dmatrix<double_complex>& mtrx__, int irow0__, int jcol0__, double beta__,
-                                        std::vector<Wave_functions*> wf_out__, int j0__, int n__);
+                                        std::vector<Wave_functions<double>*> wf_out__, int j0__, int n__);
+
+#ifdef USE_FP32
+template void transform<float>(::spla::Context& spla_ctx__, int ispn__, float alpha__,
+                               std::vector<Wave_functions<float>*> wf_in__, int i0__, int m__, dmatrix<float>& mtrx__,
+                               int irow0__, int jcol0__, float beta__, std::vector<Wave_functions<float>*> wf_out__, int j0__,
+                               int n__);
+
+template void transform<std::complex<float>>(::spla::Context& spla_ctx__, int ispn__, float alpha__,
+                                             std::vector<Wave_functions<float>*> wf_in__, int i0__, int m__,
+                                             dmatrix<std::complex<float>>& mtrx__, int irow0__, int jcol0__,
+                                             float beta__, std::vector<Wave_functions<float>*> wf_out__, int j0__, int n__);
+#endif
+
 } // namespace sddk

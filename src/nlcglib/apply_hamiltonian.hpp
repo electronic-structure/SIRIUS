@@ -10,8 +10,8 @@
 
 namespace sirius {
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
-                       std::shared_ptr<Wave_functions>& swf)
+void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+                       std::shared_ptr<Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -38,7 +38,7 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
     int N = 0;
     int n = num_wf;
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
-        // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
+        // sping_range: 2 for non-collinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         H.apply_h_s<std::complex<double>>(spin_range, N, n, wf, &wf_out, swf.get());
     }

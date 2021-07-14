@@ -27,7 +27,6 @@
 
 #include <mpi.h>
 #include "typedefs.hpp"
-#include "input.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/utils.hpp"
 #include "memory.hpp"
@@ -39,7 +38,7 @@ using namespace sddk;
 namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
-json const& get_options_dictionary();
+nlohmann::json const& get_options_dictionary();
 
 class Config : public config_t
 {
@@ -85,11 +84,8 @@ class Simulation_parameters
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
-    /// LDA+U input parameters.
-    Hubbard_input hubbard_input_;
-
     /// JSON dictionary containing all runtime options set up through the interface.
-    json runtime_options_dictionary_;
+    nlohmann::json runtime_options_dictionary_;
 
     /// Storage for various memory pools.
     mutable std::map<memory_t, memory_pool> memory_pool_;
@@ -106,7 +102,7 @@ class Simulation_parameters
     void import(std::string const& str__);
 
     /// Import parameters from a json dictionary.
-    void import(json const& dict__);
+    void import(nlohmann::json const& dict__);
 
     /// Import from command line arguments.
     void import(cmd_args const& args__);
@@ -136,22 +132,7 @@ class Simulation_parameters
     void set_hubbard_correction(bool hubbard_correction__)
     {
         cfg().parameters().hubbard_correction(hubbard_correction__);
-        hubbard_input_.simplified_hubbard_correction_ = false;
-    }
-
-    void set_hubbard_simplified_version()
-    {
-        hubbard_input_.simplified_hubbard_correction_ = true;
-    }
-
-    void set_orthogonalize_hubbard_orbitals(const bool test)
-    {
-        hubbard_input_.orthogonalize_hubbard_orbitals_ = true;
-    }
-
-    void set_normalize_hubbard_orbitals(const bool test)
-    {
-        hubbard_input_.normalize_hubbard_orbitals_ = true;
+        cfg().hubbard().simplified(false);
     }
 
     /// Set flag for Gamma-point calculation.
@@ -306,7 +287,7 @@ class Simulation_parameters
     /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
     inline int num_mag_comp() const // TODO: rename; current name does not reflect the meaning
     {
-        return (num_mag_dims() == 3) ? 3 : num_spins();
+        return (num_mag_dims() == 3) ? 3 : num_spins(); // std::max(mag_dims, spins)
     }
 
     /// Number of non-zero spinor components.
@@ -544,13 +525,8 @@ class Simulation_parameters
         return tolerance__;
     }
 
-    Hubbard_input const& hubbard_input() const
-    {
-        return hubbard_input_;
-    }
-
     /// Get the options set at runtime.
-    json& get_runtime_options_dictionary()
+    nlohmann::json& get_runtime_options_dictionary()
     {
         return runtime_options_dictionary_;
     }

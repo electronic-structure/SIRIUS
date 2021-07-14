@@ -29,10 +29,9 @@
 #include "splindex.hpp"
 #include "hdf5_tree.hpp"
 #include <spla/spla.hpp>
+#include "type_definition.hpp"
 
 namespace sddk {
-
-using double_complex = std::complex<double>;
 
 /// Distributed matrix.
 template <typename T>
@@ -202,7 +201,7 @@ class dmatrix : public matrix<T>
 
     void add(const int irow_glob, const int icol_glob, T val);
 
-    void add(double beta__, const int irow_glob, const int icol_glob, T val);
+    void add(real_type<T> beta__, const int irow_glob, const int icol_glob, T val);
 
     void make_real_diag(int n__);
 
@@ -265,6 +264,7 @@ class dmatrix : public matrix<T>
             return Communicator::self();
         }
     }
+
 };
 
 

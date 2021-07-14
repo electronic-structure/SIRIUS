@@ -51,22 +51,84 @@ class Eigensolver_lapack : public Eigensolver
     {
     }
 
+    /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__){
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<float_complex>& A__, float* eval__, dmatrix<float_complex>& Z__){
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    template <typename T>
+    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        PROFILE("Eigensolver_lapack|dsyevd");
+        if (std::is_same<T, double>::value) {
+            PROFILE("Eigensolver_lapack|dsyevd");
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            PROFILE("Eigensolver_lapack|zheevd");
+        } else if (std::is_same<T, float>::value) {
+            PROFILE("Eigensolver_lapack|ssyevd");
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            PROFILE("Eigensolver_lapack|cheevd");
+        } else {
+            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
+            TERMINATE(error_msg_not_implemented);
+            return -1;
+        }
 
         ftn_int info;
         ftn_int lda = A__.ld();
 
-        ftn_int lwork  = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
+        ftn_int lwork;
         ftn_int liwork = 3 + 5 * matrix_size__;
+        ftn_int lrwork = 1 + 5 * matrix_size__ + 2 * matrix_size__ * matrix_size__; // only required in complex
 
-        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        if (std::is_same<T, double>::value) {
+            lwork = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
+        } else if (std::is_same<T, float>::value) {
+            lwork = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
+        }
+
+        auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
-        FORTRAN(dsyevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork,
-                        iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        if (std::is_same<T, double>::value) {
+            FORTRAN(dsyevd)
+            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), &liwork,
+             &info, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            FORTRAN(zheevd)
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(work.get()), &lwork,
+             reinterpret_cast<double*>(rwork.get()), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, float>::value) {
+            FORTRAN(ssyevd)
+            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(work.get()), &lwork, iwork.get(), &liwork,
+             &info, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            FORTRAN(cheevd)
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(work.get()), &lwork,
+             reinterpret_cast<float*>(rwork.get()), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        }
+
         if (!info) {
             for (int i = 0; i < matrix_size__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
@@ -76,63 +138,119 @@ class Eigensolver_lapack : public Eigensolver
         return info;
     }
 
-    /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|zheevd");
+    /// wrapper for solving a standard eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
 
-        ftn_int info;
-        ftn_int lda = A__.ld();
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__){
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
 
-        ftn_int lwork  = 2 * matrix_size__ + matrix_size__ * matrix_size__;
-        ftn_int lrwork = 1 + 5 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
-        ftn_int liwork = 3 + 5 * matrix_size__;
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
 
-        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(zheevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(),
-                        &lwork, rwork.get(), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
-        if (!info) {
-            for (int i = 0; i < matrix_size__; i++) {
-                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(memory_t::host, 0, i));
-            }
-        }
-        return info;
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float_complex>& A__, float* eval__, dmatrix<float_complex>& Z__){
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    template <typename T>
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        PROFILE("Eigensolver_lapack|dsyevr");
+        if (std::is_same<T, double>::value) {
+            PROFILE("Eigensolver_lapack|dsyevr");
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            PROFILE("Eigensolver_lapack|zheevx");
+        } else if (std::is_same<T, float>::value) {
+            PROFILE("Eigensolver_lapack|ssyevr");
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            PROFILE("Eigensolver_lapack|cheevx");
+        } else {
+            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
+            TERMINATE(error_msg_not_implemented);
+            return -1;
+        }
 
-        double vl, vu;
+        real_type<T> vl, vu;
+
         ftn_int il{1};
         ftn_int m{-1};
         ftn_int info;
 
-        auto w      = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__);
+        auto w      = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
+        auto ifail  = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);     // for complex matrix
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
-        double abs_tol = 2 * linalg_base::dlamch('S');
+        real_type<T> abs_tol = 2 * linalg_base::dlamch('S');
 
-        ftn_int liwork = 10 * matrix_size__;
-        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        ftn_int liwork;
+        ftn_int lwork;
+        int nb;
+        ftn_int lrwork = 7 * matrix_size__; // only require in complex
 
-        int nb = std::max(linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1),
+        liwork = 10 * matrix_size__;
+        if (std::is_same<T, double>::value) {
+            nb     = std::max(linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1),
                           linalg_base::ilaenv(1, "DORMTR", "U", matrix_size__, -1, -1, -1));
-        ftn_int lwork = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
-        auto work     = mp_h_.get_unique_ptr<double>(lwork);
+            liwork = 10 * matrix_size__;
+            lwork  = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            nb     = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
+            liwork = 5 * matrix_size__;
+            lwork  = (nb + 1) * matrix_size__;
+        } else if (std::is_same<T, float>::value) {
+            nb     = std::max(linalg_base::ilaenv(1, "SSYTRD", "U", matrix_size__, -1, -1, -1),
+                          linalg_base::ilaenv(1, "SORMTR", "U", matrix_size__, -1, -1, -1));
+            liwork = 10 * matrix_size__;
+            lwork  = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            nb     = linalg_base::ilaenv(1, "CHETRD", "U", matrix_size__, -1, -1, -1);
+            liwork = 5 * matrix_size__;
+            lwork  = (nb + 1) * matrix_size__;
+        }
 
-        FORTRAN(dsyevr)
-        ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-         Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, iwork.get(), &liwork, &info, (ftn_int)1,
-         (ftn_int)1, (ftn_int)1);
+        auto work  = mp_h_.get_unique_ptr<T>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
+
+        if (std::is_same<T, double>::value) {
+            FORTRAN(dsyevr)
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &il, &nev__,
+             reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ldz, isuppz.get(),
+             reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1,
+             (ftn_int)1);
+            lwork = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            FORTRAN(zheevx)
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &il, &nev__,
+             reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
+             iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, float>::value) {
+            FORTRAN(ssyevr)
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(&vl), reinterpret_cast<float*>(&vu), &il, &nev__,
+             reinterpret_cast<float*>(&abs_tol), &m, reinterpret_cast<float*>(w.get()),
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ldz, isuppz.get(), reinterpret_cast<float*>(work.get()),
+             &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            FORTRAN(cheevx)
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(&vl), reinterpret_cast<float*>(&vu), &il, &nev__,
+             reinterpret_cast<float*>(&abs_tol), &m, reinterpret_cast<float*>(w.get()),
+             reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
+             iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        }
 
         if (m != nev__) {
             std::stringstream s;
@@ -156,113 +274,45 @@ class Eigensolver_lapack : public Eigensolver
         return info;
     }
 
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|zheevx");
-
-        double vl, vu;
-        ftn_int il{1};
-        ftn_int m{-1};
-        ftn_int info;
-
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-
-        ftn_int lda = A__.ld();
-        ftn_int ldz = Z__.ld();
-
-        double abs_tol = 2 * linalg_base::dlamch('S');
-
-        ftn_int liwork = 5 * matrix_size__;
-        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        int nb        = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
-        ftn_int lwork = (nb + 1) * matrix_size__;
-        auto work     = mp_h_.get_unique_ptr<double_complex>(lwork);
-
-        ftn_int lrwork = 7 * matrix_size__;
-        auto rwork     = mp_h_.get_unique_ptr<double>(lrwork);
-
-        //FORTRAN(zheevr)
-        //("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-        // Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, rwork.get(), &lrwork, iwork.get(), &liwork,
-        // &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-        FORTRAN(zheevx)
-        ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-         Z__.at(memory_t::host), &ldz, work.get(), &lwork, rwork.get(), iwork.get(), ifail.get(),
-         &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
-    }
-
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    /// wrapper for solving a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-              dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_lapack|dsygvx");
+          dmatrix<double>& Z__){
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
 
-        ftn_int info;
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
+              dmatrix<double_complex>& Z__){
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
 
-        ftn_int lda = A__.ld();
-        ftn_int ldb = B__.ld();
-        ftn_int ldz = Z__.ld();
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
+              dmatrix<float>& Z__){
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
 
-        double abs_tol = 2 * linalg_base::dlamch('S');
-        double vl{0};
-        double vu{0};
-        ftn_int ione{1};
-        ftn_int m{0};
-
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-
-        int nb     = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
-        int lwork  = (nb + 3) * matrix_size__ + 1024;
-        int liwork = 5 * matrix_size__;
-
-        auto work  = mp_h_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-
-        FORTRAN(dsygvx)
-        (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
-         &ione, &nev__, &abs_tol, &m, w.get(), Z__.at(memory_t::host), &ldz, work.get(), &lwork, iwork.get(),
-         ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-        if (m != nev__) {
-            std::stringstream s;
-            s << "not all eigen-values are found" << std::endl
-              << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
-            WARNING(s);
-            return 1;
-        }
-
-        if (!info) {
-            std::copy(w.get(), w.get() + nev__, eval__);
-        }
-
-        return info;
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float_complex>& A__, dmatrix<float_complex>& B__, float* eval__,
+              dmatrix<float_complex>& Z__){
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
-              double* eval__, dmatrix<double_complex>& Z__)
+    template <typename T>
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__,
+              real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        PROFILE("Eigensolver_lapack|zhegvx");
+        if (std::is_same<T, double>::value) {
+            PROFILE("Eigensolver_lapack|dsygvx");
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            PROFILE("Eigensolver_lapack|zhegvx");
+        } else if (std::is_same<T, float>::value) {
+            PROFILE("Eigensolver_lapack|ssygvx");
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            PROFILE("Eigensolver_lapack|chegvx");
+        } else {
+            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
+            TERMINATE(error_msg_not_implemented);
+            return -1;
+        }
 
         ftn_int info;
 
@@ -270,28 +320,77 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int ldb = B__.ld();
         ftn_int ldz = Z__.ld();
 
-        double abs_tol = 2 * linalg_base::dlamch('S');
-        double vl{0};
-        double vu{0};
+        real_type<T> abs_tol = 2 * linalg_base::dlamch('S');
+        real_type<T> vl{0};
+        real_type<T> vu{0};
+
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
+
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
-        int nb     = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, 0, 0, 0);
-        int lwork  = (nb + 1) * matrix_size__;
-        int lrwork = 7 * matrix_size__;
-        int liwork = 5 * matrix_size__;
+        int nb, lwork, liwork;
+        int lrwork; // only required in complex
+        if (std::is_same<T, double>::value) {
+            nb     = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
+            lwork  = (nb + 3) * matrix_size__ + 1024;
+            liwork = 5 * matrix_size__;
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            nb     = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, 0, 0, 0);
+            lwork  = (nb + 1) * matrix_size__;
+            lrwork = 7 * matrix_size__;
+            liwork = 5 * matrix_size__;
+        } else if (std::is_same<T, float>::value) {
+            nb     = linalg_base::ilaenv(1, "SSYTRD", "U", matrix_size__, 0, 0, 0);
+            lwork  = (nb + 3) * matrix_size__ + 1024;
+            liwork = 5 * matrix_size__;
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            nb     = linalg_base::ilaenv(1, "CHETRD", "U", matrix_size__, 0, 0, 0);
+            lwork  = (nb + 1) * matrix_size__;
+            lrwork = 7 * matrix_size__;
+            liwork = 5 * matrix_size__;
+        }
 
-        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
-        FORTRAN(zhegvx)
-        (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
-         &ione, &nev__, &abs_tol, &m, w.get(), Z__.at(memory_t::host), &ldz, work.get(), &lwork, rwork.get(),
-         iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        if (std::is_same<T, double>::value) {
+            FORTRAN(dsygvx)
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<double*>(&vl),
+             reinterpret_cast<double*>(&vu), &ione, &nev__, reinterpret_cast<double*>(&abs_tol), &m,
+             reinterpret_cast<double*>(w.get()), reinterpret_cast<double*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1,
+             (ftn_int)1);
+        } else if (std::is_same<T, std::complex<double>>::value) {
+            FORTRAN(zhegvx)
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)),
+             &lda, reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ldb,
+             reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &ione, &nev__,
+             reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
+             iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        } else if (std::is_same<T, float>::value) {
+            FORTRAN(ssygvx)
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
+             reinterpret_cast<float*>(&vu), &ione, &nev__, reinterpret_cast<float*>(&abs_tol), &m,
+             reinterpret_cast<float*>(w.get()), reinterpret_cast<float*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<float*>(work.get()), &lwork, iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1,
+             (ftn_int)1);
+        } else if (std::is_same<T, std::complex<float>>::value) {
+            FORTRAN(chegvx)
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
+             reinterpret_cast<float*>(&vu), &ione, &nev__, reinterpret_cast<float*>(&abs_tol), &m,
+             reinterpret_cast<float*>(w.get()), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
+             iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        }
 
         if (m != nev__) {
             std::stringstream s;
@@ -308,6 +407,7 @@ class Eigensolver_lapack : public Eigensolver
 
         return info;
     }
+
 };
 
 #ifdef SIRIUS_ELPA

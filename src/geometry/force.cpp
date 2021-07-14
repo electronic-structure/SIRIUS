@@ -32,6 +32,7 @@
 #include "beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
 
@@ -344,7 +345,9 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
     forces_hubbard_.zero();
 
     if (ctx_.hubbard_correction()) {
-        /* we can probably task run this in a task fashion */
+        /* recompute the hubbard potential */
+        ::sirius::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
+
         Q_operator q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -355,7 +358,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
             if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
             }
-            hubbard_force_add_k_contribution_colinear(*kp, q_op, forces_hubbard_);
+            hubbard_force_add_k_contribution_collinear(*kp, q_op, forces_hubbard_);
             kp->beta_projectors().dismiss();
         }
 
@@ -652,7 +655,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
@@ -663,7 +666,7 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         /* compute the derivative of the occupancies numbers */
         for (int dir = 0; dir < 3; dir++) {
-            double d{0};
+            double_complex d{0.0};
             for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                 auto const& atom = ctx_.unit_cell().atom(ia1);
                 if (atom.type().hubbard_correction()) {
@@ -671,13 +674,14 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                d += std::real(potential_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir, ia));
+                                d += potential_.hubbard_potential().local(ia1)(m2, m1, ispn) *
+                                     dn(m1, m2, ispn, ia1, dir, ia);
                             }
                         }
                     }
                 }
             }
-            forceh_(dir, ia) -= d;
+            forceh_(dir, ia) -= std::real(d);
         }
     }
 }

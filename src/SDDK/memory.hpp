@@ -211,6 +211,19 @@ inline void deallocate(void* ptr__, memory_t M__)
 }
 
 /// Copy between different memory types.
+template <typename T, typename F>
+inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F* to_ptr__, size_t n__)
+{
+    if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
+        std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
+        return;
+    }
+#if defined(SIRIUS_GPU)
+    throw std::runtime_error("Copy mixed precision type not supported in device memory");
+    return;
+#endif
+}
+
 template <typename T>
 inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {
@@ -1399,6 +1412,27 @@ class mdarray
         return checksum(0, size());
     }
 
+    inline T* begin()
+    {
+        return this->at(memory_t::host);
+    }
+
+    inline T const* begin() const
+    {
+        return this->at(memory_t::host);
+    }
+
+    inline T* end()
+    {
+        return this->at(memory_t::host) + this->size();
+    }
+
+    inline T const* end() const
+    {
+        return this->at(memory_t::host) + this->size();
+    }
+
+
     //== template <device_t pu>
     //== inline T checksum() const
     //== {
@@ -1556,6 +1590,25 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
         }
     }
     return out;
+}
+
+// template for casting matrix with different precision
+template <typename T, typename F, int N>
+inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
+{
+    if (src__.size() == 0) {
+        return;
+    }
+    for (int i = 0; i < N; i++) {
+        if (dest__.dim(i).begin() != src__.dim(i).begin() || dest__.dim(i).end() != src__.dim(i).end()) {
+            std::stringstream s;
+            s << "error at line " << __LINE__ << " of file " << __FILE__ << " : array dimensions don't match";
+            throw std::runtime_error(s.str());
+        }
+    }
+    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+    std::cout << "    Copying matrix element with different type, possible lost of data precision" << std::endl;
+    std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
 }
 
 template <typename T, int N>

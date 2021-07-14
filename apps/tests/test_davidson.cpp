@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void init_wf(K_point* kp__, Wave_functions& phi__, int num_bands__, int num_mag_dims__)
+void init_wf(K_point* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -92,7 +92,7 @@ void test_davidson(cmd_args const& args__)
             ps_wf[i] = std::exp(-x) * std::pow(x, l);
         }
         /* add radial function for l */
-        atype.add_ps_atomic_wf(3, sirius::experimental::aqn(l), ps_wf);
+        atype.add_ps_atomic_wf(3, sirius::experimental::angular_momentum(l), ps_wf);
     }
 
     /* set local part of potential */

@@ -95,7 +95,8 @@ std::string show_vec(const vector3d<T>& vec)
 
 // forward declaration
 void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf);
+void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+                       std::shared_ptr<Wave_functions<double>>& swf);
 
     /* typedefs */
     template <typename T>
@@ -661,16 +662,16 @@ PYBIND11_MODULE(py_sirius, m)
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
-    py::class_<Wave_functions, std::shared_ptr<Wave_functions>>(m, "Wave_functions")
+    py::class_<Wave_functions<double>, std::shared_ptr<Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<Gvec_partition const&, int, memory_t, int>(), "gvecp"_a, "num_wf"_a, "mem"_a, "num_sc"_a)
-        .def("num_sc", &Wave_functions::num_sc)
-        .def("num_wf", &Wave_functions::num_wf)
-        .def("has_mt", &Wave_functions::has_mt)
-        .def("zero_pw", &Wave_functions::zero_pw)
-        .def("preferred_memory_t", py::overload_cast<>(&Wave_functions::preferred_memory_t, py::const_))
+        .def("num_sc", &Wave_functions<double>::num_sc)
+        .def("num_wf", &Wave_functions<double>::num_wf)
+        .def("has_mt", &Wave_functions<double>::has_mt)
+        .def("zero_pw", &Wave_functions<double>::zero_pw)
+        .def("preferred_memory_t", py::overload_cast<>(&Wave_functions<double>::preferred_memory_t, py::const_))
         .def("pw_coeffs",
              [](py::object& obj, int i) -> py::array_t<complex_double> {
-                 Wave_functions& wf   = obj.cast<Wave_functions&>();
+                 auto& wf             = obj.cast<Wave_functions<double>&>();
                  auto& matrix_storage = wf.pw_coeffs(i);
                  int nrows            = matrix_storage.prime().size(0);
                  int ncols            = matrix_storage.prime().size(1);
@@ -681,7 +682,7 @@ PYBIND11_MODULE(py_sirius, m)
              },
              py::keep_alive<0, 1>())
         .def("copy_to_gpu",
-             [](Wave_functions& wf) {
+             [](Wave_functions<double>& wf) {
                  /* is_on_device -> true if all internal storage is allocated on device */
                  bool is_on_device = true;
                  for (int i = 0; i < wf.num_sc(); ++i) {
@@ -697,7 +698,7 @@ PYBIND11_MODULE(py_sirius, m)
                  }
              })
         .def("copy_to_cpu",
-             [](Wave_functions& wf) {
+             [](Wave_functions<double>& wf) {
                  /* is_on_device -> true if all internal storage is allocated on device */
                  bool is_on_device = true;
                  for (int i = 0; i < wf.num_sc(); ++i) {
@@ -711,14 +712,14 @@ PYBIND11_MODULE(py_sirius, m)
                  }
              })
         .def("allocated_on_device",
-             [](Wave_functions& wf) {
+             [](Wave_functions<double>& wf) {
                  bool is_on_device = true;
                  for (int i = 0; i < wf.num_sc(); ++i) {
                      is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
                  }
                  return is_on_device;
              })
-        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_),
+        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions<double>::pw_coeffs, py::const_),
              py::return_value_policy::reference_internal);
 
     py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
@@ -762,8 +763,8 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("initialize_subspace", &initialize_subspace);
 }
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
-                       std::shared_ptr<Wave_functions>& swf)
+void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+                       std::shared_ptr<Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //

@@ -155,6 +155,8 @@ class Potential : public Field4D
     /// Hubbard potential correction.
     std::unique_ptr<Hubbard> U_;
 
+    Hubbard_matrix hubbard_potential_;
+
     /// Add extra charge to the density.
     /** This is used to verify the variational derivative of Exc w.r.t. density rho */
     double add_delta_rho_xc_{0};
@@ -634,7 +636,9 @@ class Potential : public Field4D
         if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
             HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
             for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
-                fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
+                    fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                }
             }
         }
         comm_.barrier();
@@ -931,6 +935,16 @@ class Potential : public Field4D
     Hubbard& U() const
     {
         return *U_;
+    }
+
+    Hubbard_matrix& hubbard_potential()
+    {
+        return hubbard_potential_;
+    }
+
+    Hubbard_matrix const& hubbard_potential() const
+    {
+        return hubbard_potential_;
     }
 };
 
