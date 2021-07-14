@@ -119,7 +119,7 @@ Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec co
     pw_coeffs_t_ = mdarray<std::complex<T>, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        gkvec_coord_ = mdarray<T, 2>(3, num_gkvec_loc());
+        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc());
         gkvec_coord_.allocate(memory_t::device);
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
@@ -191,7 +191,7 @@ void create_beta_gk_gpu(int                        num_atoms,
                         int                        num_gkvec,
                         int const*                 beta_desc,
                         std::complex<float> const* beta_gk_t,
-                        float const*               gkvec,
+                        double const*              gkvec,
                         double const*              atom_pos,
                         std::complex<float>*       beta_gk)
 {

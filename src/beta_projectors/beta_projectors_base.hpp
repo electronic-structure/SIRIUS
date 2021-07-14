@@ -35,7 +35,7 @@ extern "C" void create_beta_gk_gpu_float(int                        num_atoms,
                                          int                        num_gkvec,
                                          int const*                 beta_desc,
                                          std::complex<float> const* beta_gk_t,
-                                         float const*               gkvec,
+                                         double const*              gkvec,
                                          double const*              atom_pos,
                                          std::complex<float>*       beta_gk);
 
@@ -90,7 +90,7 @@ class Beta_projectors_base
     std::vector<int> const& igk_;
 
     /// Coordinates of G+k vectors used by GPU kernel.
-    mdarray<T, 2> gkvec_coord_;
+    mdarray<double, 2> gkvec_coord_;
 
     /// Number of different components: 1 for beta-projectors, 3 for gradient, 9 for strain derivatives.
     int N_;

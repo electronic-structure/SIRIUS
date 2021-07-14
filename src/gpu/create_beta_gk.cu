@@ -35,7 +35,7 @@ __global__ void create_beta_gk_gpu_kernel
     int num_gkvec__,
     int const* beta_desc__,
     gpu_complex_type<T> const* beta_gk_t,
-    T const* gkvec,
+    double const* gkvec,
     double const* atom_pos,
     gpu_complex_type<T>* beta_gk
 );
@@ -46,7 +46,7 @@ __global__ void create_beta_gk_gpu_kernel<float>
     int num_gkvec__,
     int const* beta_desc__,
     acc_complex_float_t const* beta_gk_t,
-    float const* gkvec,
+    double const* gkvec,
     double const* atom_pos,
     acc_complex_float_t* beta_gk
 )
@@ -116,7 +116,7 @@ extern "C" void create_beta_gk_gpu_float(int num_atoms,
                                          int num_gkvec,
                                          int const* beta_desc,
                                          acc_complex_float_t const* beta_gk_t,
-                                         float const* gkvec,
+                                         double const* gkvec,
                                          double const* atom_pos,
                                          acc_complex_float_t* beta_gk)
 {
