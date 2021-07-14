@@ -64,7 +64,7 @@ Potential::Potential(Simulation_context& ctx__)
 
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
+        xc_func_.push_back(new XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
             xc_func_.back()->set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
@@ -85,13 +85,13 @@ Potential::Potential(Simulation_context& ctx__)
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
         for (int i = 0; i < nsigma ; i++) {
-            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
         }
     }
 
     if (!ctx_.full_potential()) {
-        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
-        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
+        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
         dveff_->zero();
     }
 
@@ -211,7 +211,7 @@ void Potential::update()
     // VDWXC depends on unit cell, which might have changed.
     for (auto& xc : xc_func_) {
         if (xc->is_vdw()) {
-            xc->vdw_update_unit_cell(ctx_.spfft(), ctx_.unit_cell().lattice_vectors());
+            xc->vdw_update_unit_cell(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors());
         }
     }
 }
@@ -231,7 +231,7 @@ void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
 {
     /* create list of XC functionals */
     for (auto& xc_label : labels__) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label,
+        xc_func_.push_back(new XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label,
                     ctx_.num_spins()));
     }
 }

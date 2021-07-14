@@ -243,7 +243,7 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<double>>(new Q_operator<double>(ctx_)) : nullptr;
 
     auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
     phi.prepare(sr, true);
@@ -411,9 +411,9 @@ void K_point<T>::generate_gkvec(double gk_cutoff__)
     const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto gv = gkvec_partition_->get_gvec();
     /* create transformation */
-    spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse().create_transform(
+    spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
-        ctx_.spfft_coarse().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host))));
 }
 
@@ -437,11 +437,11 @@ void K_point<T>::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_loc_));
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
+            beta_projectors_row_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_row_));
+            beta_projectors_col_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_col_));
 
         }
 

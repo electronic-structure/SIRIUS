@@ -177,7 +177,7 @@ void test_davidson(cmd_args const& args__)
         }
         //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
-        Hamiltonian0 H0(pot);
+        Hamiltonian0<double> H0(pot);
         auto hk = H0(kp);
         Band(ctx).initialize_subspace<double_complex>(hk, ctx.unit_cell().num_ps_atomic_wf());
         for (int i = 0; i < ctx.num_bands(); i++) {

@@ -62,7 +62,7 @@ void Stress::calc_stress_nonloc_aux()
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }
-        Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
+        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
         Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
@@ -145,7 +145,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
                                   potential_.U().max_number_of_orbitals_per_atom(),
                                   2, ctx_.unit_cell().num_atoms(), 9);
 
-    Q_operator q_op(ctx_);
+    Q_operator<double> q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();
@@ -272,7 +272,7 @@ matrix3d<double> Stress::calc_stress_xc()
            derivative of sigm (which is grad(rho) * grad(rho)) */
 
         if (ctx_.num_spins() == 1) {
-            Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
+            Smooth_periodic_function<double> rhovc(ctx_.spfft<double>(), ctx_.gvec_partition());
             rhovc.zero();
             rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());
@@ -288,7 +288,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho[x].fft_transform(1);
             }
 
-            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+            for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) += 2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) *
@@ -315,7 +315,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho_dn[x].fft_transform(1);
             }
 
-            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+            for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
@@ -329,7 +329,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 }
             }
         }
-        Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
+        Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
         t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }

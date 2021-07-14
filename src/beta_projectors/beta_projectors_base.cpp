@@ -28,7 +28,8 @@
 
 namespace sirius {
 
-void Beta_projectors_base::split_in_chunks()
+template <typename T>
+void Beta_projectors_base<T>::split_in_chunks()
 {
     auto& uc = ctx_.unit_cell();
 
@@ -100,8 +101,9 @@ void Beta_projectors_base::split_in_chunks()
     }
 }
 
-Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__,
-                                           std::vector<int> const& igk__, int N__)
+template <typename T>
+Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__,
+                                              std::vector<int> const& igk__, int N__)
     : ctx_(ctx__)
     , gkvec_(gkvec__)
     , igk_(igk__)
@@ -114,7 +116,7 @@ Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec const
     }
 
     /* allocate memory */
-    pw_coeffs_t_ = mdarray<double_complex, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
+    pw_coeffs_t_ = mdarray<std::complex<T>, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
 
     if (ctx_.processing_unit() == device_t::GPU) {
         gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc());
@@ -130,9 +132,9 @@ Beta_projectors_base::Beta_projectors_base(Simulation_context& ctx__, Gvec const
     }
 }
 
-template <typename T>
-matrix<T>
-Beta_projectors_base::inner(int chunk__, Wave_functions<real_type<T>>& phi__, int ispn__, int idx0__, int n__)
+template <typename T> template <typename F, typename>
+matrix<F>
+Beta_projectors_base<T>::inner(int chunk__, Wave_functions<T>& phi__, int ispn__, int idx0__, int n__)
 {
     PROFILE("sirius::Beta_projectors_base::inner");
 
@@ -140,23 +142,23 @@ Beta_projectors_base::inner(int chunk__, Wave_functions<real_type<T>>& phi__, in
 
     int nbeta = chunk(chunk__).num_beta_;
 
-    matrix<T> beta_phi(nbeta, n__, ctx_.mem_pool(ctx_.host_memory_t()));
+    matrix<F> beta_phi(nbeta, n__, ctx_.mem_pool(ctx_.host_memory_t()));
 
     /* location of the beta-projectors is always on the memory of the processing unit being used */
-    T* pw_coeffs_a_ptr{nullptr};
+    F* pw_coeffs_a_ptr{nullptr};
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            pw_coeffs_a_ptr = reinterpret_cast<T*>(pw_coeffs_a().at(memory_t::host));
+            pw_coeffs_a_ptr = reinterpret_cast<F*>(pw_coeffs_a().at(memory_t::host));
             break;
         }
         case device_t::GPU: {
             beta_phi.allocate(ctx_.mem_pool(memory_t::device));
-            pw_coeffs_a_ptr = reinterpret_cast<T*>(pw_coeffs_a().at(memory_t::device));
+            pw_coeffs_a_ptr = reinterpret_cast<F*>(pw_coeffs_a().at(memory_t::device));
             break;
         }
     }
 
-    local_inner_aux<T>(pw_coeffs_a_ptr, nbeta, phi__, ispn__, idx0__, n__, beta_phi);
+    local_inner_aux<F>(pw_coeffs_a_ptr, nbeta, phi__, ispn__, idx0__, n__, beta_phi);
 
     /* copy to host in MPI sequential or parallel case */
     if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -184,7 +186,32 @@ Beta_projectors_base::inner(int chunk__, Wave_functions<real_type<T>>& phi__, in
     return beta_phi;
 }
 
-void Beta_projectors_base::generate(int ichunk__, int j__)
+#if defined(SIRIUS_GPU)
+void create_beta_gk_gpu(int                        num_atoms,
+                        int                        num_gkvec,
+                        int const*                 beta_desc,
+                        std::complex<float> const* beta_gk_t,
+                        double const*              gkvec,
+                        double const*              atom_pos,
+                        std::complex<float>*       beta_gk)
+{
+    create_beta_gk_gpu_float(num_atoms, num_gkvec, beta_desc, beta_gk_t, gkvec, atom_pos, beta_gk);
+}
+
+void create_beta_gk_gpu(int                   num_atoms,
+                        int                   num_gkvec,
+                        int const*            beta_desc,
+                        double_complex const* beta_gk_t,
+                        double const*         gkvec,
+                        double const*         atom_pos,
+                        double_complex*       beta_gk)
+{
+    create_beta_gk_gpu_double(num_atoms, num_gkvec, beta_desc, beta_gk_t, gkvec, atom_pos, beta_gk);
+}
+#endif
+
+template <typename T>
+void Beta_projectors_base<T>::generate(int ichunk__, int j__)
 {
     PROFILE("sirius::Beta_projectors_base::generate");
 
@@ -195,9 +222,9 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
                 int ia = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
                 double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
-                double_complex phase_k = std::exp(double_complex(0.0, phase));
+                std::complex<double> phase_k = std::exp(std::complex<T>(0.0, phase));
 
-                std::vector<double_complex> phase_gk(num_gkvec_loc());
+                std::vector<std::complex<double>> phase_gk(num_gkvec_loc());
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                     auto G = gkvec_.gvec(igk_[igk_loc]);
                     /* total phase e^{-i(G+k)r_{\alpha}} */
@@ -206,7 +233,7 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
                 for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
                     for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                         pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
-                            pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * phase_gk[igk_loc];
+                            pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * static_cast<std::complex<T>>(phase_gk[igk_loc]);
                     }
                 }
             }
@@ -239,7 +266,8 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
     }
 }
 
-void Beta_projectors_base::prepare()
+template <typename T>
+void Beta_projectors_base<T>::prepare()
 {
     PROFILE("sirius::Beta_projectors_base::prepare");
 
@@ -249,16 +277,16 @@ void Beta_projectors_base::prepare()
 
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
+            pw_coeffs_a_ = matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
                 "pw_coeffs_a_");
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+            pw_coeffs_a_g0_ = mdarray<std::complex<T>, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
                 "pw_coeffs_a_g0_");
             break;
         }
         case device_t::GPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device),
+            pw_coeffs_a_ = matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device),
                 "pw_coeffs_a_");
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+            pw_coeffs_a_g0_ = mdarray<std::complex<T>, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
                 "pw_coeffs_a_g0_");
             pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
             break;
@@ -270,7 +298,8 @@ void Beta_projectors_base::prepare()
     }
 }
 
-void Beta_projectors_base::dismiss()
+template <typename T>
+void Beta_projectors_base<T>::dismiss()
 {
     PROFILE("sirius::Beta_projectors_base::dismiss");
 
@@ -281,86 +310,28 @@ void Beta_projectors_base::dismiss()
     pw_coeffs_a_g0_.deallocate(memory_t::device);
 }
 
-template<>
-void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_pw_coeffs_a_ptr__, int nbeta__,
-                                                           Wave_functions<double>& phi__, int ispn__, int idx0__, int n__,
-                                                           matrix<double_complex>& beta_phi__) const
-{
-    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-    if (pp && gkvec_.comm().rank() == 0) {
-        PROFILE_START("sirius::Beta_projectors_base::local_inner_aux");
-    }
 
-    const auto t1 = std::chrono::high_resolution_clock::now();
-    linalg(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
-                                       &linalg_const<double_complex>::one(),
-                                       beta_pw_coeffs_a_ptr__,
-                                       num_gkvec_loc(),
-                                       phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__),
-                                       phi__.pw_coeffs(ispn__).prime().ld(),
-                                       &linalg_const<double_complex>::zero(),
-                                       beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-
-    if (pp && gkvec_.comm().rank() == 0) {
-#ifdef SIRIUS_GPU
-        if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
-            acc::sync_stream(stream_id(-1));
-        }
-#endif
-        std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - t1;
-        PROFILE_STOP("sirius::Beta_projectors_base::local_inner_aux");
-        std::printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
-               8e-9 * nbeta__ * n__ * num_gkvec_loc() / t.count(), nbeta__, n__, num_gkvec_loc(), t.count());
-    }
-}
-
-template<>
-void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs_a_ptr__, int nbeta__,
-                                                   Wave_functions<double>& phi__, int ispn__, int idx0__, int n__,
-                                                   matrix<double>& beta_phi__) const
-{
-    linalg(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(),
-                                       &linalg_const<double>::two(),
-                                       beta_pw_coeffs_a_ptr__,
-                                       2 * num_gkvec_loc(),
-                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
-                                       2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                       &linalg_const<double>::zero(),
-                                       beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-
-    /* rank 0 has to do some extra work for Gamma-point case */
-    if (gkvec_.comm().rank() == 0) {
-        int incx{2 * num_gkvec_loc()};
-        linalg_t la{linalg_t::none};
-        /* both wave-functions and beta-projectors are on GPU */
-        if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = linalg_t::gpublas;
-        } else { /* wave-functions are on CPU but the beta-projectors are in the memory of main device */
-            la = linalg_t::blas;
-            switch (ctx_.processing_unit()) {
-                case device_t::GPU: {
-                    beta_pw_coeffs_a_ptr__ = reinterpret_cast<double*>(const_cast<double_complex*>(&pw_coeffs_a_g0_(0)));
-                    incx = 2;
-                    break;
-                }
-                case device_t::CPU: break;
-            }
-        }
-        linalg(la).ger(nbeta__, n__,
-                        &linalg_const<double>::m_one(),
-                        beta_pw_coeffs_a_ptr__, incx,
-                        reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
-                        2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-    }
-}
+template class Beta_projectors_base<double>;
 
 template
 matrix<double>
-Beta_projectors_base::inner<double>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
+Beta_projectors_base<double>::inner<double>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
 
 template
 matrix<double_complex>
-Beta_projectors_base::inner<double_complex>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
+Beta_projectors_base<double>::inner<double_complex>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
 
+#ifdef USE_FP32
+template class Beta_projectors_base<float>;
+
+
+template
+matrix<float>
+Beta_projectors_base<float>::inner<float>(int chunk__, Wave_functions<float>& phi__, int ispn__, int idx0__, int n__);
+
+template
+matrix<std::complex<float>>
+Beta_projectors_base<float>::inner<std::complex<float>>(int chunk__, Wave_functions<float>& phi__, int ispn__, int idx0__, int n__);
+
+#endif
 } // namespace

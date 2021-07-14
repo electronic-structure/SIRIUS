@@ -148,7 +148,7 @@ void Force::add_k_point_contribution(K_point<double>& kpoint, mdarray<double, 2>
         return;
     }
 
-    Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -267,7 +267,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0 H0(potential_);
+    Hamiltonian0<double> H0(potential_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_.get<double>(ik));
@@ -348,7 +348,7 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
         /* recompute the hubbard potential */
         ::sirius::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
 
-        Q_operator q_op(ctx_);
+        Q_operator<double> q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
@@ -655,7 +655,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
@@ -755,7 +755,7 @@ mdarray<double, 2> const& Force::calc_forces_usnl()
     return forces_usnl_;
 }
 
-void Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
+void Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 

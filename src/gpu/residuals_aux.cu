@@ -25,7 +25,18 @@
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
+template <typename T>
 __global__ void compute_residuals_gpu_kernel
+(
+    int const num_rows_loc__,
+    T const* eval__,
+    gpu_complex_type<T> const* hpsi__,
+    gpu_complex_type<T> const* opsi__,
+    gpu_complex_type<T>* res__
+);
+
+template <>
+__global__ void compute_residuals_gpu_kernel<double>
 (
     int const num_rows_loc__,
     double const* eval__,
@@ -41,6 +52,26 @@ __global__ void compute_residuals_gpu_kernel
         int k = array2D_offset(j, ibnd, num_rows_loc__);
         /* res = hpsi_j - e_j * opsi_j */
         res__[k] = accCsub(hpsi__[k], make_accDoubleComplex(opsi__[k].x * eval__[ibnd], opsi__[k].y * eval__[ibnd]));
+    }
+}
+
+template <>
+__global__ void compute_residuals_gpu_kernel<float>
+    (
+        int const num_rows_loc__,
+        float const* eval__,
+        acc_complex_float_t const* hpsi__,
+        acc_complex_float_t const* opsi__,
+        acc_complex_float_t* res__
+    )
+{
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int ibnd = blockIdx.y;
+
+    if (j < num_rows_loc__) {
+        int k = array2D_offset(j, ibnd, num_rows_loc__);
+        /* res = hpsi_j - e_j * opsi_j */
+        res__[k] = accCsubf(hpsi__[k], make_accFloatComplex(opsi__[k].x * eval__[ibnd], opsi__[k].y * eval__[ibnd]));
     }
 }
 
@@ -159,22 +190,41 @@ __global__ void compute_residuals_gpu_kernel
 //==     );
 //== }
 
-extern "C" void compute_residuals_gpu(acc_complex_double_t* hpsi__,
-                                      acc_complex_double_t* opsi__,
-                                      acc_complex_double_t* res__,
-                                      int num_rows_loc__,
-                                      int num_bands__,
-                                      double* eval__)
+extern "C" void compute_residuals_gpu_double(acc_complex_double_t* hpsi__,
+                                              acc_complex_double_t* opsi__,
+                                              acc_complex_double_t* res__,
+                                              int num_rows_loc__,
+                                              int num_bands__,
+                                              double* eval__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
-    accLaunchKernel((compute_residuals_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((compute_residuals_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0,
         num_rows_loc__,
         eval__,
         hpsi__,
         opsi__,
         res__
+    );
+}
+
+extern "C" void compute_residuals_gpu_float(acc_complex_float_t* hpsi__,
+                                             acc_complex_float_t* opsi__,
+                                             acc_complex_float_t* res__,
+                                             int num_rows_loc__,
+                                             int num_bands__,
+                                             float* eval__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
+
+    accLaunchKernel((compute_residuals_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0,
+                    num_rows_loc__,
+                    eval__,
+                    hpsi__,
+                    opsi__,
+                    res__
     );
 }
 
@@ -254,11 +304,19 @@ extern "C" void add_square_sum_gpu_float(acc_complex_float_t* wf__,
                     num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
 }
 
+template <typename T>
 __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
-                                                double const* eval__,
-                                                double const* h_diag__,
-                                                double const* o_diag__,
-                                                acc_complex_double_t* res__)
+                                                T const* eval__,
+                                                T const* h_diag__,
+                                                T const* o_diag__,
+                                                gpu_complex_type<T>* res__);
+
+template <>
+__global__ void apply_preconditioner_gpu_kernel<double>(int const num_rows_loc__,
+                                                        double const* eval__,
+                                                        double const* h_diag__,
+                                                        double const* o_diag__,
+                                                        acc_complex_double_t* res__)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     int ibnd = blockIdx.y;
@@ -271,21 +329,56 @@ __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
     }
 }
 
-extern "C" void apply_preconditioner_gpu(acc_complex_double_t* res__,
-                                         int num_rows_loc__,
-                                         int num_bands__,
-                                         double* eval__,
-                                         const double* h_diag__,
-                                         const double* o_diag__)
+template <>
+__global__ void apply_preconditioner_gpu_kernel<float>(int const num_rows_loc__,
+                                                        float const* eval__,
+                                                        float const* h_diag__,
+                                                        float const* o_diag__,
+                                                        acc_complex_float_t* res__)
+{
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int ibnd = blockIdx.y;
+
+    if (j < num_rows_loc__) {
+        float p = (h_diag__[j] - eval__[ibnd] * o_diag__[j]);
+        p = 0.5 * (1 + p + sqrt(1.0 + (p - 1) * (p - 1)));
+        int k = array2D_offset(j, ibnd, num_rows_loc__);
+        res__[k] = make_accFloatComplex(res__[k].x / p, res__[k].y / p);
+    }
+}
+
+extern "C" void apply_preconditioner_gpu_double(acc_complex_double_t* res__,
+                                                 int num_rows_loc__,
+                                                 int num_bands__,
+                                                 double* eval__,
+                                                 const double* h_diag__,
+                                                 const double* o_diag__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
-    accLaunchKernel((apply_preconditioner_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
+    accLaunchKernel((apply_preconditioner_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
 }
 
-__global__ void make_real_g0_gpu_kernel(acc_complex_double_t* res__,
-                                        int              ld__)
+extern "C" void apply_preconditioner_gpu_float(acc_complex_float_t* res__,
+                                                int num_rows_loc__,
+                                                int num_bands__,
+                                                float* eval__,
+                                                const float* h_diag__,
+                                                const float* o_diag__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
+
+    accLaunchKernel((apply_preconditioner_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
+}
+
+template <typename T>
+__global__ void make_real_g0_gpu_kernel(gpu_complex_type<T>* res__, int ld__);
+
+template <>
+__global__ void make_real_g0_gpu_kernel<double>(acc_complex_double_t* res__,
+                                                int              ld__)
 {
     acc_complex_double_t z = res__[array2D_offset(0, blockIdx.x, ld__)];
     if (threadIdx.x == 0) {
@@ -293,16 +386,35 @@ __global__ void make_real_g0_gpu_kernel(acc_complex_double_t* res__,
     }
 }
 
-extern "C" void make_real_g0_gpu(acc_complex_double_t* res__,
-                                 int              ld__,
-                                 int              n__)
+template <>
+__global__ void make_real_g0_gpu_kernel<float>(acc_complex_float_t* res__,
+                                                int              ld__)
+{
+    acc_complex_float_t z = res__[array2D_offset(0, blockIdx.x, ld__)];
+    if (threadIdx.x == 0) {
+        res__[array2D_offset(0, blockIdx.x, ld__)] = make_accFloatComplex(z.x, 0);
+    }
+}
+
+extern "C" void make_real_g0_gpu_double(acc_complex_double_t* res__,
+                                         int              ld__,
+                                         int              n__)
 {
     dim3 grid_t(32);
     dim3 grid_b(n__);
 
-    accLaunchKernel((make_real_g0_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
+    accLaunchKernel((make_real_g0_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
 }
 
+extern "C" void make_real_g0_gpu_float(acc_complex_float_t* res__,
+                                        int              ld__,
+                                        int              n__)
+{
+    dim3 grid_t(32);
+    dim3 grid_b(n__);
+
+    accLaunchKernel((make_real_g0_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
+}
 
 
 
