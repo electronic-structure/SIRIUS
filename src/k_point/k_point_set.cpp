@@ -325,8 +325,8 @@ void K_point_set::find_band_occupancies()
                         eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
 #ifdef USE_FP32
                     } else {
-                        eminmax.first  = std::min(eminmax.first, kpoints_float_[ik]->band_energy(j, ispn));
-                        eminmax.second = std::max(eminmax.second, kpoints_float_[ik]->band_energy(j, ispn));
+                        eminmax.first  = std::min(static_cast<float>(eminmax.first), kpoints_float_[ik]->band_energy(j, ispn));
+                        eminmax.second = std::max(static_cast<float>(eminmax.second), kpoints_float_[ik]->band_energy(j, ispn));
                     }
 #endif
                 }

@@ -50,7 +50,7 @@ class Beta_projectors : public Beta_projectors_base<T>
 
         std::vector<std::complex<T>> z(this->ctx_.unit_cell().lmax() + 1);
         for (int l = 0; l <= this->ctx_.unit_cell().lmax(); l++) {
-            z[l] = std::pow(std::complex<T>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
+            z[l] = std::pow(std::complex<T>(0, -1), l) * static_cast<T>(fourpi / std::sqrt(this->ctx_.unit_cell().omega()));
         }
 
         /* compute <G+k|beta> */
@@ -71,7 +71,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                     int lm    = atom_type.indexb(xi).lm;
                     int idxrf = atom_type.indexb(xi).idxrf;
 
-                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, 0) = z[l] * gkvec_rlm[lm] * ri_val(idxrf);
+                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, 0) = z[l] * static_cast<T>(gkvec_rlm[lm] * ri_val(idxrf));
                 }
             }
         }

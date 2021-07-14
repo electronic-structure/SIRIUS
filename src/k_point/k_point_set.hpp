@@ -195,11 +195,11 @@ class K_point_set
         if(std::is_same<T, double>::value) {
             access_fp64 = true;
 #endif
-            return kpoints_[i].get();
+            return reinterpret_cast<K_point<T>*>(kpoints_[i].get());
 #ifdef USE_FP32
         } else {
             access_fp64 = false;
-            return kpoints_float_[i].get();
+            return reinterpret_cast<K_point<T>*>(kpoints_float_[i].get());
         }
 #endif
     }
@@ -213,11 +213,11 @@ class K_point_set
         if(std::is_same<T, double>::value) {
             access_fp64 = true;
 #endif
-            return kpoints_[i].get();
+            return reinterpret_cast<K_point<T>*>(kpoints_[i].get());
 #ifdef USE_FP32
         } else {
             access_fp64 = false;
-            return kpoints_float_[i].get();
+            return reinterpret_cast<K_point<T>*>(kpoints_float_[i].get());
         }
 #endif
     }

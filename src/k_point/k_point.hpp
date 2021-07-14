@@ -227,15 +227,15 @@ class K_point : public K_point_base
     int num_ranks_row_;
 
     /// Beta projectors for a local set of G+k vectors.
-    std::unique_ptr<Beta_projectors<double>> beta_projectors_{nullptr};
+    std::unique_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
 
     /// Beta projectors for row G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
-    std::unique_ptr<Beta_projectors<double>> beta_projectors_row_{nullptr};
+    std::unique_ptr<Beta_projectors<T>> beta_projectors_row_{nullptr};
 
     /// Beta projectors for column G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
-    std::unique_ptr<Beta_projectors<double>> beta_projectors_col_{nullptr};
+    std::unique_ptr<Beta_projectors<T>> beta_projectors_col_{nullptr};
 
     /// Preconditioner matrix for Chebyshev solver.
     mdarray<std::complex<T>, 3> p_mtrx_;
@@ -800,25 +800,25 @@ class K_point : public K_point_base
         return p_mtrx_;
     }
 
-    Beta_projectors<double>& beta_projectors()
+    Beta_projectors<T>& beta_projectors()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<double> const& beta_projectors() const
+    Beta_projectors<T> const& beta_projectors() const
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<double>& beta_projectors_row()
+    Beta_projectors<T>& beta_projectors_row()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_row_;
     }
 
-    Beta_projectors<double>& beta_projectors_col()
+    Beta_projectors<T>& beta_projectors_col()
     {
         assert(beta_projectors_ != nullptr);
         return *beta_projectors_col_;

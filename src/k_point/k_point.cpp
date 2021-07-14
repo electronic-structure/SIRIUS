@@ -243,7 +243,7 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<double>>(new Q_operator<double>(ctx_)) : nullptr;
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_)) : nullptr;
 
     auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
     phi.prepare(sr, true);
@@ -437,11 +437,11 @@ void K_point<T>::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_loc_));
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors<double>>(new Beta_projectors<double>(ctx_, gkvec(), igk_col_));
+            beta_projectors_row_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_row_));
+            beta_projectors_col_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_col_));
 
         }
 
@@ -1057,7 +1057,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         sf::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
 
         /* get all values of the radial integrals for a given G+k vector */
-        std::vector<mdarray<T, 1>> ri_values(unit_cell_.num_atom_types());
+        std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (wf_t[iat].size() != 0) {
                 ri_values[iat] = ri__.values(iat, vs[0]);
@@ -1078,7 +1078,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
 
                 auto z = std::pow(std::complex<T>(0, -1), l) * static_cast<T>(fourpi / std::sqrt(unit_cell_.omega()));
 
-                wf_t[iat](igk_loc, xi) = z * rlm[lm] * ri_values[iat](idxrf);
+                wf_t[iat](igk_loc, xi) = z * static_cast<T>(rlm[lm]) * static_cast<T>(ri_values[iat](idxrf));
             }
         }
     }
@@ -1086,7 +1086,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     for (int ia: atoms__) {
 
         T phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
-        std::complex<T> phase_k = std::exp(double_complex(0.0, phase));
+        std::complex<T> phase_k = std::exp(std::complex<T>(0.0, phase));
 
         /* quickly compute phase factors without calling exp() function */
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
@@ -1096,7 +1096,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
             int igk = this->idxgk(igk_loc);
             auto G = gkvec().gvec(igk);
             /* total phase e^{-i(G+k)r_{\alpha}} */
-            phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+            phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
 
         int iat = unit_cell_.atom(ia).type_id();
