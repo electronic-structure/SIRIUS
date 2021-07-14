@@ -51,7 +51,7 @@ class K_point_set
     std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
 
     /// bool variable to store last access of kpoints using fp32 or fp64 type
-    bool access_fp64{true};
+    mutable bool access_fp64{true};
 #endif
 
     /// Split index of k-points.

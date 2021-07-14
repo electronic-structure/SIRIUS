@@ -93,7 +93,6 @@ class Hubbard
      *  \param [in]  q_op Overlap operator.
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
-    void compute_occupancies_stress_derivatives(K_point<double>& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
     void compute_occupancies_stress_derivatives(K_point<double>& kp, Q_operator<double>& q_op, sddk::mdarray<double_complex, 5>& dn);
 
     void set_hubbard_U_plus_V()
