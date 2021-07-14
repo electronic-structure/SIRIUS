@@ -41,25 +41,51 @@ class K_point_base // TODO: good name? maybe k_point?
     /// List of G-vectors with |G+k| < cutoff.
     std::unique_ptr<Gvec> gkvec_;
 
-    /// G-vector distribution for the FFT transformation.
-    std::unique_ptr<Gvec_partition> gkvec_partition_;
-
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
     sddk::Communicator const& comm_;
 
+    void init(double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__, bool gamma__)
+    {
+        /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
+         * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
+        gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, reciprocal_lattice_vectors__, gk_cutoff__, comm_, gamma__));
+    }
+
   public:
-    K_point_base(std::array<double, 3> vk__)
+    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
+                 bool gamma__)
         : vk_(vk__)
         , comm_(sddk::Communicator::self())
     {
+        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
     }
 
-    K_point_base(std::array<double, 3> vk__, sddk::Communicator const& comm__)
+    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
+                 bool gamma__, sddk::Communicator const& comm__)
         : vk_(vk__)
         , comm_(comm__)
     {
+        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
     }
+
+    inline Gvec const& gkvec() const
+    {
+        return *gkvec_;
+    }
+
+    /// Total number of G+k vectors within the cutoff distance
+    inline int num_gkvec() const
+    {
+        return gkvec_->num_gvec();
+    }
+
+    /// Local number of G+k vectors in case of flat distribution.
+    inline int num_gkvec_loc() const
+    {
+        return gkvec().count();
+    }
+
 };
 
 /// K-point related variables and methods.
@@ -84,14 +110,8 @@ class K_point : public K_point_base
     /// Weight of k-point.
     double weight_{1.0};
 
-    /// Fractional k-point coordinates.
-    //vector3d<T> vk_;
-
-    /// List of G-vectors with |G+k| < cutoff.
-    //std::unique_ptr<Gvec> gkvec_;
-
     /// G-vector distribution for the FFT transformation.
-    //std::unique_ptr<Gvec_partition> gkvec_partition_;
+    std::unique_ptr<Gvec_partition> gkvec_partition_;
 
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
@@ -248,7 +268,8 @@ class K_point : public K_point_base
   public:
     /// Constructor
     K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
-        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.comm_band())
+        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.gk_cutoff(),
+                       ctx__.unit_cell().reciprocal_lattice_vectors(), ctx__.gamma_point(), ctx__.comm_band())
         , ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , id_(id__)
@@ -450,12 +471,6 @@ class K_point : public K_point_base
         return 0;
     }
 
-    /// Total number of G+k vectors within the cutoff distance
-    inline int num_gkvec() const
-    {
-        return gkvec_->num_gvec();
-    }
-
     /// Get band energy.
     inline T band_energy(int j__, int ispn__) const
     {
@@ -491,7 +506,7 @@ class K_point : public K_point_base
     }
 
     /// Return weight of k-point.
-    inline T weight() const
+    inline double weight() const
     {
         return weight_;
     }
@@ -568,7 +583,7 @@ class K_point : public K_point_base
         return *singular_components_;
     }
 
-    inline vector3d<T> vk() const
+    inline vector3d<double> vk() const
     {
         return vk_;
     }
@@ -579,12 +594,6 @@ class K_point : public K_point_base
     inline int gklo_basis_size() const
     {
         return num_gkvec() + unit_cell_.mt_lo_basis_size();
-    }
-
-    /// Local number of G+k vectors in case of flat distribution.
-    inline int num_gkvec_loc() const
-    {
-        return gkvec().count();
     }
 
     /// Return global index of G+k vector.
@@ -751,16 +760,6 @@ class K_point : public K_point_base
         std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(T));
     }
 
-    inline Gvec const& gkvec() const
-    {
-        return *gkvec_;
-    }
-
-    inline Gvec_partition const& gkvec_partition() const
-    {
-        return *gkvec_partition_;
-    }
-
     inline Matching_coefficients const& alm_coeffs_row() const
     {
         return *alm_coeffs_row_;
@@ -850,6 +849,11 @@ class K_point : public K_point_base
     spfft_transform_type<T> const& spfft_transform() const
     {
         return *spfft_transform_;
+    }
+
+    inline Gvec_partition const& gkvec_partition() const
+    {
+        return *gkvec_partition_;
     }
 };
 
