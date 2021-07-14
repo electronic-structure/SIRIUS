@@ -221,10 +221,10 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
             for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
                 int ia = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
-                T phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
-                std::complex<T> phase_k = std::exp(std::complex<T>(0.0, phase));
+                double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
+                std::complex<double> phase_k = std::exp(std::complex<T>(0.0, phase));
 
-                std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
+                std::vector<std::complex<double>> phase_gk(num_gkvec_loc());
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                     auto G = gkvec_.gvec(igk_[igk_loc]);
                     /* total phase e^{-i(G+k)r_{\alpha}} */
@@ -233,7 +233,7 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
                 for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
                     for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                         pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
-                            pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * phase_gk[igk_loc];
+                            pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * static_cast<std::complex<T>>(phase_gk[igk_loc]);
                     }
                 }
             }
@@ -322,8 +322,8 @@ matrix<double_complex>
 Beta_projectors_base<double>::inner<double_complex>(int chunk__, Wave_functions<double>& phi__, int ispn__, int idx0__, int n__);
 
 #ifdef USE_FP32
-/* TODO: not yet have enough support to initialize it
 template class Beta_projectors_base<float>;
+
 
 template
 matrix<float>
@@ -332,6 +332,6 @@ Beta_projectors_base<float>::inner<float>(int chunk__, Wave_functions<float>& ph
 template
 matrix<std::complex<float>>
 Beta_projectors_base<float>::inner<std::complex<float>>(int chunk__, Wave_functions<float>& phi__, int ispn__, int idx0__, int n__);
-*/
+
 #endif
 } // namespace

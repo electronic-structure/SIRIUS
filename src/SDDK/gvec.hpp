@@ -742,10 +742,25 @@ class Gvec_partition
     mdarray<int, 2> get_gvec() const;
 
     template <typename T>
-    void gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const;
+    void gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const
+    {
+        int rank = gvec().comm().rank();
+        /* collect scattered PW coefficients */
+        comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_fft_slab().counts.data(),
+                                   gvec_fft_slab().offsets.data());
+
+    }
 
     template <typename T>
-    void gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const;
+    void gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const
+    {
+        for (int ig = 0; ig < gvec().count(); ig++) {
+            /* position inside fft buffer */
+            int ig1                             = gvec_fft_slab().offsets[comm_ortho_fft().rank()] + ig;
+            f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
+        }
+        gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
+    }
 };
 
 /// Helper class to manage G-vector shells and redistribute G-vectors for symmetrization.

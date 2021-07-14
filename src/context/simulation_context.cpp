@@ -1088,7 +1088,7 @@ void Simulation_context::update()
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #ifdef USE_FP32
-        spfft_transform_float.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
+        spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #endif
