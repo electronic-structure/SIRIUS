@@ -60,10 +60,6 @@ class K_point
 
     std::unique_ptr<spfft::Transform> spfft_transform_;
 
-    /// A float type fft transform to supprt fp32 calculation
-#ifdef USE_FP32
-    std::unique_ptr<spfft::TransformFloat> spfft_transformFloat_;
-#endif
     /// First-variational eigen values
     std::vector<double> fv_eigen_values_;
 
@@ -825,17 +821,6 @@ class K_point
         return *spfft_transform_;
     }
 
-#ifdef USE_FP32
-    spfft::TransformFloat& spfft_transformFloat()
-    {
-        return *spfft_transformFloat_;
-    }
-
-    spfft::TransformFloat const& spfft_transformFloat() const
-    {
-        return *spfft_transformFloat_;
-    }
-#endif
 };
 
 } // namespace sirius
