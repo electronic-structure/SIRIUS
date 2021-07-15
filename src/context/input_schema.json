@@ -218,8 +218,8 @@
             "properties": {
                 "type" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "exact", "davidson"],
+                    "default" : "auto",
+                    "enum" : ["auto", "exact", "davidson"],
                     "title" : "Type of the iterative solver."
                 },
                 "num_steps" : {
@@ -323,14 +323,14 @@
                 },
                 "std_evp_solver_name" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
+                    "default" : "auto",
+                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
                     "title" : "Standard eigen-value solver to use."
                 },
                 "gen_evp_solver_name" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
+                    "default" : "auto",
+                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
                     "title" : "Generalized eigen-value solver to use."
                 },
                 "fft_mode" : {
@@ -342,8 +342,8 @@
                 },
                 "processing_unit" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "cpu", "gpu"],
+                    "default" : "auto",
+                    "enum" : ["auto", "cpu", "gpu"],
                     "titel" : "Main processing unit to use during the execution."
                 },
                 "rmt_max" : {
@@ -439,8 +439,8 @@
             "properties" : {
                 "electronic_structure_method" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "full_potential_lapwlo", "pseudopotential"],
+                    "default" : "pseudopotential",
+                    "enum" : ["full_potential_lapwlo", "pseudopotential"],
                     "title" : "Type of electronic structure method."
                 },
                 "xc_functionals" : {
@@ -662,7 +662,7 @@
                 },
                 "T" : {
                     "type" : "number",
-                    "default" : 300,
+                    "default" : 300.0,
                     "title" : "Temperature in Kelvin"
                 },
                 "kappa" : {

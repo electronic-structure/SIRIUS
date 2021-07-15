@@ -3414,7 +3414,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
         for (int ig = 0; ig < *npw__; ig++) {
             /* G vector of host code */
-            auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(), 
+            auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
                        (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
             if (gvc.length() > kset.ctx().gk_cutoff()) {
                 continue;
@@ -3730,7 +3730,7 @@ sirius_generate_coulomb_potential:
     lmmax:
       type: int
       attr: in, optional
-      doc: Number of spherical harmonics 
+      doc: Number of spherical harmonics
     max_num_mt_points:
       type: int
       attr: in, optional
@@ -4715,12 +4715,10 @@ sirius_option_get_length:
 */
 void sirius_option_get_length(char const* section__, int *length__)
 {
-    auto const& parser = sirius::get_options_dictionary();
-
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-
-    *length__ = parser[section].size();
+    auto const& parser = sirius::get_section_options(section);
+    *length__ = parser.size();
 }
 
 /*
@@ -4749,50 +4747,60 @@ sirius_option_get_name_and_type:
 
 void sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int* type__)
 {
-    const json &dict = sirius::get_options_dictionary();
-
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-
+    const json &dict = sirius::get_section_options(section);
     int elem = 0;
     *type__ = -1;
-    for (auto& el : dict[section].items()) {
-        if (elem == *elem__) {
-            if (!dict[section][el.key()].count("default_value")) {
-                std::cout << "key : " << el.key() << "\n the default_value key is missing" << std::endl;
-                exit(0);
-            }
-            if (dict[section][el.key()]["default_value"].is_array()) {
-                *type__ = 10;
-                if (dict[section][el.key()]["default_value"][0].is_number_integer()) {
-                    *type__ += 1;
-                }
-                if (dict[section][el.key()]["default_value"][0].is_number_float()) {
-                    *type__ += 2;
-                }
-                if (dict[section][el.key()]["default_value"][0].is_boolean()) {
-                    *type__ += 3;
-                }
-                if (dict[section][el.key()]["default_value"][0].is_string()) {
-                    *type__ += 4;
-                }
-            } else {
-                if (dict[section][el.key()]["default_value"].is_number_integer()) {
-                    *type__ = 1;
-                }
-                if (dict[section][el.key()]["default_value"].is_number_float()) {
-                    *type__ = 2;
-                }
-                if (dict[section][el.key()]["default_value"].is_boolean()) {
-                    *type__ = 3;
-                }
-                if (dict[section][el.key()]["default_value"].is_string()) {
-                    *type__ = 4;
-                }
-            }
-            std::memcpy(key_name__, el.key().c_str(), el.key().size() + 1);
+    for (auto& el : dict.items()) {
+      if (elem == *elem__) {
+
+
+        if (!dict[el.key()].count("default")) {
+          std::cout << "sirius_option_get_name_and_type\n";
+          std::cout << "section: " << section << " key : " << el.key() << "\n the default key is missing" << std::endl;
+          exit(0);
         }
-        elem++;
+
+        if (dict[el.key()]["type"] == "array") {
+          *type__ = 10;
+          if (dict[el.key()]["items"]["type"] == "string") {
+            *type__ += 4;
+          }
+
+          if (dict[el.key()]["items"]["type"] == "integer") {
+            *type__ += 1;
+          }
+
+          if (dict[el.key()]["items"]["type"] == "number") {
+            *type__ += 2;
+          }
+
+          if (dict[el.key()]["items"]["type"] == "boolean") {
+            *type__ += 3;
+          }
+        } else {
+          if (dict[el.key()]["type"] == "string") {
+            *type__ = 4;
+          }
+
+          if (dict[el.key()]["type"] == "integer") {
+            *type__ = 1;
+          }
+
+          if (dict[el.key()]["type"] == "number") {
+            *type__ = 2;
+          }
+
+          if (dict[el.key()]["type"] == "boolean") {
+            *type__ = 3;
+          }
+        }
+        std::copy(el.key().begin(), el.key().end(), key_name__);
+        key_name__[el.key().size()] = 0;
+        break;
+      }
+      elem++;
     }
 }
 
@@ -4821,20 +4829,22 @@ sirius_option_get_description_usage:
 */
 void sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__, char* usage__)
 {
-    const json &parser =  sirius::get_options_dictionary();
 
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    const json &parser =  sirius::get_section_options(section);
 
     auto name = std::string(name__);
 
-    if (parser[section][name].count("description")) {
-        auto description = parser[section][name].value("description", "");
+    if (parser[name].count("title")) {
+        auto description = parser[name].value("title", "");
         std::copy(description.begin(), description.end(), desc__);
+        desc__[description.size()] = 0;
     }
-    if (parser[section][name].count("usage")) {
-        auto usage = parser[section][name].value("usage", "");
+    if (parser[name].count("usage")) {
+        auto usage = parser[name].value("usage", "");
         std::copy(usage.begin(), usage.end(), usage__);
+        usage__[usage.size()] = 0;
     }
 }
 
@@ -4864,22 +4874,20 @@ sirius_option_get_int:
 
 void sirius_option_get_int(char const* section__, char const* name__, int *default_value__, int *length__)
 {
-    auto const &parser = sirius::get_options_dictionary();
-
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-
+    auto const &parser = sirius::get_section_options(section);
     auto name = std::string(name__);
 
-    if (!parser[section][name].count("default_value")) {
+    if (!parser[name].count("default")) {
         std::cout << "default value is missing" << std::endl;
     }
-    if (parser[section][name]["default_value"].is_array()) {
-        std::vector<int> v = parser[section][name]["default_value"].get<std::vector<int>>();
+    if (parser[name]["type"] == "array") {
+        std::vector<int> v = parser[name]["default"].get<std::vector<int>>();
         *length__ = v.size();
-        std::memcpy(default_value__, &v[0], v.size() * sizeof(int));
+        std::copy(v.begin(), v.end(), default_value__);
     }  else {
-        *default_value__ = parser[section][name].value("default_value", -1);
+        *default_value__ = parser[name].value("default", 0);
     }
 }
 
@@ -4906,23 +4914,33 @@ sirius_option_get_double:
       doc: length of the table containing the default values
 @api end
 */
-void sirius_option_get_double(char * section, char * name, double *default_value, int *length)
+void sirius_option_get_double(char * section__, char * name__, double *default_value__, int *length__)
 {
-    const json &parser =  sirius::get_options_dictionary();
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    ///for ( char *p = name; *p; p++) *p = tolower(*p);
 
-    if (!parser[section][name].count("default_value"))
-        std::cout << "default value is mossing" << std::endl;
-    if (parser[section][name]["default_value"].is_array()) {
-        std::vector<double> v = parser[section][name]["default_value"].get<std::vector<double>>();
-        *length = v.size();
-        memcpy(default_value, &v[0], v.size() * sizeof(double));
-    }  else {
-        *default_value = parser[section][name].value("default_value", 0.0);
+    auto name = std::string(name__);
+
+    // when the option has one letter only
+    if (name.size() > 1)
+      std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+    const json &parser =  sirius::get_section_options(section);
+
+    if (!parser[name].count("default"))
+        std::cout << "default value is missing" << std::endl;
+    if (parser[name]["type"] == "array") {
+        std::vector<double> v = parser[name]["default"].get<std::vector<double>>();
+        if (v.size()) {
+          *length__ = -1;
+        } else {
+          *length__ = v.size();
+          std::copy(v.begin(), v.end(), default_value__);
+        }
+    } else {
+      *default_value__ = parser[name].value("default", 0.0);
+      *length__ = 1;
     }
 }
 
@@ -4949,22 +4967,23 @@ sirius_option_get_logical:
       doc: length of the table containing the default values
 @api end
 */
-void sirius_option_get_logical(char * section, char * name, bool *default_value, int *length)
+void sirius_option_get_logical(char * section__, char * name__, bool *default_value__, int *length__)
 {
-    const json &parser =  sirius::get_options_dictionary();
+ auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+  auto name = std::string(name__);
+  std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+  const json &parser =  sirius::get_section_options(section);
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    ///for ( char *p = name; *p; p++) *p = tolower(*p);
-    if (!parser[section][name].count("default_value"))
-        std::cout << "default value is mossing" << std::endl;
-    if (parser[section][name]["default_value"].is_array()) {
-        std::vector<bool> v = parser[section][name]["default_value"].get<std::vector<bool>>();
-        *length = v.size();
-        std::copy(v.begin(), v.end(), default_value);
+    if (!parser[name].count("default"))
+        std::cout << "default value is missing" << std::endl;
+    if (parser[name]["type"] == "array") {
+        std::vector<bool> v = parser[name]["default"].get<std::vector<bool>>();
+        *length__ = v.size();
+        std::copy(v.begin(), v.end(), default_value__);
     }  else {
-        *default_value = parser[section][name].value("default_value", false);
+      *length__ = 1;
+        *default_value__ = parser[name].value("default", false);
     }
 }
 
@@ -4987,18 +5006,20 @@ sirius_option_get_string:
       doc: table containing the string
 @api end
 */
-void sirius_option_get_string(char* section, char * name, char *default_value)
+void sirius_option_get_string(char* section__, char * name__, char *default_value__)
 {
-    const json &parser =  sirius::get_options_dictionary();
-
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    for ( char *p = name; *p; p++) *p = tolower(*p);
-
-    if (!parser[section][name].count("default_value"))
-        std::cout << "default value is mossing" << std::endl;
-    std::string value = parser[section][name].value("default_value", "");
-    std::copy(value.begin(), value.end() - 1, default_value);
+  auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+  auto name = std::string(name__);
+  std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+  const json &parser =  sirius::get_section_options(section);
+  if (!parser[name].count("default"))
+    std::cout << "default value is missing" << std::endl;
+  std::string value = parser[name].value("default", "");
+  if (value.size() != 0) {
+    std::copy(value.begin(), value.end(), default_value__);
+    default_value__[value.size()] = 0;
+  }
 }
 
 /*
@@ -5020,16 +5041,17 @@ sirius_option_get_number_of_possible_values:
       doc: number of elements
 @api end
 */
-void sirius_option_get_number_of_possible_values(char* section, char * name, int *num_)
+void sirius_option_get_number_of_possible_values(char* section__, char * name__, int *num_)
 {
-    const json &parser =  sirius::get_options_dictionary();
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    for ( char *p = name; *p; p++) *p = tolower(*p);
+  auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+  auto name = std::string(name__);
+  std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+  const json &parser =  sirius::get_section_options(section);
 
-    if (parser[section][name].count("possible_values")) {
-        auto tmp =  parser[section][name]["possible_values"].get<std::vector<std::string>>();
+    if (parser[name].count("possible_values")) {
+        auto tmp =  parser[name]["enum"].get<std::vector<std::string>>();
         *num_ = tmp.size();
         return;
     }
@@ -5059,19 +5081,20 @@ sirius_option_string_get_value:
       doc: string containing the value
 @api end
 */
-void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
+void sirius_option_string_get_value(char* section__, char * name__, int *elem_, char *value_n)
 {
-    const json &parser = sirius::get_options_dictionary();
-
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    for ( char *p = name; *p; p++) *p = tolower(*p);
+  auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+  auto name = std::string(name__);
+  std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+  const json &parser =  sirius::get_section_options(section);
 
     // for string I do not consider a table of several strings to be returned. I
     // need to specialize however the possible values that the string can have
-    if (parser[section][name].count("possible_values")) {
-        auto tmp = parser[section][name]["possible_values"].get<std::vector<std::string>>();
-        std::memcpy(value_n, tmp[*elem_].c_str(), tmp[*elem_].size() + 1);
+    if (parser[name].count("enum")) {
+        auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
+        std::copy(tmp[*elem_].begin(), tmp[*elem_].end(), value_n);
+        value_n[tmp[*elem_].size()] = 0;
     }
 }
 
@@ -5095,7 +5118,7 @@ void sirius_option_get_section_name(int *elem, char *section_name)
     const json &dict = sirius::get_options_dictionary();
     int elem_ = 0;
 
-    for (auto& el : dict.items())
+    for (auto& el : dict["properties"].items())
     {
         if (elem_ == *elem) {
             std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
@@ -5119,7 +5142,7 @@ sirius_option_get_number_of_sections:
 void sirius_option_get_number_of_sections(int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
-    *length = parser.size();
+    *length = parser["properties"].size();
 }
 
 
@@ -5154,7 +5177,7 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     /* dictionary describing all the possible options */
-    json const& parser = sirius::get_options_dictionary();
+    json const& parser = sirius::get_options_dictionary()["properties"];
 
     /* dictionary containing the values of the options for the simulations */
     json& conf_dict = sim_ctx.get_runtime_options_dictionary();
@@ -5207,7 +5230,7 @@ sirius_option_set_double:
 void sirius_option_set_double(void* const* handler__, char*section, char *name, double *default_values, int *length)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser =  sirius::get_options_dictionary()["properties"];
     json &conf_dict = sim_ctx.get_runtime_options_dictionary();
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
@@ -5259,13 +5282,12 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     // the first one is static
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser =  sirius::get_options_dictionary()["properties"];
     json &conf_dict = sim_ctx.get_runtime_options_dictionary();
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
     // ugly as hell but fortran is a piece of ....
     for ( char *p = name; *p; p++) *p = tolower(*p);
-    std::cout << section << " " << name << std::endl;
 
     if (parser[section].count(name)) {
         // check that the option exists
@@ -5309,7 +5331,7 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     // the first one is static
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser =  sirius::get_options_dictionary()["properties"];
     json &conf_dict = sim_ctx.get_runtime_options_dictionary();
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
@@ -5356,7 +5378,7 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     // the first one is static
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser =  sirius::get_options_dictionary()["properties"];
     json &conf_dict = sim_ctx.get_runtime_options_dictionary();
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);

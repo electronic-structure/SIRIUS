@@ -39,7 +39,7 @@ namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
 nlohmann::json const& get_options_dictionary();
-
+nlohmann::json const& get_section_options(const std::string& section__);
 class Config : public config_t
 {
   public:
@@ -57,6 +57,7 @@ class Simulation_parameters
   private:
     /// All user-provided paramters are stored here.
     Config cfg_;
+
   public:
     Config& cfg()
     {
@@ -92,8 +93,8 @@ class Simulation_parameters
 
     /* copy constructor is forbidden */
     Simulation_parameters(Simulation_parameters const&) = delete;
-  public:
 
+  public:
     Simulation_parameters()
     {
     }
