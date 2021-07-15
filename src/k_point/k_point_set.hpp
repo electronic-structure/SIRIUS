@@ -281,7 +281,7 @@ inline K_point<float>* K_point_set::get<float>(int ik__) const
     return kpoints_float_[ik__].get();
 #else
     RTE_THROW("not compiled with FP32 support");
-    return reinterpret_cast<K_point<float>*>(nullptr); // make compiler happy
+    return nullptr; // make compiler happy
 #endif
 }
 
