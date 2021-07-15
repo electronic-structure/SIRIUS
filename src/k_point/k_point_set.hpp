@@ -51,7 +51,7 @@ class K_point_set
     std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
 
     /// bool variable to store last access of kpoints using fp32 or fp64 type
-    mutable bool access_fp64{true};
+    //mutable bool access_fp64{true};
 #endif
 
     /// Split index of k-points.
@@ -109,6 +109,7 @@ class K_point_set
     void sync_band();
 
     /// Find Fermi energy and band occupation numbers.
+    template <typename T>
     void find_band_occupancies();
 
     /// Print basic info to the standard output.
@@ -139,22 +140,8 @@ class K_point_set
     }
 
     /// Get a list of band energies for a given k-point index.
-    std::vector<double> get_band_energies(int ik__, int ispn__) const
-    {
-        std::vector<double> bnd_e(ctx_.num_bands());
-        for (int j = 0; j < ctx_.num_bands(); j++) {
-#ifdef USE_FP32
-            if (access_fp64) {
-#endif
-                bnd_e[j] = (*this).get<double>(ik__)->band_energy(j, ispn__);
-#ifdef USE_FP32
-            } else {
-                bnd_e[j] = (*this).get<float>(ik__)->band_energy(j, ispn__);
-            }
-#endif
-        }
-        return bnd_e;
-    }
+    template <typename T>
+    std::vector<double> get_band_energies(int ik__, int ispn__) const;
 
     /// Return maximum number of G+k vectors among all k-points.
     int max_num_gkvec() const
@@ -174,7 +161,7 @@ class K_point_set
         int id = static_cast<int>(kpoints_.size());
         kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__, id)));
 #ifdef USE_FP32
-        kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, static_cast<float>(weight__), id)));
+        kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, weight__, id)));
 #endif
     }
 
@@ -187,39 +174,12 @@ class K_point_set
     }
 
     template <typename T>
-    inline K_point<T>* get(int i)
-    {
-        assert(i >= 0 && i < (int)kpoints_.size());
-
-#ifdef USE_FP32
-        if(std::is_same<T, double>::value) {
-            access_fp64 = true;
-#endif
-            return reinterpret_cast<K_point<T>*>(kpoints_[i].get());
-#ifdef USE_FP32
-        } else {
-            access_fp64 = false;
-            return reinterpret_cast<K_point<T>*>(kpoints_float_[i].get());
-        }
-#endif
-    }
+    inline K_point<T>* get(int ik__) const;
 
     template <typename T>
-    inline K_point<T>* get(int i) const
+    inline K_point<T>* get(int ik__)
     {
-        assert(i >= 0 && i < (int)kpoints_.size());
-
-#ifdef USE_FP32
-        if(std::is_same<T, double>::value) {
-            access_fp64 = true;
-#endif
-            return reinterpret_cast<K_point<T>*>(kpoints_[i].get());
-#ifdef USE_FP32
-        } else {
-            access_fp64 = false;
-            return reinterpret_cast<K_point<T>*>(kpoints_float_[i].get());
-        }
-#endif
+        return const_cast<K_point<T>*>(static_cast<K_point_set const&>(*this).get<T>(ik__));
     }
 
     /// Return total number of k-points.
@@ -291,7 +251,7 @@ class K_point_set
         if (jrank == my_rank) {
             auto kp = kpoints_[jk__].get();
             kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
-#ifdef USE_FP32
+#if defined(USE_FP32)
             auto kp_float = kpoints_float_[jk__].get();
             kp_float->gkvec().send_recv(comm(), jrank, rank__, gkvec);
 #endif
@@ -304,6 +264,34 @@ class K_point_set
     }
 };
 
+template<>
+inline K_point<double>* K_point_set::get<double>(int ik__) const
+{
+    assert(ik__ >= 0 && ik__ < (int)kpoints_.size());
+    return kpoints_[ik__].get();
+}
+
+template<>
+inline K_point<float>* K_point_set::get<float>(int ik__) const
+{
+#if defined(USE_FP32)
+    assert(ik__ >= 0 && ik__ < (int)kpoints_float_.size());
+    return kpoints_float_[ik__].get();
+#else
+    RTE_THROW("not compiled with FP32 support");
+    return reinterpret_cast<K_point<float>*>(nullptr); // make compiler happy
+#endif
+}
+
+template <typename T>
+std::vector<double> K_point_set::get_band_energies(int ik__, int ispn__) const
+{
+    std::vector<double> bnd_e(ctx_.num_bands());
+    for (int j = 0; j < ctx_.num_bands(); j++) {
+        bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
+    }
+    return bnd_e;
+}
 
 }; // namespace sirius
 

@@ -58,14 +58,14 @@ struct hdf5_type_wrapper<double>
     }
 };
 
-template<>
-struct hdf5_type_wrapper<std::complex<double>>
-{
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_LDOUBLE;
-    }
-};
+//template<>
+//struct hdf5_type_wrapper<std::complex<double>>
+//{
+//    static hid_t type_id()
+//    {
+//        return H5T_NATIVE_LDOUBLE;
+//    }
+//};
 
 template<>
 struct hdf5_type_wrapper<int>

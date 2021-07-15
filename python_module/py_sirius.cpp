@@ -20,6 +20,7 @@
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
+#include "dft/smearing.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -748,6 +749,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
+
+
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
@@ -761,6 +764,37 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("apply_hamiltonian", &apply_hamiltonian, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a,
           "wf_in"_a, py::arg("swf_out") = nullptr);
     m.def("initialize_subspace", &initialize_subspace);
+
+    /* sirius.smearing submodules */
+    py::module smearing_module = m.def_submodule("smearing");
+    {
+        py::module mpm = smearing_module.def_submodule("methfessel_paxton");
+        mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a);
+        mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a);
+        mpm.def("occupancy_deriv", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv), "x"_a, "w"_a, "n"_a);
+        mpm.def("occupancy_deriv2", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv2), "x"_a, "w"_a, "n"_a);
+    }
+    {
+        py::module mcold = smearing_module.def_submodule("cold");
+        mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
+        mcold.def("occupancy", py::vectorize(&smearing::cold::occupancy), "x"_a, "w"_a);
+        mcold.def("occupancy_deriv", py::vectorize(&smearing::cold::occupancy_deriv), "x"_a, "w"_a);
+        mcold.def("occupancy_deriv2", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
+    }
+    {
+        py::module mfd = smearing_module.def_submodule("fermi_dirac");
+        mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
+        mfd.def("occupancy", py::vectorize(&smearing::fermi_dirac::occupancy), "x"_a, "w"_a);
+        mfd.def("occupancy_deriv", py::vectorize(&smearing::fermi_dirac::occupancy_deriv), "x"_a, "w"_a);
+        mfd.def("occupancy_deriv2", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
+    }
+    {
+        py::module mgauss = smearing_module.def_submodule("gaussian");
+        mgauss.def("delta", py::vectorize(&smearing::gaussian::delta), "x"_a, "w"_a);
+        mgauss.def("occupancy", py::vectorize(&smearing::gaussian::occupancy), "x"_a, "w"_a);
+    }
+    /* sirius.smearing submodules (end) */
+
 }
 
 void apply_hamiltonian(Hamiltonian0& H0, K_point<double>& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,

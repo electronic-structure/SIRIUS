@@ -116,7 +116,7 @@ class K_point : public K_point_base
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
     /// First-variational eigen values
-    std::vector<T> fv_eigen_values_;
+    std::vector<double> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
     dmatrix<std::complex<T>> fv_eigen_vectors_;
@@ -157,10 +157,10 @@ class K_point : public K_point_base
     std::unique_ptr<Wave_functions<T>> atomic_wave_functions_S_hub_{nullptr};
 
     /// Band occupation numbers.
-    sddk::mdarray<T, 2> band_occupancies_;
+    sddk::mdarray<double, 2> band_occupancies_;
 
     /// Band energies.
-    sddk::mdarray<T, 2> band_energies_;
+    sddk::mdarray<double, 2> band_energies_;
 
     /// LAPW matching coefficients for the row G+k vectors.
     /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
@@ -283,9 +283,9 @@ class K_point : public K_point_base
             vk_[x] = vk__[x];
         }
 
-        band_occupancies_ = mdarray<T, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_occupancies_.zero();
-        band_energies_ = mdarray<T, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_energies_.zero();
 
         num_ranks_row_ = comm_row_.size();
@@ -344,9 +344,6 @@ class K_point : public K_point_base
     /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational
         states and second-variational eigen-vectors. */
     void generate_spinor_wave_functions();
-
-    //void generate_atomic_wave_functions(const basis_functions_index& index, const int atom, const int offset,
-    //                                    const bool hubbard, Wave_functions& phi);
 
     /// Generate plane-wave coefficients of the atomic wave-functions.
     /** Plane-wave coefficients of the atom-centered wave-functions
@@ -472,37 +469,37 @@ class K_point : public K_point_base
     }
 
     /// Get band energy.
-    inline T band_energy(int j__, int ispn__) const
+    inline double band_energy(int j__, int ispn__) const
     {
         return band_energies_(j__, get_ispn(ispn__));
     }
 
     /// Set band energy.
-    inline void band_energy(int j__, int ispn__, T e__)
+    inline void band_energy(int j__, int ispn__, double e__)
     {
         band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
     /// Get band occupancy.
-    inline T band_occupancy(int j__, int ispn__) const
+    inline double band_occupancy(int j__, int ispn__) const
     {
         return band_occupancies_(j__, get_ispn(ispn__));
     }
 
     /// Set band occupancy.
-    inline void band_occupancy(int j__, int ispn__, T occ__)
+    inline void band_occupancy(int j__, int ispn__, double occ__)
     {
         band_occupancies_(j__, get_ispn(ispn__)) = occ__;
     }
 
-    inline T fv_eigen_value(int i) const
+    inline double fv_eigen_value(int i) const
     {
         return fv_eigen_values_[i];
     }
 
-    void set_fv_eigen_values(T* eval)
+    void set_fv_eigen_values(double* eval__)
     {
-        std::memcpy(&fv_eigen_values_[0], eval, ctx_.num_fv_states() * sizeof(T));
+        std::copy(eval__, eval__ + ctx_.num_fv_states(), &fv_eigen_values_[0]);
     }
 
     /// Return weight of k-point.
@@ -757,7 +754,7 @@ class K_point : public K_point_base
 
     void bypass_sv()
     {
-        std::memcpy(&band_energies_[0], &fv_eigen_values_[0], ctx_.num_fv_states() * sizeof(T));
+        std::copy(&band_energies_[0], &band_energies_[0] + ctx_.num_fv_states(), &fv_eigen_values_[0]);
     }
 
     inline Matching_coefficients const& alm_coeffs_row() const

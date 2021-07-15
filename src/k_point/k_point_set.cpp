@@ -22,6 +22,7 @@
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
 #include "symmetry/get_irreducible_reciprocal_mesh.hpp"
+#include <iomanip>
 
 namespace sirius {
 
@@ -147,6 +148,85 @@ void K_point_set::initialize(std::vector<int> const& counts)
     this->initialized_ = true;
 }
 
+
+template<class F>
+double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
+{
+    double x = (a+b)/2;
+    double fi = f(x);
+    int step{0};
+    /* compute fermy energy */
+    while (std::abs(fi) >= tol) {
+        /* compute total number of electrons */
+
+        if (fi > 0) {
+            b = x;
+        } else {
+            a = x;
+        }
+
+        x = (a + b) / 2.0;
+        fi = f(x);
+
+        if (step > maxstep) {
+            std::stringstream s;
+            s << "search of band occupancies failed after 10000 steps";
+            TERMINATE(s);
+        }
+        step++;
+    }
+
+    return x;
+}
+
+/**
+ *  Newton minimization to determine the chemical potential.
+ *
+ *  \param  N       number of electrons as a function of \f$\mu\f$
+ *  \param  dN      \f$\partial_\mu N(\mu)\f$
+ *  \param  ddN     \f$\partial^2_\mu N(\mu)\f$
+ *  \param  mu0     initial guess
+ *  \param  ne      target number of electrons
+ *  \param  tol     tolerance
+ *  \param  maxstep max number of Newton iterations
+ */
+template <class Nt, class DNt, class D2Nt>
+double
+newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
+{
+    double mu  = mu0;
+    int iter{0};
+    while (true) {
+        // compute
+        double Nf   = N(mu);
+        double dNf  = dN(mu);
+        double ddNf = ddN(mu);
+        /* minimize (N(mu) - ne)^2  */
+        double F = (Nf-ne)*(Nf-ne);
+        double dF = 2*(Nf-ne) * dNf;
+        double ddF = 2*dNf*dNf + 2*(Nf-ne) * ddNf;
+        mu = mu - dF / std::abs(ddF);
+
+        if (std::abs(dF) < tol) {
+            return mu;
+        }
+
+        if (std::abs(ddF) < 1e-10) {
+            std::stringstream s;
+            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!\n";
+            TERMINATE(s);
+        }
+
+        iter++;
+        if (iter > maxstep) {
+            std::stringstream s;
+            s << "Newton minimization (chemical potential) failed after 10000 steps!\n";
+            TERMINATE(s);
+        }
+    }
+}
+
+template <typename T>
 void K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
@@ -158,7 +238,7 @@ void K_point_set::find_band_occupancies()
     }
 
     /* target number of electrons */
-    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
+    const double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
     /* this is a special case when there are no empty states */
     if (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10) {
@@ -170,15 +250,7 @@ void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-#ifdef USE_FP32
-                    if (access_fp64) {
-#endif
-                        energy_fermi_ = std::max(energy_fermi_, kpoints_[ik]->band_energy(j, ispn));
-#ifdef USE_FP32
-                    } else {
-                        energy_fermi_ = std::max(energy_fermi_, static_cast<double>(kpoints_float_[ik]->band_energy(j, ispn)));
-                    }
-#endif
+                    energy_fermi_ = std::max(energy_fermi_, this->get<T>(ik)->band_energy(j, ispn));
                 }
             }
         }
@@ -187,25 +259,17 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp parallel for
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-#ifdef USE_FP32
-                    if (access_fp64) {
-#endif
-                        kpoints_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
-#ifdef USE_FP32
-                    } else {
-                        kpoints_float_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
-                    }
-#endif
+                    this->get<T>(ik)->band_occupancy(j, ispn, ctx_.max_occupancy());
                 }
             }
         }
 
-        this->sync_band<sync_band_t::occupancy>();
+        this->sync_band<T, sync_band_t::occupancy>();
         return;
     }
 
     if (ctx_.smearing_width() == 0) {
-        throw std::runtime_error("[find_band_occupancies] zero smearing width");
+        RTE_THROW("zero smearing width");
     }
 
     /* get minimum and maximum band energies */
@@ -217,68 +281,55 @@ void K_point_set::find_band_occupancies()
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#ifdef USE_FP32
-            if (access_fp64) {
-#endif
-                emin = std::min(emin, kpoints_[ik]->band_energy(0, ispn));
-                emax = std::max(emax, kpoints_[ik]->band_energy(ctx_.num_bands() - 1, ispn));
-#ifdef USE_FP32
-            } else {
-                emin = std::min(emin, static_cast<double>(kpoints_float_[ik]->band_energy(0, ispn)));
-                emax = std::max(emax, static_cast<double>(kpoints_float_[ik]->band_energy(ctx_.num_bands() - 1, ispn)));
-            }
-#endif
+            emin = std::min(emin, this->get<T>(ik)->band_energy(0, ispn));
+            emax = std::max(emax, this->get<T>(ik)->band_energy(ctx_.num_bands() - 1, ispn));
         }
     }
     comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
     comm().allreduce<double, sddk::mpi_op_t::max>(&emax, 1);
 
-    double ne{0};
-
-    /* smearing function */
-    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-
     splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
-    int step{0};
-    /* calculate occupations */
-    while (std::abs(ne - ne_target) >= 1e-11) {
-        energy_fermi_ = (emin + emax) / 2.0;
-        /* compute total number of electrons */
-        ne = 0.0;
+    /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
+    auto compute_ne = [&](double ef, auto&& f) {
+        double ne{0};
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
             int ik = spl_num_kpoints_[ikloc];
             double tmp{0};
-            #pragma omp parallel reduction(+:tmp)
+            #pragma omp parallel reduction(+ : tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
-#ifdef USE_FP32
-                    if (access_fp64) {
-#endif
-                        tmp += f(energy_fermi_ - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
-#ifdef USE_FP32
-                    } else {
-                        tmp += f(energy_fermi_ - kpoints_float_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
-                    }
-#endif
+                    tmp += f(ef - this->get<T>->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
                 }
             }
             ne += tmp * kpoints_[ik]->weight();
         }
         ctx_.comm().allreduce(&ne, 1);
-        if (ne > ne_target) {
-            emax = energy_fermi_;
-        } else {
-            emin = energy_fermi_;
-        }
+        return ne;
+    };
 
-        if (step > 10000) {
-            std::stringstream s;
-            s << "search of band occupancies failed after 10000 steps";
-            TERMINATE(s);
-        }
-        step++;
+    /* smearing function */
+    std::function<double(double)> f;
+    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+        // obtain initial guess for non-monotous smearing with Gaussian
+        f = [&](double x) { return smearing::gaussian::occupancy(x, ctx_.smearing_width()); };
+    } else {
+        f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+    }
+
+    auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+    energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+
+    /* for cold and Methfessel Paxton smearing start newton minimization  */
+    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+        f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+        auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
+        auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
+        auto N   = [&](double mu) { return compute_ne(mu, f); };
+        auto dN  = [&](double mu) { return compute_ne(mu, df); };
+        auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
+        energy_fermi_ = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, 1e-11);
     }
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -286,17 +337,8 @@ void K_point_set::find_band_occupancies()
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-#ifdef USE_FP32
-                if (access_fp64) {
-#endif
-                    auto o = f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                    kpoints_[ik]->band_occupancy(j, ispn, o);
-#ifdef USE_FP32
-                } else {
-                    auto o = f(energy_fermi_ - kpoints_float_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                    kpoints_float_[ik]->band_occupancy(j, ispn, o);
-                }
-#endif
+                auto o = f(energy_fermi_ - this->get<T>(ik)->band_energy(j, ispn)) * ctx_.max_occupancy();
+                this->get<T>(ik)->band_occupancy(j, ispn, o);
             }
         }
     }
@@ -318,17 +360,8 @@ void K_point_set::find_band_occupancies()
                 eminmax.second = std::numeric_limits<double>::lowest();
 
                 for (int ik = 0; ik < num_kpoints(); ik++) {
-#ifdef USE_FP32
-                    if (access_fp64) {
-#endif
-                        eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
-                        eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
-#ifdef USE_FP32
-                    } else {
-                        eminmax.first  = std::min(static_cast<float>(eminmax.first), kpoints_float_[ik]->band_energy(j, ispn));
-                        eminmax.second = std::max(static_cast<float>(eminmax.second), kpoints_float_[ik]->band_energy(j, ispn));
-                    }
-#endif
+                    eminmax.first  = std::min(eminmax.first, this->get<T>(ik)->band_energy(j, ispn));
+                    eminmax.second = std::max(eminmax.second, this->get<T>(ik)->band_energy(j, ispn));
                 }
 
                 eband[j + ispn * ctx_.num_bands()] = eminmax;
@@ -346,7 +379,7 @@ void K_point_set::find_band_occupancies()
             band_gap_ = eband[ist].first - eband[ist - 1].second;
         }
     }
-}
+    }
 
 double K_point_set::valence_eval_sum() const
 {
