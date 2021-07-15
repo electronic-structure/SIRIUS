@@ -96,7 +96,7 @@ std::string show_vec(const vector3d<T>& vec)
 
 // forward declaration
 void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Hamiltonian0& H0, K_point<double>& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
                        std::shared_ptr<Wave_functions<double>>& swf);
 
     /* typedefs */
@@ -431,7 +431,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0&) const) & Band::initialize_subspace)
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
         .def("solve", &Band::solve, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
@@ -515,17 +515,17 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_num_kpoints", &K_point_set::num_kpoints)
         .def("size", [](K_point_set& ks) -> int { return ks.spl_num_kpoints().local_size(); })
         .def("energy_fermi", &K_point_set::energy_fermi)
-        .def("get_band_energies", &K_point_set::get_band_energies)
-        .def("find_band_occupancies", &K_point_set::find_band_occupancies)
+        .def("get_band_energies", &K_point_set::get_band_energies<double>)
+        .def("find_band_occupancies", &K_point_set::find_band_occupancies<double>)
         .def("band_gap", &K_point_set::band_gap)
         //.def("sync_band", &K_point_set::sync_band)
-        .def("valence_eval_sum", &K_point_set::valence_eval_sum)
+        .def("valence_eval_sum", &K_point_set::valence_eval_sum<double>)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
              [](K_point_set& ks, int i) -> K_point<double>& {
                  if (i >= ks.spl_num_kpoints().local_size())
                      throw pybind11::index_error("out of bounds");
-                 return *ks[ks.spl_num_kpoints(i)];
+                 return *ks.get<double>(ks.spl_num_kpoints(i));
              },
              py::return_value_policy::reference_internal)
         .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
@@ -533,12 +533,12 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian0>(m, "Hamiltonian0")
+    py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
         .def(py::init<Potential&>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian0::potential, py::return_value_policy::reference_internal);
+        .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
 
-    py::class_<Hamiltonian_k>(m, "Hamiltonian_k")
-        .def(py::init<Hamiltonian0&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
+    py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
+        .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
@@ -797,8 +797,8 @@ PYBIND11_MODULE(py_sirius, m)
 
 }
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point<double>& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
-                       std::shared_ptr<Wave_functions<double>>& swf)
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_functions<double>& wf_out,
+        Wave_functions<double>& wf, std::shared_ptr<Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -844,6 +844,6 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point<double>& kp, Wave_functions<dou
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0 H0(dft_gs.potential());
+    Hamiltonian0<double> H0(dft_gs.potential());
     Band(ctx).initialize_subspace(kset, H0);
 }
