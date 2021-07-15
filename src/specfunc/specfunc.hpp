@@ -17,16 +17,44 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef __SPECFUNC_HPP__
+#define __SPECFUNC_HPP__
+
 /** \file specfunc.hpp
  *
  *  \brief Special functions.
  */
-
+#include <vector>
+#include <cmath>
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_legendre.h>
+#include <gsl/gsl_sf_hermite.h>
+#include "typedefs.hpp"
+#include "utils/utils.hpp"
+#include "SDDK/memory.hpp"
+#include "SDDK/geometry3d.hpp"
 
 /// Special functions.
 namespace sf {
+
+inline double hermiteh(int n, double x)
+{
+    // phycisists Hermite polynomials,
+    // https://www.gnu.org/software/gsl/doc/html/specfunc.html#c.gsl_sf_hermite
+    return gsl_sf_hermite(n, x);
+}
+
+inline std::vector<double> hermiteh_array(int n, double x)
+{
+    std::vector<double> result(n);
+    gsl_sf_hermite_array(n, x, result.data());
+    return result;
+}
+
+inline double hermiteh_series(int n, double x, const double* a)
+{
+    return gsl_sf_hermite_series(n, x, a);
+}
 
 /// Generate associated Legendre polynomials.
 /** Normalised associated Legendre polynomials obey the following recursive relations:
@@ -185,7 +213,7 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
     norm[l_, m_] := 4*Pi*Integrate[LegendreP[l, m, x]*LegendreP[l, m, x], {x, 0, 1}]
     Ylm[l_, m_, t_, p_] := LegendreP[l, m, Cos[t]]*E^(I*m*p)/Sqrt[norm[l, m]]
     Do[Print[ComplexExpand[
-     FullSimplify[SphericalHarmonicY[l, m, t, p] - Ylm[l, m, t, p], 
+     FullSimplify[SphericalHarmonicY[l, m, t, p] - Ylm[l, m, t, p],
       Assumptions -> {0 <= t <= Pi}]]], {l, 0, 5}, {m, -l, l}]
     \endverbatim
 
@@ -198,7 +226,7 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
     Do[Print[ComplexExpand[
      FullSimplify[
       SphericalHarmonicY[l, -m, t, p] - (-1)^m*
-       Conjugate[SphericalHarmonicY[l, m, t, p]], 
+       Conjugate[SphericalHarmonicY[l, m, t, p]],
         Assumptions -> {0 <= t <= Pi}]]], {l, 0, 4}, {m, 0, l}]
     \endverbatim
  */
@@ -275,29 +303,29 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double_compl
     (* definition of real spherical harmonics, use Plm(l,m) for m\
     \[GreaterEqual]0 only *)
 
-    norm[l_, m_] := 
+    norm[l_, m_] :=
      4*Pi*Integrate[
        LegendreP[l, Abs[m], x]*LegendreP[l, Abs[m], x], {x, 0, 1}]
     legendre[l_, m_, x_] := LegendreP[l, Abs[m], x]/Sqrt[norm[l, m]]
 
     (* reference definition *)
 
-    RRlm[l_, m_, th_, ph_] := 
+    RRlm[l_, m_, th_, ph_] :=
      If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]
-        ], If[m < 0, 
-       Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+        ], If[m < 0,
+       Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]],
        If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
 
     (* definition without ComplexExpand *)
 
-    Rlm[l_, m_, th_, ph_] := 
+    Rlm[l_, m_, th_, ph_] :=
      If[m > 0, legendre[l, m, Cos[th]]*Sqrt[2]*Cos[m*ph],
       If[m < 0, (-1)^m*legendre[l, m, Cos[th]]*Sqrt[2]*(-Sin[Abs[m]*ph]),
        If[m == 0, legendre[l, 0, Cos[th]]]]]
 
     (* check that both definitions are identical *)
     Do[
-     Print[FullSimplify[Rlm[l, m, a, b] - RRlm[l, m, a, b], 
+     Print[FullSimplify[Rlm[l, m, a, b] - RRlm[l, m, a, b],
        Assumptions -> {0 <= a <= Pi, 0 <= b <= 2*Pi}]], {l, 0, 5}, {m, -l,
        l}]
 
@@ -425,7 +453,7 @@ inline sddk::mdarray<double, 1> sinxn(int n__, double x__)
     The derivative over \f$ \theta \f$ is then:
     \f[
     \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} = \frac{\partial P_{\ell}^{m}(x)}{\partial x}
-      \frac{\partial x}{\partial \theta} f(\phi) = -\sin \theta \frac{\partial P_{\ell}^{m}(x)}{\partial x} f(\phi) 
+      \frac{\partial x}{\partial \theta} f(\phi) = -\sin \theta \frac{\partial P_{\ell}^{m}(x)}{\partial x} f(\phi)
     \f]
     where \f$ x = \cos \theta \f$
 
@@ -529,3 +557,4 @@ inline void dRlm_dr(int lmax__, geometry3d::vector3d<double>& r__, sddk::mdarray
 }
 
 } // namespace sf
+#endif // __SPECFUNC_HPP__
