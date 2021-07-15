@@ -105,7 +105,7 @@ class K_point_set
     void initialize(std::vector<int> const& counts = {});
 
     /// Sync band energies or occupancies between all MPI ranks.
-    template <sync_band_t what>
+    template <typename T, sync_band_t what>
     void sync_band();
 
     /// Find Fermi energy and band occupation numbers.
@@ -121,9 +121,11 @@ class K_point_set
     void load();
 
     /// Return sum of valence eigen-values.
+    template <typename T>
     double valence_eval_sum() const;
 
     /// Return entropy contribution from smearing.
+    template <typename T>
     double entropy_sum() const;
 
     /// Update k-points after moving atoms or changing the lattice vectors.
@@ -133,7 +135,7 @@ class K_point_set
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             kpoints_[ik]->update();
-#ifdef USE_FP32
+#if defined(USE_FP32)
             kpoints_float_[ik]->update();
 #endif
         }

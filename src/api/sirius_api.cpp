@@ -3044,7 +3044,7 @@ void sirius_get_energy(void* const* handler__, char const* label__, double* ener
         {"kin",        [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
         {"one-el",     [&](){ return sirius::one_electron_energy(density, potential); }},
         {"descf",      [&](){ return gs.scf_energy(); }},
-        {"demet",      [&](){ return kset.entropy_sum(); }},
+        {"demet",      [&](){ return kset.entropy_sum<double>(); }},
         {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
         {"paw",        [&](){ return potential.PAW_total_energy(); }},
         {"fermi",      [&](){ return kset.energy_fermi(); }}

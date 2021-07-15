@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-template <sync_band_t what>
+template <typename T, sync_band_t what>
 void K_point_set::sync_band()
 {
     PROFILE("sirius::K_point_set::sync_band");
@@ -38,15 +38,14 @@ void K_point_set::sync_band()
     #pragma omp parallel
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
+        auto kp = this->get<T>(ik);
         switch (what) {
             case sync_band_t::energy: {
-                std::copy(&kpoints_[ik]->band_energies_(0, 0), &kpoints_[ik]->band_energies_(0, 0) + nb,
-                    &data(0, 0, ik));
+                std::copy(&kp->band_energies_(0, 0), &kp->band_energies_(0, 0) + nb, &data(0, 0, ik));
                 break;
             }
             case sync_band_t::occupancy: {
-                std::copy(&kpoints_[ik]->band_occupancies_(0, 0), &kpoints_[ik]->band_occupancies_(0, 0) + nb,
-                    &data(0, 0, ik));
+                std::copy(&kp->band_occupancies_(0, 0), &kp->band_occupancies_(0, 0) + nb, &data(0, 0, ik));
                 break;
             }
         }
@@ -57,13 +56,14 @@ void K_point_set::sync_band()
 
     #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
+        auto kp = this->get<T>(ik);
         switch (what) {
             case sync_band_t::energy: {
-                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_energies_(0, 0));
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kp->band_energies_(0, 0));
                 break;
             }
             case sync_band_t::occupancy: {
-                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_occupancies_(0, 0));
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kp->band_occupancies_(0, 0));
                 break;
             }
         }
@@ -71,11 +71,18 @@ void K_point_set::sync_band()
 }
 
 template
-void K_point_set::sync_band<sync_band_t::energy>();
+void K_point_set::sync_band<double, sync_band_t::energy>();
+#if defined(USE_FP32)
+template
+void K_point_set::sync_band<float, sync_band_t::energy>();
+#endif
 
 template
-void K_point_set::sync_band<sync_band_t::occupancy>();
-
+void K_point_set::sync_band<double, sync_band_t::occupancy>();
+#if defined(USE_FP32)
+template
+void K_point_set::sync_band<float, sync_band_t::occupancy>();
+#endif
 
 void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
 {
@@ -300,7 +307,7 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
-                    tmp += f(ef - this->get<T>->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+                    tmp += f(ef - this->get<T>(ik)->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
                 }
             }
             ne += tmp * kpoints_[ik]->weight();
@@ -343,7 +350,7 @@ void K_point_set::find_band_occupancies()
         }
     }
 
-    this->sync_band<sync_band_t::occupancy>();
+    this->sync_band<T, sync_band_t::occupancy>();
 
     band_gap_ = 0.0;
 
@@ -379,8 +386,16 @@ void K_point_set::find_band_occupancies()
             band_gap_ = eband[ist].first - eband[ist - 1].second;
         }
     }
-    }
+}
 
+template
+void K_point_set::find_band_occupancies<double>();
+#if defined(USE_FP32)
+template
+void K_point_set::find_band_occupancies<float>();
+#endif
+
+template <typename T>
 double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
@@ -389,20 +404,12 @@ double K_point_set::valence_eval_sum() const
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = kpoints_[ik];
+        auto const& kp = this->get<T>(ik);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#ifdef USE_FP32
-                if (access_fp64) {
-#endif
-                    tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
-#ifdef USE_FP32
-                } else {
-                    tmp += kpoints_float_[ik]->band_energy(splb[j], ispn) * kpoints_float_[ik]->band_occupancy(splb[j], ispn);
-                }
-#endif
+                tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
             }
         }
         eval_sum += kp->weight() * tmp;
@@ -412,6 +419,14 @@ double K_point_set::valence_eval_sum() const
     return eval_sum;
 }
 
+template
+double K_point_set::valence_eval_sum<double>() const;
+#if defined(USE_FP32)
+template
+double K_point_set::valence_eval_sum<float>() const;
+#endif
+
+template <typename T>
 double K_point_set::entropy_sum() const
 {
     double s_sum{0};
@@ -431,20 +446,12 @@ double K_point_set::entropy_sum() const
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = kpoints_[ik];
+        auto const& kp = this->get<T>(ik);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#ifdef USE_FP32
-                if (access_fp64) {
-#endif
-                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
-#ifdef USE_FP32
-                } else {
-                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kpoints_float_[ik]->band_energy(splb[j], ispn));
-                }
-#endif
+                tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
             }
         }
         s_sum += kp->weight() * tmp;
@@ -453,6 +460,14 @@ double K_point_set::entropy_sum() const
 
     return s_sum;
 }
+
+template
+double K_point_set::entropy_sum<double>() const;
+#if defined(USE_FP32)
+template
+double K_point_set::entropy_sum<float>() const;
+#endif
+
 
 void K_point_set::print_info()
 {
@@ -504,15 +519,7 @@ void K_point_set::save(std::string const& name__) const
     for (int ik = 0; ik < num_kpoints(); ik++) {
         /* check if this ranks stores the k-point */
         if (ctx_.comm_k().rank() == spl_num_kpoints_.local_rank(ik)) {
-#ifdef USE_FP32
-            if (access_fp64) {
-#endif
-                kpoints_[ik]->save(name__, ik);
-#ifdef USE_FP32
-            } else {
-                kpoints_float_[ik]->save(name__, ik);
-            }
-#endif
+            this->get<double>(ik)->save(name__, ik);
         }
         /* wait for all */
         ctx_.comm().barrier();

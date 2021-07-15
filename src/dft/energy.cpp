@@ -130,7 +130,7 @@ double core_eval_sum(Unit_cell const& unit_cell)
 
 double eval_sum(Unit_cell const& unit_cell, K_point_set const& kset)
 {
-    return core_eval_sum(unit_cell) + kset.valence_eval_sum();
+    return core_eval_sum(unit_cell) + kset.valence_eval_sum<double>();
 }
 
 double energy_veff(Density const& density, Potential const& potential)
@@ -158,10 +158,10 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) -
+            tot_en = (kset.valence_eval_sum<double>() - energy_vxc(density, potential) -
                       energy_bxc(density, potential) - potential.PAW_one_elec_energy(density)) -
                       0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
-                      ewald_energy + kset.entropy_sum();
+                      ewald_energy + kset.entropy_sum<double>();
             break;
         }
     }

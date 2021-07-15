@@ -143,7 +143,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) 
     }
 
     /* synchronize eigen-values */
-    kset__.sync_band<sync_band_t::energy>();
+    kset__.sync_band<double, sync_band_t::energy>();
 
     ctx_.message(2, __function_name__, "%s", "Lowest band energies\n");
     if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0) {
