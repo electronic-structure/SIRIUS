@@ -220,7 +220,9 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::memcpy(rf_coef.at(memory_t::host, 0, 0, i), rf_spline[i].coeffs().at(memory_t::host), nmtp * 4 * sizeof(double));
+                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
+                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
+                              rf_coef.at(memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
