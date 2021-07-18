@@ -754,7 +754,7 @@ class K_point : public K_point_base
 
     void bypass_sv()
     {
-        std::copy(&band_energies_[0], &band_energies_[0] + ctx_.num_fv_states(), &fv_eigen_values_[0]);
+        std::copy(&fv_eigen_values_[0], &fv_eigen_values_[0] + ctx_.num_fv_states(), &band_energies_[0]);
     }
 
     inline Matching_coefficients const& alm_coeffs_row() const
