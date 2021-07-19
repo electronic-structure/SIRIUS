@@ -60,7 +60,7 @@ SIRIUS has many different configurations to enable specific hardware and library
 $ spack install sirius %gcc@:9
 
 # Explicitly use the latest 3.x release of MPICH for MPI, OpenBLAS for BLAS and LAPACK, FFTW for FFTW3, without GPU support
-$ spack install sirius ^mpich@:3 ^fftw ^openblas threads=openmp
+$ spack install sirius ^mpich@:3 ^fftw ^openblas
 
 # Enable distributed linear algebra, and use Intel MKL for BLAS, ScaLAPACK and FFTW3, without GPU support
 $ spack install sirius +scalapack ^intel-mkl

@@ -1,9 +1,9 @@
 # This is mainly to provide CUDA, so you can extend e.g.
 # - nvidia/cuda:10.2-devel-ubuntu18.04
 # - nvidia/cuda:11.0-devel-ubuntu20.04
-# - ubuntu:18.04
+# - ubuntu:20.04
 # e.g. --build-arg BASE_IMAGE=nvidia/cuda:10.2-devel-ubuntu18.04
-ARG BASE_IMAGE=ubuntu:18.04
+ARG BASE_IMAGE=ubuntu:20.04
 
 FROM $BASE_IMAGE
 
@@ -57,9 +57,6 @@ ENV SPACK_SHA=$SPACK_SHA
 # Install the specific ref of Spack provided by the user
 RUN mkdir -p /opt/spack && \
     curl -Ls "https://api.github.com/repos/spack/spack/tarball/$SPACK_SHA" | tar --strip-components=1 -xz -C /opt/spack
-
-# "Install" compilers
-COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
 
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc

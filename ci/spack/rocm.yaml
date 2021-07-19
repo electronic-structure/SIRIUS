@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc@:9 +vdwxc +tests +apps +rocm ^spfft +rocm ^openmpi ^openblas
+    - sirius@develop %gcc +vdwxc +tests +apps +rocm ^spfft +rocm ^openmpi ^openblas
   view: false
 
   packages:
@@ -10,6 +10,3 @@ spack:
         - 'build_type=Release'
         - '+release'
         - 'amdgpu_target=gfx906'
-    openblas:
-      variants:
-        - threads=openmp
