@@ -58,6 +58,9 @@ ENV SPACK_SHA=$SPACK_SHA
 RUN mkdir -p /opt/spack && \
     curl -Ls "https://api.github.com/repos/spack/spack/tarball/$SPACK_SHA" | tar --strip-components=1 -xz -C /opt/spack
 
+# "Install" compilers
+COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
+
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
 RUN spack mirror add --scope site cscs https://spack.dev && \
