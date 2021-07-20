@@ -37,9 +37,12 @@ namespace sirius {
 
 /// Solve the eigen-problem using Davidson iterative method.
 /**
-\tparam T  type of the wave-functions in real space
-\param [in] Hk  Hamiltonian for a given k-point
-\return list of eigen-values
+\tparam T                  Type of the wave-functions in real space
+\param [in]     Hk         Hamiltonian for a given k-point.
+\param [in,out] psi        Wave-functions. On input they are used for the starting guess of the subspace basis.
+                           On output they are the solutions of Hk|psi> = e|psi> eigen-problem. 
+\param [in]     occupancy  Lambda-function for the band occupancy numbers.
+\return                    List of eigen-values.
 */
 template <typename T>
 inline davidson_result
@@ -171,7 +174,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     }
 
     auto& std_solver = ctx.std_evp_solver();
-    // auto& gen_solver = ctx.gen_evp_solver();
 
     if (ctx.print_checksum()) {
         for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
@@ -469,5 +471,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     result.niter = niter;
     return result;
 }
+
 }
+
 #endif
