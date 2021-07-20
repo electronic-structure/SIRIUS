@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich@:3.3 ~fortran
+      SPEC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
