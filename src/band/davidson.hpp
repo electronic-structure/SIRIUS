@@ -28,6 +28,11 @@
 #include "utils/profiler.hpp"
 #include "residuals.hpp"
 
+struct davidson_result {
+    int niter;
+    mdarray<double, 1> eval_out;
+};
+
 namespace sirius {
 
 /// Solve the eigen-problem using Davidson iterative method.
@@ -37,7 +42,7 @@ namespace sirius {
 \return list of eigen-values
 */
 template <typename T>
-inline mdarray<double, 1>
+inline davidson_result
 davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> occupancy__)
 {
@@ -179,8 +184,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         }
     }
 
+    davidson_result result{0, mdarray<double, 1>(num_bands)};
     int niter{0};
-    mdarray<real_type<T>, 1> eval_out(num_bands);
 
     PROFILE_START("sirius::davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx.num_spinors(); ispin_step++) {
@@ -194,12 +199,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
-            // double o1 = std::abs(occupancy__(j__, ispn__));
-            // double o2 = std::abs(1 - o1);
-            //
-            // double tol = o1 * eval_tolerance__ + o2 * (eval_tolerance__ + eval_tolerance_empty__);
-            // return (std::abs(eval[j__] - eval_old[j__]) <= tol);
-
             double tol      = ctx.iterative_solver_tolerance();
             double empy_tol = std::max(tol * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
             /* if band is empty, decrease the tolerance */
@@ -454,7 +453,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         } /* loop over iterative steps k */
         for (int i = 0; i < num_bands; i++) {
-            eval_out[i] = eval[i];
+            result.eval_out[i] = eval[i];
         }
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
@@ -467,8 +466,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     }
 
     kp.release_hubbard_orbitals_on_device();
-    // return niter;
-    return eval_out;
+    result.niter = niter;
+    return result;
 }
 }
 #endif
