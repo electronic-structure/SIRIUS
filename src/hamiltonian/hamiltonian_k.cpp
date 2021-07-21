@@ -1466,7 +1466,6 @@ std::pair<mdarray<double, 2>, mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 
 #ifdef USE_FP32
-/* TODO :
 template class Hamiltonian_k<float>;
 
 template
@@ -1478,6 +1477,7 @@ template
 void
 Hamiltonian_k<float>::apply_h_s<std::complex<float>>(spin_range spins__, int N__, int n__, Wave_functions<float>& phi__,
                                                      Wave_functions<float>* hphi__, Wave_functions<float>* sphi__);
+
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
@@ -1513,6 +1513,5 @@ Hamiltonian_k<float>::get_h_o_diag_lapw<2>() const;
 template
 std::pair<mdarray<float, 2>, mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_lapw<3>() const;
- */
 #endif
 } // namespace
