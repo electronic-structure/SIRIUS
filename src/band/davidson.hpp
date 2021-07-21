@@ -26,11 +26,12 @@
 #define __DAVIDSON_HPP__
 
 #include "utils/profiler.hpp"
+#include "SDDK/wf_ortho.hpp"
 #include "residuals.hpp"
 
 struct davidson_result {
     int niter;
-    mdarray<double, 1> eval_out;
+    sddk::mdarray<double, 2> eval;
 };
 
 namespace sirius {
@@ -54,9 +55,15 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     auto& ctx = Hk__.H0().ctx();
     ctx.print_memory_usage(__FILE__, __LINE__);
 
+
     auto& kp                = Hk__.kp();
     auto& itso              = ctx.cfg().iterative_solver();
     bool converge_by_energy = (itso.converge_by_energy() == 1);
+
+    //kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", ctx.iterative_solver_tolerance());
+    //kp.message(2, __function_name__, "empty states tolerance : %18.12f\n",
+    //        std::max(ctx.iterative_solver_tolerance() * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance()));
+
 
     // bool const estimate_eval{true};
     // bool const skip_initial_diag{false};
@@ -87,7 +94,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     if (num_phi > kp.num_gkvec()) {
         std::stringstream s;
         s << "subspace size is too large!";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     /* alias for memory pool */
@@ -186,8 +193,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         }
     }
 
-    davidson_result result{0, mdarray<double, 1>(num_bands)};
-    int niter{0};
+    davidson_result result{0, sddk::mdarray<double, 2>(num_bands, ctx.num_spinors())};
 
     PROFILE_START("sirius::davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx.num_spinors(); ispin_step++) {
@@ -195,8 +201,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         /* converged vectors */
         int num_locked = 0;
 
-        mdarray<real_type<T>, 1> eval(num_bands);
-        mdarray<real_type<T>, 1> eval_old(num_bands);
+        sddk::mdarray<real_type<T>, 1> eval(num_bands);
+        sddk::mdarray<real_type<T>, 1> eval_old(num_bands);
         eval_old = []() { return 1e10; };
 
         /* check if band energy is converged */
@@ -204,7 +210,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
             double tol      = ctx.iterative_solver_tolerance();
             double empy_tol = std::max(tol * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
             /* if band is empty, decrease the tolerance */
-            // note: j__ indexes the unconverged eigenpairs -- excluding locked ones.
+            /* note: j__ indexes the unconverged eigenpairs -- excluding locked ones */
             if (std::abs(occupancy__(j__ + num_locked, ispn__)) < ctx.min_occupancy() * ctx.max_occupancy()) {
                 tol += empy_tol;
             }
@@ -263,7 +269,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         ctx.evp_work_count(1);
@@ -340,7 +346,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
                     /* update eigen-values */
                     for (int j = num_locked; j < num_bands; j++) {
-                        kp.band_energy(j, ispin_step, eval[j - num_locked]);
+                        result.eval(j, ispin_step) = eval[j - num_locked];
                     }
 
                 } else {
@@ -440,7 +446,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
             if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
-                TERMINATE(s);
+                RTE_THROW(s);
             }
 
             ctx.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands, 3));
@@ -451,12 +457,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                            std::abs(eval[i] - eval_old[i]), occupancy__(i, ispin_step));
             }
-            niter++;
+            result.niter++;
 
         } /* loop over iterative steps k */
-        for (int i = 0; i < num_bands; i++) {
-            result.eval_out[i] = eval[i];
-        }
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
 
@@ -468,7 +471,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     }
 
     kp.release_hubbard_orbitals_on_device();
-    result.niter = niter;
     return result;
 }
 

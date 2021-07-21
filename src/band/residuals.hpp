@@ -22,6 +22,9 @@
  *  \brief Compute residuals from the eigen-vectors and basis functions.
  */
 
+#ifndef __RESIDUALS_HPP__
+#define __RESIDUALS_HPP__
+
 #include "typedefs.hpp"
 #include "memory.hpp"
 #include "linalg/linalg.hpp"
@@ -111,3 +114,5 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
           sddk::mdarray<real_type<T>, 2> const& h_diag__, sddk::mdarray<real_type<T>, 2> const& o_diag__,
           bool estimate_eval__, real_type<T> norm_tolerance__, std::function<bool(int, int)> is_converged__);
 }
+
+#endif

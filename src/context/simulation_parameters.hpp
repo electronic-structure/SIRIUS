@@ -499,18 +499,18 @@ class Simulation_parameters
         return use_symmetry__;
     }
 
-    /// Get tolerance of the iterative solver.
-    double iterative_solver_tolerance() const
-    {
-        return cfg().iterative_solver().energy_tolerance();
-    }
+    ///// Get tolerance of the iterative solver.
+    //double iterative_solver_tolerance() const
+    //{
+    //    return cfg().iterative_solver().energy_tolerance();
+    //}
 
-    /// Set the tolerance of the iterative solver.
-    double iterative_solver_tolerance(double tolerance__)
-    {
-        cfg().iterative_solver().energy_tolerance(tolerance__);
-        return tolerance__;
-    }
+    ///// Set the tolerance of the iterative solver.
+    //double iterative_solver_tolerance(double tolerance__)
+    //{
+    //    cfg().iterative_solver().energy_tolerance(tolerance__);
+    //    return tolerance__;
+    //}
 
     std::string iterative_solver_type(std::string type__)
     {
