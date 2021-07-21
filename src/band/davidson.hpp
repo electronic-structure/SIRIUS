@@ -449,7 +449,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
                        num_phi);
             for (int i = 0; i < num_bands - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
-                           std::abs(eval[i] - eval_old[i]), kp.band_occupancy(i, ispin_step));
+                           std::abs(eval[i] - eval_old[i]), occupancy__(i, ispin_step));
             }
             niter++;
 
