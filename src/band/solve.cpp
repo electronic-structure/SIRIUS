@@ -68,15 +68,15 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
             STOP();
         }
     } else if (itso.type() == "davidson") {
-        auto& kp = Hk__.kp();
-        auto result = davidson<double>(Hk__, kp.spinor_wave_functions(), [&](int i, int ispn){return kp.band_occupancy(i, ispn);});
-        niter = result.niter;
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                kp.band_energy(j, ispn, result.eval(j, ispn));
-            }
-        }
-       // niter = diag_pseudo_potential_davidson<T>(Hk__);
+        //auto& kp = Hk__.kp();
+        //auto result = davidson<double>(Hk__, kp.spinor_wave_functions(), [&](int i, int ispn){return kp.band_occupancy(i, ispn);});
+        //niter = result.niter;
+        //for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+        //    for (int j = 0; j < ctx_.num_bands(); j++) {
+        //        kp.band_energy(j, ispn, result.eval(j, ispn));
+        //    }
+        //}
+        niter = diag_pseudo_potential_davidson<T>(Hk__);
     } else {
         RTE_THROW("unknown iterative solver type");
     }
