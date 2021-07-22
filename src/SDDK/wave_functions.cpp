@@ -26,6 +26,7 @@
 
 namespace sddk {
 
+#if defined(SIRIUS_GPU)
 void add_square_sum_gpu(std::complex<double> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, double* result__)
 {
     add_square_sum_gpu_double(wf__, num_rows_loc__, nwf__, reduced__, mpi_rank__, result__);
@@ -45,6 +46,7 @@ void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<float>* mtrx_
 {
     scale_matrix_columns_gpu_float(nrow__, ncol__, mtrx__, a__);
 }
+#endif
 
 template <typename T>
 Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
