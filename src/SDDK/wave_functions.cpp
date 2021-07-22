@@ -321,14 +321,14 @@ void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
 #if defined(SIRIUS_GPU)
                 scale_matrix_columns_gpu(
                     this->pw_coeffs(ispn).num_rows_loc(), n__,
-                    reinterpret_cast<std::complex<T>*>(this->pw_coeffs(ispn).prime().at(memory_t::device)),
-                    reinterpret_cast<T*>(norm.at(memory_t::device)));
+                    this->pw_coeffs(ispn).prime().at(memory_t::device),
+                    norm.at(memory_t::device));
 
                 if (this->has_mt()) {
                     scale_matrix_columns_gpu(
                         this->mt_coeffs(ispn).num_rows_loc(), n__,
-                        reinterpret_cast<std::complex<T>*>(this->mt_coeffs(ispn).prime().at(memory_t::device)),
-                        reinterpret_cast<T*>(norm.at(memory_t::device)));
+                        this->mt_coeffs(ispn).prime().at(memory_t::device),
+                        norm.at(memory_t::device));
                 }
 #endif
             } break;
@@ -417,14 +417,14 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
                 add_square_sum_gpu(
-                    reinterpret_cast<std::complex<T> const*>(pw_coeffs(is).prime().at(memory_t::device)),
+                    pw_coeffs(is).prime().at(memory_t::device),
                     pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
-                    reinterpret_cast<double*>(s.at(memory_t::device)));
+                    s.at(memory_t::device));
                 if (has_mt()) {
                     add_square_sum_gpu(
-                        reinterpret_cast<std::complex<T> const*>(mt_coeffs(is).prime().at(memory_t::device)),
+                        mt_coeffs(is).prime().at(memory_t::device),
                         mt_coeffs(is).num_rows_loc(), n__, 0, comm_.rank(),
-                        reinterpret_cast<double*>(s.at(memory_t::device)));
+                        s.at(memory_t::device));
                 }
 #endif
                 break;
