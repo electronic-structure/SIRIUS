@@ -26,6 +26,26 @@
 
 namespace sddk {
 
+void add_square_sum_gpu(std::complex<double> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, double* result__)
+{
+    add_square_sum_gpu_double(wf__, num_rows_loc__, nwf__, reduced__, mpi_rank__, result__);
+}
+
+void add_square_sum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, float* result__)
+{
+    add_square_sum_gpu_float(wf__, num_rows_loc__, nwf__, reduced__, mpi_rank__, result__);
+}
+
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<double>* mtrx__, double* a__)
+{
+    scale_matrix_columns_gpu_double(nrow__, ncol__, mtrx__, a__);
+}
+
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__)
+{
+    scale_matrix_columns_gpu_float(nrow__, ncol__, mtrx__, a__);
+}
+
 template <typename T>
 Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                                int num_sc__)
@@ -297,33 +317,16 @@ void Wave_functions<T>::normalize(device_t pu__, spin_range spins__, int n__)
             }
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                if(std::is_same<T, double>::value) {
-                    scale_matrix_columns_gpu_double(
-                        this->pw_coeffs(ispn).num_rows_loc(), n__,
-                        reinterpret_cast<std::complex<double>*>(this->pw_coeffs(ispn).prime().at(memory_t::device)),
-                        reinterpret_cast<double*>(norm.at(memory_t::device)));
+                scale_matrix_columns_gpu(
+                    this->pw_coeffs(ispn).num_rows_loc(), n__,
+                    reinterpret_cast<std::complex<T>*>(this->pw_coeffs(ispn).prime().at(memory_t::device)),
+                    reinterpret_cast<T*>(norm.at(memory_t::device)));
 
-                    if (this->has_mt()) {
-                        scale_matrix_columns_gpu_double(
-                            this->mt_coeffs(ispn).num_rows_loc(), n__,
-                            reinterpret_cast<std::complex<double>*>(this->mt_coeffs(ispn).prime().at(memory_t::device)),
-                            reinterpret_cast<double*>(norm.at(memory_t::device)));
-                    }
-                } else if (std::is_same<T, float>::value) {
-                    scale_matrix_columns_gpu_float(
-                        this->pw_coeffs(ispn).num_rows_loc(), n__,
-                        reinterpret_cast<std::complex<float>*>(this->pw_coeffs(ispn).prime().at(memory_t::device)),
-                        reinterpret_cast<float*>(norm.at(memory_t::device)));
-
-                    if (this->has_mt()) {
-                        scale_matrix_columns_gpu_float(
-                            this->mt_coeffs(ispn).num_rows_loc(), n__,
-                            reinterpret_cast<std::complex<float>*>(this->mt_coeffs(ispn).prime().at(memory_t::device)),
-                            reinterpret_cast<float*>(norm.at(memory_t::device)));
-                    }
-                } else {
-                    fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-                    TERMINATE("Precision type not yet implemented");
+                if (this->has_mt()) {
+                    scale_matrix_columns_gpu(
+                        this->mt_coeffs(ispn).num_rows_loc(), n__,
+                        reinterpret_cast<std::complex<T>*>(this->mt_coeffs(ispn).prime().at(memory_t::device)),
+                        reinterpret_cast<T*>(norm.at(memory_t::device)));
                 }
 #endif
             } break;
@@ -411,31 +414,15 @@ mdarray<T, 1> Wave_functions<T>::sumsqr(device_t pu__, spin_range spins__, int n
             }
             case device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                if(std::is_same<T, double>::value) {
-                    add_square_sum_gpu_double(
-                        reinterpret_cast<std::complex<double> const*>(pw_coeffs(is).prime().at(memory_t::device)),
-                        pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
+                add_square_sum_gpu(
+                    reinterpret_cast<std::complex<T> const*>(pw_coeffs(is).prime().at(memory_t::device)),
+                    pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
+                    reinterpret_cast<double*>(s.at(memory_t::device)));
+                if (has_mt()) {
+                    add_square_sum_gpu(
+                        reinterpret_cast<std::complex<T> const*>(mt_coeffs(is).prime().at(memory_t::device)),
+                        mt_coeffs(is).num_rows_loc(), n__, 0, comm_.rank(),
                         reinterpret_cast<double*>(s.at(memory_t::device)));
-                    if (has_mt()) {
-                        add_square_sum_gpu_double(
-                            reinterpret_cast<std::complex<double> const*>(mt_coeffs(is).prime().at(memory_t::device)),
-                            mt_coeffs(is).num_rows_loc(), n__, 0, comm_.rank(),
-                            reinterpret_cast<double*>(s.at(memory_t::device)));
-                    }
-                } else if (std::is_same<T, float>::value) {
-                    add_square_sum_gpu_float(
-                        reinterpret_cast<std::complex<float> const*>(pw_coeffs(is).prime().at(memory_t::device)),
-                        pw_coeffs(is).num_rows_loc(), n__, gkvecp_.gvec().reduced(), comm_.rank(),
-                        reinterpret_cast<float*>(s.at(memory_t::device)));
-                    if (has_mt()) {
-                        add_square_sum_gpu_float(
-                            reinterpret_cast<std::complex<float> const*>(mt_coeffs(is).prime().at(memory_t::device)),
-                            mt_coeffs(is).num_rows_loc(), n__, 0, comm_.rank(),
-                            reinterpret_cast<float*>(s.at(memory_t::device)));
-                    }
-                } else {
-                    fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-                    TERMINATE("Precision type not yet implemented");
                 }
 #endif
                 break;
