@@ -74,8 +74,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Iterative Davidson diagonalization.
-    template <typename T>
-    int diag_pseudo_potential_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
+    //template <typename T>
+    //int diag_pseudo_potential_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
