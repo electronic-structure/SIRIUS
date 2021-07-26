@@ -383,7 +383,7 @@ Simulation_context::initialize()
         cfg().control().reduce_gvec(false);
     }
 
-    if (!cfg().iterative_solver().type().size()) {
+    if (!cfg().iterative_solver().type().size() || (cfg().iterative_solver().type() == "auto")) {
         if (full_potential()) {
             cfg().iterative_solver().type("exact");
         } else {

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %gcc@7.5.0 +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas threads=openmp ^mpich
+      SPEC: sirius@develop %gcc +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %gcc@7.5.0 +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas threads=openmp ^mpich
+      SPEC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %gcc@7.5.0 +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas threads=openmp ^openmpi
+      SPEC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^openmpi
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %clang@:6 +tests +apps build_type=RelWithDebInfo ^openblas ^mpich@:3.3 ~fortran
+      SPEC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
