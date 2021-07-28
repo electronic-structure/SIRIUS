@@ -539,9 +539,6 @@ class Simulation_parameters
         return cfg_.settings().sht_coverage();
     }
 
-    /// Print all options in the terminal.
-    void print_options() const;
-
     /// Return a reference to a memory pool.
     /** A memory pool is created when this function called for the first time. */
     memory_pool& mem_pool(memory_t M__) const

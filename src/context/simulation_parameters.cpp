@@ -28,9 +28,20 @@
 
 #include <unordered_set>
 #include <iterator>
+#include <sstream>
 
 namespace sirius {
-
+  template <typename T> static std::ostringstream option_print_vector__(const std::vector<T> &vec) {
+    std::ostringstream out;
+    if (!vec.empty()) {
+      out << "[" << vec[0];
+      for (auto i = 0u; i < vec.size(); i++) {
+        out << ", " << vec[i];
+      }
+      out << "]";
+    }
+    return out;
+  }
 /// Compose JSON dictionary with default parameters based on input schema.
 /** Traverse the JSON schema and add nodes with default parameters to the output dictionary. The nodes without
  *  default parameters are ignored. Still, user has a possibility to add the missing nodes later by providing a
@@ -210,38 +221,6 @@ Simulation_parameters::smearing(std::string name__)
     smearing_ = smearing::get_smearing_t(name__);
 }
 
-// void Simulation_parameters::print_options() const
-// {
-//     auto const& dict = get_options_dictionary();
-
-//     if (Communicator::world().rank() == 0) {
-//         std::printf("The SIRIUS library or the mini apps can be initialized through the interface\n");
-//         std::printf("using the API directly or through a json dictionary. The following contains\n");
-//         std::printf("a description of all the runtime options, that can be used directly to\n");
-//         std::printf("initialize SIRIUS.\n");
-
-//         for (auto& el : dict.items()) {
-//             std::cout << "============================================================================\n";
-//             std::cout << "                                                                              ";
-//             std::cout << "                      section : " << el.key() << "                             \n";
-//             std::cout << "                                                                            \n";
-//             std::cout << "============================================================================\n";
-
-//             for (size_t s = 0; s < dict[el.key()].size(); s++) {
-//                 std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
-//                 std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
-//                 if (dict[el.key()][s].count("possible_values")) {
-//                     const auto& v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
-//                     std::cout << "possible values : " << v[0];
-//                     for (size_t st = 1; st < v.size(); st++)
-//                         std::cout << " " << v[st];
-//                 }
-//                 std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
-//             }
-//         }
-//     }
-//     Communicator::world().barrier();
-// }
 
 void
 Simulation_parameters::electronic_structure_method(std::string name__)
