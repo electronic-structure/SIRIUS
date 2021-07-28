@@ -30,7 +30,7 @@ set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
 set_property(CACHE USE_FP32 PROPERTY STRINGS
   "AUTO" "ON" "OFF"
-	)
+  )
 
 # set language and standard
 
@@ -247,12 +247,6 @@ else()
 endif()
 configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                "${PROJECT_BINARY_DIR}/src/version.hpp"
-               @ONLY)
-
-# generate runtime options
-file(READ "${PROJECT_SOURCE_DIR}/src/context/options.json" SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
-configure_file("${PROJECT_SOURCE_DIR}/src/context/runtime_options_json.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
                @ONLY)
 
 # generate schema
