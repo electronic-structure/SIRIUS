@@ -34,6 +34,65 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 
+sirius::Simulation_context& get_sim_ctx(void* const* h);
+
+
+template <typename T> void sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__, const int* length__)
+{
+  auto& sim_ctx = get_sim_ctx(handler__);
+
+  auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+
+  auto name = std::string(name__);
+  if (name.size() > 1)
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+  json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
+  const json& parser = sirius::get_section_options(section);
+  if (parser.count(name)) {
+    // check that the option exists
+    if (*length__ > 1) {
+      // we are dealing with a vector
+      std::vector<T> v(*length__);
+      for (int s = 0; s < *length__; s++)
+        v[s] = default_values__[s];
+      conf_dict[section][name] = v;
+    } else {
+      conf_dict[section][name] = *default_values__;
+    }
+  } else {
+    std::cout << "Section: " << section;
+    std::cout << "Option: "<< name << " is invalid.\n";
+  }
+}
+
+template <typename T> void sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
+{
+  auto section = std::string(section__);
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+
+  auto name = std::string(name__);
+  if (name.size() > 1)
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+  const json& parser = sirius::get_section_options(section);
+
+  if (!parser[name].count("default"))
+      std::cout << "default value is missing" << std::endl;
+  if (parser[name]["type"] == "array") {
+    if (parser[name]["items"] != "array") {
+      std::vector<T> v = parser[name]["default"].get<std::vector<T>>();
+      *length__           = v.size();
+      std::copy(v.begin(), v.end(), default_value__);
+    }
+  } else {
+    *length__        = 1;
+    if (parser[name].count("default"))
+      *default_value__ = parser[name]["default"].get<T>();
+  }
+}
+
 static inline void
 sirius_print_error(int error_code__, std::string msg__ = "")
 {
@@ -4651,6 +4710,24 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
                 if (dict[el.key()]["items"]["type"] == "boolean") {
                     *type__ += 3;
                 }
+
+                if (dict[el.key()]["items"]["type"] == "array") {
+                  if (dict[el.key()]["items"]["type"] == "string") {
+                    *type__ += 14;
+                  }
+
+                  if (dict[el.key()]["items"]["type"] == "integer") {
+                    *type__ += 11;
+                  }
+
+                  if (dict[el.key()]["items"]["type"] == "number") {
+                    *type__ += 12;
+                  }
+
+                  if (dict[el.key()]["items"]["type"] == "boolean") {
+                    *type__ += 13;
+                  }
+                }
             } else {
                 if (dict[el.key()]["type"] == "string") {
                     *type__ = 4;
@@ -4711,8 +4788,10 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
 
     if (parser[name].count("title")) {
         auto description = parser[name].value("title", "");
-        std::copy(description.begin(), description.end(), desc__);
-        desc__[description.size()] = 0;
+        if (description.size()) {
+          std::copy(description.begin(), description.end(), desc__);
+          desc__[description.size()] = 0;
+        }
     }
     if (parser[name].count("usage")) {
         auto usage = parser[name].value("usage", "");
@@ -4748,21 +4827,7 @@ sirius_option_get_int:
 void
 sirius_option_get_int(char const* section__, char const* name__, int* default_value__, int* length__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto const& parser = sirius::get_section_options(section);
-    auto name          = std::string(name__);
-
-    if (!parser[name].count("default")) {
-        std::cout << "default value is missing" << std::endl;
-    }
-    if (parser[name]["type"] == "array") {
-        std::vector<int> v = parser[name]["default"].get<std::vector<int>>();
-        *length__          = v.size();
-        std::copy(v.begin(), v.end(), default_value__);
-    } else {
-        *default_value__ = parser[name].value("default", 0);
-    }
+    sirius_option_get_value__<int>(section__, name__, default_value__, length__);
 }
 
 /*
@@ -4791,31 +4856,7 @@ sirius_option_get_double:
 void
 sirius_option_get_double(char* section__, char* name__, double* default_value__, int* length__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-
-    auto name = std::string(name__);
-
-    // when the option has one letter only
-    if (name.size() > 1)
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-
-    const json& parser = sirius::get_section_options(section);
-
-    if (!parser[name].count("default"))
-        std::cout << "default value is missing" << std::endl;
-    if (parser[name]["type"] == "array") {
-        std::vector<double> v = parser[name]["default"].get<std::vector<double>>();
-        if (v.size()) {
-            *length__ = -1;
-        } else {
-            *length__ = v.size();
-            std::copy(v.begin(), v.end(), default_value__);
-        }
-    } else {
-        *default_value__ = parser[name].value("default", 0.0);
-        *length__        = 1;
-    }
+    sirius_option_get_value__<double>(section__, name__, default_value__, length__);
 }
 
 /*
@@ -4844,22 +4885,7 @@ sirius_option_get_logical:
 void
 sirius_option_get_logical(char* section__, char* name__, bool* default_value__, int* length__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto name = std::string(name__);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    const json& parser = sirius::get_section_options(section);
-
-    if (!parser[name].count("default"))
-        std::cout << "default value is missing" << std::endl;
-    if (parser[name]["type"] == "array") {
-        std::vector<bool> v = parser[name]["default"].get<std::vector<bool>>();
-        *length__           = v.size();
-        std::copy(v.begin(), v.end(), default_value__);
-    } else {
-        *length__        = 1;
-        *default_value__ = parser[name].value("default", false);
-    }
+    sirius_option_get_value__<bool>(section__, name__, default_value__, length__);
 }
 
 /*
@@ -5052,33 +5078,9 @@ sirius_option_set_int:
 @api end
 */
 void
-sirius_option_set_int(void* const* handler__, char* section, char* name, int* default_values, int* length)
+sirius_option_set_int(void* const* handler__, const char* section__, const char* name__, const int* default_values__, const int* length__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    /* dictionary describing all the possible options */
-    json const& parser = sirius::get_options_dictionary()["properties"];
-
-    /* dictionary containing the values of the options for the simulations */
-    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
-
-    /* lower case for section and options */
-    for (char* p = section; *p; p++)
-        *p = tolower(*p);
-    for (char* p = name; *p; p++)
-        *p = tolower(*p);
-
-    if (parser[section].count(name)) {
-        // check that the option exists
-        if (*length > 1) {
-            // we are dealing with a vector
-            std::vector<int> v(*length);
-            for (int s = 0; s < *length; s++)
-                v[s] = default_values[s];
-            conf_dict[section][name] = v;
-        } else {
-            conf_dict[section][name] = *default_values;
-        }
-    }
+    sirius_option_set_value__<int>(handler__, section__, name__, default_values__, length__);
 }
 
 /*
@@ -5109,30 +5111,9 @@ sirius_option_set_double:
 @api end
 */
 void
-sirius_option_set_double(void* const* handler__, char* section, char* name, double* default_values, int* length)
+sirius_option_set_double(void* const* handler__, const char* section__, const char* name__, const double* default_values__, const int* length__)
 {
-    auto& sim_ctx      = get_sim_ctx(handler__);
-    const json& parser = sirius::get_options_dictionary()["properties"];
-    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = section; *p; p++)
-        *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = name; *p; p++)
-        *p = tolower(*p);
-
-    if (parser[section].count(name)) {
-        // check that the option exists
-        if (*length > 1) {
-            // we are dealing with a vector
-            std::vector<double> v(*length);
-            for (int s = 0; s < *length; s++)
-                v[s] = default_values[s];
-            conf_dict[section][name] = v;
-        } else {
-            conf_dict[section][name] = *default_values;
-        }
-    }
+    sirius_option_set_value__<double>(handler__, section__, name__, default_values__, length__);
 }
 
 /*
@@ -5153,7 +5134,7 @@ sirius_option_set_logical:
       attr: in, required
       doc: name of the element to pick
     default_values:
-      type: int
+      type: bool
       attr: in, required
       doc: table containing the values
     length:
@@ -5163,32 +5144,9 @@ sirius_option_set_logical:
 @api end
 */
 void
-sirius_option_set_logical(void* const* handler__, char* section, char* name, int* default_values, int* length)
+sirius_option_set_logical(void* const* handler__, const char* section__, const char* name__, const bool* default_values__, const int* length__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    // the first one is static
-    const json& parser = sirius::get_options_dictionary()["properties"];
-    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = section; *p; p++)
-        *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = name; *p; p++)
-        *p = tolower(*p);
-
-    if (parser[section].count(name)) {
-        // check that the option exists
-        if (*length > 1) {
-            // we are dealing with a vector
-            std::vector<bool> v(*length);
-            for (int s = 0; s < *length; s++) {
-                v[s] = (default_values[s] == 1);
-            }
-            conf_dict[section][name] = v;
-        } else {
-            conf_dict[section][name] = (*default_values == 1);
-        }
-    }
+  sirius_option_set_value__<bool>(handler__, section__, name__, default_values__, length__);
 }
 
 /*
