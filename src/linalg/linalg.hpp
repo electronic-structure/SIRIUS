@@ -1626,13 +1626,15 @@ inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
 // instantiate for the function of required types
 template double check_hermitian<double>(dmatrix<double>& mtrx__, int n__);
 template double check_hermitian<std::complex<double>>(dmatrix<std::complex<double>>& mtrx__, int n__);
+#ifdef USE_FP32
 template float  check_hermitian<float>(dmatrix<float>& mtrx__, int n__);
 template float  check_hermitian<std::complex<float>>(dmatrix<std::complex<float>>& mtrx__, int n__);
+#endif
 
 template <typename T>
 inline double check_identity(dmatrix<T>& mtrx__, int n__)
 {
-    double max_diff{0};
+    real_type<T> max_diff{0};
     for (int i = 0; i < mtrx__.num_cols_local(); i++) {
         int icol = mtrx__.icol(i);
         if (icol < n__) {
@@ -1640,7 +1642,7 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
                 int jrow = mtrx__.irow(j);
                 if (jrow < n__) {
                     if (icol == jrow) {
-                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - 1.0));
+                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - static_cast<real_type<T>>(1.0)));
                     } else {
                         max_diff = std::max(max_diff, std::abs(mtrx__(j, i)));
                     }
@@ -1648,7 +1650,7 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
             }
         }
     }
-    mtrx__.comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    mtrx__.comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
     return max_diff;
 }
 

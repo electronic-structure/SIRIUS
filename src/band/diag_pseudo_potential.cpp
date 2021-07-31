@@ -680,7 +680,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
 //}
 
 template <typename T>
-sddk::mdarray<double, 1>
+sddk::mdarray<real_type<T>, 1>
 Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
@@ -800,7 +800,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 
     auto o_diag = Hk__.template get_h_o_diag_pw<T, 2>().second;
 
-    mdarray<double, 2> o_diag1(kp.num_gkvec_loc(), num_sc);
+    mdarray<real_type<T>, 2> o_diag1(kp.num_gkvec_loc(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
             o_diag1(ig, ispn) = 1.0;
@@ -823,8 +823,8 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
     /* number of newly added basis functions */
     int n = nevec;
 
-    mdarray<double, 1> eval(nevec);
-    mdarray<double, 1> eval_old(nevec);
+    mdarray<real_type<T>, 1> eval(nevec);
+    mdarray<real_type<T>, 1> eval_old(nevec);
     eval_old = [](){return 1e10;};
 
     /* tolerance for the norm of L2-norms of the residuals, used for
@@ -1589,4 +1589,13 @@ Band::diag_pseudo_potential_exact<double_complex>(int ispn__, Hamiltonian_k<doub
 //int
 //Band::diag_pseudo_potential_davidson<double_complex>(Hamiltonian_k<double>& Hk__) const;
 
+#ifdef USE_FP32
+template
+mdarray<float, 1>
+Band::diag_S_davidson<float>(Hamiltonian_k<float>& Hk__) const;
+
+template
+mdarray<float, 1>
+Band::diag_S_davidson<std::complex<float>>(Hamiltonian_k<float>& Hk__) const;
+#endif
 }

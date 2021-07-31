@@ -254,111 +254,11 @@ void dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
     }
 }
 
-template <>
-void dmatrix<double_complex>::serialize(std::string name__, int n__) const
-{
-    mdarray<double_complex, 2> full_mtrx(num_rows(), num_cols());
-    full_mtrx.zero();
-
-    for (int j = 0; j < num_cols_local(); j++) {
-        for (int i = 0; i < num_rows_local(); i++) {
-            full_mtrx(irow(i), icol(j)) = (*this)(i, j);
-        }
-    }
-    if (blacs_grid_) {
-        blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
-    }
-
-    // json dict;
-    // dict["mtrx_re"] = json::array();
-    // for (int i = 0; i < num_rows(); i++) {
-    //    dict["mtrx_re"].push_back(json::array());
-    //    for (int j = 0; j < num_cols(); j++) {
-    //        dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
-    //    }
-    //}
-
-    if (!blacs_grid_ || blacs_grid_->comm().rank() == 0) {
-        // std::cout << "mtrx: " << name__ << std::endl;
-        // std::cout << dict.dump(4);
-
-        std::printf("matrix label: %s\n", name__.c_str());
-        std::printf("{\n");
-        for (int i = 0; i < n__; i++) {
-            std::printf("{");
-            for (int j = 0; j < n__; j++) {
-                std::printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
-                if (j != n__ - 1) {
-                    std::printf(",");
-                }
-            }
-            if (i != n__ - 1) {
-                std::printf("},\n");
-            } else {
-                std::printf("}\n");
-            }
-        }
-        std::printf("}\n");
-    }
-
-    // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-    // ofs << dict.dump(4);
-}
-
-template <>
-void dmatrix<double>::serialize(std::string name__, int n__) const
-{
-    mdarray<double, 2> full_mtrx(num_rows(), num_cols());
-    full_mtrx.zero();
-
-    for (int j = 0; j < num_cols_local(); j++) {
-        for (int i = 0; i < num_rows_local(); i++) {
-            full_mtrx(irow(i), icol(j)) = (*this)(i, j);
-        }
-    }
-    blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
-
-    // json dict;
-    // dict["mtrx"] = json::array();
-    // for (int i = 0; i < num_rows(); i++) {
-    //    dict["mtrx"].push_back(json::array());
-    //    for (int j = 0; j < num_cols(); j++) {
-    //        dict["mtrx"][i].push_back(full_mtrx(i, j));
-    //    }
-    //}
-
-    // if (blacs_grid_->comm().rank() == 0) {
-    //    std::cout << "mtrx: " << name__ << std::endl;
-    //    std::cout << dict.dump(4);
-    //}
-
-    // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-    // ofs << dict.dump(4);
-
-    if (blacs_grid_->comm().rank() == 0) {
-        std::printf("matrix label: %s\n", name__.c_str());
-        std::printf("{\n");
-        for (int i = 0; i < n__; i++) {
-            std::printf("{");
-            for (int j = 0; j < n__; j++) {
-                std::printf("%18.13f", full_mtrx(i, j));
-                if (j != n__ - 1) {
-                    std::printf(",");
-                }
-            }
-            if (i != n__ - 1) {
-                std::printf("},\n");
-            } else {
-                std::printf("}\n");
-            }
-        }
-        std::printf("}\n");
-    }
-}
-
 // instantiate for required types
 template class dmatrix<double>;
 template class dmatrix<double_complex>;
+#ifdef USE_FP32
 template class dmatrix<float>;
 template class dmatrix<std::complex<float>>;
+#endif
 } // namespace sddk
