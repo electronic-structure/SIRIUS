@@ -5755,17 +5755,18 @@ sirius_get_kpoint_properties(void* const* handler__,
 @api begin
 sirius_get_matching_coefficients:
   doc: Get matching coefficients for all atoms.
-  full_doc: Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with
-caution. arguments: handler: type: void* attr: in, required doc: K-point set handler. ik: type: int attr: in, required
+  full_doc: >
+    Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with
+    caution. arguments: handler: type: void* attr: in, required doc: K-point set handler. ik: type: int attr: in, required
       doc: Index of k-point.
-    alm:
-      type: complex
-      attr: out, required
-      doc: Matching coefficients.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
+  alm:
+    type: complex
+    attr: out, required
+    doc: Matching coefficients.
+  error_code:
+    type: int
+    attr: out, optional
+    doc: Error code.
 @api end
 */
 void
