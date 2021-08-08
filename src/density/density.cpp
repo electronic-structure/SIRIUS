@@ -62,14 +62,14 @@ void
 update_density_rg_2_gpu(int size__, std::complex<float> const* psi_rg_up__, std::complex<float> const* psi_rg_dn__,
                         float wt__, float* density_x_rg__, float* density_y_rg__)
 {
-    pdate_density_rg_2_gpu_float(size__, psi_rg_up__, psi_rg_dn__, wt__, density_x_rg__, density_y_rg__);
+    update_density_rg_2_gpu_float(size__, psi_rg_up__, psi_rg_dn__, wt__, density_x_rg__, density_y_rg__);
 }
 
 void
 update_density_rg_2_gpu(int size__, std::complex<double> const* psi_rg_up__, std::complex<double> const* psi_rg_dn__,
                         double wt__, double* density_x_rg__, double* density_y_rg__)
 {
-    pdate_density_rg_2_gpu_double(size__, psi_rg_up__, psi_rg_dn__, wt__, density_x_rg__, density_y_rg__);
+    update_density_rg_2_gpu_double(size__, psi_rg_up__, psi_rg_dn__, wt__, density_x_rg__, density_y_rg__);
 }
 #endif
 
@@ -685,7 +685,7 @@ void Density::add_k_point_contribution_rg(K_point<T>* kp__)
         }
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
-            double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
+            T w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU
              * memory */
@@ -802,7 +802,7 @@ void Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mda
                                 for (int xi = 0; xi < mt_basis_size; xi++) {
                                     auto c     = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
                                     wf1(xi, i) = std::conj(c);
-                                    wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
+                                    wf2(xi, i) = static_cast<double_complex>(c) * kp__->band_occupancy(i, ispn) * kp__->weight();
                                 }
                             }
                             /* add |psi_j> n_j <psi_j| to density matrix */
@@ -832,7 +832,7 @@ void Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mda
                                 for (int xi = 0; xi < mt_basis_size; xi++) {
                                     auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
                                     wf1(xi, i, ispn) = std::conj(c);
-                                    wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
+                                    wf2(xi, i, ispn) = static_cast<double_complex>(c) * kp__->band_occupancy(i, 0) * kp__->weight();
                                 }
                             }
                         }
@@ -941,7 +941,7 @@ void Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mda
 
                         for (int m = 0; m < nbeta; m++) {
                             bp1(m, i, ispn) = beta_psi(m, j);
-                            bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__->weight() * kp__->band_occupancy(j, 0);
+                            bp2(m, i, ispn) = static_cast<double_complex>(std::conj(beta_psi(m, j))) * kp__->weight() * kp__->band_occupancy(j, 0);
                         }
                     }
                 }

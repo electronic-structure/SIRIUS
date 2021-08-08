@@ -125,13 +125,13 @@ __global__ void update_density_rg_2_gpu_kernel(int size__,
                                                T* density_x_rg__,
                                                T* density_y_rg__);
 
-template
+template <>
 __global__ void update_density_rg_2_gpu_kernel<double>(int size__,
                                                        acc_complex_double_t const* psi_up_rg__,
                                                        acc_complex_double_t const* psi_dn_rg__,
                                                        double wt__,
                                                        double* density_x_rg__,
-                                                       double* density_y_rg__);
+                                                       double* density_y_rg__)
 {
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
     if (ir < size__) {
@@ -141,13 +141,13 @@ __global__ void update_density_rg_2_gpu_kernel<double>(int size__,
     }
 }
 
-template
+template <>
 __global__ void update_density_rg_2_gpu_kernel<float>(int size__,
                                                       acc_complex_float_t const* psi_up_rg__,
                                                       acc_complex_float_t const* psi_dn_rg__,
                                                       float wt__,
                                                       float* density_x_rg__,
-                                                      float* density_y_rg__);
+                                                      float* density_y_rg__)
 {
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
     if (ir < size__) {
