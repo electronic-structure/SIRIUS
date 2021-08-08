@@ -143,7 +143,7 @@ json DFT_ground_state::check_scf_density()
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    density_.generate(kset_, true, true, false);
+    density_.generate<double>(kset_, true, true, false);
     double rms{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
@@ -204,7 +204,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* find band occupancies */
         kset_.find_band_occupancies<double>();
         /* generate new density from the occupied wave-functions */
-        density_.generate(kset_, ctx_.use_symmetry(), true, true);
+        density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
 
         double e1 = energy_potential(density_, potential_);
         copy(density_, rho1);
