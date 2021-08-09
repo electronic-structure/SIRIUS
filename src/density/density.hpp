@@ -284,6 +284,12 @@ class Density : public Field4D
     template <typename T>
     void add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
+    template <typename T>
+    void add_k_point_contribution_dm_real(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+
+    template <typename T>
+    void add_k_point_contribution_dm_complex(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
     void add_k_point_contribution_rg(K_point<T>* kp__);

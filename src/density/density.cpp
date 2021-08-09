@@ -1046,6 +1046,32 @@ void Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mda
     }
 }
 
+template <>
+void Density::add_k_point_contribution_dm_real<double>(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+{
+    add_k_point_contribution_dm<double>(kp__, density_matrix__);
+}
+
+template <>
+void Density::add_k_point_contribution_dm_complex<double>(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+{
+    add_k_point_contribution_dm<double_complex>(kp__, density_matrix__);
+}
+
+#if defined(USE_FP32)
+template <>
+void Density::add_k_point_contribution_dm_real<float>(K_point<float>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+{
+    add_k_point_contribution_dm<float>(kp__, density_matrix__);
+}
+
+template <>
+void Density::add_k_point_contribution_dm_complex<float>(K_point<float>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
+{
+    add_k_point_contribution_dm<std::complex<float>>(kp__, density_matrix__);
+}
+#endif
+
 void Density::normalize()
 {
     double nel   = std::get<0>(rho().integrate());
@@ -1304,38 +1330,14 @@ void Density::generate_valence(K_point_set const& ks__)
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
-#ifdef USE_FP32
-            if (std::is_same<T, float>::value) {
-                add_k_point_contribution_dm<std::complex<float>>(reinterpret_cast<K_point<float>*>(kp), density_matrix_);
-            } else {
-#endif
-                add_k_point_contribution_dm<double_complex>(reinterpret_cast<K_point<double>*>(kp), density_matrix_);
-#ifdef USE_FP32
-            }
-#endif
+                add_k_point_contribution_dm_complex<T>(kp, density_matrix_);
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-#ifdef USE_FP32
-                if (std::is_same<T, float>::value) {
-                    add_k_point_contribution_dm<float>(reinterpret_cast<K_point<float>*>(kp), density_matrix_);
-                } else {
-#endif
-                    add_k_point_contribution_dm<double>(reinterpret_cast<K_point<double>*>(kp), density_matrix_);
-#ifdef USE_FP32
-                }
-#endif
+                add_k_point_contribution_dm_real<T>(kp, density_matrix_);
             } else {
-#ifdef USE_FP32
-                if (std::is_same<T, float>::value) {
-                    add_k_point_contribution_dm<std::complex<float>>(reinterpret_cast<K_point<float>*>(kp), density_matrix_);
-                } else {
-#endif
-                    add_k_point_contribution_dm<double_complex>(reinterpret_cast<K_point<double>*>(kp), density_matrix_);
-#ifdef USE_FP32
-                }
-#endif
+                add_k_point_contribution_dm_complex<T>(kp, density_matrix_);
             }
             if (occupation_matrix_) {
                 occupation_matrix_->add_k_point_contribution(*kp);
