@@ -268,7 +268,7 @@ void Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) 
     sddk::dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
     sddk::dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
 
-    std::vector<double> eval(num_bands);
+    std::vector<real_type<T>> eval(num_bands);
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -327,7 +327,7 @@ void Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) 
                 s << "overlap matrix is not hermitian, max_err = " << max_diff;
                 TERMINATE(s);
             }
-            std::vector<double> eo(num_phi_tot);
+            std::vector<real_type<T>> eo(num_phi_tot);
             auto& std_solver = ctx_.std_evp_solver();
             if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
                 std::stringstream s;
@@ -359,7 +359,7 @@ void Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) 
         if (ctx_.print_checksum()) {
             auto cs = evec.checksum();
             evec.blacs_grid().comm().allreduce(&cs, 1);
-            double cs1{0};
+            real_type<T> cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];
             }
@@ -465,7 +465,7 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
                 for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
                     res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
                                                        spsi.pw_coeffs(ispn).prime(ig, j) *
-                                                       kp.band_energy(j, ispin_step);
+                                                       static_cast<real_type<T>>(kp.band_energy(j, ispin_step));
                 }
             }
         }
@@ -551,4 +551,21 @@ void
 Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
+#ifdef USE_FP32
+template
+void
+Band::set_subspace_mtrx<float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                               dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                                             dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
+
+template
+void Band::initialize_subspace<float>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+
+template
+void Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+#endif
 }

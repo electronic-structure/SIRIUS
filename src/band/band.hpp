@@ -79,7 +79,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
-    sddk::mdarray<double, 1> diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
+    sddk::mdarray<real_type<T>, 1> diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     ///// RMM-DIIS diagonalization.
     // template <typename T>

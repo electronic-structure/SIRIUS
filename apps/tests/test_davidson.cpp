@@ -3,7 +3,8 @@
 
 using namespace sirius;
 
-void init_wf(K_point<double>* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
+template <typename T>
+void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -206,6 +207,45 @@ void test_davidson(cmd_args const& args__)
             printf("maximum eigen-value difference: %20.16e\n", max_diff);
         }
     }
+
+#ifdef USE_FP32
+    for (int r = 0; r < 1; r++) {
+        double vk[] = {0.1, 0.1, 0.1};
+        K_point<float> kp(ctx, vk, 1.0, 0);
+        kp.initialize();
+        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+        for (int i = 0; i < ctx.num_bands(); i++) {
+            kp.band_occupancy(i, 0, 2);
+        }
+        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+
+        Hamiltonian0<float> H0(pot);
+        auto Hk = H0(kp);
+        Band(ctx).initialize_subspace<std::complex<float>>(Hk, ctx.unit_cell().num_ps_atomic_wf());
+        for (int i = 0; i < ctx.num_bands(); i++) {
+            kp.band_energy(i, 0, 0);
+        }
+        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+        //Band(ctx).solve_pseudo_potential<double_complex>(Hk);
+        auto result = davidson<float>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;});
+
+        std::vector<double> ekin(kp.num_gkvec());
+        for (int i = 0; i < kp.num_gkvec(); i++) {
+            ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
+        }
+        std::sort(ekin.begin(), ekin.end());
+
+        if (Communicator::world().rank() == 0) {
+            double max_diff = 0;
+            for (int i = 0; i < ctx.num_bands(); i++) {
+                //max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
+                max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+                printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
+            }
+            printf("maximum eigen-value difference: %20.16e\n", max_diff);
+        }
+    }
+#endif
 
     //for (int i = 0; i < 1; i++) {
 
