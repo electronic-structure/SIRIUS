@@ -24,23 +24,32 @@
 
 #include "simulation_parameters.hpp"
 #include "mpi/communicator.hpp"
-
-/// Json dictionary containing the options given by the interface.
-#include "context/runtime_options_json.hpp"
 #include "context/input_schema.hpp"
 
 #include <unordered_set>
 #include <iterator>
+#include <sstream>
 
 namespace sirius {
-
+  template <typename T> static std::ostringstream option_print_vector__(const std::vector<T> &vec) {
+    std::ostringstream out;
+    if (!vec.empty()) {
+      out << "[" << vec[0];
+      for (auto i = 0u; i < vec.size(); i++) {
+        out << ", " << vec[i];
+      }
+      out << "]";
+    }
+    return out;
+  }
 /// Compose JSON dictionary with default parameters based on input schema.
 /** Traverse the JSON schema and add nodes with default parameters to the output dictionary. The nodes without
  *  default parameters are ignored. Still, user has a possibility to add the missing nodes later by providing a
  *  corresponding input JSON dictionary. See compose_json() function. */
-void compose_default_json(nlohmann::json const& schema__, nlohmann::json& output__)
+void
+compose_default_json(nlohmann::json const& schema__, nlohmann::json& output__)
 {
-    for (auto it: schema__.items()) {
+    for (auto it : schema__.items()) {
         auto key = it.key();
         /* this is a final node with the description of the data type */
         if (it.value().contains("type") && it.value()["type"] != "object") {
@@ -62,15 +71,16 @@ void compose_default_json(nlohmann::json const& schema__, nlohmann::json& output
 /// Append the input dictionary to the existing dictionary.
 /** Use JSON schema to traverse the existing dictionary and add on top the values from the input dictionary. In this
  *  way we can add missing nodes which were not defined in the existing dictionary. */
-void compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohmann::json& inout__)
+void
+compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohmann::json& inout__)
 {
     std::unordered_set<std::string> visited;
 
-    for (auto it: in__.items()) {
+    for (auto it : in__.items()) {
         visited.insert(it.key());
     }
 
-    for (auto it: schema__.items()) {
+    for (auto it : schema__.items()) {
         auto key = it.key();
 
         // Remove visited items.
@@ -111,40 +121,55 @@ Config::Config()
     compose_default_json(sirius::input_schema["properties"], this->dict_);
 }
 
-void Config::import(nlohmann::json const& in__)
+void
+Config::import(nlohmann::json const& in__)
 {
     /* overwrite the parameters by the values from the input dictionary */
     compose_json(sirius::input_schema["properties"], in__, this->dict_);
 }
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
-nlohmann::json const& get_options_dictionary()
+nlohmann::json const&
+get_options_dictionary()
 {
-    if (all_options_dictionary_.size() == 0) {
+    if (input_schema.size() == 0) {
         throw std::runtime_error("Dictionary not initialized\n");
     }
-    return all_options_dictionary_;
+    return input_schema;
 }
 
-void Simulation_parameters::import(std::string const& str__)
+/// Get all possible options of a given input section. It is a json dictionary.
+nlohmann::json const&
+get_section_options(const std::string& section__)
+{
+    if (input_schema.size() == 0) {
+        throw std::runtime_error("Dictionary not initialized\n");
+    }
+    return input_schema["properties"][section__]["properties"];
+}
+
+void
+Simulation_parameters::import(std::string const& str__)
 {
     auto json = utils::read_json_from_file_or_string(str__);
     import(json);
 }
 
-void Simulation_parameters::import(nlohmann::json const& dict__)
+void
+Simulation_parameters::import(nlohmann::json const& dict__)
 {
     cfg_.import(dict__);
 }
 
-void Simulation_parameters::import(cmd_args const& args__)
+void
+Simulation_parameters::import(cmd_args const& args__)
 {
     cfg_.control().processing_unit(args__.value("control.processing_unit", cfg_.control().processing_unit()));
     cfg_.control().mpi_grid_dims(args__.value("control.mpi_grid_dims", cfg_.control().mpi_grid_dims()));
-    cfg_.control().std_evp_solver_name(args__.value("control.std_evp_solver_name",
-                                                    cfg_.control().std_evp_solver_name()));
-    cfg_.control().gen_evp_solver_name(args__.value("control.gen_evp_solver_name",
-                                                    cfg_.control().gen_evp_solver_name()));
+    cfg_.control().std_evp_solver_name(
+        args__.value("control.std_evp_solver_name", cfg_.control().std_evp_solver_name()));
+    cfg_.control().gen_evp_solver_name(
+        args__.value("control.gen_evp_solver_name", cfg_.control().gen_evp_solver_name()));
     cfg_.control().fft_mode(args__.value("control.fft_mode", cfg_.control().fft_mode()));
     cfg_.control().memory_usage(args__.value("control.memory_usage", cfg_.control().memory_usage()));
     cfg_.control().verbosity(args__.value("control.verbosity", cfg_.control().verbosity()));
@@ -154,28 +179,31 @@ void Simulation_parameters::import(cmd_args const& args__)
     cfg_.parameters().gamma_point(args__.value("parameters.gamma_point", cfg_.parameters().gamma_point()));
     cfg_.parameters().pw_cutoff(args__.value("parameters.pw_cutoff", cfg_.parameters().pw_cutoff()));
 
-    cfg_.iterative_solver().early_restart(args__.value("iterative_solver.early_restart",
-        cfg_.iterative_solver().early_restart()));
+    cfg_.iterative_solver().early_restart(
+        args__.value("iterative_solver.early_restart", cfg_.iterative_solver().early_restart()));
     cfg_.mixer().beta(args__.value("mixer.beta", cfg_.mixer().beta()));
     cfg_.mixer().type(args__.value("mixer.type", cfg_.mixer().type()));
 }
 
-void Simulation_parameters::core_relativity(std::string name__)
+void
+Simulation_parameters::core_relativity(std::string name__)
 {
     cfg_.parameters().core_relativity(name__);
     core_relativity_ = get_relativity_t(name__);
 }
 
-void Simulation_parameters::valence_relativity(std::string name__)
+void
+Simulation_parameters::valence_relativity(std::string name__)
 {
     cfg_.parameters().valence_relativity(name__);
     valence_relativity_ = get_relativity_t(name__);
 }
 
-void Simulation_parameters::processing_unit(std::string name__)
+void
+Simulation_parameters::processing_unit(std::string name__)
 {
     /* set the default value */
-    if (name__ == "") {
+    if (name__ == "auto") {
         if (acc::num_devices() > 0) {
             name__ = "gpu";
         } else {
@@ -186,46 +214,16 @@ void Simulation_parameters::processing_unit(std::string name__)
     processing_unit_ = get_device_t(name__);
 }
 
-void Simulation_parameters::smearing(std::string name__)
+void
+Simulation_parameters::smearing(std::string name__)
 {
     cfg_.parameters().smearing(name__);
     smearing_ = smearing::get_smearing_t(name__);
 }
 
-void Simulation_parameters::print_options() const
-{
-    auto const& dict = get_options_dictionary();
 
-    if (Communicator::world().rank() == 0) {
-        std::printf("The SIRIUS library or the mini apps can be initialized through the interface\n");
-        std::printf("using the API directly or through a json dictionary. The following contains\n");
-        std::printf("a description of all the runtime options, that can be used directly to\n");
-        std::printf("initialize SIRIUS.\n");
-
-        for (auto& el : dict.items()) {
-            std::cout << "============================================================================\n";
-            std::cout << "                                                                              ";
-            std::cout << "                      section : " << el.key() << "                             \n";
-            std::cout << "                                                                            \n";
-            std::cout << "============================================================================\n";
-
-            for (size_t s = 0; s < dict[el.key()].size(); s++) {
-                std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
-                std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
-                if (dict[el.key()][s].count("possible_values")) {
-                    const auto& v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
-                    std::cout << "possible values : " << v[0];
-                    for (size_t st = 1; st < v.size(); st++)
-                        std::cout << " " << v[st];
-                }
-                std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
-            }
-        }
-    }
-    Communicator::world().barrier();
-}
-
-void Simulation_parameters::electronic_structure_method(std::string name__)
+void
+Simulation_parameters::electronic_structure_method(std::string name__)
 {
     cfg_.parameters().electronic_structure_method(name__);
 

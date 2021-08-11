@@ -50,6 +50,12 @@ const int sddk_trans_default_block_size = 2048;
 
 namespace sddk {
 
+// C++ wrappers for gpu kernels
+void add_square_sum_gpu(std::complex<double> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, double* result__);
+void add_square_sum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, float* result__);
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<double>* mtrx__, double* a__);
+void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__);
+
 /// Helper class to wrap spin index range.
 /** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
  *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */

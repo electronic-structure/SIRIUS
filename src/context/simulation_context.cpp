@@ -36,7 +36,8 @@
 
 namespace sirius {
 
-void print_memory_usage(const char* file__, int line__)
+void
+print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;
     utils::get_proc_status(&VmHWM, &VmRSS);
@@ -55,7 +56,8 @@ void print_memory_usage(const char* file__, int line__)
     std::printf("%s\n", &str[0]);
 }
 
-double unit_step_function_form_factors(double R__, double g__)
+double
+unit_step_function_form_factors(double R__, double g__)
 {
     if (g__ < 1e-12) {
         return std::pow(R__, 3) / 3.0;
@@ -64,7 +66,8 @@ double unit_step_function_form_factors(double R__, double g__)
     }
 }
 
-void Simulation_context::init_fft_grid()
+void
+Simulation_context::init_fft_grid()
 {
     if (!(cfg().control().fft_mode() == "serial" || cfg().control().fft_mode() == "parallel")) {
         RTE_THROW("wrong FFT mode");
@@ -86,7 +89,8 @@ void Simulation_context::init_fft_grid()
     fft_coarse_grid_ = get_min_fft_grid(2 * gk_cutoff(), rlv);
 }
 
-mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
+mdarray<double, 3>
+Simulation_context::generate_sbessel_mt(int lmax__) const
 {
     PROFILE("sirius::Simulation_context::generate_sbessel_mt");
 
@@ -102,7 +106,8 @@ mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
     return sbessel_mt;
 }
 
-matrix<double_complex> Simulation_context::generate_gvec_ylm(int lmax__)
+matrix<double_complex>
+Simulation_context::generate_gvec_ylm(int lmax__)
 {
     PROFILE("sirius::Simulation_context::generate_gvec_ylm");
 
@@ -179,18 +184,18 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case device_t::CPU: {
-                linalg(linalg_t::blas).gemm('N', 'N', lmmax, na, ngv_loc,
-                    &linalg_const<double_complex>::one(), zm.at(memory_t::host), zm.ld(),
-                    phase_factors.at(memory_t::host), phase_factors.ld(),
-                    &linalg_const<double_complex>::zero(), tmp.at(memory_t::host), tmp.ld());
+                linalg(linalg_t::blas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &linalg_const<double_complex>::one(), zm.at(memory_t::host),
+                          zm.ld(), phase_factors.at(memory_t::host), phase_factors.ld(),
+                          &linalg_const<double_complex>::zero(), tmp.at(memory_t::host), tmp.ld());
                 break;
             }
             case device_t::GPU: {
                 zm.copy_to(memory_t::device);
-                linalg(linalg_t::gpublas).gemm('N', 'N', lmmax, na, ngv_loc, 
-                    &linalg_const<double_complex>::one(), zm.at(memory_t::device), zm.ld(),
-                    phase_factors.at(memory_t::device), phase_factors.ld(),
-                    &linalg_const<double_complex>::zero(), tmp.at(memory_t::device), tmp.ld());
+                linalg(linalg_t::gpublas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &linalg_const<double_complex>::one(), zm.at(memory_t::device),
+                          zm.ld(), phase_factors.at(memory_t::device), phase_factors.ld(),
+                          &linalg_const<double_complex>::zero(), tmp.at(memory_t::device), tmp.ld());
                 tmp.copy_to(memory_t::host);
                 break;
             }
@@ -208,7 +213,8 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
     return flm;
 }
 
-double Simulation_context::ewald_lambda() const
+double
+Simulation_context::ewald_lambda() const
 {
     /* alpha = 1 / (2*sigma^2), selecting alpha here for better convergence */
     double lambda{1};
@@ -231,7 +237,8 @@ double Simulation_context::ewald_lambda() const
     return lambda;
 }
 
-splindex<splindex_t::block> Simulation_context::split_gvec_local() const
+splindex<splindex_t::block>
+Simulation_context::split_gvec_local() const
 {
     /* local number of G-vectors for this MPI rank */
     int ngv_loc = gvec().count();
@@ -245,14 +252,15 @@ splindex<splindex_t::block> Simulation_context::split_gvec_local() const
     }
     /* limit the size of relevant array to ~1Gb */
     int ngv_b = (1 << 30) / sizeof(double_complex) / ld;
-    ngv_b = std::max(1, std::min(ngv_loc, ngv_b));
+    ngv_b     = std::max(1, std::min(ngv_loc, ngv_b));
     /* number of blocks of G-vectors */
     int nb = ngv_loc / ngv_b;
     /* split local number of G-vectors between blocks */
     return splindex<splindex_t::block>(ngv_loc, nb, 0);
 }
 
-void Simulation_context::initialize()
+void
+Simulation_context::initialize()
 {
     PROFILE("sirius::Simulation_context::initialize");
 
@@ -297,7 +305,7 @@ void Simulation_context::initialize()
         }
         auto name = sddk::Communicator::processor_name();
         pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
-            comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
+                    comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
     }
 
     switch (processing_unit()) {
@@ -370,13 +378,12 @@ void Simulation_context::initialize()
     // share context for blas operations to reduce memory consumption
     splablas::get_handle_ptr() = spla_ctx_;
 
-
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
         cfg().control().reduce_gvec(false);
     }
 
-    if (!cfg().iterative_solver().type().size()) {
+    if (!cfg().iterative_solver().type().size() || (cfg().iterative_solver().type() == "auto")) {
         if (full_potential()) {
             cfg().iterative_solver().type("exact");
         } else {
@@ -509,7 +516,7 @@ void Simulation_context::initialize()
 #endif
 
     if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
-        is_cuda = false;
+        is_cuda  = false;
         is_magma = false;
     }
 
@@ -518,7 +525,7 @@ void Simulation_context::initialize()
 
     /* deduce the default eigen-value solver */
     for (int i : {0, 1}) {
-        if (evsn[i] == "") {
+        if (evsn[i] == "auto") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
                 if (full_potential()) {
@@ -529,7 +536,7 @@ void Simulation_context::initialize()
                     } else {
                         evsn[i] = "lapack";
                     }
-                    //if (is_cuda) {
+                    // if (is_cuda) {
                     //    evsn[i] = "cusolver";
                     //} else if (is_magma) {
                     //    evsn[i] = "magma";
@@ -617,7 +624,8 @@ void Simulation_context::initialize()
     cfg().lock();
 }
 
-void Simulation_context::print_info() const
+void
+Simulation_context::print_info() const
 {
     tm const* ptm = localtime(&start_time_.tv_sec);
     char buf[100];
@@ -644,11 +652,11 @@ void Simulation_context::print_info() const
     std::printf("number of pages               : %li\n", utils::get_num_pages());
     std::printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
 
-    std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
-    double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
-    Communicator const* comms[]   = {&comm_fft(), &comm_fft_coarse()};
-    FFT3D_grid fft_grids[]        = {this->fft_grid_, this->fft_coarse_grid_};
-    Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
+    std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
+    double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
+    Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
+    FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+    Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
     std::printf("\n");
     for (int i = 0; i < 2; i++) {
@@ -657,10 +665,10 @@ void Simulation_context::print_info() const
         std::printf("  comm size                             : %i\n", comms[i]->size());
         std::printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
         std::printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
-               fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
+                    fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
         std::printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
-               fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
-               fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
+                    fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
+                    fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
         std::printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
         std::printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
         std::printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
@@ -681,7 +689,8 @@ void Simulation_context::print_info() const
 
     std::printf("\n");
     std::printf("Basic information\n");
-    for (int i = 0; i < 80; i++, std::printf("-"));
+    for (int i = 0; i < 80; i++, std::printf("-"))
+        ;
     std::printf("\n");
     std::printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
     std::printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
@@ -806,7 +815,8 @@ void Simulation_context::print_info() const
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
 
     std::printf("\n");
-    std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
+    std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),
+                spg_get_micro_version());
     {
         unsigned int vmajor, vminor, vmicro;
         H5get_libversion(&vmajor, &vminor, &vmicro);
@@ -868,7 +878,7 @@ void Simulation_context::print_info() const
         std::printf("approximate number of coarse G vectors   : %li\n", ngc);
         size_t wf_size = ngk * num_bands() * num_spins() * 16;
         std::printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
-            static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
+                    static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
 
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
@@ -886,9 +896,10 @@ void Simulation_context::print_info() const
            TODO: add estimation of subspace matrix size (H_{ij} and S_{ij})
         */
         size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
-            num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
+                           num_bands() * num_sc + num_bands()) *
+                          ngk * sizeof(double_complex);
         std::printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
-            static_cast<int>((tot_size / comm_band().size()) >> 20));
+                    static_cast<int>((tot_size / comm_band().size()) >> 20));
 
         if (unit_cell().augment()) {
             /* approximate size of local fraction of G vectors */
@@ -907,18 +918,18 @@ void Simulation_context::print_info() const
 
             /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
             size_t size1 = nb * ngloc * sizeof(double_complex);
-            size1 = std::min(size1, static_cast<size_t>(1 << 30));
+            size1        = std::min(size1, static_cast<size_t>(1 << 30));
 
             int max_atoms{0};
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
             }
             size_t size2 = max_atoms * ngloc * sizeof(double_complex);
-            size2 = std::min(size2, static_cast<size_t>(1 << 30));
+            size2        = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
             std::printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
-                static_cast<int>(size_aug >> 20));
+                        static_cast<int>(size_aug >> 20));
         }
         /* FFT buffers of fine and coarse meshes */
         size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
@@ -926,8 +937,7 @@ void Simulation_context::print_info() const
         if (!gamma_point()) {
             size_fft *= 2;
         }
-        std::printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
-            static_cast<int>(size_fft >> 20));
+        std::printf("approximate memory consumption of FFT transforms: %i Mb/rank\n", static_cast<int>(size_fft >> 20));
     }
 }
 
@@ -936,7 +946,8 @@ void Simulation_context::print_info() const
     are obtained. Then the G-vectors are computed (if this is the first call to update()) or recomputed with a
     new reciprocal lattice, but without rebuilding a new list. On the first call the spfft objects are created
     after G-vectors. */
-void Simulation_context::update()
+void
+Simulation_context::update()
 {
     PROFILE("sirius::Simulation_context::update");
 
@@ -960,10 +971,9 @@ void Simulation_context::update()
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
-        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-                            gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                            comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -981,24 +991,23 @@ void Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+        gvec_           = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
         gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
 
         auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
-                            gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                            comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+            new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_partition_->zcol_count_fft(),
+                            spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
         auto gv = gvec_partition_->get_gvec();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
-            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
+            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
            do not change during the execution */
@@ -1046,16 +1055,15 @@ void Simulation_context::update()
 
             auto gv = gvec().gvec(ig);
             /* check limits */
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 auto limits = fft_grid().limits(x);
                 /* check boundaries */
                 if (gv[x] < limits.first || gv[x] > limits.second) {
                     std::stringstream s;
                     s << "G-vector is outside of grid limits\n"
                       << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << "\n"
-                      << "  FFT grid limits: "
-                      << fft_grid().limits(0).first << " " << fft_grid().limits(0).second << " "
-                      << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
+                      << "  FFT grid limits: " << fft_grid().limits(0).first << " " << fft_grid().limits(0).second
+                      << " " << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
                       << fft_grid().limits(2).first << " " << fft_grid().limits(2).second << "\n"
                       << "  FFT grid is not compatible with G-vector cutoff (" << this->pw_cutoff() << ")";
                     RTE_THROW(s);
@@ -1117,7 +1125,7 @@ void Simulation_context::update()
     gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, memory_t::host, "gvec_tp_");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
+        auto rtp           = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
         gvec_tp_(igloc, 0) = rtp[1];
         gvec_tp_(igloc, 1) = rtp[2];
     }
@@ -1137,7 +1145,7 @@ void Simulation_context::update()
         /* find the new maximum length of G-vectors */
         double new_pw_cutoff{this->pw_cutoff()};
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig = gvec().offset() + igloc;
+            int ig        = gvec().offset() + igloc;
             new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len(ig));
         }
         gvec().comm().allreduce<double, mpi_op_t::max>(&new_pw_cutoff, 1);
@@ -1149,25 +1157,25 @@ void Simulation_context::update()
 
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
-            aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_callback_));
+            aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(
+                unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_callback_));
         }
 
         if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
-            aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_djl_callback_));
+            aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(
+                unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_djl_callback_));
         }
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
-            ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
-                    rhoc_ri_callback_));
+            ps_core_ri_ =
+                std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(new Radial_integrals_rho_core_pseudo<false>(
+                    unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(), rhoc_ri_callback_));
         }
 
         if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
-            ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
-                    rhoc_ri_djl_callback_));
+            ps_core_ri_djl_ =
+                std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(new Radial_integrals_rho_core_pseudo<true>(
+                    unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(), rhoc_ri_djl_callback_));
         }
 
         if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
@@ -1176,35 +1184,31 @@ void Simulation_context::update()
         }
 
         if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
-            vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
-                    vloc_ri_callback_));
+            vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(new Radial_integrals_vloc<false>(
+                unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(), vloc_ri_callback_));
         }
 
         if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {
-            vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
-                    vloc_ri_djl_callback_));
+            vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(new Radial_integrals_vloc<true>(
+                unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(), vloc_ri_djl_callback_));
         }
 
         /* radial integrals with pw_cutoff */
         if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
-            beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_callback_));
+            beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(
+                unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_callback_));
         }
 
         if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
-            beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
+            beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(
+                unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
         }
 
-        auto idxr_wf = [&](int iat)->sirius::experimental::radial_functions_index const&
-        {
+        auto idxr_wf = [&](int iat) -> sirius::experimental::radial_functions_index const& {
             return unit_cell().atom_type(iat).indexr_wfs();
         };
 
-        auto ps_wf = [&](int iat, int i)->Spline<double> const&
-        {
+        auto ps_wf = [&](int iat, int i) -> Spline<double> const& {
             return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
         };
 
@@ -1218,13 +1222,11 @@ void Simulation_context::update()
                 new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
         }
 
-        auto idxr_wf_hub = [&](int iat)->sirius::experimental::radial_functions_index const&
-        {
+        auto idxr_wf_hub = [&](int iat) -> sirius::experimental::radial_functions_index const& {
             return unit_cell().atom_type(iat).indexr_hub();
         };
 
-        auto ps_wf_hub = [&](int iat, int i)->Spline<double> const&
-        {
+        auto ps_wf_hub = [&](int iat, int i) -> Spline<double> const& {
             return unit_cell().atom_type(iat).hubbard_radial_function(i);
         };
 
@@ -1267,7 +1269,8 @@ void Simulation_context::update()
     }
 }
 
-void Simulation_context::create_storage_file() const
+void
+Simulation_context::create_storage_file() const
 {
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
@@ -1307,7 +1310,8 @@ void Simulation_context::create_storage_file() const
     comm_.barrier();
 }
 
-void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const 
+void
+Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
 {
     PROFILE("sirius::Simulation_context::generate_phase_factors");
     int na = unit_cell().atom_type(iat__).num_atoms();
@@ -1326,21 +1330,23 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
         case device_t::GPU: {
 #if defined(SIRIUS_GPU)
             generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
-                                       unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
+                                       unit_cell().atom_coord(iat__).at(memory_t::device),
+                                       phase_factors__.at(memory_t::device));
 #endif
             break;
         }
     }
 }
 
-void Simulation_context::print_memory_usage(const char *file__, int line__)
+void
+Simulation_context::print_memory_usage(const char* file__, int line__)
 {
     auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
     if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || (pmu && *pmu))) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};
-        std::vector<memory_pool*> mp = {&this->mem_pool(memory_t::host)};
+        std::vector<memory_pool*> mp    = {&this->mem_pool(memory_t::host)};
         int np{1};
         if (processing_unit() == device_t::GPU) {
             labels.push_back("host pinned");
@@ -1353,13 +1359,14 @@ void Simulation_context::print_memory_usage(const char *file__, int line__)
         std::printf("------------\n");
         for (int i = 0; i < np; i++) {
             std::printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
-                labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
-                mp[i]->num_stored_ptr());
+                        labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
+                        mp[i]->num_stored_ptr());
         }
     }
 }
 
-void Simulation_context::init_atoms_to_grid_idx(double R__)
+void
+Simulation_context::init_atoms_to_grid_idx(double R__)
 {
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
@@ -1370,9 +1377,8 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
     int z_off = spfft().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
     vector3d<int> grid_end(spfft().dim_x(), spfft().dim_y(), z_off + spfft().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
-                                             {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
-                                             {-R__, R__, R__},   {R__, R__, R__}};
+    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__}, {R__, R__, -R__},
+                                             {-R__, -R__, R__},  {R__, -R__, R__},  {-R__, R__, R__},  {R__, R__, R__}};
 
     auto bounds_box = [&](vector3d<double> pos) {
         std::vector<vector3d<double>> verts;
@@ -1411,7 +1417,7 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
                         for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
-                                auto r  = unit_cell().get_cartesian_coordinates(v).length();
+                                auto r = unit_cell().get_cartesian_coordinates(v).length();
                                 if (r < R__) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});
@@ -1427,13 +1433,13 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
     }
 }
 
-void Simulation_context::init_step_function()
+void
+Simulation_context::init_step_function()
 {
-    auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g)
-                                                            {
-                                                                auto R = unit_cell().atom_type(iat).mt_radius();
-                                                                return unit_step_function_form_factors(R, g);
-                                                            });
+    auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
+        auto R = unit_cell().atom_type(iat).mt_radius();
+        return unit_step_function_form_factors(R, g);
+    });
 
     theta_    = mdarray<double, 1>(spfft().local_slice_size());
     theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
@@ -1476,7 +1482,8 @@ void Simulation_context::init_step_function()
     }
 }
 
-void Simulation_context::init_comm()
+void
+Simulation_context::init_comm()
 {
     PROFILE("sirius::Simulation_context::init_comm");
 

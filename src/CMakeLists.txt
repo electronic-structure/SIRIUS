@@ -26,6 +26,7 @@ set(_SOURSES
   "density/occupation_matrix.cpp"
   "dft/dft_ground_state.cpp"
   "dft/energy.cpp"
+  "dft/smearing.cpp"
   "beta_projectors/beta_projectors_base.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
@@ -169,6 +170,5 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
 install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
-              "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

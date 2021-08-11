@@ -1,9 +1,9 @@
 # This is mainly to provide CUDA, so you can extend e.g.
 # - nvidia/cuda:10.2-devel-ubuntu18.04
 # - nvidia/cuda:11.0-devel-ubuntu20.04
-# - ubuntu:18.04
+# - ubuntu:20.04
 # e.g. --build-arg BASE_IMAGE=nvidia/cuda:10.2-devel-ubuntu18.04
-ARG BASE_IMAGE=ubuntu:18.04
+ARG BASE_IMAGE=ubuntu:20.04
 
 FROM $BASE_IMAGE
 

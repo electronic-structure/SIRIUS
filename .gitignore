@@ -34,7 +34,5 @@ output*.json
 *.h5
 
 build/
-spack-build/
-spack-build-env.txt
-spack-build-out.txt
+spack-build*
 spack-configure-args.txt
