@@ -188,7 +188,7 @@ void test_davidson(cmd_args const& args__)
         }
         init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
         //Band(ctx).solve_pseudo_potential<double_complex>(Hk);
-        auto result = davidson<double>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;});
+        auto result = davidson<double>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
 
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {

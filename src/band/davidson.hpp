@@ -48,7 +48,7 @@ namespace sirius {
 template <typename T>
 inline davidson_result
 davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
-         std::function<double(int, int)> occupancy__)
+         std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__)
 {
     PROFILE("sirius::davidson");
 
@@ -86,11 +86,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     /* maximum subspace size */
     const int num_phi = itso.subspace_size() * num_bands;
 
-    /* number of spins */
-    // int const num_spins = psi__.num_sc();
-
-    // int const num_spin_steps = nc_mag ? 1 : num_spins;
-
     if (num_phi > kp.num_gkvec()) {
         std::stringstream s;
         s << "subspace size is too large!";
@@ -101,6 +96,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
     auto& gkvecp = kp.gkvec_partition();
+
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
@@ -207,14 +203,14 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
-            double tol      = ctx.iterative_solver_tolerance();
-            double empy_tol = std::max(tol * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
-            /* if band is empty, decrease the tolerance */
-            /* note: j__ indexes the unconverged eigenpairs -- excluding locked ones */
-            if (std::abs(occupancy__(j__ + num_locked, ispn__)) < ctx.min_occupancy() * ctx.max_occupancy()) {
-                tol += empy_tol;
-            }
-            return std::abs(eval[j__] - eval_old[j__]) <= tol;
+            //double tol      = ctx.iterative_solver_tolerance();
+            //double empy_tol = std::max(tol * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
+            ///* if band is empty, decrease the tolerance */
+            ///* note: j__ indexes the unconverged eigenpairs -- excluding locked ones */
+            //if (std::abs(occupancy__(j__ + num_locked, ispn__)) < ctx.min_occupancy() * ctx.max_occupancy()) {
+            //    tol += empy_tol;
+            //}
+            return std::abs(eval[j__] - eval_old[j__]) <= tolerance__(j__ + num_locked, ispn__);
         };
 
         if (itso.init_eval_old()) {

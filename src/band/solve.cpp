@@ -69,7 +69,24 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
         }
     } else if (itso.type() == "davidson") {
         auto& kp = Hk__.kp();
-        auto result = davidson<T>(Hk__, kp.spinor_wave_functions(), [&](int i, int ispn){return kp.band_occupancy(i, ispn);});
+
+        auto tolerance = [&](int j__, int ispn__) -> double {
+
+            double tol      = ctx_.iterative_solver_tolerance();
+            double empy_tol = std::max(tol * ctx_.cfg().settings().itsol_tol_ratio(),
+                                       ctx_.cfg().iterative_solver().empty_states_tolerance());
+
+            /* if band is empty, make tolerance larger (in most cases we don't need high precision on
+             * unoccupied  states) */
+            if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
+                tol += empy_tol;
+            }
+
+            return tol;
+        };
+
+        auto result = davidson<T>(Hk__, kp.spinor_wave_functions(),
+                [&](int i, int ispn){return kp.band_occupancy(i, ispn);}, tolerance);
         niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
