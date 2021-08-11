@@ -1,4 +1,5 @@
 #include <sirius.hpp>
+#include "band/davidson.hpp"
 
 using namespace sirius;
 
@@ -139,7 +140,7 @@ void test_davidson(cmd_args const& args__)
     }
 
     /* initialize the context */
-    ctx.verbosity(2);
+    ctx.verbosity(4);
     ctx.pw_cutoff(pw_cutoff);
     ctx.gk_cutoff(gk_cutoff);
     ctx.processing_unit(args__.value<std::string>("device", "CPU"));
@@ -149,13 +150,15 @@ void test_davidson(cmd_args const& args__)
 
     PROFILE_STOP("test_davidson|setup")
 
-    ctx.iterative_solver_tolerance(1e-12);
-    //ctx.set_iterative_solver_type("exact");
+    //ctx.cfg().iterative_solver().type("exact");
 
     ctx.cfg().iterative_solver().num_steps(40);
+    ctx.cfg().iterative_solver().locking(false);
 
     /* initialize simulation context */
     ctx.initialize();
+
+    ctx.iterative_solver_tolerance(1e-12);
 
     std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
 
@@ -167,7 +170,7 @@ void test_davidson(cmd_args const& args__)
     pot.generate(rho, ctx.use_symmetry(), true);
     pot.zero();
 
-    for (int r = 0; r < 2; r++) {
+    for (int r = 0; r < 1; r++) {
         double vk[] = {0.1, 0.1, 0.1};
         K_point<double> kp(ctx, vk, 1.0, 0);
         kp.initialize();
@@ -178,13 +181,14 @@ void test_davidson(cmd_args const& args__)
         //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
         Hamiltonian0<double> H0(pot);
-        auto hk = H0(kp);
-        Band(ctx).initialize_subspace<double_complex>(hk, ctx.unit_cell().num_ps_atomic_wf());
+        auto Hk = H0(kp);
+        Band(ctx).initialize_subspace<double_complex>(Hk, ctx.unit_cell().num_ps_atomic_wf());
         for (int i = 0; i < ctx.num_bands(); i++) {
             kp.band_energy(i, 0, 0);
         }
-        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-        Band(ctx).solve_pseudo_potential<double_complex>(hk);
+        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+        //Band(ctx).solve_pseudo_potential<double_complex>(Hk);
+        auto result = davidson<double>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;});
 
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {
@@ -195,8 +199,9 @@ void test_davidson(cmd_args const& args__)
         if (Communicator::world().rank() == 0) {
             double max_diff = 0;
             for (int i = 0; i < ctx.num_bands(); i++) {
-                max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
-                //printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+                //max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
+                max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+                printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
             }
             printf("maximum eigen-value difference: %20.16e\n", max_diff);
         }

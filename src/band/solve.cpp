@@ -22,6 +22,7 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 #include "band.hpp"
+#include "davidson.hpp"
 #include "potential/potential.hpp"
 
 namespace sirius {
@@ -67,26 +68,17 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
             STOP();
         }
     } else if (itso.type() == "davidson") {
-        niter = diag_pseudo_potential_davidson<T>(Hk__);
-    //} else if (itso.type_ == "rmm-diis") {
-    //    if (ctx_.num_mag_dims() != 3) {
-    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //            diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
-    //        }
-    //    } else {
-    //        STOP();
-    //    }
-    //} else if (itso.type_ == "chebyshev") {
-    //    P_operator<T> p_op(ctx_, kp__.p_mtrx());
-    //    if (ctx_.num_mag_dims() != 3) {
-    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //            diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
-    //        }
-    //    } else {
-    //        STOP();
-    //    }
+        auto& kp = Hk__.kp();
+        auto result = davidson<T>(Hk__, kp.spinor_wave_functions(), [&](int i, int ispn){return kp.band_occupancy(i, ispn);});
+        niter = result.niter;
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                kp.band_energy(j, ispn, result.eval(j, ispn));
+            }
+        }
+        //niter = diag_pseudo_potential_davidson<T>(Hk__);
     } else {
-        TERMINATE("unknown iterative solver type");
+        RTE_THROW("unknown iterative solver type");
     }
 
     /* check residuals */
