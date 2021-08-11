@@ -34,22 +34,39 @@
 #include "occupation_matrix.hpp"
 
 #if defined(SIRIUS_GPU)
-extern "C" void update_density_rg_1_real_gpu(int size__,
-                                             double const* psi_rg__,
-                                             double wt__,
-                                             double* density_rg__);
+extern "C" void update_density_rg_1_real_gpu_float(int size__,
+                                                   float const* psi_rg__,
+                                                   float wt__,
+                                                   float* density_rg__);
 
-extern "C" void update_density_rg_1_complex_gpu(int size__,
-                                                double_complex const* psi_rg__,
-                                                double wt__,
-                                                double* density_rg__);
+extern "C" void update_density_rg_1_real_gpu_double(int size__,
+                                                    double const* psi_rg__,
+                                                    double wt__,
+                                                    double* density_rg__);
 
-extern "C" void update_density_rg_2_gpu(int                   size__,
-                                        double_complex const* psi_rg_up__,
-                                        double_complex const* psi_rg_dn__,
-                                        double                wt__,
-                                        double*               density_x_rg__,
-                                        double*               density_y_rg__);
+extern "C" void update_density_rg_1_complex_gpu_float(int size__,
+                                                      std::complex<float> const* psi_rg__,
+                                                      float wt__,
+                                                      float* density_rg__);
+
+extern "C" void update_density_rg_1_complex_gpu_double(int size__,
+                                                       double_complex const* psi_rg__,
+                                                       double wt__,
+                                                       double* density_rg__);
+
+extern "C" void update_density_rg_2_gpu_float(int                        size__,
+                                              std::complex<float> const* psi_rg_up__,
+                                              std::complex<float> const* psi_rg_dn__,
+                                              float                      wt__,
+                                              float*                     density_x_rg__,
+                                              float*                     density_y_rg__);
+
+extern "C" void update_density_rg_2_gpu_double(int                   size__,
+                                               double_complex const* psi_rg_up__,
+                                               double_complex const* psi_rg_dn__,
+                                               double                wt__,
+                                               double*               density_x_rg__,
+                                               double*               density_y_rg__);
 
 extern "C" void generate_dm_pw_gpu(int           num_atoms__,
                                    int           num_gvec_loc__,
@@ -265,10 +282,17 @@ class Density : public Field4D
         the occupancy operator written in spectral representation.
      */
     template <typename T>
-    void add_k_point_contribution_dm(K_point<double>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+
+    template <typename T>
+    void add_k_point_contribution_dm_real(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+
+    template <typename T>
+    void add_k_point_contribution_dm_complex(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
-    void add_k_point_contribution_rg(K_point<double>* kp__);
+    template <typename T>
+    void add_k_point_contribution_rg(K_point<T>* kp__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();
@@ -331,6 +355,7 @@ class Density : public Field4D
         to get the full charge density of the system. Density is generated in spectral representation, i.e.
         plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
      */
+    template <typename T>
     void generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
 
     /// Generate valence charge density and magnetization from the wave functions.
@@ -338,6 +363,7 @@ class Density : public Field4D
         After symmetrization and mixing and before the generation of the XC potential density is transformted to the
         real-space domain and checked for the number of electrons.
      */
+    template <typename T>
     void generate_valence(K_point_set const& ks__);
 
     /// Add augmentation charge Q(r).
