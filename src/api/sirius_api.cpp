@@ -4034,7 +4034,7 @@ sirius_get_num_fft_grid_points(void* const* handler__, int* num_fft_grid_points_
     call_sirius(
         [&]() {
             auto& sim_ctx          = get_sim_ctx(handler__);
-            *num_fft_grid_points__ = sim_ctx.spfft()<double>.local_slice_size();
+            *num_fft_grid_points__ = sim_ctx.spfft<double>().local_slice_size();
         },
         error_code__);
 }
@@ -5493,8 +5493,8 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                 /* global z coordinate inside FFT box */
                 int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
                 /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
-                if (z >= gs.ctx().spfft()<double>.local_z_offset() &&
-                    z < gs.ctx().spfft()<double>.local_z_offset() + gs.ctx().spfft()<double>.local_z_length()) {
+                if (z >= gs.ctx().spfft<double>().local_z_offset() &&
+                    z < gs.ctx().spfft<double>().local_z_offset() + gs.ctx().spfft<double>().local_z_length()) {
                     /* make z local for SIRIUS FFT partitioning */
                     z -= gs.ctx().spfft<double>().local_z_offset();
                     for (int iy = 0; iy < ny; iy++) {
