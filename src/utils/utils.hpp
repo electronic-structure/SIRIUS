@@ -386,6 +386,18 @@ inline std::string boolstr(bool b__)
     }
 }
 
+template <typename T>
+auto abs_diff(T a, T b)
+{
+    return std::abs(a - b);
+}
+
+template <typename T>
+auto rel_diff(T a, T b)
+{
+    return std::abs(a - b) / (std::abs(a) + std::abs(b) + 1e-13);
+}
+
 } // namespace
 
 template <typename T>

@@ -125,6 +125,8 @@ inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_sh
                sym_phase_factors__(2, G[2], isym);
     };
 
+    double const eps{1e-9};
+
     PROFILE_START("sirius::symmetrize|fpw|local");
 
     #pragma omp parallel
@@ -239,31 +241,31 @@ inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_sh
                         if (is_done[ig1]) {
                             if (f_pw__) {
                                 /* check that another symmetry operation leads to the same coefficient */
-                                if (std::abs(sym_f_pw[ig1] -  symf1) > 1e-12) {
+                                if (utils::abs_diff(sym_f_pw[ig1], symf1) > eps) {
                                     std::stringstream s;
                                     s << "inconsistent symmetry operation" << std::endl
                                       << "  existing value : " << sym_f_pw[ig1] << std::endl
                                       << "  computed value : " << symf1 << std::endl
                                       << "  difference: " << std::abs(sym_f_pw[ig1] - symf1) << std::endl;
-                                    throw std::runtime_error(s.str());
+                                    RTE_THROW(s);
                                 }
                             }
                             if (!is_non_collin && z_pw__) {
-                                if (std::abs(sym_z_pw[ig1] -  symz1) > 1e-12) {
+                                if (utils::abs_diff(sym_z_pw[ig1], symz1) > eps) {
                                     std::stringstream s;
                                     s << "inconsistent symmetry operation" << std::endl
                                       << "  existing value : " << sym_z_pw[ig1] << std::endl
                                       << "  computed value : " << symz1 << std::endl
                                       << "  difference: " << std::abs(sym_z_pw[ig1] - symz1) << std::endl;
-                                    throw std::runtime_error(s.str());
+                                    RTE_THROW(s);
                                 }
                             }
                             if (is_non_collin) {
-                                if (std::abs(sym_x_pw[ig1] - symx1) > 12e-12 ||
-                                    std::abs(sym_y_pw[ig1] - symy1) > 12e-12 ||
-                                    std::abs(sym_z_pw[ig1] - symz1) > 12e-12) {
+                                if (utils::abs_diff(sym_x_pw[ig1], symx1) > eps ||
+                                    utils::abs_diff(sym_y_pw[ig1], symy1) > eps ||
+                                    utils::abs_diff(sym_z_pw[ig1], symz1) > eps) {
 
-                                    throw std::runtime_error("inconsistent symmetry operation");
+                                    RTE_THROW("inconsistent symmetry operation");
                                 }
                             }
                         } else {
@@ -289,7 +291,6 @@ inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_sh
     PROFILE_STOP("sirius::symmetrize|fpw|local");
 
 #if !defined(NDEBUG)
-    double diff{0};
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
         auto G = gvec_shells__.gvec_remapped(igloc);
         for (int isym = 0; isym < sym__.size(); isym++) {
@@ -300,15 +301,22 @@ inline void symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_sh
             double_complex phase = std::conj(phase_factor(isym, gv_rot));
 
             if (f_pw__ && ig_rot != -1) {
-                diff += std::abs(sym_f_pw[ig_rot] - sym_f_pw[igloc] * phase);
+                if (utils::abs_diff(sym_f_pw[ig_rot], sym_f_pw[igloc] * phase) > eps) {
+                    std::stringstream s;
+                    s << "check of symmetrized PW coefficients failed" << std::endl
+                      << "difference : " << utils::abs_diff(sym_f_pw[ig_rot], sym_f_pw[igloc] * phase);
+                    RTE_THROW(s);
+                }
             }
             if (!is_non_collin && z_pw__ && ig_rot != -1) {
-                diff += std::abs(sym_z_pw[ig_rot] - sym_z_pw[igloc] * phase * S(2, 2));
+                if (utils::abs_diff(sym_z_pw[ig_rot], sym_z_pw[igloc] * phase * S(2, 2)) > eps) {
+                    std::stringstream s;
+                    s << "check of symmetrized PW coefficients failed" << std::endl
+                      << "difference : " << utils::abs_diff(sym_z_pw[ig_rot], sym_z_pw[igloc] * phase * S(2, 2));
+                    RTE_THROW(s);
+                }
             }
         }
-    }
-    if (diff > 1e-12) {
-        throw std::runtime_error("check of symmetrized PW coefficients failed");
     }
 #endif
 
