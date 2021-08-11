@@ -3508,11 +3508,7 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                     }
 
                     if (my_rank == rank_with_jk[r]) {
-<<<<<<< HEAD
                         auto kp = kset.get<double>(this_jk);
-=======
-                        auto kp         = kset[this_jk];
->>>>>>> origin/develop
                         int gkvec_count = kp->gkvec().count();
                         /* send wave-functions */
                         req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
@@ -3756,19 +3752,6 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int c
                 }
             }
 
-<<<<<<< HEAD
-        if (vclrg__) {
-            if (!num_rg_points__) {
-                throw std::runtime_error("missing 'num_rg_points' argument");
-            }
-            bool is_local_rg;
-            if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
-                is_local_rg = false;
-            } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
-                is_local_rg = true;
-            } else {
-                throw std::runtime_error("wrong number of regular grid points");
-=======
             if (vclrg__) {
                 if (!num_rg_points__) {
                     throw std::runtime_error("missing 'num_rg_points' argument");
@@ -3776,13 +3759,12 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int c
                 bool is_local_rg;
                 if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
                     is_local_rg = false;
-                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft())) == *num_rg_points__) {
+                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
                     is_local_rg = true;
                 } else {
                     throw std::runtime_error("wrong number of regular grid points");
                 }
                 gs.potential().hartree_potential().copy_to(nullptr, vclrg__, is_local_rg);
->>>>>>> origin/develop
             }
         },
         error_code__);
@@ -4049,20 +4031,12 @@ sirius_get_num_fft_grid_points:
 void
 sirius_get_num_fft_grid_points(void* const* handler__, int* num_fft_grid_points__, int* error_code__)
 {
-<<<<<<< HEAD
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *num_fft_grid_points__ = sim_ctx.spfft<double>().local_slice_size();
-    }, error_code__);
-=======
     call_sirius(
         [&]() {
             auto& sim_ctx          = get_sim_ctx(handler__);
-            *num_fft_grid_points__ = sim_ctx.spfft().local_slice_size();
+            *num_fft_grid_points__ = sim_ctx.spfft()<double>.local_slice_size();
         },
         error_code__);
->>>>>>> origin/develop
 }
 
 /*
@@ -5519,12 +5493,8 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                 /* global z coordinate inside FFT box */
                 int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
                 /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
-<<<<<<< HEAD
-                if (z >= gs.ctx().spfft<double>().local_z_offset() && z < gs.ctx().spfft<double>().local_z_offset() + gs.ctx().spfft<double>().local_z_length()) {
-=======
-                if (z >= gs.ctx().spfft().local_z_offset() &&
-                    z < gs.ctx().spfft().local_z_offset() + gs.ctx().spfft().local_z_length()) {
->>>>>>> origin/develop
+                if (z >= gs.ctx().spfft()<double>.local_z_offset() &&
+                    z < gs.ctx().spfft()<double>.local_z_offset() + gs.ctx().spfft()<double>.local_z_length()) {
                     /* make z local for SIRIUS FFT partitioning */
                     z -= gs.ctx().spfft<double>().local_z_offset();
                     for (int iy = 0; iy < ny; iy++) {
@@ -5766,34 +5736,19 @@ sirius_get_kpoint_properties(void* const* handler__,
                              int const* ik__, // TODO assume Fortran index (starting from 1)
                              double* weight__, double* coordinates__, int* error_code__)
 {
-<<<<<<< HEAD
-    call_sirius([&]()
-    {
-        auto& ks = get_ks(handler__);
-        int ik = *ik__;
-        *weight__ = ks.get<double>(ik)->weight();
-
-        if (coordinates__) {
-            coordinates__[0] = ks.get<double>(ik)->vk()[0];
-            coordinates__[1] = ks.get<double>(ik)->vk()[1];
-            coordinates__[2] = ks.get<double>(ik)->vk()[2];
-        }
-    }, error_code__);
-=======
     call_sirius(
         [&]() {
             auto& ks  = get_ks(handler__);
             int ik    = *ik__;
-            *weight__ = ks[ik]->weight();
+            *weight__ = ks.get<double>(ik)->weight();
 
             if (coordinates__) {
-                coordinates__[0] = ks[ik]->vk()[0];
-                coordinates__[1] = ks[ik]->vk()[1];
-                coordinates__[2] = ks[ik]->vk()[2];
+                coordinates__[0] = ks.get<double>(ik)->vk()[0];
+                coordinates__[1] = ks.get<double>(ik)->vk()[1];
+                coordinates__[2] = ks.get<double>(ik)->vk()[2];
             }
         },
         error_code__);
->>>>>>> origin/develop
 }
 
 /*
@@ -5818,34 +5773,13 @@ void
 sirius_get_matching_coefficients(void* const* handler__, int const* ik__, std::complex<double>* alm__,
                                  int* error_code__)
 {
-<<<<<<< HEAD
-    call_sirius([&]()
-    {
-        auto& ks = get_ks(handler__);
-        auto& sctx = ks.ctx();
-
-        auto& uc = sctx.unit_cell();
-        auto& kp = *ks.get<double>(*ik__ - 1);
-        auto& gk = kp.gkvec();
-
-        std::vector<int> igk(gk.num_gvec());
-        std::iota(igk.begin(), igk.end(), 0);
-
-        sddk::mdarray<std::complex<double>, 3> alm(alm__, gk.num_gvec(), uc.max_mt_aw_basis_size(), uc.num_atoms());
-        sirius::Matching_coefficients Alm(uc, sctx.lmax_apw(), gk.num_gvec(), igk, gk);
-        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            sddk::mdarray<std::complex<double>, 2> alm_tmp(&alm(0, 0, ia), gk.num_gvec(), uc.max_mt_aw_basis_size());
-            Alm.generate<false>(uc.atom(ia), alm_tmp);
-        }
-    }, error_code__);
-=======
     call_sirius(
         [&]() {
             auto& ks   = get_ks(handler__);
             auto& sctx = ks.ctx();
 
             auto& uc = sctx.unit_cell();
-            auto& kp = *ks[*ik__ - 1];
+            auto& kp = *ks.get<double>(*ik__ - 1);
             auto& gk = kp.gkvec();
 
             std::vector<int> igk(gk.num_gvec());
@@ -5860,7 +5794,6 @@ sirius_get_matching_coefficients(void* const* handler__, int const* ik__, std::c
             }
         },
         error_code__);
->>>>>>> origin/develop
 }
 
 /*
@@ -5953,17 +5886,6 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__)
     auto& kset = get_ks(ks_handler__);
     auto& ctx  = kset.ctx();
 
-<<<<<<< HEAD
-    auto nlcg_params  = ctx.cfg().nlcg();
-    double temp       = nlcg_params.T();
-    double tol        = nlcg_params.tol();
-    double kappa      = nlcg_params.kappa();
-    double tau        = nlcg_params.tau();
-    int maxiter       = nlcg_params.maxiter();
-    int restart       = nlcg_params.restart();
-    std::string smear = ctx.cfg().parameters().smearing();
-    std::string pu    = ctx.cfg().control().processing_unit();
-=======
     auto nlcg_params  = ctx.nlcg_input();
     double temp       = nlcg_params.T_;
     double tol        = nlcg_params.tol_;
@@ -5973,7 +5895,6 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__)
     int restart       = nlcg_params.restart_;
     std::string smear = nlcg_params.smearing_;
     std::string pu    = nlcg_params.processing_unit_;
->>>>>>> origin/develop
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -6089,15 +6010,9 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
         throw std::runtime_error("invalid smearing type given");
     }
 
-<<<<<<< HEAD
-    if(pu.compare("none") == 0) {
-      // use same processing unit as SIRIUS
-      pu = ctx.cfg().control().processing_unit();
-=======
     if (pu.compare("none") == 0) {
         // use same processing unit as SIRIUS
         pu = ctx.control().processing_unit_;
->>>>>>> origin/develop
     }
 
     nlcglib::nlcg_info info;
