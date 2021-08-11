@@ -127,7 +127,7 @@ void Energy::compute()
     //     }
     // }
 
-    density.generate(kset, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
+    density.generate<double>(kset, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
 
     potential.generate(density, ctx.use_symmetry(), true);
 
