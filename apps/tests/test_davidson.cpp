@@ -40,6 +40,41 @@ void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int nu
     }
 }
 
+template <typename T>
+void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__)
+{
+    K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
+    kp.initialize();
+    std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+    for (int i = 0; i < ctx__.num_bands(); i++) {
+        kp.band_occupancy(i, 0, 2);
+    }
+
+    Hamiltonian0<T> H0(pot__);
+    auto Hk = H0(kp);
+    Band(ctx__).initialize_subspace<T>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
+    for (int i = 0; i < ctx__.num_bands(); i++) {
+        kp.band_energy(i, 0, 0);
+    }
+    init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
+    auto result = davidson<T>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
+
+    std::vector<double> ekin(kp.num_gkvec());
+    for (int i = 0; i < kp.num_gkvec(); i++) {
+        ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
+    }
+    std::sort(ekin.begin(), ekin.end());
+
+    if (Communicator::world().rank() == 0) {
+        double max_diff = 0;
+        for (int i = 0; i < ctx__.num_bands(); i++) {
+            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
+        }
+        printf("maximum eigen-value difference: %20.16e\n", max_diff);
+    }
+}
+
 void test_davidson(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
@@ -47,6 +82,7 @@ void test_davidson(cmd_args const& args__)
     auto N         = args__.value<int>("N", 1);
     auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver    = args__.value<std::string>("solver", "lapack");
+    auto fp32      = args__.value<bool>("fp32", false);
 
     bool add_dion{false};
     bool add_vloc{false};
@@ -60,7 +96,7 @@ void test_davidson(cmd_args const& args__)
         "        \"electronic_structure_method\" : \"pseudopotential\""
         "    },"
         "   \"control\" : {"
-        "       \"verification\" : 0"
+        "       \"verification\" : 1"
         "    }"
         "}");
 
@@ -171,106 +207,19 @@ void test_davidson(cmd_args const& args__)
     pot.generate(rho, ctx.use_symmetry(), true);
     pot.zero();
 
+    /* repeat several times for the accurate performance measurment */
     for (int r = 0; r < 1; r++) {
-        double vk[] = {0.1, 0.1, 0.1};
-        K_point<double> kp(ctx, vk, 1.0, 0);
-        kp.initialize();
-        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_occupancy(i, 0, 2);
-        }
-        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-        Hamiltonian0<double> H0(pot);
-        auto Hk = H0(kp);
-        Band(ctx).initialize_subspace<double_complex>(Hk, ctx.unit_cell().num_ps_atomic_wf());
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_energy(i, 0, 0);
-        }
-        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-        //Band(ctx).solve_pseudo_potential<double_complex>(Hk);
-        auto result = davidson<double>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
-
-        std::vector<double> ekin(kp.num_gkvec());
-        for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-        }
-        std::sort(ekin.begin(), ekin.end());
-
-        if (Communicator::world().rank() == 0) {
-            double max_diff = 0;
-            for (int i = 0; i < ctx.num_bands(); i++) {
-                //max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
-                max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
-                printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
-            }
-            printf("maximum eigen-value difference: %20.16e\n", max_diff);
-        }
-    }
-
+        std::array<double, 3> vk({0.1, 0.1, 0.1});
+        if (fp32) {
 #ifdef USE_FP32
-    for (int r = 0; r < 1; r++) {
-        double vk[] = {0.1, 0.1, 0.1};
-        K_point<float> kp(ctx, vk, 1.0, 0);
-        kp.initialize();
-        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_occupancy(i, 0, 2);
-        }
-        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-        Hamiltonian0<float> H0(pot);
-        auto Hk = H0(kp);
-        Band(ctx).initialize_subspace<std::complex<float>>(Hk, ctx.unit_cell().num_ps_atomic_wf());
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_energy(i, 0, 0);
-        }
-        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-        //Band(ctx).solve_pseudo_potential<double_complex>(Hk);
-        auto result = davidson<float>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
-
-        std::vector<double> ekin(kp.num_gkvec());
-        for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-        }
-        std::sort(ekin.begin(), ekin.end());
-
-        if (Communicator::world().rank() == 0) {
-            double max_diff = 0;
-            for (int i = 0; i < ctx.num_bands(); i++) {
-                //max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
-                max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
-                printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
-            }
-            printf("maximum eigen-value difference: %20.16e\n", max_diff);
+            diagonalize<float>(ctx, vk, pot);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+        } else {
+            diagonalize<double>(ctx, vk, pot);
         }
     }
-#endif
-
-    //for (int i = 0; i < 1; i++) {
-
-    //    double vk[] = {0.1 * i, 0.1 * i, 0.1 * i};
-    //    K_point kp(ctx, vk, 1.0);
-    //    kp.initialize();
-
-    //Hamiltonian0 h0(ctx, pot);
-    //auto hk = h0(kp);
-
-    ////    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-    //auto eval = davidson<double_complex>(hk, kp.spinor_wave_functions(), 0, 4, 40, 1e-12, 0, 1e-7, [](int i, int ispn){return 1.0;}, false);
-
-    //std::vector<double> ekin(kp.num_gkvec());
-    //for (int i = 0; i < kp.num_gkvec(); i++) {
-    //    ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-    //}
-    //std::sort(ekin.begin(), ekin.end());
-
-    //for (int i = 0; i < ctx.num_bands(); i++) {
-    //    printf("%20.16f %20.16f %20.16e\n", ekin[i], eval[i], std::abs(ekin[i] - eval[i]));
-    //}
-
-    //}
 }
 
 int main(int argn, char** argv)
@@ -280,7 +229,8 @@ int main(int argn, char** argv)
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
                                {"N=", "(int) cell multiplicity"},
                                {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=", "eigen-value solver"}
+                               {"solver=", "eigen-value solver"},
+                               {"fp32=", "use floating point precision"}
                               });
 
     if (args.exist("help")) {
