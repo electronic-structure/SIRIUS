@@ -355,6 +355,18 @@ inline std::complex<double> random<std::complex<double>>()
     return std::complex<double>(random<double>(), random<double>());
 }
 
+template <>
+inline float random<float>()
+{
+    return static_cast<float>(rnd()) / std::numeric_limits<uint32_t>::max();
+}
+
+template <>
+inline std::complex<float> random<std::complex<float>>()
+{
+    return std::complex<float>(random<float>(), random<float>());
+}
+
 inline long get_page_size()
 {
     return sysconf(_SC_PAGESIZE);

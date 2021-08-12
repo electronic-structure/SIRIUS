@@ -505,12 +505,12 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
             case SPFFT_PU_HOST: {
                 /* CPU case */
                 if (ekin) {
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p__.gvec_count_fft(); ig++) {
                         hphi1[ispn][ig] += (phi1[ispn][ig] * pw_ekin_[ig] + vphi_[ig]);
                     }
                 } else {
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p__.gvec_count_fft(); ig++) {
                         hphi1[ispn][ig] += vphi_[ig];
                     }
@@ -763,7 +763,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             PROFILE("sirius::Local_operator::apply_h_o|kin");
             /* add kinetic energy */
             for (int x : {0, 1, 2}) {
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
                     /* global index of G-vector */
                     int ig = gkvec_p__.idx_gvec(igloc);
@@ -792,7 +792,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                 }
                 /* transform back to PW domain */
                 spfftk__.forward(spfft_mem, reinterpret_cast<T*>(&buf_pw[0]), SPFFT_FULL_SCALING);
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
                     int ig = gkvec_p__.idx_gvec(igloc);
                     hphi__->pw_coeffs(0).extra()(igloc, j) +=

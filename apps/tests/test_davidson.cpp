@@ -82,7 +82,7 @@ void test_davidson(cmd_args const& args__)
     auto N         = args__.value<int>("N", 1);
     auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver    = args__.value<std::string>("solver", "lapack");
-    auto fp32      = args__.value<bool>("fp32", false);
+    auto fp32      = args__.exist("fp32");
 
     bool add_dion{false};
     bool add_vloc{false};
@@ -230,7 +230,7 @@ int main(int argn, char** argv)
                                {"N=", "(int) cell multiplicity"},
                                {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
                                {"solver=", "eigen-value solver"},
-                               {"fp32=", "use floating point precision"}
+                               {"fp32", "use FP32 arithmetics"}
                               });
 
     if (args.exist("help")) {
