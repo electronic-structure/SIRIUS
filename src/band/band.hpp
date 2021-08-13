@@ -65,25 +65,13 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /** Singular components are the eigen-vectors with a very small eigen-value. */
     void get_singular_components(Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& odiag__) const;
 
-    /// Diagonalize a pseudo-potential Hamiltonian.
-    //template <typename T>
-    //int diag_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const;
-
     /// Exact (not iterative) diagonalization of the Hamiltonian.
     template <typename T>
     void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const;
 
-    /// Iterative Davidson diagonalization.
-    //template <typename T>
-    //int diag_pseudo_potential_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
-
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
     sddk::mdarray<real_type<T>, 1> diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
-
-    ///// RMM-DIIS diagonalization.
-    // template <typename T>
-    // void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
 
   public:
     /// Constructor
@@ -116,7 +104,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const;
 
     /// Initialize the subspace for the entire k-point set.
-    void initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
+    template <typename T>
+    void initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const;
 
     /// Initialize the wave-functions subspace at a given k-point.
     /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions

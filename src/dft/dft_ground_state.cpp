@@ -33,8 +33,13 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
-        Hamiltonian0<double> H0(potential_);
-        Band(ctx_).initialize_subspace(kset_, H0);
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+            Hamiltonian0<float> H0(potential_);
+            Band(ctx_).initialize_subspace(kset_, H0);
+        } else {
+            Hamiltonian0<double> H0(potential_);
+            Band(ctx_).initialize_subspace(kset_, H0);
+        }
     }
 }
 

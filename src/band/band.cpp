@@ -135,8 +135,9 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
     }
 }
 
+template <typename T>
 void
-Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
+Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
@@ -149,12 +150,12 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__.get<double>(ik);
+        auto kp = kset__.get<T>(ik);
         auto Hk = H0__(*kp);
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            initialize_subspace<double>(Hk, N);
+            initialize_subspace<T>(Hk, N);
         } else {
-            initialize_subspace<double_complex>(Hk, N);
+            initialize_subspace<std::complex<T>>(Hk, N);
         }
     }
 
@@ -162,15 +163,16 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<double>& H0__) const
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__.get<double>(ik)->band_energy(i, ispn, 0);
-                kset__.get<double>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
+                kset__.get<T>(ik)->band_energy(i, ispn, 0);
+                kset__.get<T>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
             }
         }
     }
 }
 
 template <typename T>
-void Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
+void
+Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -551,6 +553,10 @@ void
 Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
+template
+void
+Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
+
 #ifdef USE_FP32
 template
 void
@@ -563,9 +569,16 @@ Band::set_subspace_mtrx<std::complex<float>>(int N__, int n__, int num_locked, W
                                              dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
 
 template
-void Band::initialize_subspace<float>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+void
+Band::initialize_subspace<float>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
 
 template
-void Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+void
+Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<float>(K_point_set& kset__, Hamiltonian0<float>& H0__) const;
 #endif
+
 }
