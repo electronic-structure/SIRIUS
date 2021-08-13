@@ -110,7 +110,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         std::vector<real_type<T>> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory("scalapack", nullptr);
+        auto solver = Eigensolver_factory("lapack", nullptr);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {
