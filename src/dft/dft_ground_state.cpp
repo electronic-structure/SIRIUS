@@ -34,8 +34,13 @@ void DFT_ground_state::initial_state()
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision() == "fp32") {
+#ifdef USE_FP32
             Hamiltonian0<float> H0(potential_);
             Band(ctx_).initialize_subspace(kset_, H0);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+
         } else {
             Hamiltonian0<double> H0(potential_);
             Band(ctx_).initialize_subspace(kset_, H0);
