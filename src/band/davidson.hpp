@@ -232,6 +232,35 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
 
+        /* DEBUG */
+        /* setup eigen-value problem */
+        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
+        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, sphi, ovlp, &ovlp_old);
+
+        if (ctx.cfg().control().verification() >= 1) {
+            auto max_diff = check_hermitian(hmlt, num_bands);
+            if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
+                std::stringstream s;
+                s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
+                  << "  happened before entering the iterative loop" << std::endl;
+                WARNING(s);
+                if (num_bands <= 20) {
+                    hmlt.serialize("davidson:H_first", num_bands);
+                }
+            }
+            max_diff = check_hermitian(ovlp, num_bands);
+            if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
+                std::stringstream s;
+                s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
+                  << "  happened before entering the iterative loop" << std::endl;
+                WARNING(s);
+                if (num_bands <= 20) {
+                    hmlt.serialize("davidson:O_first", num_bands);
+                }
+            }
+        }
+        /* END DEBUG */
+
         orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi,
                          sphi, 0, num_bands, ovlp, res);
 
