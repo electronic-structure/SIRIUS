@@ -52,7 +52,7 @@ void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potentia
 
     Hamiltonian0<T> H0(pot__);
     auto Hk = H0(kp);
-    Band(ctx__).initialize_subspace<T>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
+    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
