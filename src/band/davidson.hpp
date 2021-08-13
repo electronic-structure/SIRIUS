@@ -203,13 +203,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
-            //double tol      = ctx.iterative_solver_tolerance();
-            //double empy_tol = std::max(tol * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
-            ///* if band is empty, decrease the tolerance */
-            ///* note: j__ indexes the unconverged eigenpairs -- excluding locked ones */
-            //if (std::abs(occupancy__(j__ + num_locked, ispn__)) < ctx.min_occupancy() * ctx.max_occupancy()) {
-            //    tol += empy_tol;
-            //}
             return std::abs(eval[j__] - eval_old[j__]) <= tolerance__(j__ + num_locked, ispn__);
         };
 
@@ -246,11 +239,15 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
 
         if (ctx.cfg().control().verification() >= 1) {
-            real_type<T> max_diff = check_hermitian(hmlt, num_bands);
+            auto max_diff = check_hermitian(hmlt, num_bands);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
-                s << "H matrix is not Hermitian, max_err = " << max_diff;
+                s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
+                  << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
+                if (num_bands <= 20) {
+                    hmlt.serialize("davidson:H", num_bands);
+                }
             }
         }
 

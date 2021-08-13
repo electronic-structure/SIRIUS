@@ -57,6 +57,36 @@ void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potentia
         kp.band_energy(i, 0, 0);
     }
     init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
+
+
+    /*
+     * debug kinetic energy Hamiltonian (single MPI rank only)
+     */
+
+    const int bs = ctx__.cyclic_block_size();
+    const int num_bands = ctx__.num_bands();
+    auto& gv = kp.gkvec();
+    auto& phi = kp.spinor_wave_functions();
+    sddk::dmatrix<std::complex<T>> hmlt(num_bands, num_bands, ctx__.blacs_grid(), bs, bs);
+    hmlt.zero();
+
+    for (int i = 0; i < num_bands; i++) {
+        for (int j = 0; j < num_bands; j++) {
+            for (int ig = 0; ig < gv.num_gvec(); ig++) {
+                auto gvc = gv.template gkvec_cart<index_domain_t::global>(ig);
+                T ekin = 0.5 * dot(gvc, gvc);
+                hmlt(i, j) += std::conj(phi.pw_coeffs(0).prime(ig, i)) * ekin * phi.pw_coeffs(0).prime(ig, j);
+            }
+        }
+    }
+    auto max_diff = check_hermitian(hmlt, num_bands);
+    std::cout << "Simple kinetic Hamiltonian: error in hermiticity: " << std::setw(24) << std::scientific << max_diff << std::endl;
+    hmlt.serialize("hmlt", num_bands);
+
+
+
+
+
     auto result = davidson<T>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
 
     std::vector<double> ekin(kp.num_gkvec());
