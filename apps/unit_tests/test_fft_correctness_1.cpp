@@ -65,7 +65,7 @@ int test_fft(cmd_args& args, device_t pu__)
 
         auto ptr = reinterpret_cast<std::complex<T>*>(spfft.space_domain_data(SPFFT_PU_HOST));
 
-        T diff{0};
+        double diff{0};
         /* loop over 3D array (real space) */
         for (int j0 = 0; j0 < fft_grid[0]; j0++) {
             for (int j1 = 0; j1 < fft_grid[1]; j1++) {
@@ -83,11 +83,11 @@ int test_fft(cmd_args& args, device_t pu__)
                     //auto ref_val = std::exp(std::complex<T>(0.0, phase));
                     /* this variant gives a more accurate result */
                     auto ref_val = static_cast<std::complex<T>>(std::exp(std::complex<double>(0.0, phase)));
-                    diff = std::max(diff, std::abs(ptr[idx] - ref_val));
+                    diff = std::max(diff, static_cast<double>(std::abs(ptr[idx] - ref_val)));
                 }
             }
         }
-        Communicator::world().allreduce<T, sddk::mpi_op_t::max>(&diff, 1);
+        Communicator::world().allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
         if (diff > eps) {
             result++;
         }
@@ -97,7 +97,7 @@ int test_fft(cmd_args& args, device_t pu__)
             } else {
                 printf("OK");
             }
-            printf(" (error: %18.12f)\n", diff);
+            printf(" (error: %18.12e)\n", diff);
         }
     }
 
