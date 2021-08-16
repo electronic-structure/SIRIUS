@@ -208,13 +208,23 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        Hamiltonian0<double> H0(potential_);
-        /* find new wave-functions */
-        Band(ctx_).solve(kset_, H0, true);
-        /* find band occupancies */
-        kset_.find_band_occupancies<double>();
-        /* generate new density from the occupied wave-functions */
-        density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+            Hamiltonian0<float> H0(potential_);
+            /* find new wave-functions */
+            Band(ctx_).solve(kset_, H0, true);
+            /* find band occupancies */
+            kset_.find_band_occupancies<float>();
+            /* generate new density from the occupied wave-functions */
+            density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
+        } else {
+            Hamiltonian0<double> H0(potential_);
+            /* find new wave-functions */
+            Band(ctx_).solve(kset_, H0, true);
+            /* find band occupancies */
+            kset_.find_band_occupancies<double>();
+            /* generate new density from the occupied wave-functions */
+            density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
+        }
 
         double e1 = energy_potential(density_, potential_);
         copy(density_, rho1);

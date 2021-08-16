@@ -358,7 +358,7 @@ inline std::complex<double> random<std::complex<double>>()
 template <>
 inline float random<float>()
 {
-    return static_cast<float>(rnd()) / std::numeric_limits<uint32_t>::max();
+    return static_cast<float>(random<double>());
 }
 
 template <>

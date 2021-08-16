@@ -1076,9 +1076,9 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
                 /* index of the radial function */
                 int idxrf = indexb.idxrf(xi);
 
-                auto z = std::pow(std::complex<T>(0, -1), l) * static_cast<T>(fourpi / std::sqrt(unit_cell_.omega()));
+                auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                wf_t[iat](igk_loc, xi) = z * static_cast<T>(rlm[lm]) * static_cast<T>(ri_values[iat](idxrf));
+                wf_t[iat](igk_loc, xi) = static_cast<std::complex<T>>(z * rlm[lm] * ri_values[iat](idxrf));
             }
         }
     }

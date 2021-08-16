@@ -90,7 +90,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Solve the band eigen-problem for full-potential case.
-    void solve_full_potential(Hamiltonian_k<double>& Hk__) const;
+    template <typename T>
+    void solve_full_potential(Hamiltonian_k<T>& Hk__) const;
 
     /// Check the residuals of wave-functions.
     template <typename T>
@@ -101,7 +102,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    void solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const;
+    template <typename T>
+    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const;
 
     /// Initialize the subspace for the entire k-point set.
     template <typename T>

@@ -27,8 +27,9 @@
 
 namespace sirius {
 
+template <typename T>
 void
-Band::solve_full_potential(Hamiltonian_k<double>& Hk__) const
+Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
 {
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
@@ -50,6 +51,17 @@ Band::solve_full_potential(Hamiltonian_k<double>& Hk__) const
     }
 }
 
+template
+void
+Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__) const;
+
+template<>
+void
+Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
+{
+    RTE_THROW("FP32 is not implemented for FP-LAPW");
+}
+
 template <typename T>
 int
 Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
@@ -62,7 +74,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
     if (itso.type() == "exact") {
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_exact<double_complex>(ispn, Hk__);
+                diag_pseudo_potential_exact<T>(ispn, Hk__);
             }
         } else {
             STOP();
@@ -109,8 +121,9 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
     return niter;
 }
 
+template <typename T>
 void
-Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const
+Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve");
 
@@ -131,16 +144,16 @@ Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__.get<double>(ik);
+        auto kp = kset__.get<T>(ik);
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
-            solve_full_potential(Hk);
+            solve_full_potential<T>(Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<double>(Hk);
+                num_dav_iter += solve_pseudo_potential<T>(Hk);
             } else {
-                num_dav_iter += solve_pseudo_potential<double_complex>(Hk);
+                num_dav_iter += solve_pseudo_potential<std::complex<T>>(Hk);
             }
         }
     }
@@ -152,24 +165,34 @@ Band::solve(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) 
     }
 
     /* synchronize eigen-values */
-    kset__.sync_band<double, sync_band_t::energy>();
+    kset__.sync_band<T, sync_band_t::energy>();
 
     ctx_.message(2, __function_name__, "%s", "Lowest band energies\n");
     if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0) {
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             std::printf("ik : %2i, ", ik);
             for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                std::printf("%12.6f", kset__.get<double>(ik)->band_energy(j, 0));
+                std::printf("%12.6f", kset__.get<T>(ik)->band_energy(j, 0));
             }
             if (ctx_.num_mag_dims() == 1) {
                 std::printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                    std::printf("%12.6f", kset__.get<double>(ik)->band_energy(j, 1));
+                    std::printf("%12.6f", kset__.get<T>(ik)->band_energy(j, 1));
                 }
             }
             std::printf("\n");
         }
     }
 }
+
+template
+void
+Band::solve<double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const;
+
+#if defined (USE_FP32)
+template
+void
+Band::solve<float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__) const;
+#endif
 
 } // namespace
