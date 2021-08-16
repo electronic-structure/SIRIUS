@@ -55,12 +55,14 @@ template
 void
 Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__) const;
 
+#if defined(USE_FP32)
 template<>
 void
 Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
 {
     RTE_THROW("FP32 is not implemented for FP-LAPW");
 }
+#endif
 
 template <typename T>
 int

@@ -209,6 +209,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         ctx_.message(2, __func__, s);
 
         if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
             Hamiltonian0<float> H0(potential_);
             /* find new wave-functions */
             Band(ctx_).solve(kset_, H0, true);
@@ -216,6 +217,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
             kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
             density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
         } else {
             Hamiltonian0<double> H0(potential_);
             /* find new wave-functions */
