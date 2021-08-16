@@ -32,6 +32,7 @@
 
 namespace sirius {
 
+/** \tparam T One of float, double, complex<float> or complex<double> */
 template <typename T>
 class Non_local_functor
 {
@@ -47,7 +48,7 @@ class Non_local_functor
     }
 
     /// Collect summation result in an array
-    void add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2>& collect_res__);
+    void add_k_point_contribution(K_point<real_type<T>>& kpoint__, sddk::mdarray<real_type<T>, 2>& collect_res__);
 };
 }
 

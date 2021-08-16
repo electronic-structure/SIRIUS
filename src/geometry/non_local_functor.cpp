@@ -28,7 +28,7 @@
 namespace sirius {
 
 template<typename T>
-void Non_local_functor<T>::add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2>& collect_res__)
+void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoint__, sddk::mdarray<real_type<T>, 2>& collect_res__)
 {
     PROFILE("sirius::Non_local_functor::add_k_point");
 
@@ -53,7 +53,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<double>& kpoint__, s
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kpoint__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
+            beta_phi_chunks[ispn] = bp.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
         }
         bp.dismiss();
 
@@ -88,16 +88,16 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<double>& kpoint__, s
 
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij,
-                                       matrix<T> &beta_phi_chunk) {
+                                       matrix<T>& beta_phi_chunk) {
                         /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd[ibnd_loc];
 
-                            double_complex scalar_part =
+                            auto scalar_part = static_cast<complex_type<T>>(
                                     main_two_factor * kpoint__.band_occupancy(ibnd, ispn) * kpoint__.weight() *
+                                    (dij - kpoint__.band_energy(ibnd, ispn) * qij)) *
                                     std::conj(beta_phi_chunk(offs + jbf, ibnd)) *
-                                    bp_base_phi_chunk(offs + ibf, ibnd) *
-                                    (dij - kpoint__.band_energy(ibnd, ispn) * qij);
+                                    bp_base_phi_chunk(offs + ibf, ibnd);
 
                             /* get real part and add to the result array*/
                             collect_res__(x, ia) += scalar_part.real();
@@ -169,6 +169,14 @@ template void
 Non_local_functor<double>::add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2> &collect_res__);
 
 template void
-Non_local_functor<double_complex>::add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2> &collect_res__);
+Non_local_functor<std::complex<double>>::add_k_point_contribution(K_point<double>& kpoint__, sddk::mdarray<double, 2> &collect_res__);
+
+#if defined(USE_FP32)
+template void
+Non_local_functor<float>::add_k_point_contribution(K_point<float>& kpoint__, sddk::mdarray<float, 2> &collect_res__);
+
+template void
+Non_local_functor<std::complex<float>>::add_k_point_contribution(K_point<float>& kpoint__, sddk::mdarray<float, 2> &collect_res__);
+#endif
 
 }

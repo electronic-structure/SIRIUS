@@ -39,7 +39,7 @@ void Stress::calc_stress_nonloc_aux()
 {
     PROFILE("sirius::Stress|nonloc");
 
-    mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms());
+    mdarray<real_type<T>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
     collect_result.zero();
 
     stress_nonloc_.zero();
@@ -53,7 +53,7 @@ void Stress::calc_stress_nonloc_aux()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+        auto kp = kset_.get<real_type<T>>(ik);
         if (is_device_memory(ctx_.preferred_memory_t())) {
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -744,10 +744,22 @@ matrix3d<double> Stress::calc_stress_vloc()
 
 matrix3d<double> Stress::calc_stress_nonloc()
 {
-    if (ctx_.gamma_point()) {
-        calc_stress_nonloc_aux<double>();
+    if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc_aux<float>();
+        } else {
+            calc_stress_nonloc_aux<std::complex<float>>();
+        }
+#else
+        RTE_THROW("Not compiled with FP32 support");
+#endif
     } else {
-        calc_stress_nonloc_aux<double_complex>();
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc_aux<double>();
+        } else {
+            calc_stress_nonloc_aux<std::complex<double>>();
+        }
     }
 
     return stress_nonloc_;
