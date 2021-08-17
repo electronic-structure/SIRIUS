@@ -84,10 +84,8 @@ void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potentia
     hmlt.serialize("hmlt", num_bands);
 
 
-
-
-
-    auto result = davidson<std::complex<T>>(Hk, kp.spinor_wave_functions(), [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
+    auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
+            [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
 
     std::vector<double> ekin(kp.num_gkvec());
     for (int i = 0; i < kp.num_gkvec(); i++) {
