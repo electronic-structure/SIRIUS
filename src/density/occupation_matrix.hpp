@@ -50,6 +50,10 @@ class Occupation_matrix : public Hubbard_matrix {
                 ctx_.comm_k().allreduce(this->local(ia).at(memory_t::host), static_cast<int>(this->local(ia).size()));
             }
         }
+
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+          ctx_.comm_k().allreduce(this->nonlocal(i).at(memory_t::host), static_cast<int>(this->nonlocal(i).size()));
+        }
     }
 
     void zero()

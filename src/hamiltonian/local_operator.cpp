@@ -52,7 +52,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
     /* map Theta(r) to the coarse mesh */
     if (ctx_.full_potential()) {
         auto& gvec_dense_p = ctx_.gvec_partition();
-        veff_vec_[4] = std::unique_ptr<Smooth_periodic_function<double>>(
+        veff_vec_[4]       = std::unique_ptr<Smooth_periodic_function<double>>(
             new Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
         /* map unit-step function */
         #pragma omp parallel for schedule(static)
@@ -106,14 +106,14 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
                 veff_vec_[j]->fft_transform(1);
             }
             if (ctx_.valence_relativity() == relativity_t::zora) {
-                veff_vec_[5] = std::unique_ptr<Smooth_periodic_function<double>>(
-                    new Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
+                veff_vec_[5] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(
+                    fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
                 /* loop over local set of coarse G-vectors */
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
                     /* map from fine to coarse set of G-vectors */
-                    veff_vec_[5]->f_pw_local(igloc) =
-                        potential__->rm_inv_pw(gvec_dense_p.gvec().offset() + gvec_dense_p.gvec().gvec_base_mapping(igloc));
+                    veff_vec_[5]->f_pw_local(igloc) = potential__->rm_inv_pw(
+                        gvec_dense_p.gvec().offset() + gvec_dense_p.gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
                 veff_vec_[5]->fft_transform(1);
@@ -137,8 +137,8 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    double v0             = veff_vec_[0]->f_rg(ir);
-                    double v1             = veff_vec_[1]->f_rg(ir);
+                    double v0              = veff_vec_[0]->f_rg(ir);
+                    double v1              = veff_vec_[1]->f_rg(ir);
                     veff_vec_[0]->f_rg(ir) = v0 + v1; // v + Bz
                     veff_vec_[1]->f_rg(ir) = v0 - v1; // v - Bz
                 }
@@ -177,7 +177,8 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
     }
 }
 
-void Local_operator::prepare_k(Gvec_partition const& gkvec_p__)
+void
+Local_operator::prepare_k(Gvec_partition const& gkvec_p__)
 {
     PROFILE("sirius::Local_operator::prepare_k");
 
@@ -206,9 +207,9 @@ void Local_operator::prepare_k(Gvec_partition const& gkvec_p__)
     }
 }
 
-static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
-                               std::array<std::unique_ptr<Smooth_periodic_function<double>>, 6>& veff_vec__,
-                               int idx_veff__)
+static inline void
+mul_by_veff(spfft::Transform& spfftk__, double* buff__,
+            std::array<std::unique_ptr<Smooth_periodic_function<double>>, 6>& veff_vec__, int idx_veff__)
 {
     int nr = spfftk__.local_slice_size();
 
@@ -266,22 +267,21 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
                 double pref = (idx_veff__ == 2) ? -1 : 1;
                 auto wf     = reinterpret_cast<double_complex*>(buff__);
                 mul_by_veff_complex_complex_gpu(nr, wf, pref, veff_vec__[2]->f_rg().at(memory_t::device),
-                    veff_vec__[3]->f_rg().at(memory_t::device));
+                                                veff_vec__[3]->f_rg().at(memory_t::device));
             }
             break;
 #endif
-        }
-        break;
+        } break;
     }
 }
 
-void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, spin_range spins__,
-                             Wave_functions<double>& phi__, Wave_functions<double>& hphi__, int idx0__, int n__)
+void
+Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, spin_range spins__,
+                        Wave_functions<double>& phi__, Wave_functions<double>& hphi__, int idx0__, int n__)
 {
     PROFILE("sirius::Local_operator::apply_h");
 
-    if ((spfftk__.dim_x() != fft_coarse_.dim_x()) ||
-        (spfftk__.dim_y() != fft_coarse_.dim_y()) ||
+    if ((spfftk__.dim_x() != fft_coarse_.dim_x()) || (spfftk__.dim_y() != fft_coarse_.dim_y()) ||
         (spfftk__.dim_z() != fft_coarse_.dim_z())) {
         TERMINATE("wrong FFT dimensions");
     }
@@ -611,8 +611,9 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
        was used for the device memory allocation, device storage is destroyed */
 }
 
-void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, int N__, int n__,
-                               Wave_functions<double>& phi__, Wave_functions<double>* hphi__, Wave_functions<double>* ophi__)
+void
+Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const& gkvec_p__, int N__, int n__,
+                          Wave_functions<double>& phi__, Wave_functions<double>* hphi__, Wave_functions<double>* ophi__)
 {
     PROFILE("sirius::Local_operator::apply_h_o");
 
@@ -772,7 +773,9 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const&
     //}
 }
 
-void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_functions<double>& phi__, std::vector<Wave_functions<double>>& bphi__)
+void
+Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_functions<double>& phi__,
+                        std::vector<Wave_functions<double>>& bphi__)
 {
     PROFILE("sirius::Local_operator::apply_b");
 
@@ -803,7 +806,8 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
 
     for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
         /* phi(G) -> phi(r) */
-        spfftk__.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)), spfft_mem);
+        spfftk__.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                          spfft_mem);
 
         /* save phi(r) */
         if (bphi__.size() == 3) {
@@ -823,8 +827,7 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
         mul_by_veff(spfftk__, spfft_buf, veff_vec_, 1);
 
         /* phi(r) * Bz(r) -> bphi[0](G) */
-        spfftk__.forward(spfft_mem,
-                         reinterpret_cast<double*>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+        spfftk__.forward(spfft_mem, reinterpret_cast<double*>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
                          SPFFT_FULL_SCALING);
 
         /* non-collinear case */

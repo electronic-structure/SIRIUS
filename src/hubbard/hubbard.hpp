@@ -68,7 +68,7 @@ class Hubbard
     bool multi_channels_{false};
 
     void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions<double>& dphi__,
-                             mdarray<double_complex, 5>& dn__, const int index__);
+                             mdarray<double_complex, 4>& dn__, const int index__);
 
 
     void calculate_wavefunction_with_U_offset();
@@ -85,14 +85,14 @@ class Hubbard
 
     std::vector<int> offset_; // TODO: make this quick fix into proper solution
 
-    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
+    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 5>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
      *  \param [in]  q_op Overlap operator.
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
-    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
+    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 4>& dn);
 
     void set_hubbard_U_plus_V()
     {

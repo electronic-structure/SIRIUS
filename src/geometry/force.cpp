@@ -657,10 +657,10 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
 void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
 {
-    mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
-                                  ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
+  mdarray<double_complex, 5> dn(kp__.wave_functions_S_hub().num_wf(), kp__.wave_functions_S_hub().num_wf(), 2, 3, ctx_.unit_cell().num_atoms());
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
+    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     #pragma omp parallel for
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -675,13 +675,46 @@ void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
                                 d += potential_.hubbard_potential().local(ia1)(m2, m1, ispn) *
-                                     dn(m1, m2, ispn, ia1, dir, ia);
+                                  dn(r.second[ia1] + m1, r.second[ia1] + m2, ispn, dir, ia);
                             }
                         }
                     }
                 }
             }
             forceh_(dir, ia) -= std::real(d);
+        }
+
+        // we are probably double counting the links.
+
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+          auto nl = ctx_.cfg().hubbard().nonlocal(i);
+          int ia1 = nl.atom_pair()[0];
+          int ja = nl.atom_pair()[1];
+          int il = nl.l()[0];
+          int jl = nl.l()[1];
+          int ib = ctx_.unit_cell().atom(ia1).type().indexr_hub().subshell_size(il, 0);
+          int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+          auto Tr = nl.T();
+
+          vector3d<double> Ttot;
+          Ttot[0] = Tr[0];
+          Ttot[1] = Tr[1];
+          Ttot[2] = Tr[2];
+          assert(ib == 2 * il + 1);
+          assert(jb == 2 * jl + 1);
+          if (ia1 == ia) {
+            auto z1 = std::exp(double_complex(0, -twopi * dot(Ttot, kp__.vk())));
+            for (int dir = 0; dir < 3; dir++) {
+              for (int is = 0; is < ctx_.num_spins(); is++) {
+                for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                  for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                    auto result1_ = z1 * dn(r.second[ia1] + m1, r.second[ja] + m2, is, dir, ia) * potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
+                    forceh_(dir, ia) -= std::real(result1_);
+                  }
+                }
+              }
+            }
+          }
         }
     }
 }

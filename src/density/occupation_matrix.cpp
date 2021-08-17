@@ -36,9 +36,9 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
     /* find all possible translations */
     for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
         auto nl = ctx_.cfg().hubbard().nonlocal(i);
-        int ia = nl.atom_pair()[0];
-        int ja = nl.atom_pair()[1];
-        auto T = nl.T();
+        int ia  = nl.atom_pair()[0];
+        int ja  = nl.atom_pair()[1];
+        auto T  = nl.T();
 
         auto& sym = ctx_.unit_cell().symmetry();
 
@@ -52,7 +52,8 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
     }
 }
 
-void Occupation_matrix::add_k_point_contribution(K_point& kp__)
+void
+Occupation_matrix::add_k_point_contribution(K_point& kp__)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -63,7 +64,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
     linalg_t la{linalg_t::blas};
     /* find the appropriate linear algebra provider */
     if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
+        mem      = memory_t::device;
         mem_host = memory_t::host_pinned;
         if (is_device_memory(ctx_.preferred_memory_t())) {
             la = linalg_t::gpublas;
@@ -90,12 +91,12 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0,
-            kp__.num_occupied_bands(), kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
+        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
+                    kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
 
-        //if (is_device_memory(mem)) {
+        // if (is_device_memory(mem)) {
         //    dm.copy_to(memory_t::host);
         //}
         dmatrix<double_complex> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
@@ -111,8 +112,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = double_complex(kp__.weight(), 0.0);
-        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(),
-            dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
+                        dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
             occ_mtrx.copy_to(memory_t::host);
         }
@@ -128,24 +129,25 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                    relativistic wave functions have different total angular
                    momentum for the same n */
 
-                //TODO: multi-orbital case
-                //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
-                    /*
-                       I know that the index of the hubbard wave functions (indexb_....) is
-                       consistent with the index of the hubbard orbitals
-                    */
-                    const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-                    for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
-                        for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                            int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                            for (int mp = 0; mp < lmmax_at; mp++) {
-                                for (int m = 0; m < lmmax_at; m++) {
-                                    local_[ia](m, mp, s) +=
-                                        occ_mtrx(r.first * s1 + r.second[ia] + m, r.first * s2 + r.second[ia] + mp);
-                                }
+                // TODO: multi-orbital case
+                // for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling()
+                // ? 2 : 1)) {
+                /*
+                   I know that the index of the hubbard wave functions (indexb_....) is
+                   consistent with the index of the hubbard orbitals
+                */
+                const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
+                for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                    for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                        int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                        for (int mp = 0; mp < lmmax_at; mp++) {
+                            for (int m = 0; m < lmmax_at; m++) {
+                                local_[ia](m, mp, s) +=
+                                    occ_mtrx(r.first * s1 + r.second[ia] + m, r.first * s2 + r.second[ia] + mp);
                             }
                         }
                     }
+                }
                 //}
             }
         }
@@ -178,14 +180,15 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             }
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|2");
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
-            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
-             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
+            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the
+             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the
              * band occupancies. We need to compensate for it because it is taken into account in the
              * calculation of the hubbard potential */
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|3");
             auto alpha = double_complex(kp__.weight() / ctx_.max_occupancy(), 0.0);
             linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+                            dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem),
+                            occ_mtrx.ld());
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(memory_t::host);
             }
@@ -196,22 +199,20 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 const auto& atom = ctx_.unit_cell().atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-                        for (int mp = 0; mp < lmmax_at; mp++) {
-                            const int mmp = r.second[ia] + mp;
-                            for (int m = 0; m < lmmax_at; m++) {
-                                const int mm = r.second[ia] + m;
-                                local_[ia](m, mp, ispn) += occ_mtrx(mm, mmp);
-                            }
+                    const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
+                    for (int mp = 0; mp < lmmax_at; mp++) {
+                        const int mmp = r.second[ia] + mp;
+                        for (int m = 0; m < lmmax_at; m++) {
+                            const int mm            = r.second[ia] + m;
+                            local_[ia](m, mp, ispn) = occ_mtrx(mm, mmp);
                         }
-                    //}
+                    }
                 }
             }
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|4");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|nonloc");
-            for (auto& e: this->occ_mtrx_T_) {
+            for (auto& e : this->occ_mtrx_T_) {
                 /* e^{-i k T} */
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
@@ -228,6 +229,117 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
 void
 Occupation_matrix::symmetrize()
 {
+    auto& sym      = ctx_.unit_cell().symmetry();
+    const double f = 1.0 / sym.size();
+    std::vector<sddk::mdarray<double_complex, 3>> local_tmp;
+    local_tmp.resize(ctx_.unit_cell().num_atoms());
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const auto& atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            local_tmp[ia] = sddk::mdarray<double_complex, 3>(local_[ia].size(0), local_[ia].size(1), 4);
+            memcpy(local_tmp[ia].at(memory_t::host), local_[ia].at(memory_t::host),
+                   sizeof(double_complex) * local_[ia].size());
+        }
+    }
+
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const auto& atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const double f = 1.0 / sym.size();
+
+            int il             = atom.type().indexr_hub().am(0).l();
+            const int lmmax_at = 2 * il + 1;
+            local_[ia].zero();
+            sddk::mdarray<double_complex, 3> dm_ia(lmmax_at, lmmax_at, 4);
+            for (int isym = 0; isym < sym.size(); isym++) {
+                int pr            = sym[isym].spg_op.proper;
+                auto eang         = sym[isym].spg_op.euler_angles;
+                auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
+                auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
+
+                int iap = sym[isym].spg_op.inv_sym_atom[ia];
+                dm_ia.zero();
+
+                /* apply spatial rotation */
+
+                for (int ispn = 0; ispn < ((ctx_.num_mag_dims() == 3) ? (4) : ctx_.num_spins()); ispn++) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+                            for (int m1p = 0; m1p < lmmax_at; m1p++) {
+                                for (int m2p = 0; m2p < lmmax_at; m2p++) {
+                                    dm_ia(m1, m2, ispn) +=
+                                        rotm[il](m1, m1p) * rotm[il](m2, m2p) * local_tmp[iap](m1p, m2p, ispn) * f;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 0) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+                            local_[ia](m1, m2, 0) += dm_ia(m1, m2, 0);
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 1) {
+                    int const map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
+                    for (int j = 0; j < 2; j++) {
+                        int s1 = map_s[j][0];
+                        int s2 = map_s[j][1];
+
+                        for (int m1 = 0; m1 < lmmax_at; m1++) {
+                            for (int m2 = 0; m2 < lmmax_at; m2++) {
+                                double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
+
+                                for (int s1p = 0; s1p < 2; s1p++) {
+                                    for (int s2p = 0; s2p < 2; s2p++) {
+                                        local_[ia](m1, m2, j) +=
+                                            dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 3) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+
+                            double_complex dm[2][2];
+                            double_complex dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+                            for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                                for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                                    int s      = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                                    dm[s1][s2] = dm_ia(m1, m2, s);
+                                }
+                            }
+
+                            for (int i = 0; i < 2; i++) {
+                                for (int j = 0; j < 2; j++) {
+                                    for (int s1p = 0; s1p < 2; s1p++) {
+                                        for (int s2p = 0; s2p < 2; s2p++) {
+                                            dm1[i][j] +=
+                                                dm[s1p][s2p] * spin_rot_su2(i, s1p) * std::conj(spin_rot_su2(j, s2p));
+                                        }
+                                    }
+                                }
+                            }
+
+                            for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                                for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                                    int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                                    local_[ia](m1, m2, s) += dm1[s1][s2];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     if (ctx_.cfg().hubbard().nonlocal().size() && ctx_.num_mag_dims() == 3) {
         RTE_THROW("non-collinear nonlocal occupancy symmetrization is not implemented");
     }
@@ -237,25 +349,21 @@ Occupation_matrix::symmetrize()
 
     for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
         auto nl = ctx_.cfg().hubbard().nonlocal(i);
-        int ia = nl.atom_pair()[0];
-        int ja = nl.atom_pair()[1];
-        int il = nl.l()[0];
-        int jl = nl.l()[1];
-        int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
-        int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
-        auto T = nl.T();
+        int ia  = nl.atom_pair()[0];
+        int ja  = nl.atom_pair()[1];
+        int il  = nl.l()[0];
+        int jl  = nl.l()[1];
+        int ib  = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+        int jb  = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+        auto T  = nl.T();
 
         assert(ib == 2 * il + 1);
         assert(jb == 2 * jl + 1);
 
-        auto& sym = ctx_.unit_cell().symmetry();
-
-        double f = 1.0 / sym.size();
-
         for (int isym = 0; isym < sym.size(); isym++) {
-            int  pr   = sym[isym].spg_op.proper;
-            auto eang = sym[isym].spg_op.euler_angles;
-            auto rotm = sht::rotation_matrix<double>(4, eang, pr);
+            int pr            = sym[isym].spg_op.proper;
+            auto eang         = sym[isym].spg_op.euler_angles;
+            auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
             auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
             int iap = sym[isym].spg_op.inv_sym_atom[ia];
@@ -264,14 +372,14 @@ Occupation_matrix::symmetrize()
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                         dot(sym[isym].spg_op.invR, vector3d<int>(T));
 
-            int idxrf1 = 0;
-            int idxrf2 = 0;
+            int idxrf1  = 0;
+            int idxrf2  = 0;
             int offset1 = ctx_.unit_cell().atom(ia).type().indexb_hub().offset(idxrf1);
             int offset2 = ctx_.unit_cell().atom(ja).type().indexb_hub().offset(idxrf2);
 
             auto& occ_mtrx = occ_mtrx_T_[Ttot];
 
-            sddk::mdarray<double_complex, 3> dm_ia_ja(ib, jb, ctx_.num_spins());
+            sddk::mdarray<double_complex, 3> dm_ia_ja(ib, jb, 4);
             dm_ia_ja.zero();
             /* apply spatial rotation */
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -279,14 +387,14 @@ Occupation_matrix::symmetrize()
                     for (int m2 = 0; m2 < jb; m2++) {
                         for (int m1p = 0; m1p < ib; m1p++) {
                             for (int m2p = 0; m2p < jb; m2p++) {
-                                dm_ia_ja(m1, m2, ispn) += rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
+                                dm_ia_ja(m1, m2, ispn) +=
+                                    rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
                                     occ_mtrx(r.second[iap] + offset1 + m1p, r.second[jap] + offset2 + m2p, ispn) * f;
                             }
                         }
                     }
                 }
             }
-
 
             if (ctx_.num_mag_dims() == 0) {
                 for (int m1 = 0; m1 < ib; m1++) {
@@ -307,9 +415,31 @@ Occupation_matrix::symmetrize()
 
                             for (int s1p = 0; s1p < 2; s1p++) {
                                 for (int s2p = 0; s2p < 2; s2p++) {
-                                     nonlocal_[i](m1, m2, j) += dm[s1p][s2p] *
-                                         spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                    nonlocal_[i](m1, m2, j) +=
+                                        dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+            if (ctx_.num_mag_dims() == 3) {
+                for (int i = 0; i < 2; i++) {
+                    for (int j = 0; j < 2; j++) {
+                        for (int m1 = 0; m1 < ib; m1++) {
+                            for (int m2 = 0; m2 < jb; m2++) {
+                                double_complex dm[2][2]  = {{dm_ia_ja(m1, m2, 0), dm_ia_ja(m1, m2, 2)},
+                                                           {std::conj(dm_ia_ja(m1, m2, 0)), dm_ia_ja(m1, m2, 1)}};
+                                double_complex dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+                                for (int s1p = 0; s1p < 2; s1p++) {
+                                    for (int s2p = 0; s2p < 2; s2p++) {
+                                        dm1[i][j] +=
+                                            dm[s1p][s2p] * spin_rot_su2(i, s1p) * std::conj(spin_rot_su2(j, s2p));
+                                    }
+                                }
+                                nonlocal_[i](m1, m2, 0) += dm1[0][0];
+                                nonlocal_[i](m1, m2, 1) += dm1[1][1];
+                                nonlocal_[i](m1, m2, 2) += dm1[0][1];
                             }
                         }
                     }
@@ -335,14 +465,15 @@ Occupation_matrix::init()
             if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->local_[ia](m, m, ispn) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
+                        this->local_[ia](m, m, ispn) =
+                            atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
                 // compute the total charge for the hubbard orbitals
                 double charge = atom.type().lo_descriptor_hub(0).occupancy();
-                bool   nm     = true; // true if the atom is non magnetic
-                int    majs, mins;
+                bool nm       = true; // true if the atom is non magnetic
+                int majs, mins;
                 if (ctx_.num_spins() != 1) {
                     if (atom.vector_field()[2] > 0.0) {
                         nm   = false;
@@ -372,8 +503,9 @@ Occupation_matrix::init()
                     } else {
                         // double c1, s1;
                         // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                        double         c1 = atom.vector_field()[2];
-                        double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        double c1 = atom.vector_field()[2];
+                        double_complex cs =
+                            double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
                         double_complex ns[4];
 
                         if (charge > (lmax_at)) {
@@ -415,7 +547,8 @@ Occupation_matrix::init()
     print_occupancies(2);
 }
 
-void Occupation_matrix::print_occupancies(int verbosity__) const
+void
+Occupation_matrix::print_occupancies(int verbosity__) const
 {
     if ((ctx_.verbosity() >= verbosity__) && (ctx_.comm().rank() == 0)) {
         std::stringstream s;
@@ -429,8 +562,8 @@ void Occupation_matrix::print_occupancies(int verbosity__) const
                     }
                 }
                 if (ctx_.num_spins() == 2) {
-                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) "
-                      << occ[1] << " (mz) " << occ[0] - occ[1] << std::endl;
+                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) " << occ[1]
+                      << " (mz) " << occ[0] - occ[1] << std::endl;
                 } else {
                     s << "Atom charge (total) " << 2 * occ[0] << std::endl;
                 }
@@ -446,4 +579,4 @@ void Occupation_matrix::print_occupancies(int verbosity__) const
     }
 }
 
-}
+} // namespace sirius

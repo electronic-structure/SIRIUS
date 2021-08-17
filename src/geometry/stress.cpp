@@ -133,7 +133,7 @@ matrix3d<double> Stress::calc_stress_total()
 matrix3d<double> Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
-
+    auto r = ctx_.unit_cell().num_hubbard_wf();
     /* if there are no beta projectors then get out there */
     /* TODO : Need to fix the case where pp have no beta projectors */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
@@ -141,13 +141,13 @@ matrix3d<double> Stress::calc_stress_hubbard()
         return stress_hubbard_;
     }
 
-    mdarray<double_complex, 5> dn(potential_.U().max_number_of_orbitals_per_atom(),
-                                  potential_.U().max_number_of_orbitals_per_atom(),
-                                  2, ctx_.unit_cell().num_atoms(), 9);
 
     Q_operator q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+        mdarray<double_complex, 4> dn(kset_[kset_.spl_num_kpoints(0)]->wave_functions_S_hub().num_wf(),
+                                      kset_[kset_.spl_num_kpoints(0)]->wave_functions_S_hub().num_wf(),
+                                      2, 9);
         dn.zero();
         int ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
@@ -170,7 +170,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
                                     stress_hubbard_(dir1, dir2) -= (potential_.hubbard_potential().local(ia1)(m2, m1, ispn) *
-                                                                    dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() /
+                                                                    dn(r.second[ia1] + m1, r.second[ia1] + m2, ispn, dir1 + 3 * dir2)).real() /
                                                                     ctx_.unit_cell().omega();
                                 }
                             }

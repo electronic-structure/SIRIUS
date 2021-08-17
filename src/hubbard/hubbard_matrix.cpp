@@ -36,27 +36,29 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                int nb = ctx_.unit_cell().atom(ia).type().indexb_hub().size();
+                int nb     = ctx_.unit_cell().atom(ia).type().indexb_hub().size();
                 local_[ia] = sddk::mdarray<double_complex, 3>(nb, nb, 4);
                 local_[ia].zero();
             }
         }
         nonlocal_ = std::vector<sddk::mdarray<double_complex, 3>>(ctx_.cfg().hubbard().nonlocal().size());
         for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
-            auto nl = ctx_.cfg().hubbard().nonlocal(i);
-            int ia = nl.atom_pair()[0];
-            int ja = nl.atom_pair()[1];
-            int il = nl.l()[0];
-            int jl = nl.l()[1];
-            int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
-            int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+            auto nl      = ctx_.cfg().hubbard().nonlocal(i);
+            int ia       = nl.atom_pair()[0];
+            int ja       = nl.atom_pair()[1];
+            int il       = nl.l()[0];
+            int jl       = nl.l()[1];
+            int ib       = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+            int jb       = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
             nonlocal_[i] = sddk::mdarray<double_complex, 3>(ib, jb, 4);
             nonlocal_[i].zero();
         }
     }
 }
 
-void Hubbard_matrix::access(std::string const& what__, double_complex* occ__, int ld__) {
+void
+Hubbard_matrix::access(std::string const& what__, double_complex* occ__, int ld__)
+{
     if (!(what__ == "get" || what__ == "set")) {
         std::stringstream s;
         s << "wrong access label: " << what__;
@@ -95,7 +97,8 @@ void Hubbard_matrix::access(std::string const& what__, double_complex* occ__, in
     }
 }
 
-void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
+void
+Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
 {
     auto const& atom = ctx_.unit_cell().atom(ia__);
     if (!atom.type().hubbard_correction()) {
@@ -103,19 +106,13 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
     }
     int const prec{5};
     int const width{10};
-    auto draw_bar = [&](int w)
-    {
-        out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
-    };
-    auto print_number = [&](double x)
-    {
-        out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x;
-    };
+    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
+    auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
 
     out__ << "atom : " << ia__ << std::endl;
     if (ctx_.num_mag_dims() != 3) {
-        int l = atom.type().indexr_hub().am(0).l();
-        int mmax = 2 *l + 1;
+        int l    = atom.type().indexr_hub().am(0).l();
+        int mmax = 2 * l + 1;
         for (int is = 0; is < ctx_.num_spins(); is++) {
             draw_bar(width * mmax);
             bool has_imag{false};
@@ -140,8 +137,8 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
         }
         draw_bar(width * mmax);
     } else {
-        int l = atom.type().indexr_hub().am(0).l();
-        int mmax = 2 *l + 1;
+        int l    = atom.type().indexr_hub().am(0).l();
+        int mmax = 2 * l + 1;
         draw_bar(2 * width * mmax + 3);
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
@@ -168,35 +165,30 @@ void Hubbard_matrix::print_local(int ia__, std::ostream& out__) const
     }
 }
 
-void Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
+void
+Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
 {
 
     auto nl = ctx_.cfg().hubbard().nonlocal(idx__);
-    int ia = nl.atom_pair()[0];
-    int ja = nl.atom_pair()[1];
-    int il = nl.l()[0];
-    int jl = nl.l()[1];
-    int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
-    int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+    int ia  = nl.atom_pair()[0];
+    int ja  = nl.atom_pair()[1];
+    int il  = nl.l()[0];
+    int jl  = nl.l()[1];
+    int ib  = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+    int jb  = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
 
     vector3d<int> T(nl.T());
 
     out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T << std::endl;
 
-    //auto const& atom = ctx_.unit_cell().atom(ia__);
-    //if (!atom.type().hubbard_correction()) {
+    // auto const& atom = ctx_.unit_cell().atom(ia__);
+    // if (!atom.type().hubbard_correction()) {
     //    return;
     //}
     int const prec{5};
     int const width{10};
-    auto draw_bar = [&](int w)
-    {
-        out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl;
-    };
-    auto print_number = [&](double x)
-    {
-        out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x;
-    };
+    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
+    auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
 
     if (ctx_.num_mag_dims() != 3) {
         for (int is = 0; is < ctx_.num_spins(); is++) {
@@ -252,7 +244,8 @@ void Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     //}
 }
 
-void Hubbard_matrix::zero()
+void
+Hubbard_matrix::zero()
 {
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
@@ -264,5 +257,4 @@ void Hubbard_matrix::zero()
     }
 }
 
-}
-
+} // namespace sirius

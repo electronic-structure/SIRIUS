@@ -29,6 +29,7 @@
 #include "SDDK/type_definition.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
+#include "symmetry/crystal_symmetry.hpp"
 
 namespace sddk {
 template <typename T>
@@ -121,6 +122,7 @@ class U_operator
     sddk::mdarray<std::complex<T>, 3> um_;
     std::vector<int> offset_;
     int nhwf_;
+    vector3d<double> vk_;
   public:
 
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
@@ -130,6 +132,7 @@ class U_operator
         auto r = ctx_.unit_cell().num_hubbard_wf();
         this->nhwf_ = r.first;
         this->offset_ = r.second;
+        this->vk_ = vk__;
         um_ = sddk::mdarray<std::complex<T>, 3>(this->nhwf_, this->nhwf_, ctx_.num_mag_dims() + 1);
         um_.zero();
 
@@ -148,8 +151,38 @@ class U_operator
                 }
             }
         }
-    }
 
+        vk_[0] = vk__[0];
+        vk_[1] = vk__[1];
+        vk_[2] = vk__[2];
+        for (int i = 0; i < ctx__.cfg().hubbard().nonlocal().size(); i++) {
+          auto nl = ctx__.cfg().hubbard().nonlocal(i);
+          int ia = nl.atom_pair()[0];
+          int ja = nl.atom_pair()[1];
+          int il = nl.l()[0];
+          int jl = nl.l()[1];
+          int ib = ctx__.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
+          int jb = ctx__.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
+          auto Tr = nl.T();
+          vector3d<double> Ttot;
+
+          Ttot[0] = Tr[0];
+          Ttot[1] = Tr[1];
+          Ttot[2] = Tr[2];
+          assert(ib == 2 * il + 1);
+          assert(jb == 2 * jl + 1);
+
+          auto z1 = std::exp(double_complex(0, twopi * dot(Ttot, vk_)));
+          for (int is = 0; is < ctx__.num_spins(); is++) {
+            for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+              for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                um_(this->offset_[ia] + m1, this->offset_[ja] + m2, is) += z1 * um1__.nonlocal(i)(m1, m2, is);
+                um_(this->offset_[ja] + m2, this->offset_[ia] + m1, is) += conj(z1 * um1__.nonlocal(i)(m1, m2, is));
+              }
+            }
+          }
+        }
+    }
     ~U_operator()
     {
     }
@@ -164,6 +197,9 @@ class U_operator
         return offset_[ia__];
     }
 
+  vector3d<T> &vk() {
+    return vk_;
+  }
     std::complex<T> operator()(int m1, int m2, int j)
     {
         return um_(m1, m2, j);
