@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,7 +19,7 @@
 
 /** \file davidson.hpp
  *
- *  \brief Davidson iterative solver
+ *  \brief Davidson iterative solver implementation.
  */
 
 #ifndef __DAVIDSON_HPP__
@@ -29,7 +29,8 @@
 #include "SDDK/wf_ortho.hpp"
 #include "residuals.hpp"
 
-struct davidson_result {
+/// Result of Davidson solver.
+struct davidson_result_t {
     int niter;
     sddk::mdarray<double, 2> eval;
 };
@@ -38,16 +39,18 @@ namespace sirius {
 
 /// Solve the eigen-problem using Davidson iterative method.
 /**
-\tparam T                  Type of the wave-functions in real space
-\param [in]     Hk         Hamiltonian for a given k-point.
-\param [in,out] psi        Wave-functions. On input they are used for the starting guess of the subspace basis.
-                           On output they are the solutions of Hk|psi> = e|psi> eigen-problem. 
-\param [in]     occupancy  Lambda-function for the band occupancy numbers.
-\return                    List of eigen-values.
+\tparam T                     Type of the wave-functions in real space (one of float, double, complex<float>, complex<double>).
+\param [in]     Hk            Hamiltonian for a given k-point.
+\param [in]     num_bands     Number of eigen-states (bands) to compute.
+\param [in]     num_mag_dims  Number of magnetic dimensions (0, 1 or 3).
+\param [in,out] psi           Wave-functions. On input they are used for the starting guess of the subspace basis.
+                              On output they are the solutions of Hk|psi> = e S|psi> eigen-problem. 
+\param [in]     occupancy     Lambda-function for the band occupancy numbers.
+\return                       List of eigen-values.
 */
 template <typename T>
-inline davidson_result
-davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
+inline davidson_result_t
+davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__)
 {
     PROFILE("sirius::davidson");
@@ -56,22 +59,19 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     ctx.print_memory_usage(__FILE__, __LINE__);
 
 
-    auto& kp                = Hk__.kp();
-    auto& itso              = ctx.cfg().iterative_solver();
+    auto& kp      = Hk__.kp();
+    auto& gkvecp  = kp.gkvec_partition();
+
+    auto& itso = ctx.cfg().iterative_solver();
+
     bool converge_by_energy = (itso.converge_by_energy() == 1);
 
     //kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", ctx.iterative_solver_tolerance());
     //kp.message(2, __function_name__, "empty states tolerance : %18.12f\n",
     //        std::max(ctx.iterative_solver_tolerance() * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance()));
 
-
-    // bool const estimate_eval{true};
-    // bool const skip_initial_diag{false};
-
-    // ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
-
     /* true if this is a non-collinear case */
-    const bool nc_mag = (ctx.num_mag_dims() == 3);
+    const bool nc_mag = (num_mag_dims__ == 3);
 
     /* number of spin components, treated simultaneously
      *   1 - in case of non-magnetic or collinear calculation
@@ -79,12 +79,14 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
      */
     const int num_sc = nc_mag ? 2 : 1;
 
-    /* short notation for number of KS wave-functions to compute */
-    // int const num_bands = psi__.num_wf();
-    const int num_bands = ctx.num_bands();
+    /* number of spinor components stored under the same band index */
+    const int num_spinors = (num_mag_dims__ == 1) ? 2 : 1; 
+
+    /* number of spins */
+    const int num_spins = (num_mag_dims__ == 0) ? 1 : 2;
 
     /* maximum subspace size */
-    const int num_phi = itso.subspace_size() * num_bands;
+    const int num_phi = itso.subspace_size() * num_bands__;
 
     if (num_phi > kp.num_gkvec()) {
         std::stringstream s;
@@ -94,8 +96,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
     /* alias for memory pool */
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
-
-    auto& gkvecp = kp.gkvec_partition();
 
     /* allocate wave-functions */
 
@@ -109,13 +109,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     Wave_functions<real_type<T>> sphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions<real_type<T>> hpsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> hpsi(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions<real_type<T>> spsi(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> spsi(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions<real_type<T>> res(mp, gkvecp, num_bands, ctx.preferred_memory_t(), num_sc);
+    Wave_functions<real_type<T>> res(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
 
     const int bs = ctx.cyclic_block_size();
 
@@ -138,7 +138,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
             psi__.pw_coeffs(ispn).allocate(mpd);
-            psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
+            psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands__);
         }
 
         for (int i = 0; i < num_sc; i++) {
@@ -179,8 +179,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     auto& std_solver = ctx.std_evp_solver();
 
     if (ctx.print_checksum()) {
-        for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
-            auto cs = psi__.checksum_pw(get_device_t(psi__.preferred_memory_t()), ispn, 0, num_bands);
+        for (int ispn = 0; ispn < num_spins; ispn++) {
+            auto cs = psi__.checksum_pw(get_device_t(psi__.preferred_memory_t()), ispn, 0, num_bands__);
             std::stringstream s;
             s << "input spinor_wave_functions_" << ispn;
             if (kp.comm().rank() == 0) {
@@ -189,16 +189,16 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
         }
     }
 
-    davidson_result result{0, sddk::mdarray<double, 2>(num_bands, ctx.num_spinors())};
+    davidson_result_t result{0, sddk::mdarray<double, 2>(num_bands__, num_spinors)};
 
     PROFILE_START("sirius::davidson|iter");
-    for (int ispin_step = 0; ispin_step < ctx.num_spinors(); ispin_step++) {
+    for (int ispin_step = 0; ispin_step < num_spinors; ispin_step++) {
 
         /* converged vectors */
         int num_locked = 0;
 
-        sddk::mdarray<real_type<T>, 1> eval(num_bands);
-        sddk::mdarray<real_type<T>, 1> eval_old(num_bands);
+        sddk::mdarray<real_type<T>, 1> eval(num_bands__);
+        sddk::mdarray<real_type<T>, 1> eval_old(num_bands__);
         eval_old = []() { return 1e10; };
 
         /* check if band energy is converged */
@@ -212,12 +212,12 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.copy_from(psi__, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
+            phi.copy_from(psi__, num_bands__, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
 
         if (ctx.print_checksum()) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                auto cs = phi.checksum_pw(get_device_t(phi.preferred_memory_t()), ispn, 0, num_bands);
+                auto cs = phi.checksum_pw(get_device_t(phi.preferred_memory_t()), ispn, 0, num_bands__);
                 std::stringstream s;
                 s << "input phi" << ispn;
                 if (kp.comm().rank() == 0) {
@@ -230,65 +230,65 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
+        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, &hphi, &sphi);
 
         /* DEBUG */
-        /* setup eigen-value problem */
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, sphi, ovlp, &ovlp_old);
-
         if (ctx.cfg().control().verification() >= 1) {
-            auto max_diff = check_hermitian(hmlt, num_bands);
+            /* setup eigen-value problem */
+            Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+            Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
+
+            auto max_diff = check_hermitian(hmlt, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
-                if (num_bands <= 20) {
-                    hmlt.serialize("davidson:H_first", num_bands);
+                if (num_bands__ <= 20) {
+                    hmlt.serialize("davidson:H_first", num_bands__);
                 }
             }
-            max_diff = check_hermitian(ovlp, num_bands);
+            max_diff = check_hermitian(ovlp, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
-                if (num_bands <= 20) {
-                    hmlt.serialize("davidson:O_first", num_bands);
+                if (num_bands__ <= 20) {
+                    hmlt.serialize("davidson:O_first", num_bands__);
                 }
             }
         }
         /* END DEBUG */
 
         orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi,
-                         sphi, 0, num_bands, ovlp, res);
+                         sphi, 0, num_bands__, ovlp, res);
 
         /* setup eigen-value problem */
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
+        Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
 
         if (ctx.cfg().control().verification() >= 1) {
-            auto max_diff = check_hermitian(hmlt, num_bands);
+            auto max_diff = check_hermitian(hmlt, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
-                if (num_bands <= 20) {
-                    hmlt.serialize("davidson:H", num_bands);
+                if (num_bands__ <= 20) {
+                    hmlt.serialize("davidson:H", num_bands__);
                 }
             }
         }
 
         /* current subspace size */
-        int N = num_bands;
+        int N = num_bands__;
 
         // Seems like a smaller block size is not always improving time to solution much,
         // so keep it num_bands.
-        int block_size = num_bands;
+        int block_size = num_bands__;
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
+        if (std_solver.solve(N, num_bands__, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             RTE_THROW(s);
@@ -296,7 +296,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
         ctx.evp_work_count(1);
 
-        for (int i = 0; i < num_bands; i++) {
+        for (int i = 0; i < num_bands__; i++) {
             kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
         }
 
@@ -315,7 +315,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
 
             bool last_iteration = k == (itso.num_steps() - 1);
 
-            int num_ritz = num_bands - num_locked;
+            int num_ritz = num_bands__ - num_locked;
 
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
@@ -338,7 +338,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
             /* verify convergence criteria */
             int num_converged              = num_ritz - num_unconverged;
             bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance;
-            bool converged_by_absolute_tol = num_locked + num_converged + itso.min_num_res() >= num_bands;
+            bool converged_by_absolute_tol = num_locked + num_converged + itso.min_num_res() >= num_bands__;
 
             bool converged = converged_by_relative_tol || converged_by_absolute_tol;
 
@@ -351,7 +351,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
             kp.message(3, __function_name__,
                        "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
                        "Num ritz = %d. Expansion size = %d\n",
-                       should_restart ? "yes" : "no", num_locked, num_converged, num_bands, num_lockable, num_ritz,
+                       should_restart ? "yes" : "no", num_locked, num_converged, num_bands__, num_lockable, num_ritz,
                        expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -367,7 +367,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
                                  0, 0, {&psi__}, num_locked, num_ritz);
 
                     /* update eigen-values */
-                    for (int j = num_locked; j < num_bands; j++) {
+                    for (int j = num_locked; j < num_bands__; j++) {
                         result.eval(j, ispin_step) = eval[j - num_locked];
                     }
 
@@ -390,7 +390,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                     // TODO: consider keeping more than num_bands when nearly all Ritz vectors have converged.
-                    int keep = num_bands;
+                    int keep = num_bands__;
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
@@ -463,19 +463,19 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
             // Copy the Ritz values
             eval >> eval_old;
 
-            kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
+            kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands__ - num_locked);
             /* solve standard eigen-value problem with the size N */
-            if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
+            if (std_solver.solve(N - num_locked, num_bands__ - num_locked, hmlt, &eval[0], evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 RTE_THROW(s);
             }
 
-            ctx.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands, 3));
+            ctx.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands__, 3));
 
             kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N,
                        num_phi);
-            for (int i = 0; i < num_bands - num_locked; i++) {
+            for (int i = 0; i < num_bands__ - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                            std::abs(eval[i] - eval_old[i]), occupancy__(i, ispin_step));
             }
@@ -486,8 +486,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, Wave_functions<real_type<T>>& psi__,
     PROFILE_STOP("sirius::davidson|iter");
 
     if (is_device_memory(ctx.preferred_memory_t())) {
-        for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
-            psi__.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
+        for (int ispn = 0; ispn < num_spins; ispn++) {
+            psi__.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands__);
             psi__.pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
