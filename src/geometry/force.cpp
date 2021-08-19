@@ -141,30 +141,38 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
 
 
 template <typename T>
-void Force::add_k_point_contribution(K_point<double>& kpoint, mdarray<double, 2>& forces__) const
+void Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
+            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
         }
     }
 
     Non_local_functor<T> nlf(ctx_, bp_grad);
 
-    nlf.add_k_point_contribution(kpoint, forces__);
+    sddk::mdarray<real_type<T>, 2> f(3, ctx_.unit_cell().num_atoms());
+    f.zero();
+
+    nlf.add_k_point_contribution(kp__, f);
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        for (int x: {0, 1, 2}) {
+            forces__(x, ia) += f(x, ia);
+        }
+    }
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* deallocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
 }
@@ -235,7 +243,15 @@ mdarray<double, 2> const& Force::calc_forces_total()
     } else {
         calc_forces_vloc();
         calc_forces_us();
-        calc_forces_nonloc();
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
+            calc_forces_nonloc<float>();
+#else
+            RTE_THROW("Not compiled with FP32");
+#endif
+        } else {
+            calc_forces_nonloc<double>();
+        }
         calc_forces_core();
         calc_forces_ewald();
         calc_forces_scf_corr();
@@ -743,7 +759,15 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 mdarray<double, 2> const& Force::calc_forces_usnl()
 {
     calc_forces_us();
-    calc_forces_nonloc();
+    if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
+        calc_forces_nonloc<float>();
+#else
+        RTE_THROW("Not compiled with FP32");
+#endif
+    } else {
+        calc_forces_nonloc<double>();
+    }
 
     forces_usnl_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -906,22 +930,23 @@ void Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, md
     } // ia
 }
 
-mdarray<double, 2> const& Force::calc_forces_nonloc()
+template <typename T>
+sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
 {
     PROFILE("sirius::Force::calc_forces_nonloc");
 
-    forces_nonloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_nonloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_nonloc_.zero();
 
     auto& spl_num_kp = kset_.spl_num_kpoints();
 
     for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-        K_point<double>* kp = kset_.get<double>(spl_num_kp[ikploc]);
+        auto* kp = kset_.get<T>(spl_num_kp[ikploc]);
 
         if (ctx_.gamma_point()) {
-            add_k_point_contribution<double>(*kp, forces_nonloc_);
+            add_k_point_contribution<T>(*kp, forces_nonloc_);
         } else {
-            add_k_point_contribution<double_complex>(*kp, forces_nonloc_);
+            add_k_point_contribution<std::complex<T>>(*kp, forces_nonloc_);
         }
     }
 

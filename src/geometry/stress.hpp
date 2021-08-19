@@ -212,6 +212,8 @@ class Stress
      *   \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) = \sin(\theta) \sin(\phi) \\
      *   \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi) = \cos(\theta)
      * \f]
+     *
+     * \tparam T  One of float, double, complex<float> or complex<double> types for generic or Gamma point case.
      */
     template <typename T>
     void calc_stress_nonloc_aux();

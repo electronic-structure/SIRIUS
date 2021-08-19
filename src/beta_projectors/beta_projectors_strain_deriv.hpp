@@ -48,8 +48,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         int lmax = this->ctx_.unit_cell().lmax();
         int lmmax = utils::lmmax(lmax);
 
-        mdarray<T, 2> rlm_g(lmmax, this->num_gkvec_loc());
-        mdarray<T, 3> rlm_dg(lmmax, 3, this->num_gkvec_loc());
+        sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
+        sddk::mdarray<double, 3> rlm_dg(lmmax, 3, this->num_gkvec_loc());
 
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
@@ -117,13 +117,13 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
 
-                            auto z = std::pow(std::complex<T>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
+                            auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
 
                             auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
 
-                            this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = z * (d1 + d2);
+                            this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = static_cast<std::complex<T>>(z * (d1 + d2));
                         }
                     }
                 }
