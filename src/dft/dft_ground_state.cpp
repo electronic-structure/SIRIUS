@@ -117,7 +117,7 @@ json DFT_ground_state::serialize()
         dict["energy"]["vloc"]      = energy_vloc(density_, potential_);
     }
     dict["energy"]["scf_correction"] = this->scf_energy_;
-    dict["energy"]["entropy_sum"]   = kset_.entropy_sum<double>();
+    dict["energy"]["entropy_sum"]   = kset_.entropy_sum();
     dict["efermi"]                  = kset_.energy_fermi();
     dict["band_gap"]                = kset_.band_gap();
     dict["core_leakage"]            = density_.core_leakage();
@@ -339,9 +339,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
 void DFT_ground_state::print_info(std::ostream& out__) const
 {
-    double evalsum1 = kset_.valence_eval_sum<double>();
+    double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum(ctx_.unit_cell());
-    double s_sum    = kset_.entropy_sum<double>();
+    double s_sum    = kset_.entropy_sum();
     double ekin     = energy_kin(ctx_, kset_, density_, potential_);
     double evxc     = energy_vxc(density_, potential_);
     double eexc     = energy_exc(density_, potential_);

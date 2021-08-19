@@ -71,6 +71,13 @@ class K_point_set
 
     bool initialized_{false};
 
+    /// Return sum of valence eigen-values store in Kpoint<T>.
+    template <typename T>
+    double valence_eval_sum() const;
+
+    /// Return entropy contribution from smearing store in Kpoint<T>.
+    template <typename T>
+    double entropy_sum() const;
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
@@ -121,11 +128,9 @@ class K_point_set
     void load();
 
     /// Return sum of valence eigen-values.
-    template <typename T>
     double valence_eval_sum() const;
 
     /// Return entropy contribution from smearing.
-    template <typename T>
     double entropy_sum() const;
 
     /// Update k-points after moving atoms or changing the lattice vectors.
