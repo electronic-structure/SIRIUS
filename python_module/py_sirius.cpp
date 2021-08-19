@@ -519,7 +519,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies<double>)
         .def("band_gap", &K_point_set::band_gap)
         //.def("sync_band", &K_point_set::sync_band)
-        .def("valence_eval_sum", &K_point_set::valence_eval_sum<double>)
+        .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
              [](K_point_set& ks, int i) -> K_point<double>& {
