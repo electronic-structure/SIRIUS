@@ -221,7 +221,6 @@ Simulation_parameters::smearing(std::string name__)
     smearing_ = smearing::get_smearing_t(name__);
 }
 
-
 void
 Simulation_parameters::electronic_structure_method(std::string name__)
 {
