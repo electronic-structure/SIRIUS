@@ -341,11 +341,11 @@ void Potential::xc_rg_magnetic(Density const& density__)
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
-                ixc->get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
+                ixc.get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
                              &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
                              &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(memory_t::host));
             } else {
-                ixc->get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
             TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
