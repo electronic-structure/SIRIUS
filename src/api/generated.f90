@@ -935,39 +935,6 @@ deallocate(name_c_type)
 end subroutine sirius_add_xc_functional
 
 !
-!> @brief Add one of the XC functionals.
-!> @param [in] gs_handler Handler of the ground state
-!> @param [in] name LibXC label of the functional.
-subroutine sirius_insert_xc_functional(gs_handler,name)
-implicit none
-!
-type(C_PTR), target, intent(in) :: gs_handler
-character(*), target, intent(in) :: name
-!
-type(C_PTR) :: gs_handler_ptr
-type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
-!
-interface
-subroutine sirius_insert_xc_functional_aux(gs_handler,name)&
-&bind(C, name="sirius_insert_xc_functional")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: gs_handler
-type(C_PTR), value :: name
-end subroutine
-end interface
-!
-gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
-name_ptr = C_NULL_PTR
-allocate(name_c_type(len(name)+1))
-name_c_type = string_f2c(name)
-name_ptr = C_LOC(name_c_type)
-call sirius_insert_xc_functional_aux(gs_handler_ptr,name_ptr)
-deallocate(name_c_type)
-end subroutine sirius_insert_xc_functional
-
-!
 !> @brief Set dimensions of the MPI grid.
 !> @param [in] handler Simulation context handler
 !> @param [in] ndims Number of dimensions.

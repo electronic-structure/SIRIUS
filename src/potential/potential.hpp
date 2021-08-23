@@ -27,18 +27,16 @@
 
 #include "density/density.hpp"
 #include "hubbard/hubbard.hpp"
+#include "xc_functional.hpp"
 
 namespace sirius {
-
-/* forward declaration */
-class XC_functional;
 
 using Flm = Spheric_function<function_domain_t::spectral, double>;
 using Ftp = Spheric_function<function_domain_t::spatial, double>;
 
 void check_xc_potential(Density const& rho__);
 
-void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
         int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
 //
 /// Generate effective potential from charge density and magnetization.
@@ -106,7 +104,7 @@ class Potential : public Field4D
     /** Used to compute electron-nuclear contribution to the total energy */
     mdarray<double, 1> vh_el_;
 
-    std::vector<XC_functional*> xc_func_;
+    std::vector<XC_functional> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
     mdarray<double_complex, 1> veff_pw_;
@@ -300,8 +298,6 @@ class Potential : public Field4D
   public:
     /// Constructor
     Potential(Simulation_context& ctx__);
-
-    ~Potential();
 
     /// Recompute some variables that depend on atomic positions or the muffin-tin radius.
     void update();
@@ -707,7 +703,7 @@ class Potential : public Field4D
     /// Generate plane-wave coefficients of the potential in the interstitial region.
     void generate_pw_coefs();
 
-    void insert_xc_functionals(const std::vector<std::string>& labels__);
+    //void insert_xc_functionals(const std::vector<std::string>& labels__);
 
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:

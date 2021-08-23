@@ -942,33 +942,6 @@ sirius_add_xc_functional(void* const* handler__, char const* name__)
 
 /*
 @api begin
-sirius_insert_xc_functional:
-  doc: Add one of the XC functionals.
-  arguments:
-    gs_handler:
-      type: void*
-      attr: in, required
-      doc: Handler of the ground state
-    name:
-      type: string
-      attr: in, required
-      doc: LibXC label of the functional.
-@api end
-*/
-void
-sirius_insert_xc_functional(void* const* gs_handler__, char const* name__)
-{ // TODO: deprecate and remove
-    auto& gs        = get_gs(gs_handler__);
-    auto& potential = gs.potential();
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-        std::cout << "insert functional: " << name__ << "\n";
-    potential.insert_xc_functionals({name__});
-}
-
-/*
-@api begin
 sirius_set_mpi_grid_dims:
   doc: Set dimensions of the MPI grid.
   arguments:
