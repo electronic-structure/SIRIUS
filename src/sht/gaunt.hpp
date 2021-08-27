@@ -82,10 +82,7 @@ class Gaunt_coefficients
 
   public:
     /// Class constructor.
-    Gaunt_coefficients(int                                            lmax1__,
-                       int                                            lmax3__,
-                       int                                            lmax2__,
-                       std::function<T(int, int, int, int, int, int)> get__)
+    Gaunt_coefficients(int lmax1__, int lmax3__, int lmax2__, std::function<T(int, int, int, int, int, int)> get__)
         : lmax1_(lmax1__)
         , lmax3_(lmax3__)
         , lmax2_(lmax2__)

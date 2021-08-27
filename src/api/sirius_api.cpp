@@ -5886,15 +5886,15 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__)
     auto& kset = get_ks(ks_handler__);
     auto& ctx  = kset.ctx();
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu    = nlcg_params.processing_unit_;
+    auto nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+    std::string smear = ctx.cfg().parameters().smearing();
+    std::string pu    = ctx.cfg().control().processing_unit();
 
     nlcglib::smearing_type smearing;
     if (smear.compare("FD") == 0) {
@@ -6012,7 +6012,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
     if (pu.compare("none") == 0) {
         // use same processing unit as SIRIUS
-        pu = ctx.control().processing_unit_;
+        pu = ctx.cfg().control().processing_unit();
     }
 
     nlcglib::nlcg_info info;

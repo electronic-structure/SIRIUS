@@ -40,8 +40,14 @@ void test(int nGb, int gran, memory_t M__)
             e.deallocate(M__);
         }
 
+        mpool.print();
+
         if (initial_size == 0 && (mpool.total_size() != tot_size)) {
-            throw std::runtime_error("wrong total size");
+            std::stringstream s;
+            s << "mpool.total_size() != tot_size" << std::endl
+              << "mpool.total_size() = " << mpool.total_size() << std::endl
+              << "tot_size = " << tot_size;
+            RTE_THROW(s);
         }
         if (mpool.free_size() != mpool.total_size()) {
             throw std::runtime_error("wrong free size");

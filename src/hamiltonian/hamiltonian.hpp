@@ -89,9 +89,6 @@ class Hamiltonian0
     /// Local part of the Hamiltonian operator.
     std::unique_ptr<Local_operator<T>> local_op_;
 
-    /// Non-zero Gaunt coefficients
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
-
     /// D operator (non-local part of Hamiltonian).
     std::unique_ptr<D_operator<T>> d_op_;
 
@@ -128,11 +125,6 @@ class Hamiltonian0
     Local_operator<T>& local_op() const
     {
         return *local_op_;
-    }
-
-    inline Gaunt_coefficients<std::complex<double>> const& gaunt_coefs() const
-    {
-        return *gaunt_coefs_;
     }
 
     inline Q_operator<T>& Q() const

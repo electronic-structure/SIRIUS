@@ -273,8 +273,8 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
             if (what & 1) {
                 h_diag[kp_.num_gkvec_loc() + nlo + ilo] =
-                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, H0_.gaunt_coefs().gaunt_vector(
-                                                                                        lm_lo, lm_lo)).real();
+                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
+                        H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm_lo)).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
@@ -537,7 +537,7 @@ void Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<s
             int idxrf1 = type.indexb(j1).idxrf;
 
             auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf, idxrf1,
-                                                                         H0_.gaunt_coefs().gaunt_vector(lm1, lm));
+                H0_.potential().gaunt_coefs().gaunt_vector(lm1, lm));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_row(); igkloc++) {
@@ -578,7 +578,7 @@ void Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<s
             int idxrf1 = type.indexb(j1).idxrf;
 
             auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf,
-                                                                         H0_.gaunt_coefs().gaunt_vector(lm, lm1));
+                H0_.potential().gaunt_coefs().gaunt_vector(lm, lm1));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_col(); igkloc++) {
@@ -629,7 +629,7 @@ void Hamiltonian_k<T>::set_fv_h_o_lo_lo(dmatrix<std::complex<T>>& h__, dmatrix<s
 
                 h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
                     atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
-                        H0_.gaunt_coefs().gaunt_vector(lm1, lm2));
+                        H0_.potential().gaunt_coefs().gaunt_vector(lm1, lm2));
 
                 if (lm1 == lm2) {
                     int l = kp.lo_basis_descriptor_row(irow).l;
@@ -1188,7 +1188,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 int nlo    = type.mt_lo_basis_size();
 
                 matrix<std::complex<T>> hmt(naw, nlo);
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
                     /* local orbital indices */
@@ -1197,7 +1197,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                     for (int xi = 0; xi < naw; xi++) {
                         int lm_aw    = type.indexb(xi).lm;
                         int idxrf_aw = type.indexb(xi).idxrf;
-                        auto& gc     = H0_.gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
+                        auto& gc     = H0_.potential().gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
                         hmt(xi, ilo) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
                     }
                 }
@@ -1330,7 +1330,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                 }
                             }
                             if (hphi__ != nullptr) {
-                                auto& gc = H0_.gaunt_coefs().gaunt_vector(lm_lo, lm1);
+                                auto& gc = H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm1);
                                 for (int i = 0; i < n__; i++) {
                                     hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
                                         phi_lo_block(offsets_lo[ialoc] + jlo, i) *
@@ -1359,7 +1359,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                                     for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
                                         int lm_aw    = type.indexb(xi).lm;
                                         int idxrf_aw = type.indexb(xi).idxrf;
-                                        auto& gc     = H0_.gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
+                                        auto& gc     = H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
                                         z += static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc)) *
                                              alm_phi(offsets_aw[ialoc] + xi, i);
                                     }

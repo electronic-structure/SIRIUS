@@ -201,7 +201,7 @@ template <class Nt, class DNt, class D2Nt>
 double
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
 {
-    double mu  = mu0;
+    double mu = mu0;
     int iter{0};
     while (true) {
         // compute
@@ -209,9 +209,9 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         double dNf  = dN(mu);
         double ddNf = ddN(mu);
         /* minimize (N(mu) - ne)^2  */
-        double F = (Nf-ne)*(Nf-ne);
-        double dF = 2*(Nf-ne) * dNf;
-        double ddF = 2*dNf*dNf + 2*(Nf-ne) * ddNf;
+        //double F = (Nf - ne) * (Nf - ne);
+        double dF = 2 * (Nf - ne) * dNf;
+        double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
         mu = mu - dF / std::abs(ddF);
 
         if (std::abs(dF) < tol) {
@@ -220,15 +220,18 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 
         if (std::abs(ddF) < 1e-10) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!\n";
-            TERMINATE(s);
+            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!";
+            RTE_THROW(s);
         }
 
         iter++;
         if (iter > maxstep) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed after 10000 steps!\n";
-            TERMINATE(s);
+            s << "Newton minimization (chemical potential) failed after 10000 steps!" << std::endl
+              << "targen number of electrons : " << ne << std::endl
+              << "initial guess for chemical potential : " << mu0 << std::endl
+              << "current value of chemical potential : " << mu;
+            RTE_THROW(s);
         }
     }
 }
@@ -325,18 +328,25 @@ void K_point_set::find_band_occupancies()
         f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
     }
 
-    auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-    energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+    try {
+        auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+        energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
 
-    /* for cold and Methfessel Paxton smearing start newton minimization  */
-    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-        f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-        auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
-        auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
-        auto N   = [&](double mu) { return compute_ne(mu, f); };
-        auto dN  = [&](double mu) { return compute_ne(mu, df); };
-        auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-        energy_fermi_ = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, 1e-11);
+        /* for cold and Methfessel Paxton smearing start newton minimization  */
+        if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+            f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
+            auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
+            auto N   = [&](double mu) { return compute_ne(mu, f); };
+            auto dN  = [&](double mu) { return compute_ne(mu, df); };
+            auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
+            energy_fermi_ = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, 1e-11);
+        }
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Minimum band energy : " << emin << std::endl
+          << "Maximum band energy : " << emax;
+        RTE_THROW(s, e.what());
     }
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
