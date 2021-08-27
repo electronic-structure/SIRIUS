@@ -165,6 +165,10 @@ class Potential : public Field4D
     /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
     double add_delta_mag_xc_{0};
 
+    /// Gaunt coefficients needed for the full-potential Hamiltonian applications.
+    /** The coefficients are created once and stored for the entire life-time of the potential. */
+    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
+
     void init_PAW();
 
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
@@ -911,7 +915,7 @@ class Potential : public Field4D
 
     bool is_gradient_correction() const;
 
-    Smooth_periodic_function<double>& vsigma(int idx__)
+    auto& vsigma(int idx__)
     {
         assert(idx__ >= 0 && idx__ < 3);
         return (*vsigma_[idx__].get());
@@ -932,19 +936,24 @@ class Potential : public Field4D
         add_delta_mag_xc_ = d__;
     }
 
-    Hubbard& U() const
+    auto& U() const
     {
         return *U_;
     }
 
-    Hubbard_matrix& hubbard_potential()
+    auto& hubbard_potential()
     {
         return hubbard_potential_;
     }
 
-    Hubbard_matrix const& hubbard_potential() const
+    auto const& hubbard_potential() const
     {
         return hubbard_potential_;
+    }
+
+    auto const& gaunt_coefs() const
+    {
+        return *gaunt_coefs_;
     }
 };
 

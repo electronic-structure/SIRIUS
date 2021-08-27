@@ -38,11 +38,6 @@ Hamiltonian0::Hamiltonian0(Potential& potential__)
 {
     PROFILE("sirius::Hamiltonian0");
 
-    if (ctx_.full_potential()) {
-        using gc_z = Gaunt_coefficients<double_complex>;
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-    }
-
     local_op_ = std::unique_ptr<Local_operator>(
         new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
 
@@ -75,7 +70,7 @@ Hamiltonian0::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<doub
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
-                                                                 gaunt_coefs_->gaunt_vector(lm1, lm2));
+                                                                 potential().gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     linalg(linalg_t::blas).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
@@ -135,7 +130,7 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions<double>& psi__, std::vector<sddk::W
                     int lm1    = atom.type().indexb(xi1).lm;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
 
-                    zm(xi1, xi2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    zm(xi1, xi2, i) = this->potential().gaunt_coefs().sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
                 }
             }
         }
