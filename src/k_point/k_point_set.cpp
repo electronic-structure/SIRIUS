@@ -188,10 +188,16 @@ double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
  *  \param  maxstep max number of Newton iterations
  */
 template <class Nt, class DNt, class D2Nt>
-double
+auto
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
 {
+    struct {
+        double mu; // chemical potential
+        int iter; // newton information
+        std::vector<double> ys; // newton history
+    } res;
     double mu = mu0;
+    double alpha{1.0}; // Newton damping
     int iter{0};
     while (true) {
         // compute
@@ -202,10 +208,14 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         //double F = (Nf - ne) * (Nf - ne);
         double dF = 2 * (Nf - ne) * dNf;
         double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
-        mu = mu - dF / std::abs(ddF);
+        mu = mu - alpha * dF / std::abs(ddF);
+
+        res.ys.push_back(mu);
 
         if (std::abs(dF) < tol) {
-            return mu;
+            res.iter = iter;
+            res.mu = mu;
+            return res;
         }
 
         if (std::abs(ddF) < 1e-10) {
@@ -217,8 +227,8 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         iter++;
         if (iter > maxstep) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed after 10000 steps!" << std::endl
-              << "targen number of electrons : " << ne << std::endl
+            s << "Newton minimization (chemical potential) failed after " << maxstep << " steps!" << std::endl
+              << "target number of electrons : " << ne << std::endl
               << "initial guess for chemical potential : " << mu0 << std::endl
               << "current value of chemical potential : " << mu;
             RTE_THROW(s);
@@ -229,6 +239,8 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 void K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
+
+    double tol{1e-11};
 
     auto band_occ_callback = ctx_.band_occ_callback();
     if (band_occ_callback) {
@@ -329,13 +341,17 @@ void K_point_set::find_band_occupancies()
             auto N   = [&](double mu) { return compute_ne(mu, f); };
             auto dN  = [&](double mu) { return compute_ne(mu, df); };
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-            energy_fermi_ = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, 1e-11);
+            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
+            energy_fermi_ = res_newton.mu;
+            ctx_.message(1, __function_name__, "newton iteration converged after %d steps\n.", res_newton.iter);
+
         }
     } catch(std::exception const& e) {
-        std::stringstream s;
-        s << "Minimum band energy : " << emin << std::endl
-          << "Maximum band energy : " << emax;
-        RTE_THROW(s, e.what());
+        ctx_.message(1, __function_name__, e.what());
+        ctx_.message(1, __function_name__, "\nfallback to bisection search\n");
+        f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+        auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+        energy_fermi_ = bisection_search(F, emin, emax, tol);
     }
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
