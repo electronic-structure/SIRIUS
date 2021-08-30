@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -27,18 +27,16 @@
 
 #include "density/density.hpp"
 #include "hubbard/hubbard.hpp"
+#include "xc_functional.hpp"
 
 namespace sirius {
-
-/* forward declaration */
-class XC_functional;
 
 using Flm = Spheric_function<function_domain_t::spectral, double>;
 using Ftp = Spheric_function<function_domain_t::spatial, double>;
 
 void check_xc_potential(Density const& rho__);
 
-void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
         int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
 //
 /// Generate effective potential from charge density and magnetization.
@@ -70,8 +68,8 @@ class Potential : public Field4D
 
     /// Derivative \f$ \partial \epsilon^{XC} / \partial \sigma_{\alpha} \f$.
     /** \f$ \epsilon^{XC} \f$ is the exchange-correlation energy per unit volume and \f$ \sigma \f$ is one of
-     *  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\uparrow} \f$,  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\downarrow} \f$ or
-     *  \f$ \nabla \rho_{\downarrow} \nabla \rho_{\downarrow} \f$. This quantity is required to compute the GGA
+     *  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\uparrow} \f$,  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\downarrow}\f$
+     *  or \f$ \nabla \rho_{\downarrow} \nabla \rho_{\downarrow} \f$. This quantity is required to compute the GGA
      *  contribution to the XC stress tensor.
      */
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 3> vsigma_;
@@ -80,11 +78,11 @@ class Potential : public Field4D
     /** This function is set by PW code and is not computed here. */
     std::unique_ptr<Smooth_periodic_function<double>> dveff_;
 
-    mdarray<double, 3> sbessel_mom_;
+    sddk::mdarray<double, 3> sbessel_mom_;
 
-    mdarray<double, 3> sbessel_mt_;
+    sddk::mdarray<double, 3> sbessel_mt_;
 
-    mdarray<double, 2> gamma_factors_R_;
+    sddk::mdarray<double, 2> gamma_factors_R_;
 
     int lmax_;
 
@@ -98,24 +96,24 @@ class Potential : public Field4D
 
     std::vector<int> l_by_lm_;
 
-    mdarray<double_complex, 2> gvec_ylm_;
+    sddk::mdarray<double_complex, 2> gvec_ylm_;
 
     double energy_vha_{0};
 
     /// Electronic part of Hartree potential.
     /** Used to compute electron-nuclear contribution to the total energy */
-    mdarray<double, 1> vh_el_;
+    sddk::mdarray<double, 1> vh_el_;
 
-    std::vector<XC_functional*> xc_func_;
+    std::vector<XC_functional> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
-    mdarray<double_complex, 1> veff_pw_;
+    sddk::mdarray<double_complex, 1> veff_pw_;
 
     /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
-    mdarray<double_complex, 1> rm_inv_pw_;
+    sddk::mdarray<double_complex, 1> rm_inv_pw_;
 
     /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
-    mdarray<double_complex, 1> rm2_inv_pw_;
+    sddk::mdarray<double_complex, 1> rm2_inv_pw_;
 
     struct paw_potential_data_t
     {
@@ -131,7 +129,6 @@ class Potential : public Field4D
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
         double core_energy_{0.0};
-        //double one_elec_energy_{0.0};
     };
 
     std::vector<double> paw_hartree_energies_;
@@ -142,15 +139,14 @@ class Potential : public Field4D
     double paw_hartree_total_energy_{0.0};
     double paw_xc_total_energy_{0.0};
     double paw_total_core_energy_{0.0};
-    //double paw_one_elec_energy_{0.0};
 
     std::vector<paw_potential_data_t> paw_potential_data_;
 
-    mdarray<double, 4> paw_dij_;
+    sddk::mdarray<double, 4> paw_dij_;
 
     int max_paw_basis_size_{0};
 
-    mdarray<double, 2> aux_bf_;
+    sddk::mdarray<double, 2> aux_bf_;
 
     /// Hubbard potential correction.
     std::unique_ptr<Hubbard> U_;
@@ -174,12 +170,12 @@ class Potential : public Field4D
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
                                   std::vector<sf const*> ps_density);
 
-    void calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij);
+    void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
 
     double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 
-    double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd, mdarray<double_complex, 4> const& density_matrix,
-                                    mdarray<double, 4> const& paw_dij) const;
+    double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
+            sddk::mdarray<double_complex, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
 
     void add_paw_Dij_to_atom_Dmtrx();
 
@@ -205,7 +201,8 @@ class Potential : public Field4D
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
-    void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
+    void poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
+            sddk::mdarray<double_complex, 2>& qit__, double_complex* rho_pw__);
 
     /// Generate local part of pseudo potential.
     /** Total local potential is a lattice sum:
@@ -215,14 +212,18 @@ class Potential : public Field4D
      * We want to compute it's plane-wave expansion coefficients:
      * \f[
      *    V({\bf G}) = \frac{1}{V} \int e^{-i{\bf Gr}} V({\bf r}) d{\bf r} =
-     *      \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf Gr}}V_{\alpha}({\bf r} - {\bf T} - {\bf \tau}_{\alpha})d{\bf r}
+     *      \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf Gr}}V_{\alpha}({\bf r} - {\bf T} -
+     *      {\bf \tau}_{\alpha})d{\bf r}
      * \f]
-     * Standard change of variables: \f$ {\bf r}' = {\bf r} - {\bf T} - {\bf \tau}_{\alpha},\; {\bf r} = {\bf r}' + {\bf T} + {\bf \tau}_{\alpha} \f$
+     * Standard change of variables:
+     * \f$ {\bf r}' = {\bf r} - {\bf T} - {\bf \tau}_{\alpha},\; {\bf r} = {\bf r}' + {\bf T} + {\bf \tau}_{\alpha} \f$
      * leads to:
      * \f[
-     *    V({\bf G}) = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf T} + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} =
+     *    V({\bf G}) = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf T} +
+     *    {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} =
      *    \frac{N}{V} \sum_{\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} =
-     *    \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} } \int e^{-i{\bf G}{\bf r}}V_{\alpha}({\bf r})d{\bf r}
+     *    \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} } 
+     *    \int e^{-i{\bf G}{\bf r}}V_{\alpha}({\bf r})d{\bf r}
      * \f]
      * Using the well-known expansion of a plane wave in terms of spherical Bessel functions:
      * \f[
@@ -230,13 +231,14 @@ class Potential : public Field4D
      * \f]
      * and remembering that for \f$ \ell = 0 \f$ (potential is sphericla) \f$ j_{0}(x) = \sin(x) / x \f$ we have:
      * \f[
-     *   V_{\alpha}({\bf G}) =  \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00}  r^2 \sin(\theta) dr d \phi d\theta =
-     *     4\pi \int V_{\alpha}(r) \frac{\sin(Gr)}{Gr} r^2 dr
+     *   V_{\alpha}({\bf G}) =  \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00} 
+     *   r^2 \sin(\theta) dr d \phi d\theta =  4\pi \int V_{\alpha}(r) \frac{\sin(Gr)}{Gr} r^2 dr
      * \f]
      * The tricky part comes next: \f$ V_{\alpha}({\bf r}) \f$ is a long-range potential -- it decays slowly as
      * \f$ -Z_{\alpha}^{p}/r \f$ and the straightforward integration with sperical Bessel function is numerically
      * unstable. For \f$ {\bf G} = 0 \f$ an extra term \f$ Z_{\alpha}^p/r \f$, corresponding to the potential of
-     * pseudo-ion, is added to and removed from the local part of the atomic pseudopotential \f$ V_{\alpha}({\bf r}) \f$:
+     * pseudo-ion, is added to and removed from the local part of the atomic pseudopotential
+     * \f$ V_{\alpha}({\bf r}) \f$:
      * \f[
      *    V_{\alpha}({\bf G} = 0) = \int V_{\alpha}({\bf r})d{\bf r} \Rightarrow
      *       4\pi \int \Big( V_{\alpha}(r) + \frac{Z_{\alpha}^p}{r} \Big) r^2 dr -
@@ -262,7 +264,8 @@ class Potential : public Field4D
      * \f]
      * The final expression for the local potential radial integrals for \f$ G \ne 0 \f$ take the following form:
      * \f[
-     *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
+     *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - 
+     *   Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
      * \f]
      */
     void generate_local_potential()
@@ -304,8 +307,6 @@ class Potential : public Field4D
   public:
     /// Constructor
     Potential(Simulation_context& ctx__);
-
-    ~Potential();
 
     /// Recompute some variables that depend on atomic positions or the muffin-tin radius.
     void update();
@@ -710,8 +711,6 @@ class Potential : public Field4D
 
     /// Generate plane-wave coefficients of the potential in the interstitial region.
     void generate_pw_coefs();
-
-    void insert_xc_functionals(const std::vector<std::string>& labels__);
 
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:
