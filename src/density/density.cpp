@@ -630,10 +630,9 @@ void Density::add_k_point_contribution_rg(K_point<T>* kp__)
             if (!kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().global_index_size()) {
                 continue;
             }
-            int ncols =kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size();
-            for (int ii = 0; ii < ncols; ii++) {
+            int ncols = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size();
+            for (int i = 0; i < ncols; i++) {
                 /* global index of the band */
-                int i = ncols-1-ii;
                 int j    = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col()[i];
                 double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
