@@ -32,7 +32,7 @@ void Atom_type::init(int offset_lo__)
 
     /* check if the class instance was already initialized */
     if (initialized_) {
-        TERMINATE("can't initialize twice");
+        RTE_THROW("can't initialize twice");
     }
 
     offset_lo_ = offset_lo__;
@@ -42,7 +42,7 @@ void Atom_type::init(int offset_lo__)
 
     /* check the nuclear charge */
     if (zn_ == 0) {
-        TERMINATE("zero atom charge");
+        RTE_THROW("zero atom charge");
     }
 
     if (parameters_.full_potential()) {
@@ -75,7 +75,7 @@ void Atom_type::init(int offset_lo__)
         }
 
         if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) {
-            TERMINATE("wrong size of augmented wave descriptors");
+            RTE_THROW("wrong size of augmented wave descriptors");
         }
 
         max_aw_order_ = 0;
@@ -84,7 +84,7 @@ void Atom_type::init(int offset_lo__)
         }
 
         if (max_aw_order_ > 3) {
-            TERMINATE("maximum aw order > 3");
+            RTE_THROW("maximum aw order > 3");
         }
     }
 
@@ -175,10 +175,10 @@ void Atom_type::init(int offset_lo__)
 
     if (is_paw()) {
         if (num_beta_radial_functions() != num_ps_paw_wf()) {
-            TERMINATE("wrong number of pseudo wave-functions for PAW");
+            RTE_THROW("wrong number of pseudo wave-functions for PAW");
         }
         if (num_beta_radial_functions() != num_ae_paw_wf()) {
-            TERMINATE("wrong number of all-electron wave-functions for PAW");
+            RTE_THROW("wrong number of all-electron wave-functions for PAW");
         }
         ae_paw_wfs_array_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
         ae_paw_wfs_array_.zero();
@@ -191,17 +191,20 @@ void Atom_type::init(int offset_lo__)
         }
     }
 
+    if (free_atom_radial_grid_.num_points() == 0) {
+        free_atom_radial_grid_ = Radial_grid_factory<double>(radial_grid_t::power, 3000, radial_grid_.first(), 10.0, 2);
+        free_atom_density_.resize(free_atom_radial_grid_.num_points());
+        for (int i = 0; i < free_atom_radial_grid_.num_points(); i++) {
+            auto x = free_atom_radial_grid_.x(i);
+            free_atom_density_[i] = std::exp(-x) * zn_ / 8 / pi;
+        }
+    }
     initialized_ = true;
 }
 
 void Atom_type::init_free_atom_density(bool smooth)
 {
-    if (free_atom_density_.size() == 0) {
-        TERMINATE("free atom density is not set");
-    }
-
-    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
-
+    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_);
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
@@ -216,9 +219,6 @@ void Atom_type::init_free_atom_density(bool smooth)
             free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
 
-        /* interpolate new smooth density */
-        free_atom_density_spline_.interpolate();
-
         ///* write smoothed density */
         //sstr.str("");
         //sstr << "free_density_modified_" << id_ << ".dat";
@@ -228,7 +228,12 @@ void Atom_type::init_free_atom_density(bool smooth)
         //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));
         //}
         //fclose(fout);
+    } else {
+        for (int i = 0; i < free_atom_radial_grid_.num_points(); i++) {
+            free_atom_density_spline_(i) = free_atom_density_[i];
+        }
     }
+    free_atom_density_spline_.interpolate();
 }
 
 void Atom_type::print_info() const

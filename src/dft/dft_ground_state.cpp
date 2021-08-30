@@ -194,7 +194,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         std::stringstream s;
         s << std::endl;
         s << "+------------------------------+" << std::endl
-          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter << std::endl
+          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter << '|' << std::endl
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 

@@ -138,7 +138,7 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     paw_total_core_energy_    = energies[3];
 }
 
-double xc_mt_paw(std::vector<XC_functional*> xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
+double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
     Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
     std::vector<Flm>& vxc__)
 {

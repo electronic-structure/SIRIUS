@@ -32,12 +32,12 @@
 
 namespace sirius {
 
-void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
                        Flm const& rho_lm__, Ftp& rho_tp__, Flm& vxc_lm__, Flm& exc_lm__)
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
-        if (ixc->is_gga() || ixc->is_vdw()) {
+        if (ixc.is_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
@@ -79,15 +79,15 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
 
     for (auto& ixc: xc_func__) {
         /* if this is an LDA functional */
-        if (ixc->is_lda()) {
-            ixc->get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
+        if (ixc.is_lda()) {
+            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
                 vxc_tp.at(memory_t::host), exc_tp.at(memory_t::host));
         }
         /* if this is a GGA functional */
-        if (ixc->is_gga()) {
+        if (ixc.is_gga()) {
 
             /* compute vrho and vsigma */
-            ixc->get_gga(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
+            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
                 grad_rho_grad_rho_tp.at(memory_t::host), vxc_tp.at(memory_t::host), vsigma_tp.at(memory_t::host),
                 exc_tp.at(memory_t::host));
 
@@ -124,12 +124,12 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
 }
 
 void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag_dims__,
-                    std::vector<XC_functional*> xc_func__, std::vector<Ftp> const& rho_tp__,
+                    std::vector<XC_functional> const& xc_func__, std::vector<Ftp> const& rho_tp__,
                     std::vector<Flm*> vxc__, Flm& exc__)
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
-        if (ixc->is_gga() || ixc->is_vdw()) {
+        if (ixc.is_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
@@ -204,14 +204,14 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     }
 
     for (auto& ixc: xc_func__) {
-        if (ixc->is_lda()) {
-            ixc->get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
+        if (ixc.is_lda()) {
+            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
                 rho_dn_tp.at(memory_t::host), vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host),
                 exc_tp.at(memory_t::host));
         }
-        if (ixc->is_gga()) {
+        if (ixc.is_gga()) {
             /* get the vrho and vsigma */
-            ixc->get_gga(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
+            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
                     rho_dn_tp.at(memory_t::host), grad_rho_up_grad_rho_up_tp.at(memory_t::host),
                     grad_rho_up_grad_rho_dn_tp.at(memory_t::host), grad_rho_dn_grad_rho_dn_tp.at(memory_t::host),
                     vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host), vsigma_uu_tp.at(memory_t::host),
@@ -287,7 +287,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     } // ixc
 }
 
-void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
         int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__)
 {
     /* zero the fields */
