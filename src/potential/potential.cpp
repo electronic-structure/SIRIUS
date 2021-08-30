@@ -225,15 +225,6 @@ bool Potential::is_gradient_correction() const
     return is_gga;
 }
 
-//void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
-//{
-//    /* create list of XC functionals */
-//    for (auto& xc_label : labels__) {
-//        xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label,
-//                    ctx_.num_spins()));
-//    }
-//}
-
 void Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
 {
     PROFILE("sirius::Potential::generate");
