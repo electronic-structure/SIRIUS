@@ -37,7 +37,10 @@
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
 
-template <typename T> void sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__, const int* length__)
+template <typename T>
+void
+sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__,
+        const T* default_values__, const int* length__)
 {
   auto& sim_ctx = get_sim_ctx(handler__);
 
@@ -67,7 +70,9 @@ template <typename T> void sirius_option_set_value__(void* const* handler__, con
   }
 }
 
-template <typename T> void sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
+template <typename T>
+void
+sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
 {
   auto section = std::string(section__);
   std::transform(section.begin(), section.end(), section.begin(), ::tolower);
