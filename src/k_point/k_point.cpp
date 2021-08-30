@@ -29,14 +29,15 @@
 
 namespace sirius {
 
+template <typename T>
 void
-K_point::initialize()
+K_point<T>::initialize()
 {
     PROFILE("sirius::K_point::initialize");
 
     zil_.resize(ctx_.lmax_apw() + 1);
     for (int l = 0; l <= ctx_.lmax_apw(); l++) {
-        zil_[l] = std::pow(double_complex(0, 1), l);
+        zil_[l] = std::pow(std::complex<T>(0, 1), l);
     }
 
     l_by_lm_ = utils::l_by_lm(ctx_.lmax_apw());
@@ -85,12 +86,12 @@ K_point::initialize()
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
                  */
                 for (int is = 0; is < ctx_.num_spinors(); is++) {
-                    sv_eigen_vectors_[is] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
+                    sv_eigen_vectors_[is] = dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
                 }
             }
             /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions<double>>(
-                new Wave_functions<double>(gkvec_partition(), unit_cell_.num_atoms(),
+            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions<T>>(
+                new Wave_functions<T>(gkvec_partition(), unit_cell_.num_atoms(),
                                    [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); },
                                    ctx_.num_fv_states(), ctx_.preferred_memory_t()));
 
@@ -114,10 +115,10 @@ K_point::initialize()
             if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
                 if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
-                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
+                    fv_eigen_vectors_ = dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
                                                                 ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 } else{
-                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(),
+                    fv_eigen_vectors_ = dmatrix<std::complex<T>>(gklo_basis_size(), ctx_.num_fv_states(),
                                                                 ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 }
             } else {
@@ -126,8 +127,8 @@ K_point::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<Wave_functions<double>>(
-                    new Wave_functions<double>(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
+                singular_components_ = std::unique_ptr<Wave_functions<T>>(
+                    new Wave_functions<T>(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
                 singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -149,12 +150,12 @@ K_point::initialize()
                 }
             }
 
-            fv_states_ = std::unique_ptr<Wave_functions<double>>(
-                new Wave_functions<double>(gkvec_partition(), unit_cell_.num_atoms(),
+            fv_states_ = std::unique_ptr<Wave_functions<T>>(
+                new Wave_functions<T>(gkvec_partition(), unit_cell_.num_atoms(),
                                    [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
                                    ctx_.preferred_memory_t()));
 
-            spinor_wave_functions_ = std::make_shared<Wave_functions<double>>(
+            spinor_wave_functions_ = std::make_shared<Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
                 [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
                 ctx_.num_spins());
@@ -163,21 +164,21 @@ K_point::initialize()
         }
     } else {
         spinor_wave_functions_ =
-            std::make_shared<Wave_functions<double>>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
+            std::make_shared<Wave_functions<T>>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
             auto r = unit_cell_.num_hubbard_wf();
-            wave_functions_S_hub_ = std::unique_ptr<Wave_functions<double>>(
-                   new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            wave_functions_S_hub_ = std::unique_ptr<Wave_functions<T>>(
+                   new Wave_functions<T>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            wave_functions_hub_ = std::unique_ptr<Wave_functions<double>>(
-              new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            wave_functions_hub_ = std::unique_ptr<Wave_functions<T>>(
+              new Wave_functions<T>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                                  ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions<double>>(
-                   new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions<T>>(
+                   new Wave_functions<T>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_S_hub_ = std::unique_ptr<Wave_functions<double>>(
-                new Wave_functions<double>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+            atomic_wave_functions_S_hub_ = std::unique_ptr<Wave_functions<T>>(
+                new Wave_functions<T>(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                                    ctx_.preferred_memory_t(), ctx_.num_spins()));
         }
     }
@@ -185,8 +186,9 @@ K_point::initialize()
     update();
 }
 
+template <typename T>
 void
-K_point::generate_hubbard_orbitals()
+K_point<T>::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
@@ -241,7 +243,7 @@ K_point::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_)) : nullptr;
 
     auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
     phi.prepare(sr, true);
@@ -257,7 +259,7 @@ K_point::generate_hubbard_orbitals()
          * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
-        sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
+        sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
             beta_projectors(), phi, q_op.get(), s_phi);
     }
 
@@ -275,7 +277,7 @@ K_point::generate_hubbard_orbitals()
        * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
       auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
-      sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
+      sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
                                                beta_projectors(), *wave_functions_hub_, q_op.get(),
                                                *wave_functions_S_hub_);
     }
@@ -295,9 +297,10 @@ K_point::generate_hubbard_orbitals()
     }
 }
 
+template <typename T>
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_functions<double>& sphi__,
-                                        Wave_functions<double>& phi_hub__, Wave_functions<double>& sphi_hub__)
+K_point<T>::orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
+                                           Wave_functions<T>& phi_hub__, Wave_functions<T>& sphi_hub__)
 {
     int nwfu = phi__.num_wf();
 
@@ -314,7 +317,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
     }
 
 
-    dmatrix<double_complex> S(nwfu, nwfu);
+    dmatrix<std::complex<T>> S(nwfu, nwfu);
     if (ctx_.processing_unit() == device_t::GPU) {
         S.allocate(memory_t::device);
     }
@@ -324,7 +327,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
         auto sr = spin_range(ctx_.num_mag_dims() == 3 ? 2 : istep);
 
         /* compute inner product between full spinors or between indpendent components */
-        inner<double_complex>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S, 0, 0);
+        inner<std::complex<T>>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well
         // if (ctx_.processing_unit() == device_t::GPU) {
@@ -334,11 +337,11 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
 
         /* create transformation matrix */
         if (ctx_.cfg().hubbard().orthogonalize()) {
-            dmatrix<double_complex> Z(nwfu, nwfu);
+            dmatrix<std::complex<T>> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory("lapack", nullptr);
 
-            std::vector<double> eigenvalues(nwfu, 0.0);
+            std::vector<T> eigenvalues(nwfu, 0.0);
 
             ev_solver->solve(nwfu, S, eigenvalues.data(), Z);
 
@@ -373,11 +376,12 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions<double>& phi__, Wave_func
         }
 
         /* transform on the wave functions */
-        transform<double_complex>(ctx_.spla_context(), sr(), phi__, 0, nwfu, S, 0, 0, phi_hub__, 0, nwfu);
+        transform<std::complex<T>>(ctx_.spla_context(), sr(), phi__, 0, nwfu, S, 0, 0, phi_hub__, 0, nwfu);
     }
 }
 
-void K_point::generate_gkvec(double gk_cutoff__)
+template <typename T>
+void K_point<T>::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
@@ -398,12 +402,7 @@ void K_point::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
-     * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-    gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(),
-                                            ctx_.gamma_point()));
-
-    gkvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gkvec_, ctx_.comm_fft_coarse(),
+    gkvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(this->gkvec(), ctx_.comm_fft_coarse(),
                                                                           ctx_.comm_band_ortho_fft_coarse()));
 
     gkvec_offset_ = gkvec().gvec_offset(comm().rank());
@@ -412,13 +411,14 @@ void K_point::generate_gkvec(double gk_cutoff__)
     const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto gv = gkvec_partition_->get_gvec();
     /* create transformation */
-    spfft_transform_.reset(new spfft::Transform(ctx_.spfft_grid_coarse().create_transform(
+    spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
-        ctx_.spfft_coarse().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host))));
 }
 
-void K_point::update()
+template <typename T>
+void K_point<T>::update()
 {
     PROFILE("sirius::K_point::update");
 
@@ -437,11 +437,11 @@ void K_point::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_loc_));
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
+            beta_projectors_row_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_row_));
+            beta_projectors_col_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_col_));
 
         }
 
@@ -495,13 +495,14 @@ void K_point::update()
 
 }
 
-void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
+template <typename T>
+void K_point<T>::get_fv_eigen_vectors(mdarray<std::complex<T>, 2> &fv_evec__) const
 {
     assert((int) fv_evec__.size(0) >= gklo_basis_size());
     assert((int) fv_evec__.size(1) == ctx_.num_fv_states());
     assert(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
 
-    mdarray<double_complex, 1> tmp(gklo_basis_size_row());
+    mdarray<std::complex<T>, 1> tmp(gklo_basis_size_row());
 
     fv_evec__.zero();
 
@@ -735,7 +736,8 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
 //==     }
 //== }
 
-void K_point::test_spinor_wave_functions(int use_fft)
+template <typename T>
+void K_point<T>::test_spinor_wave_functions(int use_fft)
 {
         STOP();
 
@@ -876,7 +878,8 @@ void K_point::test_spinor_wave_functions(int use_fft)
   /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/mt
   \endverbatim
 */
-void K_point::save(std::string const& name__, int id__) const
+template <typename T>
+void K_point<T>::save(std::string const& name__, int id__) const
 {
     /* rank 0 creates placeholders in the HDF5 file */
     if (comm().rank() == 0) {
@@ -916,7 +919,7 @@ void K_point::save(std::string const& name__, int id__) const
     comm().barrier();
     int gkvec_count = gkvec().count();
     int gkvec_offset = gkvec().offset();
-    std::vector<double_complex> wf_tmp(num_gkvec());
+    std::vector<std::complex<T>> wf_tmp(num_gkvec());
 
     std::unique_ptr<HDF5_tree> fout;
     /* rank 0 opens a file */
@@ -937,7 +940,8 @@ void K_point::save(std::string const& name__, int id__) const
     }
 }
 
-void K_point::load(HDF5_tree h5in, int id)
+template <typename T>
+void K_point<T>::load(HDF5_tree h5in, int id)
 {
     STOP();
     //== band_energies_.resize(ctx_.num_bands());
@@ -1008,10 +1012,11 @@ void K_point::load(HDF5_tree h5in, int id)
 //==     }
 //== }
 
+template <typename T>
 void
-K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<double>& wf__)
+K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
+                                           std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
+                                           Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
@@ -1033,19 +1038,19 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
     }
 
     /* allocate memory to store wave-functions for atom types */
-    std::vector<sddk::mdarray<double_complex, 2>> wf_t(unit_cell_.num_atom_types());
+    std::vector<sddk::mdarray<std::complex<T>, 2>> wf_t(unit_cell_.num_atom_types());
     for (int ia: atoms__) {
         int iat = unit_cell_.atom(ia).type_id();
         if (wf_t[iat].size() == 0) {
-            wf_t[iat] = sddk::mdarray<double_complex, 2>(this->num_gkvec_loc(), indexb__(iat)->size(),
-                                                         ctx_.mem_pool(memory_t::host));
+            wf_t[iat] = sddk::mdarray<std::complex<T>, 2>(this->num_gkvec_loc(), indexb__(iat)->size(),
+                                                          ctx_.mem_pool(memory_t::host));
         }
     }
 
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = geometry3d::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
+        auto vs = geometry3d::spherical_coordinates(this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
@@ -1071,27 +1076,27 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
                 /* index of the radial function */
                 int idxrf = indexb.idxrf(xi);
 
-                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                wf_t[iat](igk_loc, xi) = z * rlm[lm] * ri_values[iat](idxrf);
+                wf_t[iat](igk_loc, xi) = static_cast<std::complex<T>>(z * rlm[lm] * ri_values[iat](idxrf));
             }
         }
     }
 
     for (int ia: atoms__) {
 
-        double phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
-        double_complex phase_k = std::exp(double_complex(0.0, phase));
+        T phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
+        std::complex<T> phase_k = std::exp(std::complex<T>(0.0, phase));
 
         /* quickly compute phase factors without calling exp() function */
-        std::vector<double_complex> phase_gk(num_gkvec_loc());
+        std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for schedule(static)
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
             /* global index of G+k-vector */
             int igk = this->idxgk(igk_loc);
             auto G = gkvec().gvec(igk);
             /* total phase e^{-i(G+k)r_{\alpha}} */
-            phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+            phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
 
         int iat = unit_cell_.atom(ia).type_id();
@@ -1105,16 +1110,17 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
     }
 }
 
+template <typename T>
 void
-K_point::compute_gradient_wave_functions(Wave_functions<double>& phi, const int starting_position_i, const int num_wf,
-                                         Wave_functions<double>& dphi, const int starting_position_j, const int direction)
+K_point<T>::compute_gradient_wave_functions(Wave_functions<T>& phi, const int starting_position_i, const int num_wf,
+                                            Wave_functions<T>& dphi, const int starting_position_j, const int direction)
 {
-    std::vector<double_complex> qalpha(this->num_gkvec_loc());
+    std::vector<std::complex<T>> qalpha(this->num_gkvec_loc());
 
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-        auto G = this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc);
+        auto G = this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc);
 
-        qalpha[igk_loc] = double_complex(0.0, -G[direction]);
+        qalpha[igk_loc] = std::complex<T>(0.0, -G[direction]);
     }
 
     #pragma omp parallel for schedule(static)
@@ -1128,4 +1134,8 @@ K_point::compute_gradient_wave_functions(Wave_functions<double>& phi, const int 
     }
 }
 
+template class K_point<double>;
+#ifdef USE_FP32
+template class K_point<float>;
+#endif
 }

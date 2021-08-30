@@ -73,7 +73,7 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
             }
         }
 
-        if (std::abs(hub_wf.Hubbard_J0() > 1e-8) || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
+        if (std::abs(hub_wf.Hubbard_J0()) > 1e-8 || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
             for (int is = 0; is < ctx__.num_spins(); is++) {
 
                 // s = 0 -> s_opposite = 1
@@ -187,7 +187,7 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                 }
             }
         }
-        if (std::abs(hub_wf.Hubbard_J0() > 1e-8) || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
+        if (std::abs(hub_wf.Hubbard_J0()) > 1e-8 || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
             for (int is = 0; is < ctx__.num_spins(); is++) {
                 // s = 0 -> s_opposite = 1
                 // s= 1 -> s_opposite = 0

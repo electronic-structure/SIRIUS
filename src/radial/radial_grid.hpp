@@ -26,6 +26,7 @@
 #define __RADIAL_GRID_HPP__
 
 #include "memory.hpp"
+#include "SDDK/type_definition.hpp"
 
 namespace sirius {
 
@@ -196,9 +197,9 @@ class Radial_grid
         return r;
     }
 
-    std::vector<double> values() const
+    std::vector<real_type<T>> values() const
     {
-        std::vector<double> v(num_points());
+        std::vector<real_type<T>> v(num_points());
         for (int i = 0; i < num_points(); i++) {
             v[i] = x_[i];
         }

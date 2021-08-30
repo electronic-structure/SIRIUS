@@ -39,7 +39,7 @@ void Stress::calc_stress_nonloc_aux()
 {
     PROFILE("sirius::Stress|nonloc");
 
-    mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms());
+    mdarray<real_type<T>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
     collect_result.zero();
 
     stress_nonloc_.zero();
@@ -53,7 +53,7 @@ void Stress::calc_stress_nonloc_aux()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<real_type<T>>(ik);
         if (is_device_memory(ctx_.preferred_memory_t())) {
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -62,7 +62,7 @@ void Stress::calc_stress_nonloc_aux()
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }
-        Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
+        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
         Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
@@ -145,12 +145,12 @@ matrix3d<double> Stress::calc_stress_hubbard()
                                   potential_.U().max_number_of_orbitals_per_atom(),
                                   2, ctx_.unit_cell().num_atoms(), 9);
 
-    Q_operator q_op(ctx_);
+    Q_operator<double> q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();
         int ik = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
 
         kp->beta_projectors().prepare();
 
@@ -272,7 +272,7 @@ matrix3d<double> Stress::calc_stress_xc()
            derivative of sigm (which is grad(rho) * grad(rho)) */
 
         if (ctx_.num_spins() == 1) {
-            Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
+            Smooth_periodic_function<double> rhovc(ctx_.spfft<double>(), ctx_.gvec_partition());
             rhovc.zero();
             rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());
@@ -288,7 +288,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho[x].fft_transform(1);
             }
 
-            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+            for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) += 2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) *
@@ -315,7 +315,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho_dn[x].fft_transform(1);
             }
 
-            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+            for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
@@ -329,7 +329,7 @@ matrix3d<double> Stress::calc_stress_xc()
                 }
             }
         }
-        Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
+        Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
         t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
@@ -633,7 +633,7 @@ matrix3d<double> Stress::calc_stress_kin()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
 
         double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
         fact *=  kp->weight();
@@ -744,10 +744,22 @@ matrix3d<double> Stress::calc_stress_vloc()
 
 matrix3d<double> Stress::calc_stress_nonloc()
 {
-    if (ctx_.gamma_point()) {
-        calc_stress_nonloc_aux<double>();
+    if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc_aux<float>();
+        } else {
+            calc_stress_nonloc_aux<std::complex<float>>();
+        }
+#else
+        RTE_THROW("Not compiled with FP32 support");
+#endif
     } else {
-        calc_stress_nonloc_aux<double_complex>();
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc_aux<double>();
+        } else {
+            calc_stress_nonloc_aux<std::complex<double>>();
+        }
     }
 
     return stress_nonloc_;

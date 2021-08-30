@@ -33,8 +33,18 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
-        Hamiltonian0 H0(potential_);
-        Band(ctx_).initialize_subspace(kset_, H0);
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+#ifdef USE_FP32
+            Hamiltonian0<float> H0(potential_);
+            Band(ctx_).initialize_subspace(kset_, H0);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+
+        } else {
+            Hamiltonian0<double> H0(potential_);
+            Band(ctx_).initialize_subspace(kset_, H0);
+        }
     }
 }
 
@@ -58,7 +68,7 @@ double DFT_ground_state::energy_kin_sum_pw() const
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
+        auto kp = kset_.get<double>(ik);
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
@@ -133,7 +143,7 @@ json DFT_ground_state::check_scf_density()
     /* generate potential from existing density */
     pot.generate(density_, ctx_.use_symmetry(), true);
     /* create new Hamiltonian */
-    Hamiltonian0 H0(pot);
+    Hamiltonian0<double> H0(pot);
     /* set the high tolerance */
     ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
@@ -141,9 +151,9 @@ json DFT_ground_state::check_scf_density()
     /* find new wave-functions */
     Band(ctx_).solve(kset_, H0, true);
     /* find band occupancies */
-    kset_.find_band_occupancies();
+    kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    density_.generate(kset_, true, true, false);
+    density_.generate<double>(kset_, true, true, false);
     double rms{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
@@ -198,13 +208,27 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        Hamiltonian0 H0(potential_);
-        /* find new wave-functions */
-        Band(ctx_).solve(kset_, H0, true);
-        /* find band occupancies */
-        kset_.find_band_occupancies();
-        /* generate new density from the occupied wave-functions */
-        density_.generate(kset_, ctx_.use_symmetry(), true, true);
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+#if defined(USE_FP32)
+            Hamiltonian0<float> H0(potential_);
+            /* find new wave-functions */
+            Band(ctx_).solve(kset_, H0, true);
+            /* find band occupancies */
+            kset_.find_band_occupancies<float>();
+            /* generate new density from the occupied wave-functions */
+            density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+        } else {
+            Hamiltonian0<double> H0(potential_);
+            /* find new wave-functions */
+            Band(ctx_).solve(kset_, H0, true);
+            /* find band occupancies */
+            kset_.find_band_occupancies<double>();
+            /* generate new density from the occupied wave-functions */
+            density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
+        }
 
         double e1 = energy_potential(density_, potential_);
         copy(density_, rho1);

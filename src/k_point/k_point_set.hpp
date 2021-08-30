@@ -44,7 +44,15 @@ class K_point_set
     Simulation_context& ctx_;
 
     /// List of k-points.
-    std::vector<std::unique_ptr<K_point>> kpoints_;
+    std::vector<std::unique_ptr<K_point<double>>> kpoints_;
+
+#ifdef USE_FP32
+    /// List of k-points in fp32 type, most calculation and assertion in this class only rely on fp64 type kpoints_
+    std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
+
+    /// bool variable to store last access of kpoints using fp32 or fp64 type
+    //mutable bool access_fp64{true};
+#endif
 
     /// Split index of k-points.
     splindex<splindex_t::chunk> spl_num_kpoints_;
@@ -63,6 +71,13 @@ class K_point_set
 
     bool initialized_{false};
 
+    /// Return sum of valence eigen-values store in Kpoint<T>.
+    template <typename T>
+    double valence_eval_sum() const;
+
+    /// Return entropy contribution from smearing store in Kpoint<T>.
+    template <typename T>
+    double entropy_sum() const;
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
@@ -97,10 +112,11 @@ class K_point_set
     void initialize(std::vector<int> const& counts = {});
 
     /// Sync band energies or occupancies between all MPI ranks.
-    template <sync_band_t what>
+    template <typename T, sync_band_t what>
     void sync_band();
 
     /// Find Fermi energy and band occupation numbers.
+    template <typename T>
     void find_band_occupancies();
 
     /// Print basic info to the standard output.
@@ -124,18 +140,15 @@ class K_point_set
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             kpoints_[ik]->update();
+#if defined(USE_FP32)
+            kpoints_float_[ik]->update();
+#endif
         }
     }
 
     /// Get a list of band energies for a given k-point index.
-    std::vector<double> get_band_energies(int ik__, int ispn__) const
-    {
-        std::vector<double> bnd_e(ctx_.num_bands());
-        for (int j = 0; j < ctx_.num_bands(); j++) {
-            bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
-        }
-        return bnd_e;
-    }
+    template <typename T>
+    std::vector<double> get_band_energies(int ik__, int ispn__) const;
 
     /// Return maximum number of G+k vectors among all k-points.
     int max_num_gkvec() const
@@ -153,7 +166,10 @@ class K_point_set
     void add_kpoint(double const* vk__, double weight__)
     {
         int id = static_cast<int>(kpoints_.size());
-        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__, id)));
+        kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__, id)));
+#ifdef USE_FP32
+        kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, weight__, id)));
+#endif
     }
 
     /// Add multiple k-points to the set.
@@ -164,17 +180,13 @@ class K_point_set
         }
     }
 
-    inline K_point* operator[](int i)
-    {
-        assert(i >= 0 && i < (int)kpoints_.size());
-        return kpoints_[i].get();
-    }
+    template <typename T>
+    inline K_point<T>* get(int ik__) const;
 
-    inline K_point* operator[](int i) const
+    template <typename T>
+    inline K_point<T>* get(int ik__)
     {
-        assert(i >= 0 && i < (int)kpoints_.size());
-
-        return kpoints_[i].get();
+        return const_cast<K_point<T>*>(static_cast<K_point_set const&>(*this).get<T>(ik__));
     }
 
     /// Return total number of k-points.
@@ -246,6 +258,10 @@ class K_point_set
         if (jrank == my_rank) {
             auto kp = kpoints_[jk__].get();
             kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+#if defined(USE_FP32)
+            auto kp_float = kpoints_float_[jk__].get();
+            kp_float->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+#endif
         }
         /* this rank receives the k-point */
         if (rank__ == my_rank) {
@@ -255,6 +271,34 @@ class K_point_set
     }
 };
 
+template<>
+inline K_point<double>* K_point_set::get<double>(int ik__) const
+{
+    assert(ik__ >= 0 && ik__ < (int)kpoints_.size());
+    return kpoints_[ik__].get();
+}
+
+template<>
+inline K_point<float>* K_point_set::get<float>(int ik__) const
+{
+#if defined(USE_FP32)
+    assert(ik__ >= 0 && ik__ < (int)kpoints_float_.size());
+    return kpoints_float_[ik__].get();
+#else
+    RTE_THROW("not compiled with FP32 support");
+    return nullptr; // make compiler happy
+#endif
+}
+
+template <typename T>
+std::vector<double> K_point_set::get_band_energies(int ik__, int ispn__) const
+{
+    std::vector<double> bnd_e(ctx_.num_bands());
+    for (int j = 0; j < ctx_.num_bands(); j++) {
+        bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
+    }
+    return bnd_e;
+}
 
 }; // namespace sirius
 

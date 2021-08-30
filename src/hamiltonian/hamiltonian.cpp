@@ -31,37 +31,39 @@ namespace sirius {
 // TODO: radial integrals for the potential should be computed here; the problem is that they also can be set
 //       externally by the host code
 
-Hamiltonian0::Hamiltonian0(Potential& potential__)
+template <typename T>
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
 {
     PROFILE("sirius::Hamiltonian0");
 
-    local_op_ = std::unique_ptr<Local_operator>(
-        new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition(), &potential__));
+    local_op_ = std::unique_ptr<Local_operator<T>>(
+        new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_partition(), &potential__));
 
     if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
-        q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
+        q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
     }
 }
 
-Hamiltonian0::~Hamiltonian0()
+template <typename T>
+Hamiltonian0<T>::~Hamiltonian0()
 {
 }
 
-template <spin_block_t sblock>
+template <typename T> template <spin_block_t sblock>
 void
-Hamiltonian0::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<double_complex, 2>& alm__,
-                               sddk::mdarray<double_complex, 2>& halm__) const
+Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<std::complex<T>, 2>& alm__,
+                               sddk::mdarray<std::complex<T>, 2>& halm__) const
 {
     auto& type = atom__.type();
 
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
     // available
     // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
     /* compute the muffin-tin Hamiltonian */
     for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
         int lm2    = type.indexb(j2).lm;
@@ -73,19 +75,20 @@ Hamiltonian0::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<doub
                                                                  potential().gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
-    linalg(linalg_t::blas).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
-                                 &linalg_const<double_complex>::one(), alm__.at(memory_t::host), alm__.ld(),
-                                 hmt.at(memory_t::host), hmt.ld(), &linalg_const<double_complex>::zero(),
-                                 halm__.at(memory_t::host), halm__.ld());
+    linalg(linalg_t::blas)
+        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &linalg_const<std::complex<T>>::one(),
+              alm__.at(memory_t::host), alm__.ld(), hmt.at(memory_t::host), hmt.ld(),
+              &linalg_const<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
 }
 
+template <typename T>
 void
-Hamiltonian0::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdarray<double_complex, 2>& alm__) const
+Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdarray<std::complex<T>, 2>& alm__) const
 {
     // TODO: optimize for the loop layout using blocks of G-vectors
     auto& type = atom__.type();
-    std::vector<double_complex> alm(type.mt_aw_basis_size());
-    std::vector<double_complex> oalm(type.mt_aw_basis_size());
+    std::vector<std::complex<T>> alm(type.mt_aw_basis_size());
+    std::vector<std::complex<T>> oalm(type.mt_aw_basis_size());
     for (int ig = 0; ig < num_gkvec__; ig++) {
         for (int j = 0; j < type.mt_aw_basis_size(); j++) {
             alm[j] = oalm[j] = alm__(ig, j);
@@ -97,7 +100,7 @@ Hamiltonian0::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdarray
             for (int order = 0; order < type.aw_order(l); order++) {
                 int j1     = type.indexb().index_by_lm_order(lm, order);
                 int idxrf1 = type.indexr().index_by_l_order(l, order);
-                oalm[j] += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1) * alm[j1];
+                oalm[j] += static_cast<const T>(atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1)) * alm[j1];
             }
         }
         for (int j = 0; j < type.mt_aw_basis_size(); j++) {
@@ -106,10 +109,11 @@ Hamiltonian0::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdarray
     }
 }
 
+template <typename T>
 void
-Hamiltonian0::apply_bmt(sddk::Wave_functions<double>& psi__, std::vector<sddk::Wave_functions<double>>& bpsi__) const
+Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__) const
 {
-    mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
+    mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
         int ia            = psi__.spl_num_atoms()[ialoc];
@@ -119,8 +123,8 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions<double>& psi__, std::vector<sddk::W
 
         zm.zero();
 
-        /* only upper triangular part of zm is computed because it is a hermitian matrix */
-        #pragma omp parallel for default(shared)
+/* only upper triangular part of zm is computed because it is a hermitian matrix */
+#pragma omp parallel for default(shared)
         for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
             int lm2    = atom.type().indexb(xi2).lm;
             int idxrf2 = atom.type().indexb(xi2).idxrf;
@@ -135,42 +139,39 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions<double>& psi__, std::vector<sddk::W
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        linalg(linalg_t::blas).hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(),
-                                     &linalg_const<double_complex>::one(),
-                                     zm.at(memory_t::host), zm.ld(),
-                                     psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-                                     psi__.mt_coeffs(0).prime().ld(),
-                                     &linalg_const<double_complex>::zero(),
-                                     bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-                                     bpsi__[0].mt_coeffs(0).prime().ld());
+        linalg(linalg_t::blas).hemm(
+            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &linalg_const<std::complex<T>>::one(),
+            zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
+            psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
+            bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
             /* reuse first (z) component of zm matrix to store (B_x - iB_y) */
             for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - double_complex(0, 1) * zm(xi1, xi2, 2);
+                    zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - std::complex<T>(0, 1) * zm(xi1, xi2, 2);
                 }
 
                 /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed
                  * only the upper triangular part */
                 for (int xi1 = xi2 + 1; xi1 < mt_basis_size; xi1++) {
-                    zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - double_complex(0, 1) * std::conj(zm(xi2, xi1, 2));
+                    zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - std::complex<T>(0, 1) * std::conj(zm(xi2, xi1, 2));
                 }
             }
 
-            linalg(linalg_t::blas).gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
-                &linalg_const<double_complex>::one(),
-                zm.at(memory_t::host), zm.ld(),
-                psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),
-                &linalg_const<double_complex>::zero(),
-                bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
+            linalg(linalg_t::blas).gemm(
+               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &linalg_const<std::complex<T>>::one(),
+               zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
+               psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
+               bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
         }
     }
 }
 
+template <typename T>
 void
-Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vector<sddk::Wave_functions<double>>& hpsi__) const
+Hamiltonian0<T>::apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian0::apply_so_correction");
 
@@ -185,7 +186,7 @@ Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vect
 
             for (int order1 = 0; order1 < nrf; order1++) {
                 for (int order2 = 0; order2 < nrf; order2++) {
-                    double sori = atom.symmetry_class().so_radial_integral(l, order1, order2);
+                    T sori = atom.symmetry_class().so_radial_integral(l, order1, order2);
 
                     for (int m = -l; m <= l; m++) {
                         int idx1 = atom.type().indexb_by_l_m_order(l, m, order1);
@@ -194,7 +195,7 @@ Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vect
                         // int idx4 = (m - l != 0) ? atom.type().indexb_by_l_m_order(l, m + 1, order2) : 0;
 
                         for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
-                            double_complex z1 = psi__.mt_coeffs(0).prime(offset + idx2, ist) * double(m) * sori;
+                            std::complex<T> z1 = psi__.mt_coeffs(0).prime(offset + idx2, ist) * T(m) * sori;
                             /* u-u part */
                             hpsi__[0].mt_coeffs(0).prime(offset + idx1, ist) += z1;
                             /* d-d part */
@@ -203,7 +204,7 @@ Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vect
                             if (m + l) {
                                 hpsi__[2].mt_coeffs(0).prime(offset + idx1, ist) +=
                                     psi__.mt_coeffs(0).prime(offset + idx3, ist) * sori *
-                                    std::sqrt(double(l * (l + 1) - m * (m - 1)));
+                                    std::sqrt(T(l * (l + 1) - m * (m - 1)));
                             }
                             /* for the d-u part */
                             ///* apply L_{+} operator */
@@ -220,9 +221,20 @@ Hamiltonian0::apply_so_correction(sddk::Wave_functions<double>& psi__, std::vect
     }
 }
 
+template class Hamiltonian0<double>;
+
 template
 void
-Hamiltonian0::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__, sddk::mdarray<double_complex, 2>& alm__,
-                                                 sddk::mdarray<double_complex, 2>& halm__) const;
+Hamiltonian0<double>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__, sddk::mdarray<double_complex, 2>& alm__,
+                                                         sddk::mdarray<double_complex, 2>& halm__) const;
+
+#ifdef USE_FP32
+template class Hamiltonian0<float>;
+
+template
+void
+Hamiltonian0<float>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__, sddk::mdarray<std::complex<float>, 2>& alm__,
+                                                        sddk::mdarray<std::complex<float>, 2>& halm__) const;
+#endif
 
 } // namespace

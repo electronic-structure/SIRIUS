@@ -96,7 +96,7 @@ std::string show_vec(const vector3d<T>& vec)
 
 // forward declaration
 void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
                        std::shared_ptr<Wave_functions<double>>& swf);
 
     /* typedefs */
@@ -431,7 +431,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0&) const) & Band::initialize_subspace)
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
         .def("solve", &Band::solve, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
@@ -465,13 +465,13 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &DFT_ground_state::update)
         .def("energy_kin_sum_pw", &DFT_ground_state::energy_kin_sum_pw);
 
-    py::class_<K_point>(m, "K_point")
-        .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy, py::const_))
-        .def_property_readonly("vk", &K_point::vk, py::return_value_policy::copy)
-        .def("generate_fv_states", &K_point::generate_fv_states)
-        .def("set_band_energy", [](K_point& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
+    py::class_<K_point<double>>(m, "K_point")
+        .def("band_energy", py::overload_cast<int, int>(&K_point<double>::band_energy, py::const_))
+        .def_property_readonly("vk", &K_point<double>::vk, py::return_value_policy::copy)
+        .def("generate_fv_states", &K_point<double>::generate_fv_states)
+        .def("set_band_energy", [](K_point<double>& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
         .def("band_energies",
-             [](K_point const& kpoint, int ispn) {
+             [](K_point<double> const& kpoint, int ispn) {
                  std::vector<double> energies(kpoint.ctx().num_bands());
                  for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
                      energies[i] = kpoint.band_energy(i, ispn);
@@ -480,7 +480,7 @@ PYBIND11_MODULE(py_sirius, m)
              },
              py::return_value_policy::copy)
         .def("band_occupancy",
-             [](K_point const& kpoint, int ispn) {
+             [](K_point<double> const& kpoint, int ispn) {
                  std::vector<double> occ(kpoint.ctx().num_bands());
                  for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
                      occ[i] = kpoint.band_occupancy(i, ispn);
@@ -488,19 +488,19 @@ PYBIND11_MODULE(py_sirius, m)
                  return occ;
              })
         .def("set_band_occupancy",
-             [](K_point& kpoint, int ispn, const std::vector<double>& fn) {
+             [](K_point<double>& kpoint, int ispn, const std::vector<double>& fn) {
                  assert(static_cast<int>(fn.size()) == kpoint.ctx().num_bands());
                  for (size_t i = 0; i < fn.size(); ++i) {
                      kpoint.band_occupancy(i, ispn, fn[i]);
                  }
              },
              "ispn"_a, "fn"_a)
-        .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
-        .def("gkvec", &K_point::gkvec, py::return_value_policy::reference_internal)
-        .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
-        .def("ctx", &K_point::ctx, py::return_value_policy::reference_internal)
-        .def("weight", &K_point::weight)
-        .def("spinor_wave_functions", &K_point::spinor_wave_functions, py::return_value_policy::reference_internal);
+        .def("gkvec_partition", &K_point<double>::gkvec_partition, py::return_value_policy::reference_internal)
+        .def("gkvec", &K_point<double>::gkvec, py::return_value_policy::reference_internal)
+        .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
+        .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
+        .def("weight", &K_point<double>::weight)
+        .def("spinor_wave_functions", &K_point<double>::spinor_wave_functions, py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -515,17 +515,17 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_num_kpoints", &K_point_set::num_kpoints)
         .def("size", [](K_point_set& ks) -> int { return ks.spl_num_kpoints().local_size(); })
         .def("energy_fermi", &K_point_set::energy_fermi)
-        .def("get_band_energies", &K_point_set::get_band_energies)
-        .def("find_band_occupancies", &K_point_set::find_band_occupancies)
+        .def("get_band_energies", &K_point_set::get_band_energies<double>)
+        .def("find_band_occupancies", &K_point_set::find_band_occupancies<double>)
         .def("band_gap", &K_point_set::band_gap)
         //.def("sync_band", &K_point_set::sync_band)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
-             [](K_point_set& ks, int i) -> K_point& {
+             [](K_point_set& ks, int i) -> K_point<double>& {
                  if (i >= ks.spl_num_kpoints().local_size())
                      throw pybind11::index_error("out of bounds");
-                 return *ks[ks.spl_num_kpoints(i)];
+                 return *ks.get<double>(ks.spl_num_kpoints(i));
              },
              py::return_value_policy::reference_internal)
         .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
@@ -533,12 +533,12 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian0>(m, "Hamiltonian0")
+    py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
         .def(py::init<Potential&>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian0::potential, py::return_value_policy::reference_internal);
+        .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
 
-    py::class_<Hamiltonian_k>(m, "Hamiltonian_k")
-        .def(py::init<Hamiltonian0&, K_point&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
+    py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
+        .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
@@ -797,8 +797,8 @@ PYBIND11_MODULE(py_sirius, m)
 
 }
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf_out, Wave_functions<double>& wf,
-                       std::shared_ptr<Wave_functions<double>>& swf)
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_functions<double>& wf_out,
+        Wave_functions<double>& wf, std::shared_ptr<Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -844,6 +844,6 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions<double>& wf
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0 H0(dft_gs.potential());
+    Hamiltonian0<double> H0(dft_gs.potential());
     Band(ctx).initialize_subspace(kset, H0);
 }

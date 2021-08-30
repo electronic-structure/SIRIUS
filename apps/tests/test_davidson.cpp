@@ -1,8 +1,10 @@
 #include <sirius.hpp>
+#include "band/davidson.hpp"
 
 using namespace sirius;
 
-void init_wf(K_point* kp__, Wave_functions<double>& phi__, int num_bands__, int num_mag_dims__)
+template <typename T>
+void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -38,6 +40,69 @@ void init_wf(K_point* kp__, Wave_functions<double>& phi__, int num_bands__, int 
     }
 }
 
+template <typename T>
+void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__)
+{
+    K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
+    kp.initialize();
+    std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+    for (int i = 0; i < ctx__.num_bands(); i++) {
+        kp.band_occupancy(i, 0, 2);
+    }
+
+    Hamiltonian0<T> H0(pot__);
+    auto Hk = H0(kp);
+    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
+    for (int i = 0; i < ctx__.num_bands(); i++) {
+        kp.band_energy(i, 0, 0);
+    }
+    init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
+
+
+    /*
+     * debug kinetic energy Hamiltonian (single MPI rank only)
+     */
+
+    const int bs = ctx__.cyclic_block_size();
+    const int num_bands = ctx__.num_bands();
+    auto& gv = kp.gkvec();
+    auto& phi = kp.spinor_wave_functions();
+    sddk::dmatrix<std::complex<T>> hmlt(num_bands, num_bands, ctx__.blacs_grid(), bs, bs);
+    hmlt.zero();
+
+    for (int i = 0; i < num_bands; i++) {
+        for (int j = 0; j < num_bands; j++) {
+            for (int ig = 0; ig < gv.num_gvec(); ig++) {
+                auto gvc = gv.template gkvec_cart<index_domain_t::global>(ig);
+                T ekin = 0.5 * dot(gvc, gvc);
+                hmlt(i, j) += std::conj(phi.pw_coeffs(0).prime(ig, i)) * ekin * phi.pw_coeffs(0).prime(ig, j);
+            }
+        }
+    }
+    auto max_diff = check_hermitian(hmlt, num_bands);
+    std::cout << "Simple kinetic Hamiltonian: error in hermiticity: " << std::setw(24) << std::scientific << max_diff << std::endl;
+    hmlt.serialize("hmlt", num_bands);
+
+
+    auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
+            [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
+
+    std::vector<double> ekin(kp.num_gkvec());
+    for (int i = 0; i < kp.num_gkvec(); i++) {
+        ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
+    }
+    std::sort(ekin.begin(), ekin.end());
+
+    if (Communicator::world().rank() == 0) {
+        double max_diff = 0;
+        for (int i = 0; i < ctx__.num_bands(); i++) {
+            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
+        }
+        printf("maximum eigen-value difference: %20.16e\n", max_diff);
+    }
+}
+
 void test_davidson(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
@@ -45,6 +110,7 @@ void test_davidson(cmd_args const& args__)
     auto N         = args__.value<int>("N", 1);
     auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver    = args__.value<std::string>("solver", "lapack");
+    auto fp32      = args__.exist("fp32");
 
     bool add_dion{false};
     bool add_vloc{false};
@@ -58,7 +124,7 @@ void test_davidson(cmd_args const& args__)
         "        \"electronic_structure_method\" : \"pseudopotential\""
         "    },"
         "   \"control\" : {"
-        "       \"verification\" : 0"
+        "       \"verification\" : 1"
         "    }"
         "}");
 
@@ -139,7 +205,7 @@ void test_davidson(cmd_args const& args__)
     }
 
     /* initialize the context */
-    ctx.verbosity(2);
+    ctx.verbosity(4);
     ctx.pw_cutoff(pw_cutoff);
     ctx.gk_cutoff(gk_cutoff);
     ctx.processing_unit(args__.value<std::string>("device", "CPU"));
@@ -149,13 +215,15 @@ void test_davidson(cmd_args const& args__)
 
     PROFILE_STOP("test_davidson|setup")
 
-    ctx.iterative_solver_tolerance(1e-12);
-    //ctx.set_iterative_solver_type("exact");
+    //ctx.cfg().iterative_solver().type("exact");
 
     ctx.cfg().iterative_solver().num_steps(40);
+    ctx.cfg().iterative_solver().locking(false);
 
     /* initialize simulation context */
     ctx.initialize();
+
+    ctx.iterative_solver_tolerance(1e-12);
 
     std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
 
@@ -167,65 +235,19 @@ void test_davidson(cmd_args const& args__)
     pot.generate(rho, ctx.use_symmetry(), true);
     pot.zero();
 
-    for (int r = 0; r < 2; r++) {
-        double vk[] = {0.1, 0.1, 0.1};
-        K_point kp(ctx, vk, 1.0, 0);
-        kp.initialize();
-        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_occupancy(i, 0, 2);
-        }
-        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-        Hamiltonian0 H0(pot);
-        auto hk = H0(kp);
-        Band(ctx).initialize_subspace<double_complex>(hk, ctx.unit_cell().num_ps_atomic_wf());
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            kp.band_energy(i, 0, 0);
-        }
-        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-        Band(ctx).solve_pseudo_potential<double_complex>(hk);
-
-        std::vector<double> ekin(kp.num_gkvec());
-        for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-        }
-        std::sort(ekin.begin(), ekin.end());
-
-        if (Communicator::world().rank() == 0) {
-            double max_diff = 0;
-            for (int i = 0; i < ctx.num_bands(); i++) {
-                max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
-                //printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
-            }
-            printf("maximum eigen-value difference: %20.16e\n", max_diff);
+    /* repeat several times for the accurate performance measurment */
+    for (int r = 0; r < 1; r++) {
+        std::array<double, 3> vk({0.1, 0.1, 0.1});
+        if (fp32) {
+#ifdef USE_FP32
+            diagonalize<float>(ctx, vk, pot);
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+        } else {
+            diagonalize<double>(ctx, vk, pot);
         }
     }
-
-    //for (int i = 0; i < 1; i++) {
-
-    //    double vk[] = {0.1 * i, 0.1 * i, 0.1 * i};
-    //    K_point kp(ctx, vk, 1.0);
-    //    kp.initialize();
-
-    //Hamiltonian0 h0(ctx, pot);
-    //auto hk = h0(kp);
-
-    ////    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-    //auto eval = davidson<double_complex>(hk, kp.spinor_wave_functions(), 0, 4, 40, 1e-12, 0, 1e-7, [](int i, int ispn){return 1.0;}, false);
-
-    //std::vector<double> ekin(kp.num_gkvec());
-    //for (int i = 0; i < kp.num_gkvec(); i++) {
-    //    ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-    //}
-    //std::sort(ekin.begin(), ekin.end());
-
-    //for (int i = 0; i < ctx.num_bands(); i++) {
-    //    printf("%20.16f %20.16f %20.16e\n", ekin[i], eval[i], std::abs(ekin[i] - eval[i]));
-    //}
-
-    //}
 }
 
 int main(int argn, char** argv)
@@ -235,7 +257,8 @@ int main(int argn, char** argv)
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
                                {"N=", "(int) cell multiplicity"},
                                {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=", "eigen-value solver"}
+                               {"solver=", "eigen-value solver"},
+                               {"fp32", "use FP32 arithmetics"}
                               });
 
     if (args.exist("help")) {

@@ -4,6 +4,7 @@
 
 using namespace sirius;
 
+template <typename T>
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int reduce_gvec__,
                int use_gpu__, int gpu_ptr__)
 {
@@ -32,7 +33,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     auto& gvec = params.gvec();
     auto& gvecp = params.gvec_partition();
-    auto& fft = params.spfft();
+    auto& fft = params.spfft<T>();
 
     if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -44,16 +45,16 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of z-columns: %i\n", gvec.num_zcol());
     }
 
-    Local_operator hloc(params, fft, gvecp);
+    Local_operator<T> hloc(params, fft, gvecp);
 
-    Wave_functions<double> phi(gvecp, 4 * num_bands__, memory_t::host);
+    Wave_functions<T> phi(gvecp, 4 * num_bands__, memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
+            phi.pw_coeffs(0).prime(j, i) = utils::random<std::complex<T>>();
         }
         phi.pw_coeffs(0).prime(0, i) = 1.0;
     }
-    Wave_functions<double> hphi(gvecp, 4 * num_bands__, memory_t::host);
+    Wave_functions<T> hphi(gvecp, 4 * num_bands__, memory_t::host);
 
     if (pu == device_t::GPU) {
         phi.pw_coeffs(0).allocate(memory_t::device);
@@ -71,7 +72,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
             int ig = gvec.offset() + j;
             auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
-            diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
+            diff += std::pow(std::abs(static_cast<T>(2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
         }
     }
     if (diff != diff) {
@@ -98,6 +99,7 @@ int main(int argn, char** argv)
     args.register_key("--gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU");
     args.register_key("--repeat=", "{int} number of repetitions");
     args.register_key("--t_file=", "{string} name of timing output file");
+    args.register_key("--fp32", "use FP32 arithmetics");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -113,10 +115,19 @@ int main(int argn, char** argv)
     auto gpu_ptr = args.value<int>("gpu_ptr", 0);
     auto repeat = args.value<int>("repeat", 3);
     auto t_file = args.value<std::string>("t_file", std::string(""));
+    auto fp32 = args.exist("fp32");
 
     sirius::initialize(1);
     for (int i = 0; i < repeat; i++) {
-        test_hloc(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
+        if (fp32) {
+#if defined(USE_FP32)
+            test_hloc<float>(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
+#else
+            RTE_THROW("Not compiled with FP32 support");
+#endif
+        } else {
+            test_hloc<double>(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
+        }
     }
     int my_rank = Communicator::world().rank();
 
