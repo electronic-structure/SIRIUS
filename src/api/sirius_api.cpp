@@ -2574,7 +2574,7 @@ sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool 
         transform_to_rg = *transform_to_rg__;
     }
 
-    gs.density().generate(gs.k_point_set(), add_core, gs.ctx().use_symmetry(), transform_to_rg);
+    gs.density().generate(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
 }
 
 /*
