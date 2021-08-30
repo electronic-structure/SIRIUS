@@ -69,7 +69,7 @@ Potential::Potential(Simulation_context& ctx__)
 
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.emplace_back(XC_functional(ctx_.spff<double>t(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
+        xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
             xc_func_.back().set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
