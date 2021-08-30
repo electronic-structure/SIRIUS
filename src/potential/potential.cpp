@@ -69,9 +69,9 @@ Potential::Potential(Simulation_context& ctx__)
 
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
+        xc_func_.emplace_back(XC_functional(ctx_.spff<double>t(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
-            xc_func_.back()->set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
+            xc_func_.back().set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
     }
 
@@ -137,13 +137,6 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     update();
-}
-
-Potential::~Potential()
-{
-    for (auto& ixc: xc_func_) {
-        delete ixc;
-    }
 }
 
 void Potential::update()
@@ -215,8 +208,8 @@ void Potential::update()
 
     // VDWXC depends on unit cell, which might have changed.
     for (auto& xc : xc_func_) {
-        if (xc->is_vdw()) {
-            xc->vdw_update_unit_cell(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors());
+        if (xc.is_vdw()) {
+            xc.vdw_update_unit_cell(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors());
         }
     }
 }
@@ -225,20 +218,11 @@ bool Potential::is_gradient_correction() const
 {
     bool is_gga{false};
     for (auto& ixc : xc_func_) {
-        if (ixc->is_gga() || ixc->is_vdw()) {
+        if (ixc.is_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
     return is_gga;
-}
-
-void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
-{
-    /* create list of XC functionals */
-    for (auto& xc_label : labels__) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label,
-                    ctx_.num_spins()));
-    }
 }
 
 void Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)

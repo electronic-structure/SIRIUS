@@ -37,7 +37,10 @@
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
 
-template <typename T> void sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__, const int* length__)
+template <typename T>
+void
+sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__,
+        const T* default_values__, const int* length__)
 {
   auto& sim_ctx = get_sim_ctx(handler__);
 
@@ -67,7 +70,9 @@ template <typename T> void sirius_option_set_value__(void* const* handler__, con
   }
 }
 
-template <typename T> void sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
+template <typename T>
+void
+sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
 {
   auto section = std::string(section__);
   std::transform(section.begin(), section.end(), section.begin(), ::tolower);
@@ -938,33 +943,6 @@ sirius_add_xc_functional(void* const* handler__, char const* name__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     sim_ctx.add_xc_functional(std::string(name__));
-}
-
-/*
-@api begin
-sirius_insert_xc_functional:
-  doc: Add one of the XC functionals.
-  arguments:
-    gs_handler:
-      type: void*
-      attr: in, required
-      doc: Handler of the ground state
-    name:
-      type: string
-      attr: in, required
-      doc: LibXC label of the functional.
-@api end
-*/
-void
-sirius_insert_xc_functional(void* const* gs_handler__, char const* name__)
-{ // TODO: deprecate and remove
-    auto& gs        = get_gs(gs_handler__);
-    auto& potential = gs.potential();
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-        std::cout << "insert functional: " << name__ << "\n";
-    potential.insert_xc_functionals({name__});
 }
 
 /*
