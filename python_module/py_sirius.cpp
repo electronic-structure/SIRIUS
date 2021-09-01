@@ -400,7 +400,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("mix", &Density::mix)
         .def("symmetrize", py::overload_cast<>(&Density::symmetrize))
         .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
-        .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate), "kpointset"_a,
+        .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>), "kpointset"_a,
              "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
@@ -432,7 +432,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
         .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
+        .def("solve", &Band::solve<double>, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
@@ -519,7 +519,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies<double>)
         .def("band_gap", &K_point_set::band_gap)
         //.def("sync_band", &K_point_set::sync_band)
-        .def("valence_eval_sum", &K_point_set::valence_eval_sum)
+        //.def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
              [](K_point_set& ks, int i) -> K_point<double>& {
