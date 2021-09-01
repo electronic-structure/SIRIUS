@@ -354,12 +354,12 @@ void K_point_set::find_band_occupancies()
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
             auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
             energy_fermi_ = res_newton.mu;
-            ctx_.message(1, __function_name__, "newton iteration converged after %d steps\n.", res_newton.iter);
+            ctx_.message(2, __function_name__, "newton iteration converged after %d steps\n", res_newton.iter);
 
         }
     } catch(std::exception const& e) {
-        ctx_.message(1, __function_name__, e.what());
-        ctx_.message(1, __function_name__, "\nfallback to bisection search\n");
+        ctx_.message(2, __function_name__, e.what());
+        ctx_.message(2, __function_name__, "\nfallback to bisection search\n");
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
         energy_fermi_ = bisection_search(F, emin, emax, tol);
