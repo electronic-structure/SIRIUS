@@ -53,18 +53,22 @@ class Eigensolver_lapack : public Eigensolver
 
     /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+        PROFILE("Eigensolver_lapack|dsyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__){
+        PROFILE("Eigensolver_lapack|zheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+        PROFILE("Eigensolver_lapack|ssyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<float_complex>& A__, float* eval__, dmatrix<float_complex>& Z__){
+        PROFILE("Eigensolver_lapack|cheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
@@ -72,20 +76,6 @@ class Eigensolver_lapack : public Eigensolver
     template <typename T>
     int solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_lapack|dsyevd");
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_lapack|zheevd");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_lapack|ssyevd");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_lapack|cheevd");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int info;
         ftn_int lda = A__.ld();
 
@@ -93,13 +83,9 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int liwork = 3 + 5 * matrix_size__;
         ftn_int lrwork = 1 + 5 * matrix_size__ + 2 * matrix_size__ * matrix_size__; // only required in complex
 
-        if (std::is_same<T, double>::value) {
+        if (std::is_scalar<T>::value) {
             lwork = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
-        } else if (std::is_same<T, float>::value) {
-            lwork = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
-        } else if (std::is_same<T, std::complex<float>>::value) {
+        } else {
             lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
         }
 
@@ -140,18 +126,22 @@ class Eigensolver_lapack : public Eigensolver
 
     /// wrapper for solving a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+        PROFILE("Eigensolver_lapack|dsyevr");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__){
+        PROFILE("Eigensolver_lapack|zheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+        PROFILE("Eigensolver_lapack|ssyevr");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float_complex>& A__, float* eval__, dmatrix<float_complex>& Z__){
+        PROFILE("Eigensolver_lapack|cheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -159,20 +149,6 @@ class Eigensolver_lapack : public Eigensolver
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_lapack|dsyevr");
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_lapack|zheevx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_lapack|ssyevr");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_lapack|cheevx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         real_type<T> vl, vu;
 
         ftn_int il{1};
@@ -277,21 +253,25 @@ class Eigensolver_lapack : public Eigensolver
     /// wrapper for solving a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
           dmatrix<double>& Z__){
+        PROFILE("Eigensolver_lapack|dsygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
               dmatrix<double_complex>& Z__){
+        PROFILE("Eigensolver_lapack|zhegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
               dmatrix<float>& Z__){
+        PROFILE("Eigensolver_lapack|ssygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float_complex>& A__, dmatrix<float_complex>& B__, float* eval__,
               dmatrix<float_complex>& Z__){
+        PROFILE("Eigensolver_lapack|chegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -300,20 +280,6 @@ class Eigensolver_lapack : public Eigensolver
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__,
               real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_lapack|dsygvx");
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_lapack|zhegvx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_lapack|ssygvx");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_lapack|chegvx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int info;
 
         ftn_int lda = A__.ld();
@@ -830,16 +796,6 @@ class Eigensolver_scalapack : public Eigensolver
     template <typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_scalapack|pzheevd");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_scalapack|pcheevd");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -900,27 +856,19 @@ class Eigensolver_scalapack : public Eigensolver
     /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pzheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pcheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, dmatrix<T>& A__, T* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_scalapack|pdsyevd");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_scalapack|pssyevd");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int info;
         ftn_int ione{1};
 
@@ -966,11 +914,13 @@ class Eigensolver_scalapack : public Eigensolver
 
     int solve_(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pdsyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
     int solve_(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pssyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
@@ -978,16 +928,6 @@ class Eigensolver_scalapack : public Eigensolver
     template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, T* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_scalapack|pdsyevx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_scalapack|pssyevx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -1094,11 +1034,13 @@ class Eigensolver_scalapack : public Eigensolver
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pdsyevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pssyevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -1106,16 +1048,6 @@ class Eigensolver_scalapack : public Eigensolver
     template <typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_scalapack|pzheevx");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_scalapack|pcheevx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -1173,17 +1105,19 @@ class Eigensolver_scalapack : public Eigensolver
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevx)
             ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<double*>(w.get()),
-             &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
-             reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()), &lrwork, iwork.get(),
-             &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+             desca, reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
+             &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
+             &lrwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info,
+             (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pcheevx)
             ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<float*>(w.get()),
-             &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
-             reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()), &lrwork, iwork.get(),
-             &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+             desca, reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
+             &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
+             &lrwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info,
+             (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
 
         if ((m != nev__) || (nz != nev__)) {
@@ -1228,11 +1162,13 @@ class Eigensolver_scalapack : public Eigensolver
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pzheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pcheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -1240,16 +1176,6 @@ class Eigensolver_scalapack : public Eigensolver
     template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, T* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_scalapack|pdsygvx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_scalapack|pssygvx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -1359,11 +1285,13 @@ class Eigensolver_scalapack : public Eigensolver
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pdsygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pssygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -1371,16 +1299,6 @@ class Eigensolver_scalapack : public Eigensolver
     template <typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_scalapack|pzhegvx");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_scalapack|pchegvx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -1504,12 +1422,14 @@ class Eigensolver_scalapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
                double* eval__, dmatrix<std::complex<double>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pzhegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
               float* eval__, dmatrix<std::complex<float>>& Z__)
     {
+        PROFILE("Eigensolver_scalapack|pchegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 };
@@ -1954,20 +1874,6 @@ class Eigensolver_cuda: public Eigensolver
     template <typename T>
     int solve_(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_cuda|dsyevdx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_cuda|ssyevdx");
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_cuda|zheevdx");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_cuda|cheevdx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
         cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
@@ -2033,41 +1939,31 @@ class Eigensolver_cuda: public Eigensolver
     /// wrapper for dynamic binding
     int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
+        PROFILE("Eigensolver_cuda|dsyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_cuda|ssyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
+        PROFILE("Eigensolver_cuda|zheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
+        PROFILE("Eigensolver_cuda|cheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     template <typename T>
     int solve_(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        if (std::is_same<T, double>::value) {
-            PROFILE("Eigensolver_cuda|dsygvdx");
-        } else if (std::is_same<T, float>::value) {
-            PROFILE("Eigensolver_cuda|ssygvdx");
-        } else if (std::is_same<T, std::complex<double>>::value) {
-            PROFILE("Eigensolver_cuda|zhegvdx");
-        } else if (std::is_same<T, std::complex<float>>::value) {
-            PROFILE("Eigensolver_cuda|chegvdx");
-        } else {
-            fprintf(stderr, "Precision type not yet implemented. See %s %d for details\n", __FILE__, __LINE__);
-            TERMINATE(error_msg_not_implemented);
-            return -1;
-        }
-
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
@@ -2145,47 +2041,51 @@ class Eigensolver_cuda: public Eigensolver
     /// wrapper for dynamic binding
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__,  double* eval__, dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_cuda|dsygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__,  float* eval__, dmatrix<float>& Z__)
     {
+        PROFILE("Eigensolver_cuda|ssygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
               double* eval__, dmatrix<std::complex<double>>& Z__)
     {
+        PROFILE("Eigensolver_cuda|zhegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
               float* eval__, dmatrix<std::complex<float>>& Z__)
     {
+        PROFILE("Eigensolver_cuda|chegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
     {
-        return solve_(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
     {
-        return solve_(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
               dmatrix<std::complex<double>>& Z__)
     {
-        return solve_(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__,
               dmatrix<std::complex<float>>& Z__)
     {
-        return solve_(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 };
 #else
