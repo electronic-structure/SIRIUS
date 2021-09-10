@@ -883,6 +883,7 @@ Simulation_context::print_info() const
     std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
     std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
+    std::printf("precision                          : %s\n", cfg().parameters().precision().c_str());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),
