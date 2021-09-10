@@ -450,6 +450,14 @@ sirius_create_context:
       type: void*
       attr: out, required
       doc: New empty simulation context.
+    fcomm_k:
+      type: int
+      attr: in, optional
+      doc: Communicator for k-point parallelization.
+    fcomm_band:
+      type: int
+      attr: in, optional
+      doc: Communicator for band parallelization.
     error_code:
       type: int
       attr: out, optional
@@ -457,12 +465,14 @@ sirius_create_context:
 @api end
 */
 void
-sirius_create_context(int fcomm__, void** handler__, int* error_code__)
+sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_band__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& comm = Communicator::map_fcomm(fcomm__);
-            *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
+            Communicator const& comm_k = (fcomm_k__) ? Communicator::map_fcomm(*fcomm_k__) : Communicator::null();
+            Communicator const& comm_band = (fcomm_band__) ? Communicator::map_fcomm(*fcomm_band__) : Communicator::null();
+            *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
 }
@@ -1211,7 +1221,7 @@ sirius_set_periodic_function(void* const* handler__, char const* label__, double
             }
             if (f_rg__) {
                 if (f_rg_global__ == nullptr) {
-                    throw std::runtime_error("missing bool argument `f_rg_global`");
+                    throw std::runtime_error("missing bool argument 'f_rg_global'");
                 }
                 bool is_local = !(*f_rg_global__);
                 func_map[label]->copy_from(nullptr, f_rg__, is_local);
@@ -1267,7 +1277,7 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
             }
             if (f_rg__) {
                 if (f_rg_global__ == nullptr) {
-                    throw std::runtime_error("missing bool argument `f_rg_global`");
+                    throw std::runtime_error("missing bool argument 'f_rg_global'");
                 }
                 bool is_local = !(*f_rg_global__);
                 func_map[label]->copy_to(nullptr, f_rg__, is_local);
@@ -3717,7 +3727,7 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int c
                     throw std::runtime_error("wrong maximum number of muffin-tin radial points");
                 }
                 if (!num_atoms__) {
-                    throw std::runtime_error("missing `num_atoms' argument");
+                    throw std::runtime_error("missing 'num_atoms' argument");
                 }
                 if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
                     throw std::runtime_error("wrong number of atoms");

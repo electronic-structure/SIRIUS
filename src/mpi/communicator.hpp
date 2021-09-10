@@ -283,11 +283,7 @@ class Communicator
     /// Raw MPI communicator.
     MPI_Comm mpi_comm_raw_{MPI_COMM_NULL};
     /// Smart pointer to allocated MPI communicator.
-    std::unique_ptr<MPI_Comm, mpi_comm_deleter> mpi_comm_;
-    /* copy is not allowed */
-    Communicator(Communicator const& src__) = delete;
-    /* assignment is not allowed */
-    Communicator operator=(Communicator const& src__) = delete;
+    std::shared_ptr<MPI_Comm> mpi_comm_;
 
   public:
     /// Default constructor.
@@ -299,22 +295,6 @@ class Communicator
     explicit Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_raw_(mpi_comm__)
     {
-    }
-
-    /// Move constructor.
-    Communicator(Communicator&& src__)
-    {
-        *this = std::move(src__);
-    }
-
-    /// Move assignment operator.
-    Communicator& operator=(Communicator&& src__)
-    {
-        if (this != &src__) {
-            this->mpi_comm_     = std::move(src__.mpi_comm_);
-            this->mpi_comm_raw_ = src__.mpi_comm_raw_;
-        }
-        return *this;
     }
 
     /// MPI initialization.
@@ -369,7 +349,7 @@ class Communicator
     inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
     {
         Communicator new_comm;
-        new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
+        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
         CALL_MPI(MPI_Cart_create, (mpi_comm(), ndims__, dims__, periods__, 0, new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
         return new_comm;
@@ -378,7 +358,7 @@ class Communicator
     inline Communicator cart_sub(int const* remain_dims__) const
     {
         Communicator new_comm;
-        new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
+        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
         CALL_MPI(MPI_Cart_sub, (mpi_comm(), remain_dims__, new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
         return new_comm;
@@ -387,7 +367,7 @@ class Communicator
     inline Communicator split(int color__) const
     {
         Communicator new_comm;
-        new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
+        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
         CALL_MPI(MPI_Comm_split, (mpi_comm(), color__, rank(), new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
         return new_comm;
@@ -396,7 +376,7 @@ class Communicator
     inline Communicator duplicate() const
     {
         Communicator new_comm;
-        new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
+        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
         CALL_MPI(MPI_Comm_dup, (mpi_comm(), new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
         return new_comm;
@@ -405,10 +385,8 @@ class Communicator
     /// Mapping between Fortran and SIRIUS MPI communicators.
     static Communicator const& map_fcomm(int fcomm__)
     {
-        //static std::map<int, std::unique_ptr<Communicator>> fcomm_map;
         static std::map<int, Communicator> fcomm_map;
         if (!fcomm_map.count(fcomm__)) {
-            //fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
             fcomm_map[fcomm__] = Communicator(MPI_Comm_f2c(fcomm__));
         }
 
@@ -468,6 +446,11 @@ class Communicator
         int r;
         CALL_MPI(MPI_Cart_rank, (mpi_comm(), &coords__[0], &r));
         return r;
+    }
+
+    inline bool is_null() const
+    {
+        return (mpi_comm_raw_ == MPI_COMM_NULL);
     }
 
     inline void barrier() const
