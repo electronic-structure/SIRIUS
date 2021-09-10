@@ -279,34 +279,50 @@ end subroutine sirius_context_initialized
 !> The context must be created, populated with the correct parameters and initialized before using all subsequent SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
 !> @param [out] handler New empty simulation context.
+!> @param [in] fcomm_k Communicator for k-point parallelization.
+!> @param [in] fcomm_band Communicator for band parallelization.
 !> @param [out] error_code Error code.
-subroutine sirius_create_context(fcomm,handler,error_code)
+subroutine sirius_create_context(fcomm,handler,fcomm_k,fcomm_band,error_code)
 implicit none
 !
 integer, value, intent(in) :: fcomm
 type(C_PTR), target, intent(out) :: handler
+integer, optional, target, intent(in) :: fcomm_k
+integer, optional, target, intent(in) :: fcomm_band
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: fcomm_k_ptr
+type(C_PTR) :: fcomm_band_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_create_context_aux(fcomm,handler,error_code)&
+subroutine sirius_create_context_aux(fcomm,handler,fcomm_k,fcomm_band,error_code)&
 &bind(C, name="sirius_create_context")
 use, intrinsic :: ISO_C_BINDING
 integer(C_INT), value :: fcomm
 type(C_PTR), value :: handler
+type(C_PTR), value :: fcomm_k
+type(C_PTR), value :: fcomm_band
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
+fcomm_k_ptr = C_NULL_PTR
+if (present(fcomm_k)) then
+fcomm_k_ptr = C_LOC(fcomm_k)
+endif
+fcomm_band_ptr = C_NULL_PTR
+if (present(fcomm_band)) then
+fcomm_band_ptr = C_LOC(fcomm_band)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_create_context_aux(fcomm,handler_ptr,error_code_ptr)
+call sirius_create_context_aux(fcomm,handler_ptr,fcomm_k_ptr,fcomm_band_ptr,error_code_ptr)
 end subroutine sirius_create_context
 
 !

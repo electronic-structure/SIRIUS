@@ -72,6 +72,9 @@ class Simulation_context : public Simulation_parameters
     /// Communicator for this simulation.
     Communicator const& comm_;
 
+    Communicator comm_k_;
+    Communicator comm_band_;
+
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
 
@@ -97,7 +100,7 @@ class Simulation_context : public Simulation_parameters
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<spfft::Transform> spfft_transform_;
     std::unique_ptr<spfft::Grid> spfft_grid_;
-#ifdef USE_FP32
+#if defined(USE_FP32)
     std::unique_ptr<spfft::TransformFloat> spfft_transform_float_;
     std::unique_ptr<spfft::GridFloat> spfft_grid_float_;
 #endif
@@ -108,7 +111,7 @@ class Simulation_context : public Simulation_parameters
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
-#ifdef USE_FP32
+#if defined(USE_FP32)
     std::unique_ptr<spfft::TransformFloat> spfft_transform_coarse_float_;
     std::unique_ptr<spfft::GridFloat> spfft_grid_coarse_float_;
 #endif
@@ -328,6 +331,16 @@ class Simulation_context : public Simulation_parameters
         start();
     }
 
+    Simulation_context(Communicator const& comm__, Communicator const& comm_k__, Communicator const& comm_band__)
+        : comm_(comm__)
+        , comm_k_(comm_k__)
+        , comm_band_(comm_band__)
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+    }
+
+
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
         : comm_(Communicator::world())
@@ -444,8 +457,7 @@ class Simulation_context : public Simulation_parameters
     /** This communicator is used to split k-points */
     Communicator const& comm_k() const
     {
-        /* 1st dimension of the MPI grid is used for k-point distribution */
-        return mpi_grid_->communicator(1 << 0);
+        return comm_k_;
     }
 
     /// Band parallelization communicator.
@@ -453,8 +465,7 @@ class Simulation_context : public Simulation_parameters
         to create the BLACS grid. Diagonalization might be sequential. */
     Communicator const& comm_band() const
     {
-        /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
-        return mpi_grid_->communicator(1 << 1 | 1 << 2);
+        return comm_band_;
     }
 
     /// Communicator of the dense FFT grid.
