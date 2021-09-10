@@ -358,8 +358,8 @@ void K_point_set::find_band_occupancies()
 
         }
     } catch(std::exception const& e) {
-        ctx_.message(2, __function_name__, e.what());
-        ctx_.message(2, __function_name__, "\nfallback to bisection search\n");
+        ctx_.message(2, __function_name__, "%s\n", e.what());
+        ctx_.message(2, __function_name__, "%s\n", "fallback to bisection search\n");
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
         energy_fermi_ = bisection_search(F, emin, emax, tol);

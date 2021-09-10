@@ -1604,8 +1604,14 @@ Simulation_context::init_comm()
         RTE_THROW(s);
     }
 
+    /* create k- and band- communicators */
+    if (comm_k_.is_null() && comm_band_.is_null()) {
+        comm_band_ = comm_.split(comm_.rank() / npb);
+        comm_k_    = comm_.split(comm_.rank() % npb);
+    }
+
     /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npc, npr}, comm_band_));
 
     /* here we know the number of ranks for band parallelization */
 
