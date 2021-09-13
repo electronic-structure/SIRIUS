@@ -100,7 +100,8 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
         };
 
         auto result = davidson<T>(Hk__, ctx_.num_bands(), ctx_.num_mag_dims(), kp.spinor_wave_functions(),
-                [&](int i, int ispn){return kp.band_occupancy(i, ispn);}, tolerance);
+                [&](int i, int ispn){return kp.band_occupancy(i, ispn);}, tolerance,
+                ctx_.cfg().iterative_solver().residual_tolerance(), ctx_.cfg().iterative_solver().num_steps());
 
         niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {

@@ -41,7 +41,9 @@ void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int nu
 }
 
 template <typename T>
-void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__)
+void
+diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
+            double eval_tol__, bool only_kin__)
 {
     K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
     kp.initialize();
@@ -59,42 +61,42 @@ void diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potentia
     init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
 
 
-    /*
-     * debug kinetic energy Hamiltonian (single MPI rank only)
-     */
+    ///*
+    // * debug kinetic energy Hamiltonian (single MPI rank only)
+    // */
 
-    const int bs = ctx__.cyclic_block_size();
+    //const int bs = ctx__.cyclic_block_size();
     const int num_bands = ctx__.num_bands();
-    auto& gv = kp.gkvec();
-    auto& phi = kp.spinor_wave_functions();
-    sddk::dmatrix<std::complex<T>> hmlt(num_bands, num_bands, ctx__.blacs_grid(), bs, bs);
-    hmlt.zero();
+    //auto& gv = kp.gkvec();
+    //auto& phi = kp.spinor_wave_functions();
+    //sddk::dmatrix<std::complex<T>> hmlt(num_bands, num_bands, ctx__.blacs_grid(), bs, bs);
+    //hmlt.zero();
 
-    for (int i = 0; i < num_bands; i++) {
-        for (int j = 0; j < num_bands; j++) {
-            for (int ig = 0; ig < gv.num_gvec(); ig++) {
-                auto gvc = gv.template gkvec_cart<index_domain_t::global>(ig);
-                T ekin = 0.5 * dot(gvc, gvc);
-                hmlt(i, j) += std::conj(phi.pw_coeffs(0).prime(ig, i)) * ekin * phi.pw_coeffs(0).prime(ig, j);
-            }
-        }
-    }
-    auto max_diff = check_hermitian(hmlt, num_bands);
-    std::cout << "Simple kinetic Hamiltonian: error in hermiticity: " << std::setw(24) << std::scientific << max_diff << std::endl;
-    hmlt.serialize("hmlt", num_bands);
+    //for (int i = 0; i < num_bands; i++) {
+    //    for (int j = 0; j < num_bands; j++) {
+    //        for (int ig = 0; ig < gv.num_gvec(); ig++) {
+    //            auto gvc = gv.template gkvec_cart<index_domain_t::global>(ig);
+    //            T ekin = 0.5 * dot(gvc, gvc);
+    //            hmlt(i, j) += std::conj(phi.pw_coeffs(0).prime(ig, i)) * ekin * phi.pw_coeffs(0).prime(ig, j);
+    //        }
+    //    }
+    //}
+    //auto max_diff = check_hermitian(hmlt, num_bands);
+    //std::cout << "Simple kinetic Hamiltonian: error in hermiticity: " << std::setw(24) << std::scientific << max_diff << std::endl;
+    //hmlt.serialize("hmlt", num_bands);
 
 
     auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-            [](int i, int ispn){return 1.0;}, [](int i, int ispn){return 1e-12;});
+            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60);
 
-    std::vector<double> ekin(kp.num_gkvec());
-    for (int i = 0; i < kp.num_gkvec(); i++) {
-        ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
-    }
-    std::sort(ekin.begin(), ekin.end());
+    if (Communicator::world().rank() == 0 && only_kin__) {
+        std::vector<double> ekin(kp.num_gkvec());
+        for (int i = 0; i < kp.num_gkvec(); i++) {
+            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
+        }
+        std::sort(ekin.begin(), ekin.end());
 
-    if (Communicator::world().rank() == 0) {
-        double max_diff = 0;
+        double max_diff{0};
         for (int i = 0; i < ctx__.num_bands(); i++) {
             max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
             printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
@@ -111,9 +113,12 @@ void test_davidson(cmd_args const& args__)
     auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver    = args__.value<std::string>("solver", "lapack");
     auto fp32      = args__.exist("fp32");
+    auto res_tol   = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
+    auto eval_tol  = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
+    auto only_kin  = args__.exist("only_kin");
 
-    bool add_dion{false};
-    bool add_vloc{false};
+    bool add_dion{!only_kin};
+    bool add_vloc{!only_kin};
 
     PROFILE_START("test_davidson|setup")
 
@@ -124,7 +129,7 @@ void test_davidson(cmd_args const& args__)
         "        \"electronic_structure_method\" : \"pseudopotential\""
         "    },"
         "   \"control\" : {"
-        "       \"verification\" : 1"
+        "       \"verification\" : 0"
         "    }"
         "}");
 
@@ -240,25 +245,28 @@ void test_davidson(cmd_args const& args__)
         std::array<double, 3> vk({0.1, 0.1, 0.1});
         if (fp32) {
 #ifdef USE_FP32
-            diagonalize<float>(ctx, vk, pot);
+            diagonalize<float>(ctx, vk, pot, res_tol, eval_tol, only_kin);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            diagonalize<double>(ctx, vk, pot);
+            diagonalize<double>(ctx, vk, pot, res_tol, eval_tol, only_kin);
         }
     }
 }
 
 int main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=", "(string) CPU or GPU"},
+    cmd_args args(argn, argv, {{"device=",    "(string) CPU or GPU"},
                                {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
-                               {"N=", "(int) cell multiplicity"},
-                               {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=", "eigen-value solver"},
-                               {"fp32", "use FP32 arithmetics"}
+                               {"N=",         "(int) cell multiplicity"},
+                               {"mpi_grid=",  "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                               {"solver=",    "(string) eigen-value solver"},
+                               {"res_tol=",   "(double) residual L2-norm tolerance"},
+                               {"eval_tol=",  "(double) eigan-value tolerance"},
+                               {"fp32",       "use FP32 arithmetics"},
+                               {"only_kin",   "use kinetic-operator only"}
                               });
 
     if (args.exist("help")) {

@@ -46,12 +46,16 @@ namespace sirius {
 \param [in,out] psi           Wave-functions. On input they are used for the starting guess of the subspace basis.
                               On output they are the solutions of Hk|psi> = e S|psi> eigen-problem. 
 \param [in]     occupancy     Lambda-function for the band occupancy numbers.
+\param [in]     tolerance     Lambda-function for the band energy tolerance.
+\param [in]     res_tol       Residual tolerance.
+\param [in]     num_stpes     Number of iterative steps.
 \return                       List of eigen-values.
 */
 template <typename T>
 inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
-         std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__)
+         std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__, double res_tol__,
+         int num_steps__)
 {
     PROFILE("sirius::davidson");
 
@@ -310,10 +314,10 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         real_type<T> current_frobenius_norm{0};
 
         /* second phase: start iterative diagonalization */
-        for (int k = 0; k < itso.num_steps(); k++) {
+        for (int iter_step = 0; iter_step < num_steps__; iter_step++) {
             int num_lockable = 0;
 
-            bool last_iteration = k == (itso.num_steps() - 1);
+            bool last_iteration = iter_step == (num_steps__ - 1);
 
             int num_ritz = num_bands__ - num_locked;
 
@@ -323,21 +327,21 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 auto result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                                            spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked, eval, evec,
                                            hphi, sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
-                                           itso.converge_by_energy(), itso.residual_tolerance(), is_converged);
+                                           itso.converge_by_energy(), res_tol__, is_converged);
 
                 num_unconverged        = result.unconverged_residuals;
                 num_lockable           = result.num_consecutive_smallest_converged;
                 current_frobenius_norm = result.frobenius_norm;
 
                 /* set the relative tolerance convergence criterion */
-                if (k == 0) {
+                if (iter_step == 0) {
                     relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance();
                 }
             }
 
             /* verify convergence criteria */
             int num_converged              = num_ritz - num_unconverged;
-            bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance;
+            bool converged_by_relative_tol = iter_step > 0 && current_frobenius_norm < relative_frobenius_tolerance;
             bool converged_by_absolute_tol = num_locked + num_converged + itso.min_num_res() >= num_bands__;
 
             bool converged = converged_by_relative_tol || converged_by_absolute_tol;
@@ -361,7 +365,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
 
                 /* No need to recompute the wave functions when converged in the first iteration */
-                if (k != 0 || num_unconverged != 0 || ctx.cfg().settings().always_update_wf()) {
+                if (iter_step != 0 || num_unconverged != 0 || ctx.cfg().settings().always_update_wf()) {
                     /* in case of non-collinear magnetism transform two components */
                     transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
                                  0, 0, {&psi__}, num_locked, num_ritz);
@@ -384,7 +388,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (converged || last_iteration) {
-                    kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n", num_unconverged, k);
+                    kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n",
+                      num_unconverged, iter_step);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
@@ -473,8 +478,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             ctx.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands__, 3));
 
-            kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N,
-                       num_phi);
+            kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n",
+                iter_step, N, num_phi);
             for (int i = 0; i < num_bands__ - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                            std::abs(eval[i] - eval_old[i]), occupancy__(i, ispin_step));
