@@ -225,7 +225,160 @@ class linalg
     // Constructing a Given's rotation
     template <typename T>
     inline std::tuple<ftn_double, ftn_double, ftn_double> lartg(T f, T g) const;
+
+    template <typename T>
+    inline void geqrf(ftn_int m, ftn_int n, sddk::dmatrix<T>& A, ftn_int ia, ftn_int ja);
 };
+
+template<>
+inline void
+linalg::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ftn_int lwork = -1;
+            ftn_double_complex z;
+            ftn_int info;
+            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+                             &info);
+            lwork = static_cast<int>(z.real() + 1);
+            std::vector<ftn_double_complex> work(lwork);
+            std::vector<ftn_double_complex> tau(std::max(m, n));
+            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+                             work.data(), &lwork, &info);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void
+linalg::geqrf<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ftn_int lwork = -1;
+            ftn_double z;
+            ftn_int info;
+            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+                             &info);
+            lwork = static_cast<int>(z + 1);
+            std::vector<ftn_double> work(lwork);
+            std::vector<ftn_double> tau(std::max(m, n));
+            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+                             work.data(), &lwork, &info);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+
+template<>
+inline void
+linalg::geqrf<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_complex>& A, ftn_int ia, ftn_int ja)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ftn_int lwork = -1;
+            ftn_complex z;
+            ftn_int info;
+            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+                             &info);
+            lwork = static_cast<int>(z.real() + 1);
+            std::vector<ftn_complex> work(lwork);
+            std::vector<ftn_complex> tau(std::max(m, n));
+            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+                             work.data(), &lwork, &info);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template<>
+inline void
+linalg::geqrf<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja)
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++; ja++;
+            ftn_int lwork = -1;
+            ftn_single z;
+            ftn_int info;
+            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+                             &info);
+            lwork = static_cast<int>(z + 1);
+            std::vector<ftn_single> work(lwork);
+            std::vector<ftn_single> tau(std::max(m, n));
+            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+                             work.data(), &lwork, &info);
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+//inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+//{
+//    ftn_int lwork = -1;
+//    ftn_double_complex z;
+//    ftn_int info;
+//    ftn_int lda = A.ld();
+//    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+//    lwork = static_cast<int>(z.real() + 1);
+//    std::vector<ftn_double_complex> work(lwork);
+//    std::vector<ftn_double_complex> tau(std::max(m, n));
+//    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+//}
+//
+//template <>
+//inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+//{
+//    ftn_int lwork = -1;
+//    ftn_double z;
+//    ftn_int info;
+//    ftn_int lda = A.ld();
+//    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+//    lwork = static_cast<int>(z + 1);
+//    std::vector<ftn_double> work(lwork);
+//    std::vector<ftn_double> tau(std::max(m, n));
+//    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+//}
+
+
 
 template <>
 inline void linalg::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha,

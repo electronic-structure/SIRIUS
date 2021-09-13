@@ -83,20 +83,20 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
     }
 
     if (sddk_debug >= 2) {
-        // if (o__.comm().rank() == 0) {
-        //     std::printf("check QR decomposition, matrix size : %i\n", n__);
-        // }
-        // inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        if (o__.comm().rank() == 0) {
+            std::printf("check QR decomposition, matrix size : %i\n", n__);
+        }
+        inner(spla_ctx__, spin_range(ispn__), *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        // linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
-        // auto diag = o__.get_diag(n__);
-        // if (o__.comm().rank() == 0) {
-        //     for (int i = 0; i < n__; i++) {
-        //         if (std::abs(diag[i]) < 1e-6) {
-        //             std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-        //         }
-        //     }
-        // }
+        linalg(linalg_t::scalapack).geqrf(n__, n__, o__, 0, 0);
+        auto diag = o__.get_diag(n__);
+        if (o__.comm().rank() == 0) {
+            for (int i = 0; i < n__; i++) {
+                if (std::abs(diag[i]) < std::numeric_limits<real_type<T>>::epsilon() * 10) {
+                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+                }
+            }
+        }
 
         if (o__.comm().rank() == 0) {
             std::printf("check eigen-values, matrix size : %i\n", n__);
