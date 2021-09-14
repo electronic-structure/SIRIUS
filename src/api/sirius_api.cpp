@@ -613,6 +613,10 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Tolerance for the spglib symmetry search.
+    electronic_structure_method:
+      type: string
+      attr: in, optional
+      doc: Type of electronic structure method.
     error_code:
       type: int
       attr: out, optional
@@ -629,7 +633,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       char const* iter_solver_type__, int const* verbosity__, bool const* hubbard_correction__,
                       int const* hubbard_correction_kind__, char const* hubbard_orbitals__, int const* sht_coverage__,
                       double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
-                      double const* spglib_tol__, int* error_code__)
+                      double const* spglib_tol__, char const* electronic_structure_method__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -722,6 +726,9 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
             }
             if (spglib_tol__ != nullptr) {
                 sim_ctx.cfg().control().spglib_tolerance(*spglib_tol__);
+            }
+            if (electronic_structure_method__ != nullptr) {
+                sim_ctx.cfg().parameters().electronic_structure_method(electronic_structure_method__);
             }
         },
         error_code__);
@@ -4920,7 +4927,7 @@ sirius_option_get_string(char* section__, char* name__, char* default_value__)
     std::string value = parser[name].value("default", "");
     if (value.size() != 0) {
         std::copy(value.begin(), value.end(), default_value__);
-        default_value__[value.size()] = 0;
+        default_value__[value.size() - 1] = 0;
     }
 }
 
@@ -5173,30 +5180,22 @@ sirius_option_set_string:
 @api end
 */
 void
-sirius_option_set_string(void* const* handler__, char* section, char* name, char* default_values)
+sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
-    // the first one is static
-    const json& parser = sirius::get_options_dictionary()["properties"];
     json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = section; *p; p++)
-        *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = name; *p; p++)
-        *p = tolower(*p);
-    if (parser[section].count(name)) {
-        if (!default_values) {
-            std::cout << "option not set up because the string null" << std::endl;
-            return;
-        }
-        // ugly as hell but fortran is a piece of ....
-        for (char* p = default_values; *p; p++) {
-            *p = tolower(*p);
-        }
-        std::string st           = default_values;
-        conf_dict[section][name] = st;
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    auto name = std::string(name__);
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+    if (!default_values__) {
+      std::cout << "option not set up because the string is empty" << std::endl;
+      return;
     }
+    auto st           = std::string(default_values__);
+    std::transform(st.begin(), st.end(), st.begin(), ::tolower);
+    conf_dict[section][name] = st;
 }
 
 /*
@@ -5223,31 +5222,28 @@ sirius_option_add_string_to:
 @api end
 */
 void
-sirius_option_add_string_to(void* const* handler__, char* section, char* name, char* default_values)
+sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     // the first one is static
     const json& parser = sirius::get_options_dictionary()["properties"];
     json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = section; *p; p++)
-        *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    for (char* p = name; *p; p++)
-        *p = tolower(*p);
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    auto name = std::string(name__);
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto v = std::string(default_values__);
+    std::transform(v.begin(), v.end(), v.begin(), ::tolower);
     if (parser[section].count(name)) {
-        if (!default_values) {
-            std::cout << "option not set up because the string null" << std::endl;
+        if (!default_values__) {
+            std::cout << "option not set up because the string is empty" << std::endl;
             return;
         }
         if (conf_dict[section].count(name)) {
-            auto v = conf_dict[section][name].get<std::vector<std::string>>();
-            v.push_back(default_values);
-            conf_dict[section][name] = v;
+            conf_dict[section][name].push_back(v);
         } else {
             std::vector<std::string> st;
-            st.clear();
-            st.push_back(default_values);
+            st.push_back(v);
             conf_dict[section][name] = st;
         }
     }

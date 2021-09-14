@@ -384,12 +384,13 @@ end subroutine sirius_import_parameters
 !> @param [in] smearing Type of occupancy smearing.
 !> @param [in] smearing_width Smearing width
 !> @param [in] spglib_tol Tolerance for the spglib symmetry search.
+!> @param [in] electronic_structure_method Type of electronic structure method.
 !> @param [out] error_code Error code.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
 &verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,spglib_tol,error_code)
+&min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -420,6 +421,7 @@ real(8), optional, target, intent(in) :: min_occupancy
 character(*), optional, target, intent(in) :: smearing
 real(8), optional, target, intent(in) :: smearing_width
 real(8), optional, target, intent(in) :: spglib_tol
+character(*), optional, target, intent(in) :: electronic_structure_method
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -459,6 +461,8 @@ type(C_PTR) :: smearing_ptr
 character(C_CHAR), target, allocatable :: smearing_c_type(:)
 type(C_PTR) :: smearing_width_ptr
 type(C_PTR) :: spglib_tol_ptr
+type(C_PTR) :: electronic_structure_method_ptr
+character(C_CHAR), target, allocatable :: electronic_structure_method_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
@@ -466,7 +470,7 @@ subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
 &verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,spglib_tol,error_code)&
+&min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -497,6 +501,7 @@ type(C_PTR), value :: min_occupancy
 type(C_PTR), value :: smearing
 type(C_PTR), value :: smearing_width
 type(C_PTR), value :: spglib_tol
+type(C_PTR), value :: electronic_structure_method
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -625,6 +630,12 @@ spglib_tol_ptr = C_NULL_PTR
 if (present(spglib_tol)) then
 spglib_tol_ptr = C_LOC(spglib_tol)
 endif
+electronic_structure_method_ptr = C_NULL_PTR
+if (present(electronic_structure_method)) then
+allocate(electronic_structure_method_c_type(len(electronic_structure_method)+1))
+electronic_structure_method_c_type = string_f2c(electronic_structure_method)
+electronic_structure_method_ptr = C_LOC(electronic_structure_method_c_type)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -635,7 +646,7 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &core_rel_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
 &verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
 &sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
-&error_code_ptr)
+&electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -658,6 +669,9 @@ deallocate(hubbard_orbitals_c_type)
 endif
 if (present(smearing)) then
 deallocate(smearing_c_type)
+endif
+if (present(electronic_structure_method)) then
+deallocate(electronic_structure_method_c_type)
 endif
 end subroutine sirius_set_parameters
 
