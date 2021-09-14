@@ -265,8 +265,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
         /* END DEBUG */
 
-        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi,
-                         sphi, 0, num_bands__, ovlp, res);
+        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                         spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, 0, num_bands__, ovlp, res, false);
 
         /* setup eigen-value problem */
         Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
@@ -389,7 +389,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (converged || last_iteration) {
                     kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n",
-                      num_unconverged, iter_step);
+                               num_unconverged, iter_step);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
@@ -445,8 +445,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
-            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi,
-                             hphi, sphi, N, expand_with, ovlp, res);
+            int nn = orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                      spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, true);
+
+            kp.message(3, __function_name__, "Number of linearly indepeendent states : %i\n", nn);
+            expand_with = nn;
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
