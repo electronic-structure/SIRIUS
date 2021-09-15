@@ -36,6 +36,7 @@ RUN apt-get -yqq update \
         lua-posix \
         make \
         parallel \
+        patchelf \
         python3 \
         python3-boto3 \
         tar \
