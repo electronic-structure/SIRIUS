@@ -253,6 +253,21 @@ linalg::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double
 #endif
             break;
         }
+        case linalg_t::lapack: {
+            if (A.comm().size() != 1) {
+                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+            }
+            ftn_int lwork = -1;
+            ftn_double_complex z;
+            ftn_int info;
+            ftn_int lda = A.ld();
+            FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            lwork = static_cast<int>(z.real() + 1);
+            std::vector<ftn_double_complex> work(lwork);
+            std::vector<ftn_double_complex> tau(std::max(m, n));
+            FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            break;
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -283,13 +298,27 @@ linalg::geqrf<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double>& A, ft
 #endif
             break;
         }
+        case linalg_t::lapack: {
+            if (A.comm().size() != 1) {
+                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+            }
+            ftn_int lwork = -1;
+            ftn_double z;
+            ftn_int info;
+            ftn_int lda = A.ld();
+            FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            lwork = static_cast<int>(z + 1);
+            std::vector<ftn_double> work(lwork);
+            std::vector<ftn_double> tau(std::max(m, n));
+            FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            break;
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
 }
-
 
 template<>
 inline void
@@ -350,35 +379,6 @@ linalg::geqrf<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_single>& A, ft
         }
     }
 }
-
-//inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
-//{
-//    ftn_int lwork = -1;
-//    ftn_double_complex z;
-//    ftn_int info;
-//    ftn_int lda = A.ld();
-//    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
-//    lwork = static_cast<int>(z.real() + 1);
-//    std::vector<ftn_double_complex> work(lwork);
-//    std::vector<ftn_double_complex> tau(std::max(m, n));
-//    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
-//}
-//
-//template <>
-//inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
-//{
-//    ftn_int lwork = -1;
-//    ftn_double z;
-//    ftn_int info;
-//    ftn_int lda = A.ld();
-//    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
-//    lwork = static_cast<int>(z + 1);
-//    std::vector<ftn_double> work(lwork);
-//    std::vector<ftn_double> tau(std::max(m, n));
-//    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
-//}
-
-
 
 template <>
 inline void linalg::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha,

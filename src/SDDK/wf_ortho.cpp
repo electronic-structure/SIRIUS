@@ -93,7 +93,8 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         /* compute < \tilda phi_new | \tilda phi_new > */
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        linalg(linalg_t::scalapack).geqrf(n__, n__, o__, 0, 0);
+        linalg_t la1 = (o__.comm().size() == 1) ? linalg_t::lapack : linalg_t::scalapack;
+        linalg(la1).geqrf(n__, n__, o__, 0, 0);
         auto diag = o__.get_diag(n__);
 
         n = 0;

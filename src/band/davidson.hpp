@@ -287,8 +287,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* current subspace size */
         int N = num_bands__;
 
-        // Seems like a smaller block size is not always improving time to solution much,
-        // so keep it num_bands.
+        /* upper limit fot the subspace expansion;
+           seems like a smaller block size is not always improving time to solution much, so keep it num_bands */
         int block_size = num_bands__;
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
@@ -353,7 +353,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                                   (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
 
             kp.message(3, __function_name__,
-                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
+                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. "
                        "Num ritz = %d. Expansion size = %d\n",
                        should_restart ? "yes" : "no", num_locked, num_converged, num_bands__, num_lockable, num_ritz,
                        expand_with);
