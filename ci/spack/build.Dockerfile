@@ -13,7 +13,8 @@ ARG SPACK_ENVIRONMENT
 ARG SPACK_SHA
 ARG COMPILER_CONFIG
 ENV DEBIAN_FRONTEND=noninteractive \
-    PATH="$PATH:/opt/spack/bin:/opt/libtree"
+    PATH="$PATH:/opt/spack/bin:/opt/libtree" \
+    SPACK_COLOR=always
 SHELL ["/bin/bash", "-c"]
 
 RUN apt-get -yqq update \
@@ -38,7 +39,6 @@ RUN apt-get -yqq update \
         parallel \
         patchelf \
         python3 \
-        python3-boto3 \
         tar \
         tcl \
         unzip \
@@ -74,5 +74,5 @@ RUN spack repo add --scope site /user_repo
 # 1. Create a spack environment named `ci` from the input spack.yaml file
 # 2. Install only the dependencies of this (top level is our package)
 COPY $SPACK_ENVIRONMENT /spack_environment/spack.yaml
-RUN spack --color=always env create --without-view ci /spack_environment/spack.yaml
-RUN spack --color=always -e ci install --fail-fast --only=dependencies --require-full-hash-match
+RUN spack env create --without-view ci /spack_environment/spack.yaml
+RUN spack -e ci install --fail-fast --only=dependencies --require-full-hash-match
