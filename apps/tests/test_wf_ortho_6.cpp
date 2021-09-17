@@ -54,7 +54,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
 
     for (int iss = 0; iss < num_spin_steps; iss++) {
         orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0, {&phi},
-                                       0, num_bands__, ovlp, tmp, false);
+                                       0, num_bands__, ovlp, tmp, false, false);
 
         inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
         auto max_diff = check_identity(ovlp, num_bands__);
@@ -63,7 +63,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
         }
 
         orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0, {&phi},
-                                       num_bands__, num_bands__, ovlp, tmp, false);
+                                       num_bands__, num_bands__, ovlp, tmp, true, false);
     }
 
     for (int iss = 0; iss < num_spin_steps; iss++) {

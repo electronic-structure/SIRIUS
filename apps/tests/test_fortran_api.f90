@@ -90,7 +90,7 @@ call sirius_print_info(handler)
 call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
 
 call sirius_create_ground_state(kset, dft)
-call sirius_find_ground_state(dft)
+!call sirius_find_ground_state(dft)
 
 
 call sirius_free_handler(dft)

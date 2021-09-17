@@ -44,8 +44,8 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         mem = memory_t::device;
     }
 
-    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, 0, num_bands__, ovlp, tmp, false);
-    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, num_bands__, num_bands__, ovlp, tmp, false);
+    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, 0, num_bands__, ovlp, tmp, false, false);
+    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, num_bands__, num_bands__, ovlp, tmp, true, false);
 
     inner(spla_ctx, spin_range(0), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
 

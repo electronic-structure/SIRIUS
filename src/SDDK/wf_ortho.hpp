@@ -32,14 +32,16 @@ namespace sddk {
 template <typename T>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
-              int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__, 
-              int N__, int n__, sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool remove_lr__);
+              int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__,
+              int N__, int n__, sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__,
+              bool remove_lr__);
 
 template <typename T>
 inline int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__,
-              int N__, int n__, sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool remove_lr__)
+              int N__, int n__, sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__,
+              bool remove_lr__)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                   std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
@@ -47,7 +49,8 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     auto wfs = {&phi__, &hphi__};
 
-    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 0, wfs, N__, n__, o__, tmp__, remove_lr__);
+    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 0, wfs, N__, n__, o__, tmp__, project_out__,
+                            remove_lr__);
 }
 
 template <typename T>
@@ -55,7 +58,7 @@ inline int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__,
               Wave_functions<real_type<T>>& ophi__, int N__, int n__, sddk::dmatrix<T>& o__,
-              Wave_functions<real_type<T>>& tmp__, bool remove_lr__)
+              Wave_functions<real_type<T>>& tmp__, bool project_out__, bool remove_lr__)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                   std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
@@ -63,7 +66,8 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     auto wfs = {&phi__, &hphi__, &ophi__};
 
-    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 2, wfs, N__, n__, o__, tmp__, remove_lr__);
+    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 2, wfs, N__, n__, o__, tmp__, project_out__,
+                            remove_lr__);
 }
 
 }

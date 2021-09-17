@@ -36,7 +36,7 @@ template <typename T>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__, int N__, int n__,
-              sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool remove_lr__)
+              sddk::dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__, bool remove_lr__)
 {
     PROFILE("sddk::orthogonalize");
 
@@ -72,15 +72,17 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     double gflops{0};
 
-    /* project out the old subspace:
-     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
-    if (N__ > 0) {
-        inner(spla_ctx__, spins__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
-        transform(spla_ctx__, spins__(), -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+    if (project_out__) {
+        /* project out the old subspace:
+         * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
+        if (N__ > 0) {
+            inner(spla_ctx__, spins__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+            transform(spla_ctx__, spins__(), -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
 
-        if (sddk_pp) {
-            /* inner and transform have the same number of flops */
-            gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ * K;
+            if (sddk_pp) {
+                /* inner and transform have the same number of flops */
+                gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ * K;
+            }
         }
     }
 
@@ -312,6 +314,9 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             }
         }
     }
+    inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n, *wfs__[idx_ket__], N__, n, o__, 0, 0);
+    auto err = check_identity(o__, n);
+    std::cout << "wf_ortho: overlap matrix error : " << err << std::endl;
     return n;
 }
 
@@ -320,26 +325,28 @@ template
 int
 orthogonalize<double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
-                      sddk::dmatrix<double>& o__, Wave_functions<double>& tmp__, bool remove_lr__);
+                      sddk::dmatrix<double>& o__, Wave_functions<double>& tmp__, bool project_out__, bool remove_lr__);
 
 template
 int
 orthogonalize<std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<double>*> wfs__, int N__, int n__,
-                      sddk::dmatrix<std::complex<double>>& o__, Wave_functions<double>& tmp__, bool remove_lr__);
+                      sddk::dmatrix<std::complex<double>>& o__, Wave_functions<double>& tmp__, bool project_out__,
+                      bool remove_lr__);
 
 #if defined(USE_FP32)
 template
 int
 orthogonalize<float>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
-                      sddk::dmatrix<float>& o__, Wave_functions<float>& tmp__, bool remove_lr__);
+                      sddk::dmatrix<float>& o__, Wave_functions<float>& tmp__, bool project_out__, bool remove_lr__);
 
 template
 int
 orthogonalize<std::complex<float>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__, int n__,
-                      sddk::dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__, bool remove_lr__);
+                      sddk::dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__, bool project_out__,
+                      bool remove_lr__);
 #endif
 
 } // namespace sddk

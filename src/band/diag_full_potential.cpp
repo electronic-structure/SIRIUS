@@ -364,7 +364,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         }
 
         orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi, ophi,
-                      N, n, ovlp, res, false);
+                      N, n, ovlp, res, false, false);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -645,7 +645,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
         }
 
         orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi, hphi,
-          ophi, N, n, ovlp, res, false);
+          ophi, N, n, ovlp, res, false, false);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions

@@ -44,7 +44,7 @@ Band::Band(Simulation_context& ctx__)
 
 template <typename T>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& op_phi__, dmatrix<T>& mtrx__,
+Band::set_subspace_mtrx(int N__, int n__, int num_locked__, Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& op_phi__, dmatrix<T>& mtrx__,
                         dmatrix<T>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
@@ -56,9 +56,9 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
 
     /* copy old N - num_locked x N - num_locked distributed matrix */
     if (N__ > 0) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked__, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked__, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
         if (mtrx_old__) {
@@ -83,28 +83,28 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked,
-          N__ + n__ - num_locked, op_phi__, N__, n__, mtrx__, 0, N__ - num_locked);
+    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked__,
+          N__ + n__ - num_locked__, op_phi__, N__, n__, mtrx__, 0, N__ - num_locked__);
 
     /* restore lower part */
     if (N__ > 0) {
         if (mtrx__.blacs_grid().comm().size() == 1) {
             #pragma omp parallel for
-            for (int i = 0; i < N__ - num_locked; i++) {
-                for (int j = N__ - num_locked; j < N__ + n__ - num_locked; j++) {
+            for (int i = 0; i < N__ - num_locked__; i++) {
+                for (int j = N__ - num_locked__; j < N__ + n__ - num_locked__; j++) {
                     mtrx__(j, i) = utils::conj(mtrx__(i, j));
                 }
             }
         } else {
             linalg(linalg_t::scalapack)
-                .tranc(n__, N__ - num_locked, mtrx__, 0, N__ - num_locked, mtrx__, N__ - num_locked, 0);
+                .tranc(n__, N__ - num_locked__, mtrx__, 0, N__ - num_locked__, mtrx__, N__ - num_locked__, 0);
         }
     }
 
     if (ctx_.print_checksum()) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         double_complex cs(0, 0);
         for (int i = 0; i < spl_col.local_size(); i++) {
@@ -119,13 +119,13 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
     }
 
     /* kill any numerical noise */
-    mtrx__.make_real_diag(N__ + n__ - num_locked);
+    mtrx__.make_real_diag(N__ + n__ - num_locked__);
 
     /* save new matrix */
     if (mtrx_old__) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
         #pragma omp parallel for schedule(static)
@@ -545,28 +545,32 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
-                                dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked__, Wave_functions<double>& phi__,
+                                Wave_functions<double>& op_phi__, dmatrix<double>& mtrx__,
+                                dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
-                                        dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
+Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked__, Wave_functions<double>& phi__,
+                                        Wave_functions<double>& op_phi__, dmatrix<double_complex>& mtrx__,
+                                        dmatrix<double_complex>* mtrx_old__) const;
 
 template
 void
 Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
 template
 void
-Band::set_subspace_mtrx<float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                               dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__) const;
+Band::set_subspace_mtrx<float>(int N__, int n__, int num_locked__, Wave_functions<float>& phi__,
+                               Wave_functions<float>& op_phi__, dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__)
+                               const;
 
 template
 void
-Band::set_subspace_mtrx<std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                                             dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
+Band::set_subspace_mtrx<std::complex<float>>(int N__, int n__, int num_locked__, Wave_functions<float>& phi__,
+                                             Wave_functions<float>& op_phi__, dmatrix<std::complex<float>>& mtrx__,
+                                             dmatrix<std::complex<float>>* mtrx_old__) const;
 
 template
 void

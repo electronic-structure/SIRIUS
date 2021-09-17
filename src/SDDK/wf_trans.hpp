@@ -23,8 +23,8 @@
  */
 #ifndef __WF_TRANS_HPP__
 #define __WF_TRANS_HPP__
-#include "wave_functions.hpp"
 #include <spla/spla.hpp>
+#include "wave_functions.hpp"
 #include "type_definition.hpp"
 namespace sddk {
 

@@ -87,7 +87,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
 
     auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60);
+            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, true, std::cout, 2);
 
     if (Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
@@ -116,6 +116,9 @@ void test_davidson(cmd_args const& args__)
     auto res_tol   = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
     auto eval_tol  = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
     auto only_kin  = args__.exist("only_kin");
+
+    int num_bands{-1};
+    num_bands = args__.value<int>("num_bands", num_bands);
 
     bool add_dion{!only_kin};
     bool add_vloc{!only_kin};
@@ -217,6 +220,9 @@ void test_davidson(cmd_args const& args__)
     ctx.mpi_grid_dims(mpi_grid);
     ctx.gen_evp_solver_name(solver);
     ctx.std_evp_solver_name(solver);
+    if (num_bands >= 0) {
+        ctx.num_bands(num_bands);
+    }
 
     PROFILE_STOP("test_davidson|setup")
 
@@ -260,6 +266,7 @@ int main(int argn, char** argv)
     cmd_args args(argn, argv, {{"device=",    "(string) CPU or GPU"},
                                {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
+                               {"num_bands=", "(int) number of bands"},
                                {"N=",         "(int) cell multiplicity"},
                                {"mpi_grid=",  "(int[2]) dimensions of the MPI grid for band diagonalization"},
                                {"solver=",    "(string) eigen-value solver"},
