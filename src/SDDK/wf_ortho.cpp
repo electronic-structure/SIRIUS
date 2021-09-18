@@ -315,7 +315,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         }
     }
     if (sddk_debug >= 2) {
-        inner(spla_ctx__, spin_range(ispn__), *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         auto err = check_identity(o__, n__);
         std::cout << "wf_ortho: error in (n, n) overlap matrix : " << err << std::endl;
     }

@@ -154,7 +154,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     /* alias for memory pool */
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
-    bool project_out_here{true};
+    bool project_out_here{false};
 
     /* allocate wave-functions */
 
@@ -587,13 +587,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
-            inner(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, 0, N, sphi, N, expand_with, ovlp, 0, 0);
-            std::cout << "<phi| S|res>" << std::endl;
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < expand_with; j++) {
-                    std::cout << i << " " << j << " " << ovlp(i, j) << std::endl;
-                }
-            }
+            inner(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, 0, N + expand_with, sphi, 0, N + expand_with, ovlp, 0, 0);
+            ovlp.serialize("davidson:ovlp1", N + expand_with);
 
             if (verbosity__ >= 1) {
                 out__ << "orthogonalize " << expand_with << " states to " << N << " previous states" << std::endl;
