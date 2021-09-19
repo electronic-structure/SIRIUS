@@ -261,20 +261,22 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
         //}
 
         /* collect indices of unconverged eigenpairs */
-        std::vector<int> ev_idx;
+        std::vector<int> eval_idx;
+        std::vector<int> evec_idx;
         for (int j = num_locked__; j < num_bands__; j++) {
             if (!is_converged__(j, ispn)) {
-                ev_idx.push_back(j - num_locked__);
+                eval_idx.push_back(j);
+                evec_idx.push_back(j - num_locked__);
             }
         }
 
         /* if everything is converged, return early */
-        if (ev_idx.empty()) {
+        if (eval_idx.empty()) {
             return residual_result{num_bands__, 0, 0};
         }
 
         /* otherwise copy / reorder the unconverged eigenpairs */
-        num_residuals = static_cast<int>(ev_idx.size());
+        num_residuals = static_cast<int>(eval_idx.size());
 
         eval_tmp = sddk::mdarray<real_type<T>, 1>(num_residuals);
         eval_ptr = &eval_tmp;
@@ -283,19 +285,21 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
 
         int num_rows_local = evec_tmp.num_rows_local();
         for (int j = 0; j < num_residuals; j++) {
-            eval_tmp[j] = eval__[ev_idx[j]];
+            eval_tmp[j] = eval__[eval_idx[j]];
             if (evec__.blacs_grid().comm().size() == 1) {
                 /* do a local copy */
-                std::copy(&evec__(0, ev_idx[j]), &evec__(0, ev_idx[j]) + num_rows_local, &evec_tmp(0, j));
+                std::copy(&evec__(0, evec_idx[j]), &evec__(0, evec_idx[j]) + num_rows_local, &evec_tmp(0, j));
             } else {
-                auto pos_src  = evec__.spl_col().location(ev_idx[j]);
+                auto pos_src  = evec__.spl_col().location(evec_idx[j]);
                 auto pos_dest = evec_tmp.spl_col().location(j);
                 /* do MPI send / receive */
                 if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                    evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+                    evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local,
+                                                         pos_dest.rank, evec_idx[j]);
                 }
                 if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                    evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+                    evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local,
+                                                        pos_src.rank, evec_idx[j]);
                 }
             }
         }
@@ -309,17 +313,50 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
         if (is_device_memory(mem_type__)) {
             eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
-        evec_ptr = &evec__;
-        eval_ptr = &eval__;
-        num_residuals = num_bands__;
+        if (num_locked__) {
+            num_residuals = num_bands__ - num_locked__;
+            eval_tmp = sddk::mdarray<real_type<T>, 1>(&eval__[num_locked__], num_residuals);
+            eval_ptr = &eval_tmp;
+
+            evec_tmp = sddk::dmatrix<T>(N__, num_residuals, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
+            evec_ptr = &evec_tmp;
+
+            int num_rows_local = evec_tmp.num_rows_local();
+            for (int j = 0; j < num_residuals; j++) {
+                if (evec__.blacs_grid().comm().size() == 1) {
+                    /* do a local copy */
+                    std::copy(&evec__(0, num_locked__ + j), &evec__(0, num_locked__ + j) + num_rows_local, &evec_tmp(0, j));
+                } else {
+                    auto pos_src  = evec__.spl_col().location(j + num_locked__);
+                    auto pos_dest = evec_tmp.spl_col().location(j);
+                    /* do MPI send / receive */
+                    if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                        evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local,
+                                                             pos_dest.rank, j + num_locked__);
+                    }
+                    if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                        evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local,
+                                                            pos_src.rank, j + num_locked__);
+                    }
+                }
+            }
+        } else {
+            evec_ptr = &evec__;
+            eval_ptr = &eval__;
+            num_residuals = num_bands__;
+        }
     }
 
-    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    sddk::transform<T>(ctx__.spla_context(), ispn__(), {&hphi__, &ophi__}, num_locked__, N__ - num_locked__, *evec_ptr, 0, 0,
-                       {&hpsi__, &opsi__}, 0, num_residuals);
+    //std::cout << "residuals: num_locked: " << num_locked__ << ", num_residuals: " << num_residuals
+    //          << ", sum over " << N__ - num_locked__  << " phi basis functions" << std::endl;
 
-    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, ispn__, num_residuals, *eval_ptr, hpsi__, opsi__, res__,
-                                                                h_diag__, o_diag__, norm_tolerance__, res_norm);
+    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+    sddk::transform<T>(ctx__.spla_context(), ispn__(), {&hphi__, &ophi__}, num_locked__, N__ - num_locked__, *evec_ptr,
+                       0, 0, {&hpsi__, &opsi__}, 0, num_residuals);
+
+    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, ispn__, num_residuals, *eval_ptr, hpsi__,
+                                                             opsi__, res__, h_diag__, o_diag__, norm_tolerance__,
+                                                             res_norm);
 
     // In case we're not using the delta in eigenvalues as a convergence criterion,
     // we lock eigenpairs using residual norms.
@@ -329,7 +366,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
     //    }
     //}
 
-    auto frobenius_norm = 0.0;
+    double frobenius_norm{0.0};
     for (int i = 0; i < num_residuals; i++) {
         frobenius_norm += res_norm[i] * res_norm[i];
     }

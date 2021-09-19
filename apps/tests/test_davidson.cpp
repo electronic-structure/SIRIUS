@@ -43,7 +43,7 @@ void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int nu
 template <typename T>
 void
 diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
-            double eval_tol__, bool only_kin__)
+            double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__)
 {
     K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
     kp.initialize();
@@ -84,10 +84,13 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     //auto max_diff = check_hermitian(hmlt, num_bands);
     //std::cout << "Simple kinetic Hamiltonian: error in hermiticity: " << std::setw(24) << std::scientific << max_diff << std::endl;
     //hmlt.serialize("hmlt", num_bands);
+    //
+    bool locking{true};
 
 
     auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, true, std::cout, 2);
+            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
+            subspace_size__, estimate_eval__, std::cout, 2);
 
     if (Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
@@ -116,6 +119,8 @@ void test_davidson(cmd_args const& args__)
     auto res_tol   = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
     auto eval_tol  = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
     auto only_kin  = args__.exist("only_kin");
+    auto subspace_size = args__.value<int>("subspace_size", 2);
+    auto estimate_eval = !args__.exist("use_res_norm");
 
     int num_bands{-1};
     num_bands = args__.value<int>("num_bands", num_bands);
@@ -228,9 +233,6 @@ void test_davidson(cmd_args const& args__)
 
     //ctx.cfg().iterative_solver().type("exact");
 
-    ctx.cfg().iterative_solver().num_steps(40);
-    ctx.cfg().iterative_solver().locking(false);
-
     /* initialize simulation context */
     ctx.initialize();
 
@@ -251,29 +253,31 @@ void test_davidson(cmd_args const& args__)
         std::array<double, 3> vk({0.1, 0.1, 0.1});
         if (fp32) {
 #ifdef USE_FP32
-            diagonalize<float>(ctx, vk, pot, res_tol, eval_tol, only_kin);
+            diagonalize<float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            diagonalize<double>(ctx, vk, pot, res_tol, eval_tol, only_kin);
+            diagonalize<double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
         }
     }
 }
 
 int main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=",    "(string) CPU or GPU"},
-                               {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
-                               {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
-                               {"num_bands=", "(int) number of bands"},
-                               {"N=",         "(int) cell multiplicity"},
-                               {"mpi_grid=",  "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=",    "(string) eigen-value solver"},
-                               {"res_tol=",   "(double) residual L2-norm tolerance"},
-                               {"eval_tol=",  "(double) eigan-value tolerance"},
-                               {"fp32",       "use FP32 arithmetics"},
-                               {"only_kin",   "use kinetic-operator only"}
+    cmd_args args(argn, argv, {{"device=",        "(string) CPU or GPU"},
+                               {"pw_cutoff=",     "(double) plane-wave cutoff for density and potential"},
+                               {"gk_cutoff=",     "(double) plane-wave cutoff for wave-functions"},
+                               {"num_bands=",     "(int) number of bands"},
+                               {"N=",             "(int) cell multiplicity"},
+                               {"mpi_grid=",      "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                               {"solver=",        "(string) eigen-value solver"},
+                               {"res_tol=",       "(double) residual L2-norm tolerance"},
+                               {"eval_tol=",      "(double) eigan-value tolerance"},
+                               {"subspace_size=", "(int) size of the diagonalization subspace"},
+                               {"use_res_norm",   "use residual norm to estimate the convergence"},
+                               {"fp32",           "use FP32 arithmetics"},
+                               {"only_kin",       "use kinetic-operator only"}
                               });
 
     if (args.exist("help")) {
