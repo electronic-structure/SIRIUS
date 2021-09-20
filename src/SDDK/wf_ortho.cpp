@@ -32,6 +32,34 @@
 
 namespace sddk {
 
+template <typename T>
+T filter_number(double_complex z__);
+
+template<>
+double filter_number<double>(double_complex z__)
+{
+    return z__.real();
+}
+
+template<>
+float filter_number<float>(double_complex z__)
+{
+    return z__.real();
+}
+
+template<>
+std::complex<double> filter_number<std::complex<double>>(double_complex z__)
+{
+    return z__;
+}
+
+template<>
+std::complex<float> filter_number<std::complex<float>>(double_complex z__)
+{
+    return std::complex<float>(z__.real(), z__.imag());
+}
+
+
 template <typename T, int idx_bra__, int idx_ket__>
 void
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int ispn__,
@@ -118,6 +146,24 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
                 if (eo[i] < 1e-6) {
                     std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
                 }
+            }
+        }
+
+        std::cout << "recompute in fp64" << std::endl;
+        for (int i = 0; i < n__; i++) {
+            for (int j = 0; j < n__; j++) {
+                double_complex z{0};
+                for (int k = 0; k < wfs__[idx_bra__]->pw_coeffs(0).num_rows_loc(); k++) {
+                    z += std::conj(wfs__[idx_bra__]->pw_coeffs(0).prime(k, N__ + i)) * wfs__[idx_ket__]->pw_coeffs(0).prime(k, N__ + j);
+                }
+                o__(i, j) = filter_number<T>(z);
+            }
+        }
+        solver->solve(n__, o__, eo.data(), evec);
+
+        if (o__.comm().rank() == 0) {
+            for (int i = 0; i < n__; i++) {
+                std::cout << "eigen-value " << i << " " << eo[i] << std::endl;
             }
         }
     }
