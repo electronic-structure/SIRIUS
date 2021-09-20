@@ -124,6 +124,7 @@ inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist_
 
 } // namespace
 
+
 template <typename T>
 void
 inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
@@ -202,30 +203,34 @@ void inner<float>(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_
     double alpha    = 2.0;
     int size_factor = 2;
 
-    Wave_functions<double> bra__d(memory_t::host, bra__.gkvec(), m__, bra__.preferred_memory_t(), bra__.num_sc());
-    Wave_functions<double> ket__d(memory_t::host, ket__.gkvec(), n__, ket__.preferred_memory_t(), ket__.num_sc());
+    Wave_functions<double> bra__d(bra__.gkvec_partition(), m__, bra__.preferred_memory_t(), bra__.num_sc());
+    Wave_functions<double> ket__d(ket__.gkvec_partition(), n__, ket__.preferred_memory_t(), ket__.num_sc());
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
-        bra__d.copy_from(bra__, m__, ispn, i0__, ispn, i0__);
-        ket__d.copy_from(ket__, n__, ispn, j0__, ispn, j0__);
+        bra__d.copy_from(bra__, m__, ispn, i0__, ispn, 0);
+        ket__d.copy_from(ket__, n__, ispn, j0__, ispn, 0);
 
     }
 
     // For gamma case, contribution of g = 0 vector must not be counted double -> multiply by 0.5
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale");
-        scale_gamma_wf<double>(spins__, m__, i0__, 0.5, bra__d);
+        scale_gamma_wf<double>(spins__, m__, 0, 0.5, bra__d);
     }
 
     double beta = 0.0;
 
-    std::std::unique_ptr<double> result_ptr_d(result__.size_local());
+    //std::vector<double> result_ptr_d(result__.size_local());
+    dmatrix<double> result__d(result__.num_rows(), result__.num_cols(), result__.blacs_grid(), result__.bs_row(), result__.bs_col());
+    copy(result__, result__d);
+    double* result_ptr_d = reinterpret_cast<double*>(result__d.size_local() ? result__d.at(memory_t::host, 0, 0) : nullptr);
+
 
     for (auto s : spins__) {
         PROFILE("sddk::wf_inner|pw");
         spla::pgemm_ssb(m__, n__, size_factor * bra__.pw_coeffs(s).num_rows_loc(), SPLA_OP_CONJ_TRANSPOSE, alpha,
-                        reinterpret_cast<const double_complex*>(bra__d.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
+                        reinterpret_cast<const double*>(bra__d.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, 0)),
                         size_factor * bra__.pw_coeffs(s).prime().ld(),
-                        reinterpret_cast<const double_complex*>(ket__d.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
+                        reinterpret_cast<const double*>(ket__d.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, 0)),
                         size_factor * ket__.pw_coeffs(s).prime().ld(), beta, result_ptr_d, result__.ld(), irow0__,
                         jcol0__, spla_mat_dist, spla_ctx__);
         beta = 1.0;
@@ -234,13 +239,17 @@ void inner<float>(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_
     // For gamma case, g = 0 vector is rescaled back
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale_back");
-        scale_gamma_wf<double>(spins__, m__, i0__, 2.0, bra__d);
+        scale_gamma_wf<double>(spins__, m__, 0, 2.0, bra__d);
     }
 
     // add mt contribution
-    inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__d, i0__, m__, ket__d, j0__, n__, result__d, irow0__, jcol0__);
-
-    std::copy(result__d, result__d + result__.size_local(), result__.at(memory_t::host, 0, 0));
+    inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__d, 0, m__, ket__d, 0, n__, result__d, irow0__, jcol0__);
+    for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
+        bra__.copy_from(bra__d, m__, ispn, 0, ispn, i0__);
+        ket__.copy_from(ket__d, n__, ispn, 0, ispn, j0__);
+    }
+    copy(result__d, result__);
+    //std::copy(result_ptr_d.begin(), result_ptr_d.end(), result__.at(memory_t::host, 0, 0));
     // make sure result is updated on device as well
     if (result__.on_device()) {
         result__.copy_to(memory_t::device);
@@ -261,44 +270,48 @@ void inner<std::complex<float>>(::spla::Context& spla_ctx__, ::sddk::spin_range 
     double alpha    = 1.0;
     int size_factor = 1;
 
-    Wave_functions<double> bra__d(memory_t::host, bra__.gkvec(), m__, bra__.preferred_memory_t(), bra__.num_sc());
-    Wave_functions<double> ket__d(memory_t::host, ket__.gkvec(), n__, ket__.preferred_memory_t(), ket__.num_sc());
+    Wave_functions<double> bra__d(bra__.gkvec_partition(), m__, bra__.preferred_memory_t(), bra__.num_sc());
+    Wave_functions<double> ket__d(ket__.gkvec_partition(), n__, ket__.preferred_memory_t(), ket__.num_sc());
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
-        bra__d.copy_from(bra__, m__, ispn, i0__, ispn, i0__);
-        ket__d.copy_from(ket__, n__, ispn, j0__, ispn, j0__);
+        bra__d.copy_from(bra__, m__, ispn, i0__, ispn, 0);
+        ket__d.copy_from(ket__, n__, ispn, j0__, ispn, 0);
     }
-
     // For gamma case, contribution of g = 0 vector must not be counted double -> multiply by 0.5
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale");
-        scale_gamma_wf<std::complex<double>>(spins__, m__, i0__, 0.5, bra__d);
+        scale_gamma_wf<std::complex<double>>(spins__, m__, 0, 0.5, bra__d);
     }
-
     double beta = 0.0;
 
-    std::std::unique_ptr<std::complex<double>> result_ptr_d(result__.size_local());
+    dmatrix<std::complex<double>> result__d(result__.num_rows(), result__.num_cols(), result__.blacs_grid(), result__.bs_row(), result__.bs_col());
+    copy(result__, result__d);
+    //std::vector<std::complex<double>> result_ptr_d(result__.size_local());
+    double_complex* result_ptr_d = reinterpret_cast<double_complex*>(result__d.size_local() ? result__d.at(memory_t::host, 0, 0) : nullptr);
+    
 
     for (auto s : spins__) {
         PROFILE("sddk::wf_inner|pw");
         spla::pgemm_ssb(m__, n__, size_factor * bra__.pw_coeffs(s).num_rows_loc(), SPLA_OP_CONJ_TRANSPOSE, alpha,
-                        reinterpret_cast<const double_complex*>(bra__d.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
+                        reinterpret_cast<const double_complex*>(bra__d.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, 0)),
                         size_factor * bra__.pw_coeffs(s).prime().ld(),
-                        reinterpret_cast<const double_complex*>(ket__d.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
+                        reinterpret_cast<const double_complex*>(ket__d.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, 0)),
                         size_factor * ket__.pw_coeffs(s).prime().ld(), beta, result_ptr_d, result__.ld(), irow0__,
                         jcol0__, spla_mat_dist, spla_ctx__);
         beta = 1.0;
     }
-
     // For gamma case, g = 0 vector is rescaled back
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale_back");
-        scale_gamma_wf<double_complex>(spins__, m__, i0__, 2.0, bra__d);
+        scale_gamma_wf<double_complex>(spins__, m__, 0, 2.0, bra__d);
     }
-
     // add mt contribution
-    inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__d, i0__, m__, ket__d, j0__, n__, result__d, irow0__, jcol0__);
+    inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__d, 0, m__, ket__d, 0, n__, result__d, irow0__, jcol0__);
 
-    std::copy(result__d, result__d + result__.size_local(), result__.at(memory_t::host, 0, 0));
+    for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
+        bra__.copy_from(bra__d, m__, ispn, 0, ispn, i0__);
+        ket__.copy_from(ket__d, n__, ispn, 0, ispn, j0__);
+    }
+    copy(result__d, result__);
     // make sure result is updated on device as well
     if (result__.on_device()) {
         result__.copy_to(memory_t::device);
