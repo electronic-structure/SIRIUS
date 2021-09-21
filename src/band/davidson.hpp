@@ -270,8 +270,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
         /* END DEBUG */
 
-        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi,
-                         sphi, 0, num_bands__, ovlp, res);
+        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), spin_range(nc_mag ? 2 : 0),
+                         phi, hphi, sphi, 0, num_bands__, ovlp, res);
 
         /* setup eigen-value problem */
         Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
@@ -450,8 +450,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
-            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi,
-                             hphi, sphi, N, expand_with, ovlp, res);
+            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                             spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res);
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
