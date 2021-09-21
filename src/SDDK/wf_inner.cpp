@@ -206,6 +206,8 @@ void inner<float>(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_
     Wave_functions<double> bra__d(bra__.gkvec_partition(), m__, bra__.preferred_memory_t(), bra__.num_sc());
     Wave_functions<double> ket__d(ket__.gkvec_partition(), n__, ket__.preferred_memory_t(), ket__.num_sc());
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
+        bra__d.pw_coeffs(ispn).allocate(bra__.preferred_memory_t());
+        ket__d.pw_coeffs(ispn).allocate(ket__.preferred_memory_t());
         bra__d.copy_from(bra__, m__, ispn, i0__, ispn, 0);
         ket__d.copy_from(ket__, n__, ispn, j0__, ispn, 0);
 
@@ -219,7 +221,6 @@ void inner<float>(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_
 
     double beta = 0.0;
 
-    //std::vector<double> result_ptr_d(result__.size_local());
     dmatrix<double> result__d(result__.num_rows(), result__.num_cols(), result__.blacs_grid(), result__.bs_row(), result__.bs_col());
     copy(result__, result__d);
     double* result_ptr_d = reinterpret_cast<double*>(result__d.size_local() ? result__d.at(memory_t::host, 0, 0) : nullptr);
@@ -247,9 +248,10 @@ void inner<float>(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
         bra__.copy_from(bra__d, m__, ispn, 0, ispn, i0__);
         ket__.copy_from(ket__d, n__, ispn, 0, ispn, j0__);
+        bra__d.pw_coeffs(ispn).deallocate(bra__.preferred_memory_t());
+        ket__d.pw_coeffs(ispn).deallocate(ket__.preferred_memory_t());
     }
     copy(result__d, result__);
-    //std::copy(result_ptr_d.begin(), result_ptr_d.end(), result__.at(memory_t::host, 0, 0));
     // make sure result is updated on device as well
     if (result__.on_device()) {
         result__.copy_to(memory_t::device);
@@ -273,6 +275,8 @@ void inner<std::complex<float>>(::spla::Context& spla_ctx__, ::sddk::spin_range 
     Wave_functions<double> bra__d(bra__.gkvec_partition(), m__, bra__.preferred_memory_t(), bra__.num_sc());
     Wave_functions<double> ket__d(ket__.gkvec_partition(), n__, ket__.preferred_memory_t(), ket__.num_sc());
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
+        bra__d.pw_coeffs(ispn).allocate(bra__.preferred_memory_t());
+        ket__d.pw_coeffs(ispn).allocate(ket__.preferred_memory_t());
         bra__d.copy_from(bra__, m__, ispn, i0__, ispn, 0);
         ket__d.copy_from(ket__, n__, ispn, j0__, ispn, 0);
     }
@@ -285,9 +289,7 @@ void inner<std::complex<float>>(::spla::Context& spla_ctx__, ::sddk::spin_range 
 
     dmatrix<std::complex<double>> result__d(result__.num_rows(), result__.num_cols(), result__.blacs_grid(), result__.bs_row(), result__.bs_col());
     copy(result__, result__d);
-    //std::vector<std::complex<double>> result_ptr_d(result__.size_local());
     double_complex* result_ptr_d = reinterpret_cast<double_complex*>(result__d.size_local() ? result__d.at(memory_t::host, 0, 0) : nullptr);
-    
 
     for (auto s : spins__) {
         PROFILE("sddk::wf_inner|pw");
@@ -310,6 +312,8 @@ void inner<std::complex<float>>(::spla::Context& spla_ctx__, ::sddk::spin_range 
     for (int ispn = 0; ispn < bra__.num_sc(); ispn++) {
         bra__.copy_from(bra__d, m__, ispn, 0, ispn, i0__);
         ket__.copy_from(ket__d, n__, ispn, 0, ispn, j0__);
+        bra__d.pw_coeffs(ispn).deallocate(bra__.preferred_memory_t());
+        ket__d.pw_coeffs(ispn).deallocate(ket__.preferred_memory_t());
     }
     copy(result__d, result__);
     // make sure result is updated on device as well

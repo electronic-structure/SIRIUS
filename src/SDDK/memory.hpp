@@ -37,6 +37,24 @@
 #include <cassert>
 #include "gpu/acc.hpp"
 
+#ifdef SIRIUS_GPU
+extern "C" void copy_double_to_float_gpu(float* to_device_ptr__, const double* from_device_ptr__, int n__);
+
+extern "C" void copy_float_to_double_gpu(double* to_device_ptr__, const float* from_device_ptr__, int n__);
+
+extern "C" void copy_double_to_float_complex_gpu(std::complex<float>* to_device_ptr__, const std::complex<double>* from_device_ptr__, int n__);
+
+extern "C" void copy_float_to_double_complex_gpu(std::complex<double>* to_device_ptr__, const std::complex<float>* from_device_ptr__, int n__);
+
+void copy_gpu(float* to_device_ptr__, const double* from_device_ptr__, int n__);
+
+void copy_gpu(double* to_device_ptr__, const float* from_device_ptr__, int n__);
+
+void copy_gpu(std::complex<float>* to_device_ptr__, const std::complex<double>* from_device_ptr__, int n__);
+
+void copy_gpu(std::complex<double>* to_device_ptr__, const std::complex<float>* from_device_ptr__, int n__);
+#endif
+
 namespace sddk {
 
 /// Check is the type is a complex number; by default it is not.
@@ -219,7 +237,18 @@ inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F*
         return;
     }
 #if defined(SIRIUS_GPU)
-    throw std::runtime_error("Copy mixed precision type not supported in device memory");
+    if (is_device_memory(to_mem__) && is_device_memory(from_mem__)) {
+        copy_gpu(to_ptr__, from_ptr__, n__);
+        return;
+    }
+    if (is_device_memory(to_mem__) && is_host_memory(from_mem__)) {
+        throw std::runtime_error("Copy mixed precision type from host to device not supported");
+        return;
+    }
+    if (is_host_memory(to_mem__) && is_device_memory(from_mem__)) {
+        throw std::runtime_error("Copy mixed precision type from device to host not supported");
+        return;
+    }
     return;
 #endif
 }

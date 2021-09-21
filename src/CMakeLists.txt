@@ -67,6 +67,7 @@ set(_SOURSES
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
+  "SDDK/memory.cpp"
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
