@@ -51,12 +51,49 @@ project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_funct
     sddk::inner(spla_ctx__, spins__, sphi__, 0, N__, phi__, N__, n__, o__, 0, 0);
     sddk::transform(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
 
+    //auto norms = phi__.l2norm(device_t::CPU, spins__, N__ + n__);
+
+    //for (int i = 0; i < N__ + n__; i++) {
+    //    std::cout << "phi: " << i << ", l2norm: " << norms[i] << std::endl;
+    //}
     //inner(spla_ctx__, spins__, sphi__, 0, N__, phi_new__, 0, n__, o__, 0, 0);
     //for (int i = 0; i < N__; i++) {
     //    for (int j = 0; j < n__; j++) {
     //        std::cout << i << " " << j << " " << o__(i, j) << std::endl;
     //    }
     //}
+}
+
+template <typename T>
+inline int
+remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
+                          int N__, int n__, sddk::dmatrix<T>& o__)
+
+{
+    PROFILE("sirius::remove_linearly_dependent");
+
+    /* compute <phi | phi> */
+    inner(spla_ctx__, spins__, phi__, N__, n__, phi__, N__, n__, o__, 0, 0);
+
+    auto la = (o__.comm().size() == 1) ? linalg_t::lapack : linalg_t::scalapack;
+    linalg(la).geqrf(n__, n__, o__, 0, 0);
+    auto diag = o__.get_diag(n__);
+
+    auto eps = std::numeric_limits<real_type<T>>::epsilon();
+
+    int n{0};
+    for (int i = 0; i < n__; i++) {
+        if (std::abs(diag[i]) >= eps * 10) {
+            /* shift linearly independent basis functions to the beginning of phi */
+            if (n != i) {
+                for (int ispn: spins__) {
+                    phi__.copy_from(phi__, 1, ispn, N__ + i, ispn, N__ + n);
+                }
+            }
+            n++;
+        }
+    }
+    return n;
 }
 
 
@@ -381,7 +418,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                                   (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
 
             kp.message(3, __function_name__,
-                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
+                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. "
                        "Num ritz = %d. Expansion size = %d\n",
                        should_restart ? "yes" : "no", num_locked, num_converged, num_bands__, num_lockable, num_ritz,
                        expand_with);
@@ -469,6 +506,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             }
 
             project_out_subspace(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
+
+            //std::cout << "expand_with before = " << expand_with << std::endl;
+            //expand_with = remove_linearly_dependent(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, N,
+            //                                        expand_with, ovlp);
+            //std::cout << "expand_with after = " << expand_with << std::endl;
 
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
