@@ -32,38 +32,11 @@
 
 namespace sddk {
 
-//template <typename T>
-//T filter_number(double_complex z__);
-//
-//template<>
-//double filter_number<double>(double_complex z__)
-//{
-//    return z__.real();
-//}
-//
-//template<>
-//float filter_number<float>(double_complex z__)
-//{
-//    return z__.real();
-//}
-//
-//template<>
-//std::complex<double> filter_number<std::complex<double>>(double_complex z__)
-//{
-//    return z__;
-//}
-//
-//template<>
-//std::complex<float> filter_number<std::complex<float>>(double_complex z__)
-//{
-//    return std::complex<float>(z__.real(), z__.imag());
-//}
-
 template <typename T>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__, int N__,
-              int n__, dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__)
+              int n__, dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__)
 {
     PROFILE("sddk::orthogonalize");
 
@@ -84,8 +57,9 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     auto sddk_debug_ptr = utils::get_env<int>("SDDK_DEBUG");
     int sddk_debug      = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 
-    double ngop{8e-9};                                           // default value for complex type
-    if (std::is_same<T, real_type<T>>::value) {       // change it if it is real type
+    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
+    double ngop{8e-9}; // default value for complex type
+    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
         ngop = 2e-9;
     }
 
@@ -97,14 +71,16 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     double gflops{0};
 
     /* project out the old subspace:
-     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
-    if (N__ > 0) {
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> 
+     * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new> 
+     * S|\tilda phi_new> = S|phi_new> - S|phi_old><phi_old|phi_new> */
+    if (N__ > 0 && project_out__) {
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         transform(spla_ctx__, spins__(), -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
 
         if (sddk_pp) {
-            gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ *
-                      K; // inner and transform have the same number of flops
+            /* inner and transform have the same number of flops */
+            gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ * K;
         }
     }
 
@@ -146,35 +122,8 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
                 }
             }
         }
-
-        //std::cout << "recompute in fp64" << std::endl;
-        //for (int i = 0; i < n__; i++) {
-        //    for (int j = 0; j < n__; j++) {
-        //        double_complex z{0};
-        //        for (int k = 0; k < wfs__[idx_bra__]->pw_coeffs(0).num_rows_loc(); k++) {
-        //            z += std::conj(wfs__[idx_bra__]->pw_coeffs(0).prime(k, N__ + i)) * wfs__[idx_ket__]->pw_coeffs(0).prime(k, N__ + j);
-        //        }
-        //        o__(i, j) = filter_number<T>(z);
-        //    }
-        //}
-        //solver->solve(n__, o__, eo.data(), evec);
-
-        //if (o__.comm().rank() == 0) {
-        //    for (int i = 0; i < n__; i++) {
-        //        std::cout << "eigen-value " << i << " " << eo[i] << std::endl;
-        //    }
-        //}
     }
 
-    //for (int i = 0; i < n__; i++) {
-    //    for (int j = 0; j < n__; j++) {
-    //        double_complex z{0};
-    //        for (int k = 0; k < wfs__[idx_bra__]->pw_coeffs(0).num_rows_loc(); k++) {
-    //            z += std::conj(wfs__[idx_bra__]->pw_coeffs(0).prime(k, N__ + i)) * wfs__[idx_ket__]->pw_coeffs(0).prime(k, N__ + j);
-    //        }
-    //        o__(i, j) = filter_number<T>(z);
-    //    }
-    //}
     /* orthogonalize new n__ x n__ block */
     inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -344,24 +293,24 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 template int
 orthogonalize<double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<double>*> wfs__, int N__,
-                      int n__, dmatrix<double>& o__, Wave_functions<double>& tmp__);
+                      int n__, dmatrix<double>& o__, Wave_functions<double>& tmp__, bool project_out__);
 
 template int
 orthogonalize<std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<double>*> wfs__, int N__,
-                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<double>& tmp__);
+                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<double>& tmp__, bool project_out__);
 
 
 #if defined(USE_FP32)
 template int
 orthogonalize<float>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-                      int n__, dmatrix<float>& o__, Wave_functions<float>& tmp__);
+                      int n__, dmatrix<float>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
 template int
 orthogonalize<std::complex<float>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-                      int n__, dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__);
+                      int n__, dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__, bool project_out__);
 #endif
 
 } // namespace sddk

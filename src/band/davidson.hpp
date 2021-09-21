@@ -27,6 +27,8 @@
 
 #include "utils/profiler.hpp"
 #include "SDDK/wf_ortho.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 #include "residuals.hpp"
 
 /// Result of Davidson solver.
@@ -36,6 +38,27 @@ struct davidson_result_t {
 };
 
 namespace sirius {
+
+template <typename T>
+inline void
+project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
+                     Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<T>& o__)
+{
+    PROFILE("sirius::project_out_subspace");
+
+    /* project out the old subspace:
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|S|phi_new> */
+    sddk::inner(spla_ctx__, spins__, sphi__, 0, N__, phi__, N__, n__, o__, 0, 0);
+    sddk::transform(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
+
+    //inner(spla_ctx__, spins__, sphi__, 0, N__, phi_new__, 0, n__, o__, 0, 0);
+    //for (int i = 0; i < N__; i++) {
+    //    for (int j = 0; j < n__; j++) {
+    //        std::cout << i << " " << j << " " << o__(i, j) << std::endl;
+    //    }
+    //}
+}
+
 
 /// Solve the eigen-problem using Davidson iterative method.
 /**
@@ -445,13 +468,15 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
+            project_out_subspace(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
+
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
             orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                             spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res);
+                             spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
