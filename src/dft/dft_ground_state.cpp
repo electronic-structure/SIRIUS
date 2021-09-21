@@ -245,6 +245,27 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         }
         tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol, ctx_.cfg().settings().itsol_tol_scale()[1] * old_tol);
         tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
+        if (ctx_.cfg().parameters().precision() == "fp32") {
+            if (tol == ctx_.cfg().settings().itsol_tol_min()) {
+                ctx_.cfg().settings().itsol_tol_min(1e-12);
+                ctx_.cfg().parameters().precision("fp64");
+
+                for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+                    int ik = kset_.spl_num_kpoints(ikloc);
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        kset_.get<double>(ik)->spinor_wave_functions().copy_from(device_t::CPU, ctx_.num_bands(),
+                                kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                    }
+                }
+                for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+                    for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                        for (int j = 0; j < ctx_.num_bands(); j++) {
+                            kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
+                        }
+                    }
+                }
+            }
+        }
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 

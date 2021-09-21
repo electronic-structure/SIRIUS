@@ -201,9 +201,6 @@ class config_t
         }
         inline void itsol_tol_min(double itsol_tol_min__)
         {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
             dict_["/settings/itsol_tol_min"_json_pointer] = itsol_tol_min__;
         }
         /// Minimum occupancy below which the band is treated as being 'empty'
@@ -1333,9 +1330,6 @@ class config_t
         }
         inline void precision(std::string precision__)
         {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
             dict_["/parameters/precision"_json_pointer] = precision__;
         }
       private:
