@@ -328,8 +328,6 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
     /* number of newly added basis functions */
     int n = ncomp;
 
-    ctx_.message(3, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
-
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     auto& std_solver = ctx_.std_evp_solver();
@@ -518,8 +516,6 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (num_phi >= kp.num_gkvec()) {
         TERMINATE("subspace is too big");
     }
-
-    ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* allocate wave-functions */
     Wave_functions<double> phi(kp.gkvec_partition(), unit_cell_.num_atoms(),

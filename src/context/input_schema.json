@@ -637,7 +637,13 @@
                     "type" : "string",
                     "default" : "fp64",
                     "enum" : ["fp64", "fp32"],
-                    "title" : "The floating point precision used in the calculation"
+                    "title" : "The floating point precision used to search for Kohn-Sham wave-functions."
+                },
+                "scf_precision" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "fp64", "fp32"],
+                    "title" : "The floating point precision used in the SCF calculation."
                 }
             }
         },

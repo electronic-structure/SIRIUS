@@ -66,7 +66,7 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
 
 template <typename T>
 int
-Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
+Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -86,7 +86,8 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
 
         auto tolerance = [&](int j__, int ispn__) -> double {
 
-            double tol      = ctx_.iterative_solver_tolerance();
+            /* tolerance for occupied states */
+            double tol      = itsol_tol__;
             double empy_tol = std::max(tol * ctx_.cfg().settings().itsol_tol_ratio(),
                                        ctx_.cfg().iterative_solver().empty_states_tolerance());
 
@@ -128,7 +129,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const
 
 template <typename T>
 void
-Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const
+Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const
 {
     PROFILE("sirius::Band::solve");
 
@@ -142,7 +143,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (!ctx_.full_potential()) {
-        ctx_.message(2, __function_name__, "iterative solver tolerance: %1.4e\n", ctx_.iterative_solver_tolerance());
+        ctx_.message(2, __function_name__, "iterative solver tolerance: %1.4e\n", itsol_tol__);
     }
 
     int num_dav_iter{0};
@@ -156,9 +157,9 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const
             solve_full_potential<T>(Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<T>(Hk);
+                num_dav_iter += solve_pseudo_potential<T>(Hk, itsol_tol__);
             } else {
-                num_dav_iter += solve_pseudo_potential<std::complex<T>>(Hk);
+                num_dav_iter += solve_pseudo_potential<std::complex<T>>(Hk, itsol_tol__);
             }
         }
     }
@@ -192,12 +193,12 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const
 
 template
 void
-Band::solve<double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__) const;
+Band::solve<double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__, double itsol_tol__) const;
 
-#if defined (USE_FP32)
+#if defined(USE_FP32)
 template
 void
-Band::solve<float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__) const;
+Band::solve<float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
 #endif
 
 } // namespace

@@ -134,9 +134,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     auto& itso = ctx.cfg().iterative_solver();
 
-    //kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", ctx.iterative_solver_tolerance());
-    //kp.message(2, __function_name__, "empty states tolerance : %18.12f\n",
-    //        std::max(ctx.iterative_solver_tolerance() * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance()));
+    kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", tolerance__(0, 0));
+    kp.message(2, __function_name__, "empty states tolerance : %18.12f\n", tolerance__(num_bands__ - 1, 0));
 
     /* true if this is a non-collinear case */
     const bool nc_mag = (num_mag_dims__ == 3);
@@ -447,8 +446,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 if (last_iteration && !converged) {
                     kp.message(3, __function_name__,
                                "Warning: maximum number of iterations reached, but %i "
-                               "residual(s) did not converge for k-point %f %f %f, eigen-solver tolerance: %18.12f\n",
-                               num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2], ctx.iterative_solver_tolerance());
+                               "residual(s) did not converge for k-point %f %f %f\n",
+                               num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2]);
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */

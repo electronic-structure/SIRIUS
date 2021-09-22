@@ -72,27 +72,11 @@ spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
     return *spfft_grid_coarse_;
 }
 
-#ifdef USE_FP32
-template <>
-spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
-    {
-        return *spfft_grid_coarse_float_;
-    }
-#endif
-
 template <>
 spfft::Transform& Simulation_context::spfft<double>()
 {
     return *spfft_transform_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft<float>()
-    {
-        return *spfft_transform_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft<double>() const
@@ -100,27 +84,11 @@ spfft::Transform const& Simulation_context::spfft<double>() const
     return *spfft_transform_;
 }
 
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat const& Simulation_context::spfft<float>() const
-    {
-        return *spfft_transform_float_;
-    }
-#endif
-
 template <>
 spfft::Transform& Simulation_context::spfft_coarse<double>()
 {
     return *spfft_transform_coarse_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
-    {
-        return *spfft_transform_coarse_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft_coarse<double>() const
@@ -128,12 +96,36 @@ spfft::Transform const& Simulation_context::spfft_coarse<double>() const
     return *spfft_transform_coarse_;
 }
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
+template <>
+spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
+{
+    return *spfft_grid_coarse_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft<float>()
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat const& Simulation_context::spfft<float>() const
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
+{
+   return *spfft_transform_coarse_float_;
+}
+
 template <>
 spfft::TransformFloat const& Simulation_context::spfft_coarse<float>() const
-    {
-        return *spfft_transform_coarse_float_;
-    }
+{
+    return *spfft_transform_coarse_float_;
+}
 #endif
 
 void
@@ -680,14 +672,16 @@ Simulation_context::initialize()
         print_info();
     }
 
-    iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
-
     if (this->hubbard_correction()) {
         /* if spin orbit coupling or non collinear magnetisms are activated, then
            we consider the full spherical hubbard correction */
         if (this->so_correction() || this->num_mag_dims() == 3) {
             this->cfg().hubbard().simplified(false);
         }
+    }
+
+    if (cfg().parameters().scf_precision() == "") {
+         cfg().parameters().scf_precision(cfg().parameters().precision());
     }
 
     initialized_ = true;

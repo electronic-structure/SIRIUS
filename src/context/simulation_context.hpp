@@ -260,7 +260,7 @@ class Simulation_context : public Simulation_parameters
     /// Total number of iterative solver steps.
     mutable int num_itsol_steps_{0};
 
-    double iterative_solver_tolerance_;
+    //double iterative_solver_tolerance_;
 
     /// True if the context is already initialized.
     bool initialized_{false};
@@ -896,18 +896,18 @@ class Simulation_context : public Simulation_parameters
         return veff_callback_;
     }
 
-    /// Get tolerance of the iterative solver.
-    double iterative_solver_tolerance() const
-    {
-        return iterative_solver_tolerance_;
-    }
+    ///// Get tolerance of the iterative solver.
+    //double iterative_solver_tolerance() const
+    //{
+    //    return iterative_solver_tolerance_;
+    //}
 
-    /// Set the tolerance of the iterative solver.
-    double iterative_solver_tolerance(double tolerance__)
-    {
-        iterative_solver_tolerance_ = tolerance__;
-        return tolerance__;
-    }
+    ///// Set the tolerance of the iterative solver.
+    //double iterative_solver_tolerance(double tolerance__)
+    //{
+    //    iterative_solver_tolerance_ = tolerance__;
+    //    return tolerance__;
+    //}
 
     /// Export parameters of simulation context as a JSON dictionary.
     nlohmann::json serialize()

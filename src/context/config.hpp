@@ -201,6 +201,9 @@ class config_t
         }
         inline void itsol_tol_min(double itsol_tol_min__)
         {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
             dict_["/settings/itsol_tol_min"_json_pointer] = itsol_tol_min__;
         }
         /// Minimum occupancy below which the band is treated as being 'empty'
@@ -1323,14 +1326,29 @@ class config_t
             }
             dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
         }
-        /// The floating point precision used in the calculation
+        /// The floating point precision used to search for Kohn-Sham wave-functions.
         inline auto precision() const
         {
             return dict_.at("/parameters/precision"_json_pointer).get<std::string>();
         }
         inline void precision(std::string precision__)
         {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
             dict_["/parameters/precision"_json_pointer] = precision__;
+        }
+        /// The floating point precision used in the SCF calculation.
+        inline auto scf_precision() const
+        {
+            return dict_.at("/parameters/scf_precision"_json_pointer).get<std::string>();
+        }
+        inline void scf_precision(std::string scf_precision__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/scf_precision"_json_pointer] = scf_precision__;
         }
       private:
         nlohmann::json& dict_;
