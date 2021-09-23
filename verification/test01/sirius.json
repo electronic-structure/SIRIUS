@@ -3,7 +3,7 @@
         "processing_unit" : "cpu",
         "std_evp_solver_name" : "lapack",
         "gen_evp_solver_name" : "lapack",
-        "verbosity" : 2,
+        "verbosity" : 1,
         "print_forces" : true,
         "print_stress" : true
     },
@@ -29,13 +29,7 @@
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [2,2,2],
-
-        "precision" : "fp32",
-        "scf_precision" : "fp64"
-    },
-    "settings" : {
-        "itsol_tol_min" : 1e-6
+        "ngridk" : [2,2,2]
     },
 
     "iterative_solver" : {
