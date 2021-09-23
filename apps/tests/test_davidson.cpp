@@ -236,8 +236,6 @@ void test_davidson(cmd_args const& args__)
     /* initialize simulation context */
     ctx.initialize();
 
-    ctx.iterative_solver_tolerance(1e-12);
-
     std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
 
     Density rho(ctx);

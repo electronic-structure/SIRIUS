@@ -112,10 +112,9 @@ double ground_state(Simulation_context& ctx,
         dft.initial_state();
     }
 
-    double initial_tol = ctx.iterative_solver_tolerance();
-
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+            inp.num_dft_iter(), write_state);
     /* compute forces and stress */
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -198,7 +197,8 @@ double ground_state(Simulation_context& ctx,
             }
             ctx.unit_cell().set_lattice_vectors(lv1);
             dft.update();
-            auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+            auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                    inp.num_dft_iter(), write_state);
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
                 Stress& s       = dft.stress();
                 auto stress_tot = s.calc_stress_total();
@@ -310,7 +310,7 @@ void run_tasks(cmd_args const& args)
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
-        ctx->iterative_solver_tolerance(1e-12);
+        ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {
@@ -374,7 +374,7 @@ void run_tasks(cmd_args const& args)
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        band.solve(ks, H0, true);
+        band.solve(ks, H0, true, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {
