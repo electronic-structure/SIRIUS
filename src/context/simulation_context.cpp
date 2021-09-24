@@ -423,7 +423,7 @@ Simulation_context::initialize()
                 blas_linalg_t_ = linalg_t::gpublas;
             }
             if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
                 blas_linalg_t_ = linalg_t::gpublas;
 #else
                 blas_linalg_t_ = linalg_t::cublasxt;
@@ -682,6 +682,11 @@ Simulation_context::initialize()
 
     if (cfg().parameters().scf_precision() == "") {
          cfg().parameters().scf_precision(cfg().parameters().precision());
+    }
+    if (cfg().parameters().precision() == "fp32") {
+        double t = std::numeric_limits<float>::epsilon() * 10;
+        auto tol = std::max(cfg().settings().itsol_tol_min(), t);
+        cfg().settings().itsol_tol_min(tol);
     }
 
     initialized_ = true;

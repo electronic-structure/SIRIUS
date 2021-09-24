@@ -246,8 +246,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         if (ctx_.cfg().parameters().scf_precision() == "fp64" && ctx_.cfg().parameters().precision() == "fp32") {
             /* if we reached the mimimum tolerance for fp32 */
             if (itsol_tol == ctx_.cfg().settings().itsol_tol_min()) {
+                std::cout << "Minimum iterative solver tolerance " << itsol_tol << " is reached." << std::endl;
                 ctx_.cfg().unlock();
-                ctx_.cfg().settings().itsol_tol_min(1e-12);
+                ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
                 ctx_.cfg().parameters().precision("fp64");
                 ctx_.cfg().lock();
 
