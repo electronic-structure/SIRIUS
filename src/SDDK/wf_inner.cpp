@@ -72,7 +72,7 @@ void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_fu
 }
 
 // If complex type, no scaling required
-#ifdef USE_FP32
+#if defined(USE_FP32)
 template <>
 void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions<float>& bra) {}
 #endif
