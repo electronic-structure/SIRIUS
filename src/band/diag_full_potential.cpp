@@ -332,7 +332,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
 
     auto& std_solver = ctx_.std_evp_solver();
 
-    /* tolerance for THe norm of L2-norms of the residuals, used for
+    /* tolerance for the norm of L2-norms of the residuals, used for
      * relative convergence criterion. We can only compute this after
      * we have the first residual norms available */
     double relative_frobenius_tolerance{0};
