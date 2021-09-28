@@ -49,6 +49,53 @@ void transform(::spla::Context& spla_ctx__,
                int                                         j0__,
                int                                         n__);
 
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, double alpha__, std::vector<Wave_functions<float>*>  wf_in__,
+          int i0__, int m__, dmatrix<std::complex<double>>& mtrx__, int irow0__, int jcol0__,
+          double beta__, std::vector<Wave_functions<float>*>  wf_out__, int j0__, int n__)
+{
+    spin_range spins(ispn__);
+
+    for (int idx = 0; idx < static_cast<int>(wf_in__.size()); idx++) {
+        for (auto s : spins) {
+	    for (int j = 0; j < n__; j++) {
+	        for (int k = 0; k < wf_in__[idx]->pw_coeffs(s).num_rows_loc(); k++) {
+		    std::complex<double> z(0, 0);;
+		    for (int i = 0; i < m__; i++) {
+			z += static_cast<std::complex<double>>(wf_in__[idx]->pw_coeffs(s).prime(k, i + i0__)) * mtrx__(irow0__ + i, jcol0__ + j);
+		    }
+		    wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) = alpha__ * z + static_cast<std::complex<double>>(wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__)) * beta__;
+		}
+	    }
+	}
+    }
+
+}
+
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, double alpha__, std::vector<Wave_functions<float>*>  wf_in__,
+          int i0__, int m__, dmatrix<double>& mtrx__, int irow0__, int jcol0__,
+          double beta__, std::vector<Wave_functions<float>*>  wf_out__, int j0__, int n__)
+{
+    spin_range spins(ispn__);
+
+    for (int idx = 0; idx < static_cast<int>(wf_in__.size()); idx++) {
+        for (auto s : spins) {
+	    for (int j = 0; j < n__; j++) {
+	        for (int k = 0; k < wf_in__[idx]->pw_coeffs(s).num_rows_loc(); k++) {
+		    std::complex<double> z(0, 0);;
+		    for (int i = 0; i < m__; i++) {
+			z += static_cast<std::complex<double>>(wf_in__[idx]->pw_coeffs(s).prime(k, i + i0__)) * mtrx__(irow0__ + i, jcol0__ + j);
+		    }
+		    wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) = alpha__ * z + static_cast<std::complex<double>>(wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__)) * beta__;
+		}
+	    }
+	}
+    }
+
+}
+
+
 template <typename T>
 inline void transform(::spla::Context& spla_ctx__,
                       int                                        ispn__,
@@ -65,6 +112,23 @@ inline void transform(::spla::Context& spla_ctx__,
     transform<T>(spla_ctx__ , ispn__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
 }
 
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, std::vector<Wave_functions<float>*> wf_in__,
+          int i0__, int m__, dmatrix<std::complex<double>>& mtrx__, int irow0__, int jcol0__,
+          std::vector<Wave_functions<float>*> wf_out__, int j0__, int n__)
+{
+    transform(spla_ctx__ , ispn__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
+}
+
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, std::vector<Wave_functions<float>*> wf_in__,
+          int i0__, int m__, dmatrix<double>& mtrx__, int irow0__, int jcol0__,
+          std::vector<Wave_functions<float>*> wf_out__, int j0__, int n__)
+{
+    transform(spla_ctx__ , ispn__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
+}
+
+
 template <typename T>
 inline void transform(::spla::Context& spla_ctx__,
                       int                           ispn__,
@@ -80,6 +144,23 @@ inline void transform(::spla::Context& spla_ctx__,
 {
     transform<T>(spla_ctx__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 }
+
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, Wave_functions<float>& wf_in__, int i0__, int m__,
+          dmatrix<std::complex<double>>& mtrx__, int irow0__, int jcol0__,
+          Wave_functions<float>& wf_out__, int j0__, int n__)
+{
+    transform(spla_ctx__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
+}
+
+inline void
+transform(::spla::Context& spla_ctx__, int ispn__, Wave_functions<float>& wf_in__, int i0__, int m__,
+          dmatrix<double>& mtrx__, int irow0__, int jcol0__,
+          Wave_functions<float>& wf_out__, int j0__, int n__)
+{
+    transform(spla_ctx__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
+}
+
 
 }
 #endif
