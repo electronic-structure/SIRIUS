@@ -3,7 +3,7 @@
 
 using namespace sirius;
 
-template <typename T>
+template <typename T, typename F>
 void test_wf_trans(BLACS_grid const& blacs_grid__,
                    double cutoff__,
                    int num_bands__,
@@ -42,9 +42,9 @@ void test_wf_trans(BLACS_grid const& blacs_grid__,
         phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
     }
 
-    dmatrix<std::complex<T>> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+    dmatrix<F> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-    sddk::transform(spla_ctx, 0, 1.0, {&phi}, 0, num_bands__, tmtrx, 0, 0, 0.0, {&tmp}, 0, num_bands__);
+    sddk::transform<std::complex<T>, F>(spla_ctx, 0, phi, 0, num_bands__, tmtrx, 0, 0, tmp, 0, num_bands__);
 
 
 
@@ -102,7 +102,7 @@ void call_test(std::vector<int> mpi_grid_dims__,
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
     for (int i = 0; i < repeat__; i++) {
-        test_wf_trans<T>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
+        test_wf_trans<T, double>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
     }
 }
 
