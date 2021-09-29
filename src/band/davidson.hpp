@@ -441,6 +441,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
                 } else {
                     kp.message(3, __function_name__, "%s", "wave-functions are not recomputed\n");
+                    for (int j = 0; j < num_bands__; j++) {
+                        result.eval(j, ispin_step) = kp.band_energy(j, ispin_step);
+                    }
                 }
 
                 if (last_iteration && !converged) {
