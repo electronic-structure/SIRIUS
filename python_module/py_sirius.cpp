@@ -205,9 +205,9 @@ PYBIND11_MODULE(py_sirius, m)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
              py::return_value_policy::reference_internal)
         .def("comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
-             py::return_value_policy::reference_internal)
-        .def("iterative_solver_tolerance", py::overload_cast<double>(&Simulation_context::iterative_solver_tolerance))
-        .def("iterative_solver_tolerance", py::overload_cast<>(&Simulation_context::iterative_solver_tolerance, py::const_));
+             py::return_value_policy::reference_internal);
+        //.def("iterative_solver_tolerance", py::overload_cast<double>(&Simulation_context::iterative_solver_tolerance))
+        //.def("iterative_solver_tolerance", py::overload_cast<>(&Simulation_context::iterative_solver_tolerance, py::const_));
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)
@@ -432,7 +432,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
         .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve<double>, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
+        .def("solve", &Band::solve<double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
