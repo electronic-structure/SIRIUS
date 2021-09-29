@@ -76,7 +76,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
      * S|\tilda phi_new> = S|phi_new> - S|phi_old><phi_old|phi_new> */
     if (N__ > 0 && project_out__) {
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
-        transform(spla_ctx__, spins__(), -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+        transform<T, F>(spla_ctx__, spins__(), -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
 
         if (sddk_pp) {
             /* inner and transform have the same number of flops */
@@ -275,7 +275,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi
          */
         for (auto& e : wfs__) {
-            transform(spla_ctx__, spins__(), *e, N__, n__, o__, 0, 0, tmp__, 0, n__);
+            transform<T, F>(spla_ctx__, spins__(), *e, N__, n__, o__, 0, 0, tmp__, 0, n__);
             for (int s : spins__) {
                 e->copy_from(tmp__, n__, s, 0, s, N__);
             }
@@ -307,20 +307,20 @@ orthogonalize<float, float>(::spla::Context& spla_ctx__, memory_t mem__, linalg_
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
                       int n__, dmatrix<float>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
-template int
-orthogonalize<float, double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
-                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-                      int n__, dmatrix<double>& o__, Wave_functions<float>& tmp__, bool project_out__);
+//template int
+//orthogonalize<float, double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+//                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
+//                      int n__, dmatrix<double>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
 template int
 orthogonalize<std::complex<float>, std::complex<float>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
                       int n__, dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
-template int
-orthogonalize<std::complex<float>, std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
-                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<float>& tmp__, bool project_out__);
+//template int
+//orthogonalize<std::complex<float>, std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+//                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
+//                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<float>& tmp__, bool project_out__);
 #endif
 
 } // namespace sddk

@@ -442,7 +442,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
             PROFILE("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            transform<double_complex, double_complex>(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -451,7 +451,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy()) {
-                    transform(ctx_.spla_context(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
+                    transform<double_complex, double_complex>(ctx_.spla_context(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();
@@ -697,7 +697,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             PROFILE("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
+            transform<double_complex, double_complex>(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {

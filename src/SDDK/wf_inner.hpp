@@ -51,11 +51,13 @@ namespace sddk {
  *  \param [in]  jcol0    First column (in the global matix) of the inner product sub-matrix.
  */
 template <typename T>
-void inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
-           Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__);
+void
+inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
+      Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__);
 
-inline void inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
-           Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<double>>& result__, int irow0__, int jcol0__)
+inline void
+inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<double>>& result__, int irow0__, int jcol0__)
 {
     for (int i = 0; i < m__; i++) {
         for (int j = 0; j < n__; j++) {
@@ -77,8 +79,9 @@ inline void inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions
     }
 }
 
-inline void inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
-           Wave_functions<float>& ket__, int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
+inline void
+inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
 {
     for (int i = 0; i < m__; i++) {
         for (int j = 0; j < n__; j++) {
