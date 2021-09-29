@@ -45,39 +45,39 @@ namespace sddk {
 \param [in]      project_out   Project out old subspace (if this was not done before).
 \return                        Number of linearly independent wave-functions found.
 */
-template <typename T>
+template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__, int N__,
-              int n__, dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true);
+              int n__, dmatrix<F>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true);
 
-template <typename T>
+template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__, int N__, int n__,
-              dmatrix<T>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true)
+              dmatrix<F>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                   std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
                   "wrong type");
 
-    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 0, {&phi__, &hphi__}, N__, n__, o__, tmp__,
-                            project_out__);
+    return orthogonalize<T, F>(spla_ctx__, mem__, la__, spins__, 0, 0, {&phi__, &hphi__}, N__, n__, o__, tmp__,
+                               project_out__);
 }
 
-template <typename T>
+template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
               Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__,
-              Wave_functions<real_type<T>>& ophi__, int N__, int n__, dmatrix<T>& o__,
+              Wave_functions<real_type<T>>& ophi__, int N__, int n__, dmatrix<F>& o__,
               Wave_functions<real_type<T>>& tmp__, bool project_out__ = true)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
                   std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
                   "wrong type");
 
-    return orthogonalize<T>(spla_ctx__, mem__, la__, spins__, 0, 2, {&phi__, &hphi__, &ophi__}, N__, n__, o__, tmp__,
-                            project_out__);
+    return orthogonalize<T, F>(spla_ctx__, mem__, la__, spins__, 0, 2, {&phi__, &hphi__, &ophi__}, N__, n__, o__, tmp__,
+                               project_out__);
 }
 
 }

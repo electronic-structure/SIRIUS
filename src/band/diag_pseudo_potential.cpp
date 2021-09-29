@@ -427,7 +427,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
         if (should_restart || converged || last_iteration) {
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.spla_context(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
+            transform<T, T>(ctx_.spla_context(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -436,7 +436,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy()) {
-                    transform(ctx_.spla_context(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);
+                    transform<T, T>(ctx_.spla_context(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);
                 }
 
                 ovlp_old.zero();

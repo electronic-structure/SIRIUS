@@ -49,7 +49,7 @@ project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_funct
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|S|phi_new> */
     sddk::inner(spla_ctx__, spins__, sphi__, 0, N__, phi__, N__, n__, o__, 0, 0);
-    sddk::transform(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
+    sddk::transform<T, T>(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
 
     //auto norms = phi__.l2norm(device_t::CPU, spins__, N__ + n__);
 
@@ -466,7 +466,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (estimate_eval__) {
-                        transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
+                        transform<T, T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
                                      std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
                                      N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
                     }

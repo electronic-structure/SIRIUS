@@ -1,10 +1,10 @@
 #include <sirius.hpp>
-#include "SDDK/wf_ortho.hpp"
+#include "SDDK/wf_trans.hpp"
 
 using namespace sirius;
 
 template <typename T>
-void test_wf_ortho(BLACS_grid const& blacs_grid__,
+void test_wf_trans(BLACS_grid const& blacs_grid__,
                    double cutoff__,
                    int num_bands__,
                    int bs__,
@@ -42,43 +42,47 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
         phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
     }
 
-    dmatrix<std::complex<T>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+    dmatrix<std::complex<T>> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-    if (is_device_memory(mem__)) {
-        ovlp.allocate(mem__);
-        for (int ispn = 0; ispn < nsp; ispn++) {
-            phi.allocate(spin_range(ispn), mem__);
-            phi.copy_to(spin_range(ispn), mem__, 0, 2 * num_bands__);
-            tmp.allocate(spin_range(ispn), mem__);
-        }
-    }
+    sddk::transform(spla_ctx, 0, 1.0, {&phi}, 0, num_bands__, tmtrx, 0, 0, 0.0, {&tmp}, 0, num_bands__);
 
-    for (int iss = 0; iss < num_spin_steps; iss++) {
-        orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
-                 {&phi}, 0, num_bands__, ovlp, tmp);
 
-        inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
-        auto max_diff = check_identity(ovlp, num_bands__);
-        if (Communicator::world().rank() == 0) {
-            printf("maximum difference (first num_bands) : %18.12e\n", max_diff);
-        }
 
-        orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
-                                       {&phi}, num_bands__, num_bands__, ovlp, tmp);
-    }
+    //if (is_device_memory(mem__)) {
+    //    ovlp.allocate(mem__);
+    //    for (int ispn = 0; ispn < nsp; ispn++) {
+    //        phi.allocate(spin_range(ispn), mem__);
+    //        phi.copy_to(spin_range(ispn), mem__, 0, 2 * num_bands__);
+    //        tmp.allocate(spin_range(ispn), mem__);
+    //    }
+    //}
 
-    for (int iss = 0; iss < num_spin_steps; iss++) {
-        inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
-        auto max_diff = check_identity(ovlp, 2 * num_bands__);
-        if (Communicator::world().rank() == 0) {
-            printf("maximum difference: %18.12e\n", max_diff);
-            if (max_diff > 1e-12) {
-                printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
-            } else {
-                printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
-            }
-        }
-    }
+    //for (int iss = 0; iss < num_spin_steps; iss++) {
+    //    orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
+    //             {&phi}, 0, num_bands__, ovlp, tmp);
+
+    //    inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    //    auto max_diff = check_identity(ovlp, num_bands__);
+    //    if (Communicator::world().rank() == 0) {
+    //        printf("maximum difference (first num_bands) : %18.12e\n", max_diff);
+    //    }
+
+    //    orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
+    //                                   {&phi}, num_bands__, num_bands__, ovlp, tmp);
+    //}
+
+    //for (int iss = 0; iss < num_spin_steps; iss++) {
+    //    inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+    //    auto max_diff = check_identity(ovlp, 2 * num_bands__);
+    //    if (Communicator::world().rank() == 0) {
+    //        printf("maximum difference: %18.12e\n", max_diff);
+    //        if (max_diff > 1e-12) {
+    //            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+    //        } else {
+    //            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    //        }
+    //    }
+    //}
 }
 
 template <typename T>
@@ -98,7 +102,7 @@ void call_test(std::vector<int> mpi_grid_dims__,
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
     for (int i = 0; i < repeat__; i++) {
-        test_wf_ortho<T>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
+        test_wf_trans<T>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
     }
 }
 

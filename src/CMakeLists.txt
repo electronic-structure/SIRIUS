@@ -61,7 +61,6 @@ set(_SOURSES
   "utils/profiler.cpp"
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
-  "SDDK/wf_trans.cpp"
   "SDDK/wave_functions.cpp"
   "mpi/communicator.cpp"
   "SDDK/dmatrix.cpp"

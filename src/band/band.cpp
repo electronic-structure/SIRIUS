@@ -376,7 +376,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0,
+        transform<T, T>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0,
                      0, {&Hk__.kp().spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {

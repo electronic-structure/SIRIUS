@@ -314,7 +314,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
     sddk::transform<T>(ctx__.spla_context(), ispn__(), {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, 0, 0,
-                       {&hpsi__, &opsi__}, 0, num_residuals);
+                    {&hpsi__, &opsi__}, 0, num_residuals);
 
     num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, ispn__, num_residuals, *eval_ptr, hpsi__, opsi__, res__,
                                                                 h_diag__, o_diag__, norm_tolerance__, res_norm);
