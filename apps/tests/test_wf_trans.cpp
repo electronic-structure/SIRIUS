@@ -44,7 +44,7 @@ void test_wf_trans(BLACS_grid const& blacs_grid__,
 
     dmatrix<std::complex<T>> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-    sddk::transform(spla_ctx, 0, 1.0, {&phi}, 0, num_bands__, tmtrx, 0, 0, 0.0, {&tmp}, 0, num_bands__);
+    sddk::transform<std::complex<T>, std::complex<T>>(spla_ctx, 0, 1.0, {&phi}, 0, num_bands__, tmtrx, 0, 0, 0.0, {&tmp}, 0, num_bands__);
 
 
 
