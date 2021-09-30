@@ -133,8 +133,12 @@
                     "default" : 0,
                     "title" : "Coverage of sphere in case of spherical harmonics transformation",
                     "description" : "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
+                },
+                "fp32_to_fp64_rms" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used."
                 }
-
             }
         },
         "unit_cell" : {

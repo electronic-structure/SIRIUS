@@ -314,6 +314,18 @@ class config_t
             }
             dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
         }
+        /// Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used.
+        inline auto fp32_to_fp64_rms() const
+        {
+            return dict_.at("/settings/fp32_to_fp64_rms"_json_pointer).get<double>();
+        }
+        inline void fp32_to_fp64_rms(double fp32_to_fp64_rms__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/fp32_to_fp64_rms"_json_pointer] = fp32_to_fp64_rms__;
+        }
       private:
         nlohmann::json& dict_;
     };

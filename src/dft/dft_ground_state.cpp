@@ -245,8 +245,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         /* if the final precision is not equal to the current precision */
         if (ctx_.cfg().parameters().scf_precision() == "fp64" && ctx_.cfg().parameters().precision() == "fp32") {
             /* if we reached the mimimum tolerance for fp32 */
-            if (itsol_tol == ctx_.cfg().settings().itsol_tol_min()) {
-                std::cout << "Minimum iterative solver tolerance " << itsol_tol << " is reached." << std::endl;
+            if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
+                (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
+                std::cout << "switching to FP64" << std::endl;
                 ctx_.cfg().unlock();
                 ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
                 ctx_.cfg().parameters().precision("fp64");
@@ -263,6 +264,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
                     for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                         for (int j = 0; j < ctx_.num_bands(); j++) {
                             kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
+                            kset_.get<double>(ik)->band_occupancy(j, ispn, kset_.get<float>(ik)->band_occupancy(j, ispn));
                         }
                     }
                 }
