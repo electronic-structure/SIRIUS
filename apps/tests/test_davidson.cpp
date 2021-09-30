@@ -40,7 +40,7 @@ void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int nu
     }
 }
 
-template <typename T>
+template <typename T, typename F>
 void
 diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
             double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__)
@@ -87,8 +87,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     //
     bool locking{true};
 
-
-    auto result = davidson<std::complex<T>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
+    auto result = davidson<std::complex<T>, std::complex<F>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
             [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
             subspace_size__, estimate_eval__, std::cout, 2);
 
@@ -105,6 +104,13 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
             printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
         }
         printf("maximum eigen-value difference: %20.16e\n", max_diff);
+    }
+
+    if (Communicator::world().rank() == 0 && !only_kin__) {
+        std::cout << "Converged eigen-values" << std::endl;
+        for (int i = 0; i < ctx__.num_bands(); i++) {
+            printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
+        }
     }
 }
 
@@ -137,7 +143,8 @@ void test_davidson(cmd_args const& args__)
         "        \"electronic_structure_method\" : \"pseudopotential\""
         "    },"
         "   \"control\" : {"
-        "       \"verification\" : 0"
+        "       \"verification\" : 0,"
+        "       \"print_checksum\" : false"
         "    }"
         "}");
 
@@ -250,13 +257,16 @@ void test_davidson(cmd_args const& args__)
     for (int r = 0; r < 1; r++) {
         std::array<double, 3> vk({0.1, 0.1, 0.1});
         if (fp32) {
-#ifdef USE_FP32
-            diagonalize<float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+#if defined(USE_FP32)
+            std::cout << "using FP32/FP64 mixed precision" << std::endl;
+            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+            std::cout << "using only FP32 precision" << std::endl;
+            diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            diagonalize<double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+            diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
         }
     }
 }

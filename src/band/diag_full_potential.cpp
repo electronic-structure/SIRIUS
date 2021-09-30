@@ -347,7 +347,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         }
 
         if (ctx_.cfg().control().verification() >= 1) {
-            set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
+            set_subspace_mtrx<double_complex, double_complex>(0, N + n, 0, phi, ophi, ovlp);
 
             if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap", N + n);
@@ -367,7 +367,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
+        set_subspace_mtrx<double_complex, double_complex>(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
         if (ctx_.cfg().control().verification() >= 1) {
             if (ctx_.cfg().control().verification() >= 2) {
@@ -412,7 +412,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals(
+            auto result = sirius::residuals<double_complex, double_complex>(
                 ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, ncomp, 0, eval, evec, ophi, phi, opsi, psi,
                 res, o_diag__, diag1, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
@@ -646,7 +646,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, 0, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx<double_complex, double_complex>(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
         /* increase size of the variation space */
         N += n;
@@ -667,7 +667,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            auto result = sirius::residuals(
+            auto result = sirius::residuals<double_complex, double_complex>(
                 ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, num_bands, 0, eval, evec, hphi, ophi, hpsi,
                 opsi, res, h_o_diag.first, h_o_diag.second, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });

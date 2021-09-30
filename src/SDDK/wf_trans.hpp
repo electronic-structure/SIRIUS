@@ -142,6 +142,7 @@ transform(::spla::Context& spla_ctx__, int ispn__, real_type<F> alpha__, std::ve
           int i0__, int m__, dmatrix<F>& mtrx__, int irow0__, int jcol0__,
           real_type<F> beta__, std::vector<Wave_functions<real_type<T>>*>  wf_out__, int j0__, int n__)
 {
+    std::cout << "[wf_trans] slow implemntation" << std::endl;
     spin_range spins(ispn__);
 
     for (int idx = 0; idx < static_cast<int>(wf_in__.size()); idx++) {

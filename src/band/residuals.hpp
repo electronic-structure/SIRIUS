@@ -105,14 +105,15 @@ namespace sirius {
       R_{i} = \hat H \psi_{i} - \epsilon_{i} \hat S \psi_{i}
     \f]
  */
-template <typename T>
+template <typename T, typename F>
 residual_result
 residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__,
-          int N__, int num_bands__, int num_locked, sddk::mdarray<real_type<T>, 1>& eval__,
-          sddk::dmatrix<T>& evec__, sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__,
-          sddk::Wave_functions<real_type<T>>& hpsi__, sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__,
-          sddk::mdarray<real_type<T>, 2> const& h_diag__, sddk::mdarray<real_type<T>, 2> const& o_diag__,
-          bool estimate_eval__, real_type<T> norm_tolerance__, std::function<bool(int, int)> is_converged__);
+          int N__, int num_bands__, int num_locked, sddk::mdarray<real_type<F>, 1>& eval__,
+          sddk::dmatrix<F>& evec__, sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__,
+          sddk::Wave_functions<real_type<T>>& hpsi__, sddk::Wave_functions<real_type<T>>& opsi__,
+          sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<real_type<T>, 2> const& h_diag__,
+          sddk::mdarray<real_type<T>, 2> const& o_diag__, bool estimate_eval__, real_type<T> norm_tolerance__,
+          std::function<bool(int, int)> is_converged__);
 }
 
 #endif

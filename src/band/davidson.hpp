@@ -39,17 +39,17 @@ struct davidson_result_t {
 
 namespace sirius {
 
-template <typename T>
+template <typename T, typename F>
 inline void
 project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
-                     Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<T>& o__)
+                     Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<F>& o__)
 {
     PROFILE("sirius::project_out_subspace");
 
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|S|phi_new> */
     sddk::inner(spla_ctx__, spins__, sphi__, 0, N__, phi__, N__, n__, o__, 0, 0);
-    sddk::transform<T, T>(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
+    sddk::transform<T, F>(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
 
     //auto norms = phi__.l2norm(device_t::CPU, spins__, N__ + n__);
 
@@ -100,6 +100,7 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 /// Solve the eigen-problem using Davidson iterative method.
 /**
 \tparam T                     Type of the wave-functions in real space (one of float, double, complex<float>, complex<double>).
+\tparam F                     Type of the subspace matrices.
 \param [in]     Hk            Hamiltonian for a given k-point.
 \param [in]     num_bands     Number of eigen-states (bands) to compute.
 \param [in]     num_mag_dims  Number of magnetic dimensions (0, 1 or 3).
@@ -116,7 +117,7 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 \param [in]     verbosity     Verbosity level.
 \return                       List of eigen-values.
 */
-template <typename T>
+template <typename T, typename F>
 inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__, double res_tol__,
@@ -186,11 +187,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     const int bs = ctx.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<T> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<T> hmlt_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<T> ovlp_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> hmlt(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> ovlp(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> hmlt_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> ovlp_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx.aux_preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
@@ -264,8 +265,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* converged vectors */
         int num_locked = 0;
 
-        sddk::mdarray<real_type<T>, 1> eval(num_bands__);
-        sddk::mdarray<real_type<T>, 1> eval_old(num_bands__);
+        sddk::mdarray<real_type<F>, 1> eval(num_bands__);
+        sddk::mdarray<real_type<F>, 1> eval_old(num_bands__);
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
@@ -303,8 +304,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* DEBUG */
         if (ctx.cfg().control().verification() >= 1) {
             /* setup eigen-value problem */
-            Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
-            Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
+            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
 
             auto max_diff = check_hermitian(hmlt, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
@@ -466,7 +467,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (estimate_eval__) {
-                        transform<T, T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
+                        transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
                                      std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
                                      N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
                     }
@@ -507,7 +508,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
-            project_out_subspace(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
+            project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
 
             //std::cout << "expand_with before = " << expand_with << std::endl;
             //expand_with = remove_linearly_dependent(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, N,
@@ -525,7 +526,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
-            Band(ctx).set_subspace_mtrx(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
+            Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
 
             if (ctx.cfg().control().verification() >= 1) {
                 real_type<T> max_diff = check_hermitian(hmlt, N + expand_with - num_locked);

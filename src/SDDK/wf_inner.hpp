@@ -59,6 +59,7 @@ inline void
 inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
       Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<double>>& result__, int irow0__, int jcol0__)
 {
+    std::cout << "[wf_inner] slow implementation, complex" << std::endl;
     for (int i = 0; i < m__; i++) {
         for (int j = 0; j < n__; j++) {
             result__(irow0__ + i, jcol0__ + j) = std::complex<double>(0, 0);
@@ -73,7 +74,7 @@ inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra
                 for (int k = 0; k < nk; k++) {
                     z += std::conj(bra__.pw_coeffs(s).prime(k, i0__ + i)) * ket__.pw_coeffs(s).prime(k, j0__ + j);
                 }
-                result__(irow0__ + i, jcol0__ + j) = z;
+                result__(irow0__ + i, jcol0__ + j) += z;
             }
         }
     }
@@ -83,6 +84,7 @@ inline void
 inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
       Wave_functions<float>& ket__, int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
 {
+    std::cout << "[wf_inner] slow implementation, real" << std::endl;
     for (int i = 0; i < m__; i++) {
         for (int j = 0; j < n__; j++) {
             result__(irow0__ + i, jcol0__ + j) = 0.0;
@@ -101,7 +103,7 @@ inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra
                     auto b = ket__.pw_coeffs(s).prime(k, j0__ + j);
                     z += 2 * (std::real(a) * std::real(b) + std::imag(a) * std::imag(b));
                 }
-                result__(irow0__ + i, jcol0__ + j) = z;
+                result__(irow0__ + i, jcol0__ + j) += z;
             }
         }
     }

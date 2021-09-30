@@ -370,7 +370,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, 0, phi, sphi, ovlp, &ovlp_old);
+        set_subspace_mtrx<T, T>(N, n, 0, phi, sphi, ovlp, &ovlp_old);
         if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
             ovlp.serialize("<i|S|j> subspace matrix", N + n);
         }

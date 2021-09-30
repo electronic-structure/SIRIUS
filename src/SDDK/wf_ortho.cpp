@@ -153,7 +153,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     }
 
     /* single MPI rank */
-    if (o__.comm().size() == 1) {
+    if (o__.comm().size() == 1 && std::is_same<real_type<T>, real_type<F>>::value) {
         bool use_magma{false};
 
         // MAGMA performance for Cholesky and inversion is not good enough; use lapack for the moment
@@ -307,20 +307,20 @@ orthogonalize<float, float>(::spla::Context& spla_ctx__, memory_t mem__, linalg_
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
                       int n__, dmatrix<float>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
-//template int
-//orthogonalize<float, double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
-//                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-//                      int n__, dmatrix<double>& o__, Wave_functions<float>& tmp__, bool project_out__);
+template int
+orthogonalize<float, double>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
+                      int n__, dmatrix<double>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
 template int
 orthogonalize<std::complex<float>, std::complex<float>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
                       int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
                       int n__, dmatrix<std::complex<float>>& o__, Wave_functions<float>& tmp__, bool project_out__);
 
-//template int
-//orthogonalize<std::complex<float>, std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
-//                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
-//                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<float>& tmp__, bool project_out__);
+template int
+orthogonalize<std::complex<float>, std::complex<double>>(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+                      int idx_bra__, int idx_ket__, std::vector<Wave_functions<float>*> wfs__, int N__,
+                      int n__, dmatrix<std::complex<double>>& o__, Wave_functions<float>& tmp__, bool project_out__);
 #endif
 
 } // namespace sddk

@@ -42,10 +42,11 @@ Band::Band(Simulation_context& ctx__)
     }
 }
 
-template <typename T>
+template <typename T, typename F>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& op_phi__, dmatrix<T>& mtrx__,
-                        dmatrix<T>* mtrx_old__) const
+Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__,
+                        Wave_functions<real_type<T>>& op_phi__, dmatrix<F>& mtrx__,
+                        dmatrix<F>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
 
@@ -545,28 +546,38 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
+Band::set_subspace_mtrx<double, double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                 dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
+Band::set_subspace_mtrx<double_complex, double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
 template
 void
 Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
 template
 void
-Band::set_subspace_mtrx<float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+Band::set_subspace_mtrx<float, float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
                                dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+Band::set_subspace_mtrx<float, double>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                               dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<std::complex<float>, std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
                                              dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<std::complex<float>, std::complex<double>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                                             dmatrix<std::complex<double>>& mtrx__, dmatrix<std::complex<double>>* mtrx_old__) const;
 
 template
 void
