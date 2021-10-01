@@ -43,7 +43,7 @@ void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int nu
 template <typename T, typename F>
 void
 diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
-            double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__)
+            double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__, bool extra_ortho__)
 {
     K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
     kp.initialize();
@@ -89,7 +89,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
     auto result = davidson<std::complex<T>, std::complex<F>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
             [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
-            subspace_size__, estimate_eval__, std::cout, 2);
+            subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 
     if (Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
@@ -116,17 +116,18 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
 void test_davidson(cmd_args const& args__)
 {
-    auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
-    auto gk_cutoff = args__.value<double>("gk_cutoff", 10);
-    auto N         = args__.value<int>("N", 1);
-    auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
-    auto solver    = args__.value<std::string>("solver", "lapack");
-    auto fp32      = args__.exist("fp32");
-    auto res_tol   = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
-    auto eval_tol  = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
-    auto only_kin  = args__.exist("only_kin");
+    auto pw_cutoff     = args__.value<double>("pw_cutoff", 30);
+    auto gk_cutoff     = args__.value<double>("gk_cutoff", 10);
+    auto N             = args__.value<int>("N", 1);
+    auto mpi_grid      = args__.value("mpi_grid", std::vector<int>({1, 1}));
+    auto solver        = args__.value<std::string>("solver", "lapack");
+    auto fp32          = args__.exist("fp32");
+    auto res_tol       = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
+    auto eval_tol      = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
+    auto only_kin      = args__.exist("only_kin");
     auto subspace_size = args__.value<int>("subspace_size", 2);
     auto estimate_eval = !args__.exist("use_res_norm");
+    auto extra_ortho   = args__.exist("extra_ortho");
 
     int num_bands{-1};
     num_bands = args__.value<int>("num_bands", num_bands);
@@ -259,14 +260,14 @@ void test_davidson(cmd_args const& args__)
         if (fp32) {
 #if defined(USE_FP32)
             std::cout << "using FP32/FP64 mixed precision" << std::endl;
-            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
             std::cout << "using only FP32 precision" << std::endl;
-            diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+            diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval);
+            diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
         }
     }
 }
@@ -284,6 +285,7 @@ int main(int argn, char** argv)
                                {"eval_tol=",      "(double) eigan-value tolerance"},
                                {"subspace_size=", "(int) size of the diagonalization subspace"},
                                {"use_res_norm",   "use residual norm to estimate the convergence"},
+                               {"extra_ortho",    "use second orthogonalisation"},
                                {"fp32",           "use FP32 arithmetics"},
                                {"only_kin",       "use kinetic-operator only"}
                               });

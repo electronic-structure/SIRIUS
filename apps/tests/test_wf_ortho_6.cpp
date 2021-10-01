@@ -3,7 +3,7 @@
 
 using namespace sirius;
 
-template <typename T>
+template <typename T, typename F>
 void test_wf_ortho(BLACS_grid const& blacs_grid__,
                    double cutoff__,
                    int num_bands__,
@@ -42,7 +42,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
         phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
     }
 
-    dmatrix<std::complex<T>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+    dmatrix<F> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
     if (is_device_memory(mem__)) {
         ovlp.allocate(mem__);
@@ -54,7 +54,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
     }
 
     for (int iss = 0; iss < num_spin_steps; iss++) {
-        orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
+        orthogonalize<std::complex<T>, F>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
                  {&phi}, 0, num_bands__, ovlp, tmp);
 
         inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
@@ -63,7 +63,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
             printf("maximum difference (first num_bands) : %18.12e\n", max_diff);
         }
 
-        orthogonalize<std::complex<T>>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
+        orthogonalize<std::complex<T>, F>(spla_ctx, mem__, la__, spin_range(num_mag_dims__ == 3 ? 2 : iss), 0, 0,
                                        {&phi}, num_bands__, num_bands__, ovlp, tmp);
     }
 
@@ -98,7 +98,14 @@ void call_test(std::vector<int> mpi_grid_dims__,
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
     for (int i = 0; i < repeat__; i++) {
-        test_wf_ortho<T>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
+        if (Communicator::world().rank() == 0) {
+            std::cout << "calling test_wf_ortho<T, std::complex<T>>()" << std::endl;
+        }
+        test_wf_ortho<T, std::complex<T>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
+        if (Communicator::world().rank() == 0) {
+            std::cout << "calling test_wf_ortho<T, std::complex<double>>()" << std::endl;
+        }
+        test_wf_ortho<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
     }
 }
 

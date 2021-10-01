@@ -297,7 +297,12 @@
                     "default" : "lcao",
                     "enum" : ["lcao", "random"],
                     "title" : "Tell how to initialize the subspace.",
-                    "description" : "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random' – start from the randomized wave functions."
+                    "description" : "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random'- start from the randomized wave functions."
+                },
+                "extra_ortho" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability."
                 }
             }
         },

@@ -16,7 +16,6 @@ void test_wf_trans(BLACS_grid const& blacs_grid__,
         la__ == linalg_t::blas || la__ == linalg_t::lapack || la__ == linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     int nsp = (num_mag_dims__ == 0) ? 1 : 2;
-    int num_spin_steps = (num_mag_dims__ == 3) ? 1 : nsp;
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     Gvec gvec(M, cutoff__, Communicator::world(), false);

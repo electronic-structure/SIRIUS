@@ -113,6 +113,7 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 \param [in]     locking       Lock and do not update of the converged wave-functions.
 \param [in]     subspace_size Size of the diagonalziation subspace.
 \param [in]     estimate_eval Estimate eigen-values to get the converrged rersiduals.
+\param [in]     extra_ortho   Orthogonalize new subspace basis one extra time.
 \param [out]    out           Output stream.
 \param [in]     verbosity     Verbosity level.
 \return                       List of eigen-values.
@@ -121,8 +122,8 @@ template <typename T, typename F>
 inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__, double res_tol__,
-         int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, std::ostream& out__,
-         int verbosity__ = 0)
+         int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, bool extra_ortho__,
+         std::ostream& out__, int verbosity__ = 0)
 {
     PROFILE("sirius::davidson");
 
@@ -522,6 +523,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                              spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
+
+            if (extra_ortho__) {
+                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                 spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
+            }
 
             /* setup eigen-value problem
              * N is the number of previous basis functions

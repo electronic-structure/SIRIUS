@@ -592,7 +592,7 @@ class config_t
         /// Tell how to initialize the subspace.
         /**
             It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or
-            'random' – start from the randomized wave functions.
+            'random'- start from the randomized wave functions.
         */
         inline auto init_subspace() const
         {
@@ -604,6 +604,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/iterative_solver/init_subspace"_json_pointer] = init_subspace__;
+        }
+        /// Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability.
+        inline auto extra_ortho() const
+        {
+            return dict_.at("/iterative_solver/extra_ortho"_json_pointer).get<bool>();
+        }
+        inline void extra_ortho(bool extra_ortho__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/extra_ortho"_json_pointer] = extra_ortho__;
         }
       private:
         nlohmann::json& dict_;
