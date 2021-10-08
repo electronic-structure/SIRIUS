@@ -1350,29 +1350,41 @@ class config_t
             }
             dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
         }
-        /// The floating point precision used to search for Kohn-Sham wave-functions.
-        inline auto precision() const
+        /// The floating point precision of the Kohn-Sham wave-functions.
+        inline auto precision_wf() const
         {
-            return dict_.at("/parameters/precision"_json_pointer).get<std::string>();
+            return dict_.at("/parameters/precision_wf"_json_pointer).get<std::string>();
         }
-        inline void precision(std::string precision__)
+        inline void precision_wf(std::string precision_wf__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/parameters/precision"_json_pointer] = precision__;
+            dict_["/parameters/precision_wf"_json_pointer] = precision_wf__;
         }
-        /// The floating point precision used in the SCF calculation.
-        inline auto scf_precision() const
+        /// The floating point precision of the Hamiltonian subspace matrices.
+        inline auto precision_hs() const
         {
-            return dict_.at("/parameters/scf_precision"_json_pointer).get<std::string>();
+            return dict_.at("/parameters/precision_hs"_json_pointer).get<std::string>();
         }
-        inline void scf_precision(std::string scf_precision__)
+        inline void precision_hs(std::string precision_hs__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/parameters/scf_precision"_json_pointer] = scf_precision__;
+            dict_["/parameters/precision_hs"_json_pointer] = precision_hs__;
+        }
+        /// The final floating point precision of the ground state DFT calculation.
+        inline auto precision_gs() const
+        {
+            return dict_.at("/parameters/precision_gs"_json_pointer).get<std::string>();
+        }
+        inline void precision_gs(std::string precision_gs__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/precision_gs"_json_pointer] = precision_gs__;
         }
       private:
         nlohmann::json& dict_;

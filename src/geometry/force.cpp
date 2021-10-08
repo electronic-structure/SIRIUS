@@ -214,7 +214,7 @@ mdarray<double, 2> const& Force::calc_forces_total()
     } else {
         calc_forces_vloc();
         calc_forces_us();
-        if (ctx_.cfg().parameters().precision() == "fp32") {
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
             calc_forces_nonloc<float>();
 #else
@@ -730,7 +730,7 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 mdarray<double, 2> const& Force::calc_forces_usnl()
 {
     calc_forces_us();
-    if (ctx_.cfg().parameters().precision() == "fp32") {
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
         calc_forces_nonloc<float>();
 #else

@@ -64,7 +64,7 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
 }
 #endif
 
-template <typename T>
+template <typename T, typename F>
 int
 Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__) const
 {
@@ -100,7 +100,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
             return tol;
         };
 
-        auto result = davidson<T, T>(Hk__, ctx_.num_bands(), ctx_.num_mag_dims(), kp.spinor_wave_functions(),
+        auto result = davidson<T, F>(Hk__, ctx_.num_bands(), ctx_.num_mag_dims(), kp.spinor_wave_functions(),
                 [&](int i, int ispn){return kp.band_occupancy(i, ispn);}, tolerance,
                 ctx_.cfg().iterative_solver().residual_tolerance(), ctx_.cfg().iterative_solver().num_steps(),
                 ctx_.cfg().iterative_solver().locking(), ctx_.cfg().iterative_solver().subspace_size(),
@@ -127,7 +127,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
     return niter;
 }
 
-template <typename T>
+template <typename T, typename F>
 void
 Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const
 {
@@ -157,9 +157,9 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
             solve_full_potential<T>(Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<T>(Hk, itsol_tol__);
+                num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__);
             } else {
-                num_dav_iter += solve_pseudo_potential<std::complex<T>>(Hk, itsol_tol__);
+                num_dav_iter += solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__);
             }
         }
     }
@@ -193,12 +193,16 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
 
 template
 void
-Band::solve<double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__, double itsol_tol__) const;
+Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__, double itsol_tol__) const;
 
 #if defined(USE_FP32)
 template
 void
-Band::solve<float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
+Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
+
+template
+void
+Band::solve<float, double>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
 #endif
 
 } // namespace

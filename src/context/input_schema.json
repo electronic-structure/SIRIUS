@@ -642,17 +642,23 @@
                     "default" : true,
                     "title" : "True if SCF correction to total energy should be computed."
                 },
-                "precision" : {
+                "precision_wf" : {
                     "type" : "string",
                     "default" : "fp64",
                     "enum" : ["fp64", "fp32"],
-                    "title" : "The floating point precision used to search for Kohn-Sham wave-functions."
+                    "title" : "The floating point precision of the Kohn-Sham wave-functions."
                 },
-                "scf_precision" : {
+                "precision_hs" : {
+                    "type" : "string",
+                    "default" : "fp64",
+                    "enum" : ["fp64", "fp32"],
+                    "title" : "The floating point precision of the Hamiltonian subspace matrices."
+                },
+                "precision_gs" : {
                     "type" : "string",
                     "default" : "",
-                    "enum" : ["", "fp64", "fp32"],
-                    "title" : "The floating point precision used in the SCF calculation."
+                    "enum" : ["", "fp64"],
+                    "title" : "The final floating point precision of the ground state DFT calculation."
                 }
             }
         },

@@ -680,10 +680,7 @@ Simulation_context::initialize()
         }
     }
 
-    if (cfg().parameters().scf_precision() == "") {
-         cfg().parameters().scf_precision(cfg().parameters().precision());
-    }
-    if (cfg().parameters().precision() == "fp32") {
+    if (cfg().parameters().precision_wf() == "fp32" && cfg().parameters().precision_gs() == "fp64") {
         double t = std::numeric_limits<float>::epsilon() * 10;
         auto tol = std::max(cfg().settings().itsol_tol_min(), t);
         cfg().settings().itsol_tol_min(tol);
@@ -882,7 +879,8 @@ Simulation_context::print_info() const
     std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
     std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
-    std::printf("precision                          : %s\n", cfg().parameters().precision().c_str());
+    std::printf("precision_wf                       : %s\n", cfg().parameters().precision_wf().c_str());
+    std::printf("precision_hs                       : %s\n", cfg().parameters().precision_hs().c_str());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),

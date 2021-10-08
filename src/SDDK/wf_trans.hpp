@@ -150,11 +150,20 @@ transform(::spla::Context& spla_ctx__, int ispn__, real_type<F> alpha__, std::ve
                 for (int k = 0; k < wf_in__[idx]->pw_coeffs(s).num_rows_loc(); k++) {
                     complex_type<F> z(0, 0);;
                     for (int i = 0; i < m__; i++) {
+                        assert(wf_in__[idx]->pw_coeffs(s).prime(k, i + i0__) ==
+                               wf_in__[idx]->pw_coeffs(s).prime(k, i + i0__));
                         z += static_cast<complex_type<F>>(wf_in__[idx]->pw_coeffs(s).prime(k, i + i0__)) *
                              mtrx__(irow0__ + i, jcol0__ + j);
                     }
-                    wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) = alpha__ * z +
-                        static_cast<complex_type<F>>(wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__)) * beta__;
+                    assert(z == z);
+                    if (beta__ == 0) {
+                        wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) = alpha__ * z;
+                    } else {
+                        wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) = alpha__ * z +
+                            static_cast<complex_type<F>>(wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__)) * beta__;
+                    }
+                    assert(wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__) ==
+                           wf_out__[idx]->pw_coeffs(s).prime(k, j + j0__));
                 }
             }
         }

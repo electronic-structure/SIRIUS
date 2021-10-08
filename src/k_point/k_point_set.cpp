@@ -447,7 +447,7 @@ double K_point_set::valence_eval_sum() const
 
 double K_point_set::valence_eval_sum() const
 {
-    if (ctx_.cfg().parameters().precision() == "fp32") {
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
         return this->valence_eval_sum<float>();
 #else
@@ -495,7 +495,7 @@ double K_point_set::entropy_sum() const
 
 double K_point_set::entropy_sum() const
 {
-    if (ctx_.cfg().parameters().precision() == "fp32") {
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
         return this->entropy_sum<float>();
 #else

@@ -744,7 +744,7 @@ matrix3d<double> Stress::calc_stress_vloc()
 
 matrix3d<double> Stress::calc_stress_nonloc()
 {
-    if (ctx_.cfg().parameters().precision() == "fp32") {
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
         if (ctx_.gamma_point()) {
             calc_stress_nonloc_aux<float>();
