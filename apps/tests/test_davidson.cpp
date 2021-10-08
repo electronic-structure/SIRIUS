@@ -122,7 +122,7 @@ void test_davidson(cmd_args const& args__)
     auto mpi_grid      = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver        = args__.value<std::string>("solver", "lapack");
     auto precision_wf  = args__.value<std::string>("precision_wf", "fp64");
-    auto precision_la  = args__.value<std::string>("precision_la", "fp64");
+    auto precision_hs  = args__.value<std::string>("precision_hs", "fp64");
     auto res_tol       = args__.value<double>("res_tol", 1e-5);
     auto eval_tol      = args__.value<double>("eval_tol", 1e-7);
     auto only_kin      = args__.exist("only_kin");
@@ -259,19 +259,19 @@ void test_davidson(cmd_args const& args__)
     for (int r = 0; r < 1; r++) {
         std::array<double, 3> vk({0.1, 0.1, 0.1});
         if (ctx.comm().rank() == 0) {
-            std::cout << "precision_wf: " << precision_wf << ", precision_la: " << precision_la << std::endl;
+            std::cout << "precision_wf: " << precision_wf << ", precision_hs: " << precision_hs << std::endl;
         }
-        if (precision_wf == "fp32" && precision_la == "fp32") {
+        if (precision_wf == "fp32" && precision_hs == "fp32") {
 #if defined(USE_FP32)
             diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }
-        if (precision_wf == "fp32" && precision_la == "fp64") {
+        if (precision_wf == "fp32" && precision_hs == "fp64") {
 #if defined(USE_FP32)
             diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }
-        if (precision_wf == "fp64" && precision_la == "fp64") {
+        if (precision_wf == "fp64" && precision_hs == "fp64") {
             diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
         }
     }
@@ -292,7 +292,7 @@ int main(int argn, char** argv)
                                {"use_res_norm",   "use residual norm to estimate the convergence"},
                                {"extra_ortho",    "use second orthogonalisation"},
                                {"precision_wf=",  "{string} precision of wave-functions"},
-                               {"precision_la=",  "{string} precision of linear algebra"},
+                               {"precision_hs=",  "{string} precision of the Hamiltonian subspace"},
                                {"only_kin",       "use kinetic-operator only"}
                               });
 
