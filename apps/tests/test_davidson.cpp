@@ -121,9 +121,10 @@ void test_davidson(cmd_args const& args__)
     auto N             = args__.value<int>("N", 1);
     auto mpi_grid      = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver        = args__.value<std::string>("solver", "lapack");
-    auto fp32          = args__.exist("fp32");
-    auto res_tol       = args__.value<double>("res_tol", fp32 ? 1e-3 : 1e-6);
-    auto eval_tol      = args__.value<double>("eval_tol", fp32 ? 1e-6 : 1e-12);
+    auto precision_wf  = args__.value<std::string>("precision_wf", "fp64");
+    auto precision_la  = args__.value<std::string>("precision_la", "fp64");
+    auto res_tol       = args__.value<double>("res_tol", 1e-5);
+    auto eval_tol      = args__.value<double>("eval_tol", 1e-7);
     auto only_kin      = args__.exist("only_kin");
     auto subspace_size = args__.value<int>("subspace_size", 2);
     auto estimate_eval = !args__.exist("use_res_norm");
@@ -257,16 +258,20 @@ void test_davidson(cmd_args const& args__)
     /* repeat several times for the accurate performance measurment */
     for (int r = 0; r < 1; r++) {
         std::array<double, 3> vk({0.1, 0.1, 0.1});
-        if (fp32) {
+        if (ctx.comm().rank() == 0) {
+            std::cout << "precision_wf: " << precision_wf << ", precision_la: " << precision_la << std::endl;
+        }
+        if (precision_wf == "fp32" && precision_la == "fp32") {
 #if defined(USE_FP32)
-            std::cout << "using FP32/FP64 mixed precision" << std::endl;
-            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
-            std::cout << "using only FP32 precision" << std::endl;
             diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
-#else
-            RTE_THROW("not compiled with FP32 support");
 #endif
-        } else {
+        }
+        if (precision_wf == "fp32" && precision_la == "fp64") {
+#if defined(USE_FP32)
+            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+#endif
+        }
+        if (precision_wf == "fp64" && precision_la == "fp64") {
             diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
         }
     }
@@ -286,7 +291,8 @@ int main(int argn, char** argv)
                                {"subspace_size=", "(int) size of the diagonalization subspace"},
                                {"use_res_norm",   "use residual norm to estimate the convergence"},
                                {"extra_ortho",    "use second orthogonalisation"},
-                               {"fp32",           "use FP32 arithmetics"},
+                               {"precision_wf=",  "{string} precision of wave-functions"},
+                               {"precision_la=",  "{string} precision of linear algebra"},
                                {"only_kin",       "use kinetic-operator only"}
                               });
 
