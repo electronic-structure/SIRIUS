@@ -71,9 +71,13 @@ inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra
             for (int j = 0; j < n__; j++) {
                 std::complex<double> z(0, 0);
                 for (int k = 0; k < nk; k++) {
+                    assert(bra__.pw_coeffs(s).prime(k, i0__ + i) == bra__.pw_coeffs(s).prime(k, i0__ + i));
+                    assert(ket__.pw_coeffs(s).prime(k, j0__ + j) == ket__.pw_coeffs(s).prime(k, j0__ + j));
                     z += std::conj(bra__.pw_coeffs(s).prime(k, i0__ + i)) * ket__.pw_coeffs(s).prime(k, j0__ + j);
                 }
+                assert(z == z);
                 result__(irow0__ + i, jcol0__ + j) += z;
+                assert(result__(irow0__ + i, jcol0__ + j) == result__(irow0__ + i, jcol0__ + j));
             }
         }
     }
@@ -106,7 +110,6 @@ inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra
         }
     }
 }
-
 
 }
 #endif

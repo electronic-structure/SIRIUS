@@ -379,7 +379,7 @@ void run_tasks(cmd_args const& args)
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        band.solve(ks, H0, true, ctx->cfg().iterative_solver().energy_tolerance());
+        band.solve<double, double>(ks, H0, true, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {

@@ -2492,7 +2492,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
         if (precompute_ri__ && *precompute_ri__) {
             const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
         }
-        sirius::Band(ks.ctx()).solve(ks, H0, false, tol);
+        sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
     }, error_code__);
 }
 

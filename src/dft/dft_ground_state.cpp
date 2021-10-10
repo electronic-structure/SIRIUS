@@ -33,7 +33,7 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
-        if (ctx_.cfg().parameters().precision() == "fp32") {
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
             Hamiltonian0<float> H0(potential_);
             Band(ctx_).initialize_subspace(kset_, H0);
@@ -147,7 +147,7 @@ json DFT_ground_state::check_scf_density()
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve(kset_, H0, true, ctx_.cfg().settings().itsol_tol_min());
+    Band(ctx_).solve<double, double>(kset_, H0, true, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
@@ -203,11 +203,15 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        if (ctx_.cfg().parameters().precision() == "fp32") {
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
             Hamiltonian0<float> H0(potential_);
             /* find new wave-functions */
-            Band(ctx_).solve(kset_, H0, true, itsol_tol);
+            if (ctx_.cfg().parameters().precision_hs() == "fp32") {
+                Band(ctx_).solve<float, float>(kset_, H0, true, itsol_tol);
+            } else {
+                Band(ctx_).solve<float, double>(kset_, H0, true, itsol_tol);
+            }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
@@ -218,7 +222,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         } else {
             Hamiltonian0<double> H0(potential_);
             /* find new wave-functions */
-            Band(ctx_).solve(kset_, H0, true, itsol_tol);
+            Band(ctx_).solve<double, double>(kset_, H0, true, itsol_tol);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -243,14 +247,15 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
 
 #if defined(USE_FP32)
         /* if the final precision is not equal to the current precision */
-        if (ctx_.cfg().parameters().scf_precision() == "fp64" && ctx_.cfg().parameters().precision() == "fp32") {
+        if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
             /* if we reached the mimimum tolerance for fp32 */
             if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
                 (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
                 std::cout << "switching to FP64" << std::endl;
                 ctx_.cfg().unlock();
                 ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
-                ctx_.cfg().parameters().precision("fp64");
+                ctx_.cfg().parameters().precision_wf("fp64");
+                ctx_.cfg().parameters().precision_hs("fp64");
                 ctx_.cfg().lock();
 
                 for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {

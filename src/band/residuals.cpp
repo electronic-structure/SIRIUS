@@ -310,6 +310,9 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
         if (is_device_memory(mem_type__)) {
             eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
+        if (is_device_memory(mem_type__)) {
+            eval.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        }
         evec_ptr = &evec__;
         eval_ptr = &eval;
         num_residuals = num_bands__;
