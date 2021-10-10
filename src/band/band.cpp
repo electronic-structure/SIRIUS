@@ -593,11 +593,11 @@ Band::initialize_subspace<float>(K_point_set& kset__, Hamiltonian0<float>& H0__)
 
 template
 void
-Band::initialize_subspace<float>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+Band::initialize_subspace<float>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
 
 template
 void
-Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
 #endif
 
 }
