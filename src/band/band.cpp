@@ -558,6 +558,14 @@ template
 void
 Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
 
+template
+void
+Band::initialize_subspace<double>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<std::complex<double>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
 #if defined(USE_FP32)
 template
 void
@@ -582,6 +590,14 @@ Band::set_subspace_mtrx<std::complex<float>, std::complex<double>>(int N__, int 
 template
 void
 Band::initialize_subspace<float>(K_point_set& kset__, Hamiltonian0<float>& H0__) const;
+
+template
+void
+Band::initialize_subspace<float>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
 #endif
 
 }
