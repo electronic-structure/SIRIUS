@@ -113,6 +113,8 @@ class Force
     }
 
     template <typename T>
+    void calc_forces_nonloc_aux();
+
     sddk::mdarray<double, 2> const& calc_forces_nonloc();
 
     inline sddk::mdarray<double, 2> const& forces_nonloc() const

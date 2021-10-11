@@ -625,15 +625,15 @@ matrix3d<double> Stress::calc_stress_har()
     return stress_har_;
 }
 
-matrix3d<double> Stress::calc_stress_kin()
+template <typename T>
+void
+Stress::calc_stress_kin_aux()
 {
-    PROFILE("sirius::Stress|kin");
-
     stress_kin_.zero();
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+        auto kp = kset_.get<T>(ik);
 
         double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
         fact *=  kp->weight();
@@ -645,7 +645,7 @@ matrix3d<double> Stress::calc_stress_kin()
                 #pragma omp for
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                     for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                        auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+                        auto Gk = kp->gkvec().template gkvec_cart<index_domain_t::local>(igloc);
 
                         double f = kp->band_occupancy(i, ispin);
                         auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
@@ -668,7 +668,18 @@ matrix3d<double> Stress::calc_stress_kin()
     stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
 
     symmetrize(stress_kin_);
+}
 
+matrix3d<double> Stress::calc_stress_kin()
+{
+    PROFILE("sirius::Stress|kin");
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
+        this->calc_stress_kin_aux<float>();
+#endif
+    } else {
+        this->calc_stress_kin_aux<double>();
+    }
     return stress_kin_;
 }
 

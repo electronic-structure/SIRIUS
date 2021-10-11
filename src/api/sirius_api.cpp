@@ -3080,7 +3080,7 @@ sirius_get_forces(void* const* handler__, char const* label__, double* forces__,
             std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
                 {"total", &sirius::Force::calc_forces_total},     {"vloc", &sirius::Force::calc_forces_vloc},
                 {"core", &sirius::Force::calc_forces_core},       {"ewald", &sirius::Force::calc_forces_ewald},
-                {"nonloc", &sirius::Force::calc_forces_nonloc<double>},   {"us", &sirius::Force::calc_forces_us},
+                {"nonloc", &sirius::Force::calc_forces_nonloc},   {"us", &sirius::Force::calc_forces_us},
                 {"usnl", &sirius::Force::calc_forces_usnl},       {"scf_corr", &sirius::Force::calc_forces_scf_corr},
                 {"hubbard", &sirius::Force::calc_forces_hubbard}, {"ibs", &sirius::Force::calc_forces_ibs},
                 {"hf", &sirius::Force::calc_forces_hf},           {"rho", &sirius::Force::calc_forces_rho}};

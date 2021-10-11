@@ -379,6 +379,9 @@ class Stress
      *  -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} (G+k)_{\mu} (G+k)_{\nu} \sum_j f_j  |\psi_j({\bf G + k})|^2
      *  \f]
      */
+    template <typename T>
+    void calc_stress_kin_aux();
+
     matrix3d<double> calc_stress_kin();
 
     inline matrix3d<double> stress_kin() const
