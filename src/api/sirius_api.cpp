@@ -1294,7 +1294,9 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                 {"magx", &gs.density().component(2)},         {"magy", &gs.density().component(3)},
                 {"veff", &gs.potential().component(0)},       {"bz", &gs.potential().component(1)},
                 {"bx", &gs.potential().component(2)},         {"by", &gs.potential().component(3)},
-                {"vha", &gs.potential().hartree_potential()}, {"exc", &gs.potential().xc_energy_density()}};
+                {"vha", &gs.potential().hartree_potential()}, {"exc", &gs.potential().xc_energy_density()},
+                {"vxc", &gs.potential().xc_potential()}
+            };
 
             if (func_map.count(label) == 0) {
                 throw std::runtime_error("wrong label (" + label + ") for the periodic function");
