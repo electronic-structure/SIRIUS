@@ -233,13 +233,10 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
     sddk::mdarray<real_type<T>, 1> res_norm;
     sddk::dmatrix<F> evec_tmp;
 
-    //sddk::mdarray<real_type<T>, 1> eval_tmp;
-
     sddk::mdarray<real_type<T>, 1> eval(num_bands__);
     eval = [&](size_t j) -> real_type<T> { return eval__[j]; };
 
     sddk::dmatrix<F>* evec_ptr{nullptr};
-    //sddk::mdarray<real_type<T>, 1>* eval_ptr{nullptr};
 
     /* total number of residuals to be computed */
     int num_residuals{0};
@@ -278,14 +275,11 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
         // Otherwise copy / reorder the unconverged eigenpairs
         num_residuals = static_cast<int>(ev_idx.size());
 
-        //eval_tmp = sddk::mdarray<real_type<T>, 1>(num_residuals);
-        //eval_ptr = &eval_tmp;
         evec_tmp = sddk::dmatrix<F>(N__, num_residuals, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
         evec_ptr = &evec_tmp;
 
         int num_rows_local = evec_tmp.num_rows_local();
         for (int j = 0; j < num_residuals; j++) {
-            //eval_tmp[j] = eval[ev_idx[j]];
             eval[j] = eval[ev_idx[j]];
             if (evec__.blacs_grid().comm().size() == 1) {
                 /* do a local copy */
@@ -305,18 +299,8 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
         if (is_device_memory(mem_type__) && evec_tmp.blacs_grid().comm().size() == 1) {
             evec_tmp.allocate(sddk::memory_t::device);
         }
-        //if (is_device_memory(mem_type__)) {
-        //    eval_tmp.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-        //}
     } else {
-        //if (is_device_memory(mem_type__)) {
-        //    eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-        //}
-        //if (is_device_memory(mem_type__)) {
-        //    eval.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-        //}
         evec_ptr = &evec__;
-        //eval_ptr = &eval;
         num_residuals = num_bands__;
     }
     if (is_device_memory(mem_type__)) {
