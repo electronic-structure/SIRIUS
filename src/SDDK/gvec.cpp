@@ -392,6 +392,9 @@ void Gvec::init(FFT3D_grid const& fft_grid)
             }
         }
     }
+    this->offset_ = this->gvec_offset(this->comm().rank());
+    this->count_ = this->gvec_count(this->comm().rank());
+
     // TODO: add a check for gvec_base (there is already a test for this).
 }
 
@@ -404,6 +407,8 @@ Gvec& Gvec::operator=(Gvec&& src__)
         reduce_gvec_       = src__.reduce_gvec_;
         bare_gvec_         = src__.bare_gvec_;
         num_gvec_          = src__.num_gvec_;
+        offset_            = src__.offset_;
+        count_             = src__.count_;
         gvec_full_index_   = std::move(src__.gvec_full_index_);
         gvec_shell_        = std::move(src__.gvec_shell_);
         num_gvec_shells_   = std::move(src__.num_gvec_shells_);
@@ -493,6 +498,8 @@ void Gvec::pack(serializer& s__) const
     serialize(s__, gvec_distr_);
     serialize(s__, zcol_distr_);
     serialize(s__, gvec_base_mapping_);
+    serialize(s__, offset_);
+    serialize(s__, count_);
 }
 
 void Gvec::unpack(serializer& s__, Gvec& gv__) const
@@ -512,6 +519,8 @@ void Gvec::unpack(serializer& s__, Gvec& gv__) const
     deserialize(s__, gv__.gvec_distr_);
     deserialize(s__, gv__.zcol_distr_);
     deserialize(s__, gv__.gvec_base_mapping_);
+    deserialize(s__, gv__.offset_);
+    deserialize(s__, gv__.count_);
 }
 
 void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
