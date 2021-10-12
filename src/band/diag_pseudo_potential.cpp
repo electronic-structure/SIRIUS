@@ -364,8 +364,8 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
 
-        orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
-                         sphi, N, n, ovlp, res);
+        orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(),
+                         spin_range(nc_mag ? 2 : 0), phi, sphi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions

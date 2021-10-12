@@ -27,6 +27,8 @@
 
 #include "utils/profiler.hpp"
 #include "SDDK/wf_ortho.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 #include "residuals.hpp"
 
 /// Result of Davidson solver.
@@ -36,6 +38,64 @@ struct davidson_result_t {
 };
 
 namespace sirius {
+
+template <typename T>
+inline void
+project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
+                     Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<T>& o__)
+{
+    PROFILE("sirius::project_out_subspace");
+
+    /* project out the old subspace:
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|S|phi_new> */
+    sddk::inner(spla_ctx__, spins__, sphi__, 0, N__, phi__, N__, n__, o__, 0, 0);
+    sddk::transform(spla_ctx__, spins__(), -1.0, {&phi__}, 0, N__, o__, 0, 0, 1.0, {&phi__}, N__, n__);
+
+    //auto norms = phi__.l2norm(device_t::CPU, spins__, N__ + n__);
+
+    //for (int i = 0; i < N__ + n__; i++) {
+    //    std::cout << "phi: " << i << ", l2norm: " << norms[i] << std::endl;
+    //}
+    //inner(spla_ctx__, spins__, sphi__, 0, N__, phi_new__, 0, n__, o__, 0, 0);
+    //for (int i = 0; i < N__; i++) {
+    //    for (int j = 0; j < n__; j++) {
+    //        std::cout << i << " " << j << " " << o__(i, j) << std::endl;
+    //    }
+    //}
+}
+
+template <typename T>
+inline int
+remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
+                          int N__, int n__, sddk::dmatrix<T>& o__)
+
+{
+    PROFILE("sirius::remove_linearly_dependent");
+
+    /* compute <phi | phi> */
+    inner(spla_ctx__, spins__, phi__, N__, n__, phi__, N__, n__, o__, 0, 0);
+
+    auto la = (o__.comm().size() == 1) ? linalg_t::lapack : linalg_t::scalapack;
+    linalg(la).geqrf(n__, n__, o__, 0, 0);
+    auto diag = o__.get_diag(n__);
+
+    auto eps = std::numeric_limits<real_type<T>>::epsilon();
+
+    int n{0};
+    for (int i = 0; i < n__; i++) {
+        if (std::abs(diag[i]) >= eps * 10) {
+            /* shift linearly independent basis functions to the beginning of phi */
+            if (n != i) {
+                for (int ispn: spins__) {
+                    phi__.copy_from(phi__, 1, ispn, N__ + i, ispn, N__ + n);
+                }
+            }
+            n++;
+        }
+    }
+    return n;
+}
+
 
 /// Solve the eigen-problem using Davidson iterative method.
 /**
@@ -49,13 +109,19 @@ namespace sirius {
 \param [in]     tolerance     Lambda-function for the band energy tolerance.
 \param [in]     res_tol       Residual tolerance.
 \param [in]     num_stpes     Number of iterative steps.
+\param [in]     locking       Lock and do not update of the converged wave-functions.
+\param [in]     subspace_size Size of the diagonalziation subspace.
+\param [in]     estimate_eval Estimate eigen-values to get the converrged rersiduals.
+\param [out]    out           Output stream.
+\param [in]     verbosity     Verbosity level.
 \return                       List of eigen-values.
 */
 template <typename T>
 inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__, double res_tol__,
-         int num_steps__)
+         int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, std::ostream& out__,
+         int verbosity__ = 0)
 {
     PROFILE("sirius::davidson");
 
@@ -67,8 +133,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     auto& gkvecp  = kp.gkvec_partition();
 
     auto& itso = ctx.cfg().iterative_solver();
-
-    bool converge_by_energy = (itso.converge_by_energy() == 1);
 
     //kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", ctx.iterative_solver_tolerance());
     //kp.message(2, __function_name__, "empty states tolerance : %18.12f\n",
@@ -90,7 +154,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     const int num_spins = (num_mag_dims__ == 0) ? 1 : 2;
 
     /* maximum subspace size */
-    const int num_phi = itso.subspace_size() * num_bands__;
+    const int num_phi = subspace_size__ * num_bands__;
 
     if (num_phi > kp.num_gkvec()) {
         std::stringstream s;
@@ -203,7 +267,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
         sddk::mdarray<real_type<T>, 1> eval(num_bands__);
         sddk::mdarray<real_type<T>, 1> eval_old(num_bands__);
-        eval_old = []() { return 1e10; };
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
@@ -212,6 +275,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
         if (itso.init_eval_old()) {
             eval_old = [&](int64_t j) { return kp.band_energy(j, ispin_step); };
+        } else {
+            eval_old = []() { return 1e10; };
         }
 
         /* trial basis functions */
@@ -265,8 +330,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
         /* END DEBUG */
 
-        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi,
-                         sphi, 0, num_bands__, ovlp, res);
+        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), spin_range(nc_mag ? 2 : 0),
+                         phi, hphi, sphi, 0, num_bands__, ovlp, res);
 
         /* setup eigen-value problem */
         Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
@@ -327,7 +392,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 auto result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                                            spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked, eval, evec,
                                            hphi, sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
-                                           itso.converge_by_energy(), res_tol__, is_converged);
+                                           estimate_eval__, res_tol__, is_converged);
 
                 num_unconverged        = result.unconverged_residuals;
                 num_lockable           = result.num_consecutive_smallest_converged;
@@ -353,7 +418,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                                   (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
 
             kp.message(3, __function_name__,
-                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
+                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. "
                        "Num ritz = %d. Expansion size = %d\n",
                        should_restart ? "yes" : "no", num_locked, num_converged, num_bands__, num_lockable, num_ritz,
                        expand_with);
@@ -398,7 +463,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     int keep = num_bands__;
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
-                    if (converge_by_energy) {
+                    if (estimate_eval__) {
                         transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
                                      std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
                                      N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
@@ -413,7 +478,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     }
 
                     // Remove locked Ritz values so indexing starts at unconverged eigenpairs
-                    if (itso.locking() && num_lockable > 0) {
+                    if (locking__ && num_lockable > 0) {
                         for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
                         }
@@ -429,7 +494,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     N = keep;
 
                     // Only when we do orthogonalization we can lock vecs
-                    if (itso.locking()) {
+                    if (locking__) {
                         num_locked += num_lockable;
                     }
                 }
@@ -440,13 +505,20 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
+            project_out_subspace(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
+
+            //std::cout << "expand_with before = " << expand_with << std::endl;
+            //expand_with = remove_linearly_dependent(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, N,
+            //                                        expand_with, ovlp);
+            //std::cout << "expand_with after = " << expand_with << std::endl;
+
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
-            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi,
-                             hphi, sphi, N, expand_with, ovlp, res);
+            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                             spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
