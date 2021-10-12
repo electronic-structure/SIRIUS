@@ -557,6 +557,14 @@ template
 void
 Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
 
+template
+void
+Band::initialize_subspace<double>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<std::complex<double>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
 #ifdef USE_FP32
 template
 void

@@ -336,5 +336,81 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     }
 }
 
+void Potential::save()
+{
+    effective_potential().hdf5_write(storage_file_name, "effective_potential");
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        std::stringstream s;
+        s << "effective_magnetic_field/" << j;
+        effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
+    }
+    if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
+        HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
+        for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+            if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
+                fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+            }
+        }
+    }
+    comm_.barrier();
+}
+
+void Potential::load()
+{
+    HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+
+    int ngv;
+    fin.read("/parameters/num_gvec", &ngv, 1);
+    if (ngv != ctx_.gvec().num_gvec()) {
+        TERMINATE("wrong number of G-vectors");
+    }
+    mdarray<int, 2> gv(3, ngv);
+    fin.read("/parameters/gvec", gv);
+
+    effective_potential().hdf5_read(fin["effective_potential"], gv);
+
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        effective_magnetic_field(j).hdf5_read(fin["effective_magnetic_field"][j], gv);
+    }
+
+    if (ctx_.full_potential()) {
+        update_atomic_potential();
+    }
+
+    if (!ctx_.full_potential()) {
+        HDF5_tree fout(storage_file_name, hdf5_access_t::read_only);
+        for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+            fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+        }
+    }
+}
+
+void Potential::update_atomic_potential()
+{
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+        int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+        int nmtp = unit_cell_.atom(ia).num_mt_points();
+
+        std::vector<double> veff(nmtp);
+
+        for (int ir = 0; ir < nmtp; ir++) {
+            veff[ir] = y00 * effective_potential().f_mt<index_domain_t::global>(0, ir, ia);
+        }
+
+        unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        double* veff = &effective_potential().f_mt<index_domain_t::global>(0, 0, ia);
+
+        double* beff[] = {nullptr, nullptr, nullptr};
+        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+            beff[i] = &effective_magnetic_field(i).f_mt<index_domain_t::global>(0, 0, ia);
+        }
+
+        unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
+    }
+}
+
 }
 
