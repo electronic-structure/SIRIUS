@@ -3704,6 +3704,10 @@ sirius_generate_coulomb_potential:
       doc: Interstitital part of the Coulomb potential
     num_rg_points:
       type: int
+      attr: in, optional
+      doc: Number of the real-space FFT grid points.
+    error_code:
+      type: int
       attr: out, optional
       doc: Error code
 @api end
@@ -3774,18 +3778,10 @@ sirius_generate_xc_potential:
       type: void*
       attr: in, required
       doc: Ground state handler
-    is_local_rg:
-      type: bool
-      attr: in, required
-      doc: true if regular grid pointer is local
     vxcmt:
       type: double
-      attr: out, required
+      attr: out, optional
       doc: Muffin-tin part of potential
-    vxcrg:
-      type: double
-      attr: out, required
-      doc: Regular-grid part of potential
     bxcmt_x:
       type: double
       attr: out, optional
@@ -3798,6 +3794,22 @@ sirius_generate_xc_potential:
       type: double
       attr: out, optional
       doc: Muffin-tin part of effective magentic field (z-component)
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of spherical harmonics
+    max_num_mt_points:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Number of atoms
+    vxcrg:
+      type: double
+      attr: out, optional
+      doc: Regular-grid part of potential
     bxcrg_x:
       type: double
       attr: out, optional
@@ -3810,30 +3822,97 @@ sirius_generate_xc_potential:
       type: double
       attr: out, optional
       doc: Regular-grid part of effective magnetic field (z-component)
+    num_rg_points:
+      type: int
+      attr: in, optional
+      doc: Number of the real-space FFT grid points.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_generate_xc_potential(void* const* handler__, bool const* is_local_rg__, double* vxcmt__, double* vxcrg__,
-                             double* bxcmt_x__, double* bxcmt_y__, double* bxcmt_z__, double* bxcrg_x__,
-                             double* bxcrg_y__, double* bxcrg_z__)
+sirius_generate_xc_potential(void* const* handler__, double* vxcmt__, double* bxcmt_x__, double* bxcmt_y__,
+                             double* bxcmt_z__, int const* lmmax__, int const* max_num_mt_points__,
+                             int const* num_atoms__, double* vxcrg__, double* bxcrg_x__, double* bxcrg_y__,
+                             double* bxcrg_z__, int const* num_rg_points__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    gs.potential().xc(gs.density());
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.potential().xc(gs.density());
 
-    gs.potential().xc_potential().copy_to(vxcmt__, vxcrg__, *is_local_rg__);
-
-    if (gs.ctx().num_mag_dims() == 1) {
-        /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
-    }
-    if (gs.ctx().num_mag_dims() == 3) {
-        /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
-        /* x component */
-        gs.potential().effective_magnetic_field(1).copy_to(bxcmt_x__, bxcrg_x__, *is_local_rg__);
-        /* y component */
-        gs.potential().effective_magnetic_field(2).copy_to(bxcmt_y__, bxcrg_y__, *is_local_rg__);
-    }
+            if (vxcmt__ || bxcmt_x__ || bxcmt_y__ || bxcmt_z__) {
+                if (!lmmax__) {
+                    throw std::runtime_error("missing 'lmmax' argument");
+                }
+                if (*lmmax__ != gs.potential().xc_potential().angular_domain_size()) {
+                    throw std::runtime_error("wrong number of spherical harmonics");
+                }
+                if (!max_num_mt_points__) {
+                    throw std::runtime_error("missing 'max_num_mt_points' argument");
+                }
+                if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
+                    throw std::runtime_error("wrong maximum number of muffin-tin radial points");
+                }
+                if (!num_atoms__) {
+                    throw std::runtime_error("missing 'num_atoms' argument");
+                }
+                if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
+                    throw std::runtime_error("wrong number of atoms");
+                }
+                if (vxcmt__) {
+                    gs.potential().xc_potential().copy_to(vxcmt__, nullptr, false);
+                }
+                if (gs.ctx().num_mag_dims() >= 1) {
+                    /* z component */
+                    if (bxcmt_z__) {
+                        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, nullptr, false);
+                    }
+                }
+                if (gs.ctx().num_mag_dims() == 3) {
+                    /* x component */
+                    if (bxcmt_x__) {
+                        gs.potential().effective_magnetic_field(1).copy_to(bxcmt_x__, nullptr, false);
+                    }
+                    /* y component */
+                    if (bxcmt_y__) {
+                        gs.potential().effective_magnetic_field(2).copy_to(bxcmt_y__, nullptr, false);
+                    }
+                }
+            }
+            if (vxcrg__ || bxcrg_x__ || bxcrg_y__ || bxcrg_z__) {
+                if (!num_rg_points__) {
+                    throw std::runtime_error("missing 'num_rg_points' argument");
+                }
+                bool is_local_rg;
+                if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
+                    is_local_rg = false;
+                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
+                    is_local_rg = true;
+                } else {
+                    throw std::runtime_error("wrong number of regular grid points");
+                }
+                if (vxcrg__) {
+                    gs.potential().xc_potential().copy_to(nullptr, vxcrg__, is_local_rg);
+                }
+                if (gs.ctx().num_mag_dims() >= 1) {
+                    if (bxcrg_z__) {
+                        gs.potential().effective_magnetic_field(0).copy_to(nullptr, bxcrg_z__, is_local_rg);
+                    }
+                }
+                if (gs.ctx().num_mag_dims() == 3) {
+                    if (bxcrg_x__) {
+                        gs.potential().effective_magnetic_field(1).copy_to(nullptr, bxcrg_x__, is_local_rg);
+                    }
+                    if (bxcrg_y__) {
+                        gs.potential().effective_magnetic_field(2).copy_to(nullptr, bxcrg_y__, is_local_rg);
+                    }
+                }
+            }
+        },
+        error_code__);
 }
 
 /*
