@@ -3656,9 +3656,10 @@ end subroutine sirius_set_atom_type_configuration
 !> @param [in] num_atoms Number of atoms
 !> @param [out] vha_el Electronic part of Hartree potential at each atom's origin.
 !> @param [out] vclrg Interstitital part of the Coulomb potential
-!> @param [out] num_rg_points Error code
+!> @param [in] num_rg_points Number of the real-space FFT grid points.
+!> @param [out] error_code Error code
 subroutine sirius_generate_coulomb_potential(handler,vclmt,lmmax,max_num_mt_points,&
-&num_atoms,vha_el,vclrg,num_rg_points)
+&num_atoms,vha_el,vclrg,num_rg_points,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3668,7 +3669,8 @@ integer, optional, target, intent(in) :: max_num_mt_points
 integer, optional, target, intent(in) :: num_atoms
 real(8), optional, target, intent(out) :: vha_el
 real(8), optional, target, intent(out) :: vclrg
-integer, optional, target, intent(out) :: num_rg_points
+integer, optional, target, intent(in) :: num_rg_points
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: vclmt_ptr
@@ -3678,10 +3680,11 @@ type(C_PTR) :: num_atoms_ptr
 type(C_PTR) :: vha_el_ptr
 type(C_PTR) :: vclrg_ptr
 type(C_PTR) :: num_rg_points_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_generate_coulomb_potential_aux(handler,vclmt,lmmax,max_num_mt_points,&
-&num_atoms,vha_el,vclrg,num_rg_points)&
+&num_atoms,vha_el,vclrg,num_rg_points,error_code)&
 &bind(C, name="sirius_generate_coulomb_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3692,6 +3695,7 @@ type(C_PTR), value :: num_atoms
 type(C_PTR), value :: vha_el
 type(C_PTR), value :: vclrg
 type(C_PTR), value :: num_rg_points
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3725,76 +3729,92 @@ num_rg_points_ptr = C_NULL_PTR
 if (present(num_rg_points)) then
 num_rg_points_ptr = C_LOC(num_rg_points)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_generate_coulomb_potential_aux(handler_ptr,vclmt_ptr,lmmax_ptr,max_num_mt_points_ptr,&
-&num_atoms_ptr,vha_el_ptr,vclrg_ptr,num_rg_points_ptr)
+&num_atoms_ptr,vha_el_ptr,vclrg_ptr,num_rg_points_ptr,error_code_ptr)
 end subroutine sirius_generate_coulomb_potential
 
 !
 !> @brief Generate XC potential using LibXC
 !> @param [in] handler Ground state handler
-!> @param [in] is_local_rg true if regular grid pointer is local
 !> @param [out] vxcmt Muffin-tin part of potential
-!> @param [out] vxcrg Regular-grid part of potential
 !> @param [out] bxcmt_x Muffin-tin part of effective magentic field (x-component)
 !> @param [out] bxcmt_y Muffin-tin part of effective magentic field (y-component)
 !> @param [out] bxcmt_z Muffin-tin part of effective magentic field (z-component)
+!> @param [in] lmmax Number of spherical harmonics
+!> @param [in] max_num_mt_points Maximum number of muffin-tin points
+!> @param [in] num_atoms Number of atoms
+!> @param [out] vxcrg Regular-grid part of potential
 !> @param [out] bxcrg_x Regular-grid part of effective magnetic field (x-component)
 !> @param [out] bxcrg_y Regular-grid part of effective magnetic field (y-component)
 !> @param [out] bxcrg_z Regular-grid part of effective magnetic field (z-component)
-subroutine sirius_generate_xc_potential(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,&
-&bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)
+!> @param [in] num_rg_points Number of the real-space FFT grid points.
+!> @param [out] error_code Error code
+subroutine sirius_generate_xc_potential(handler,vxcmt,bxcmt_x,bxcmt_y,bxcmt_z,lmmax,&
+&max_num_mt_points,num_atoms,vxcrg,bxcrg_x,bxcrg_y,bxcrg_z,num_rg_points,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-logical, target, intent(in) :: is_local_rg
-real(8), target, intent(out) :: vxcmt
-real(8), target, intent(out) :: vxcrg
+real(8), optional, target, intent(out) :: vxcmt
 real(8), optional, target, intent(out) :: bxcmt_x
 real(8), optional, target, intent(out) :: bxcmt_y
 real(8), optional, target, intent(out) :: bxcmt_z
+integer, optional, target, intent(in) :: lmmax
+integer, optional, target, intent(in) :: max_num_mt_points
+integer, optional, target, intent(in) :: num_atoms
+real(8), optional, target, intent(out) :: vxcrg
 real(8), optional, target, intent(out) :: bxcrg_x
 real(8), optional, target, intent(out) :: bxcrg_y
 real(8), optional, target, intent(out) :: bxcrg_z
+integer, optional, target, intent(in) :: num_rg_points
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
-type(C_PTR) :: is_local_rg_ptr
-logical(C_BOOL), target :: is_local_rg_c_type
 type(C_PTR) :: vxcmt_ptr
-type(C_PTR) :: vxcrg_ptr
 type(C_PTR) :: bxcmt_x_ptr
 type(C_PTR) :: bxcmt_y_ptr
 type(C_PTR) :: bxcmt_z_ptr
+type(C_PTR) :: lmmax_ptr
+type(C_PTR) :: max_num_mt_points_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: vxcrg_ptr
 type(C_PTR) :: bxcrg_x_ptr
 type(C_PTR) :: bxcrg_y_ptr
 type(C_PTR) :: bxcrg_z_ptr
+type(C_PTR) :: num_rg_points_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_generate_xc_potential_aux(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,&
-&bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)&
+subroutine sirius_generate_xc_potential_aux(handler,vxcmt,bxcmt_x,bxcmt_y,bxcmt_z,&
+&lmmax,max_num_mt_points,num_atoms,vxcrg,bxcrg_x,bxcrg_y,bxcrg_z,num_rg_points,error_code)&
 &bind(C, name="sirius_generate_xc_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
-type(C_PTR), value :: is_local_rg
 type(C_PTR), value :: vxcmt
-type(C_PTR), value :: vxcrg
 type(C_PTR), value :: bxcmt_x
 type(C_PTR), value :: bxcmt_y
 type(C_PTR), value :: bxcmt_z
+type(C_PTR), value :: lmmax
+type(C_PTR), value :: max_num_mt_points
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: vxcrg
 type(C_PTR), value :: bxcrg_x
 type(C_PTR), value :: bxcrg_y
 type(C_PTR), value :: bxcrg_z
+type(C_PTR), value :: num_rg_points
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-is_local_rg_ptr = C_NULL_PTR
-is_local_rg_c_type = is_local_rg
-is_local_rg_ptr = C_LOC(is_local_rg_c_type)
 vxcmt_ptr = C_NULL_PTR
+if (present(vxcmt)) then
 vxcmt_ptr = C_LOC(vxcmt)
-vxcrg_ptr = C_NULL_PTR
-vxcrg_ptr = C_LOC(vxcrg)
+endif
 bxcmt_x_ptr = C_NULL_PTR
 if (present(bxcmt_x)) then
 bxcmt_x_ptr = C_LOC(bxcmt_x)
@@ -3806,6 +3826,22 @@ endif
 bxcmt_z_ptr = C_NULL_PTR
 if (present(bxcmt_z)) then
 bxcmt_z_ptr = C_LOC(bxcmt_z)
+endif
+lmmax_ptr = C_NULL_PTR
+if (present(lmmax)) then
+lmmax_ptr = C_LOC(lmmax)
+endif
+max_num_mt_points_ptr = C_NULL_PTR
+if (present(max_num_mt_points)) then
+max_num_mt_points_ptr = C_LOC(max_num_mt_points)
+endif
+num_atoms_ptr = C_NULL_PTR
+if (present(num_atoms)) then
+num_atoms_ptr = C_LOC(num_atoms)
+endif
+vxcrg_ptr = C_NULL_PTR
+if (present(vxcrg)) then
+vxcrg_ptr = C_LOC(vxcrg)
 endif
 bxcrg_x_ptr = C_NULL_PTR
 if (present(bxcrg_x)) then
@@ -3819,8 +3855,17 @@ bxcrg_z_ptr = C_NULL_PTR
 if (present(bxcrg_z)) then
 bxcrg_z_ptr = C_LOC(bxcrg_z)
 endif
-call sirius_generate_xc_potential_aux(handler_ptr,is_local_rg_ptr,vxcmt_ptr,vxcrg_ptr,&
-&bxcmt_x_ptr,bxcmt_y_ptr,bxcmt_z_ptr,bxcrg_x_ptr,bxcrg_y_ptr,bxcrg_z_ptr)
+num_rg_points_ptr = C_NULL_PTR
+if (present(num_rg_points)) then
+num_rg_points_ptr = C_LOC(num_rg_points)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_xc_potential_aux(handler_ptr,vxcmt_ptr,bxcmt_x_ptr,bxcmt_y_ptr,&
+&bxcmt_z_ptr,lmmax_ptr,max_num_mt_points_ptr,num_atoms_ptr,vxcrg_ptr,bxcrg_x_ptr,&
+&bxcrg_y_ptr,bxcrg_z_ptr,num_rg_points_ptr,error_code_ptr)
 end subroutine sirius_generate_xc_potential
 
 !
