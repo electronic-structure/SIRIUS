@@ -208,6 +208,12 @@ class Gvec
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
+    /// Offset in the global index for the local part of G-vectors.
+    int offset_{-1};
+
+    /// Local number of G-vectors.
+    int count_{-1};
+
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
     void find_z_columns(double Gmax__, FFT3D_grid const& fft_box__);
@@ -380,7 +386,7 @@ class Gvec
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
     inline int count() const
     {
-        return gvec_count(comm().rank());
+        return count_;
     }
 
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
@@ -394,7 +400,7 @@ class Gvec
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
     inline int offset() const
     {
-        return gvec_offset(comm().rank());
+        return offset_;
     }
 
     /// Local starting index of G-vectors if G=0 is not counted.
