@@ -180,6 +180,8 @@ void Gvec::distribute_z_columns()
     if (ng != num_gvec_) {
         throw std::runtime_error("wrong number of G-vectors");
     }
+    this->offset_ = this->gvec_offset(this->comm().rank());
+    this->count_ = this->gvec_count(this->comm().rank());
 }
 
 void Gvec::find_gvec_shells()
@@ -392,9 +394,6 @@ void Gvec::init(FFT3D_grid const& fft_grid)
             }
         }
     }
-    this->offset_ = this->gvec_offset(this->comm().rank());
-    this->count_ = this->gvec_count(this->comm().rank());
-
     // TODO: add a check for gvec_base (there is already a test for this).
 }
 
