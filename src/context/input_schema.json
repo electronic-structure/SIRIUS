@@ -174,7 +174,7 @@
                 },
                 "atom_types" : {
                     "type" : "array",
-                    "titele" : "List of atom type labels",
+                    "title" : "List of atom type labels",
                     "default" : [],
                     "items" : {
                         "type" : "string"
@@ -344,7 +344,7 @@
                     "type" : "string",
                     "default" : "auto",
                     "enum" : ["auto", "cpu", "gpu"],
-                    "titel" : "Main processing unit to use during the execution."
+                    "title" : "Main processing unit to use during the execution."
                 },
                 "rmt_max" : {
                     "type" : "number",
@@ -371,7 +371,7 @@
                 "num_bands_to_print" : {
                     "type" : "integer",
                     "default" : 10,
-                    "titel" : "Number of eigen-values that are printed to the standard output."
+                    "title" : "Number of eigen-values that are printed to the standard output."
                 },
                 "print_performance" : {
                     "type" : "boolean",
