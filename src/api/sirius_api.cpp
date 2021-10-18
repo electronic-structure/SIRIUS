@@ -4690,7 +4690,6 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
                 }
             }
             std::copy(el.key().begin(), el.key().end(), key_name__);
-            key_name__[el.key().size()] = 0;
             break;
         }
         elem++;
@@ -4734,13 +4733,11 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
         auto description = parser[name].value("title", "");
         if (description.size()) {
           std::copy(description.begin(), description.end(), desc__);
-          desc__[description.size()] = 0;
         }
     }
     if (parser[name].count("usage")) {
         auto usage = parser[name].value("usage", "");
         std::copy(usage.begin(), usage.end(), usage__);
-        usage__[usage.size()] = 0;
     }
 }
 
@@ -4864,7 +4861,6 @@ sirius_option_get_string(char* section__, char* name__, char* default_value__)
     std::string value = parser[name].value("default", "");
     if (value.size() != 0) {
         std::copy(value.begin(), value.end(), default_value__);
-        default_value__[value.size() - 1] = 0;
     }
 }
 
@@ -4942,7 +4938,6 @@ sirius_option_string_get_value(char* section__, char* name__, int* elem_, char* 
     if (parser[name].count("enum")) {
         auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
         std::copy(tmp[*elem_].begin(), tmp[*elem_].end(), value_n);
-        value_n[tmp[*elem_].size()] = 0;
     }
 }
 
@@ -4969,7 +4964,7 @@ sirius_option_get_section_name(int* elem, char* section_name)
 
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
-            std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
+	    std::copy(el.key().begin(), el.key().end(), section_name);
             break;
         }
         elem_++;
