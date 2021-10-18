@@ -71,12 +71,9 @@ double ground_state(Simulation_context& ctx,
         dft.initial_state();
     }
 
-
-    double initial_tol = ctx.iterative_solver_tolerance();
-
     /* launch the calculation */
     int num_dft_iter = 1;
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, num_dft_iter, write_state);
+    auto result = dft.find(inp.density_tol_, inp.energy_tol_, ctx.cfg().iterative_solver().energy_tolerance(), num_dft_iter, write_state);
 
     std::cout << "call my stub solver: " << "\n";
     Energy energy(kset, density, potential, nlcglib::smearing_type::FERMI_DIRAC);
@@ -239,7 +236,7 @@ void run_tasks(cmd_args const& args)
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
-        ctx->iterative_solver_tolerance(1e-12);
+        ctx->iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {

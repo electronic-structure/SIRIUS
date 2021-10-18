@@ -1662,7 +1662,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
 
     // do a couple of SCF iterations to obtain a good initial guess
     bool save_state = false;
-    auto result     = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save_state);
+    auto result     = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
 
     // now call the direct solver
     // call nlcg solver
@@ -4956,7 +4956,7 @@ sirius_option_get_section_name(int* elem, char* section_name)
 
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
-	    std::copy(el.key().begin(), el.key().end(), section_name);
+      std::copy(el.key().begin(), el.key().end(), section_name);
             break;
         }
         elem_++;

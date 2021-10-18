@@ -150,18 +150,7 @@ PYBIND11_MODULE(py_sirius, m)
         return;
     }
 
-    //m.def("timer_print", &utils::timer::print);
     m.def("num_devices", &acc::num_devices);
-
-    //py::class_<Parameters_input>(m, "Parameters_input")
-    //    .def(py::init<>())
-    //    .def_readonly("density_tol", &Parameters_input::density_tol_)
-    //    .def_readonly("energy_tol", &Parameters_input::energy_tol_)
-    //    .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
-    //    .def_readonly("shiftk", &Parameters_input::shiftk_)
-    //    .def_readonly("ngridk", &Parameters_input::ngridk_);
-
-    //py::class_<Mixer_input>(m, "Mixer_input");
 
     py::class_<Communicator>(m, "Communicator");
 
@@ -181,8 +170,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
-        //.def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
-        //.def("fft_coarse", &Simulation_context::fft_coarse, py::return_value_policy::reference_internal)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
              py::return_value_policy::reference)
         .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -191,23 +178,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gk_cutoff", py::overload_cast<double>(&Simulation_context::gk_cutoff))
         .def("aw_cutoff", py::overload_cast<>(&Simulation_context::aw_cutoff, py::const_))
         .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
-        //.def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
-        //     py::return_value_policy::reference)
         .def("num_spinors", &Simulation_context::num_spinors)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
-        //.def("mixer_input", &Simulation_context::mixer_input)
         .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
              py::return_value_policy::reference_internal)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
              py::return_value_policy::reference_internal)
         .def("comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
              py::return_value_policy::reference_internal);
-        //.def("iterative_solver_tolerance", py::overload_cast<double>(&Simulation_context::iterative_solver_tolerance))
-        //.def("iterative_solver_tolerance", py::overload_cast<>(&Simulation_context::iterative_solver_tolerance, py::const_));
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)

@@ -223,7 +223,7 @@ class config_t
             This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
             \code{.cpp}
             // tolerance of occupied bands
-            double tol = ctx_.iterative_solver_tolerance();
+            double tol = ctx_.iterative_solver().energy_tolerance();
             // final tolerance of empty bands
             double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             \endcode
@@ -245,12 +245,12 @@ class config_t
             tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
             between the two. This is how it is done in the code: 
             \code{.cpp}
-            double old_tol = ctx_.iterative_solver_tolerance();
+            double old_tol = ctx_.iterative_solver().energy_tolerance();
             // estimate new tolerance of iterative solver
             double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
             tol = std::max(ctx_.settings().itsol_tol_min_, tol);
             // set new tolerance of iterative solver
-            ctx_.iterative_solver_tolerance(tol);\endcode
+            ctx_.iterative_solver().energy_tolerance(tol);\endcode
         */
         inline auto itsol_tol_scale() const
         {

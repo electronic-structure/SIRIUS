@@ -95,7 +95,7 @@
                     "type" : "number",
                     "default" : 0,
                     "title" : "Fine control of the empty states tolerance.",
-                    "description" : "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                    "description" : "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
                 },
                 "itsol_tol_scale" : {
                     "type" : "array",
@@ -106,7 +106,7 @@
                     "maxItems" : 2,
                     "default" : [0.1, 0.5],
                     "title" : "Scaling parameters of the iterative  solver tolerance.",
-                    "description" : "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver_tolerance(tol);\\endcode"
+                    "description" : "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver().energy_tolerance(tol);\\endcode"
                 },
                 "auto_enu_tol" : {
                     "type" : "number",
