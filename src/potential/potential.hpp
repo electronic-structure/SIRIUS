@@ -630,81 +630,11 @@ class Potential : public Field4D
     /// Generate effective potential and magnetic field from charge density and magnetization.
     void generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
-    void save()
-    {
-        effective_potential().hdf5_write(storage_file_name, "effective_potential");
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            std::stringstream s;
-            s << "effective_magnetic_field/" << j;
-            effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
-        }
-        if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
-            HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
-            for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
-                if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
-                    fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
-                }
-            }
-        }
-        comm_.barrier();
-    }
+    void save();
 
-    inline void load()
-    {
-        HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+    void load();
 
-        int ngv;
-        fin.read("/parameters/num_gvec", &ngv, 1);
-        if (ngv != ctx_.gvec().num_gvec()) {
-            TERMINATE("wrong number of G-vectors");
-        }
-        mdarray<int, 2> gv(3, ngv);
-        fin.read("/parameters/gvec", gv);
-
-        effective_potential().hdf5_read(fin["effective_potential"], gv);
-
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            effective_magnetic_field(j).hdf5_read(fin["effective_magnetic_field"][j], gv);
-        }
-
-        if (ctx_.full_potential()) {
-            update_atomic_potential();
-        }
-
-        if (!ctx_.full_potential()) {
-            HDF5_tree fout(storage_file_name, hdf5_access_t::read_only);
-            for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
-                fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
-            }
-        }
-    }
-
-    inline void update_atomic_potential()
-    {
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
-            int nmtp = unit_cell_.atom(ia).num_mt_points();
-
-            std::vector<double> veff(nmtp);
-
-            for (int ir = 0; ir < nmtp; ir++) {
-                veff[ir] = y00 * effective_potential().f_mt<index_domain_t::global>(0, ir, ia);
-            }
-
-            unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
-        }
-
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double* veff = &effective_potential().f_mt<index_domain_t::global>(0, 0, ia);
-
-            double* beff[] = {nullptr, nullptr, nullptr};
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                beff[i] = &effective_magnetic_field(i).f_mt<index_domain_t::global>(0, 0, ia);
-            }
-
-            unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
-        }
-    }
+    void update_atomic_potential();
 
     template <device_t pu>
     void add_mt_contribution_to_pw();
@@ -780,87 +710,87 @@ class Potential : public Field4D
 
     void check_potential_continuity_at_mt();
 
-    Periodic_function<double>& effective_potential()
+    auto& effective_potential()
     {
         return this->scalar();
     }
 
-    Periodic_function<double> const& effective_potential() const
+    auto const& effective_potential() const
     {
         return this->scalar();
     }
 
-    Smooth_periodic_function<double>& local_potential()
+    auto& local_potential()
     {
         return *local_potential_;
     }
 
-    Smooth_periodic_function<double> const& local_potential() const
+    auto const& local_potential() const
     {
         return *local_potential_;
     }
 
-    Smooth_periodic_function<double>& dveff()
+    auto& dveff()
     {
         return *dveff_;
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& effective_potential_mt(int ialoc) const
+    auto const& effective_potential_mt(int ialoc) const
     {
         return this->scalar().f_mt(ialoc);
     }
 
-    Periodic_function<double>& effective_magnetic_field(int i)
+    auto& effective_magnetic_field(int i)
     {
         return this->vector(i);
     }
 
-    Periodic_function<double> const& effective_magnetic_field(int i) const
+    auto& effective_magnetic_field(int i) const
     {
         return this->vector(i);
     }
 
-    Periodic_function<double>& hartree_potential()
+    auto& hartree_potential()
     {
         return *hartree_potential_;
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& hartree_potential_mt(int ialoc) const
+    auto const& hartree_potential_mt(int ialoc) const
     {
         return hartree_potential_->f_mt(ialoc);
     }
 
-    Periodic_function<double>& xc_potential()
+    auto& xc_potential()
     {
         return *xc_potential_;
     }
 
-    Periodic_function<double> const& xc_potential() const
+    auto const& xc_potential() const
     {
         return *xc_potential_;
     }
 
-    Periodic_function<double>& xc_energy_density()
+    auto& xc_energy_density()
     {
         return *xc_energy_density_;
     }
 
-    Periodic_function<double> const& xc_energy_density() const
+    auto const& xc_energy_density() const
     {
         return *xc_energy_density_;
     }
 
-    double vh_el(int ia) const
+    inline auto vh_el(int ia) const
     {
         return vh_el_(ia);
     }
 
-    double energy_vha() const
+    auto energy_vha() const
     {
         return energy_vha_;
     }
 
-    double_complex const& veff_pw(int ig__) const
+    auto const& veff_pw(int ig__) const
     {
         return veff_pw_(ig__);
     }
@@ -870,7 +800,7 @@ class Potential : public Field4D
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
     }
 
-    double_complex const& rm_inv_pw(int ig__) const
+    auto const& rm_inv_pw(int ig__) const
     {
         return rm_inv_pw_(ig__);
     }
@@ -880,7 +810,7 @@ class Potential : public Field4D
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
     }
 
-    double_complex const& rm2_inv_pw(int ig__) const
+    auto const& rm2_inv_pw(int ig__) const
     {
         return rm2_inv_pw_(ig__);
     }
@@ -891,19 +821,19 @@ class Potential : public Field4D
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
-    double energy_vxc(Density const& density__) const
+    auto energy_vxc(Density const& density__) const
     {
         return inner(density__.rho(), xc_potential());
     }
 
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
-    double energy_vxc_core(Density const& density__) const
+    auto energy_vxc_core(Density const& density__) const
     {
         return inner(density__.rho_pseudo_core(), xc_potential());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
-    double energy_exc(Density const& density__) const
+    auto energy_exc(Density const& density__) const
     {
         double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
@@ -918,11 +848,6 @@ class Potential : public Field4D
     {
         assert(idx__ >= 0 && idx__ < 3);
         return (*vsigma_[idx__].get());
-    }
-
-    inline double vha_el(int ia__) const
-    {
-        return vh_el_(ia__);
     }
 
     inline void add_delta_rho_xc(double d__)

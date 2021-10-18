@@ -1244,44 +1244,95 @@ sirius_get_periodic_function:
       type: string
       attr: in, required
       doc: Label of the function.
+    f_mt:
+      type: double
+      attr: out, optional
+      doc: Muffin-tin part of the function.
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of spherical harmonics
+    max_num_mt_points:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Number of atoms
     f_rg:
       type: double
       attr: out, optional, dimension(*)
       doc: Real space values on the regular grid.
-    f_rg_global:
-      type: bool
+    num_rg_points:
+      type: int
       attr: in, optional
-      doc: If true, real-space array is global.
+      doc: Number of the real-space FFT grid points.
     error_code:
       type: int
       attr: out, optional
-      doc: Error code.
-
+      doc: Error code
 @api end
 */
 void
-sirius_get_periodic_function(void* const* handler__, char const* label__, double* f_rg__, bool const* f_rg_global__,
-                             int* error_code__)
+sirius_get_periodic_function(void* const* handler__, char const* label__, double* f_mt__, int const* lmmax__,
+                             int const* max_num_mt_points__, int const* num_atoms__, double* f_rg__,
+                             int const* num_rg_points__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& gs = get_gs(handler__);
             std::string label(label__);
             std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-                {"vha", &gs.potential().hartree_potential()}};
+                {"rho", &gs.density().component(0)},          {"magz", &gs.density().component(1)},
+                {"magx", &gs.density().component(2)},         {"magy", &gs.density().component(3)},
+                {"veff", &gs.potential().component(0)},       {"bz", &gs.potential().component(1)},
+                {"bx", &gs.potential().component(2)},         {"by", &gs.potential().component(3)},
+                {"vha", &gs.potential().hartree_potential()}, {"exc", &gs.potential().xc_energy_density()},
+                {"vxc", &gs.potential().xc_potential()}
+            };
+
             if (func_map.count(label) == 0) {
                 throw std::runtime_error("wrong label (" + label + ") for the periodic function");
             }
-            if (f_rg__) {
-                if (f_rg_global__ == nullptr) {
-                    throw std::runtime_error("missing bool argument 'f_rg_global'");
+
+            auto& f = *func_map[label];
+
+            if (f_mt__) {
+                if (!lmmax__) {
+                    throw std::runtime_error("missing 'lmmax' argument");
                 }
-                bool is_local = !(*f_rg_global__);
-                func_map[label]->copy_to(nullptr, f_rg__, is_local);
+                if (*lmmax__ != f.angular_domain_size()) {
+                    throw std::runtime_error("wrong number of spherical harmonics");
+                }
+                if (!max_num_mt_points__) {
+                    throw std::runtime_error("missing 'max_num_mt_points' argument");
+                }
+                if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
+                    throw std::runtime_error("wrong maximum number of muffin-tin radial points");
+                }
+                if (!num_atoms__) {
+                    throw std::runtime_error("missing 'num_atoms' argument");
+                }
+                if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
+                    throw std::runtime_error("wrong number of atoms");
+                }
+                f.copy_to(f_mt__, nullptr, false);
+            }
+
+            if (f_rg__) {
+                if (!num_rg_points__) {
+                    throw std::runtime_error("missing 'num_rg_points' argument");
+                }
+                bool is_local_rg;
+                if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
+                    is_local_rg = false;
+                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
+                    is_local_rg = true;
+                } else {
+                    throw std::runtime_error("wrong number of regular grid points");
+                }
+                f.copy_to(nullptr, f_rg__, is_local_rg);
             }
         },
         error_code__);
@@ -3670,40 +3721,18 @@ sirius_generate_coulomb_potential:
       type: void*
       attr: in, required
       doc: DFT ground state handler
-    vclmt:
+    vh_el:
       type: double
-      attr: out, optional
-      doc: Muffin-tin part of Coulomb potential
-    lmmax:
-      type: int
-      attr: in, optional
-      doc: Number of spherical harmonics
-    max_num_mt_points:
-      type: int
-      attr: in, optional
-      doc: Maximum number of muffin-tin points
-    num_atoms:
-      type: int
-      attr: in, optional
-      doc: Number of atoms
-    vha_el:
-      type: double
-      attr: out, optional
+      attr: out, optional, dimension(*)
       doc: Electronic part of Hartree potential at each atom's origin.
-    vclrg:
-      type: double
-      attr: out, optional
-      doc: Interstitital part of the Coulomb potential
-    num_rg_points:
+    error_code:
       type: int
       attr: out, optional
       doc: Error code
 @api end
 */
 void
-sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int const* lmmax__,
-                                  int const* max_num_mt_points__, int const* num_atoms__, double* vha_el__,
-                                  double* vclrg__, int const* num_rg_points__, int* error_code__)
+sirius_generate_coulomb_potential(void* const* handler__, double* vh_el__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -3712,46 +3741,10 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vclmt__, int c
             gs.density().rho().fft_transform(-1);
             gs.potential().poisson(gs.density().rho());
 
-            if (vclmt__) {
-                if (!lmmax__) {
-                    throw std::runtime_error("missing 'lmmax' argument");
+            if (vh_el__) {
+                for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+                    vh_el__[ia] = gs.potential().vh_el(ia);
                 }
-                if (*lmmax__ != gs.potential().hartree_potential().angular_domain_size()) {
-                    throw std::runtime_error("wrong number of spherical harmonics");
-                }
-                if (!max_num_mt_points__) {
-                    throw std::runtime_error("missing 'max_num_mt_points' argument");
-                }
-                if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
-                    throw std::runtime_error("wrong maximum number of muffin-tin radial points");
-                }
-                if (!num_atoms__) {
-                    throw std::runtime_error("missing 'num_atoms' argument");
-                }
-                if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
-                    throw std::runtime_error("wrong number of atoms");
-                }
-                gs.potential().hartree_potential().copy_to(vclmt__, nullptr, false);
-                if (vha_el__) {
-                    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
-                        vha_el__[ia] = gs.potential().vha_el(ia);
-                    }
-                }
-            }
-
-            if (vclrg__) {
-                if (!num_rg_points__) {
-                    throw std::runtime_error("missing 'num_rg_points' argument");
-                }
-                bool is_local_rg;
-                if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
-                    is_local_rg = false;
-                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
-                    is_local_rg = true;
-                } else {
-                    throw std::runtime_error("wrong number of regular grid points");
-                }
-                gs.potential().hartree_potential().copy_to(nullptr, vclrg__, is_local_rg);
             }
         },
         error_code__);
@@ -3766,66 +3759,22 @@ sirius_generate_xc_potential:
       type: void*
       attr: in, required
       doc: Ground state handler
-    is_local_rg:
-      type: bool
-      attr: in, required
-      doc: true if regular grid pointer is local
-    vxcmt:
-      type: double
-      attr: out, required
-      doc: Muffin-tin part of potential
-    vxcrg:
-      type: double
-      attr: out, required
-      doc: Regular-grid part of potential
-    bxcmt_x:
-      type: double
+    error_code:
+      type: int
       attr: out, optional
-      doc: Muffin-tin part of effective magentic field (x-component)
-    bxcmt_y:
-      type: double
-      attr: out, optional
-      doc: Muffin-tin part of effective magentic field (y-component)
-    bxcmt_z:
-      type: double
-      attr: out, optional
-      doc: Muffin-tin part of effective magentic field (z-component)
-    bxcrg_x:
-      type: double
-      attr: out, optional
-      doc: Regular-grid part of effective magnetic field (x-component)
-    bxcrg_y:
-      type: double
-      attr: out, optional
-      doc: Regular-grid part of effective magnetic field (y-component)
-    bxcrg_z:
-      type: double
-      attr: out, optional
-      doc: Regular-grid part of effective magnetic field (z-component)
+      doc: Error code
 @api end
 */
 void
-sirius_generate_xc_potential(void* const* handler__, bool const* is_local_rg__, double* vxcmt__, double* vxcrg__,
-                             double* bxcmt_x__, double* bxcmt_y__, double* bxcmt_z__, double* bxcrg_x__,
-                             double* bxcrg_y__, double* bxcrg_z__)
+sirius_generate_xc_potential(void* const* handler__, int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    gs.potential().xc(gs.density());
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.potential().xc(gs.density());
 
-    gs.potential().xc_potential().copy_to(vxcmt__, vxcrg__, *is_local_rg__);
-
-    if (gs.ctx().num_mag_dims() == 1) {
-        /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
-    }
-    if (gs.ctx().num_mag_dims() == 3) {
-        /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
-        /* x component */
-        gs.potential().effective_magnetic_field(1).copy_to(bxcmt_x__, bxcrg_x__, *is_local_rg__);
-        /* y component */
-        gs.potential().effective_magnetic_field(2).copy_to(bxcmt_y__, bxcrg_y__, *is_local_rg__);
-    }
+        },
+        error_code__);
 }
 
 /*
@@ -4733,7 +4682,6 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
                 }
             }
             std::copy(el.key().begin(), el.key().end(), key_name__);
-            key_name__[el.key().size()] = 0;
             break;
         }
         elem++;
@@ -4777,13 +4725,11 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
         auto description = parser[name].value("title", "");
         if (description.size()) {
           std::copy(description.begin(), description.end(), desc__);
-          desc__[description.size()] = 0;
         }
     }
     if (parser[name].count("usage")) {
         auto usage = parser[name].value("usage", "");
         std::copy(usage.begin(), usage.end(), usage__);
-        usage__[usage.size()] = 0;
     }
 }
 
@@ -4907,7 +4853,6 @@ sirius_option_get_string(char* section__, char* name__, char* default_value__)
     std::string value = parser[name].value("default", "");
     if (value.size() != 0) {
         std::copy(value.begin(), value.end(), default_value__);
-        default_value__[value.size() - 1] = 0;
     }
 }
 
@@ -4985,7 +4930,6 @@ sirius_option_string_get_value(char* section__, char* name__, int* elem_, char* 
     if (parser[name].count("enum")) {
         auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
         std::copy(tmp[*elem_].begin(), tmp[*elem_].end(), value_n);
-        value_n[tmp[*elem_].size()] = 0;
     }
 }
 
@@ -5012,7 +4956,7 @@ sirius_option_get_section_name(int* elem, char* section_name)
 
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
-            std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
+	    std::copy(el.key().begin(), el.key().end(), section_name);
             break;
         }
         elem_++;
