@@ -430,7 +430,7 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
 
     //auto nhwf = um__.nhwf();
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx__.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
@@ -475,7 +475,7 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
         Up.copy_to(memory_t::device);
     }
 
-    transform<std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
+    transform<std::complex<T>, std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
         Up, 0, 0, 1.0, {&hphi__}, N__, n__);
 }
 
@@ -512,7 +512,7 @@ void
 apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<double>& hub_wf__,
                          Wave_functions<double>& phi__, U_operator<double>& um__, Wave_functions<double>& hphi__);
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
 template class Non_local_operator<float>;
 
 template class D_operator<float>;

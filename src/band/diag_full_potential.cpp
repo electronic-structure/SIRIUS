@@ -328,8 +328,6 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
     /* number of newly added basis functions */
     int n = ncomp;
 
-    ctx_.message(3, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
-
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     auto& std_solver = ctx_.std_evp_solver();
@@ -349,7 +347,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         }
 
         if (ctx_.cfg().control().verification() >= 1) {
-            set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
+            set_subspace_mtrx<double_complex, double_complex>(0, N + n, 0, phi, ophi, ovlp);
 
             if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap", N + n);
@@ -363,13 +361,13 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
             }
         }
 
-        orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi, ophi,
+        orthogonalize<std::complex<double>>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi, ophi,
                       N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
+        set_subspace_mtrx<double_complex, double_complex>(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
         if (ctx_.cfg().control().verification() >= 1) {
             if (ctx_.cfg().control().verification() >= 2) {
@@ -414,7 +412,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals(
+            auto result = sirius::residuals<double_complex, double_complex>(
                 ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, ncomp, 0, eval, evec, ophi, phi, opsi, psi,
                 res, o_diag__, diag1, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
@@ -444,7 +442,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
             PROFILE("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            transform<double_complex, double_complex>(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -453,7 +451,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy()) {
-                    transform(ctx_.spla_context(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
+                    transform<double_complex, double_complex>(ctx_.spla_context(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();
@@ -518,8 +516,6 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (num_phi >= kp.num_gkvec()) {
         TERMINATE("subspace is too big");
     }
-
-    ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* allocate wave-functions */
     Wave_functions<double> phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -644,13 +640,13 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             Hk__.apply_fv_h_o(false, false, N, n, phi, &hphi, &ophi);
         }
 
-        orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi,
+        orthogonalize<std::complex<double>>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), phi,
                       hphi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, 0, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx<double_complex, double_complex>(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
         /* increase size of the variation space */
         N += n;
@@ -671,7 +667,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            auto result = sirius::residuals(
+            auto result = sirius::residuals<double_complex, double_complex>(
                 ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, num_bands, 0, eval, evec, hphi, ophi, hpsi,
                 opsi, res, h_o_diag.first, h_o_diag.second, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
@@ -701,7 +697,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             PROFILE("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
+            transform<double_complex, double_complex>(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {

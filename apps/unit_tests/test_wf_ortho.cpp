@@ -1,6 +1,7 @@
 #include "spla/context.hpp"
 #include <sirius.hpp>
 #include <spla/spla.hpp>
+#include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
 

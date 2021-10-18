@@ -322,7 +322,7 @@ class Wave_functions
         return preferred_memory_t_;
     }
 
-    inline std::complex<T> checksum(device_t pu__, int ispn__, int i0__, int n__) const
+    inline auto checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }

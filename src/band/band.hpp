@@ -80,14 +80,14 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-    template <typename T>
+    template <typename T, typename F>
     void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions<real_type<T>>& phi__,
-                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<T>& mtrx__,
-                           sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
+                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<F>& mtrx__,
+                           sddk::dmatrix<F>* mtrx_old__ = nullptr) const;
 
     /// Solve the band eigen-problem for pseudopotential case.
-    template <typename T>
-    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__) const;
+    template <typename T, typename F>
+    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__) const;
 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>
@@ -102,8 +102,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    template <typename T>
-    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__) const;
+    template <typename T, typename F>
+    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const;
 
     /// Initialize the subspace for the entire k-point set.
     template <typename T>

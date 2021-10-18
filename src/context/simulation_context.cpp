@@ -72,27 +72,11 @@ spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
     return *spfft_grid_coarse_;
 }
 
-#ifdef USE_FP32
-template <>
-spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
-    {
-        return *spfft_grid_coarse_float_;
-    }
-#endif
-
 template <>
 spfft::Transform& Simulation_context::spfft<double>()
 {
     return *spfft_transform_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft<float>()
-    {
-        return *spfft_transform_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft<double>() const
@@ -100,27 +84,11 @@ spfft::Transform const& Simulation_context::spfft<double>() const
     return *spfft_transform_;
 }
 
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat const& Simulation_context::spfft<float>() const
-    {
-        return *spfft_transform_float_;
-    }
-#endif
-
 template <>
 spfft::Transform& Simulation_context::spfft_coarse<double>()
 {
     return *spfft_transform_coarse_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
-    {
-        return *spfft_transform_coarse_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft_coarse<double>() const
@@ -128,12 +96,36 @@ spfft::Transform const& Simulation_context::spfft_coarse<double>() const
     return *spfft_transform_coarse_;
 }
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
+template <>
+spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
+{
+    return *spfft_grid_coarse_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft<float>()
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat const& Simulation_context::spfft<float>() const
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
+{
+   return *spfft_transform_coarse_float_;
+}
+
 template <>
 spfft::TransformFloat const& Simulation_context::spfft_coarse<float>() const
-    {
-        return *spfft_transform_coarse_float_;
-    }
+{
+    return *spfft_transform_coarse_float_;
+}
 #endif
 
 void
@@ -431,7 +423,7 @@ Simulation_context::initialize()
                 blas_linalg_t_ = linalg_t::gpublas;
             }
             if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
                 blas_linalg_t_ = linalg_t::gpublas;
 #else
                 blas_linalg_t_ = linalg_t::cublasxt;
@@ -680,14 +672,18 @@ Simulation_context::initialize()
         print_info();
     }
 
-    iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
-
     if (this->hubbard_correction()) {
         /* if spin orbit coupling or non collinear magnetisms are activated, then
            we consider the full spherical hubbard correction */
         if (this->so_correction() || this->num_mag_dims() == 3) {
             this->cfg().hubbard().simplified(false);
         }
+    }
+
+    if (cfg().parameters().precision_wf() == "fp32" && cfg().parameters().precision_gs() == "fp64") {
+        double t = std::numeric_limits<float>::epsilon() * 10;
+        auto tol = std::max(cfg().settings().itsol_tol_min(), t);
+        cfg().settings().itsol_tol_min(tol);
     }
 
     initialized_ = true;
@@ -883,7 +879,8 @@ Simulation_context::print_info() const
     std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
     std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
-    std::printf("precision                          : %s\n", cfg().parameters().precision().c_str());
+    std::printf("precision_wf                       : %s\n", cfg().parameters().precision_wf().c_str());
+    std::printf("precision_hs                       : %s\n", cfg().parameters().precision_hs().c_str());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),

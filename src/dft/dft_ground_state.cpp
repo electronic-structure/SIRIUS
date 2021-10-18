@@ -33,8 +33,8 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
-        if (ctx_.cfg().parameters().precision() == "fp32") {
-#ifdef USE_FP32
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
             Hamiltonian0<float> H0(potential_);
             Band(ctx_).initialize_subspace(kset_, H0);
 #else
@@ -144,12 +144,10 @@ json DFT_ground_state::check_scf_density()
     pot.generate(density_, ctx_.use_symmetry(), true);
     /* create new Hamiltonian */
     Hamiltonian0<double> H0(pot);
-    /* set the high tolerance */
-    ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve(kset_, H0, true);
+    Band(ctx_).solve<double, double>(kset_, H0, true, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
@@ -172,7 +170,7 @@ json DFT_ground_state::check_scf_density()
     return dict;
 }
 
-json DFT_ground_state::find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
+json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_tol, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -186,18 +184,15 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     std::vector<double> rms_hist;
     std::vector<double> etot_hist;
 
-    ctx_.iterative_solver_tolerance(initial_tolerance);
-
     Density rho1(ctx_);
 
     std::stringstream s;
     s << std::endl;
-    s << "density_tol       : " << density_tol << std::endl
-      << "energy_tol        : " << energy_tol << std::endl
-      << "initial_tolerance : " << initial_tolerance << std::endl
-      << "num_dft_iter      : " << num_dft_iter;
+    s << "density_tol  : " << density_tol << std::endl
+      << "energy_tol   : " << energy_tol << std::endl
+      << "itsol_tol    : " << itsol_tol << std::endl
+      << "num_dft_iter : " << num_dft_iter;
     ctx_.message(1, __func__, s);
-
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
@@ -208,11 +203,15 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        if (ctx_.cfg().parameters().precision() == "fp32") {
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
             Hamiltonian0<float> H0(potential_);
             /* find new wave-functions */
-            Band(ctx_).solve(kset_, H0, true);
+            if (ctx_.cfg().parameters().precision_hs() == "fp32") {
+                Band(ctx_).solve<float, float>(kset_, H0, true, itsol_tol);
+            } else {
+                Band(ctx_).solve<float, double>(kset_, H0, true, itsol_tol);
+            }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
@@ -223,7 +222,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         } else {
             Hamiltonian0<double> H0(potential_);
             /* find new wave-functions */
-            Band(ctx_).solve(kset_, H0, true);
+            Band(ctx_).solve<double, double>(kset_, H0, true, itsol_tol);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -236,18 +235,47 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* mix density */
         rms = density_.mix();
 
-        /* set new tolerance of iterative solver */
-        double old_tol = ctx_.iterative_solver_tolerance();
         /* estimate new tolerance of the iterative solver */
         double tol = rms;
         if (ctx_.cfg().mixer().use_hartree()) {
             tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
         }
-        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol, ctx_.cfg().settings().itsol_tol_scale()[1] * old_tol);
-        tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
-        /* set new tolerance of iterative solver */
-        ctx_.iterative_solver_tolerance(tol);
+        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol,
+                       ctx_.cfg().settings().itsol_tol_scale()[1] * itsol_tol);
+        /* tolerance can't be too small */
+        itsol_tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
 
+#if defined(USE_FP32)
+        /* if the final precision is not equal to the current precision */
+        if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
+            /* if we reached the mimimum tolerance for fp32 */
+            if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
+                (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
+                std::cout << "switching to FP64" << std::endl;
+                ctx_.cfg().unlock();
+                ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
+                ctx_.cfg().parameters().precision_wf("fp64");
+                ctx_.cfg().parameters().precision_hs("fp64");
+                ctx_.cfg().lock();
+
+                for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+                    int ik = kset_.spl_num_kpoints(ikloc);
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        kset_.get<double>(ik)->spinor_wave_functions().copy_from(device_t::CPU, ctx_.num_bands(),
+                                kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                    }
+                }
+                for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+                    for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                        for (int j = 0; j < ctx_.num_bands(); j++) {
+                            kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
+                            kset_.get<double>(ik)->band_occupancy(j, ispn, kset_.get<float>(ik)->band_occupancy(j, ispn));
+                        }
+                    }
+                }
+            }
+        }
+#endif
         if (ctx_.cfg().control().verification() >= 1) {
             /* check number of electrons */
             density_.check_num_electrons();

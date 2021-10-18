@@ -32,6 +32,8 @@
 //
 // note that this code only apply for the collinear case
 #include "hubbard.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 
 namespace sirius {
 
