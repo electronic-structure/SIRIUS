@@ -30,7 +30,7 @@
     },
     "hubbard": {
 	"orthogonalize": true,
-        "!full_orthogonalization": true,
+        "full_orthogonalization": true,
         "local": [
             {
                 "J": 0.0,
@@ -67,7 +67,7 @@
 
 	    }
         ],
-        "nonlocal": [
+        "!nonlocal": [
             {
                 "T": [
                     0,
@@ -673,7 +673,7 @@
                 [
                     0.0,
                     0.0,
-                    0.0,0.0,0.0,4.0
+                        0.0,0.0,0.0,4.0
                     ]
                 ],
                 "Ni2": [

@@ -29,11 +29,15 @@
 
 namespace sirius {
 
-class Hubbard_matrix {
+class Hubbard_matrix
+{
   protected:
     Simulation_context& ctx_;
     std::vector<sddk::mdarray<double_complex, 3>> local_;
     std::vector<sddk::mdarray<double_complex, 3>> nonlocal_;
+    std::vector<std::pair<int, int>> atomic_orbitals_;
+    std::vector<int> offset_;
+
   public:
     Hubbard_matrix(Simulation_context& ctx__);
 
@@ -66,9 +70,35 @@ class Hubbard_matrix {
         return local_[ia__];
     }
 
+    const std::vector<std::pair<int, int>>& atomic_orbitals() const
+    {
+        return atomic_orbitals_;
+    }
+
+    const std::pair<int, int>& atomic_orbitals(const int idx__) const
+    {
+        return atomic_orbitals_[idx__];
+    }
+
+    const int offset(const int idx__) const
+    {
+        return offset_[idx__];
+    }
+
+    const std::vector<int>& offset() const
+    {
+        return offset_;
+    }
+
     sddk::mdarray<double_complex, 3> const& local(int ia__) const
     {
         return local_[ia__];
+    }
+
+    /// return a vector containing the occupation numbers for each atomic orbitals
+    auto& local() const
+    {
+        return local_;
     }
 
     sddk::mdarray<double_complex, 3>& nonlocal(int idx__)
@@ -85,20 +115,39 @@ class Hubbard_matrix {
     {
         return ctx_;
     }
+
+    const int find_orbital_index(const int ia__, const int n__, const int l__) const
+    {
+        int at_lvl = 0;
+        for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
+            int lo_ind  = atomic_orbitals_[at_lvl].second;
+            int atom_id = atomic_orbitals_[at_lvl].first;
+
+            if ((atomic_orbitals_[at_lvl].first == ia__) &&
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l == l__))
+                break;
+        }
+
+        if (at_lvl == static_cast<int>(atomic_orbitals_.size())) {
+            std::cout << "atom: " << ia__ << "n: " << n__ << ", l: " << l__ << std::endl;
+            RTE_THROW("Found an arbital that is not listed\n");
+        }
+        return at_lvl;
+    }
 };
 
-inline void copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
+inline void
+copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
-    for (int ia = 0; ia < src__.ctx().unit_cell().num_atoms(); ia++) {
-        if (src__.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-            ::sddk::copy(src__.local(ia), dest__.local(ia));
-        }
+    for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
+        ::sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
-    for (int i = 0; i < src__.ctx().cfg().hubbard().nonlocal().size(); i++) {
+    for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
         ::sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
 }
 
-}
+} // namespace sirius
 
 #endif

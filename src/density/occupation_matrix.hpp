@@ -29,9 +29,11 @@
 
 namespace sirius {
 
-class Occupation_matrix : public Hubbard_matrix {
+class Occupation_matrix : public Hubbard_matrix
+{
   private:
     std::map<vector3d<int>, sddk::mdarray<double_complex, 3>> occ_mtrx_T_;
+
   public:
     Occupation_matrix(Simulation_context& ctx__);
 
@@ -45,18 +47,38 @@ class Occupation_matrix : public Hubbard_matrix {
 
     void reduce()
     {
+        if (!ctx_.hubbard_correction())
+            return;
+
         /* global reduction over k points */
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                ctx_.comm_k().allreduce(this->local(ia).at(memory_t::host), static_cast<int>(this->local(ia).size()));
+        for (int at_lvl = 0; at_lvl < (int)this->local_.size(); at_lvl++) {
+            const int ia     = atomic_orbitals_[at_lvl].first;
+            auto const& atom = ctx_.unit_cell().atom(ia);
+            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+                ctx_.comm().allreduce(this->local(at_lvl).at(memory_t::host),
+                                      static_cast<int>(this->local(at_lvl).size()));
             }
         }
+
+        // we must reduce occ_mtrx_T_ not nonlocal (it non zero only after symmetrization)
+        for (auto& T : this->occ_mtrx_T_) {
+            ctx_.comm().allreduce(T.second.at(memory_t::host), static_cast<int>(T.second.size()));
+        }
+
+        // std::cout  << "Before : " << this->nonlocal(0)(0, 0, 0) << std::endl;
+
+        // for (int link = 0; link < (int)ctx_.cfg().hubbard().nonlocal().size(); link++) {
+        //   ctx_.comm().allreduce(this->nonlocal_[link].at(memory_t::host),
+        //   static_cast<int>(this->nonlocal_[link].size()));
+        // }
+
+        // std::cout  << "After : " << this->nonlocal(0)(0, 0, 0) << std::endl;
     }
 
     void zero()
     {
         Hubbard_matrix::zero();
-        for (auto& e: occ_mtrx_T_) {
+        for (auto& e : occ_mtrx_T_) {
             e.second.zero();
         }
     }
@@ -66,4 +88,4 @@ class Occupation_matrix : public Hubbard_matrix {
     void print_occupancies(int verbosity__) const;
 };
 
-} // namespace
+} // namespace sirius

@@ -30,15 +30,18 @@ namespace sirius {
 Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
     : Hubbard_matrix(ctx__)
 {
+    if (!ctx_.hubbard_correction()) {
+        return;
+    }
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */
     int nhwf = ctx_.unit_cell().num_hubbard_wf().first;
 
     /* find all possible translations */
     for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
         auto nl = ctx_.cfg().hubbard().nonlocal(i);
-        int ia = nl.atom_pair()[0];
-        int ja = nl.atom_pair()[1];
-        auto T = nl.T();
+        int ia  = nl.atom_pair()[0];
+        int ja  = nl.atom_pair()[1];
+        auto T  = nl.T();
 
         auto& sym = ctx_.unit_cell().symmetry();
 
@@ -47,13 +50,15 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
                         dot(sym[isym].spg_op.invR, vector3d<int>(T));
             if (!occ_mtrx_T_.count(Ttot)) {
                 occ_mtrx_T_[Ttot] = sddk::mdarray<double_complex, 3>(nhwf, nhwf, ctx_.num_mag_comp());
+                occ_mtrx_T_[Ttot].zero();
             }
         }
     }
 }
 
 template <typename T>
-void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
+void
+Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -64,7 +69,7 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
     linalg_t la{linalg_t::blas};
     /* find the appropriate linear algebra provider */
     if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
+        mem      = memory_t::device;
         mem_host = memory_t::host_pinned;
         if (is_device_memory(ctx_.preferred_memory_t())) {
             la = linalg_t::gpublas;
@@ -73,7 +78,7 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         }
     }
 
-    int nwfu = kp__.wave_functions_S_hub().num_wf();
+    int nwfu = kp__.hubbard_wave_functions_S().num_wf();
 
     sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
     if (is_device_memory(mem)) {
@@ -91,12 +96,12 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0,
-            kp__.num_occupied_bands(), kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
+        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
+                    kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
 
-        //if (is_device_memory(mem)) {
+        // if (is_device_memory(mem)) {
         //    dm.copy_to(memory_t::host);
         //}
         dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
@@ -112,42 +117,37 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = std::complex<T>(kp__.weight(), 0.0);
-        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(),
-            dm1.at(mem), dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
+                        dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
             occ_mtrx.copy_to(memory_t::host);
         }
 
         #pragma omp parallel for schedule(static)
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+            const int ia     = atomic_orbitals_[at_lvl].first;
             auto const& atom = ctx_.unit_cell().atom(ia);
-            if (atom.type().hubbard_correction()) {
+            // we can skip this atomic level if it does not contribute to the Hubbard correction (or U = 0)
+            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
 
                 /* loop over the different channels */
                 /* note that for atom with SO interactions, we need to jump
                    by 2 instead of 1. This is due to the fact that the
                    relativistic wave functions have different total angular
-                   momentum for the same n */
-
-                //TODO: multi-orbital case
-                //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
-                    /*
-                       I know that the index of the hubbard wave functions (indexb_....) is
-                       consistent with the index of the hubbard orbitals
-                    */
-                    const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-                    for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
-                        for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                            int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                            for (int mp = 0; mp < lmmax_at; mp++) {
-                                for (int m = 0; m < lmmax_at; m++) {
-                                    local_[ia](m, mp, s) +=
-                                        occ_mtrx(r.first * s1 + r.second[ia] + m, r.first * s2 + r.second[ia] + mp);
-                                }
+                   momentum for the same n
+                */
+                const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l + 1;
+                for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                    for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                        int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                        for (int mp = 0; mp < lmmax_at; mp++) {
+                            for (int m = 0; m < lmmax_at; m++) {
+                                local_[at_lvl](m, mp, s) +=
+                                    occ_mtrx(r.first * s1 + offset_[at_lvl] + m, r.first * s2 + offset_[at_lvl] + mp);
                             }
                         }
                     }
-                //}
+                }
             }
         }
     } else {
@@ -163,7 +163,7 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
             sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0,
-                        kp__.num_occupied_bands(ispn), kp__.wave_functions_S_hub(), 0, nwfu, dm, 0, 0);
+                        kp__.num_occupied_bands(ispn), kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");
@@ -179,14 +179,15 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|2");
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
-            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
-             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
+            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the
+             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the
              * band occupancies. We need to compensate for it because it is taken into account in the
              * calculation of the hubbard potential */
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|3");
             auto alpha = std::complex<T>(kp__.weight() / ctx_.max_occupancy(), 0.0);
             linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                dm1.at(mem), dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+                            dm1.at(mem), dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem),
+                            occ_mtrx.ld());
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(memory_t::host);
             }
@@ -194,30 +195,32 @@ void Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|4");
             #pragma omp parallel for schedule(static)
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                const auto& atom = ctx_.unit_cell().atom(ia);
-                if (atom.type().hubbard_correction()) {
-                    //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-                        for (int mp = 0; mp < lmmax_at; mp++) {
-                            const int mmp = r.second[ia] + mp;
-                            for (int m = 0; m < lmmax_at; m++) {
-                                const int mm = r.second[ia] + m;
-                                local_[ia](m, mp, ispn) += occ_mtrx(mm, mmp);
-                            }
+            for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+                const int ia     = atomic_orbitals_[at_lvl].first;
+                auto const& atom = ctx_.unit_cell().atom(ia);
+                // we can skip the symmetrization for this atomic level since it does not contribute to the Hubbard
+                // correction (or U = 0)
+                if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+
+                    const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l + 1;
+                    for (int mp = 0; mp < lmmax_at; mp++) {
+                        const int mmp = offset_[at_lvl] + mp;
+                        for (int m = 0; m < lmmax_at; m++) {
+                            const int mm = offset_[at_lvl] + m;
+                            local_[at_lvl](m, mp, ispn) += occ_mtrx(mm, mmp);
                         }
-                    //}
+                    }
                 }
             }
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|4");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|nonloc");
-            for (auto& e: this->occ_mtrx_T_) {
+            for (auto& e : this->occ_mtrx_T_) {
                 /* e^{-i k T} */
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
-                        e.second(i, j, ispn) += static_cast<double_complex>(occ_mtrx(i, j)) * z1;
+                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * z1;
                     }
                 }
             }
@@ -234,6 +237,132 @@ template void Occupation_matrix::add_k_point_contribution<float>(K_point<float>&
 void
 Occupation_matrix::symmetrize()
 {
+    if (!ctx_.hubbard_correction()) {
+        return;
+    }
+
+    auto& sym      = ctx_.unit_cell().symmetry();
+    const double f = 1.0 / sym.size();
+    std::vector<sddk::mdarray<double_complex, 3>> local_tmp;
+
+    local_tmp.resize(local_.size());
+
+    for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+        const int ia     = atomic_orbitals_[at_lvl].first;
+        auto const& atom = ctx_.unit_cell().atom(ia);
+        // We can skip the symmetrization for this atomic level since it does not contribute to the Hubbard correction
+        // (or U = 0)
+        if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+            local_tmp[at_lvl] = sddk::mdarray<double_complex, 3>(local_[at_lvl].size(0), local_[at_lvl].size(1), 4);
+            memcpy(local_tmp[at_lvl].at(memory_t::host), local_[at_lvl].at(memory_t::host),
+                   sizeof(double_complex) * local_[at_lvl].size());
+        }
+    }
+
+    for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+        const int ia     = atomic_orbitals_[at_lvl].first;
+        const auto& atom = ctx_.unit_cell().atom(ia);
+
+        // we can skip the symmetrization for this atomic level since it does not contribute to the Hubbard correction
+        // (or U = 0)
+        if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+
+            int il             = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            const int lmmax_at = 2 * il + 1;
+            local_[at_lvl].zero();
+            sddk::mdarray<double_complex, 3> dm_ia(lmmax_at, lmmax_at, 4);
+            for (int isym = 0; isym < sym.size(); isym++) {
+                int pr            = sym[isym].spg_op.proper;
+                auto eang         = sym[isym].spg_op.euler_angles;
+                auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
+                auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
+
+                int iap = sym[isym].spg_op.inv_sym_atom[ia];
+                dm_ia.zero();
+
+                int at_lvl1 =
+                    find_orbital_index(iap, atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).n(),
+                                       atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l);
+
+                for (int ispn = 0; ispn < ((ctx_.num_mag_dims() == 3) ? (4) : ctx_.num_spins()); ispn++) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+                            for (int m1p = 0; m1p < lmmax_at; m1p++) {
+                                for (int m2p = 0; m2p < lmmax_at; m2p++) {
+                                    dm_ia(m1, m2, ispn) +=
+                                        rotm[il](m1, m1p) * rotm[il](m2, m2p) * local_tmp[at_lvl1](m1p, m2p, ispn) * f;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 0) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+                            local_[at_lvl](m1, m2, 0) += dm_ia(m1, m2, 0);
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 1) {
+                    int const map_s[3][2] = {{0, 0}, {1, 1}, {0, 1}};
+                    for (int j = 0; j < 2; j++) {
+                        int s1 = map_s[j][0];
+                        int s2 = map_s[j][1];
+
+                        for (int m1 = 0; m1 < lmmax_at; m1++) {
+                            for (int m2 = 0; m2 < lmmax_at; m2++) {
+                                double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
+
+                                for (int s1p = 0; s1p < 2; s1p++) {
+                                    for (int s2p = 0; s2p < 2; s2p++) {
+                                        local_[at_lvl](m1, m2, j) +=
+                                            dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (ctx_.num_mag_dims() == 3) {
+                    for (int m1 = 0; m1 < lmmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+
+                            double_complex dm[2][2];
+                            double_complex dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+                            for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                                for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                                    int s      = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                                    dm[s1][s2] = dm_ia(m1, m2, s);
+                                }
+                            }
+
+                            for (int i = 0; i < 2; i++) {
+                                for (int j = 0; j < 2; j++) {
+                                    for (int s1p = 0; s1p < 2; s1p++) {
+                                        for (int s2p = 0; s2p < 2; s2p++) {
+                                            dm1[i][j] +=
+                                                dm[s1p][s2p] * spin_rot_su2(i, s1p) * std::conj(spin_rot_su2(j, s2p));
+                                        }
+                                    }
+                                }
+                            }
+
+                            for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                                for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                                    int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                                    local_[at_lvl](m1, m2, s) += dm1[s1][s2];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (ctx_.cfg().hubbard().nonlocal().size() && ctx_.num_mag_dims() == 3) {
         RTE_THROW("non-collinear nonlocal occupancy symmetrization is not implemented");
     }
@@ -241,27 +370,22 @@ Occupation_matrix::symmetrize()
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
-    for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+    for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
         auto nl = ctx_.cfg().hubbard().nonlocal(i);
-        int ia = nl.atom_pair()[0];
-        int ja = nl.atom_pair()[1];
-        int il = nl.l()[0];
-        int jl = nl.l()[1];
-        int ib = ctx_.unit_cell().atom(ia).type().indexr_hub().subshell_size(il, 0);
-        int jb = ctx_.unit_cell().atom(ja).type().indexr_hub().subshell_size(jl, 0);
-        auto T = nl.T();
-
-        assert(ib == 2 * il + 1);
-        assert(jb == 2 * jl + 1);
-
-        auto& sym = ctx_.unit_cell().symmetry();
-
-        double f = 1.0 / sym.size();
+        int ia  = nl.atom_pair()[0];
+        int ja  = nl.atom_pair()[1];
+        int il  = nl.l()[0];
+        int jl  = nl.l()[1];
+        int n1  = nl.n()[0];
+        int n2  = nl.n()[1];
+        int ib  = 2 * il + 1;
+        int jb  = 2 * jl + 1;
+        auto T  = nl.T();
 
         for (int isym = 0; isym < sym.size(); isym++) {
-            int  pr   = sym[isym].spg_op.proper;
-            auto eang = sym[isym].spg_op.euler_angles;
-            auto rotm = sht::rotation_matrix<double>(4, eang, pr);
+            int pr            = sym[isym].spg_op.proper;
+            auto eang         = sym[isym].spg_op.euler_angles;
+            auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
             auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
             int iap = sym[isym].spg_op.inv_sym_atom[ia];
@@ -270,14 +394,13 @@ Occupation_matrix::symmetrize()
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                         dot(sym[isym].spg_op.invR, vector3d<int>(T));
 
-            int idxrf1 = 0;
-            int idxrf2 = 0;
-            int offset1 = ctx_.unit_cell().atom(ia).type().indexb_hub().offset(idxrf1);
-            int offset2 = ctx_.unit_cell().atom(ja).type().indexb_hub().offset(idxrf2);
-
+            /* we must search for the right hubbard subspace since we may have
+             * multiple orbitals involved in the hubbard correction */
+            int at1_lvl    = find_orbital_index(iap, n1, il);
+            int at2_lvl    = find_orbital_index(jap, n2, jl);
             auto& occ_mtrx = occ_mtrx_T_[Ttot];
 
-            sddk::mdarray<double_complex, 3> dm_ia_ja(ib, jb, ctx_.num_spins());
+            sddk::mdarray<double_complex, 3> dm_ia_ja(2 * il + 1, 2 * jl + 1, ctx_.num_spins());
             dm_ia_ja.zero();
             /* apply spatial rotation */
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -285,14 +408,14 @@ Occupation_matrix::symmetrize()
                     for (int m2 = 0; m2 < jb; m2++) {
                         for (int m1p = 0; m1p < ib; m1p++) {
                             for (int m2p = 0; m2p < jb; m2p++) {
-                                dm_ia_ja(m1, m2, ispn) += rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
-                                    occ_mtrx(r.second[iap] + offset1 + m1p, r.second[jap] + offset2 + m2p, ispn) * f;
+                                dm_ia_ja(m1, m2, ispn) +=
+                                    rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
+                                    occ_mtrx(offset_[at1_lvl] + m1p, offset_[at2_lvl] + m2p, ispn) * f;
                             }
                         }
                     }
                 }
             }
-
 
             if (ctx_.num_mag_dims() == 0) {
                 for (int m1 = 0; m1 < ib; m1++) {
@@ -313,8 +436,8 @@ Occupation_matrix::symmetrize()
 
                             for (int s1p = 0; s1p < 2; s1p++) {
                                 for (int s2p = 0; s2p < 2; s2p++) {
-                                     nonlocal_[i](m1, m2, j) += dm[s1p][s2p] *
-                                         spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                    nonlocal_[i](m1, m2, j) +=
+                                        dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
                                 }
                             }
                         }
@@ -324,7 +447,6 @@ Occupation_matrix::symmetrize()
         }
     }
 }
-
 void
 Occupation_matrix::init()
 {
@@ -334,21 +456,27 @@ Occupation_matrix::init()
 
     this->zero();
     #pragma omp parallel for schedule(static)
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const auto& atom = ctx_.unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-            if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
+    for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+        const int ia     = atomic_orbitals_[at_lvl].first;
+        auto const& atom = ctx_.unit_cell().atom(ia);
+
+        if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+
+            int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            const int lmax_at = 2 * il + 1;
+            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->local_[ia](m, m, ispn) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
+                        this->local_[at_lvl](m, m, ispn) = atom.type()
+                                                               .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
+                                                               .initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
                 // compute the total charge for the hubbard orbitals
-                double charge = atom.type().lo_descriptor_hub(0).occupancy();
-                bool   nm     = true; // true if the atom is non magnetic
-                int    majs, mins;
+                double charge = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).occupancy();
+                bool nm       = true; // true if the atom is non magnetic
+                int majs, mins;
                 if (ctx_.num_spins() != 1) {
                     if (atom.vector_field()[2] > 0.0) {
                         nm   = false;
@@ -366,20 +494,21 @@ Occupation_matrix::init()
                         // collinear case
                         if (charge > (lmax_at)) {
                             for (int m = 0; m < lmax_at; m++) {
-                                this->local_[ia](m, m, majs) = 1.0;
-                                this->local_[ia](m, m, mins) =
+                                this->local_[at_lvl](m, m, majs) = 1.0;
+                                this->local_[at_lvl](m, m, mins) =
                                     (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
                             }
                         } else {
                             for (int m = 0; m < lmax_at; m++) {
-                                this->local_[ia](m, m, majs) = charge / static_cast<double>(lmax_at);
+                                this->local_[at_lvl](m, m, majs) = charge / static_cast<double>(lmax_at);
                             }
                         }
                     } else {
                         // double c1, s1;
                         // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                        double         c1 = atom.vector_field()[2];
-                        double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        double c1 = atom.vector_field()[2];
+                        double_complex cs =
+                            double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
                         double_complex ns[4];
 
                         if (charge > (lmax_at)) {
@@ -401,16 +530,16 @@ Occupation_matrix::init()
                         ns[3] = mag * cs * 0.5;
 
                         for (int m = 0; m < lmax_at; m++) {
-                            this->local_[ia](m, m, 0) = ns[0];
-                            this->local_[ia](m, m, 1) = ns[1];
-                            this->local_[ia](m, m, 2) = ns[2];
-                            this->local_[ia](m, m, 3) = ns[3];
+                            this->local_[at_lvl](m, m, 0) = ns[0];
+                            this->local_[at_lvl](m, m, 1) = ns[1];
+                            this->local_[at_lvl](m, m, 2) = ns[2];
+                            this->local_[at_lvl](m, m, 3) = ns[3];
                         }
                     }
                 } else {
                     for (int s = 0; s < ctx_.num_spins(); s++) {
                         for (int m = 0; m < lmax_at; m++) {
-                            this->local_[ia](m, m, s) = charge * 0.5 / static_cast<double>(lmax_at);
+                            this->local_[at_lvl](m, m, s) = charge * 0.5 / static_cast<double>(lmax_at);
                         }
                     }
                 }
@@ -421,22 +550,29 @@ Occupation_matrix::init()
     print_occupancies(2);
 }
 
-void Occupation_matrix::print_occupancies(int verbosity__) const
+void
+Occupation_matrix::print_occupancies(int verbosity__) const
 {
+    if (!ctx_.hubbard_correction()) {
+        return;
+    }
+
     if ((ctx_.verbosity() >= verbosity__) && (ctx_.comm().rank() == 0)) {
         std::stringstream s;
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                Hubbard_matrix::print_local(ia, s);
+        for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+            auto const& atom = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl].first);
+            int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+                Hubbard_matrix::print_local(at_lvl, s);
                 double occ[2] = {0, 0};
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    for (int m = 0; m < ctx_.unit_cell().atom(ia).type().indexr_hub().am(0).l() * 2 + 1; m++) {
-                        occ[ispn] += this->local_[ia](m, m, ispn).real();
+                    for (int m = 0; m < 2 * il + 1; m++) {
+                        occ[ispn] += this->local_[at_lvl](m, m, ispn).real();
                     }
                 }
                 if (ctx_.num_spins() == 2) {
-                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) "
-                      << occ[1] << " (mz) " << occ[0] - occ[1] << std::endl;
+                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) " << occ[1]
+                      << " (mz) " << occ[0] - occ[1] << std::endl;
                 } else {
                     s << "Atom charge (total) " << 2 * occ[0] << std::endl;
                 }
@@ -445,11 +581,11 @@ void Occupation_matrix::print_occupancies(int verbosity__) const
         if (ctx_.cfg().hubbard().nonlocal().size()) {
             s << std::endl;
         }
-        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+        for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
             Hubbard_matrix::print_nonlocal(i, s);
         }
         ctx_.message(1, "occ.mtrx", s);
     }
 }
 
-}
+} // namespace sirius

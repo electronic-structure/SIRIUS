@@ -26,7 +26,8 @@
 
 namespace sirius {
 
-void Atom_type::init(int offset_lo__)
+void
+Atom_type::init(int offset_lo__)
 {
     PROFILE("sirius::Atom_type::init");
 
@@ -162,9 +163,11 @@ void Atom_type::init(int offset_lo__)
 
     if (parameters_.processing_unit() == device_t::GPU && parameters_.full_potential()) {
         idx_radial_integrals_.allocate(memory_t::device).copy_to(memory_t::device);
-        rf_coef_  = mdarray<double, 3>(num_mt_points(), 4, indexr().size(), memory_t::host_pinned, "Atom_type::rf_coef_");
-        vrf_coef_ = mdarray<double, 3>(num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
-                                       memory_t::host_pinned, "Atom_type::vrf_coef_");
+        rf_coef_ =
+            mdarray<double, 3>(num_mt_points(), 4, indexr().size(), memory_t::host_pinned, "Atom_type::rf_coef_");
+        vrf_coef_ =
+            mdarray<double, 3>(num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
+                               memory_t::host_pinned, "Atom_type::vrf_coef_");
         rf_coef_.allocate(memory_t::device);
         vrf_coef_.allocate(memory_t::device);
     }
@@ -198,14 +201,15 @@ void Atom_type::init(int offset_lo__)
         free_atom_radial_grid_ = Radial_grid_factory<double>(radial_grid_t::power, 3000, radial_grid_.first(), 10.0, 2);
         free_atom_density_.resize(free_atom_radial_grid_.num_points());
         for (int i = 0; i < free_atom_radial_grid_.num_points(); i++) {
-            auto x = free_atom_radial_grid_.x(i);
+            auto x                = free_atom_radial_grid_.x(i);
             free_atom_density_[i] = std::exp(-x) * zn_ / 8 / pi;
         }
     }
     initialized_ = true;
 }
 
-void Atom_type::init_free_atom_density(bool smooth)
+void
+Atom_type::init_free_atom_density(bool smooth)
 {
     free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_);
     /* smooth free atom density inside the muffin-tin sphere */
@@ -218,19 +222,20 @@ void Atom_type::init_free_atom_density(bool smooth)
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
             double x = free_atom_radial_grid(i);
-            //free_atom_density_spline_(i) = b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
+            // free_atom_density_spline_(i) = b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) *
+            // std::pow(free_atom_radial_grid(i), 3);
             free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
 
         ///* write smoothed density */
-        //sstr.str("");
-        //sstr << "free_density_modified_" << id_ << ".dat";
-        //fout = fopen(sstr.str().c_str(), "w");
+        // sstr.str("");
+        // sstr << "free_density_modified_" << id_ << ".dat";
+        // fout = fopen(sstr.str().c_str(), "w");
 
-        //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
+        // for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
         //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));
         //}
-        //fclose(fout);
+        // fclose(fout);
     } else {
         for (int i = 0; i < free_atom_radial_grid_.num_points(); i++) {
             free_atom_density_spline_(i) = free_atom_density_[i];
@@ -239,7 +244,8 @@ void Atom_type::init_free_atom_density(bool smooth)
     free_atom_density_spline_.interpolate();
 }
 
-void Atom_type::print_info() const
+void
+Atom_type::print_info() const
 {
     std::printf("\n");
     std::printf("label          : %s\n", label().c_str());
@@ -264,7 +270,7 @@ void Atom_type::print_info() const
         std::printf("atomic levels (n, l, k, occupancy, core)\n");
         for (int i = 0; i < (int)atomic_levels_.size(); i++) {
             std::printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                   atomic_levels_[i].occupancy, atomic_levels_[i].core);
+                        atomic_levels_[i].occupancy, atomic_levels_[i].core);
         }
         std::printf("\n");
         std::printf("local orbitals\n");
@@ -274,8 +280,8 @@ void Atom_type::print_info() const
                 if (order)
                     std::printf(", ");
                 std::printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                       lo_descriptors_[j].rsd_set[order].n, lo_descriptors_[j].rsd_set[order].enu,
-                       lo_descriptors_[j].rsd_set[order].dme, lo_descriptors_[j].rsd_set[order].auto_enu);
+                            lo_descriptors_[j].rsd_set[order].n, lo_descriptors_[j].rsd_set[order].enu,
+                            lo_descriptors_[j].rsd_set[order].dme, lo_descriptors_[j].rsd_set[order].auto_enu);
             }
             std::printf("]\n");
         }
@@ -288,8 +294,8 @@ void Atom_type::print_info() const
                 if (order)
                     std::printf(", ");
                 std::printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
-                       aw_descriptors_[j][order].n, aw_descriptors_[j][order].enu, aw_descriptors_[j][order].dme,
-                       aw_descriptors_[j][order].auto_enu);
+                            aw_descriptors_[j][order].n, aw_descriptors_[j][order].enu, aw_descriptors_[j][order].dme,
+                            aw_descriptors_[j][order].auto_enu);
             }
             std::printf("]\n");
         }
@@ -307,9 +313,12 @@ void Atom_type::print_info() const
         std::printf("lmax of beta-projectors          : %i\n", this->lmax_beta());
         std::printf("number of ps wavefunctions       : %i\n", static_cast<int>(this->indexr_wfs().size()));
         std::printf("charge augmentation              : %s\n", utils::boolstr(this->augment()).c_str());
-        std::printf("vloc is set                      : %s\n", utils::boolstr(!this->local_potential().empty()).c_str());
-        std::printf("ps_rho_core is set               : %s\n", utils::boolstr(!this->ps_core_charge_density().empty()).c_str());
-        std::printf("ps_rho_total is set              : %s\n", utils::boolstr(!this->ps_total_charge_density().empty()).c_str());
+        std::printf("vloc is set                      : %s\n",
+                    utils::boolstr(!this->local_potential().empty()).c_str());
+        std::printf("ps_rho_core is set               : %s\n",
+                    utils::boolstr(!this->ps_core_charge_density().empty()).c_str());
+        std::printf("ps_rho_total is set              : %s\n",
+                    utils::boolstr(!this->ps_total_charge_density().empty()).c_str());
     }
     std::printf("Hubbard correction               : %s\n", utils::boolstr(this->hubbard_correction()).c_str());
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {
@@ -322,7 +331,8 @@ void Atom_type::print_info() const
     std::printf("spin-orbit coupling              : %s\n", utils::boolstr(this->spin_orbit_coupling()).c_str());
 }
 
-void Atom_type::read_input_core(nlohmann::json const& parser)
+void
+Atom_type::read_input_core(nlohmann::json const& parser)
 {
     std::string core_str = std::string(parser["core"]);
     if (int size = (int)core_str.size()) {
@@ -372,7 +382,7 @@ void Atom_type::read_input_core(nlohmann::json const& parser)
                 }
             }
 
-            for (auto& e: atomic_conf[zn_ - 1]) {
+            for (auto& e : atomic_conf[zn_ - 1]) {
                 if (e.n == n && e.l == l) {
                     auto level = e;
                     level.core = true;
@@ -383,7 +393,8 @@ void Atom_type::read_input_core(nlohmann::json const& parser)
     }
 }
 
-void Atom_type::read_input_aw(nlohmann::json const& parser)
+void
+Atom_type::read_input_aw(nlohmann::json const& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -412,7 +423,8 @@ void Atom_type::read_input_aw(nlohmann::json const& parser)
     }
 }
 
-void Atom_type::read_input_lo(nlohmann::json const& parser)
+void
+Atom_type::read_input_lo(nlohmann::json const& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -441,8 +453,8 @@ void Atom_type::read_input_lo(nlohmann::json const& parser)
     }
 }
 
-
-void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
+void
+Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 {
     symbol_ = parser["pseudo_potential"]["header"]["element"].get<std::string>();
 
@@ -461,7 +473,8 @@ void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     local_potential(parser["pseudo_potential"]["local_potential"].get<std::vector<double>>());
 
-    ps_core_charge_density(parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0)));
+    ps_core_charge_density(
+        parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0)));
 
     ps_total_charge_density(parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>());
 
@@ -513,9 +526,9 @@ void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     if (parser["pseudo_potential"].count("augmentation")) {
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
-            int i    = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
-            int j    = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
-            //int idx  = j * (j + 1) / 2 + i;
+            int i = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
+            int j = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
+            // int idx  = j * (j + 1) / 2 + i;
             int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
             if ((int)qij.size() != num_mt_points()) {
@@ -531,7 +544,8 @@ void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         size_t nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
         /* loop over wave-functions */
         for (size_t k = 0; k < nwf; k++) {
-            auto v = parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"].get<std::vector<double>>();
+            auto v =
+                parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"].get<std::vector<double>>();
 
             if ((int)v.size() != num_mt_points()) {
                 std::stringstream s;
@@ -571,7 +585,8 @@ void Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
     }
 }
 
-void Atom_type::read_pseudo_paw(nlohmann::json const& parser)
+void
+Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 {
     is_paw_ = true;
 
@@ -587,7 +602,8 @@ void Atom_type::read_pseudo_paw(nlohmann::json const& parser)
     int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"].get<int>();
 
     /* read core density and potential */
-    paw_ae_core_charge_density(parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
+    paw_ae_core_charge_density(
+        parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
 
     /* read occupations */
     paw_wf_occ(parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>());
@@ -624,7 +640,8 @@ void Atom_type::read_pseudo_paw(nlohmann::json const& parser)
     }
 }
 
-void Atom_type::read_input(std::string const& str__)
+void
+Atom_type::read_input(std::string const& str__)
 {
     auto parser = utils::read_json_from_file_or_string(str__);
 
@@ -670,8 +687,8 @@ void Atom_type::read_input(std::string const& str__)
     read_hubbard_input();
 }
 
-
-void Atom_type::generate_f_coefficients()
+void
+Atom_type::generate_f_coefficients()
 {
     // we consider Pseudo potentials with spin orbit couplings
 
@@ -712,9 +729,9 @@ void Atom_type::generate_f_coefficients()
                         int jj1 = static_cast<int>(2.0 * j1 + 1e-8);
                         for (int mj = -jj1; mj <= jj1; mj += 2) {
                             coef += sht::calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
-                                sht::ClebschGordan(l1, j1, mj / 2.0, sigma1) *
-                                std::conj(sht::calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
-                                sht::ClebschGordan(l2, j2, mj / 2.0, sigma2);
+                                    sht::ClebschGordan(l1, j1, mj / 2.0, sigma1) *
+                                    std::conj(sht::calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
+                                    sht::ClebschGordan(l2, j2, mj / 2.0, sigma2);
                         }
                         f_coefficients_(xi1, xi2, sigma1, sigma2) = coef;
                     }
@@ -724,7 +741,8 @@ void Atom_type::generate_f_coefficients()
     }
 }
 
-void Atom_type::read_hubbard_input()
+void
+Atom_type::read_hubbard_input()
 {
     if (!parameters_.cfg().parameters().hubbard_correction()) {
         return;
@@ -762,7 +780,7 @@ void Atom_type::read_hubbard_input()
             if (ho.contains("initial_occupancy")) {
                 initial_occupancy = ho.initial_occupancy();
 
-                int sz = static_cast<int>(initial_occupancy.size());
+                int sz    = static_cast<int>(initial_occupancy.size());
                 int lmmax = 2 * ho.l() + 1;
                 if (!(sz == 0 || sz == lmmax || sz == 2 * lmmax)) {
                     std::stringstream s;
@@ -771,16 +789,48 @@ void Atom_type::read_hubbard_input()
                 }
             }
 
-            add_hubbard_orbital(ho.n(), ho.l(), ho.total_initial_occupancy(), coeff[0], coeff[1], &coeff[0],
-                    coeff[4], coeff[5], 0.0, initial_occupancy);
+            add_hubbard_orbital(ho.n(), ho.l(), ho.total_initial_occupancy(), coeff[0], coeff[1], &coeff[0], coeff[4],
+                                coeff[5], 0.0, initial_occupancy, true);
 
             this->hubbard_correction_ = true;
         }
     }
+
+    if (parameters_.cfg().hubbard().full_orthogonalization()) {
+        this->hubbard_correction_ = true;
+        if (lo_descriptors_hub_.empty()) {
+            for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
+                auto& e  = ps_atomic_wfs_[s];
+                int n    = e.n;
+                auto aqn = e.am;
+                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, NULL, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
+                                    false);
+            }
+        } else {
+            for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
+                auto& e  = ps_atomic_wfs_[s];
+                int n    = e.n;
+                auto aqn = e.am;
+
+                // check if the orbital is already listed. In that case skip it
+                for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
+                    auto ho = parameters_.cfg().hubbard().local(i);
+                    if ((ho.atom_type() == this->label()) && ((ho.n() != n) || (ho.l() != aqn.l()))) {
+                        // we add it to the list but we only use it for the orthogonalization procedure
+                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, NULL, 0, 0, 0.0,
+                                            std::vector<double>(2 * aqn.l() + 1, 0), false);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
-void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double *hub_coef__,
-                         double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__)
+void
+Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double* hub_coef__,
+                               double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
+                               const bool use_for_calculations__)
 {
     // TODO: pass radial function for l or for j=l+1/2 j=l-1/2 and don't rely on the list of pseudoatomic wfs
 
@@ -791,10 +841,11 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     /* we have to find one (or two in case of spin-orbit) atomic functions and construct hubbard orbital */
     std::vector<int> idx_rf;
     for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
-        auto& e = ps_atomic_wfs_[s];
-        int n = e.n;
+        auto& e  = ps_atomic_wfs_[s];
+        int n    = e.n;
         auto aqn = e.am;
-        if (n == n__ && aqn.l() == l__) {
+
+        if ((n == n__) && (aqn.l() == l__)) {
             idx_rf.push_back(s);
             /* in spin orbit case we need to find the second radial function, otherwise we break */
             if (!(aqn.s() && aqn.l() > 0)) {
@@ -807,8 +858,8 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
         s << "atomic radial function is not found for atom type " << label_ << std::endl
           << "  the following atomic wave-functions are set: " << std::endl;
         for (int k = 0; k < (int)ps_atomic_wfs_.size(); k++) {
-            auto& e = ps_atomic_wfs_[k];
-            int n = e.n;
+            auto& e  = ps_atomic_wfs_[k];
+            int n    = e.n;
             auto aqn = e.am;
             s << "  n=" << n << " l=" << aqn.l() << " j=" << aqn.j() << std::endl;
         }
@@ -824,7 +875,7 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
     /* create a scalar hubbard wave-function from one or two atomic radial functions */
     Spline<double> s(radial_grid_);
     double f = 1.0 / static_cast<double>(idx_rf.size());
-    for (int i: idx_rf) {
+    for (int i : idx_rf) {
         auto& rwf = ps_atomic_wfs_[i].f;
         for (int ir = 0; ir < s.num_points(); ir++) {
             s(ir) += f * rwf(ir);
@@ -833,9 +884,9 @@ void Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, do
 
     /* add a record in radial function index */
     indexr_hub_.add(sirius::experimental::angular_momentum(l__));
-
     /* add Hubbard orbital descriptor to a list */
-    lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__, std::move(s.interpolate()));
+    lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__,
+                                     std::move(s.interpolate()), use_for_calculations__);
 }
 
-} // namespace
+} // namespace sirius

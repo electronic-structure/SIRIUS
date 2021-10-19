@@ -29,12 +29,14 @@
 
 namespace sirius {
 
-/// Structure containing all informations about a specific hubbard orbital (including the radial function).
+/// Structure containing all information about a specific hubbard orbital (including the radial function).
 class hubbard_orbital_descriptor
 {
   private:
     /// Principal quantum number of atomic orbital.
     int n_{-1};
+    /// set to true if this orbital is part the Hubbard subspace.
+    bool use_for_calculation_{true};
     /// Orbital occupancy.
     double occupancy_{-1.0};
 
@@ -51,7 +53,7 @@ class hubbard_orbital_descriptor
         hubbard_coefficients_[3]
         hubbard_coefficients[4] = U_alpha
         hubbard_coefficients[5] = U_beta */
-  double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
+    double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
 
     sddk::mdarray<double, 4> hubbard_matrix_;
 
@@ -96,7 +98,6 @@ class hubbard_orbital_descriptor
         return F;
     }
 
-
     inline void calculate_ak_coefficients(sddk::mdarray<double, 5>& ak)
     {
         // compute the ak coefficients appearing in the general treatment of
@@ -121,8 +122,7 @@ class hubbard_orbital_descriptor
                             }
                             /* according to PRB 52, R5467 it is 4 \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
                                only a_{k=0} a_{k=2}, a_{k=4} are considered */
-                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) =
-                                4.0 * sum * pi / static_cast<double>(2 * k + 1);
+                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) = 4.0 * sum * pi / static_cast<double>(2 * k + 1);
                         }
                     }
                 }
@@ -139,8 +139,7 @@ class hubbard_orbital_descriptor
 
     inline void compute_hubbard_matrix()
     {
-        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1,
-                                                   2 * l + 1, 2 * l + 1);
+        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
         sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
         auto F = hubbard_F_coefficients();
         calculate_ak_coefficients(ak);
@@ -203,8 +202,9 @@ class hubbard_orbital_descriptor
     hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
                                const double J__, const double U__, const double* hub_coef__, const double alpha__,
                                const double beta__, const double J0__, std::vector<double> initial_occupancy__,
-                               Spline<double> f__)
+                               Spline<double> f__, bool use_for_calculations__)
         : n_(n__)
+        , use_for_calculation_(use_for_calculations__)
         , occupancy_(occ__)
         , f_(std::move(f__))
         , hubbard_J_(J__)
@@ -231,6 +231,7 @@ class hubbard_orbital_descriptor
     /// Move constructor
     hubbard_orbital_descriptor(hubbard_orbital_descriptor&& src)
         : n_(src.n_)
+        , use_for_calculation_(src.use_for_calculation_)
         , occupancy_(src.occupancy_)
         , hubbard_J_(src.hubbard_J_)
         , hubbard_U_(src.hubbard_U_)
@@ -314,6 +315,11 @@ class hubbard_orbital_descriptor
     Spline<double> const& f() const
     {
         return f_;
+    }
+
+    bool use_for_calculation() const
+    {
+        return use_for_calculation_;
     }
 };
 

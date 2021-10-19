@@ -392,6 +392,7 @@ end subroutine sirius_import_parameters
 !> @param [in] verbosity Verbosity level.
 !> @param [in] hubbard_correction True if LDA+U correction is enabled.
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
+!> @param [in] hubbard_full_orthogonalization Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
@@ -403,8 +404,9 @@ end subroutine sirius_import_parameters
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
-&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,error_code)
+&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,&
+&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -429,6 +431,7 @@ character(*), optional, target, intent(in) :: iter_solver_type
 integer, optional, target, intent(in) :: verbosity
 logical, optional, target, intent(in) :: hubbard_correction
 integer, optional, target, intent(in) :: hubbard_correction_kind
+logical, optional, target, intent(in) :: hubbard_full_orthogonalization
 character(*), optional, target, intent(in) :: hubbard_orbitals
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
@@ -467,6 +470,8 @@ type(C_PTR) :: verbosity_ptr
 type(C_PTR) :: hubbard_correction_ptr
 logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_kind_ptr
+type(C_PTR) :: hubbard_full_orthogonalization_ptr
+logical(C_BOOL), target :: hubbard_full_orthogonalization_c_type
 type(C_PTR) :: hubbard_orbitals_ptr
 character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: sht_coverage_ptr
@@ -483,8 +488,9 @@ interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
-&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
-&min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,error_code)&
+&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,&
+&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -509,6 +515,7 @@ type(C_PTR), value :: iter_solver_type
 type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
+type(C_PTR), value :: hubbard_full_orthogonalization
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
@@ -616,6 +623,11 @@ hubbard_correction_kind_ptr = C_NULL_PTR
 if (present(hubbard_correction_kind)) then
 hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
 endif
+hubbard_full_orthogonalization_ptr = C_NULL_PTR
+if (present(hubbard_full_orthogonalization)) then
+hubbard_full_orthogonalization_c_type = hubbard_full_orthogonalization
+hubbard_full_orthogonalization_ptr = C_LOC(hubbard_full_orthogonalization_c_type)
+endif
 hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) then
 allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
@@ -658,9 +670,9 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
-&verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
-&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
-&electronic_structure_method_ptr,error_code_ptr)
+&verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,&
+&hubbard_orbitals_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,&
+&spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -677,6 +689,8 @@ if (present(iter_solver_type)) then
 deallocate(iter_solver_type_c_type)
 endif
 if (present(hubbard_correction)) then
+endif
+if (present(hubbard_full_orthogonalization)) then
 endif
 if (present(hubbard_orbitals)) then
 deallocate(hubbard_orbitals_c_type)
@@ -2068,12 +2082,13 @@ end subroutine sirius_set_atom_type_radial_grid_inf
 !> @param [in] num_points Length of radial function array.
 !> @param [in] n Orbital quantum number.
 !> @param [in] l angular momentum.
+!> @param [in] orbital_label Label of the radial function (atomic levels 1s, 2s, etc...).
 !> @param [in] idxrf1 First index of radial function (for Q-operator). Indices start from 1.
 !> @param [in] idxrf2 Second index of radial function (for Q-operator). Indices start form 1.
 !> @param [in] occ Occupancy of the wave-function.
 !> @param [out] error_code Error code.
 subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ,error_code)
+&n,l,orbital_label,idxrf1,idxrf2,occ,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -2083,6 +2098,7 @@ real(8), target, dimension(num_points), intent(in) :: rf
 integer, target, intent(in) :: num_points
 integer, optional, target, intent(in) :: n
 integer, optional, target, intent(in) :: l
+character(*), optional, target, intent(in) :: orbital_label
 integer, optional, target, intent(in) :: idxrf1
 integer, optional, target, intent(in) :: idxrf2
 real(8), optional, target, intent(in) :: occ
@@ -2097,6 +2113,8 @@ type(C_PTR) :: rf_ptr
 type(C_PTR) :: num_points_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
+type(C_PTR) :: orbital_label_ptr
+character(C_CHAR), target, allocatable :: orbital_label_c_type(:)
 type(C_PTR) :: idxrf1_ptr
 type(C_PTR) :: idxrf2_ptr
 type(C_PTR) :: occ_ptr
@@ -2104,7 +2122,7 @@ type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ,error_code)&
+&n,l,orbital_label,idxrf1,idxrf2,occ,error_code)&
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2114,6 +2132,7 @@ type(C_PTR), value :: rf
 type(C_PTR), value :: num_points
 type(C_PTR), value :: n
 type(C_PTR), value :: l
+type(C_PTR), value :: orbital_label
 type(C_PTR), value :: idxrf1
 type(C_PTR), value :: idxrf2
 type(C_PTR), value :: occ
@@ -2143,6 +2162,12 @@ l_ptr = C_NULL_PTR
 if (present(l)) then
 l_ptr = C_LOC(l)
 endif
+orbital_label_ptr = C_NULL_PTR
+if (present(orbital_label)) then
+allocate(orbital_label_c_type(len(orbital_label)+1))
+orbital_label_c_type = string_f2c(orbital_label)
+orbital_label_ptr = C_LOC(orbital_label_c_type)
+endif
 idxrf1_ptr = C_NULL_PTR
 if (present(idxrf1)) then
 idxrf1_ptr = C_LOC(idxrf1)
@@ -2160,9 +2185,13 @@ if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_add_atom_type_radial_function_aux(handler_ptr,atom_type_ptr,label_ptr,&
-&rf_ptr,num_points_ptr,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr,error_code_ptr)
+&rf_ptr,num_points_ptr,n_ptr,l_ptr,orbital_label_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr,&
+&error_code_ptr)
 deallocate(atom_type_c_type)
 deallocate(label_c_type)
+if (present(orbital_label)) then
+deallocate(orbital_label_c_type)
+endif
 end subroutine sirius_add_atom_type_radial_function
 
 !
@@ -2256,6 +2285,47 @@ call sirius_set_atom_type_hubbard_aux(handler_ptr,label_ptr,l_ptr,n_ptr,occ_ptr,
 &U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_hubbard
+
+!
+!> @brief update internal structure for a given atom type. Only useful when the Hubbard correction is included
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [out] error_code Error code.
+subroutine sirius_atom_type_update(handler,label,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_atom_type_update_aux(handler,label,error_code)&
+&bind(C, name="sirius_atom_type_update")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: label
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string_f2c(label)
+label_ptr = C_LOC(label_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_atom_type_update_aux(handler_ptr,label_ptr,error_code_ptr)
+deallocate(label_c_type)
+end subroutine sirius_atom_type_update
 
 !
 !> @brief Set ionic part of D-operator matrix.
@@ -5507,4 +5577,68 @@ call sirius_nlcg_params_aux(handler_ptr,ks_handler_ptr,temp_ptr,smearing_ptr,kap
 deallocate(smearing_c_type)
 deallocate(processing_unit_c_type)
 end subroutine sirius_nlcg_params
+
+!
+!> @brief add a string value to the option in the json dictionary
+!> @param [in] handler Simulation context handler.
+!> @param [in] atom_pair atom pair for the V term
+!> @param [in] translation translation vector between the two unit cells containing the atoms
+!> @param [in] n principal quantum number of the atomic levels involved in the V correction
+!> @param [in] l angular momentum of the atomic levels
+!> @param [in] coupling value of the V constant
+!> @param [out] error_code Error code.
+subroutine sirius_add_hubbard_atom_pair(handler,atom_pair,translation,n,l,coupling,&
+&error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+integer, target, dimension(2), intent(in) :: atom_pair
+integer, target, dimension(3), intent(in) :: translation
+integer, target, dimension(2), intent(in) :: n
+integer, target, dimension(2), intent(in) :: l
+real(8), target, intent(in) :: coupling
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: atom_pair_ptr
+type(C_PTR) :: translation_ptr
+type(C_PTR) :: n_ptr
+type(C_PTR) :: l_ptr
+type(C_PTR) :: coupling_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_add_hubbard_atom_pair_aux(handler,atom_pair,translation,n,l,coupling,&
+&error_code)&
+&bind(C, name="sirius_add_hubbard_atom_pair")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: atom_pair
+type(C_PTR), value :: translation
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: coupling
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+atom_pair_ptr = C_NULL_PTR
+atom_pair_ptr = C_LOC(atom_pair)
+translation_ptr = C_NULL_PTR
+translation_ptr = C_LOC(translation)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+coupling_ptr = C_NULL_PTR
+coupling_ptr = C_LOC(coupling)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_add_hubbard_atom_pair_aux(handler_ptr,atom_pair_ptr,translation_ptr,&
+&n_ptr,l_ptr,coupling_ptr,error_code_ptr)
+end subroutine sirius_add_hubbard_atom_pair
 

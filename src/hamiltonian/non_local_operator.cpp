@@ -70,7 +70,8 @@ D_operator<T>::D_operator(Simulation_context const& ctx_)
 }
 
 template <typename T>
-void D_operator<T>::initialize()
+void
+D_operator<T>::initialize()
 {
     PROFILE("sirius::D_operator::initialize");
 
@@ -252,7 +253,8 @@ Q_operator<T>::Q_operator(Simulation_context const& ctx__)
 }
 
 template <typename T>
-void Q_operator<T>::initialize()
+void
+Q_operator<T>::initialize()
 {
     PROFILE("sirius::Q_operator::initialize");
 
@@ -310,9 +312,9 @@ void Q_operator<T>::initialize()
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
                                             result += this->ctx_.augmentation_op(iat)->q_mtrx(xi1p, xi2p) *
                                                       (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
-                                                       uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
+                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                        uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
-                                                       uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
+                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
                                         }
                                     }
                                 }
@@ -361,8 +363,9 @@ void Q_operator<T>::initialize()
 
 template <typename T>
 void
-apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__, Wave_functions<real_type<T>>& phi__,
-                    D_operator<real_type<T>>* d_op__, Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
+apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                    Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
+                    Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
                     Wave_functions<real_type<T>>* sphi__)
 {
 
@@ -398,9 +401,10 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_t
 template <typename T>
 void
 apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-                 Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, Wave_functions<real_type<T>>& sphi__)
+                 Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__,
+                 Wave_functions<real_type<T>>& sphi__)
 {
-    for (auto s: spins__) {
+    for (auto s : spins__) {
         sphi__.copy_from(pu__, n__, phi__, s, N__, s, N__);
     }
 
@@ -414,6 +418,10 @@ void
 apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
                  Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__)
 {
+    if (!ctx__.hubbard_correction()) {
+        return;
+    }
+
     dmatrix<std::complex<T>> dm(hub_wf__.num_wf(), n__);
     dm.zero();
 
@@ -421,6 +429,22 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
         dm.allocate(memory_t::device);
     }
 
+    auto la = linalg_t::none;
+    auto mt = memory_t::none;
+    switch (ctx__.processing_unit()) {
+        case device_t::CPU: {
+            la = linalg_t::blas;
+            mt = memory_t::host;
+            break;
+        }
+        case device_t::GPU: {
+            la = linalg_t::gpublas;
+            mt = memory_t::device;
+            break;
+        }
+        default:
+            break;
+    }
     /* First calculate the local part of the projections
        dm(i, n) = <phi_i| S |psi_{nk}> */
     sddk::inner(ctx__.spla_context(), spins__, hub_wf__, 0, hub_wf__.num_wf(), phi__, N__, n__, dm, 0, 0);
@@ -428,46 +452,37 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
     dmatrix<std::complex<T>> Up(hub_wf__.num_wf(), n__);
     Up.zero();
 
-    //auto nhwf = um__.nhwf();
-
-    #pragma omp parallel for schedule(static)
-    for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
-        auto& atom = ctx__.unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().indexr_hub().am(0).l() + 1;
-            // we apply the hubbard correction. For now I have no papers
-            // giving me the formula for the SO case so I rely on QE for it
-            // but I do not like it at all
-            if (ctx__.num_mag_dims() == 3) {
+    if (ctx__.num_mag_dims() == 3) {
+        #pragma omp parallel for schedule(static)
+        for (int at_lvl = 0; at_lvl < (int)um__.atomic_orbitals().size(); at_lvl++) {
+            const int ia     = um__.atomic_orbitals(at_lvl).first;
+            auto const& atom = ctx__.unit_cell().atom(ia);
+            if (atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
+                const int lmax_at = 2 * atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).l + 1;
+                // we apply the hubbard correction. For now I have no papers
+                // giving me the formula for the SO case so I rely on QE for it
+                // but I do not like it at all
                 for (int s1 = 0; s1 < ctx__.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx__.num_spins(); s2++) {
-                        const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
-
-                        // TODO: replace this with matrix matrix multiplication
-
+                      // TODO: replace this with matrix matrix multiplication
                         for (int nbd = 0; nbd < n__; nbd++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    Up(um__.nhwf() * s1 + um__.offset(ia) + m1, nbd) +=
-                                        um__(um__.offset(ia) + m2, um__.offset(ia) + m1, ind) *
-                                        dm(um__.nhwf() * s2 + um__.offset(ia) + m2, nbd);
+                                    const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
+                                    Up(um__.nhwf() * s1 + um__.offset(at_lvl) + m1, nbd) +=
+                                      um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
+                                      dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
                                 }
                             }
                         }
                     }
                 }
-            } else {
-                // Conventional LDA or collinear magnetism
-                for (int nbd = 0; nbd < n__; nbd++) {
-                    for (int m1 = 0; m1 < lmax_at; m1++) {
-                        for (int m2 = 0; m2 < lmax_at; m2++) {
-                            Up(um__.offset(ia) + m1, nbd) += um__(um__.offset(ia) + m2, um__.offset(ia) + m1, spins__()) *
-                                                             dm(um__.offset(ia) + m2, nbd);
-                        }
-                    }
-                }
             }
         }
+    } else {
+        linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &linalg_const<double_complex>::one(),
+                        um__.at(mt, 0, 0, spins__()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
+                        &linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
     }
 
     if (ctx__.processing_unit() == device_t::GPU) {
@@ -485,32 +500,27 @@ template class D_operator<double>;
 
 template class Q_operator<double>;
 
-template
-void
-apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                            Wave_functions<double>& phi__, D_operator<double>* d_op__, Wave_functions<double>* hphi__,
-                            Q_operator<double>* q_op__, Wave_functions<double>* sphi__);
+template void apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
+                                          Wave_functions<double>& phi__, D_operator<double>* d_op__,
+                                          Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
+                                          Wave_functions<double>* sphi__);
 
-template
-void
-apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                                    Wave_functions<double>& phi__, D_operator<double>* d_op__, Wave_functions<double>* hphi__,
-                                    Q_operator<double>* q_op__, Wave_functions<double>* sphi__);
+template void apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
+                                                  Wave_functions<double>& phi__, D_operator<double>* d_op__,
+                                                  Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
+                                                  Wave_functions<double>* sphi__);
 
-template
-void
-apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                         Wave_functions<double>& phi__, Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
+template void apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__,
+                                       Beta_projectors<double>& beta__, Wave_functions<double>& phi__,
+                                       Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
 
-template
-void
-apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                                 Wave_functions<double>& phi__, Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
+template void apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__,
+                                               Beta_projectors<double>& beta__, Wave_functions<double>& phi__,
+                                               Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
 
-template
-void
-apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<double>& hub_wf__,
-                         Wave_functions<double>& phi__, U_operator<double>& um__, Wave_functions<double>& hphi__);
+template void apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__, int n__,
+                                       Wave_functions<double>& hub_wf__, Wave_functions<double>& phi__,
+                                       U_operator<double>& um__, Wave_functions<double>& hphi__);
 
 #if defined(USE_FP32)
 template class Non_local_operator<float>;
@@ -519,31 +529,26 @@ template class D_operator<float>;
 
 template class Q_operator<float>;
 
-template
-void
-apply_non_local_d_q<float>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
-                            Wave_functions<float>& phi__, D_operator<float>* d_op__, Wave_functions<float>* hphi__,
-                            Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
+template void apply_non_local_d_q<float>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
+                                         Wave_functions<float>& phi__, D_operator<float>* d_op__,
+                                         Wave_functions<float>* hphi__, Q_operator<float>* q_op__,
+                                         Wave_functions<float>* sphi__);
 
-template
-void
-apply_non_local_d_q<std::complex<float>>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
-                                         Wave_functions<float>& phi__, D_operator<float>* d_op__, Wave_functions<float>* hphi__,
-                                         Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
+template void apply_non_local_d_q<std::complex<float>>(spin_range spins__, int N__, int n__,
+                                                       Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
+                                                       D_operator<float>* d_op__, Wave_functions<float>* hphi__,
+                                                       Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
 
-template
-void
-apply_S_operator<float>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
-                         Wave_functions<float>& phi__, Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
+template void apply_S_operator<float>(device_t pu__, spin_range spins__, int N__, int n__,
+                                      Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
+                                      Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
 
-template
-void
-apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
-                                      Wave_functions<float>& phi__, Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
+template void apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__,
+                                                    Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
+                                                    Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
 
-template
-void
-apply_U_operator<float>(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<float>& hub_wf__,
-                         Wave_functions<float>& phi__, U_operator<float>& um__, Wave_functions<float>& hphi__);
+template void apply_U_operator<float>(Simulation_context& ctx__, spin_range spins__, int N__, int n__,
+                                      Wave_functions<float>& hub_wf__, Wave_functions<float>& phi__,
+                                      U_operator<float>& um__, Wave_functions<float>& hphi__);
 #endif
 } // namespace sirius

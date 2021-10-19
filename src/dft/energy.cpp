@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2020 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file energy.cpp
@@ -26,7 +26,8 @@
 
 namespace sirius {
 
-double ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell)
+double
+ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell)
 {
     double alpha{ctx.ewald_lambda()};
     double ewald_g{0};
@@ -75,22 +76,26 @@ double ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_
     return (ewald_g + ewald_r);
 }
 
-double energy_vxc(Density const& density, Potential const& potential)
+double
+energy_vxc(Density const& density, Potential const& potential)
 {
     return potential.energy_vxc(density);
 }
 
-double energy_exc(Density const& density, Potential const& potential)
+double
+energy_exc(Density const& density, Potential const& potential)
 {
     return potential.energy_exc(density);
 }
 
-double energy_vha(Potential const& potential)
+double
+energy_vha(Potential const& potential)
 {
     return potential.energy_vha();
 }
 
-double energy_bxc(const Density& density, const Potential& potential)
+double
+energy_bxc(const Density& density, const Potential& potential)
 {
     double ebxc{0};
     for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
@@ -99,7 +104,8 @@ double energy_bxc(const Density& density, const Potential& potential)
     return ebxc;
 }
 
-double energy_enuc(Simulation_context const& ctx, Potential const& potential)
+double
+energy_enuc(Simulation_context const& ctx, Potential const& potential)
 {
     auto& unit_cell = ctx.unit_cell();
     double enuc{0};
@@ -114,12 +120,14 @@ double energy_enuc(Simulation_context const& ctx, Potential const& potential)
     return enuc;
 }
 
-double energy_vloc(Density const& density, Potential const& potential)
+double
+energy_vloc(Density const& density, Potential const& potential)
 {
     return sirius::inner(potential.local_potential(), density.rho());
 }
 
-double core_eval_sum(Unit_cell const& unit_cell)
+double
+core_eval_sum(Unit_cell const& unit_cell)
 {
     double sum{0};
     for (int ic = 0; ic < unit_cell.num_atom_symmetry_classes(); ic++) {
@@ -128,25 +136,27 @@ double core_eval_sum(Unit_cell const& unit_cell)
     return sum;
 }
 
-double eval_sum(Unit_cell const& unit_cell, K_point_set const& kset)
+double
+eval_sum(Unit_cell const& unit_cell, K_point_set const& kset)
 {
     return core_eval_sum(unit_cell) + kset.valence_eval_sum();
 }
 
-double energy_veff(Density const& density, Potential const& potential)
+double
+energy_veff(Density const& density, Potential const& potential)
 {
     return sirius::inner(density.rho(), potential.effective_potential());
 }
 
-double energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-                  Potential const& potential)
+double
+energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return eval_sum(ctx.unit_cell(), kset) - energy_veff(density, potential) -
-           energy_bxc(density, potential);
+    return eval_sum(ctx.unit_cell(), kset) - energy_veff(density, potential) - energy_bxc(density, potential);
 }
 
-double total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-                    Potential const& potential, double ewald_energy)
+double
+total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
+             double ewald_energy)
 {
     double tot_en{0};
 
@@ -158,30 +168,54 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) -
-                      energy_bxc(density, potential) - potential.PAW_one_elec_energy(density)) -
-                      0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
-                      ewald_energy + kset.entropy_sum();
+            tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) - energy_bxc(density, potential) -
+                      potential.PAW_one_elec_energy(density)) -
+                     0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
+                     ewald_energy + kset.entropy_sum();
             break;
         }
     }
 
     if (ctx.hubbard_correction()) {
         tot_en += ::sirius::energy(density.occupation_matrix());
+        tot_en -= ::sirius::one_electron_energy_hubbard(density, potential);
     }
 
     return tot_en;
 }
 
-double one_electron_energy(Density const& density, Potential const& potential)
+double
+hubbard_energy(Density const& density)
 {
-    return energy_vha(potential) + energy_vxc(density, potential) + energy_bxc(density, potential) +
-        potential.PAW_one_elec_energy(density);
+    if (density.ctx().hubbard_correction()) {
+        return ::sirius::energy(density.occupation_matrix());
+    } else {
+        return 0.0;
+    }
 }
 
-double energy_potential(Density const& density, Potential const& potential)
+double
+one_electron_energy(Density const& density, Potential const& potential)
 {
-    double e = energy_veff(density, potential) + energy_bxc(density, potential) + potential.PAW_one_elec_energy(density);
+    return energy_vha(potential) + energy_vxc(density, potential) + energy_bxc(density, potential) +
+           potential.PAW_one_elec_energy(density) + one_electron_energy_hubbard(density, potential);
+}
+
+double
+one_electron_energy_hubbard(Density const& density, Potential const& potential)
+{
+    auto& ctx = density.ctx();
+    if (ctx.hubbard_correction()) {
+        return ::sirius::one_electron_energy_hubbard(density.occupation_matrix(), potential.hubbard_potential());
+    }
+    return 0.0;
+}
+
+double
+energy_potential(Density const& density, Potential const& potential)
+{
+    double e =
+        energy_veff(density, potential) + energy_bxc(density, potential) + potential.PAW_one_elec_energy(density);
     if (potential.ctx().hubbard_correction()) {
         e += ::sirius::energy(density.occupation_matrix());
     }

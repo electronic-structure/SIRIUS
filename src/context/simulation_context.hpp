@@ -68,7 +68,6 @@ double unit_step_function_form_factors(double R__, double g__);
 class Simulation_context : public Simulation_parameters
 {
   private:
-
     /// Communicator for this simulation.
     Communicator const& comm_;
 
@@ -200,6 +199,7 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
 
     std::function<void(int, int, double*, double*)> ps_rho_ri_callback_{nullptr};
+    std::function<void(int, double, double*, int)> atomic_wf_ri_callback_{nullptr};
 
     /// Radial integrals of total pseudo-charge density.
     std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
@@ -320,7 +320,6 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-
     /// Create an empty simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__ = Communicator::world())
         : comm_(comm__)
@@ -338,7 +337,6 @@ class Simulation_context : public Simulation_parameters
         start();
     }
 
-
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
         : comm_(Communicator::world())
@@ -350,7 +348,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__, Communicator const &comm__)
+    Simulation_context(std::string const& str__, Communicator const& comm__)
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
@@ -391,7 +389,7 @@ class Simulation_context : public Simulation_parameters
     {
         if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
             auto strings = ::rte::split(s.str());
-            for (auto& e: strings) {
+            for (auto& e : strings) {
                 std::cout << "[" << label__ << "] " << e << std::endl;
             }
         }
@@ -509,22 +507,22 @@ class Simulation_context : public Simulation_parameters
 
     inline Eigensolver& std_evp_solver()
     {
-        return* std_evp_solver_;
+        return *std_evp_solver_;
     }
 
     inline Eigensolver const& std_evp_solver() const
     {
-        return* std_evp_solver_;
+        return *std_evp_solver_;
     }
 
     inline Eigensolver& gen_evp_solver()
     {
-        return* gen_evp_solver_;
+        return *gen_evp_solver_;
     }
 
     inline Eigensolver const& gen_evp_solver() const
     {
-        return* gen_evp_solver_;
+        return *gen_evp_solver_;
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -555,8 +553,7 @@ class Simulation_context : public Simulation_parameters
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
     template <index_domain_t index_domain, typename F>
-    inline std::vector<double_complex>
-    make_periodic_function(F&& form_factors__) const
+    inline std::vector<double_complex> make_periodic_function(F&& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
@@ -586,8 +583,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Make periodic out of form factors computed for G-shells.
     template <index_domain_t index_domain>
-    inline std::vector<double_complex>
-    make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
+    inline std::vector<double_complex> make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
@@ -873,6 +869,16 @@ class Simulation_context : public Simulation_parameters
         rhoc_ri_djl_callback_ = fptr__;
     }
 
+    inline void atomic_wf_callback(void (*fptr__)(int, double, double*, int))
+    {
+        atomic_wf_ri_callback_ = fptr__;
+    }
+
+    // inline void atomic_wf_djl_callback(void (*fptr__)(int, double, double*, int))
+    // {
+    //     atomic_wf_djl_ri_callback_ = fptr__;
+    // }
+
     /// Set callback function to compute band occupations
     inline void band_occ_callback(void (*fptr__)(void))
     {
@@ -901,12 +907,13 @@ class Simulation_context : public Simulation_parameters
         dict["config"] = cfg().dict();
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(), spfft_transform_coarse_->dim_z()};
-        dict["fft_coarse_grid"] = fftgrid;
-        dict["mpi_grid"] = mpi_grid_dims();
-        dict["omega"] = unit_cell().omega();
-        dict["chemical_formula"] = unit_cell().chemical_formula();
-        dict["num_atoms"] = unit_cell().num_atoms();
+        auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
+                        spfft_transform_coarse_->dim_z()};
+        dict["fft_coarse_grid"]     = fftgrid;
+        dict["mpi_grid"]            = mpi_grid_dims();
+        dict["omega"]               = unit_cell().omega();
+        dict["chemical_formula"]    = unit_cell().chemical_formula();
+        dict["num_atoms"]           = unit_cell().num_atoms();
         return dict;
     }
 };
