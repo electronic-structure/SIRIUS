@@ -46,12 +46,9 @@ class K_point_set
     /// List of k-points.
     std::vector<std::unique_ptr<K_point<double>>> kpoints_;
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
     /// List of k-points in fp32 type, most calculation and assertion in this class only rely on fp64 type kpoints_
     std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
-
-    /// bool variable to store last access of kpoints using fp32 or fp64 type
-    //mutable bool access_fp64{true};
 #endif
 
     /// Split index of k-points.

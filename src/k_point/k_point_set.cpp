@@ -71,17 +71,21 @@ void K_point_set::sync_band()
 }
 
 template
-void K_point_set::sync_band<double, sync_band_t::energy>();
-#if defined(USE_FP32)
-template
-void K_point_set::sync_band<float, sync_band_t::energy>();
-#endif
+void
+K_point_set::sync_band<double, sync_band_t::energy>();
 
 template
-void K_point_set::sync_band<double, sync_band_t::occupancy>();
+void
+K_point_set::sync_band<double, sync_band_t::occupancy>();
+
 #if defined(USE_FP32)
 template
-void K_point_set::sync_band<float, sync_band_t::occupancy>();
+void
+K_point_set::sync_band<float, sync_band_t::energy>();
+
+template
+void
+K_point_set::sync_band<float, sync_band_t::occupancy>();
 #endif
 
 void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
@@ -143,7 +147,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
-#ifdef USE_FP32
+#if defined(USE_FP32)
         kpoints_float_[spl_num_kpoints_[ikloc]]->initialize();
 #endif
     }

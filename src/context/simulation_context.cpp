@@ -67,32 +67,10 @@ unit_step_function_form_factors(double R__, double g__)
 }
 
 template <>
-spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
-{
-    return *spfft_grid_coarse_;
-}
-
-#ifdef USE_FP32
-template <>
-spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
-    {
-        return *spfft_grid_coarse_float_;
-    }
-#endif
-
-template <>
 spfft::Transform& Simulation_context::spfft<double>()
 {
     return *spfft_transform_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft<float>()
-    {
-        return *spfft_transform_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft<double>() const
@@ -100,27 +78,11 @@ spfft::Transform const& Simulation_context::spfft<double>() const
     return *spfft_transform_;
 }
 
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat const& Simulation_context::spfft<float>() const
-    {
-        return *spfft_transform_float_;
-    }
-#endif
-
 template <>
 spfft::Transform& Simulation_context::spfft_coarse<double>()
 {
     return *spfft_transform_coarse_;
 }
-
-#ifdef USE_FP32
-template <>
-spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
-    {
-        return *spfft_transform_coarse_float_;
-    }
-#endif
 
 template <>
 spfft::Transform const& Simulation_context::spfft_coarse<double>() const
@@ -128,12 +90,42 @@ spfft::Transform const& Simulation_context::spfft_coarse<double>() const
     return *spfft_transform_coarse_;
 }
 
-#ifdef USE_FP32
+template <>
+spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
+{
+    return *spfft_grid_coarse_;
+}
+
+#if defined(USE_FP32)
+template <>
+spfft::TransformFloat& Simulation_context::spfft<float>()
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat const& Simulation_context::spfft<float>() const
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
+{
+    return *spfft_transform_coarse_float_;
+}
+
 template <>
 spfft::TransformFloat const& Simulation_context::spfft_coarse<float>() const
-    {
-        return *spfft_transform_coarse_float_;
-    }
+{
+    return *spfft_transform_coarse_float_;
+}
+
+template <>
+spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
+{
+    return *spfft_grid_coarse_float_;
+}
 #endif
 
 void
@@ -1084,7 +1076,7 @@ Simulation_context::update()
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
                             gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
-#ifdef USE_FP32
+#if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
             new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2],
                                  gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
@@ -1097,7 +1089,7 @@ Simulation_context::update()
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
-#ifdef USE_FP32
+#if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
@@ -1536,20 +1528,29 @@ Simulation_context::init_step_function()
         return unit_step_function_form_factors(R, g);
     });
 
-    theta_    = mdarray<double, 1>(spfft<double>().local_slice_size());
-    theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
+    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
+    theta_pw_ = sddk::mdarray<double_complex, 1>(gvec().num_gvec());
 
-    for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-        theta_pw_[ig] = -v[ig];
-    }
-    theta_pw_[0] += 1.0;
+    try {
+        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+            theta_pw_[ig] = -v[ig];
+        }
+        theta_pw_[0] += 1.0;
 
-    std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-    for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
-        ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+        std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
+        for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
+            ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+        }
+        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
+        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
+        spfft_output(spfft<double>(), theta_ptr);
+    } catch (...) {
+        std::stringstream s;
+        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
+          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
+          << "gvec_partition().gvec_count_fft() = " << gvec_partition().gvec_count_fft();
+        RTE_THROW(s);
     }
-    spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
-    spfft_output(spfft<double>(), &theta_[0]);
 
     double vit{0};
     for (int i = 0; i < spfft<double>().local_slice_size(); i++) {

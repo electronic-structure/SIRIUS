@@ -1533,32 +1533,40 @@ end subroutine sirius_create_ground_state
 !
 !> @brief Initialize k-point set.
 !> @param [in] ks_handler K-point set handler.
+!> @param [in] count Local number of k-points for each MPI rank.
 !> @param [out] error_code Error code.
-subroutine sirius_initialize_kset(ks_handler,error_code)
+subroutine sirius_initialize_kset(ks_handler,count,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
+integer, optional, target, dimension(*), intent(in) :: count
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: count_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_initialize_kset_aux(ks_handler,error_code)&
+subroutine sirius_initialize_kset_aux(ks_handler,count,error_code)&
 &bind(C, name="sirius_initialize_kset")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
+type(C_PTR), value :: count
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
+count_ptr = C_NULL_PTR
+if (present(count)) then
+count_ptr = C_LOC(count)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_initialize_kset_aux(ks_handler_ptr,error_code_ptr)
+call sirius_initialize_kset_aux(ks_handler_ptr,count_ptr,error_code_ptr)
 end subroutine sirius_initialize_kset
 
 !
@@ -5431,27 +5439,31 @@ end subroutine sirius_get_fv_eigen_vectors
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_eval Output first-variational eigenvector array
 !> @param [in] num_fv_states Number of first-variational states
-subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states)
+!> @param [out] error_code Error code
+subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 real(8), target, intent(out) :: fv_eval
 integer, target, intent(in) :: num_fv_states
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: fv_eval_ptr
 type(C_PTR) :: num_fv_states_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)&
+subroutine sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states,error_code)&
 &bind(C, name="sirius_get_fv_eigen_values")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: ik
 type(C_PTR), value :: fv_eval
 type(C_PTR), value :: num_fv_states
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5463,7 +5475,12 @@ fv_eval_ptr = C_NULL_PTR
 fv_eval_ptr = C_LOC(fv_eval)
 num_fv_states_ptr = C_NULL_PTR
 num_fv_states_ptr = C_LOC(num_fv_states)
-call sirius_get_fv_eigen_values_aux(handler_ptr,ik_ptr,fv_eval_ptr,num_fv_states_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_fv_eigen_values_aux(handler_ptr,ik_ptr,fv_eval_ptr,num_fv_states_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_fv_eigen_values
 
 !

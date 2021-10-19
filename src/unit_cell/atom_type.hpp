@@ -337,18 +337,12 @@ class Atom_type
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
         radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
-        if (parameters_.processing_unit() == device_t::GPU) {
-            radial_grid_.copy_to_device();
-        }
     }
 
     /// Set external radial grid.
     inline void set_radial_grid(int num_points__, double const* points__)
     {
         radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-        if (parameters_.processing_unit() == device_t::GPU) {
-            radial_grid_.copy_to_device();
-        }
     }
 
     /// Set radial grid of the free atom.

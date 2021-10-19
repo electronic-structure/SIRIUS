@@ -507,24 +507,36 @@ Unit_cell::generate_radial_integrals()
 {
     PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
-        int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
+    try {
+        for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
+            int ic = spl_num_atom_symmetry_classes(icloc);
+            atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
+        }
+
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            int rank = spl_num_atom_symmetry_classes().local_rank(ic);
+            atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
+        }
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in generating atom_symmetry_class radial integrrals";
+        RTE_THROW(s, e.what());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-        int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
-    }
+    try {
+        for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
+            int ia = spl_num_atoms_[ialoc];
+            atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
+        }
 
-    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
-        int ia = spl_num_atoms_[ialoc];
-        atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
-    }
-
-    for (int ia = 0; ia < num_atoms(); ia++) {
-        int rank = spl_num_atoms().local_rank(ia);
-        atom(ia).sync_radial_integrals(comm_, rank);
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int rank = spl_num_atoms().local_rank(ia);
+            atom(ia).sync_radial_integrals(comm_, rank);
+        }
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in generating atom radial integrrals";
+        RTE_THROW(s, e.what());
     }
 }
 

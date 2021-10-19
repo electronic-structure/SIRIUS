@@ -1495,6 +1495,10 @@ sirius_initialize_kset:
       type: void*
       attr: in, required
       doc: K-point set handler.
+    count:
+      type: int
+      attr: in, optional, dimension(*)
+      doc: Local number of k-points for each MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1502,12 +1506,17 @@ sirius_initialize_kset:
 @api end
 */
 void
-sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
+sirius_initialize_kset(void* const* ks_handler__, int* count__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& ks = get_ks(ks_handler__);
-            ks.initialize();
+            if (count__) {
+                std::vector<int> count(count__, count__ + ks.comm().size());
+                ks.initialize(count);
+            } else {
+                ks.initialize();
+            }
         },
         error_code__);
 }
@@ -5276,19 +5285,27 @@ sirius_get_fv_eigen_values:
       type: int
       attr: in, required
       doc: Number of first-variational states
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__)
+sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__,
+                           int* error_code__)
 {
-    auto& ks = get_ks(handler__);
-    if (*num_fv_states__ != ks.ctx().num_fv_states()) {
-        TERMINATE("wrong number of first-variational states");
-    }
-    int ik = *ik__ - 1;
-    for (int i = 0; i < *num_fv_states__; i++) {
-        fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
-    }
+    call_sirius(
+        [&]() {
+        auto& ks = get_ks(handler__);
+        if (*num_fv_states__ != ks.ctx().num_fv_states()) {
+            TERMINATE("wrong number of first-variational states");
+        }
+        int ik = *ik__ - 1;
+        for (int i = 0; i < *num_fv_states__; i++) {
+            fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
+        }
+    }, error_code__);
 }
 
 /*
