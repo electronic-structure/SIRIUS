@@ -31,4 +31,5 @@ struct Complex<std::complex<T>> {using type = std::complex<T>;};
 
 template <typename T>
 using complex_type = typename Complex<T>::type;
+
 #endif // __TYPE_DEFINITION_HPP__

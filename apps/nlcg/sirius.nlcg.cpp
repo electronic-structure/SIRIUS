@@ -68,10 +68,9 @@ double ground_state(Simulation_context& ctx,
 
     dft.initial_state();
 
-    double initial_tol = ctx.iterative_solver_tolerance();
-
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+            inp.num_dft_iter(), write_state);
 
     auto& nlcg_params  = ctx.cfg().nlcg();
     double temp       = nlcg_params.T();

@@ -85,10 +85,8 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
 }
 
 template <typename T>
-sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
+void Force::calc_forces_nonloc_aux()
 {
-    PROFILE("sirius::Force::calc_forces_nonloc");
-
     forces_nonloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_nonloc_.zero();
 
@@ -107,7 +105,19 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
     ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
     symmetrize(forces_nonloc_);
+}
 
+sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
+{
+    PROFILE("sirius::Force::calc_forces_nonloc");
+
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
+        this->calc_forces_nonloc_aux<float>();
+#endif
+    } else {
+        this->calc_forces_nonloc_aux<double>();
+    }
     return forces_nonloc_;
 }
 
@@ -214,15 +224,7 @@ mdarray<double, 2> const& Force::calc_forces_total()
     } else {
         calc_forces_vloc();
         calc_forces_us();
-        if (ctx_.cfg().parameters().precision() == "fp32") {
-#if defined(USE_FP32)
-            calc_forces_nonloc<float>();
-#else
-            RTE_THROW("Not compiled with FP32");
-#endif
-        } else {
-            calc_forces_nonloc<double>();
-        }
+        calc_forces_nonloc();
         calc_forces_core();
         calc_forces_ewald();
         calc_forces_scf_corr();
@@ -730,15 +732,7 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 mdarray<double, 2> const& Force::calc_forces_usnl()
 {
     calc_forces_us();
-    if (ctx_.cfg().parameters().precision() == "fp32") {
-#if defined(USE_FP32)
-        calc_forces_nonloc<float>();
-#else
-        RTE_THROW("Not compiled with FP32");
-#endif
-    } else {
-        calc_forces_nonloc<double>();
-    }
+    calc_forces_nonloc();
 
     forces_usnl_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -937,10 +931,12 @@ void Force::print_info()
 }
 
 template
-sddk::mdarray<double, 2> const& Force::calc_forces_nonloc<double>();
+void
+Force::calc_forces_nonloc_aux<double>();
 #if defined(USE_FP32)
 template
-sddk::mdarray<double, 2> const& Force::calc_forces_nonloc<float>();
+void
+Force::calc_forces_nonloc_aux<float>();
 #endif
 
 } // namespace sirius

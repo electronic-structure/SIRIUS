@@ -49,6 +49,10 @@ class Config : public config_t
     {
         dict_["locked"] = true;
     }
+    void unlock()
+    {
+        dict_.erase("locked");
+    }
 };
 
 /// Set of basic parameters of a simulation.

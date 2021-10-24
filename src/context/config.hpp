@@ -223,7 +223,7 @@ class config_t
             This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
             \code{.cpp}
             // tolerance of occupied bands
-            double tol = ctx_.iterative_solver_tolerance();
+            double tol = ctx_.iterative_solver().energy_tolerance();
             // final tolerance of empty bands
             double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             \endcode
@@ -245,12 +245,12 @@ class config_t
             tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
             between the two. This is how it is done in the code: 
             \code{.cpp}
-            double old_tol = ctx_.iterative_solver_tolerance();
+            double old_tol = ctx_.iterative_solver().energy_tolerance();
             // estimate new tolerance of iterative solver
             double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
             tol = std::max(ctx_.settings().itsol_tol_min_, tol);
             // set new tolerance of iterative solver
-            ctx_.iterative_solver_tolerance(tol);\endcode
+            ctx_.iterative_solver().energy_tolerance(tol);\endcode
         */
         inline auto itsol_tol_scale() const
         {
@@ -313,6 +313,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
+        }
+        /// Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used.
+        inline auto fp32_to_fp64_rms() const
+        {
+            return dict_.at("/settings/fp32_to_fp64_rms"_json_pointer).get<double>();
+        }
+        inline void fp32_to_fp64_rms(double fp32_to_fp64_rms__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/fp32_to_fp64_rms"_json_pointer] = fp32_to_fp64_rms__;
         }
       private:
         nlohmann::json& dict_;
@@ -580,7 +592,7 @@ class config_t
         /// Tell how to initialize the subspace.
         /**
             It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or
-            'random' – start from the randomized wave functions.
+            'random'- start from the randomized wave functions.
         */
         inline auto init_subspace() const
         {
@@ -592,6 +604,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/iterative_solver/init_subspace"_json_pointer] = init_subspace__;
+        }
+        /// Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability.
+        inline auto extra_ortho() const
+        {
+            return dict_.at("/iterative_solver/extra_ortho"_json_pointer).get<bool>();
+        }
+        inline void extra_ortho(bool extra_ortho__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/extra_ortho"_json_pointer] = extra_ortho__;
         }
       private:
         nlohmann::json& dict_;
@@ -1326,17 +1350,41 @@ class config_t
             }
             dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
         }
-        /// The floating point precision used in the calculation
-        inline auto precision() const
+        /// The floating point precision of the Kohn-Sham wave-functions.
+        inline auto precision_wf() const
         {
-            return dict_.at("/parameters/precision"_json_pointer).get<std::string>();
+            return dict_.at("/parameters/precision_wf"_json_pointer).get<std::string>();
         }
-        inline void precision(std::string precision__)
+        inline void precision_wf(std::string precision_wf__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/parameters/precision"_json_pointer] = precision__;
+            dict_["/parameters/precision_wf"_json_pointer] = precision_wf__;
+        }
+        /// The floating point precision of the Hamiltonian subspace matrices.
+        inline auto precision_hs() const
+        {
+            return dict_.at("/parameters/precision_hs"_json_pointer).get<std::string>();
+        }
+        inline void precision_hs(std::string precision_hs__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/precision_hs"_json_pointer] = precision_hs__;
+        }
+        /// The final floating point precision of the ground state DFT calculation.
+        inline auto precision_gs() const
+        {
+            return dict_.at("/parameters/precision_gs"_json_pointer).get<std::string>();
+        }
+        inline void precision_gs(std::string precision_gs__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/precision_gs"_json_pointer] = precision_gs__;
         }
       private:
         nlohmann::json& dict_;

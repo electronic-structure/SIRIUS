@@ -583,7 +583,7 @@ sirius_set_parameters:
     iter_solver_tol:
       type: double
       attr: in, optional
-      doc: Tolerance of the iterative solver.
+      doc: Tolerance of the iterative solver (deprecated).
     iter_solver_tol_empty:
       type: double
       attr: in, optional
@@ -694,9 +694,6 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
             }
             if (core_rel__ != nullptr) {
                 sim_ctx.core_relativity(core_rel__);
-            }
-            if (iter_solver_tol__ != nullptr) {
-                sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
             }
             if (iter_solver_tol_empty__ != nullptr) {
                 sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
@@ -817,7 +814,7 @@ sirius_get_parameters:
     iter_solver_tol:
       type: double
       attr: out, optional
-      doc: Tolerance of the iterative solver.
+      doc: Tolerance of the iterative solver (deprecated).
     iter_solver_tol_empty:
       type: double
       attr: out, optional
@@ -901,9 +898,6 @@ sirius_get_parameters(void* const* handler__, int* lmax_apw__, int* lmax_rho__, 
             }
             if (so_correction__) {
                 *so_correction__ = sim_ctx.so_correction();
-            }
-            if (iter_solver_tol__) {
-                *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
             }
             if (iter_solver_tol_empty__) {
                 *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
@@ -1577,7 +1571,7 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
         save = *save_state__;
     }
 
-    auto result = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save);
+    auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save);
 }
 
 /*
@@ -1677,7 +1671,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
 
     // do a couple of SCF iterations to obtain a good initial guess
     bool save_state = false;
-    auto result     = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save_state);
+    auto result     = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
 
     // now call the direct solver
     // call nlcg solver
@@ -2544,9 +2538,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
     {
         auto& gs = get_gs(gs_handler__);
         auto& ks = get_ks(ks_handler__);
-        if (iter_solver_tol__ != nullptr) {
-            ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
-        }
+        double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance() : *iter_solver_tol__;
         sirius::Hamiltonian0<double> H0(gs.potential());
         if (precompute_pw__ && *precompute_pw__) {
             H0.potential().generate_pw_coefs();
@@ -2560,7 +2552,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
         if (precompute_ri__ && *precompute_ri__) {
             const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
         }
-        sirius::Band(ks.ctx()).solve(ks, H0, false);
+        sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
     }, error_code__);
 }
 
@@ -3148,7 +3140,7 @@ sirius_get_forces(void* const* handler__, char const* label__, double* forces__,
             std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
                 {"total", &sirius::Force::calc_forces_total},     {"vloc", &sirius::Force::calc_forces_vloc},
                 {"core", &sirius::Force::calc_forces_core},       {"ewald", &sirius::Force::calc_forces_ewald},
-                {"nonloc", &sirius::Force::calc_forces_nonloc<double>},   {"us", &sirius::Force::calc_forces_us},
+                {"nonloc", &sirius::Force::calc_forces_nonloc},   {"us", &sirius::Force::calc_forces_us},
                 {"usnl", &sirius::Force::calc_forces_usnl},       {"scf_corr", &sirius::Force::calc_forces_scf_corr},
                 {"hubbard", &sirius::Force::calc_forces_hubbard}, {"ibs", &sirius::Force::calc_forces_ibs},
                 {"hf", &sirius::Force::calc_forces_hf},           {"rho", &sirius::Force::calc_forces_rho}};
@@ -4699,7 +4691,6 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
                 }
             }
             std::copy(el.key().begin(), el.key().end(), key_name__);
-            key_name__[el.key().size()] = 0;
             break;
         }
         elem++;
@@ -4743,13 +4734,11 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
         auto description = parser[name].value("title", "");
         if (description.size()) {
           std::copy(description.begin(), description.end(), desc__);
-          desc__[description.size()] = 0;
         }
     }
     if (parser[name].count("usage")) {
         auto usage = parser[name].value("usage", "");
         std::copy(usage.begin(), usage.end(), usage__);
-        usage__[usage.size()] = 0;
     }
 }
 
@@ -4873,7 +4862,6 @@ sirius_option_get_string(char* section__, char* name__, char* default_value__)
     std::string value = parser[name].value("default", "");
     if (value.size() != 0) {
         std::copy(value.begin(), value.end(), default_value__);
-        default_value__[value.size() - 1] = 0;
     }
 }
 
@@ -4951,7 +4939,6 @@ sirius_option_string_get_value(char* section__, char* name__, int* elem_, char* 
     if (parser[name].count("enum")) {
         auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
         std::copy(tmp[*elem_].begin(), tmp[*elem_].end(), value_n);
-        value_n[tmp[*elem_].size()] = 0;
     }
 }
 
@@ -4978,7 +4965,7 @@ sirius_option_get_section_name(int* elem, char* section_name)
 
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
-            std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
+      std::copy(el.key().begin(), el.key().end(), section_name);
             break;
         }
         elem_++;
