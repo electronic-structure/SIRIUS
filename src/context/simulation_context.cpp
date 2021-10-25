@@ -598,13 +598,6 @@ Simulation_context::initialize()
                     } else {
                         evsn[i] = "lapack";
                     }
-                    // if (is_cuda) {
-                    //    evsn[i] = "cusolver";
-                    //} else if (is_magma) {
-                    //    evsn[i] = "magma";
-                    //} else {
-                    //    evsn[i] = "lapack";
-                    //}
                 } else {
                     if (is_cuda) {
                         evsn[i] = "cusolver";
@@ -623,6 +616,12 @@ Simulation_context::initialize()
                 }
             }
         }
+    }
+
+    auto pstr = utils::get_env<std::string>("SIRIUS_EV_SOLVER");
+    if (pstr) {
+        evsn[0] = *pstr;
+        evsn[1] = *pstr;
     }
 
     std_evp_solver_name(evsn[0]);
