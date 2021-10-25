@@ -388,7 +388,7 @@ end subroutine sirius_import_parameters
 !> @param [in] so_correction True if spin-orbit correnctio is enabled.
 !> @param [in] valence_rel Valence relativity treatment.
 !> @param [in] core_rel Core relativity treatment.
-!> @param [in] iter_solver_tol Tolerance of the iterative solver.
+!> @param [in] iter_solver_tol Tolerance of the iterative solver (deprecated).
 !> @param [in] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [in] iter_solver_type Type of iterative solver.
 !> @param [in] verbosity Verbosity level.
@@ -708,7 +708,7 @@ end subroutine sirius_set_parameters
 !> @param [out] gamma_point True if this is a Gamma-point calculation.
 !> @param [out] use_symmetry True if crystal symmetry is taken into account.
 !> @param [out] so_correction True if spin-orbit correnctio is enabled.
-!> @param [out] iter_solver_tol Tolerance of the iterative solver.
+!> @param [out] iter_solver_tol Tolerance of the iterative solver (deprecated).
 !> @param [out] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [out] verbosity Verbosity level.
 !> @param [out] hubbard_correction True if LDA+U correction is enabled.
@@ -935,22 +935,26 @@ end subroutine sirius_get_parameters
 !> @brief Add one of the XC functionals.
 !> @param [in] handler Simulation context handler
 !> @param [in] name LibXC label of the functional.
-subroutine sirius_add_xc_functional(handler,name)
+!> @param [out] error_code Error code.
+subroutine sirius_add_xc_functional(handler,name,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: name
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_add_xc_functional_aux(handler,name)&
+subroutine sirius_add_xc_functional_aux(handler,name,error_code)&
 &bind(C, name="sirius_add_xc_functional")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: name
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -960,7 +964,11 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_add_xc_functional_aux(handler_ptr,name_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_add_xc_functional_aux(handler_ptr,name_ptr,error_code_ptr)
 deallocate(name_c_type)
 end subroutine sirius_add_xc_functional
 
@@ -1013,27 +1021,31 @@ end subroutine sirius_set_mpi_grid_dims
 !> @param [in] a1 1st vector
 !> @param [in] a2 2nd vector
 !> @param [in] a3 3rd vector
-subroutine sirius_set_lattice_vectors(handler,a1,a2,a3)
+!> @param [out] error_code Error code.
+subroutine sirius_set_lattice_vectors(handler,a1,a2,a3,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 real(8), target, dimension(3), intent(in) :: a1
 real(8), target, dimension(3), intent(in) :: a2
 real(8), target, dimension(3), intent(in) :: a3
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: a1_ptr
 type(C_PTR) :: a2_ptr
 type(C_PTR) :: a3_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_lattice_vectors_aux(handler,a1,a2,a3)&
+subroutine sirius_set_lattice_vectors_aux(handler,a1,a2,a3,error_code)&
 &bind(C, name="sirius_set_lattice_vectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: a1
 type(C_PTR), value :: a2
 type(C_PTR), value :: a3
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1045,7 +1057,11 @@ a2_ptr = C_NULL_PTR
 a2_ptr = C_LOC(a2)
 a3_ptr = C_NULL_PTR
 a3_ptr = C_LOC(a3)
-call sirius_set_lattice_vectors_aux(handler_ptr,a1_ptr,a2_ptr,a3_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_lattice_vectors_aux(handler_ptr,a1_ptr,a2_ptr,a3_ptr,error_code_ptr)
 end subroutine sirius_set_lattice_vectors
 
 !
@@ -1113,24 +1129,32 @@ end subroutine sirius_update_context
 !
 !> @brief Print basic info
 !> @param [in] handler Simulation context handler.
-subroutine sirius_print_info(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_print_info(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_print_info_aux(handler)&
+subroutine sirius_print_info_aux(handler,error_code)&
 &bind(C, name="sirius_print_info")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-call sirius_print_info_aux(handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_print_info_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_print_info
 
 !
@@ -1170,28 +1194,32 @@ end subroutine sirius_free_handler
 !> @param [in] label Label of the function.
 !> @param [in] f_mt Pointer to the muffin-tin part of the function.
 !> @param [in] f_rg Pointer to the regualr-grid part of the function.
-subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg)
+!> @param [out] error_code Error code
+subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), optional, target, intent(in) :: f_mt
 real(8), optional, target, intent(in) :: f_rg
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: f_mt_ptr
 type(C_PTR) :: f_rg_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)&
+subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg,error_code)&
 &bind(C, name="sirius_set_periodic_function_ptr")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: f_mt
 type(C_PTR), value :: f_rg
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1209,7 +1237,12 @@ f_rg_ptr = C_NULL_PTR
 if (present(f_rg)) then
 f_rg_ptr = C_LOC(f_rg)
 endif
-call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,f_rg_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,f_rg_ptr,&
+&error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_periodic_function_ptr
 

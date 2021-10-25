@@ -947,13 +947,21 @@ sirius_add_xc_functional:
       type: string
       attr: in, required
       doc: LibXC label of the functional.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_add_xc_functional(void* const* handler__, char const* name__)
+sirius_add_xc_functional(void* const* handler__, char const* name__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.add_xc_functional(std::string(name__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.add_xc_functional(std::string(name__));
+        },
+        error_code__);
 }
 
 /*
@@ -1013,13 +1021,23 @@ sirius_set_lattice_vectors:
       type: double
       attr: in, required, dimension(3)
       doc: 3rd vector
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__)
+sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__,
+                           int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
+                                                    vector3d<double>(a3__));
+        },
+        error_code__);
 }
 
 /*
@@ -1085,13 +1103,21 @@ sirius_print_info:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_print_info(void* const* handler__)
+sirius_print_info(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.print_info();
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.print_info();
+        },
+        error_code__);
 }
 
 /*
@@ -1143,36 +1169,45 @@ sirius_set_periodic_function_ptr:
       type: double
       attr: in, optional
       doc: Pointer to the regualr-grid part of the function.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__)
+sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__,
+                                 int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    std::string label(label__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            std::string label(label__);
 
-    std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-        {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-        {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-        {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-        {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-        {"vha", &gs.potential().hartree_potential()}};
+            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
+                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
+                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
+                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
+                {"vha", &gs.potential().hartree_potential()}};
 
-    sirius::Periodic_function<double>* f;
-    try {
-        f = func_map.at(label);
-    } catch (...) {
-        std::stringstream s;
-        s << "wrong label: " << label;
-        TERMINATE(s);
-    }
+            sirius::Periodic_function<double>* f;
+            try {
+                f = func_map.at(label);
+            } catch (...) {
+                std::stringstream s;
+                s << "wrong label: " << label;
+                RTE_THROW(s);
+            }
 
-    if (f_mt__) {
-        f->set_mt_ptr(f_mt__);
-    }
-    if (f_rg__) {
-        f->set_rg_ptr(f_rg__);
-    }
+            if (f_mt__) {
+                f->set_mt_ptr(f_mt__);
+            }
+            if (f_rg__) {
+                f->set_rg_ptr(f_rg__);
+            }
+        },
+        error_code__);
 }
 
 /*
