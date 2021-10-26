@@ -1180,11 +1180,11 @@ K_point<T>::compute_gradient_wave_functions(Wave_functions<T>& phi, const int st
                                             Wave_functions<T>& dphi, const int starting_position_j, const int direction)
 {
     std::vector<std::complex<T>> qalpha(this->num_gkvec_loc());
-
+    auto k_cart = dot(ctx_.unit_cell().reciprocal_lattice_vectors(), this->vk());
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         auto G = this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc);
 
-        qalpha[igk_loc] = std::complex<T>(0.0, -G[direction]);
+        qalpha[igk_loc] = std::complex<T>(0.0, -(G[direction] + k_cart[direction]));
     }
 
     #pragma omp parallel for schedule(static)

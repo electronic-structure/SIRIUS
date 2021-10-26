@@ -34,7 +34,7 @@
 #include "hubbard.hpp"
 #include "SDDK/wf_inner.hpp"
 #include "SDDK/wf_trans.hpp"
-
+#include "symmetry/crystal_symmetry.hpp"
 namespace sirius {
 
 /* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
@@ -150,6 +150,11 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
     mdarray<double_complex, 4> dn_tmp(kp.hubbard_wave_functions_S().num_wf(), kp.hubbard_wave_functions_S().num_wf(),
                                       ctx_.num_spins(), 3);
 
+    mdarray<double_complex, 2> phase_factor(kp.hubbard_wave_functions_S().num_wf(), kp.hubbard_wave_functions_S().num_wf());
+
+    auto r       = ctx_.unit_cell().num_hubbard_wf();
+    auto offset_ = r.second;
+
     if (ctx_.processing_unit() == device_t::GPU) {
         dn_tmp.allocate(memory_t::device);
         if (ctx_.cfg().hubbard().orthogonalize()) {
@@ -206,8 +211,6 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
               ispn * this->number_of_hubbard_orbitals());
     }
 
-    auto r       = ctx_.unit_cell().num_hubbard_wf();
-    auto offset_ = r.second;
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) { // loop over the atom displacement.
         dn_tmp.zero(memory_t::host);
         dn_tmp.zero(memory_t::device);
@@ -225,7 +228,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
 
             // compute S|d\phi>. Will be zero if the atom has no hubbard
             // correction
-            if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
+            if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()  || ctx_.cfg().hubbard().full_orthogonalization()) {
 
                 // atom atom_id has hubbard correction so we need to compute the
                 // derivatives of the atomic orbitals associated to the atom
@@ -259,7 +262,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
             }
 
             // We need to do more work if the hubbard orbitals are orthogonalized.
-            if (ctx_.cfg().hubbard().orthogonalize()) {
+            if  (ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().full_orthogonalization()) {
                 /*
                   to compute the correction coming from the orthogonalization procedure we need to compute
 

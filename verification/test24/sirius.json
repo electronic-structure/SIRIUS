@@ -37,23 +37,12 @@
                 "J0": 0.0,
                     "U": 7.426899999999999,
                 "alpha": 0.0,
-                    "atom_type": "Ni1",
+                    "atom_type": "Ni",
                     "beta": 0.0,
                     "l": 2,
                     "n": 3,
                     "total_initial_occupancy": 8.0
                 },
-                {
-                    "J": 0.0,
-                    "J0": 0.0,
-                    "U": 7.426899999999999,
-                    "alpha": 0.0,
-                    "atom_type": "Ni2",
-                "beta": 0.0,
-                "l": 2,
-                "n": 3,
-                "total_initial_occupancy": 8.0
-            },
 	    {
  "J": 0.0,
                     "J0": 0.0,
@@ -549,8 +538,6 @@
                 ]
             }
         ],
-        "normalize": false,
-        "orthogonalize": true,
         "simplified": false
     },
     "iterative_solver": {
@@ -659,25 +646,21 @@
     "unit_cell": {
         "atom_coordinate_units": "lattice",
         "atom_files": {
-                "Ni1": "Ni.json",
-                "Ni2": "Ni.json",
+                "Ni": "Ni.json",
                 "O": "O.json"
         },
         "atom_types": [
-                "Ni1",
-                "Ni2",
+                "Ni",
             "O"
         ],
         "atoms": {
-                "Ni1": [
+                "Ni": [
                 [
                     0.0,
                     0.0,
                     0.0,0.0,0.0,4.0
                     ]
-                ],
-                "Ni2": [
-                [
+                ,[
                     0.5,
                     0.5,
                         -0.5,0.0, 0.0, -4.0
