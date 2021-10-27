@@ -519,7 +519,7 @@ Unit_cell::generate_radial_integrals()
         }
     } catch(std::exception const& e) {
         std::stringstream s;
-        s << "Error in generating atom_symmetry_class radial integrrals";
+        s << "Error in generating atom_symmetry_class radial integrals";
         RTE_THROW(s, e.what());
     }
 
@@ -535,7 +535,7 @@ Unit_cell::generate_radial_integrals()
         }
     } catch(std::exception const& e) {
         std::stringstream s;
-        s << "Error in generating atom radial integrrals";
+        s << "Error in generating atom radial integrals";
         RTE_THROW(s, e.what());
     }
 }
