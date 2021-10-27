@@ -411,7 +411,7 @@ class K_point : public K_point_base
     }
 
     void orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
-                                        Wave_functions<T>& phi_hub__);
+                                        Wave_functions<T>& phi_hub__, Wave_functions<T>& phi_hub_S__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;

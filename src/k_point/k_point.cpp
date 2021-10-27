@@ -270,19 +270,19 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
-    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
+    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_, *hubbard_wave_functions_S_);
 
-    for (int is = 0; is < ctx_.num_spinors(); is++) {
-        /* spin range to apply S-operator.
-         * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
-         * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
-        auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
+    // for (int is = 0; is < ctx_.num_spinors(); is++) {
+    //     /* spin range to apply S-operator.
+    //      * if WFs are non-magnetic, sping range is [0] or [1] - apply to single component
+    //      * if WFs have two components, spin range is [0,1] and S will be aplpied to both components */
+    //     auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
-        sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sr, 0, phi.num_wf(), beta_projectors(),
-                                                  *hubbard_wave_functions_, q_op.get(), *hubbard_wave_functions_S_);
-    }
+    //     sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sr, 0, phi.num_wf(), beta_projectors(),
+    //                                               *hubbard_wave_functions_, q_op.get(), *hubbard_wave_functions_S_);
+    // }
 
-    beta_projectors().dismiss();
+    // beta_projectors().dismiss();
 
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_S_->dismiss(sr, true);
@@ -348,7 +348,7 @@ K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T
 template <typename T>
 void
 K_point<T>::orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
-                                           Wave_functions<T>& phi_hub__)
+                                           Wave_functions<T>& phi_hub__, Wave_functions<T>& phi_hub_S__)
 {
     int nwfu = phi__.num_wf();
     auto la  = linalg_t::none;
@@ -427,6 +427,7 @@ K_point<T>::orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functi
         // transform<std::complex<T>>(ctx_.spla_context(), sr(), phi__, 0, nwfu, O_, 0, 0, phi_hub__, 0, nwfu);
         //} else {
         transform<std::complex<T>>(ctx_.spla_context(), sr(), phi__, 0, nwfu, S, 0, 0, phi_hub__, 0, nwfu);
+        transform<std::complex<T>>(ctx_.spla_context(), sr(), sphi__, 0, nwfu, S, 0, 0, phi_hub_S__, 0, nwfu);
         //}
     }
 }
