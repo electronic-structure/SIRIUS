@@ -947,13 +947,21 @@ sirius_add_xc_functional:
       type: string
       attr: in, required
       doc: LibXC label of the functional.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_add_xc_functional(void* const* handler__, char const* name__)
+sirius_add_xc_functional(void* const* handler__, char const* name__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.add_xc_functional(std::string(name__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.add_xc_functional(std::string(name__));
+        },
+        error_code__);
 }
 
 /*
@@ -1013,13 +1021,23 @@ sirius_set_lattice_vectors:
       type: double
       attr: in, required, dimension(3)
       doc: 3rd vector
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__)
+sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__,
+                           int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
+                                                    vector3d<double>(a3__));
+        },
+        error_code__);
 }
 
 /*
@@ -1085,13 +1103,21 @@ sirius_print_info:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_print_info(void* const* handler__)
+sirius_print_info(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.print_info();
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.print_info();
+        },
+        error_code__);
 }
 
 /*
@@ -1143,36 +1169,45 @@ sirius_set_periodic_function_ptr:
       type: double
       attr: in, optional
       doc: Pointer to the regualr-grid part of the function.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__)
+sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__,
+                                 int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    std::string label(label__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            std::string label(label__);
 
-    std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-        {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-        {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-        {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-        {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-        {"vha", &gs.potential().hartree_potential()}};
+            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
+                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
+                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
+                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
+                {"vha", &gs.potential().hartree_potential()}};
 
-    sirius::Periodic_function<double>* f;
-    try {
-        f = func_map.at(label);
-    } catch (...) {
-        std::stringstream s;
-        s << "wrong label: " << label;
-        TERMINATE(s);
-    }
+            sirius::Periodic_function<double>* f;
+            try {
+                f = func_map.at(label);
+            } catch (...) {
+                std::stringstream s;
+                s << "wrong label: " << label;
+                RTE_THROW(s);
+            }
 
-    if (f_mt__) {
-        f->set_mt_ptr(f_mt__);
-    }
-    if (f_rg__) {
-        f->set_rg_ptr(f_rg__);
-    }
+            if (f_mt__) {
+                f->set_mt_ptr(f_mt__);
+            }
+            if (f_rg__) {
+                f->set_rg_ptr(f_rg__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -1489,6 +1524,10 @@ sirius_initialize_kset:
       type: void*
       attr: in, required
       doc: K-point set handler.
+    count:
+      type: int
+      attr: in, optional, dimension(*)
+      doc: Local number of k-points for each MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1496,12 +1535,17 @@ sirius_initialize_kset:
 @api end
 */
 void
-sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
+sirius_initialize_kset(void* const* ks_handler__, int* count__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& ks = get_ks(ks_handler__);
-            ks.initialize();
+            if (count__) {
+                std::vector<int> count(count__, count__ + ks.comm().size());
+                ks.initialize(count);
+            } else {
+                ks.initialize();
+            }
         },
         error_code__);
 }
@@ -4131,24 +4175,53 @@ sirius_get_step_function:
       doc: Simulation context handler
     cfunig:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Plane-wave coefficients of step function.
     cfunrg:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Values of the step function on the regular grid.
+    num_rg_points:
+      type: int
+      attr: in, required
+      doc: Number of real-space points.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__)
+sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__,
+                         int* num_rg_points__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    for (int i = 0; i < sim_ctx.spfft<double>().local_slice_size(); i++) {
-        cfunrg__[i] = sim_ctx.theta(i);
-    }
-    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-        cfunig__[ig] = sim_ctx.theta_pw(ig);
-    }
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                cfunig__[ig] = sim_ctx.theta_pw(ig);
+            }
+            auto& fft = sim_ctx.spfft<double>();
+            bool is_local_rg;
+            if (sim_ctx.fft_grid().num_points() == *num_rg_points__) {
+                is_local_rg = false;
+            } else if (static_cast<int>(spfft_grid_size(fft)) == *num_rg_points__) {
+                is_local_rg = true;
+            } else {
+                throw std::runtime_error("wrong number of regular grid points");
+            }
+
+            int offs = (is_local_rg) ? 0 : fft.dim_x() * fft.dim_y() * fft.local_z_offset();
+            if (fft.local_slice_size()) {
+                for (int i = 0; i < fft.local_slice_size(); i++) {
+                    cfunrg__[offs + i] = sim_ctx.theta(i);
+                }
+            }
+            if (is_local_rg) {
+                sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
+            }
+    },
+    error_code__);
 }
 
 /*
@@ -5263,19 +5336,27 @@ sirius_get_fv_eigen_values:
       type: int
       attr: in, required
       doc: Number of first-variational states
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__)
+sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__,
+                           int* error_code__)
 {
-    auto& ks = get_ks(handler__);
-    if (*num_fv_states__ != ks.ctx().num_fv_states()) {
-        TERMINATE("wrong number of first-variational states");
-    }
-    int ik = *ik__ - 1;
-    for (int i = 0; i < *num_fv_states__; i++) {
-        fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
-    }
+    call_sirius(
+        [&]() {
+        auto& ks = get_ks(handler__);
+        if (*num_fv_states__ != ks.ctx().num_fv_states()) {
+            TERMINATE("wrong number of first-variational states");
+        }
+        int ik = *ik__ - 1;
+        for (int i = 0; i < *num_fv_states__; i++) {
+            fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
+        }
+    }, error_code__);
 }
 
 /*

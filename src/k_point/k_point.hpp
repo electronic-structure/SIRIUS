@@ -116,7 +116,7 @@ class K_point : public K_point_base
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
     /// First-variational eigen values
-    std::vector<double> fv_eigen_values_;
+    sddk::mdarray<double, 1> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
     dmatrix<std::complex<T>> fv_eigen_vectors_;
@@ -283,9 +283,11 @@ class K_point : public K_point_base
             vk_[x] = vk__[x];
         }
 
-        band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_occupancies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
+                                                     memory_t::host, "band_occupancies");
         band_occupancies_.zero();
-        band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
+        band_energies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
+                                                  memory_t::host, "band_energies");
         band_energies_.zero();
 
         num_ranks_row_ = comm_row_.size();

@@ -61,8 +61,6 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         kp.fv_eigen_vectors().allocate(mpd);
     }
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
-
     if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
@@ -95,9 +93,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     std::vector<double> eval(ctx_.num_fv_states());
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
-        TERMINATE("error in generalized eigen-value problem");
+        RTE_THROW("error in generalized eigen-value problem");
     }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
         h.deallocate(memory_t::device);
