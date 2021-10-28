@@ -4175,24 +4175,53 @@ sirius_get_step_function:
       doc: Simulation context handler
     cfunig:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Plane-wave coefficients of step function.
     cfunrg:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Values of the step function on the regular grid.
+    num_rg_points:
+      type: int
+      attr: in, required
+      doc: Number of real-space points.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__)
+sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__,
+                         int* num_rg_points__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    for (int i = 0; i < sim_ctx.spfft<double>().local_slice_size(); i++) {
-        cfunrg__[i] = sim_ctx.theta(i);
-    }
-    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-        cfunig__[ig] = sim_ctx.theta_pw(ig);
-    }
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                cfunig__[ig] = sim_ctx.theta_pw(ig);
+            }
+            auto& fft = sim_ctx.spfft<double>();
+            bool is_local_rg;
+            if (sim_ctx.fft_grid().num_points() == *num_rg_points__) {
+                is_local_rg = false;
+            } else if (static_cast<int>(spfft_grid_size(fft)) == *num_rg_points__) {
+                is_local_rg = true;
+            } else {
+                throw std::runtime_error("wrong number of regular grid points");
+            }
+
+            int offs = (is_local_rg) ? 0 : fft.dim_x() * fft.dim_y() * fft.local_z_offset();
+            if (fft.local_slice_size()) {
+                for (int i = 0; i < fft.local_slice_size(); i++) {
+                    cfunrg__[offs + i] = sim_ctx.theta(i);
+                }
+            }
+            if (is_local_rg) {
+                sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
+            }
+    },
+    error_code__);
 }
 
 /*

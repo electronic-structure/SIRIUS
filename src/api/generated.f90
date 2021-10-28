@@ -4152,24 +4152,32 @@ end subroutine sirius_get_gkvec_arrays
 !> @param [in] handler Simulation context handler
 !> @param [out] cfunig Plane-wave coefficients of step function.
 !> @param [out] cfunrg Values of the step function on the regular grid.
-subroutine sirius_get_step_function(handler,cfunig,cfunrg)
+!> @param [in] num_rg_points Number of real-space points.
+!> @param [out] error_code Error code.
+subroutine sirius_get_step_function(handler,cfunig,cfunrg,num_rg_points,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-complex(8), target, intent(out) :: cfunig
-real(8), target, intent(out) :: cfunrg
+complex(8), target, dimension(*), intent(out) :: cfunig
+real(8), target, dimension(*), intent(out) :: cfunrg
+integer, target, intent(in) :: num_rg_points
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: cfunig_ptr
 type(C_PTR) :: cfunrg_ptr
+type(C_PTR) :: num_rg_points_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_step_function_aux(handler,cfunig,cfunrg)&
+subroutine sirius_get_step_function_aux(handler,cfunig,cfunrg,num_rg_points,error_code)&
 &bind(C, name="sirius_get_step_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: cfunig
 type(C_PTR), value :: cfunrg
+type(C_PTR), value :: num_rg_points
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4179,7 +4187,14 @@ cfunig_ptr = C_NULL_PTR
 cfunig_ptr = C_LOC(cfunig)
 cfunrg_ptr = C_NULL_PTR
 cfunrg_ptr = C_LOC(cfunrg)
-call sirius_get_step_function_aux(handler_ptr,cfunig_ptr,cfunrg_ptr)
+num_rg_points_ptr = C_NULL_PTR
+num_rg_points_ptr = C_LOC(num_rg_points)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_step_function_aux(handler_ptr,cfunig_ptr,cfunrg_ptr,num_rg_points_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_step_function
 
 !
