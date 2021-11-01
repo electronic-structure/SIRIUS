@@ -198,7 +198,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
                 const int ia     = atomic_orbitals_[at_lvl].first;
                 auto const& atom = ctx_.unit_cell().atom(ia);
-                // we can skip the symmetrization for this atomic level since it does not contribute to the Hubbard
+                // we can skip the symmetrization for this atomic level if it does not contribute to the Hubbard
                 // correction (or U = 0)
                 if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
 

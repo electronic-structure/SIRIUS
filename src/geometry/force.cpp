@@ -691,6 +691,9 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 }
             }
 
+            /* the first atom is fiex since we want to compute the force on this
+             * atom but we need to sum over all the neighbors for which the term
+             * is defined */
             for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                 auto nl = ctx_.cfg().hubbard().nonlocal(i);
                 int ia1 = nl.atom_pair()[0];
@@ -720,7 +723,6 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
             }
             forceh_(dir, ia) -= std::real(d);
         }
-        
     }
 }
 

@@ -282,7 +282,7 @@ K_point<T>::generate_hubbard_orbitals()
     //                                               *hubbard_wave_functions_, q_op.get(), *hubbard_wave_functions_S_);
     // }
 
-    // beta_projectors().dismiss();
+    beta_projectors().dismiss();
 
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
     hubbard_wave_functions_S_->dismiss(sr, true);
