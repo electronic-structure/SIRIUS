@@ -74,8 +74,8 @@ if(NOT TARGET sirius::sirius)
   endif()
 
   if(@USE_ROCM@)
-    # TODO: flags in definitions and directories are not propagated
-    find_package(ROCM ${mode} COMPONENTS rocfft hipblas)
+    find_package(hip CONFIG ${mode})
+    find_package(rocblas CONFIG ${mode})
   endif()
 
   # Clean-up module path.
