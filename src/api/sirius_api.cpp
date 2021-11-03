@@ -3479,7 +3479,7 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
         int this_jk = jk_of_rank[r];
 
         if (this_jk >= 0) {
-            auto gkvec = kset.send_recv_gkvec(this_jk, r);
+            auto gkvec = kset.get_gkvec(this_jk, r);
 
             /* if this is a rank witch needs jk or a rank which stores jk */
             if (my_rank == r || my_rank == rank_with_jk[r]) {

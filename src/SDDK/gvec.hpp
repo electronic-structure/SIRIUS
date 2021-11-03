@@ -105,10 +105,11 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
     }
 }
 
-/* forwaard declaration for the serialization */
+/* forwaard declarations */
 class Gvec;
 void serialize(serializer& s__, Gvec const& gv__);
 void deserialize(serializer& s__, Gvec& gv__);
+Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
 
 /// A set of G-vectors for FFTs and G+k basis functions.
 /** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
@@ -204,12 +205,6 @@ class Gvec
     /// Cartesian coordinaes for a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_;
 
-    /* copy constructor is forbidden */
-    Gvec(Gvec const& src__) = delete;
-
-    /* copy assignment operator is forbidden */
-    Gvec& operator=(Gvec const& src__) = delete;
-
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
@@ -239,7 +234,14 @@ class Gvec
     void init(FFT3D_grid const& fft_grid);
 
     friend void sddk::serialize(serializer& s__, Gvec const& gv__);
+
     friend void sddk::deserialize(serializer& s__, Gvec& gv__);
+
+    /* copy constructor is forbidden */
+    Gvec(Gvec const& src__) = delete;
+
+    /* copy assignment operator is forbidden */
+    Gvec& operator=(Gvec const& src__) = delete;
 
   public:
     /// Constructor for G+k vectors.
@@ -329,12 +331,12 @@ class Gvec
         *this = std::move(src__);
     }
 
-    inline vector3d<double> const& vk() const
+    inline auto const& vk() const
     {
         return vk_;
     }
 
-    Communicator const& comm() const
+    inline Communicator const& comm() const
     {
         return comm_;
     }
@@ -342,7 +344,7 @@ class Gvec
     /// Set the new reciprocal lattice vectors.
     /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
-    inline matrix3d<double> const& lattice_vectors(matrix3d<double> lattice_vectors__)
+    inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
         init_gvec_cart();
@@ -424,15 +426,13 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    inline vector3d<int>
-    gvec(int ig__) const
+    inline auto gvec(int ig__) const
     {
         return gvec_by_full_index(gvec_full_index_(ig__));
     }
 
     /// Return G+k vector in fractional coordinates.
-    inline vector3d<double>
-    gkvec(int ig__) const
+    inline auto gkvec(int ig__) const
     {
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
         return (vector3d<double>(G[0], G[1], G[2]) + vk_);
@@ -571,8 +571,6 @@ class Gvec
     {
         return gvec_shell_idx_local_[igloc__];
     }
-
-    void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const;
 };
 
 /// Stores information about G-vector partitioning between MPI ranks for the FFT transformation.

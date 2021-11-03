@@ -481,19 +481,22 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     return ig;
 }
 
-void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
+Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
     serializer s;
 
     if (comm__.rank() == source__) {
-        ::sddk::serialize(s, this);
+        ::sddk::serialize(s, gv_src__);
     }
 
     s.send_recv(comm__, source__, dest__);
 
+    Gvec gv(gv_src__.comm());
+
     if (comm__.rank() == dest__) {
-        ::sddk::deserialize(s, gv__);
+        ::sddk::deserialize(s, gv);
     }
+    return gv;
 }
 
 void Gvec_partition::build_fft_distr()
