@@ -24,6 +24,7 @@
  */
 #include "symmetry/lattice.hpp"
 #include "gvec.hpp"
+#include "serializer.hpp"
 
 namespace sddk {
 
@@ -480,60 +481,18 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     return ig;
 }
 
-void Gvec::pack(serializer& s__) const
-{
-    serialize(s__, vk_);
-    serialize(s__, Gmax_);
-    serialize(s__, lattice_vectors_);
-    serialize(s__, reduce_gvec_);
-    serialize(s__, bare_gvec_);
-    serialize(s__, num_gvec_);
-    serialize(s__, num_gvec_shells_);
-    serialize(s__, gvec_full_index_);
-    serialize(s__, gvec_shell_);
-    serialize(s__, gvec_shell_len_);
-    serialize(s__, gvec_index_by_xy_);
-    serialize(s__, z_columns_);
-    serialize(s__, gvec_distr_);
-    serialize(s__, zcol_distr_);
-    serialize(s__, gvec_base_mapping_);
-    serialize(s__, offset_);
-    serialize(s__, count_);
-}
-
-void Gvec::unpack(serializer& s__, Gvec& gv__) const
-{
-    deserialize(s__, gv__.vk_);
-    deserialize(s__, gv__.Gmax_);
-    deserialize(s__, gv__.lattice_vectors_);
-    deserialize(s__, gv__.reduce_gvec_);
-    deserialize(s__, gv__.bare_gvec_);
-    deserialize(s__, gv__.num_gvec_);
-    deserialize(s__, gv__.num_gvec_shells_);
-    deserialize(s__, gv__.gvec_full_index_);
-    deserialize(s__, gv__.gvec_shell_);
-    deserialize(s__, gv__.gvec_shell_len_);
-    deserialize(s__, gv__.gvec_index_by_xy_);
-    deserialize(s__, gv__.z_columns_);
-    deserialize(s__, gv__.gvec_distr_);
-    deserialize(s__, gv__.zcol_distr_);
-    deserialize(s__, gv__.gvec_base_mapping_);
-    deserialize(s__, gv__.offset_);
-    deserialize(s__, gv__.count_);
-}
-
 void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
 {
     serializer s;
 
     if (comm__.rank() == source__) {
-        this->pack(s);
+        ::sddk::serialize(s, this);
     }
 
     s.send_recv(comm__, source__, dest__);
 
     if (comm__.rank() == dest__) {
-        this->unpack(s, gv__);
+        ::sddk::deserialize(s, gv__);
     }
 }
 
@@ -733,6 +692,48 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             throw std::runtime_error("Wrong remapped shell of G-vector");
         }
     }
+}
+
+void serialize(serializer& s__, Gvec const& gv__)
+{
+    serialize(s__, gv__.vk_);
+    serialize(s__, gv__.Gmax_);
+    serialize(s__, gv__.lattice_vectors_);
+    serialize(s__, gv__.reduce_gvec_);
+    serialize(s__, gv__.bare_gvec_);
+    serialize(s__, gv__.num_gvec_);
+    serialize(s__, gv__.num_gvec_shells_);
+    serialize(s__, gv__.gvec_full_index_);
+    serialize(s__, gv__.gvec_shell_);
+    serialize(s__, gv__.gvec_shell_len_);
+    serialize(s__, gv__.gvec_index_by_xy_);
+    serialize(s__, gv__.z_columns_);
+    serialize(s__, gv__.gvec_distr_);
+    serialize(s__, gv__.zcol_distr_);
+    serialize(s__, gv__.gvec_base_mapping_);
+    serialize(s__, gv__.offset_);
+    serialize(s__, gv__.count_);
+}
+
+void deserialize(serializer& s__, Gvec& gv__)
+{
+    deserialize(s__, gv__.vk_);
+    deserialize(s__, gv__.Gmax_);
+    deserialize(s__, gv__.lattice_vectors_);
+    deserialize(s__, gv__.reduce_gvec_);
+    deserialize(s__, gv__.bare_gvec_);
+    deserialize(s__, gv__.num_gvec_);
+    deserialize(s__, gv__.num_gvec_shells_);
+    deserialize(s__, gv__.gvec_full_index_);
+    deserialize(s__, gv__.gvec_shell_);
+    deserialize(s__, gv__.gvec_shell_len_);
+    deserialize(s__, gv__.gvec_index_by_xy_);
+    deserialize(s__, gv__.z_columns_);
+    deserialize(s__, gv__.gvec_distr_);
+    deserialize(s__, gv__.zcol_distr_);
+    deserialize(s__, gv__.gvec_base_mapping_);
+    deserialize(s__, gv__.offset_);
+    deserialize(s__, gv__.count_);
 }
 
 } // namespace sddk

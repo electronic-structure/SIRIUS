@@ -255,10 +255,6 @@ class K_point_set
         if (jrank == my_rank) {
             auto kp = kpoints_[jk__].get();
             kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
-#if defined(USE_FP32)
-            auto kp_float = kpoints_float_[jk__].get();
-            kp_float->gkvec().send_recv(comm(), jrank, rank__, gkvec);
-#endif
         }
         /* this rank receives the k-point */
         if (rank__ == my_rank) {
