@@ -691,9 +691,9 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 }
             }
 
-            /* the first atom is fiex since we want to compute the force on this
-             * atom but we need to sum over all the neighbors for which the term
-             * is defined */
+            /* We search all links involving the atom ia and then sum over them.
+             * Note that we do not consider the links [i, j] but only the links
+             * [i, j] */
             for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                 auto nl = ctx_.cfg().hubbard().nonlocal(i);
                 int ia1 = nl.atom_pair()[0];
@@ -713,7 +713,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                     for (int is = 0; is < ctx_.num_spins(); is++) {
                         for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                                auto result1_ = z1 * dn(offset2 + m2, offset1 + m1, is, dir, ia) *
+                                auto result1_ = z1 * dn(offset1 + m1, offset2 + m2, is, dir, ia) *
                                                 potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
                                 d += std::real(result1_);
                             }

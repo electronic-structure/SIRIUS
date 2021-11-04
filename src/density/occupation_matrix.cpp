@@ -256,20 +256,22 @@ Occupation_matrix::symmetrize()
             local_tmp[at_lvl] = sddk::mdarray<double_complex, 3>(local_[at_lvl].size(0), local_[at_lvl].size(1), 4);
             memcpy(local_tmp[at_lvl].at(memory_t::host), local_[at_lvl].at(memory_t::host),
                    sizeof(double_complex) * local_[at_lvl].size());
+        } else {
+            local_tmp[at_lvl].zero();
         }
+
     }
 
     for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
         const int ia     = atomic_orbitals_[at_lvl].first;
         const auto& atom = ctx_.unit_cell().atom(ia);
-
+        local_[at_lvl].zero();
         // we can skip the symmetrization for this atomic level since it does not contribute to the Hubbard correction
         // (or U = 0)
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-
             int il             = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
             const int lmmax_at = 2 * il + 1;
-            local_[at_lvl].zero();
+            // local_[at_lvl].zero();
             sddk::mdarray<double_complex, 3> dm_ia(lmmax_at, lmmax_at, 4);
             for (int isym = 0; isym < sym.size(); isym++) {
                 int pr            = sym[isym].spg_op.proper;
@@ -367,7 +369,7 @@ Occupation_matrix::symmetrize()
         RTE_THROW("non-collinear nonlocal occupancy symmetrization is not implemented");
     }
 
-    /* a pair of "total number, offests" for the Hubbard orbitals idexing */
+    /* a pair of "total number, offests" for the Hubbard orbitals indexing */
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
     for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
@@ -381,7 +383,7 @@ Occupation_matrix::symmetrize()
         int ib  = 2 * il + 1;
         int jb  = 2 * jl + 1;
         auto T  = nl.T();
-
+        nonlocal_[i].zero();
         for (int isym = 0; isym < sym.size(); isym++) {
             int pr            = sym[isym].spg_op.proper;
             auto eang         = sym[isym].spg_op.euler_angles;
@@ -396,6 +398,8 @@ Occupation_matrix::symmetrize()
 
             /* we must search for the right hubbard subspace since we may have
              * multiple orbitals involved in the hubbard correction */
+
+            /* NOTE : the atom order is important here. */
             int at1_lvl    = find_orbital_index(iap, n1, il);
             int at2_lvl    = find_orbital_index(jap, n2, jl);
             auto& occ_mtrx = occ_mtrx_T_[Ttot];

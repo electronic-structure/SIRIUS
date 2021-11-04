@@ -39,12 +39,12 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
     double v_ij_ = nl.V() / ha2ev;
     int il       = nl.l()[0];
     int jl       = nl.l()[1];
-
+    um__.zero();
     // second term of Eq. 2
     for (int is = 0; is < ctx__.num_spins(); is++) {
-        for (int m1 = 0; m1 < 2 * jl + 1; m1++) {
-            for (int m2 = 0; m2 < 2 * il + 1; m2++) {
-                um__(m2, m1, is) = -v_ij_ * om__(m2, m1, is);
+        for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+            for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                um__(m1, m2, is) = -v_ij_ * om__(m1, m2, is);
             }
         }
     }
@@ -615,11 +615,19 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
         }
 
         for (int i = 0; i < static_cast<int>(ctx.cfg().hubbard().nonlocal().size()); i++) {
-            auto src1 = om__.nonlocal(i).at(memory_t::host);
-            auto src2 = pm__.nonlocal(i).at(memory_t::host);
+            auto nl = ctx.cfg().hubbard().nonlocal(i);
+            int il       = nl.l()[0];
+            int jl       = nl.l()[1];
 
-            for (int i = 0; i < om__.nonlocal(i).size(); i++) {
-                tmp += src1[i] * std::conj(src2[i]);
+            const auto &n1 = om__.nonlocal(i);
+            const auto &n2 = pm__.nonlocal(i);
+
+            for (int is = 0; is < ctx.num_spins(); is++) {
+              for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                  tmp += std::conj(n2(m1, m2, is)) * n1(m1, m2, is);
+                }
+              }
             }
         }
         return std::real(tmp);

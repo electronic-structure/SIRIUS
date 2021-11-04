@@ -422,9 +422,9 @@ class U_operator
                 for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                         um_(um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2, is) +=
-                            z1 * um1__.nonlocal(i)(m1, m2, is);
+                          0.5 * z1 * um1__.nonlocal(i)(m1, m2, is);
                         um_(um1__.offset(at2_lvl) + m2, um1__.offset(at1_lvl) + m1, is) +=
-                            conj(z1 * um1__.nonlocal(i)(m1, m2, is));
+                          0.5 * conj(z1 * um1__.nonlocal(i)(m1, m2, is));
                     }
                 }
             }

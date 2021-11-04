@@ -131,7 +131,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
         HowManyBands = std::max(kp.num_occupied_bands(1), kp.num_occupied_bands(0));
     }
 
-    dmatrix<double_complex> phi_s_psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
+    dmatrix<double_complex> phi_s_psi(this->number_of_hubbard_orbitals() * ctx_.num_spins(), HowManyBands);
 
     /* <atomic_orbitals | S | atomic_orbitals> */
     dmatrix<double_complex> overlap__(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
@@ -206,9 +206,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
 
     /* compute <phi (O)^(-1/2)| S | psi_{nk}> where |(O)^(-1/2) phi> are the hubbard wavefunctions */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(ctx_.spla_context(), spin_range(ispn), kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
-              kp.hubbard_wave_functions_S(), 0, this->number_of_hubbard_orbitals(), phi_s_psi, 0,
-              ispn * this->number_of_hubbard_orbitals());
+      inner(ctx_.spla_context(), spin_range(ispn), kp.hubbard_wave_functions_S(), 0, this->number_of_hubbard_orbitals(),
+            kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
+            phi_s_psi, ispn * this->number_of_hubbard_orbitals(), 0);
     }
 
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) { // loop over the atom displacement.
@@ -395,6 +395,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
     if (ctx_.processing_unit() == device_t::GPU) {
         phi.deallocate(spin_range(0), memory_t::device);
         phitmp.deallocate(spin_range(0), memory_t::device);
+        phi_s_psi.deallocate(memory_t::device);
         dphi.deallocate(spin_range(0), memory_t::device);
         dn_tmp.deallocate(memory_t::device);
         if (ctx_.cfg().hubbard().orthogonalize()) {
@@ -443,7 +444,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     sddk::mdarray<double, 3> rlm_dg(lmmax, 3, kp__.num_gkvec_loc());
 
     /* overlap between psi_nk and phi_ik <psi|S|phi> */
-    dmatrix<double_complex> psi_s_phi(nbnd, phi.num_wf() * ctx_.num_spinors());
+    dmatrix<double_complex> phi_s_psi(phi.num_wf() * ctx_.num_spinors(), nbnd);
 
     /* initialize the beta projectors and derivatives */
     bp_strain_deriv.prepare();
@@ -454,24 +455,25 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     kp__.hubbard_wave_functions().prepare(sr, true);
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        psi_s_phi.allocate(memory_t::device);
+        phi_s_psi.allocate(memory_t::device);
 
         dphi.allocate(spin_range(0), memory_t::device);
 
         phitmp.allocate(spin_range(0), memory_t::device);
     }
 
-    psi_s_phi.zero(memory_t::device);
-    psi_s_phi.zero(memory_t::host);
+    phi_s_psi.zero(memory_t::device);
+    phi_s_psi.zero(memory_t::host);
     /* compute <psi_nk | S | phi_mk>
      * treat non-magnetic, collinear and non-collinear cases;
      * in collinear case psi_s_phi contains two blocks for up- and dn- spin channels */
     for (int is = 0; is < ctx_.num_spinors(); is++) {
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
-        inner(ctx_.spla_context(), sr, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(is),
-              kp__.hubbard_wave_functions_S(), 0, kp__.hubbard_wave_functions_S().num_wf(), psi_s_phi, 0,
-              is * kp__.hubbard_wave_functions_S().num_wf());
+        inner(ctx_.spla_context(), sr,
+              kp__.hubbard_wave_functions_S(), 0, kp__.hubbard_wave_functions_S().num_wf(),
+              kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(is),
+              phi_s_psi, is * kp__.hubbard_wave_functions_S().num_wf(), 0);
     }
 
     /* array of real spherical harmonics and derivatives for each G-vector */
@@ -582,7 +584,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                     }
                 }
             }
-            compute_occupancies(kp__, psi_s_phi, dphi, dn__, 3 * nu + mu);
+            compute_occupancies(kp__, phi_s_psi, dphi, dn__, 3 * nu + mu);
         }
     }
 
@@ -662,7 +664,7 @@ Hubbard::wavefunctions_strain_deriv(K_point<double>& kp__, Wave_functions<double
 }
 
 void
-Hubbard::compute_occupancies(K_point<double>& kp__, dmatrix<double_complex>& psi_s_phi__,
+Hubbard::compute_occupancies(K_point<double>& kp__, dmatrix<double_complex>& phi_s_psi__,
                              Wave_functions<double>& dphi__, sddk::mdarray<double_complex, 4>& dn__, const int index__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies");
@@ -714,14 +716,14 @@ Hubbard::compute_occupancies(K_point<double>& kp__, dmatrix<double_complex>& psi
             psi_s_dphi.copy_to(memory_t::device);
         }
 
-        linalg(la).gemm('C', 'N', this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
+        linalg(la).gemm('C', 'C', this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
                         kp__.num_occupied_bands(ispn), &alpha, psi_s_dphi.at(mt), psi_s_dphi.ld(),
-                        psi_s_phi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), psi_s_phi__.ld(),
+                        phi_s_psi__.at(mt, ispn * this->number_of_hubbard_orbitals(), 0), phi_s_psi__.ld(),
                         &linalg_const<double_complex>::zero(), dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
 
-        linalg(la).gemm('C', 'N', this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
+        linalg(la).gemm('N', 'N', this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
                         kp__.num_occupied_bands(ispn), &alpha,
-                        psi_s_phi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), psi_s_phi__.ld(),
+                        phi_s_psi__.at(mt, ispn * this->number_of_hubbard_orbitals(), 0), phi_s_psi__.ld(),
                         psi_s_dphi.at(mt), psi_s_dphi.ld(), &linalg_const<double_complex>::one(),
                         dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
 
