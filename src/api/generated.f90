@@ -187,53 +187,6 @@ deallocate(fname_c_type)
 end subroutine sirius_serialize_timers
 
 !
-!> @brief Spline integration of f(x)*x^m.
-!> @param [in] m Defines the x^{m} factor.
-!> @param [in] np Number of x-points.
-!> @param [in] x List of x-points.
-!> @param [in] f List of function values.
-!> @param [out] result Resulting value.
-subroutine sirius_integrate(m,np,x,f,result)
-implicit none
-!
-integer, target, intent(in) :: m
-integer, target, intent(in) :: np
-real(8), target, intent(in) :: x
-real(8), target, intent(in) :: f
-real(8), target, intent(out) :: result
-!
-type(C_PTR) :: m_ptr
-type(C_PTR) :: np_ptr
-type(C_PTR) :: x_ptr
-type(C_PTR) :: f_ptr
-type(C_PTR) :: result_ptr
-!
-interface
-subroutine sirius_integrate_aux(m,np,x,f,result)&
-&bind(C, name="sirius_integrate")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: m
-type(C_PTR), value :: np
-type(C_PTR), value :: x
-type(C_PTR), value :: f
-type(C_PTR), value :: result
-end subroutine
-end interface
-!
-m_ptr = C_NULL_PTR
-m_ptr = C_LOC(m)
-np_ptr = C_NULL_PTR
-np_ptr = C_LOC(np)
-x_ptr = C_NULL_PTR
-x_ptr = C_LOC(x)
-f_ptr = C_NULL_PTR
-f_ptr = C_LOC(f)
-result_ptr = C_NULL_PTR
-result_ptr = C_LOC(result)
-call sirius_integrate_aux(m_ptr,np_ptr,x_ptr,f_ptr,result_ptr)
-end subroutine sirius_integrate
-
-!
 !> @brief Check if the simulation context is initialized.
 !> @param [in] handler Simulation context handler.
 !> @param [out] status Status of the library (true if initialized)
@@ -1609,7 +1562,9 @@ end subroutine sirius_initialize_kset
 !> @param [in] energy_tol Tolerance in total energy difference.
 !> @param [in] niter Maximum number of SCF iterations.
 !> @param [in] save_state boolean variable indicating if we want to save the ground state.
-subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state)
+!> @param [out] error_code Error code.
+subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
@@ -1617,6 +1572,7 @@ real(8), optional, target, intent(in) :: density_tol
 real(8), optional, target, intent(in) :: energy_tol
 integer, optional, target, intent(in) :: niter
 logical, optional, target, intent(in) :: save_state
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: density_tol_ptr
@@ -1624,10 +1580,11 @@ type(C_PTR) :: energy_tol_ptr
 type(C_PTR) :: niter_ptr
 type(C_PTR) :: save_state_ptr
 logical(C_BOOL), target :: save_state_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,niter,&
-&save_state)&
+&save_state,error_code)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -1635,6 +1592,7 @@ type(C_PTR), value :: density_tol
 type(C_PTR), value :: energy_tol
 type(C_PTR), value :: niter
 type(C_PTR), value :: save_state
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1657,8 +1615,12 @@ if (present(save_state)) then
 save_state_c_type = save_state
 save_state_ptr = C_LOC(save_state_c_type)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
-&niter_ptr,save_state_ptr)
+&niter_ptr,save_state_ptr,error_code_ptr)
 if (present(save_state)) then
 endif
 end subroutine sirius_find_ground_state
@@ -1700,49 +1662,53 @@ end subroutine sirius_check_scf_density
 !> @param [in] ks_handler Handler of the k-point set.
 !> @param [in] scf_density_tol Tolerance on RMS in density.
 !> @param [in] scf_energy_tol Tolerance in total energy difference.
-!> @param [in] scf_ninit__ Number of SCF iterations.
-!> @param [in] temp__ Temperature.
-!> @param [in] tol__ Tolerance.
-!> @param [in] cg_restart__ CG restart.
-!> @param [in] kappa__ Scalar preconditioner for pseudo Hamiltonian
+!> @param [in] scf_ninit Number of SCF iterations.
+!> @param [in] temp Temperature.
+!> @param [in] tol Tolerance.
+!> @param [in] cg_restart CG restart.
+!> @param [in] kappa Scalar preconditioner for pseudo Hamiltonian
+!> @param [out] error_code Error code
 subroutine sirius_find_ground_state_robust(gs_handler,ks_handler,scf_density_tol,&
-&scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)
+&scf_energy_tol,scf_ninit,temp,tol,cg_restart,kappa,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 type(C_PTR), target, intent(in) :: ks_handler
 real(8), optional, target, intent(in) :: scf_density_tol
 real(8), optional, target, intent(in) :: scf_energy_tol
-integer, optional, target, intent(in) :: scf_ninit__
-real(8), optional, target, intent(in) :: temp__
-real(8), optional, target, intent(in) :: tol__
-integer, optional, target, intent(in) :: cg_restart__
-real(8), optional, target, intent(in) :: kappa__
+integer, optional, target, intent(in) :: scf_ninit
+real(8), optional, target, intent(in) :: temp
+real(8), optional, target, intent(in) :: tol
+integer, optional, target, intent(in) :: cg_restart
+real(8), optional, target, intent(in) :: kappa
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: scf_density_tol_ptr
 type(C_PTR) :: scf_energy_tol_ptr
-type(C_PTR) :: scf_ninit___ptr
-type(C_PTR) :: temp___ptr
-type(C_PTR) :: tol___ptr
-type(C_PTR) :: cg_restart___ptr
-type(C_PTR) :: kappa___ptr
+type(C_PTR) :: scf_ninit_ptr
+type(C_PTR) :: temp_ptr
+type(C_PTR) :: tol_ptr
+type(C_PTR) :: cg_restart_ptr
+type(C_PTR) :: kappa_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_ground_state_robust_aux(gs_handler,ks_handler,scf_density_tol,&
-&scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)&
+&scf_energy_tol,scf_ninit,temp,tol,cg_restart,kappa,error_code)&
 &bind(C, name="sirius_find_ground_state_robust")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: scf_density_tol
 type(C_PTR), value :: scf_energy_tol
-type(C_PTR), value :: scf_ninit__
-type(C_PTR), value :: temp__
-type(C_PTR), value :: tol__
-type(C_PTR), value :: cg_restart__
-type(C_PTR), value :: kappa__
+type(C_PTR), value :: scf_ninit
+type(C_PTR), value :: temp
+type(C_PTR), value :: tol
+type(C_PTR), value :: cg_restart
+type(C_PTR), value :: kappa
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1758,28 +1724,32 @@ scf_energy_tol_ptr = C_NULL_PTR
 if (present(scf_energy_tol)) then
 scf_energy_tol_ptr = C_LOC(scf_energy_tol)
 endif
-scf_ninit___ptr = C_NULL_PTR
-if (present(scf_ninit__)) then
-scf_ninit___ptr = C_LOC(scf_ninit__)
+scf_ninit_ptr = C_NULL_PTR
+if (present(scf_ninit)) then
+scf_ninit_ptr = C_LOC(scf_ninit)
 endif
-temp___ptr = C_NULL_PTR
-if (present(temp__)) then
-temp___ptr = C_LOC(temp__)
+temp_ptr = C_NULL_PTR
+if (present(temp)) then
+temp_ptr = C_LOC(temp)
 endif
-tol___ptr = C_NULL_PTR
-if (present(tol__)) then
-tol___ptr = C_LOC(tol__)
+tol_ptr = C_NULL_PTR
+if (present(tol)) then
+tol_ptr = C_LOC(tol)
 endif
-cg_restart___ptr = C_NULL_PTR
-if (present(cg_restart__)) then
-cg_restart___ptr = C_LOC(cg_restart__)
+cg_restart_ptr = C_NULL_PTR
+if (present(cg_restart)) then
+cg_restart_ptr = C_LOC(cg_restart)
 endif
-kappa___ptr = C_NULL_PTR
-if (present(kappa__)) then
-kappa___ptr = C_LOC(kappa__)
+kappa_ptr = C_NULL_PTR
+if (present(kappa)) then
+kappa_ptr = C_LOC(kappa)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_ground_state_robust_aux(gs_handler_ptr,ks_handler_ptr,scf_density_tol_ptr,&
-&scf_energy_tol_ptr,scf_ninit___ptr,temp___ptr,tol___ptr,cg_restart___ptr,kappa___ptr)
+&scf_energy_tol_ptr,scf_ninit_ptr,temp_ptr,tol_ptr,cg_restart_ptr,kappa_ptr,error_code_ptr)
 end subroutine sirius_find_ground_state_robust
 
 !
@@ -1918,29 +1888,34 @@ end subroutine sirius_add_atom_type
 !> @param [in] label Atom type label.
 !> @param [in] num_radial_points Number of radial grid points.
 !> @param [in] radial_points List of radial grid points.
-subroutine sirius_set_atom_type_radial_grid(handler,label,num_radial_points,radial_points)
+!> @param [out] error_code Error code.
+subroutine sirius_set_atom_type_radial_grid(handler,label,num_radial_points,radial_points,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
 real(8), target, dimension(num_radial_points), intent(in) :: radial_points
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: num_radial_points_ptr
 type(C_PTR) :: radial_points_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,&
-&radial_points)&
+&radial_points,error_code)&
 &bind(C, name="sirius_set_atom_type_radial_grid")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: num_radial_points
 type(C_PTR), value :: radial_points
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1954,8 +1929,12 @@ num_radial_points_ptr = C_NULL_PTR
 num_radial_points_ptr = C_LOC(num_radial_points)
 radial_points_ptr = C_NULL_PTR
 radial_points_ptr = C_LOC(radial_points)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_atom_type_radial_grid_aux(handler_ptr,label_ptr,num_radial_points_ptr,&
-&radial_points_ptr)
+&radial_points_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid
 
@@ -2510,99 +2489,28 @@ deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs
 
 !
-!> @brief Get atom type contribution to plane-wave coefficients of a periodic function.
-!> @param [in] handler Simulation context handler.
-!> @param [in] atom_type Label of the atom type.
-!> @param [in] label Label of the function.
-!> @param [out] pw_coeffs Local array of plane-wave coefficients.
-!> @param [in] ngv Local number of G-vectors.
-!> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
-!> @param [in] comm MPI communicator used in distribution of G-vectors
-subroutine sirius_get_pw_coeffs_real(handler,atom_type,label,pw_coeffs,ngv,gvl,comm)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-character(*), target, intent(in) :: atom_type
-character(*), target, intent(in) :: label
-real(8), target, dimension(*), intent(out) :: pw_coeffs
-integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3, *), intent(in) :: gvl
-integer, optional, target, intent(in) :: comm
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: atom_type_ptr
-character(C_CHAR), target, allocatable :: atom_type_c_type(:)
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: pw_coeffs_ptr
-type(C_PTR) :: ngv_ptr
-type(C_PTR) :: gvl_ptr
-type(C_PTR) :: comm_ptr
-!
-interface
-subroutine sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv,gvl,&
-&comm)&
-&bind(C, name="sirius_get_pw_coeffs_real")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: atom_type
-type(C_PTR), value :: label
-type(C_PTR), value :: pw_coeffs
-type(C_PTR), value :: ngv
-type(C_PTR), value :: gvl
-type(C_PTR), value :: comm
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-atom_type_ptr = C_NULL_PTR
-allocate(atom_type_c_type(len(atom_type)+1))
-atom_type_c_type = string_f2c(atom_type)
-atom_type_ptr = C_LOC(atom_type_c_type)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-pw_coeffs_ptr = C_NULL_PTR
-pw_coeffs_ptr = C_LOC(pw_coeffs)
-ngv_ptr = C_NULL_PTR
-if (present(ngv)) then
-ngv_ptr = C_LOC(ngv)
-endif
-gvl_ptr = C_NULL_PTR
-if (present(gvl)) then
-gvl_ptr = C_LOC(gvl)
-endif
-comm_ptr = C_NULL_PTR
-if (present(comm)) then
-comm_ptr = C_LOC(comm)
-endif
-call sirius_get_pw_coeffs_real_aux(handler_ptr,atom_type_ptr,label_ptr,pw_coeffs_ptr,&
-&ngv_ptr,gvl_ptr,comm_ptr)
-deallocate(atom_type_c_type)
-deallocate(label_c_type)
-end subroutine sirius_get_pw_coeffs_real
-
-!
 !> @brief Initialize the subspace of wave-functions.
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] ks_handler K-point set handler.
-subroutine sirius_initialize_subspace(gs_handler,ks_handler)
+!> @param [out] error_code Error code.
+subroutine sirius_initialize_subspace(gs_handler,ks_handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 type(C_PTR), target, intent(in) :: ks_handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_initialize_subspace_aux(gs_handler,ks_handler)&
+subroutine sirius_initialize_subspace_aux(gs_handler,ks_handler,error_code)&
 &bind(C, name="sirius_initialize_subspace")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: ks_handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2610,7 +2518,11 @@ gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler)
 ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
-call sirius_initialize_subspace_aux(gs_handler_ptr,ks_handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_initialize_subspace_aux(gs_handler_ptr,ks_handler_ptr,error_code_ptr)
 end subroutine sirius_initialize_subspace
 
 !
@@ -2696,29 +2608,6 @@ endif
 if (present(precompute_ri)) then
 endif
 end subroutine sirius_find_eigen_states
-
-!
-!> @brief Generate D-operator matrix.
-!> @param [in] handler Ground state handler.
-subroutine sirius_generate_d_operator_matrix(handler)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-!
-type(C_PTR) :: handler_ptr
-!
-interface
-subroutine sirius_generate_d_operator_matrix_aux(handler)&
-&bind(C, name="sirius_generate_d_operator_matrix")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-call sirius_generate_d_operator_matrix_aux(handler_ptr)
-end subroutine sirius_generate_d_operator_matrix
 
 !
 !> @brief Generate initial density.
@@ -2935,190 +2824,6 @@ band_energies_ptr = C_NULL_PTR
 band_energies_ptr = C_LOC(band_energies)
 call sirius_get_band_energies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_energies_ptr)
 end subroutine sirius_get_band_energies
-
-!
-!> @brief Get D-operator matrix
-!> @param [in] handler Simulation context handler.
-!> @param [in] ia Global index of atom.
-!> @param [in] ispn Spin component.
-!> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimension of D-matrix.
-subroutine sirius_get_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(in) :: ia
-integer, target, intent(in) :: ispn
-real(8), target, dimension(ld, ld), intent(out) :: d_mtrx
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: ia_ptr
-type(C_PTR) :: ispn_ptr
-type(C_PTR) :: d_mtrx_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_get_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
-&bind(C, name="sirius_get_d_operator_matrix")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: ia
-type(C_PTR), value :: ispn
-type(C_PTR), value :: d_mtrx
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-ia_ptr = C_NULL_PTR
-ia_ptr = C_LOC(ia)
-ispn_ptr = C_NULL_PTR
-ispn_ptr = C_LOC(ispn)
-d_mtrx_ptr = C_NULL_PTR
-d_mtrx_ptr = C_LOC(d_mtrx)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_get_d_operator_matrix_aux(handler_ptr,ia_ptr,ispn_ptr,d_mtrx_ptr,ld_ptr)
-end subroutine sirius_get_d_operator_matrix
-
-!
-!> @brief Set D-operator matrix
-!> @param [in] handler Simulation context handler.
-!> @param [in] ia Global index of atom.
-!> @param [in] ispn Spin component.
-!> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimension of D-matrix.
-subroutine sirius_set_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(in) :: ia
-integer, target, intent(in) :: ispn
-real(8), target, intent(out) :: d_mtrx
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: ia_ptr
-type(C_PTR) :: ispn_ptr
-type(C_PTR) :: d_mtrx_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_set_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
-&bind(C, name="sirius_set_d_operator_matrix")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: ia
-type(C_PTR), value :: ispn
-type(C_PTR), value :: d_mtrx
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-ia_ptr = C_NULL_PTR
-ia_ptr = C_LOC(ia)
-ispn_ptr = C_NULL_PTR
-ispn_ptr = C_LOC(ispn)
-d_mtrx_ptr = C_NULL_PTR
-d_mtrx_ptr = C_LOC(d_mtrx)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_set_d_operator_matrix_aux(handler_ptr,ia_ptr,ispn_ptr,d_mtrx_ptr,ld_ptr)
-end subroutine sirius_set_d_operator_matrix
-
-!
-!> @brief Set Q-operator matrix
-!> @param [in] handler Simulation context handler.
-!> @param [in] label Atom type label.
-!> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimension of Q-matrix.
-subroutine sirius_set_q_operator_matrix(handler,label,q_mtrx,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-real(8), target, dimension(ld,ld), intent(out) :: q_mtrx
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: q_mtrx_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_set_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
-&bind(C, name="sirius_set_q_operator_matrix")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: q_mtrx
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-q_mtrx_ptr = C_NULL_PTR
-q_mtrx_ptr = C_LOC(q_mtrx)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_set_q_operator_matrix_aux(handler_ptr,label_ptr,q_mtrx_ptr,ld_ptr)
-deallocate(label_c_type)
-end subroutine sirius_set_q_operator_matrix
-
-!
-!> @brief Get Q-operator matrix
-!> @param [in] handler Simulation context handler.
-!> @param [in] label Atom type label.
-!> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimension of Q-matrix.
-subroutine sirius_get_q_operator_matrix(handler,label,q_mtrx,ld)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-real(8), target, dimension(ld, ld), intent(out) :: q_mtrx
-integer, target, intent(in) :: ld
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: q_mtrx_ptr
-type(C_PTR) :: ld_ptr
-!
-interface
-subroutine sirius_get_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
-&bind(C, name="sirius_get_q_operator_matrix")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: q_mtrx
-type(C_PTR), value :: ld
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-q_mtrx_ptr = C_NULL_PTR
-q_mtrx_ptr = C_LOC(q_mtrx)
-ld_ptr = C_NULL_PTR
-ld_ptr = C_LOC(ld)
-call sirius_get_q_operator_matrix_aux(handler_ptr,label_ptr,q_mtrx_ptr,ld_ptr)
-deallocate(label_c_type)
-end subroutine sirius_get_q_operator_matrix
 
 !
 !> @brief Get all components of complex density matrix.
@@ -3966,7 +3671,7 @@ call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_fft_comm
 
 !
-!> @brief Get total number of G-vectors
+!> @brief Get total number of G-vectors on the fine grid.
 !> @param [in] handler Simulation context handler
 !> @param [out] num_gvec Total number of G-vectors
 !> @param [out] error_code Error code
@@ -4009,7 +3714,9 @@ end subroutine sirius_get_num_gvec
 !> @param [in] gvec_cart G-vectors in Cartesian coordinates.
 !> @param [in] gvec_len Length of G-vectors.
 !> @param [in] index_by_gvec G-vector index by lattice coordinates.
-subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
+!> @param [out] error_code Error code
+subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -4017,15 +3724,18 @@ integer, optional, target, dimension(3, *), intent(in) :: gvec
 real(8), optional, target, dimension(3, *), intent(in) :: gvec_cart
 real(8), optional, target, dimension(*), intent(in) :: gvec_len
 integer, optional, target, intent(in) :: index_by_gvec
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: gvec_ptr
 type(C_PTR) :: gvec_cart_ptr
 type(C_PTR) :: gvec_len_ptr
 type(C_PTR) :: index_by_gvec_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_gvec_arrays_aux(handler,gvec,gvec_cart,gvec_len,index_by_gvec)&
+subroutine sirius_get_gvec_arrays_aux(handler,gvec,gvec_cart,gvec_len,index_by_gvec,&
+&error_code)&
 &bind(C, name="sirius_get_gvec_arrays")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -4033,6 +3743,7 @@ type(C_PTR), value :: gvec
 type(C_PTR), value :: gvec_cart
 type(C_PTR), value :: gvec_len
 type(C_PTR), value :: index_by_gvec
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4054,8 +3765,12 @@ index_by_gvec_ptr = C_NULL_PTR
 if (present(index_by_gvec)) then
 index_by_gvec_ptr = C_LOC(index_by_gvec)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_get_gvec_arrays_aux(handler_ptr,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,&
-&index_by_gvec_ptr)
+&index_by_gvec_ptr,error_code_ptr)
 end subroutine sirius_get_gvec_arrays
 
 !

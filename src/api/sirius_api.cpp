@@ -369,41 +369,6 @@ sirius_serialize_timers(char const* fname__)
 
 /*
 @api begin
-sirius_integrate:
-  doc: Spline integration of f(x)*x^m.
-  arguments:
-    m:
-      type: int
-      attr: in, required
-      doc: Defines the x^{m} factor.
-    np:
-      type: int
-      attr: in, required
-      doc: Number of x-points.
-    x:
-      type: double
-      attr: in, required
-      doc: List of x-points.
-    f:
-      type: double
-      attr: in, required
-      doc: List of function values.
-    result:
-      type: double
-      attr: out, required
-      doc: Resulting value.
-@api end
-*/
-void
-sirius_integrate(int const* m__, int const* np__, double const* x__, double const* f__, double* result__)
-{
-    sirius::Radial_grid_ext<double> rgrid(*np__, x__);
-    sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + *np__));
-    *result__ = s.integrate(*m__);
-}
-
-/*
-@api begin
 sirius_context_initialized:
   doc: Check if the simulation context is initialized.
   arguments:
@@ -1575,38 +1540,46 @@ sirius_find_ground_state:
       type: bool
       attr: in, optional
       doc: boolean variable indicating if we want to save the ground state.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
-                         int const* niter__, bool const* save_state__)
+                         int const* niter__, bool const* save_state__, int* error_code__)
 {
-    auto& gs  = get_gs(gs_handler__);
-    auto& ctx = gs.ctx();
-    auto& inp = ctx.cfg().parameters();
-    gs.initial_state();
+    call_sirius(
+        [&]() {
+            auto& gs  = get_gs(gs_handler__);
+            auto& ctx = gs.ctx();
+            auto& inp = ctx.cfg().parameters();
+            gs.initial_state();
 
-    double rho_tol = inp.density_tol();
-    if (density_tol__) {
-        rho_tol = *density_tol__;
-    }
+            double rho_tol = inp.density_tol();
+            if (density_tol__) {
+                rho_tol = *density_tol__;
+            }
 
-    double etol = inp.energy_tol();
-    if (energy_tol__) {
-        etol = *energy_tol__;
-    }
+            double etol = inp.energy_tol();
+            if (energy_tol__) {
+                etol = *energy_tol__;
+            }
 
-    int niter = inp.num_dft_iter();
-    if (niter__) {
-        niter = *niter__;
-    }
+            int niter = inp.num_dft_iter();
+            if (niter__) {
+                niter = *niter__;
+            }
 
-    bool save{false};
-    if (save_state__ != nullptr) {
-        save = *save_state__;
-    }
+            bool save{false};
+            if (save_state__ != nullptr) {
+                save = *save_state__;
+            }
 
-    auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save);
+            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save);
+        },
+        error_code__);
 }
 
 /*
@@ -1656,102 +1629,110 @@ sirius_find_ground_state_robust:
       type: double
       attr: in, optional
       doc: Tolerance in total energy difference.
-    scf_ninit__:
+    scf_ninit:
       type: int
       attr: in, optional
       doc: Number of SCF iterations.
-    temp__:
+    temp:
       type: double
       attr: in, optional
       doc: Temperature.
-    tol__:
+    tol:
       type: double
       attr: in, optional
       doc: Tolerance.
-    cg_restart__:
+    cg_restart:
       type: int
       attr: in, optional
       doc: CG restart.
-    kappa__:
+    kappa:
       type: double
       attr: in, optional
       doc: Scalar preconditioner for pseudo Hamiltonian
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
 sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handler__, double const* scf_density_tol__,
                                 double const* scf_energy_tol__, int const* scf_ninit__, double const* temp__,
-                                double const* tol__)
+                                double const* tol__, int* error_code__)
 {
 #ifdef SIRIUS_NLCGLIB
-    auto& gs  = get_gs(gs_handler__);
-    auto& ctx = gs.ctx();
-    auto& inp = ctx.cfg().parameters();
-    gs.initial_state();
+    call_sirius(
+        [&]() {
+            auto& gs  = get_gs(gs_handler__);
+            auto& ctx = gs.ctx();
+            auto& inp = ctx.cfg().parameters();
+            gs.initial_state();
 
-    double rho_tol = inp.density_tol();
-    if (scf_density_tol__) {
-        rho_tol = *scf_density_tol__;
-    }
+            double rho_tol = inp.density_tol();
+            if (scf_density_tol__) {
+                rho_tol = *scf_density_tol__;
+            }
 
-    double etol = inp.energy_tol();
-    if (scf_energy_tol__) {
-        etol = *scf_energy_tol__;
-    }
+            double etol = inp.energy_tol();
+            if (scf_energy_tol__) {
+                etol = *scf_energy_tol__;
+            }
 
-    int niter = inp.num_dft_iter();
-    if (scf_ninit__) {
-        niter = *scf_ninit__;
-    }
+            int niter = inp.num_dft_iter();
+            if (scf_ninit__) {
+                niter = *scf_ninit__;
+            }
 
-    // do a couple of SCF iterations to obtain a good initial guess
-    bool save_state = false;
-    auto result     = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
+            // do a couple of SCF iterations to obtain a good initial guess
+            bool save_state = false;
+            auto result     = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
 
-    // now call the direct solver
-    // call nlcg solver
-    auto& potential = gs.potential();
-    auto& density   = gs.density();
+            // now call the direct solver
+            // call nlcg solver
+            auto& potential = gs.potential();
+            auto& density   = gs.density();
 
-    auto& kset = get_ks(ks_handler__);
+            auto& kset = get_ks(ks_handler__);
 
-    auto nlcg_params  = ctx.cfg().nlcg();
-    double temp       = nlcg_params.T();
-    double tol        = nlcg_params.tol();
-    double kappa      = nlcg_params.kappa();
-    double tau        = nlcg_params.tau();
-    int maxiter       = nlcg_params.maxiter();
-    int restart       = nlcg_params.restart();
-    std::string smear = ctx.cfg().parameters().smearing();
-    std::string pu    = ctx.cfg().control().processing_unit();
+            auto nlcg_params  = ctx.cfg().nlcg();
+            double temp       = nlcg_params.T();
+            double tol        = nlcg_params.tol();
+            double kappa      = nlcg_params.kappa();
+            double tau        = nlcg_params.tau();
+            int maxiter       = nlcg_params.maxiter();
+            int restart       = nlcg_params.restart();
+            std::string smear = ctx.cfg().parameters().smearing();
+            std::string pu    = ctx.cfg().control().processing_unit();
 
-    nlcglib::smearing_type smearing;
-    if (smear.compare("FD") == 0) {
-        smearing = nlcglib::smearing_type::FERMI_DIRAC;
-    } else if (smear.compare("GS") == 0) {
-        smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
-    } else {
-        throw std::runtime_error("invalid smearing type given");
-    }
+            nlcglib::smearing_type smearing;
+            if (smear.compare("FD") == 0) {
+                smearing = nlcglib::smearing_type::FERMI_DIRAC;
+            } else if (smear.compare("GS") == 0) {
+                smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+            } else {
+                throw std::runtime_error("invalid smearing type given");
+            }
 
-    sirius::Energy energy(kset, density, potential);
-    if (is_device_memory(ctx.preferred_memory_t())) {
-        if (pu.empty() || pu.compare("gpu") == 0) {
-            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0) {
-            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-        }
-    } else {
-        if (pu.empty() || pu.compare("gpu") == 0) {
-            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0) {
-            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-        }
-    }
+            sirius::Energy energy(kset, density, potential);
+            if (is_device_memory(ctx.preferred_memory_t())) {
+                if (pu.empty() || pu.compare("gpu") == 0) {
+                    nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                } else if (pu.compare("cpu") == 0) {
+                    nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                } else {
+                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                }
+            } else {
+                if (pu.empty() || pu.compare("gpu") == 0) {
+                    nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                } else if (pu.compare("cpu") == 0) {
+                    nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                } else {
+                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                }
+            }
+        },
+        error_code__);
 #else
     throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
 #endif
@@ -1873,16 +1854,24 @@ sirius_set_atom_type_radial_grid:
       type: double
       attr: in, required, dimension(num_radial_points)
       doc: List of radial grid points.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
 sirius_set_atom_type_radial_grid(void* const* handler__, char const* label__, int const* num_radial_points__,
-                                 double const* radial_points__)
+                                 double const* radial_points__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
 
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    type.set_radial_grid(*num_radial_points__, radial_points__);
+            auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+            type.set_radial_grid(*num_radial_points__, radial_points__);
+        },
+        error_code__);
 }
 
 /*
@@ -2433,80 +2422,6 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
 
 /*
 @api begin
-sirius_get_pw_coeffs_real:
-  doc: Get atom type contribution to plane-wave coefficients of a periodic function.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    atom_type:
-      type: string
-      attr: in, required
-      doc: Label of the atom type.
-    label:
-      type: string
-      attr: in, required
-      doc: Label of the function.
-    pw_coeffs:
-      type: double
-      attr: out, required, dimension(*)
-      doc: Local array of plane-wave coefficients.
-    ngv:
-      type: int
-      attr: in, optional
-      doc: Local number of G-vectors.
-    gvl:
-      type: int
-      attr: in, optional, dimension(3, *)
-      doc: List of G-vectors in lattice coordinates (Miller indices).
-    comm:
-      type: int
-      attr: in, optional
-      doc: MPI communicator used in distribution of G-vectors
-@api end
-*/
-void
-sirius_get_pw_coeffs_real(void* const* handler__, char const* atom_type__, char const* label__, double* pw_coeffs__,
-                          int const* ngv__, int* gvl__, int const* comm__)
-{
-    PROFILE("sirius_api::sirius_get_pw_coeffs_real");
-
-    std::string label(label__);
-    std::string atom_label(atom_type__);
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    int iat = sim_ctx.unit_cell().atom_type(atom_label).id();
-
-    auto make_pw_coeffs = [&](std::function<double(double)> f) {
-        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
-
-        double fourpi_omega = fourpi / sim_ctx.unit_cell().omega();
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < *ngv__; i++) {
-            auto gc        = dot(sim_ctx.unit_cell().reciprocal_lattice_vectors(),
-                          vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i)));
-            pw_coeffs__[i] = fourpi_omega * f(gc.length());
-        }
-    };
-
-    if (label == "rhoc") {
-        make_pw_coeffs([&](double g) { return sim_ctx.ps_core_ri().value<int>(iat, g); });
-    } else if (label == "rhoc_dg") {
-        make_pw_coeffs([&](double g) { return sim_ctx.ps_core_ri_djl().value<int>(iat, g); });
-    } else if (label == "vloc") {
-        make_pw_coeffs([&](double g) { return sim_ctx.vloc_ri().value(iat, g); });
-    } else if (label == "rho") {
-        make_pw_coeffs([&](double g) { return sim_ctx.ps_rho_ri().value<int>(iat, g); });
-    } else {
-        std::stringstream s;
-        s << "[sirius_get_pw_coeffs_real] wrong label" << std::endl << "  label : " << label;
-        TERMINATE(s);
-    }
-}
-
-/*
-@api begin
 sirius_initialize_subspace:
   doc: Initialize the subspace of wave-functions.
   arguments:
@@ -2518,15 +2433,23 @@ sirius_initialize_subspace:
       type: void*
       attr: in, required
       doc: K-point set handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__)
+sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__, int* error_code__)
 {
-    auto& gs = get_gs(gs_handler__);
-    auto& ks = get_ks(ks_handler__);
-    sirius::Hamiltonian0<double> H0(gs.potential());
-    sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(gs_handler__);
+        auto& ks = get_ks(ks_handler__);
+        sirius::Hamiltonian0<double> H0(gs.potential());
+        sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
+    },
+    error_code__);
 }
 
 /*
@@ -2589,24 +2512,6 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
         }
         sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
     }, error_code__);
-}
-
-/*
-@api begin
-sirius_generate_d_operator_matrix:
-  doc: Generate D-operator matrix.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Ground state handler.
-@api end
-*/
-void
-sirius_generate_d_operator_matrix(void* const* handler__)
-{
-    auto& gs = get_gs(handler__);
-    gs.potential().generate_D_operator_matrix();
 }
 
 /*
@@ -2780,191 +2685,191 @@ sirius_get_band_energies(void* const* ks_handler__, int const* ik__, int const* 
     }
 }
 
-/*
-@api begin
-sirius_get_d_operator_matrix:
-  doc: Get D-operator matrix
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Global index of atom.
-    ispn:
-      type: int
-      attr: in, required
-      doc: Spin component.
-    d_mtrx:
-      type: double
-      attr: out, required, dimension(ld, ld)
-      doc: D-matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of D-matrix.
-@api end
-*/
-void
-sirius_get_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
-                             int const* ld__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
+//== /*
+//== api begin
+//== sirius_get_d_operator_matrix:
+//==   doc: Get D-operator matrix
+//==   arguments:
+//==     handler:
+//==       type: void*
+//==       attr: in, required
+//==       doc: Simulation context handler.
+//==     ia:
+//==       type: int
+//==       attr: in, required
+//==       doc: Global index of atom.
+//==     ispn:
+//==       type: int
+//==       attr: in, required
+//==       doc: Spin component.
+//==     d_mtrx:
+//==       type: double
+//==       attr: out, required, dimension(ld, ld)
+//==       doc: D-matrix.
+//==     ld:
+//==       type: int
+//==       attr: in, required
+//==       doc: Leading dimension of D-matrix.
+//== api end
+//== */
+//== void
+//== sirius_get_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
+//==                              int const* ld__)
+//== {
+//==     auto& sim_ctx = get_sim_ctx(handler__);
+//== 
+//==     mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
+//== 
+//==     auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
+//==     auto idx_map = atomic_orbital_index_map_QE(atom.type());
+//==     int nbf      = atom.mt_basis_size();
+//== 
+//==     d_mtrx.zero();
+//== 
+//==     for (int xi1 = 0; xi1 < nbf; xi1++) {
+//==         int p1 = phase_Rlm_QE(atom.type(), xi1);
+//==         for (int xi2 = 0; xi2 < nbf; xi2++) {
+//==             int p2                             = phase_Rlm_QE(atom.type(), xi2);
+//==             d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1) * p1 * p2;
+//==         }
+//==     }
+//== }
+//== 
+//== /*
+//== api begin
+//== sirius_set_d_operator_matrix:
+//==   doc: Set D-operator matrix
+//==   arguments:
+//==     handler:
+//==       type: void*
+//==       attr: in, required
+//==       doc: Simulation context handler.
+//==     ia:
+//==       type: int
+//==       attr: in, required
+//==       doc: Global index of atom.
+//==     ispn:
+//==       type: int
+//==       attr: in, required
+//==       doc: Spin component.
+//==     d_mtrx:
+//==       type: double
+//==       attr: out, required
+//==       doc: D-matrix.
+//==     ld:
+//==       type: int
+//==       attr: in, required
+//==       doc: Leading dimension of D-matrix.
+//== api end
+//== */
+//== void
+//== sirius_set_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
+//==                              int const* ld__)
+//== {
+//==     auto& sim_ctx = get_sim_ctx(handler__);
+//== 
+//==     mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
+//== 
+//==     auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
+//==     auto idx_map = atomic_orbital_index_map_QE(atom.type());
+//==     int nbf      = atom.mt_basis_size();
+//== 
+//==     for (int xi1 = 0; xi1 < nbf; xi1++) {
+//==         int p1 = phase_Rlm_QE(atom.type(), xi1);
+//==         for (int xi2 = 0; xi2 < nbf; xi2++) {
+//==             int p2                             = phase_Rlm_QE(atom.type(), xi2);
+//==             atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
+//==         }
+//==     }
+//== }
 
-    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-
-    auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
-    auto idx_map = atomic_orbital_index_map_QE(atom.type());
-    int nbf      = atom.mt_basis_size();
-
-    d_mtrx.zero();
-
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        int p1 = phase_Rlm_QE(atom.type(), xi1);
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            int p2                             = phase_Rlm_QE(atom.type(), xi2);
-            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1) * p1 * p2;
-        }
-    }
-}
-
-/*
-@api begin
-sirius_set_d_operator_matrix:
-  doc: Set D-operator matrix
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Global index of atom.
-    ispn:
-      type: int
-      attr: in, required
-      doc: Spin component.
-    d_mtrx:
-      type: double
-      attr: out, required
-      doc: D-matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of D-matrix.
-@api end
-*/
-void
-sirius_set_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
-                             int const* ld__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-
-    auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
-    auto idx_map = atomic_orbital_index_map_QE(atom.type());
-    int nbf      = atom.mt_basis_size();
-
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        int p1 = phase_Rlm_QE(atom.type(), xi1);
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            int p2                             = phase_Rlm_QE(atom.type(), xi2);
-            atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
-        }
-    }
-}
-
-/*
-@api begin
-sirius_set_q_operator_matrix:
-  doc: Set Q-operator matrix
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    label:
-      type: string
-      attr: in, required
-      doc: Atom type label.
-    q_mtrx:
-      type: double
-      attr: out, required, dimension(ld,ld)
-      doc: Q-matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of Q-matrix.
-@api end
-*/
-void
-sirius_set_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
-    mdarray<double, 2> qm(*ld__, *ld__);
-
-    auto idx_map = atomic_orbital_index_map_QE(type);
-    int nbf      = type.mt_basis_size();
-
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        int p1 = phase_Rlm_QE(type, xi1);
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            int p2       = phase_Rlm_QE(type, xi2);
-            qm(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
-        }
-    }
-    sim_ctx.augmentation_op(type.id())->q_mtrx(qm);
-}
-
-/*
-@api begin
-sirius_get_q_operator_matrix:
-  doc: Get Q-operator matrix
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    label:
-      type: string
-      attr: in, required
-      doc: Atom type label.
-    q_mtrx:
-      type: double
-      attr: out, required, dimension(ld, ld)
-      doc: Q-matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of Q-matrix.
-@api end
-*/
-void
-sirius_get_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
-
-    auto idx_map = atomic_orbital_index_map_QE(type);
-    int nbf      = type.mt_basis_size();
-
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        int p1 = phase_Rlm_QE(type, xi1);
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            int p2                             = phase_Rlm_QE(type, xi2);
-            q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx.augmentation_op(type.id())->q_mtrx(xi1, xi2) * p1 * p2;
-        }
-    }
-}
+//== /*
+//== api begin
+//== sirius_set_q_operator_matrix:
+//==   doc: Set Q-operator matrix
+//==   arguments:
+//==     handler:
+//==       type: void*
+//==       attr: in, required
+//==       doc: Simulation context handler.
+//==     label:
+//==       type: string
+//==       attr: in, required
+//==       doc: Atom type label.
+//==     q_mtrx:
+//==       type: double
+//==       attr: out, required, dimension(ld,ld)
+//==       doc: Q-matrix.
+//==     ld:
+//==       type: int
+//==       attr: in, required
+//==       doc: Leading dimension of Q-matrix.
+//== api end
+//==*/
+//==void
+//==sirius_set_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==
+//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+//==    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
+//==    mdarray<double, 2> qm(*ld__, *ld__);
+//==
+//==    auto idx_map = atomic_orbital_index_map_QE(type);
+//==    int nbf      = type.mt_basis_size();
+//==
+//==    for (int xi1 = 0; xi1 < nbf; xi1++) {
+//==        int p1 = phase_Rlm_QE(type, xi1);
+//==        for (int xi2 = 0; xi2 < nbf; xi2++) {
+//==            int p2       = phase_Rlm_QE(type, xi2);
+//==            qm(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
+//==        }
+//==    }
+//==    sim_ctx.augmentation_op(type.id())->q_mtrx(qm);
+//==}
+//==
+//==/*
+//==api begin
+//==sirius_get_q_operator_matrix:
+//==  doc: Get Q-operator matrix
+//==  arguments:
+//==    handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: Simulation context handler.
+//==    label:
+//==      type: string
+//==      attr: in, required
+//==      doc: Atom type label.
+//==    q_mtrx:
+//==      type: double
+//==      attr: out, required, dimension(ld, ld)
+//==      doc: Q-matrix.
+//==    ld:
+//==      type: int
+//==      attr: in, required
+//==      doc: Leading dimension of Q-matrix.
+//==api end
+//==*/
+//==void
+//==sirius_get_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==
+//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+//==    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
+//==
+//==    auto idx_map = atomic_orbital_index_map_QE(type);
+//==    int nbf      = type.mt_basis_size();
+//==
+//==    for (int xi1 = 0; xi1 < nbf; xi1++) {
+//==        int p1 = phase_Rlm_QE(type, xi1);
+//==        for (int xi2 = 0; xi2 < nbf; xi2++) {
+//==            int p2                             = phase_Rlm_QE(type, xi2);
+//==            q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx.augmentation_op(type.id())->q_mtrx(xi1, xi2) * p1 * p2;
+//==        }
+//==    }
+//==}
 
 /*
 @api begin
@@ -4112,7 +4017,7 @@ sirius_get_fft_comm(void* const* handler__, int* fcomm__)
 /*
 @api begin
 sirius_get_num_gvec:
-  doc: Get total number of G-vectors
+  doc: Get total number of G-vectors on the fine grid.
   arguments:
     handler:
       type: void*
@@ -4139,7 +4044,6 @@ sirius_get_num_gvec(void* const* handler__, int* num_gvec__, int* error_code__)
         error_code__);
 }
 
-// TODO: add dimensions keyword to the argument properties
 /*
 @api begin
 sirius_get_gvec_arrays:
@@ -4165,50 +4069,59 @@ sirius_get_gvec_arrays:
       type: int
       attr: in, optional
       doc: G-vector index by lattice coordinates.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
 sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__, double* gvec_len__,
-                       int* index_by_gvec__)
+                       int* index_by_gvec__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
 
-    if (gvec__ != nullptr) {
-        mdarray<int, 2> gvec(gvec__, 3, sim_ctx.gvec().num_gvec());
-        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-            auto gv = sim_ctx.gvec().gvec(ig);
-            for (int x : {0, 1, 2}) {
-                gvec(x, ig) = gv[x];
+            if (gvec__ != nullptr) {
+                sddk::mdarray<int, 2> gvec(gvec__, 3, sim_ctx.gvec().num_gvec());
+                for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                    auto gv = sim_ctx.gvec().gvec(ig);
+                    for (int x : {0, 1, 2}) {
+                        gvec(x, ig) = gv[x];
+                    }
+                }
             }
-        }
-    }
-    if (gvec_cart__ != nullptr) {
-        mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx.gvec().num_gvec());
-        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-            auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
-            for (int x : {0, 1, 2}) {
-                gvec_cart(x, ig) = gvc[x];
+            if (gvec_cart__ != nullptr) {
+                sddk::mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx.gvec().num_gvec());
+                for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                    auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
+                    for (int x : {0, 1, 2}) {
+                        gvec_cart(x, ig) = gvc[x];
+                    }
+                }
             }
-        }
-    }
-    if (gvec_len__ != nullptr) {
-        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-            gvec_len__[ig] = sim_ctx.gvec().gvec_len(ig);
-        }
-    }
-    if (index_by_gvec__ != nullptr) {
-        auto d0 = sim_ctx.fft_grid().limits(0);
-        auto d1 = sim_ctx.fft_grid().limits(1);
-        auto d2 = sim_ctx.fft_grid().limits(2);
+            if (gvec_len__ != nullptr) {
+                for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                    gvec_len__[ig] = sim_ctx.gvec().gvec_len(ig);
+                }
+            }
+            if (index_by_gvec__ != nullptr) {
+                auto d0 = sim_ctx.fft_grid().limits(0);
+                auto d1 = sim_ctx.fft_grid().limits(1);
+                auto d2 = sim_ctx.fft_grid().limits(2);
 
-        sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
-        std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
+                sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
+                std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
 
-        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-            auto G                          = sim_ctx.gvec().gvec(ig);
-            index_by_gvec(G[0], G[1], G[2]) = ig + 1;
-        }
-    }
+                for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                    auto G = sim_ctx.gvec().gvec(ig);
+
+                    index_by_gvec(G[0], G[1], G[2]) = ig + 1;
+                }
+            }
+        },
+        error_code__);
 }
 
 /*
