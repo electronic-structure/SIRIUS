@@ -947,13 +947,21 @@ sirius_add_xc_functional:
       type: string
       attr: in, required
       doc: LibXC label of the functional.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_add_xc_functional(void* const* handler__, char const* name__)
+sirius_add_xc_functional(void* const* handler__, char const* name__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.add_xc_functional(std::string(name__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.add_xc_functional(std::string(name__));
+        },
+        error_code__);
 }
 
 /*
@@ -1013,13 +1021,23 @@ sirius_set_lattice_vectors:
       type: double
       attr: in, required, dimension(3)
       doc: 3rd vector
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__)
+sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__,
+                           int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
+                                                    vector3d<double>(a3__));
+        },
+        error_code__);
 }
 
 /*
@@ -1085,13 +1103,21 @@ sirius_print_info:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_print_info(void* const* handler__)
+sirius_print_info(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.print_info();
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.print_info();
+        },
+        error_code__);
 }
 
 /*
@@ -1143,36 +1169,45 @@ sirius_set_periodic_function_ptr:
       type: double
       attr: in, optional
       doc: Pointer to the regualr-grid part of the function.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__)
+sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__,
+                                 int* error_code__)
 {
-    auto& gs = get_gs(handler__);
-    std::string label(label__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            std::string label(label__);
 
-    std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-        {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-        {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-        {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-        {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-        {"vha", &gs.potential().hartree_potential()}};
+            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
+                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
+                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
+                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
+                {"vha", &gs.potential().hartree_potential()}};
 
-    sirius::Periodic_function<double>* f;
-    try {
-        f = func_map.at(label);
-    } catch (...) {
-        std::stringstream s;
-        s << "wrong label: " << label;
-        TERMINATE(s);
-    }
+            sirius::Periodic_function<double>* f;
+            try {
+                f = func_map.at(label);
+            } catch (...) {
+                std::stringstream s;
+                s << "wrong label: " << label;
+                RTE_THROW(s);
+            }
 
-    if (f_mt__) {
-        f->set_mt_ptr(f_mt__);
-    }
-    if (f_rg__) {
-        f->set_rg_ptr(f_rg__);
-    }
+            if (f_mt__) {
+                f->set_mt_ptr(f_mt__);
+            }
+            if (f_rg__) {
+                f->set_rg_ptr(f_rg__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -1489,6 +1524,10 @@ sirius_initialize_kset:
       type: void*
       attr: in, required
       doc: K-point set handler.
+    count:
+      type: int
+      attr: in, optional, dimension(*)
+      doc: Local number of k-points for each MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1496,12 +1535,17 @@ sirius_initialize_kset:
 @api end
 */
 void
-sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
+sirius_initialize_kset(void* const* ks_handler__, int* count__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& ks = get_ks(ks_handler__);
-            ks.initialize();
+            if (count__) {
+                std::vector<int> count(count__, count__ + ks.comm().size());
+                ks.initialize(count);
+            } else {
+                ks.initialize();
+            }
         },
         error_code__);
 }
@@ -3349,6 +3393,228 @@ sirius_get_q_operator(void* const* handler__, char const* label__, int const* xi
 
 /*
 @api begin
+sirius_get_wave_functions_v2:
+  doc: Get wave-functions.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    vkl:
+      type: double
+      attr: in, optional, dimension(3)
+      doc: Latttice coordinates of the k-point.
+    spin:
+      type: int
+      attr: in, optional
+      doc: Spin index in case of collinear magnetism.
+    num_gvec_loc:
+      type: int
+      attr: in, optional
+      doc: Local number of G-vectors for a k-point.
+    gvec_loc:
+      type: int
+      attr: in, optional, dimension(3, *)
+      doc: List of G-vectors.
+    evec:
+      type: complex
+      attr: out, optional
+      doc: Wave-functions.
+    ld:
+      type: int
+      attr: in, optional
+      doc: Leading dimension of evec array.
+    num_spin_comp:
+      type: int
+      attr: in, optional
+      doc: Number of spin components.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void
+sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int const* spin__,
+                             int const* num_gvec_loc__, int const* gvec_loc__, std::complex<double>* evec__,
+                             int const* ld__, int const* num_spin_comp__, int* error_code__)
+{
+    PROFILE("sirius_api::sirius_get_wave_functions");
+
+    auto gvec_mapping = [&](Gvec const& gkvec)
+    {
+        std::vector<int> igm(*num_gvec_loc__);
+
+        sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
+
+        /* go in the order of host code */
+        for (int ig = 0; ig < *num_gvec_loc__; ig++) {
+            ///* G vector of host code */
+            //auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
+            //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
+            //if (gvc.length() > kset.ctx().gk_cutoff()) {
+            //    continue;
+            //}
+            int ig1 = gkvec.index_by_gvec({gv(0, ig), gv(1, ig), gv(2, ig)});
+            /* index of G was not found */
+            if (ig1 < 0) {
+                /* try -G */
+                ig1 = gkvec.index_by_gvec({-gv(0, ig), -gv(1, ig), -gv(2, ig)});
+                /* index of -G was not found */
+                if (ig1 < 0) {
+                    RTE_THROW("index of G-vector is not found");
+                } else {
+                    /* this will tell to conjugate PW coefficients as we take them from -G index */
+                    igm[ig] = -ig1;
+                }
+            } else {
+                igm[ig] = ig1;
+            }
+        }
+        return igm;
+    };
+
+    call_sirius(
+        [&]() {
+
+            auto& ks = get_ks(ks_handler__);
+
+            auto& sim_ctx = ks.ctx();
+
+            std::vector<int> buf(ks.comm().size());
+
+            int jk{-1};
+            if (vkl__) {
+                jk = ks.find_kpoint(vkl__);
+                if (jk == -1) {
+                    std::stringstream s;
+                    s << "k-point is not found";
+                    RTE_THROW(s);
+                }
+            }
+            ks.comm().allgather(&jk, buf.data(), 1, ks.comm().rank());
+            int dest_rank{-1};
+            for (int i = 0; i < ks.comm().size(); i++) {
+                if (buf[i] >= 0) {
+                    dest_rank = i;
+                    jk = buf[i];
+                    break;
+                }
+            }
+            int num_spin_comp{-1};
+            if (num_spin_comp__) {
+                num_spin_comp = *num_spin_comp__;
+                if (!(num_spin_comp == 1 || num_spin_comp == 2)) {
+                    RTE_THROW("wrong number of spin components");
+                }
+            }
+            ks.comm().bcast(&num_spin_comp, 1, dest_rank);
+            if ((sim_ctx.num_mag_dims() == 3 && num_spin_comp != 2) ||
+                (sim_ctx.num_mag_dims() != 3 && num_spin_comp == 2)) {
+                RTE_THROW("inconsistent number of spin components");
+            }
+
+            int spin{-1};
+            if (spin__) {
+                spin = *spin__ - 1;
+                if (!(spin == 0 || spin == 1)) {
+                    RTE_THROW("wrong spin index");
+                }
+            }
+            ks.comm().bcast(&spin, 1, dest_rank);
+
+            /* rank where k-point vkl resides on the SIRIUS side */
+            int src_rank = ks.spl_num_kpoints().local_rank(jk);
+
+            if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
+                /* send G+k copy to destination rank (where host code receives the data) */
+                auto gkvec = ks.get_gkvec(jk, dest_rank);
+
+                sddk::mdarray<double_complex, 2> wf;
+                if (ks.comm().rank() == dest_rank) {
+                    /* check number of G+k vectors */
+                    int ngk = *num_gvec_loc__;
+                    gkvec.comm().allreduce(&ngk, 1);
+                    if (ngk != gkvec.num_gvec()) {
+                        vector3d<double> vkl(vkl__);
+                        std::stringstream s;
+                        s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk  << std::endl
+                          << "expected number : " << gkvec.num_gvec() << std::endl
+                          << "actual number   : " << ngk << std::endl
+                          << "local number of G+k vectors passed by rank " << gkvec.comm().rank()
+                          << " is " << *num_gvec_loc__;
+                        RTE_THROW(s);
+                    }
+                    wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
+                }
+
+                int ispn0{0};
+                int ispn1{1};
+                /* fetch two components in non-collinear case, otherwise fetch only one component */
+                if (sim_ctx.num_mag_dims() != 3) {
+                    ispn0 = ispn1 = spin;
+                }
+                /* send wave-functions for each spin channel */
+                for (int s = ispn0; s <= ispn1; s++) {
+                    int tag = Communicator::get_tag(src_rank, dest_rank) + s;
+                    Request req;
+
+                    /* send wave-functions */
+                    if (ks.comm().rank() == src_rank) {
+                        auto kp = ks.get<double>(jk);
+                        int count = kp->gkvec().count();
+                        req = ks.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
+                                              count * sim_ctx.num_bands(), dest_rank, tag);
+                    }
+                    /* receive wave-functions */
+                    if (ks.comm().rank() == dest_rank) {
+                        int count = gkvec.count();
+                        /* receive the array with wave-functions */
+                        ks.comm().recv(&wf(0, 0), count * sim_ctx.num_bands(), src_rank, tag);
+
+                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
+                        int offset = gkvec.offset();
+                        sddk::mdarray<double_complex, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
+
+                        auto igmap = gvec_mapping(gkvec);
+
+                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s)
+                        {
+                            int ispn = s;
+                            if (sim_ctx.num_mag_dims() == 1) {
+                                ispn = 0;
+                            }
+                            for (int ig = 0; ig < *num_gvec_loc__; ig++) {
+                                int ig1 = igmap[ig];
+                                double_complex z;
+                                if (ig1 < 0) {
+                                    z = std::conj(wf_tmp[-ig1]);
+                                } else {
+                                    z = wf_tmp[ig1];
+                                }
+                                evec(ig, ispn, i) = z;
+                            }
+                        };
+
+                        /* store wave-functions */
+                        for (int i = 0; i < sim_ctx.num_bands(); i++) {
+                            /* gather full column of PW coefficients */
+                            sim_ctx.comm_band().allgather(&wf(0, i), wf_tmp.data(), count, offset);
+                            store_wf(wf_tmp, i, s);
+                        }
+                    }
+                    if (ks.comm().rank() == src_rank) {
+                        req.wait();
+                    }
+                }
+            }
+        },
+        error_code__);
+}
+
+
+/*
+@api begin
 sirius_get_wave_functions:
   doc: Get wave-functions.
   arguments:
@@ -4131,24 +4397,53 @@ sirius_get_step_function:
       doc: Simulation context handler
     cfunig:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Plane-wave coefficients of step function.
     cfunrg:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Values of the step function on the regular grid.
+    num_rg_points:
+      type: int
+      attr: in, required
+      doc: Number of real-space points.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__)
+sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__,
+                         int* num_rg_points__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    for (int i = 0; i < sim_ctx.spfft<double>().local_slice_size(); i++) {
-        cfunrg__[i] = sim_ctx.theta(i);
-    }
-    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-        cfunig__[ig] = sim_ctx.theta_pw(ig);
-    }
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+                cfunig__[ig] = sim_ctx.theta_pw(ig);
+            }
+            auto& fft = sim_ctx.spfft<double>();
+            bool is_local_rg;
+            if (sim_ctx.fft_grid().num_points() == *num_rg_points__) {
+                is_local_rg = false;
+            } else if (static_cast<int>(spfft_grid_size(fft)) == *num_rg_points__) {
+                is_local_rg = true;
+            } else {
+                throw std::runtime_error("wrong number of regular grid points");
+            }
+
+            int offs = (is_local_rg) ? 0 : fft.dim_x() * fft.dim_y() * fft.local_z_offset();
+            if (fft.local_slice_size()) {
+                for (int i = 0; i < fft.local_slice_size(); i++) {
+                    cfunrg__[offs + i] = sim_ctx.theta(i);
+                }
+            }
+            if (is_local_rg) {
+                sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
+            }
+    },
+    error_code__);
 }
 
 /*
@@ -5263,19 +5558,27 @@ sirius_get_fv_eigen_values:
       type: int
       attr: in, required
       doc: Number of first-variational states
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
 void
-sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__)
+sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_eval__, int const* num_fv_states__,
+                           int* error_code__)
 {
-    auto& ks = get_ks(handler__);
-    if (*num_fv_states__ != ks.ctx().num_fv_states()) {
-        TERMINATE("wrong number of first-variational states");
-    }
-    int ik = *ik__ - 1;
-    for (int i = 0; i < *num_fv_states__; i++) {
-        fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
-    }
+    call_sirius(
+        [&]() {
+        auto& ks = get_ks(handler__);
+        if (*num_fv_states__ != ks.ctx().num_fv_states()) {
+            TERMINATE("wrong number of first-variational states");
+        }
+        int ik = *ik__ - 1;
+        for (int i = 0; i < *num_fv_states__; i++) {
+            fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
+        }
+    }, error_code__);
 }
 
 /*

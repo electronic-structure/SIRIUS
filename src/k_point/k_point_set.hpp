@@ -248,20 +248,17 @@ class K_point_set
         /* rank that stores jk */
         int jrank = spl_num_kpoints().local_rank(jk__);
 
-        /* placeholder for G+k vectors of kpoint jk */
-        //Gvec gkvec(ctx_.comm_band());
+        /* need this to pass communicator */
+        Gvec gkvec(ctx_.comm_band());
 
         Gvec const* gvptr{nullptr};
         /* if this rank stores the k-point, then send it */
-        if (jrank == my_rank) {
+        if (my_rank == jrank) {
             gvptr = &kpoints_[jk__].get()->gkvec();
+        } else {
+            gvptr = &gkvec;
         }
         return send_recv(comm(), *gvptr, jrank, rank__);
-        ///* this rank receives the k-point */
-        //if (rank__ == my_rank) {
-        //    gkvec.send_recv(comm(), jrank, rank__, gkvec);
-        //}
-        //return gkvec;
     }
 };
 
