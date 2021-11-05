@@ -36,7 +36,6 @@
 
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
-
 template <typename T>
 void
 sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__,
@@ -1156,14 +1155,11 @@ sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, do
                 {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
                 {"vha", &gs.potential().hartree_potential()}};
 
-            sirius::Periodic_function<double>* f;
-            try {
-                f = func_map.at(label);
-            } catch (...) {
-                std::stringstream s;
-                s << "wrong label: " << label;
-                RTE_THROW(s);
+            if (!func_map.count(label)) {
+                RTE_THROW("wrong label: " + label);
             }
+
+            auto f = func_map.at(label);
 
             if (f_mt__) {
                 f->set_mt_ptr(f_mt__);
@@ -1381,7 +1377,7 @@ sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpo
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
 
-            mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+            sddk::mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
             sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
             new_kset->add_kpoints(kpoints, kpoint_weights__);
@@ -2682,298 +2678,6 @@ sirius_get_band_energies(void* const* ks_handler__, int const* ik__, int const* 
     int ik   = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
         band_energies__[i] = ks.get<double>(ik)->band_energy(i, *ispn__);
-    }
-}
-
-//== /*
-//== api begin
-//== sirius_get_d_operator_matrix:
-//==   doc: Get D-operator matrix
-//==   arguments:
-//==     handler:
-//==       type: void*
-//==       attr: in, required
-//==       doc: Simulation context handler.
-//==     ia:
-//==       type: int
-//==       attr: in, required
-//==       doc: Global index of atom.
-//==     ispn:
-//==       type: int
-//==       attr: in, required
-//==       doc: Spin component.
-//==     d_mtrx:
-//==       type: double
-//==       attr: out, required, dimension(ld, ld)
-//==       doc: D-matrix.
-//==     ld:
-//==       type: int
-//==       attr: in, required
-//==       doc: Leading dimension of D-matrix.
-//== api end
-//== */
-//== void
-//== sirius_get_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
-//==                              int const* ld__)
-//== {
-//==     auto& sim_ctx = get_sim_ctx(handler__);
-//== 
-//==     mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-//== 
-//==     auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
-//==     auto idx_map = atomic_orbital_index_map_QE(atom.type());
-//==     int nbf      = atom.mt_basis_size();
-//== 
-//==     d_mtrx.zero();
-//== 
-//==     for (int xi1 = 0; xi1 < nbf; xi1++) {
-//==         int p1 = phase_Rlm_QE(atom.type(), xi1);
-//==         for (int xi2 = 0; xi2 < nbf; xi2++) {
-//==             int p2                             = phase_Rlm_QE(atom.type(), xi2);
-//==             d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1) * p1 * p2;
-//==         }
-//==     }
-//== }
-//== 
-//== /*
-//== api begin
-//== sirius_set_d_operator_matrix:
-//==   doc: Set D-operator matrix
-//==   arguments:
-//==     handler:
-//==       type: void*
-//==       attr: in, required
-//==       doc: Simulation context handler.
-//==     ia:
-//==       type: int
-//==       attr: in, required
-//==       doc: Global index of atom.
-//==     ispn:
-//==       type: int
-//==       attr: in, required
-//==       doc: Spin component.
-//==     d_mtrx:
-//==       type: double
-//==       attr: out, required
-//==       doc: D-matrix.
-//==     ld:
-//==       type: int
-//==       attr: in, required
-//==       doc: Leading dimension of D-matrix.
-//== api end
-//== */
-//== void
-//== sirius_set_d_operator_matrix(void* const* handler__, int const* ia__, int const* ispn__, double* d_mtrx__,
-//==                              int const* ld__)
-//== {
-//==     auto& sim_ctx = get_sim_ctx(handler__);
-//== 
-//==     mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-//== 
-//==     auto& atom   = sim_ctx.unit_cell().atom(*ia__ - 1);
-//==     auto idx_map = atomic_orbital_index_map_QE(atom.type());
-//==     int nbf      = atom.mt_basis_size();
-//== 
-//==     for (int xi1 = 0; xi1 < nbf; xi1++) {
-//==         int p1 = phase_Rlm_QE(atom.type(), xi1);
-//==         for (int xi2 = 0; xi2 < nbf; xi2++) {
-//==             int p2                             = phase_Rlm_QE(atom.type(), xi2);
-//==             atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
-//==         }
-//==     }
-//== }
-
-//== /*
-//== api begin
-//== sirius_set_q_operator_matrix:
-//==   doc: Set Q-operator matrix
-//==   arguments:
-//==     handler:
-//==       type: void*
-//==       attr: in, required
-//==       doc: Simulation context handler.
-//==     label:
-//==       type: string
-//==       attr: in, required
-//==       doc: Atom type label.
-//==     q_mtrx:
-//==       type: double
-//==       attr: out, required, dimension(ld,ld)
-//==       doc: Q-matrix.
-//==     ld:
-//==       type: int
-//==       attr: in, required
-//==       doc: Leading dimension of Q-matrix.
-//== api end
-//==*/
-//==void
-//==sirius_set_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==
-//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-//==    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
-//==    mdarray<double, 2> qm(*ld__, *ld__);
-//==
-//==    auto idx_map = atomic_orbital_index_map_QE(type);
-//==    int nbf      = type.mt_basis_size();
-//==
-//==    for (int xi1 = 0; xi1 < nbf; xi1++) {
-//==        int p1 = phase_Rlm_QE(type, xi1);
-//==        for (int xi2 = 0; xi2 < nbf; xi2++) {
-//==            int p2       = phase_Rlm_QE(type, xi2);
-//==            qm(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
-//==        }
-//==    }
-//==    sim_ctx.augmentation_op(type.id())->q_mtrx(qm);
-//==}
-//==
-//==/*
-//==api begin
-//==sirius_get_q_operator_matrix:
-//==  doc: Get Q-operator matrix
-//==  arguments:
-//==    handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: Simulation context handler.
-//==    label:
-//==      type: string
-//==      attr: in, required
-//==      doc: Atom type label.
-//==    q_mtrx:
-//==      type: double
-//==      attr: out, required, dimension(ld, ld)
-//==      doc: Q-matrix.
-//==    ld:
-//==      type: int
-//==      attr: in, required
-//==      doc: Leading dimension of Q-matrix.
-//==api end
-//==*/
-//==void
-//==sirius_get_q_operator_matrix(void* const* handler__, char const* label__, double* q_mtrx__, int const* ld__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==
-//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-//==    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
-//==
-//==    auto idx_map = atomic_orbital_index_map_QE(type);
-//==    int nbf      = type.mt_basis_size();
-//==
-//==    for (int xi1 = 0; xi1 < nbf; xi1++) {
-//==        int p1 = phase_Rlm_QE(type, xi1);
-//==        for (int xi2 = 0; xi2 < nbf; xi2++) {
-//==            int p2                             = phase_Rlm_QE(type, xi2);
-//==            q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx.augmentation_op(type.id())->q_mtrx(xi1, xi2) * p1 * p2;
-//==        }
-//==    }
-//==}
-
-/*
-@api begin
-sirius_get_density_matrix:
-  doc: Get all components of complex density matrix.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: DFT ground state handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Global index of atom.
-    dm:
-      type: complex
-      attr: out, required
-      doc: Complex density matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of the density matrix.
-@api end
-*/
-void
-sirius_get_density_matrix(void* const* handler__, int const* ia__, std::complex<double>* dm__,
-                          int const* ld__) // TODO: this should be generalized for any phase factor convention
-{
-    auto& gs = get_gs(handler__);
-
-    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
-
-    auto& atom = gs.ctx().unit_cell().atom(*ia__ - 1);
-    if (gs.ctx().full_potential()) {
-        int nbf = std::min(atom.mt_basis_size(), *ld__);
-        for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
-            for (int i = 0; i < nbf; i++) {
-                for (int j = 0; j < nbf; j++) {
-                    dm(i, j, icomp) = gs.density().density_matrix()(i, j, icomp, *ia__ - 1);
-                }
-            }
-        }
-    } else {
-        auto idx_map = atomic_orbital_index_map_QE(atom.type());
-        int nbf      = atom.mt_basis_size();
-        assert(nbf <= *ld__);
-
-        for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
-            for (int i = 0; i < nbf; i++) {
-                int p1 = phase_Rlm_QE(atom.type(), i);
-                for (int j = 0; j < nbf; j++) {
-                    int p2 = phase_Rlm_QE(atom.type(), j);
-                    dm(idx_map[i], idx_map[j], icomp) =
-                        gs.density().density_matrix()(i, j, icomp, *ia__ - 1) * static_cast<double>(p1 * p2);
-                }
-            }
-        }
-    }
-}
-
-/*
-@api begin
-sirius_set_density_matrix:
-  doc: Set all components of complex density matrix.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: DFT ground state handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Global index of atom.
-    dm:
-      type: complex
-      attr: out, required
-      doc: Complex density matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of the density matrix.
-@api end
-*/
-void
-sirius_set_density_matrix(void* const* handler__, int const* ia__, std::complex<double>* dm__, int const* ld__)
-{
-    auto& gs = get_gs(handler__);
-
-    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
-
-    auto& atom   = gs.ctx().unit_cell().atom(*ia__ - 1);
-    auto idx_map = atomic_orbital_index_map_QE(atom.type());
-    int nbf      = atom.mt_basis_size();
-    assert(nbf <= *ld__);
-
-    for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
-        for (int i = 0; i < nbf; i++) {
-            int p1 = phase_Rlm_QE(atom.type(), i);
-            for (int j = 0; j < nbf; j++) {
-                int p2 = phase_Rlm_QE(atom.type(), j);
-                gs.density().density_matrix()(i, j, icomp, *ia__ - 1) =
-                    dm(idx_map[i], idx_map[j], icomp) * static_cast<double>(p1 * p2);
-            }
-        }
     }
 }
 
