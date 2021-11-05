@@ -892,9 +892,9 @@ void K_point<T>::save(std::string const& name__, int id__) const
 
         /* save the entire G+k object */
         //TODO: only the list of z-columns is probably needed to recreate the G+k vectors
-        serializer s;
-        gkvec().pack(s);
-        fout["K_point_set"][id__].write("gkvec", s.stream());
+        //serializer s;
+        //gkvec().pack(s);
+        //fout["K_point_set"][id__].write("gkvec", s.stream());
 
         /* save the order of G-vectors */
         mdarray<int, 2> gv(3, num_gkvec());

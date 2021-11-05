@@ -105,6 +105,12 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
     }
 }
 
+/* forward declarations */
+class Gvec;
+void serialize(serializer& s__, Gvec const& gv__);
+void deserialize(serializer& s__, Gvec& gv__);
+Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
+
 /// A set of G-vectors for FFTs and G+k basis functions.
 /** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
  *  z-columns. The order of z-sticks and G-vectors is not fixed and depends on the number of MPI ranks used
@@ -199,12 +205,6 @@ class Gvec
     /// Cartesian coordinaes for a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_;
 
-    /* copy constructor is forbidden */
-    Gvec(Gvec const& src__) = delete;
-
-    /* copy assignment operator is forbidden */
-    Gvec& operator=(Gvec const& src__) = delete;
-
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
@@ -223,7 +223,7 @@ class Gvec
 
     /// Find a list of G-vector shells.
     /** G-vectors belonging to the same shell have the same length and transform to each other
-        under a lattice symmetry operation
+        under a lattice symmetry operation.
      */
     void find_gvec_shells();
 
@@ -232,6 +232,16 @@ class Gvec
 
     /// Initialize everything.
     void init(FFT3D_grid const& fft_grid);
+
+    friend void sddk::serialize(serializer& s__, Gvec const& gv__);
+
+    friend void sddk::deserialize(serializer& s__, Gvec& gv__);
+
+    /* copy constructor is forbidden */
+    Gvec(Gvec const& src__) = delete;
+
+    /* copy assignment operator is forbidden */
+    Gvec& operator=(Gvec const& src__) = delete;
 
   public:
     /// Constructor for G+k vectors.
@@ -321,12 +331,12 @@ class Gvec
         *this = std::move(src__);
     }
 
-    inline vector3d<double> const& vk() const
+    inline auto const& vk() const
     {
         return vk_;
     }
 
-    Communicator const& comm() const
+    inline Communicator const& comm() const
     {
         return comm_;
     }
@@ -334,7 +344,7 @@ class Gvec
     /// Set the new reciprocal lattice vectors.
     /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
-    inline matrix3d<double> const& lattice_vectors(matrix3d<double> lattice_vectors__)
+    inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
         init_gvec_cart();
@@ -416,15 +426,13 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    inline vector3d<int>
-    gvec(int ig__) const
+    inline auto gvec(int ig__) const
     {
         return gvec_by_full_index(gvec_full_index_(ig__));
     }
 
     /// Return G+k vector in fractional coordinates.
-    inline vector3d<double>
-    gkvec(int ig__) const
+    inline auto gkvec(int ig__) const
     {
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
         return (vector3d<double>(G[0], G[1], G[2]) + vk_);
@@ -449,7 +457,7 @@ class Gvec
 
     /// Return G+k vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t==index_domain_t::local, vector3d<double>>
+    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
     gkvec_cart(int ig__) const
     {
         return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
@@ -563,69 +571,7 @@ class Gvec
     {
         return gvec_shell_idx_local_[igloc__];
     }
-
-    friend void serialize(serializer& s__, Gvec& gv__);
-    friend void deserialize(serializer& s__, Gvec& gv__);
-
-    /// Serialize to a string of bytes.
-    void pack(serializer& s__) const;
-
-    /// Deserialize from a string of bytes.
-    void unpack(serializer& s__, Gvec& gv__) const;
-
-    void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const;
-
-
-    //friend std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__);
 };
-
-//inline std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__)
-//{
-//    std::unique_ptr<Gvec> gvout(new Gvec(gv__.comm()));
-//
-//    serializer s;
-//
-//    if (comm__.rank() == source__) {
-//        std::cout << "address of gv: " << &gv__ << "\n";
-//        serialize(s, gv__.vk_);
-//        serialize(s, gv__.Gmax_);
-//        serialize(s, gv__.lattice_vectors_);
-//        serialize(s, gv__.reduce_gvec_);
-//        serialize(s, gv__.bare_gvec_);
-//        serialize(s, gv__.num_gvec_);
-//        serialize(s, gv__.num_gvec_shells_);
-//        serialize(s, gv__.gvec_full_index_);
-//        serialize(s, gv__.gvec_shell_);
-//        serialize(s, gv__.gvec_shell_len_);
-//        serialize(s, gv__.gvec_index_by_xy_);
-//        serialize(s, gv__.z_columns_);
-//        serialize(s, gv__.gvec_distr_);
-//        serialize(s, gv__.zcol_distr_);
-//        serialize(s, gv__.gvec_base_mapping_);
-//    }
-//
-//    s.send_recv(comm__, source__, dest__);
-//
-//    if (comm__.rank() == dest__) {
-//        deserialize(s, gvout->vk_);
-//        deserialize(s, gvout->Gmax_);
-//        deserialize(s, gvout->lattice_vectors_);
-//        deserialize(s, gvout->reduce_gvec_);
-//        deserialize(s, gvout->bare_gvec_);
-//        deserialize(s, gvout->num_gvec_);
-//        deserialize(s, gvout->num_gvec_shells_);
-//        deserialize(s, gvout->gvec_full_index_);
-//        deserialize(s, gvout->gvec_shell_);
-//        deserialize(s, gvout->gvec_shell_len_);
-//        deserialize(s, gvout->gvec_index_by_xy_);
-//        deserialize(s, gvout->z_columns_);
-//        deserialize(s, gvout->gvec_distr_);
-//        deserialize(s, gvout->zcol_distr_);
-//        deserialize(s, gvout->gvec_base_mapping_);
-//    }
-//
-//    return std::move(gvout);
-//}
 
 /// Stores information about G-vector partitioning between MPI ranks for the FFT transformation.
 /** FFT driver works with a small communicator. G-vectors are distributed over the entire communicator which is

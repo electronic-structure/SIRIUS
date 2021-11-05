@@ -3449,6 +3449,96 @@ end subroutine sirius_get_q_operator
 !
 !> @brief Get wave-functions.
 !> @param [in] ks_handler K-point set handler.
+!> @param [in] vkl Latttice coordinates of the k-point.
+!> @param [in] spin Spin index in case of collinear magnetism.
+!> @param [in] num_gvec_loc Local number of G-vectors for a k-point.
+!> @param [in] gvec_loc List of G-vectors.
+!> @param [out] evec Wave-functions.
+!> @param [in] ld Leading dimension of evec array.
+!> @param [in] num_spin_comp Number of spin components.
+!> @param [out] error_code Error code
+subroutine sirius_get_wave_functions_v2(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,&
+&evec,ld,num_spin_comp,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: ks_handler
+real(8), optional, target, dimension(3), intent(in) :: vkl
+integer, optional, target, intent(in) :: spin
+integer, optional, target, intent(in) :: num_gvec_loc
+integer, optional, target, dimension(3, *), intent(in) :: gvec_loc
+complex(8), optional, target, intent(out) :: evec
+integer, optional, target, intent(in) :: ld
+integer, optional, target, intent(in) :: num_spin_comp
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: vkl_ptr
+type(C_PTR) :: spin_ptr
+type(C_PTR) :: num_gvec_loc_ptr
+type(C_PTR) :: gvec_loc_ptr
+type(C_PTR) :: evec_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_wave_functions_v2_aux(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,&
+&evec,ld,num_spin_comp,error_code)&
+&bind(C, name="sirius_get_wave_functions_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: vkl
+type(C_PTR), value :: spin
+type(C_PTR), value :: num_gvec_loc
+type(C_PTR), value :: gvec_loc
+type(C_PTR), value :: evec
+type(C_PTR), value :: ld
+type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+vkl_ptr = C_NULL_PTR
+if (present(vkl)) then
+vkl_ptr = C_LOC(vkl)
+endif
+spin_ptr = C_NULL_PTR
+if (present(spin)) then
+spin_ptr = C_LOC(spin)
+endif
+num_gvec_loc_ptr = C_NULL_PTR
+if (present(num_gvec_loc)) then
+num_gvec_loc_ptr = C_LOC(num_gvec_loc)
+endif
+gvec_loc_ptr = C_NULL_PTR
+if (present(gvec_loc)) then
+gvec_loc_ptr = C_LOC(gvec_loc)
+endif
+evec_ptr = C_NULL_PTR
+if (present(evec)) then
+evec_ptr = C_LOC(evec)
+endif
+ld_ptr = C_NULL_PTR
+if (present(ld)) then
+ld_ptr = C_LOC(ld)
+endif
+num_spin_comp_ptr = C_NULL_PTR
+if (present(num_spin_comp)) then
+num_spin_comp_ptr = C_LOC(num_spin_comp)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_wave_functions_v2_aux(ks_handler_ptr,vkl_ptr,spin_ptr,num_gvec_loc_ptr,&
+&gvec_loc_ptr,evec_ptr,ld_ptr,num_spin_comp_ptr,error_code_ptr)
+end subroutine sirius_get_wave_functions_v2
+
+!
+!> @brief Get wave-functions.
+!> @param [in] ks_handler K-point set handler.
 !> @param [in] ik Global index of k-point
 !> @param [in] ispn Spin index.
 !> @param [in] npw Local number of G+k vectors.

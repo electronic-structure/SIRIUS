@@ -456,6 +456,7 @@ double K_point_set::valence_eval_sum() const
         return this->valence_eval_sum<float>();
 #else
         RTE_THROW("not compiled with FP32 support");
+        return 0; // make compiled happy
 #endif
     } else {
         return this->valence_eval_sum<double>();
@@ -504,6 +505,7 @@ double K_point_set::entropy_sum() const
         return this->entropy_sum<float>();
 #else
         RTE_THROW("not compiled with FP32 support");
+        return 0; // make compiler happy
 #endif
     } else {
         return this->entropy_sum<double>();

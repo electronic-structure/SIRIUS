@@ -240,7 +240,7 @@ class K_point_set
 
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
-    inline Gvec send_recv_gkvec(int jk__, int rank__)
+    inline Gvec get_gkvec(int jk__, int rank__)
     {
         /* rank in the k-point communicator */
         int my_rank = comm().rank();
@@ -248,23 +248,17 @@ class K_point_set
         /* rank that stores jk */
         int jrank = spl_num_kpoints().local_rank(jk__);
 
-        /* placeholder for G+k vectors of kpoint jk */
+        /* need this to pass communicator */
         Gvec gkvec(ctx_.comm_band());
 
+        Gvec const* gvptr{nullptr};
         /* if this rank stores the k-point, then send it */
-        if (jrank == my_rank) {
-            auto kp = kpoints_[jk__].get();
-            kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
-#if defined(USE_FP32)
-            auto kp_float = kpoints_float_[jk__].get();
-            kp_float->gkvec().send_recv(comm(), jrank, rank__, gkvec);
-#endif
+        if (my_rank == jrank) {
+            gvptr = &kpoints_[jk__].get()->gkvec();
+        } else {
+            gvptr = &gkvec;
         }
-        /* this rank receives the k-point */
-        if (rank__ == my_rank) {
-            gkvec.send_recv(comm(), jrank, rank__, gkvec);
-        }
-        return gkvec;
+        return send_recv(comm(), *gvptr, jrank, rank__);
     }
 };
 
