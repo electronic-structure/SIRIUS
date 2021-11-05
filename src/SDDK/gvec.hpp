@@ -105,7 +105,7 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
     }
 }
 
-/* forwaard declarations */
+/* forward declarations */
 class Gvec;
 void serialize(serializer& s__, Gvec const& gv__);
 void deserialize(serializer& s__, Gvec& gv__);
