@@ -3006,70 +3006,6 @@ deallocate(label_c_type)
 end subroutine sirius_get_num_beta_projectors
 
 !
-!> @brief Get plane-wave coefficients of Q-operator
-!> @param [in] handler Simulation context handler.
-!> @param [in] label Label of the atom type.
-!> @param [in] xi1 First index of beta-projector atomic function.
-!> @param [in] xi2 Second index of beta-projector atomic function.
-!> @param [in] ngv Number of G-vectors.
-!> @param [in] gvl G-vectors in lattice coordinats.
-!> @param [out] q_pw Plane-wave coefficients of Q augmentation operator.
-subroutine sirius_get_q_operator(handler,label,xi1,xi2,ngv,gvl,q_pw)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-integer, target, intent(in) :: xi1
-integer, target, intent(in) :: xi2
-integer, target, intent(in) :: ngv
-integer, target, dimension(3, ngv), intent(in) :: gvl
-complex(8), target, dimension(ngv), intent(out) :: q_pw
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: xi1_ptr
-type(C_PTR) :: xi2_ptr
-type(C_PTR) :: ngv_ptr
-type(C_PTR) :: gvl_ptr
-type(C_PTR) :: q_pw_ptr
-!
-interface
-subroutine sirius_get_q_operator_aux(handler,label,xi1,xi2,ngv,gvl,q_pw)&
-&bind(C, name="sirius_get_q_operator")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: xi1
-type(C_PTR), value :: xi2
-type(C_PTR), value :: ngv
-type(C_PTR), value :: gvl
-type(C_PTR), value :: q_pw
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-xi1_ptr = C_NULL_PTR
-xi1_ptr = C_LOC(xi1)
-xi2_ptr = C_NULL_PTR
-xi2_ptr = C_LOC(xi2)
-ngv_ptr = C_NULL_PTR
-ngv_ptr = C_LOC(ngv)
-gvl_ptr = C_NULL_PTR
-gvl_ptr = C_LOC(gvl)
-q_pw_ptr = C_NULL_PTR
-q_pw_ptr = C_LOC(q_pw)
-call sirius_get_q_operator_aux(handler_ptr,label_ptr,xi1_ptr,xi2_ptr,ngv_ptr,gvl_ptr,&
-&q_pw_ptr)
-deallocate(label_c_type)
-end subroutine sirius_get_q_operator
-
-!
 !> @brief Get wave-functions.
 !> @param [in] ks_handler K-point set handler.
 !> @param [in] vkl Latttice coordinates of the k-point.
@@ -4234,72 +4170,6 @@ endif
 call sirius_set_radial_function_aux(handler_ptr,ia_ptr,deriv_order_ptr,f_ptr,l_ptr,&
 &o_ptr,ilo_ptr)
 end subroutine sirius_set_radial_function
-
-!
-!> @brief Get LAPW radial functions
-!> @param [in] handler Simulation context handler.
-!> @param [in] ia Index of atom.
-!> @param [in] deriv_order Radial derivative order.
-!> @param [out] f Values of the radial function.
-!> @param [in] l Orbital quantum number.
-!> @param [in] o Order of radial function for l.
-!> @param [in] ilo Local orbital index.
-subroutine sirius_get_radial_function(handler,ia,deriv_order,f,l,o,ilo)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(in) :: ia
-integer, target, intent(in) :: deriv_order
-real(8), target, intent(out) :: f
-integer, optional, target, intent(in) :: l
-integer, optional, target, intent(in) :: o
-integer, optional, target, intent(in) :: ilo
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: ia_ptr
-type(C_PTR) :: deriv_order_ptr
-type(C_PTR) :: f_ptr
-type(C_PTR) :: l_ptr
-type(C_PTR) :: o_ptr
-type(C_PTR) :: ilo_ptr
-!
-interface
-subroutine sirius_get_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
-&bind(C, name="sirius_get_radial_function")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: ia
-type(C_PTR), value :: deriv_order
-type(C_PTR), value :: f
-type(C_PTR), value :: l
-type(C_PTR), value :: o
-type(C_PTR), value :: ilo
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-ia_ptr = C_NULL_PTR
-ia_ptr = C_LOC(ia)
-deriv_order_ptr = C_NULL_PTR
-deriv_order_ptr = C_LOC(deriv_order)
-f_ptr = C_NULL_PTR
-f_ptr = C_LOC(f)
-l_ptr = C_NULL_PTR
-if (present(l)) then
-l_ptr = C_LOC(l)
-endif
-o_ptr = C_NULL_PTR
-if (present(o)) then
-o_ptr = C_LOC(o)
-endif
-ilo_ptr = C_NULL_PTR
-if (present(ilo)) then
-ilo_ptr = C_LOC(ilo)
-endif
-call sirius_get_radial_function_aux(handler_ptr,ia_ptr,deriv_order_ptr,f_ptr,l_ptr,&
-&o_ptr,ilo_ptr)
-end subroutine sirius_get_radial_function
 
 !
 !> @brief Set equivalent atoms.
@@ -5568,25 +5438,6 @@ endif
 call sirius_get_kpoint_properties_aux(handler_ptr,ik_ptr,weight_ptr,coordinates_ptr,&
 &error_code_ptr)
 end subroutine sirius_get_kpoint_properties
-
-!
-!> @brief Get matching coefficients for all atoms.
-!> @details
-!> Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution. arguments: handler: type: void* attr: in, required doc: K-point set handler. ik: type: int attr: in, required
-!>   doc: Index of k-point.
-!> 
-subroutine sirius_get_matching_coefficients()
-implicit none
-!
-interface
-subroutine sirius_get_matching_coefficients_aux()&
-&bind(C, name="sirius_get_matching_coefficients")
-use, intrinsic :: ISO_C_BINDING
-end subroutine
-end interface
-!
-call sirius_get_matching_coefficients_aux()
-end subroutine sirius_get_matching_coefficients
 
 !
 !> @brief Set callback function to compute various radial integrals.
