@@ -250,8 +250,10 @@ class Atom
             PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
             result.allocate(memory_t::device);
-            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp, rgrid.x().at(memory_t::device),
-                                        rgrid.dx().at(memory_t::device), rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device), result.at(memory_t::device));
+            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
+                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
+                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
+                                        result.at(memory_t::device));
             acc::sync();
             //if (type().parameters().control().print_performance_) {
             //    double tval = t2.stop();

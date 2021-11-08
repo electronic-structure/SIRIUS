@@ -44,11 +44,6 @@ K_point<T>::initialize()
 
     int bs = ctx_.cyclic_block_size();
 
-    if (ctx_.cfg().control().use_second_variation() && ctx_.full_potential()) {
-        assert(ctx_.num_fv_states() > 0);
-        fv_eigen_values_.resize(ctx_.num_fv_states());
-    }
-
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
      * non magnetic case:
@@ -82,6 +77,10 @@ K_point<T>::initialize()
 
     if (ctx_.full_potential()) {
         if (ctx_.cfg().control().use_second_variation()) {
+
+            assert(ctx_.num_fv_states() > 0);
+            fv_eigen_values_ = sddk::mdarray<double, 1>(ctx_.num_fv_states(), memory_t::host, "fv_eigen_values");
+
             if (ctx_.need_sv()) {
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
                  */
@@ -386,7 +385,7 @@ void K_point<T>::generate_gkvec(double gk_cutoff__)
     PROFILE("sirius::K_point::generate_gkvec");
 
     if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw()) &&
-        comm_.rank() == 0 && ctx_.verbosity() >= 0) {
+        ctx_.comm().rank() == 0 && ctx_.verbosity() >= 0) {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
           << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl

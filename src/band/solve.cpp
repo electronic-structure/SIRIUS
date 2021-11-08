@@ -31,6 +31,7 @@ template <typename T>
 void
 Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
 {
+    ctx_.print_memory_usage(__FILE__, __LINE__);
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.cfg().iterative_solver();
@@ -49,6 +50,7 @@ Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
         throw std::runtime_error("not implemented");
         //diag_full_potential_single_variation();
     }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 }
 
 template
@@ -189,6 +191,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
             std::printf("\n");
         }
     }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 }
 
 template
