@@ -136,9 +136,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     auto& itso = ctx.cfg().iterative_solver();
 
-    kp.message(2, __function_name__, "eigen-value tolerance  : %18.12f\n", tolerance__(0, 0));
-    kp.message(2, __function_name__, "empty states tolerance : %18.12f\n", tolerance__(num_bands__ - 1, 0));
-
     /* true if this is a non-collinear case */
     const bool nc_mag = (num_mag_dims__ == 3);
 
@@ -488,7 +485,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         }
                     }
 
-                    // Remove the locked block from the projected matrix too.
+                    /* remove the locked block from the projected matrix too */
                     hmlt_old.zero();
                     for (int i = 0; i < keep - num_locked; i++) {
                         hmlt_old.set(i, i, eval[i]);
@@ -497,7 +494,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     /* number of basis functions that we already have */
                     N = keep;
 
-                    // Only when we do orthogonalization we can lock vecs
+                    /* only when we do orthogonalization we can lock vecs */
                     if (locking__) {
                         num_locked += num_lockable;
                     }

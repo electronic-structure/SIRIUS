@@ -68,7 +68,7 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
 
 template <typename T, typename F>
 int
-Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__) const
+Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -90,13 +90,10 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
 
             /* tolerance for occupied states */
             double tol      = itsol_tol__;
-            double empy_tol = std::max(tol * ctx_.cfg().settings().itsol_tol_ratio(),
-                                       ctx_.cfg().iterative_solver().empty_states_tolerance());
-
             /* if band is empty, make tolerance larger (in most cases we don't need high precision on
              * unoccupied  states) */
             if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
-                tol += empy_tol;
+                tol += empy_tol__;
             }
 
             return tol;
@@ -144,8 +141,12 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
+    double empy_tol{itsol_tol__};
     if (!ctx_.full_potential()) {
-        ctx_.message(2, __function_name__, "iterative solver tolerance: %1.4e\n", itsol_tol__);
+        empy_tol = std::max(itsol_tol__ * ctx_.cfg().settings().itsol_tol_ratio(),
+                                   ctx_.cfg().iterative_solver().empty_states_tolerance());
+        ctx_.message(2, __function_name__, "iterative solver tolerance (occupied, empty) : %1.4e, %1.4e\n",
+                     itsol_tol__, itsol_tol__ + empy_tol);
     }
 
     int num_dav_iter{0};
@@ -159,9 +160,9 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
             solve_full_potential<T>(Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__);
+                num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
             } else {
-                num_dav_iter += solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__);
+                num_dav_iter += solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__, empy_tol);
             }
         }
     }

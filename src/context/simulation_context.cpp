@@ -330,6 +330,12 @@ Simulation_context::initialize()
     if (initialized_) {
         RTE_THROW("Simulation parameters are already initialized.");
     }
+
+    auto verb_lvl = utils::get_env<int>("SIRIUS_VERBOSITY");
+    if (verb_lvl) {
+        this->verbosity(*verb_lvl);
+    }
+
     electronic_structure_method(cfg().parameters().electronic_structure_method());
     core_relativity(cfg().parameters().core_relativity());
     valence_relativity(cfg().parameters().valence_relativity());
@@ -880,6 +886,10 @@ Simulation_context::print_info() const
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
     std::printf("precision_wf                       : %s\n", cfg().parameters().precision_wf().c_str());
     std::printf("precision_hs                       : %s\n", cfg().parameters().precision_hs().c_str());
+    std::printf("mixer                              : %s\n", cfg().mixer().type().c_str());
+    std::printf("mixing beta                        : %.2f\n", cfg().mixer().beta());
+    std::printf("max_history                        : %i\n", cfg().mixer().max_history());
+    std::printf("use_hartree                        : %s\n", utils::boolstr(cfg().mixer().use_hartree()).c_str());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),

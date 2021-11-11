@@ -22,6 +22,7 @@
  *  \brief Contains the implementation of Gvec class.
  *
  */
+
 #include "symmetry/lattice.hpp"
 #include "gvec.hpp"
 #include "serializer.hpp"

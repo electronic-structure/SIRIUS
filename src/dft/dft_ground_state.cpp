@@ -187,11 +187,11 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
     Density rho1(ctx_);
 
     std::stringstream s;
-    s << std::endl;
-    s << "density_tol  : " << density_tol << std::endl
-      << "energy_tol   : " << energy_tol << std::endl
-      << "itsol_tol    : " << itsol_tol << std::endl
-      << "num_dft_iter : " << num_dft_iter;
+    s << "density_tol            : " << density_tol << std::endl
+      << "energy_tol             : " << energy_tol << std::endl
+      << "itsol_tol (initial)    : " << itsol_tol << std::endl
+      << "itsol_tol_min          : " << ctx_.cfg().settings().itsol_tol_min() << std::endl
+      << "num_dft_iter           : " << num_dft_iter;
     ctx_.message(1, __func__, s);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
@@ -235,10 +235,13 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         /* mix density */
         rms = density_.mix();
 
+        double eha_res = density_residual_hartree_energy(density_, rho1);
+
         /* estimate new tolerance of the iterative solver */
         double tol = rms;
         if (ctx_.cfg().mixer().use_hartree()) {
-            tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+            //tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+            tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
         }
         tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol,
                        ctx_.cfg().settings().itsol_tol_scale()[1] * itsol_tol);
@@ -307,10 +310,18 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         print_info(out);
         out << std::endl;
         out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
-            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold;
+            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl
+            << "residual density Hartree energy : " << eha_res;
         ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
-        if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
+        bool converged{true};
+        converged = converged && (std::abs(eold - etot) < energy_tol);
+        if (ctx_.cfg().mixer().use_hartree()) {
+            converged = converged && (eha_res < density_tol);
+        } else {
+            converged = converged && (rms < density_tol);
+        }
+        if (converged) {
             std::stringstream out;
             out << std::endl;
             out << "converged after " << iter + 1 << " SCF iterations!";
