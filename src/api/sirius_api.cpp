@@ -1577,14 +1577,22 @@ sirius_find_ground_state:
       type: double
       attr: in, optional
       doc: Tolerance in total energy difference.
-    niter:
+    max_niter:
       type: int
       attr: in, optional
       doc: Maximum number of SCF iterations.
     save_state:
       type: bool
       attr: in, optional
-      doc: boolean variable indicating if we want to save the ground state.
+      doc: Boolean variable indicating if we want to save the ground state.
+    converged:
+      type: bool
+      attr: out, optional
+      doc: Boolean variable indicating if the calculation has converged
+    niter:
+      type: int
+      attr: out, optional
+      doc: Actual number of SCF iterations.
     error_code:
       type: int
       attr: out, optional
@@ -1593,7 +1601,8 @@ sirius_find_ground_state:
 */
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
-                         int const* niter__, bool const* save_state__, int* error_code__)
+                         int const* max_niter__, bool const* save_state__, bool* converged__, int* niter__,
+                         int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1612,9 +1621,9 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                 etol = *energy_tol__;
             }
 
-            int niter = inp.num_dft_iter();
-            if (niter__) {
-                niter = *niter__;
+            int max_niter = inp.num_dft_iter();
+            if (max_niter__) {
+                max_niter = *max_niter__;
             }
 
             bool save{false};
@@ -1622,7 +1631,23 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                 save = *save_state__;
             }
 
-            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save);
+            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), max_niter, save);
+
+            if (result["converged"].get<bool>()) {
+                if (converged__) {
+                    *converged__ = true;
+                }
+                if (niter__) {
+                    *niter__ = result["num_scf_iterations"].get<int>();
+                }
+            } else {
+                if (converged__) {
+                    *converged__ = false;
+                }
+                if (niter__) {
+                    *niter__ = max_niter;
+                }
+            }
         },
         error_code__);
 }

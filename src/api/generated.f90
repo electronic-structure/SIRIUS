@@ -1609,38 +1609,47 @@ end subroutine sirius_initialize_kset
 !> @param [in] gs_handler Handler of the ground state.
 !> @param [in] density_tol Tolerance on RMS in density.
 !> @param [in] energy_tol Tolerance in total energy difference.
-!> @param [in] niter Maximum number of SCF iterations.
-!> @param [in] save_state boolean variable indicating if we want to save the ground state.
+!> @param [in] max_niter Maximum number of SCF iterations.
+!> @param [in] save_state Boolean variable indicating if we want to save the ground state.
+!> @param [out] converged Boolean variable indicating if the calculation has converged
+!> @param [out] niter Actual number of SCF iterations.
 !> @param [out] error_code Error code.
-subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state,&
-&error_code)
+subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,max_niter,&
+&save_state,converged,niter,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 real(8), optional, target, intent(in) :: density_tol
 real(8), optional, target, intent(in) :: energy_tol
-integer, optional, target, intent(in) :: niter
+integer, optional, target, intent(in) :: max_niter
 logical, optional, target, intent(in) :: save_state
+logical, optional, target, intent(out) :: converged
+integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: density_tol_ptr
 type(C_PTR) :: energy_tol_ptr
-type(C_PTR) :: niter_ptr
+type(C_PTR) :: max_niter_ptr
 type(C_PTR) :: save_state_ptr
 logical(C_BOOL), target :: save_state_c_type
+type(C_PTR) :: converged_ptr
+logical(C_BOOL), target :: converged_c_type
+type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,niter,&
-&save_state,error_code)&
+subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,max_niter,&
+&save_state,converged,niter,error_code)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: density_tol
 type(C_PTR), value :: energy_tol
-type(C_PTR), value :: niter
+type(C_PTR), value :: max_niter
 type(C_PTR), value :: save_state
+type(C_PTR), value :: converged
+type(C_PTR), value :: niter
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -1655,22 +1664,33 @@ energy_tol_ptr = C_NULL_PTR
 if (present(energy_tol)) then
 energy_tol_ptr = C_LOC(energy_tol)
 endif
-niter_ptr = C_NULL_PTR
-if (present(niter)) then
-niter_ptr = C_LOC(niter)
+max_niter_ptr = C_NULL_PTR
+if (present(max_niter)) then
+max_niter_ptr = C_LOC(max_niter)
 endif
 save_state_ptr = C_NULL_PTR
 if (present(save_state)) then
 save_state_c_type = save_state
 save_state_ptr = C_LOC(save_state_c_type)
 endif
+converged_ptr = C_NULL_PTR
+if (present(converged)) then
+converged_ptr = C_LOC(converged_c_type)
+endif
+niter_ptr = C_NULL_PTR
+if (present(niter)) then
+niter_ptr = C_LOC(niter)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
-&niter_ptr,save_state_ptr,error_code_ptr)
+&max_niter_ptr,save_state_ptr,converged_ptr,niter_ptr,error_code_ptr)
 if (present(save_state)) then
+endif
+if (present(converged)) then
+converged = converged_c_type
 endif
 end subroutine sirius_find_ground_state
 
