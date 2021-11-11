@@ -38,63 +38,63 @@ sirius::Simulation_context& get_sim_ctx(void* const* h);
 
 template <typename T>
 void
-sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__,
-        const T* default_values__, const int* length__)
+sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__,
+                          const int* length__)
 {
-  auto& sim_ctx = get_sim_ctx(handler__);
+    auto& sim_ctx = get_sim_ctx(handler__);
 
-  auto section = std::string(section__);
-  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
 
-  auto name = std::string(name__);
-  if (name.size() > 1)
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto name = std::string(name__);
+    if (name.size() > 1)
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
-  json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-  const json& parser = sirius::get_section_options(section);
-  if (parser.count(name)) {
-    // check that the option exists
-    if (*length__ > 1) {
-      // we are dealing with a vector
-      std::vector<T> v(*length__);
-      for (int s = 0; s < *length__; s++)
-        v[s] = default_values__[s];
-      conf_dict[section][name] = v;
+    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
+    const json& parser = sirius::get_section_options(section);
+    if (parser.count(name)) {
+        // check that the option exists
+        if (*length__ > 1) {
+            // we are dealing with a vector
+            std::vector<T> v(*length__);
+            for (int s = 0; s < *length__; s++)
+                v[s] = default_values__[s];
+            conf_dict[section][name] = v;
+        } else {
+            conf_dict[section][name] = *default_values__;
+        }
     } else {
-      conf_dict[section][name] = *default_values__;
+        std::cout << "Section: " << section;
+        std::cout << "Option: " << name << " is invalid.\n";
     }
-  } else {
-    std::cout << "Section: " << section;
-    std::cout << "Option: "<< name << " is invalid.\n";
-  }
 }
 
 template <typename T>
 void
 sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
 {
-  auto section = std::string(section__);
-  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
 
-  auto name = std::string(name__);
-  if (name.size() > 1)
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto name = std::string(name__);
+    if (name.size() > 1)
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
-  const json& parser = sirius::get_section_options(section);
+    const json& parser = sirius::get_section_options(section);
 
-  if (!parser[name].count("default"))
-      std::cout << "default value is missing" << std::endl;
-  if (parser[name]["type"] == "array") {
-    if (parser[name]["items"] != "array") {
-      std::vector<T> v = parser[name]["default"].get<std::vector<T>>();
-      *length__           = v.size();
-      std::copy(v.begin(), v.end(), default_value__);
+    if (!parser[name].count("default"))
+        std::cout << "default value is missing" << std::endl;
+    if (parser[name]["type"] == "array") {
+        if (parser[name]["items"] != "array") {
+            std::vector<T> v = parser[name]["default"].get<std::vector<T>>();
+            *length__        = v.size();
+            std::copy(v.begin(), v.end(), default_value__);
+        }
+    } else {
+        *length__ = 1;
+        if (parser[name].count("default"))
+            *default_value__ = parser[name]["default"].get<T>();
     }
-  } else {
-    *length__        = 1;
-    if (parser[name].count("default"))
-      *default_value__ = parser[name]["default"].get<T>();
-  }
 }
 
 static inline void
@@ -250,10 +250,11 @@ sirius_initialize:
 void
 sirius_initialize(bool const* call_mpi_init__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        sirius::initialize(*call_mpi_init__);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            sirius::initialize(*call_mpi_init__);
+        },
+        error_code__);
 }
 
 /*
@@ -283,26 +284,27 @@ void
 sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, bool const* call_fftw_fin__,
                 int* error_code__)
 {
-    call_sirius([&]()
-    {
-        bool mpi_fin{true};
-        bool device_reset{true};
-        bool fftw_fin{true};
+    call_sirius(
+        [&]() {
+            bool mpi_fin{true};
+            bool device_reset{true};
+            bool fftw_fin{true};
 
-        if (call_mpi_fin__ != nullptr) {
-            mpi_fin = *call_mpi_fin__;
-        }
+            if (call_mpi_fin__ != nullptr) {
+                mpi_fin = *call_mpi_fin__;
+            }
 
-        if (call_device_reset__ != nullptr) {
-            device_reset = *call_device_reset__;
-        }
+            if (call_device_reset__ != nullptr) {
+                device_reset = *call_device_reset__;
+            }
 
-        if (call_fftw_fin__ != nullptr) {
-            fftw_fin = *call_fftw_fin__;
-        }
+            if (call_fftw_fin__ != nullptr) {
+                fftw_fin = *call_fftw_fin__;
+            }
 
-        sirius::finalize(mpi_fin, device_reset, fftw_fin);
-    }, error_code__);
+            sirius::finalize(mpi_fin, device_reset, fftw_fin);
+        },
+        error_code__);
 }
 
 /*
@@ -323,10 +325,11 @@ sirius_start_timer:
 void
 sirius_start_timer(char const* name__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        ::utils::global_rtgraph_timer.start(name__);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            ::utils::global_rtgraph_timer.start(name__);
+        },
+        error_code__);
 }
 
 /*
@@ -347,10 +350,11 @@ sirius_stop_timer:
 void
 sirius_stop_timer(char const* name__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        ::utils::global_rtgraph_timer.stop(name__);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            ::utils::global_rtgraph_timer.stop(name__);
+        },
+        error_code__);
 }
 
 /*
@@ -371,16 +375,17 @@ sirius_print_timers:
 void
 sirius_print_timers(bool* flatten__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto timing_result = ::utils::global_rtgraph_timer.process();
-        if (*flatten__) {
-            timing_result = timing_result.flatten(1).sort_nodes();
-        }
-        std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
-                                          rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
-                                          rt_graph::Stat::Max});
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto timing_result = ::utils::global_rtgraph_timer.process();
+            if (*flatten__) {
+                timing_result = timing_result.flatten(1).sort_nodes();
+            }
+            std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                              rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median,
+                                              rt_graph::Stat::Min, rt_graph::Stat::Max});
+        },
+        error_code__);
 }
 
 /*
@@ -401,12 +406,13 @@ sirius_serialize_timers:
 void
 sirius_serialize_timers(char const* fname__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto timing_result = ::utils::global_rtgraph_timer.process();
-        std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
-        ofs << timing_result.json();
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto timing_result = ::utils::global_rtgraph_timer.process();
+            std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
+            ofs << timing_result.json();
+        },
+        error_code__);
 }
 
 /*
@@ -431,11 +437,12 @@ sirius_context_initialized:
 void
 sirius_context_initialized(void* const* handler__, bool* status__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        *status__     = sim_ctx.initialized();
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            *status__     = sim_ctx.initialized();
+        },
+        error_code__);
 }
 
 /*
@@ -473,13 +480,15 @@ sirius_create_context:
 void
 sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_band__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& comm = Communicator::map_fcomm(fcomm__);
-        Communicator const& comm_k = (fcomm_k__) ? Communicator::map_fcomm(*fcomm_k__) : Communicator::null();
-        Communicator const& comm_band = (fcomm_band__) ? Communicator::map_fcomm(*fcomm_band__) : Communicator::null();
-        *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& comm                 = Communicator::map_fcomm(fcomm__);
+            Communicator const& comm_k = (fcomm_k__) ? Communicator::map_fcomm(*fcomm_k__) : Communicator::null();
+            Communicator const& comm_band =
+                (fcomm_band__) ? Communicator::map_fcomm(*fcomm_band__) : Communicator::null();
+            *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
+        },
+        error_code__);
 }
 
 /*
@@ -504,15 +513,16 @@ sirius_import_parameters:
 void
 sirius_import_parameters(void* const* handler__, char const* str__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (str__) {
-            sim_ctx.import(std::string(str__));
-        } else {
-            sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
-        }
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            if (str__) {
+                sim_ctx.import(std::string(str__));
+            } else {
+                sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -654,99 +664,100 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
                       double const* spglib_tol__, char const* electronic_structure_method__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (lmax_apw__ != nullptr) {
-            sim_ctx.set_lmax_apw(*lmax_apw__);
-        }
-        if (lmax_rho__ != nullptr) {
-            sim_ctx.set_lmax_rho(*lmax_rho__);
-        }
-        if (lmax_pot__ != nullptr) {
-            sim_ctx.set_lmax_pot(*lmax_pot__);
-        }
-        if (num_fv_states__ != nullptr) {
-            sim_ctx.num_fv_states(*num_fv_states__);
-        }
-        if (num_bands__ != nullptr) {
-            sim_ctx.num_bands(*num_bands__);
-        }
-        if (num_mag_dims__ != nullptr) {
-            sim_ctx.set_num_mag_dims(*num_mag_dims__);
-        }
-        if (pw_cutoff__ != nullptr) {
-            sim_ctx.pw_cutoff(*pw_cutoff__);
-        }
-        if (gk_cutoff__ != nullptr) {
-            sim_ctx.gk_cutoff(*gk_cutoff__);
-        }
-        if (auto_rmt__ != nullptr) {
-            sim_ctx.set_auto_rmt(*auto_rmt__);
-        }
-        if (gamma_point__ != nullptr) {
-            sim_ctx.gamma_point(*gamma_point__);
-        }
-        if (use_symmetry__ != nullptr) {
-            sim_ctx.use_symmetry(*use_symmetry__);
-        }
-        if (so_correction__ != nullptr) {
-            sim_ctx.so_correction(*so_correction__);
-        }
-        if (valence_rel__ != nullptr) {
-            sim_ctx.valence_relativity(valence_rel__);
-        }
-        if (core_rel__ != nullptr) {
-            sim_ctx.core_relativity(core_rel__);
-        }
-        if (iter_solver_tol_empty__ != nullptr) {
-            sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
-        }
-        if (iter_solver_type__ != nullptr) {
-            sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
-        }
-        if (verbosity__ != nullptr) {
-            sim_ctx.verbosity(*verbosity__);
-        }
-        if (hubbard_correction__ != nullptr) {
-            sim_ctx.set_hubbard_correction(*hubbard_correction__);
-        }
-        if (hubbard_correction_kind__ != nullptr) {
-            if (*hubbard_correction_kind__ == 0) {
-                sim_ctx.cfg().hubbard().simplified(true);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            if (lmax_apw__ != nullptr) {
+                sim_ctx.set_lmax_apw(*lmax_apw__);
             }
-        }
-        if (hubbard_orbitals__ != nullptr) {
-            std::string s(hubbard_orbitals__);
-            if (s == "ortho-atomic") {
-                sim_ctx.cfg().hubbard().orthogonalize(true);
+            if (lmax_rho__ != nullptr) {
+                sim_ctx.set_lmax_rho(*lmax_rho__);
             }
-            if (s == "norm-atomic") {
-                sim_ctx.cfg().hubbard().normalize(true);
+            if (lmax_pot__ != nullptr) {
+                sim_ctx.set_lmax_pot(*lmax_pot__);
             }
-        }
-        if (fft_grid_size__ != nullptr) {
-            sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
-        }
-        if (sht_coverage__ != nullptr) {
-            sim_ctx.sht_coverage(*sht_coverage__);
-        }
-        if (min_occupancy__ != nullptr) {
-            sim_ctx.min_occupancy(*min_occupancy__);
-        }
-        if (smearing__ != nullptr) {
-            sim_ctx.smearing(smearing__);
-        }
-        if (smearing_width__ != nullptr) {
-            sim_ctx.smearing_width(*smearing_width__);
-        }
-        if (spglib_tol__ != nullptr) {
-            sim_ctx.cfg().control().spglib_tolerance(*spglib_tol__);
-        }
-        if (electronic_structure_method__ != nullptr) {
-            sim_ctx.cfg().parameters().electronic_structure_method(electronic_structure_method__);
-        }
-    }, error_code__);
+            if (num_fv_states__ != nullptr) {
+                sim_ctx.num_fv_states(*num_fv_states__);
+            }
+            if (num_bands__ != nullptr) {
+                sim_ctx.num_bands(*num_bands__);
+            }
+            if (num_mag_dims__ != nullptr) {
+                sim_ctx.set_num_mag_dims(*num_mag_dims__);
+            }
+            if (pw_cutoff__ != nullptr) {
+                sim_ctx.pw_cutoff(*pw_cutoff__);
+            }
+            if (gk_cutoff__ != nullptr) {
+                sim_ctx.gk_cutoff(*gk_cutoff__);
+            }
+            if (auto_rmt__ != nullptr) {
+                sim_ctx.set_auto_rmt(*auto_rmt__);
+            }
+            if (gamma_point__ != nullptr) {
+                sim_ctx.gamma_point(*gamma_point__);
+            }
+            if (use_symmetry__ != nullptr) {
+                sim_ctx.use_symmetry(*use_symmetry__);
+            }
+            if (so_correction__ != nullptr) {
+                sim_ctx.so_correction(*so_correction__);
+            }
+            if (valence_rel__ != nullptr) {
+                sim_ctx.valence_relativity(valence_rel__);
+            }
+            if (core_rel__ != nullptr) {
+                sim_ctx.core_relativity(core_rel__);
+            }
+            if (iter_solver_tol_empty__ != nullptr) {
+                sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
+            }
+            if (iter_solver_type__ != nullptr) {
+                sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
+            }
+            if (verbosity__ != nullptr) {
+                sim_ctx.verbosity(*verbosity__);
+            }
+            if (hubbard_correction__ != nullptr) {
+                sim_ctx.set_hubbard_correction(*hubbard_correction__);
+            }
+            if (hubbard_correction_kind__ != nullptr) {
+                if (*hubbard_correction_kind__ == 0) {
+                    sim_ctx.cfg().hubbard().simplified(true);
+                }
+            }
+            if (hubbard_orbitals__ != nullptr) {
+                std::string s(hubbard_orbitals__);
+                if (s == "ortho-atomic") {
+                    sim_ctx.cfg().hubbard().orthogonalize(true);
+                }
+                if (s == "norm-atomic") {
+                    sim_ctx.cfg().hubbard().normalize(true);
+                }
+            }
+            if (fft_grid_size__ != nullptr) {
+                sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
+            }
+            if (sht_coverage__ != nullptr) {
+                sim_ctx.sht_coverage(*sht_coverage__);
+            }
+            if (min_occupancy__ != nullptr) {
+                sim_ctx.min_occupancy(*min_occupancy__);
+            }
+            if (smearing__ != nullptr) {
+                sim_ctx.smearing(smearing__);
+            }
+            if (smearing_width__ != nullptr) {
+                sim_ctx.smearing_width(*smearing_width__);
+            }
+            if (spglib_tol__ != nullptr) {
+                sim_ctx.cfg().control().spglib_tolerance(*spglib_tol__);
+            }
+            if (electronic_structure_method__ != nullptr) {
+                sim_ctx.cfg().parameters().electronic_structure_method(electronic_structure_method__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -860,79 +871,81 @@ sirius_get_parameters(void* const* handler__, int* lmax_apw__, int* lmax_rho__, 
                       int* verbosity__, bool* hubbard_correction__, double* evp_work_count__, int* num_loc_op_applied__,
                       int* num_sym_op__, char* electronic_structure_method__, int* error_code__)
 {
-    call_sirius([&]() {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (lmax_apw__) {
-            *lmax_apw__ = sim_ctx.lmax_apw();
-        }
-        if (lmax_rho__) {
-            *lmax_rho__ = sim_ctx.lmax_rho();
-        }
-        if (lmax_pot__) {
-            *lmax_pot__ = sim_ctx.lmax_pot();
-        }
-        if (num_fv_states__) {
-            *num_fv_states__ = sim_ctx.num_fv_states();
-        }
-        if (num_bands__) {
-            *num_bands__ = sim_ctx.num_bands();
-        }
-        if (num_spins__) {
-            *num_spins__ = sim_ctx.num_spins();
-        }
-        if (num_mag_dims__) {
-            *num_mag_dims__ = sim_ctx.num_mag_dims();
-        }
-        if (pw_cutoff__) {
-            *pw_cutoff__ = sim_ctx.pw_cutoff();
-        }
-        if (gk_cutoff__) {
-            *gk_cutoff__ = sim_ctx.gk_cutoff();
-        }
-        if (auto_rmt__) {
-            *auto_rmt__ = sim_ctx.auto_rmt();
-        }
-        if (gamma_point__) {
-            *gamma_point__ = sim_ctx.gamma_point();
-        }
-        if (use_symmetry__) {
-            *use_symmetry__ = sim_ctx.use_symmetry();
-        }
-        if (so_correction__) {
-            *so_correction__ = sim_ctx.so_correction();
-        }
-        if (iter_solver_tol_empty__) {
-            *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
-        }
-        if (verbosity__) {
-            *verbosity__ = sim_ctx.verbosity();
-        }
-        if (hubbard_correction__) {
-            *hubbard_correction__ = sim_ctx.hubbard_correction();
-        }
-        if (fft_grid_size__) {
-            for (int x : {0, 1, 2}) {
-                fft_grid_size__[x] = sim_ctx.fft_grid()[x];
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            if (lmax_apw__) {
+                *lmax_apw__ = sim_ctx.lmax_apw();
             }
-        }
-        if (evp_work_count__) {
-            *evp_work_count__ = sim_ctx.evp_work_count();
-        }
-        if (num_loc_op_applied__) {
-            *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
-        }
-        if (num_sym_op__) {
-            if (sim_ctx.use_symmetry()) {
-                *num_sym_op__ = sim_ctx.unit_cell().symmetry().size();
-            } else {
-                *num_sym_op__ = 0;
+            if (lmax_rho__) {
+                *lmax_rho__ = sim_ctx.lmax_rho();
             }
-        }
-        if (electronic_structure_method__) {
-            auto str = sim_ctx.cfg().parameters().electronic_structure_method();
-            std::copy(str.c_str(), str.c_str() + str.length() + 1, electronic_structure_method__);
-        }
-    }, error_code__);
+            if (lmax_pot__) {
+                *lmax_pot__ = sim_ctx.lmax_pot();
+            }
+            if (num_fv_states__) {
+                *num_fv_states__ = sim_ctx.num_fv_states();
+            }
+            if (num_bands__) {
+                *num_bands__ = sim_ctx.num_bands();
+            }
+            if (num_spins__) {
+                *num_spins__ = sim_ctx.num_spins();
+            }
+            if (num_mag_dims__) {
+                *num_mag_dims__ = sim_ctx.num_mag_dims();
+            }
+            if (pw_cutoff__) {
+                *pw_cutoff__ = sim_ctx.pw_cutoff();
+            }
+            if (gk_cutoff__) {
+                *gk_cutoff__ = sim_ctx.gk_cutoff();
+            }
+            if (auto_rmt__) {
+                *auto_rmt__ = sim_ctx.auto_rmt();
+            }
+            if (gamma_point__) {
+                *gamma_point__ = sim_ctx.gamma_point();
+            }
+            if (use_symmetry__) {
+                *use_symmetry__ = sim_ctx.use_symmetry();
+            }
+            if (so_correction__) {
+                *so_correction__ = sim_ctx.so_correction();
+            }
+            if (iter_solver_tol_empty__) {
+                *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
+            }
+            if (verbosity__) {
+                *verbosity__ = sim_ctx.verbosity();
+            }
+            if (hubbard_correction__) {
+                *hubbard_correction__ = sim_ctx.hubbard_correction();
+            }
+            if (fft_grid_size__) {
+                for (int x : {0, 1, 2}) {
+                    fft_grid_size__[x] = sim_ctx.fft_grid()[x];
+                }
+            }
+            if (evp_work_count__) {
+                *evp_work_count__ = sim_ctx.evp_work_count();
+            }
+            if (num_loc_op_applied__) {
+                *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
+            }
+            if (num_sym_op__) {
+                if (sim_ctx.use_symmetry()) {
+                    *num_sym_op__ = sim_ctx.unit_cell().symmetry().size();
+                } else {
+                    *num_sym_op__ = 0;
+                }
+            }
+            if (electronic_structure_method__) {
+                auto str = sim_ctx.cfg().parameters().electronic_structure_method();
+                std::copy(str.c_str(), str.c_str() + str.length() + 1, electronic_structure_method__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -957,11 +970,12 @@ sirius_add_xc_functional:
 void
 sirius_add_xc_functional(void* const* handler__, char const* name__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.add_xc_functional(std::string(name__));
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.add_xc_functional(std::string(name__));
+        },
+        error_code__);
 }
 
 /*
@@ -990,13 +1004,14 @@ sirius_set_mpi_grid_dims:
 void
 sirius_set_mpi_grid_dims(void* const* handler__, int const* ndims__, int const* dims__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        assert(*ndims__ > 0);
-        auto& sim_ctx = get_sim_ctx(handler__);
-        std::vector<int> dims(dims__, dims__ + *ndims__);
-        sim_ctx.mpi_grid_dims(dims);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            assert(*ndims__ > 0);
+            auto& sim_ctx = get_sim_ctx(handler__);
+            std::vector<int> dims(dims__, dims__ + *ndims__);
+            sim_ctx.mpi_grid_dims(dims);
+        },
+        error_code__);
 }
 
 /*
@@ -1030,12 +1045,13 @@ void
 sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double const* a2__, double const* a3__,
                            int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
-                                                vector3d<double>(a3__));
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
+                                                    vector3d<double>(a3__));
+        },
+        error_code__);
 }
 
 /*
@@ -1056,12 +1072,13 @@ sirius_initialize_context:
 void
 sirius_initialize_context(void* const* handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.initialize();
-        return 0;
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.initialize();
+            return 0;
+        },
+        error_code__);
 }
 
 /*
@@ -1082,12 +1099,13 @@ sirius_update_context:
 void
 sirius_update_context(void* const* handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.update();
-        return 0;
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.update();
+            return 0;
+        },
+        error_code__);
 }
 
 /*
@@ -1108,11 +1126,12 @@ sirius_print_info:
 void
 sirius_print_info(void* const* handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.print_info();
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.print_info();
+        },
+        error_code__);
 }
 
 /*
@@ -1316,8 +1335,7 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                 {"veff", &gs.potential().component(0)},       {"bz", &gs.potential().component(1)},
                 {"bx", &gs.potential().component(2)},         {"by", &gs.potential().component(3)},
                 {"vha", &gs.potential().hartree_potential()}, {"exc", &gs.potential().xc_energy_density()},
-                {"vxc", &gs.potential().xc_potential()}
-            };
+                {"vxc", &gs.potential().xc_potential()}};
 
             if (func_map.count(label) == 0) {
                 throw std::runtime_error("wrong label (" + label + ") for the periodic function");
@@ -1712,7 +1730,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
 
             // do a couple of SCF iterations to obtain a good initial guess
             bool save_state = false;
-            auto result     = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
+            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
 
             // now call the direct solver
             // call nlcg solver
@@ -1932,13 +1950,14 @@ void
 sirius_set_atom_type_radial_grid_inf(void* const* handler__, char const* label__, int const* num_radial_points__,
                                      double const* radial_points__, int* error_code__)
 {
-    call_sirius([&]() {
-        auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
 
-        auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-        type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
-    },
-    error_code__);
+            auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+            type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
+        },
+        error_code__);
 }
 
 /*
@@ -1997,55 +2016,56 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                                      double const* rf__, int const* num_points__, int const* n__, int const* l__,
                                      int const* idxrf1__, int const* idxrf2__, double const* occ__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
 
-        auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
-        std::string label(label__);
+            auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
+            std::string label(label__);
 
-        if (label == "beta") { /* beta-projectors */
-            if (l__ == nullptr) {
-                RTE_THROW("orbital quantum number must be provided for beta-projector");
-            }
-            type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
-            if (l__ == nullptr) {
-                RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");
-            }
+            if (label == "beta") { /* beta-projectors */
+                if (l__ == nullptr) {
+                    RTE_THROW("orbital quantum number must be provided for beta-projector");
+                }
+                type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
+                if (l__ == nullptr) {
+                    RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");
+                }
 
-            int n      = (n__) ? *n__ : -1;
-            double occ = (occ__) ? *occ__ : 0.0;
-            type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
-                                  std::vector<double>(rf__, rf__ + *num_points__), occ);
-        } else if (label == "ps_rho_core") {
-            type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ps_rho_total") {
-            type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "vloc") {
-            type.local_potential(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "q_aug") { /* augmentation charge */
-            if (l__ == nullptr) {
-                RTE_THROW("orbital quantum number must be provided for augmentation charge radial function");
+                int n      = (n__) ? *n__ : -1;
+                double occ = (occ__) ? *occ__ : 0.0;
+                type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
+                                      std::vector<double>(rf__, rf__ + *num_points__), occ);
+            } else if (label == "ps_rho_core") {
+                type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ps_rho_total") {
+                type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "vloc") {
+                type.local_potential(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "q_aug") { /* augmentation charge */
+                if (l__ == nullptr) {
+                    RTE_THROW("orbital quantum number must be provided for augmentation charge radial function");
+                }
+                if (idxrf1__ == nullptr || idxrf2__ == nullptr) {
+                    RTE_THROW("both radial-function indices must be provided for augmentation charge radial function");
+                }
+                type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ae_paw_wf") {
+                type.add_ae_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ps_paw_wf") {
+                type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ae_paw_core") {
+                type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+            } else if (label == "ae_rho") {
+                type.free_atom_density(std::vector<double>(rf__, rf__ + *num_points__));
+            } else {
+                std::stringstream s;
+                s << "wrong label of radial function: " << label__;
+                RTE_THROW(s);
             }
-            if (idxrf1__ == nullptr || idxrf2__ == nullptr) {
-                RTE_THROW("both radial-function indices must be provided for augmentation charge radial function");
-            }
-            type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ae_paw_wf") {
-            type.add_ae_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ps_paw_wf") {
-            type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ae_paw_core") {
-            type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
-        } else if (label == "ae_rho") {
-            type.free_atom_density(std::vector<double>(rf__, rf__ + *num_points__));
-        } else {
-            std::stringstream s;
-            s << "wrong label of radial function: " << label__;
-            RTE_THROW(s);
-        }
-    }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -2104,13 +2124,15 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                              double const* occ__, double const* U__, double const* J__, double const* alpha__,
                              double const* beta__, double const* J0__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
-        type.hubbard_correction(true);
-        type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__, std::vector<double>());
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
+            type.hubbard_correction(true);
+            type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
+                                     std::vector<double>());
+        },
+        error_code__);
 }
 
 /*
@@ -2141,15 +2163,17 @@ sirius_set_atom_type_dion:
 @api end
 */
 void
-sirius_set_atom_type_dion(void* const* handler__, char const* label__, int const* num_beta__, double* dion__, int* error_code__)
+sirius_set_atom_type_dion(void* const* handler__, char const* label__, int const* num_beta__, double* dion__,
+                          int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
-        matrix<double> dion(dion__, *num_beta__, *num_beta__);
-        type.d_mtrx_ion(dion);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
+            matrix<double> dion(dion__, *num_beta__, *num_beta__);
+            type.d_mtrx_ion(dion);
+        },
+        error_code__);
 }
 
 /*
@@ -2187,23 +2211,24 @@ void
 sirius_set_atom_type_paw(void* const* handler__, char const* label__, double const* core_energy__,
                          double const* occupations__, int const* num_occ__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
 
-        auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+            auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
 
-        if (*num_occ__ != type.num_beta_radial_functions()) {
-            RTE_THROW("PAW error: different number of occupations and wave functions!");
-        }
+            if (*num_occ__ != type.num_beta_radial_functions()) {
+                RTE_THROW("PAW error: different number of occupations and wave functions!");
+            }
 
-        /* we load PAW, so we set is_paw to true */
-        type.is_paw(true);
+            /* we load PAW, so we set is_paw to true */
+            type.is_paw(true);
 
-        type.paw_core_energy(*core_energy__);
+            type.paw_core_energy(*core_energy__);
 
-        type.paw_wf_occ(std::vector<double>(occupations__, occupations__ + type.num_beta_radial_functions()));
-    }, error_code__);
+            type.paw_wf_occ(std::vector<double>(occupations__, occupations__ + type.num_beta_radial_functions()));
+        },
+        error_code__);
 }
 
 /*
@@ -2234,18 +2259,20 @@ sirius_add_atom:
 @api end
 */
 void
-sirius_add_atom(void* const* handler__, char const* label__, double const* position__, double const* vector_field__, int* error_code__)
+sirius_add_atom(void* const* handler__, char const* label__, double const* position__, double const* vector_field__,
+                int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        if (vector_field__ != nullptr) {
-            sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3),
-                                         vector_field__);
-        } else {
-            sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3));
-        }
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            if (vector_field__ != nullptr) {
+                sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3),
+                                             vector_field__);
+            } else {
+                sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3));
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -2274,11 +2301,12 @@ sirius_set_atom_position:
 void
 sirius_set_atom_position(void* const* handler__, int const* ia__, double const* position__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& sim_ctx = get_sim_ctx(handler__);
-        sim_ctx.unit_cell().atom(*ia__ - 1).set_position(std::vector<double>(position__, position__ + 3));
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            sim_ctx.unit_cell().atom(*ia__ - 1).set_position(std::vector<double>(position__, position__ + 3));
+        },
+        error_code__);
 }
 
 /*
@@ -2325,85 +2353,87 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                      bool const* transform_to_rg__, int const* ngv__, int* gvl__, int const* comm__, int* error_code__)
 {
     PROFILE("sirius_api::sirius_set_pw_coeffs");
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(handler__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
 
-        std::string label(label__);
+            std::string label(label__);
 
-        if (gs.ctx().full_potential()) {
-            if (label == "veff") {
-                gs.potential().set_veff_pw(pw_coeffs__);
-            } else if (label == "rm_inv") {
-                gs.potential().set_rm_inv_pw(pw_coeffs__);
-            } else if (label == "rm2_inv") {
-                gs.potential().set_rm2_inv_pw(pw_coeffs__);
-            } else {
-                RTE_THROW("wrong label: " + label);
-            }
-        } else {
-            assert(ngv__ != nullptr);
-            assert(gvl__ != nullptr);
-            assert(comm__ != nullptr);
-
-            Communicator comm(MPI_Comm_f2c(*comm__));
-            mdarray<int, 2> gvec(gvl__, 3, *ngv__);
-
-            std::vector<double_complex> v(gs.ctx().gvec().num_gvec(), 0);
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-                // if (gvc.length() > gs.ctx().pw_cutoff()) {
-                //    continue;
-                //}
-                int ig = gs.ctx().gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    v[ig] = pw_coeffs__[i];
+            if (gs.ctx().full_potential()) {
+                if (label == "veff") {
+                    gs.potential().set_veff_pw(pw_coeffs__);
+                } else if (label == "rm_inv") {
+                    gs.potential().set_rm_inv_pw(pw_coeffs__);
+                } else if (label == "rm2_inv") {
+                    gs.potential().set_rm2_inv_pw(pw_coeffs__);
                 } else {
-                    if (gs.ctx().gamma_point()) {
-                        ig = gs.ctx().gvec().index_by_gvec(G * (-1));
-                        if (ig == -1) {
-                            std::stringstream s;
-                            auto gvc =
-                                dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
-                            s << "wrong index of G-vector" << std::endl
-                              << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                            RTE_THROW(s);
-                        } else {
-                            v[ig] = std::conj(pw_coeffs__[i]);
+                    RTE_THROW("wrong label: " + label);
+                }
+            } else {
+                assert(ngv__ != nullptr);
+                assert(gvl__ != nullptr);
+                assert(comm__ != nullptr);
+
+                Communicator comm(MPI_Comm_f2c(*comm__));
+                mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+                std::vector<double_complex> v(gs.ctx().gvec().num_gvec(), 0);
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < *ngv__; i++) {
+                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
+                    //    continue;
+                    //}
+                    int ig = gs.ctx().gvec().index_by_gvec(G);
+                    if (ig >= 0) {
+                        v[ig] = pw_coeffs__[i];
+                    } else {
+                        if (gs.ctx().gamma_point()) {
+                            ig = gs.ctx().gvec().index_by_gvec(G * (-1));
+                            if (ig == -1) {
+                                std::stringstream s;
+                                auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
+                                               vector3d<double>(G[0], G[1], G[2]));
+                                s << "wrong index of G-vector" << std::endl
+                                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])"
+                                  << std::endl;
+                                RTE_THROW(s);
+                            } else {
+                                v[ig] = std::conj(pw_coeffs__[i]);
+                            }
                         }
                     }
                 }
+                comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
+
+                std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+                    {"rho", &gs.density().rho()},
+                    {"rhoc", &gs.density().rho_pseudo_core()},
+                    {"magz", &gs.density().magnetization(0)},
+                    {"magx", &gs.density().magnetization(1)},
+                    {"magy", &gs.density().magnetization(2)},
+                    {"veff", &gs.potential().effective_potential()},
+                    {"bz", &gs.potential().effective_magnetic_field(0)},
+                    {"bx", &gs.potential().effective_magnetic_field(1)},
+                    {"by", &gs.potential().effective_magnetic_field(2)},
+                    {"vloc", &gs.potential().local_potential()},
+                    {"vxc", &gs.potential().xc_potential()},
+                    {"dveff", &gs.potential().dveff()},
+                };
+
+                if (!func.count(label)) {
+                    RTE_THROW("wrong label: " + label);
+                }
+
+                func.at(label)->scatter_f_pw(v);
+
+                if (transform_to_rg__ && *transform_to_rg__) {
+                    func.at(label)->fft_transform(1);
+                }
             }
-            comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
-
-            std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"rhoc", &gs.density().rho_pseudo_core()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"bz", &gs.potential().effective_magnetic_field(0)},
-                {"bx", &gs.potential().effective_magnetic_field(1)},
-                {"by", &gs.potential().effective_magnetic_field(2)},
-                {"vloc", &gs.potential().local_potential()},
-                {"vxc", &gs.potential().xc_potential()},
-                {"dveff", &gs.potential().dveff()},
-            };
-
-            if (!func.count(label)) {
-                RTE_THROW("wrong label: " + label);
-            }
-
-            func.at(label)->scatter_f_pw(v);
-
-            if (transform_to_rg__ && *transform_to_rg__) {
-                func.at(label)->fft_transform(1);
-            }
-        }
-    }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -2447,65 +2477,67 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
 {
     PROFILE("sirius_api::sirius_get_pw_coeffs");
 
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(handler__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
 
-        std::string label(label__);
-        if (gs.ctx().full_potential()) {
-            STOP();
-        } else {
-            assert(ngv__ != NULL);
-            assert(gvl__ != NULL);
-            assert(comm__ != NULL);
+            std::string label(label__);
+            if (gs.ctx().full_potential()) {
+                STOP();
+            } else {
+                assert(ngv__ != NULL);
+                assert(gvl__ != NULL);
+                assert(comm__ != NULL);
 
-            Communicator comm(MPI_Comm_f2c(*comm__));
-            mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+                Communicator comm(MPI_Comm_f2c(*comm__));
+                mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-            std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"vloc", &gs.potential().local_potential()},
-                {"rhoc", &gs.density().rho_pseudo_core()}};
+                std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+                    {"rho", &gs.density().rho()},
+                    {"magz", &gs.density().magnetization(0)},
+                    {"magx", &gs.density().magnetization(1)},
+                    {"magy", &gs.density().magnetization(2)},
+                    {"veff", &gs.potential().effective_potential()},
+                    {"vloc", &gs.potential().local_potential()},
+                    {"rhoc", &gs.density().rho_pseudo_core()}};
 
-            if (!func.count(label)) {
-                RTE_THROW("wrong label: " + label);
+                if (!func.count(label)) {
+                    RTE_THROW("wrong label: " + label);
+                }
+                auto v = func.at(label)->gather_f_pw();
+
+                for (int i = 0; i < *ngv__; i++) {
+                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
+                    //    pw_coeffs__[i] = 0;
+                    //    continue;
+                    //}
+
+                    bool is_inverse{false};
+                    int ig = gs.ctx().gvec().index_by_gvec(G);
+                    if (ig == -1 && gs.ctx().gvec().reduced()) {
+                        ig         = gs.ctx().gvec().index_by_gvec(G * (-1));
+                        is_inverse = true;
+                    }
+                    if (ig == -1) {
+                        std::stringstream s;
+                        auto gvc =
+                            dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
+                        s << "wrong index of G-vector" << std::endl
+                          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                        RTE_THROW(s);
+                    }
+                    if (is_inverse) {
+                        pw_coeffs__[i] = std::conj(v[ig]);
+                    } else {
+                        pw_coeffs__[i] = v[ig];
+                    }
+                }
             }
-            auto v = func.at(label)->gather_f_pw();
-
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-
-                // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-                // if (gvc.length() > gs.ctx().pw_cutoff()) {
-                //    pw_coeffs__[i] = 0;
-                //    continue;
-                //}
-
-                bool is_inverse{false};
-                int ig = gs.ctx().gvec().index_by_gvec(G);
-                if (ig == -1 && gs.ctx().gvec().reduced()) {
-                    ig         = gs.ctx().gvec().index_by_gvec(G * (-1));
-                    is_inverse = true;
-                }
-                if (ig == -1) {
-                    std::stringstream s;
-                    auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
-                    s << "wrong index of G-vector" << std::endl
-                      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                    RTE_THROW(s);
-                }
-                if (is_inverse) {
-                    pw_coeffs__[i] = std::conj(v[ig]);
-                } else {
-                    pw_coeffs__[i] = v[ig];
-                }
-            }
-        }
-    }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -2530,14 +2562,14 @@ sirius_initialize_subspace:
 void
 sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(gs_handler__);
-        auto& ks = get_ks(ks_handler__);
-        sirius::Hamiltonian0<double> H0(gs.potential());
-        sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
-    },
-    error_code__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(gs_handler__);
+            auto& ks = get_ks(ks_handler__);
+            sirius::Hamiltonian0<double> H0(gs.potential());
+            sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
+        },
+        error_code__);
 }
 
 /*
@@ -2580,26 +2612,28 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                          bool const* precompute_rf__, bool const* precompute_ri__, double const* iter_solver_tol__,
                          int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(gs_handler__);
-        auto& ks = get_ks(ks_handler__);
-        double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance() : *iter_solver_tol__;
-        sirius::Hamiltonian0<double> H0(gs.potential());
-        if (precompute_pw__ && *precompute_pw__) {
-            H0.potential().generate_pw_coefs();
-        }
-        if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
-            H0.potential().update_atomic_potential();
-        }
-        if (precompute_rf__ && *precompute_rf__) {
-            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
-        }
-        if (precompute_ri__ && *precompute_ri__) {
-            const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
-        }
-        sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& gs   = get_gs(gs_handler__);
+            auto& ks   = get_ks(ks_handler__);
+            double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance()
+                                                        : *iter_solver_tol__;
+            sirius::Hamiltonian0<double> H0(gs.potential());
+            if (precompute_pw__ && *precompute_pw__) {
+                H0.potential().generate_pw_coefs();
+            }
+            if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
+                H0.potential().update_atomic_potential();
+            }
+            if (precompute_rf__ && *precompute_rf__) {
+                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
+            }
+            if (precompute_ri__ && *precompute_ri__) {
+                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+            }
+            sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
+        },
+        error_code__);
 }
 
 /*
@@ -2620,11 +2654,12 @@ sirius_generate_initial_density:
 void
 sirius_generate_initial_density(void* const* handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(handler__);
-        gs.density().initial_density();
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.density().initial_density();
+        },
+        error_code__);
 }
 
 /*
@@ -2645,11 +2680,12 @@ sirius_generate_effective_potential:
 void
 sirius_generate_effective_potential(void* const* handler__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(handler__);
-        gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), false);
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), false);
+        },
+        error_code__);
 }
 
 /*
@@ -2676,22 +2712,24 @@ sirius_generate_density:
 @api end
 */
 void
-sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__, int* error_code__)
+sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__,
+                        int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(gs_handler__);
-        bool add_core{false};
-        if (add_core__ != nullptr) {
-            add_core = *add_core__;
-        }
-        bool transform_to_rg{false};
-        if (transform_to_rg__ != nullptr) {
-            transform_to_rg = *transform_to_rg__;
-        }
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(gs_handler__);
+            bool add_core{false};
+            if (add_core__ != nullptr) {
+                add_core = *add_core__;
+            }
+            bool transform_to_rg{false};
+            if (transform_to_rg__ != nullptr) {
+                transform_to_rg = *transform_to_rg__;
+            }
 
-        gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
-    }, error_code__);
+            gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+        },
+        error_code__);
 }
 
 /*
@@ -2725,14 +2763,15 @@ void
 sirius_set_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__,
                             double const* band_occupancies__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& ks = get_ks(ks_handler__);
-        int ik   = *ik__ - 1;
-        for (int i = 0; i < ks.ctx().num_bands(); i++) {
-            ks.get<double>(ik)->band_occupancy(i, *ispn__, band_occupancies__[i]);
-        }
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& ks = get_ks(ks_handler__);
+            int ik   = *ik__ - 1;
+            for (int i = 0; i < ks.ctx().num_bands(); i++) {
+                ks.get<double>(ik)->band_occupancy(i, *ispn__, band_occupancies__[i]);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -2763,16 +2802,18 @@ sirius_get_band_occupancies:
 @api end
 */
 void
-sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__, double* band_occupancies__, int* error_code__)
+sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__, double* band_occupancies__,
+                            int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& ks = get_ks(ks_handler__);
-        int ik   = *ik__ - 1;
-        for (int i = 0; i < ks.ctx().num_bands(); i++) {
-            band_occupancies__[i] = ks.get<double>(ik)->band_occupancy(i, *ispn__);
-        }
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& ks = get_ks(ks_handler__);
+            int ik   = *ik__ - 1;
+            for (int i = 0; i < ks.ctx().num_bands(); i++) {
+                band_occupancies__[i] = ks.get<double>(ik)->band_occupancy(i, *ispn__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -2803,16 +2844,18 @@ sirius_get_band_energies:
 @api end
 */
 void
-sirius_get_band_energies(void* const* ks_handler__, int const* ik__, int const* ispn__, double* band_energies__, int* error_code__)
+sirius_get_band_energies(void* const* ks_handler__, int const* ik__, int const* ispn__, double* band_energies__,
+                         int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& ks = get_ks(ks_handler__);
-        int ik   = *ik__ - 1;
-        for (int i = 0; i < ks.ctx().num_bands(); i++) {
-            band_energies__[i] = ks.get<double>(ik)->band_energy(i, *ispn__);
-        }
-    }, error_code__);
+    call_sirius(
+        [&]() {
+            auto& ks = get_ks(ks_handler__);
+            int ik   = *ik__ - 1;
+            for (int i = 0; i < ks.ctx().num_bands(); i++) {
+                band_energies__[i] = ks.get<double>(ik)->band_energy(i, *ispn__);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -2841,43 +2884,90 @@ sirius_get_energy:
 void
 sirius_get_energy(void* const* handler__, char const* label__, double* energy__, int* error_code__)
 {
-    call_sirius([&]()
-    {
-        auto& gs = get_gs(handler__);
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
 
-        auto& kset      = gs.k_point_set();
-        auto& ctx       = kset.ctx();
-        auto& unit_cell = kset.unit_cell();
-        auto& potential = gs.potential();
-        auto& density   = gs.density();
+            auto& kset      = gs.k_point_set();
+            auto& ctx       = kset.ctx();
+            auto& unit_cell = kset.unit_cell();
+            auto& potential = gs.potential();
+            auto& density   = gs.density();
 
-        std::string label(label__);
+            std::string label(label__);
 
-        std::map<std::string, std::function<double()>> func = {
-            {"total",      [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
-            {"evalsum",    [&](){ return sirius::eval_sum(unit_cell, kset); }},
-            {"exc",        [&](){ return sirius::energy_exc(density, potential); }},
-            {"vxc",        [&](){ return sirius::energy_vxc(density, potential); }},
-            {"bxc",        [&](){ return sirius::energy_bxc(density, potential); }},
-            {"veff",       [&](){ return sirius::energy_veff(density, potential); }},
-            {"vloc",       [&](){ return sirius::energy_vloc(density, potential); }},
-            {"vha",        [&](){ return sirius::energy_vha(potential); }},
-            {"enuc",       [&](){ return sirius::energy_enuc(ctx, potential); }},
-            {"kin",        [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
-            {"one-el",     [&](){ return sirius::one_electron_energy(density, potential); }},
-            {"descf",      [&](){ return gs.scf_energy(); }},
-            {"demet",      [&](){ return kset.entropy_sum(); }},
-            {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
-            {"paw",        [&](){ return potential.PAW_total_energy(); }},
-            {"fermi",      [&](){ return kset.energy_fermi(); }}
-        };
+            std::map<std::string, std::function<double()>> func = {
+                {"total",
+                 [&]() {
+                     return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy());
+                 }},
+                {"evalsum",
+                 [&]() {
+                     return sirius::eval_sum(unit_cell, kset);
+                 }},
+                {"exc",
+                 [&]() {
+                     return sirius::energy_exc(density, potential);
+                 }},
+                {"vxc",
+                 [&]() {
+                     return sirius::energy_vxc(density, potential);
+                 }},
+                {"bxc",
+                 [&]() {
+                     return sirius::energy_bxc(density, potential);
+                 }},
+                {"veff",
+                 [&]() {
+                     return sirius::energy_veff(density, potential);
+                 }},
+                {"vloc",
+                 [&]() {
+                     return sirius::energy_vloc(density, potential);
+                 }},
+                {"vha",
+                 [&]() {
+                     return sirius::energy_vha(potential);
+                 }},
+                {"enuc",
+                 [&]() {
+                     return sirius::energy_enuc(ctx, potential);
+                 }},
+                {"kin",
+                 [&]() {
+                     return sirius::energy_kin(ctx, kset, density, potential);
+                 }},
+                {"one-el",
+                 [&]() {
+                     return sirius::one_electron_energy(density, potential);
+                 }},
+                {"descf",
+                 [&]() {
+                     return gs.scf_energy();
+                 }},
+                {"demet",
+                 [&]() {
+                     return kset.entropy_sum();
+                 }},
+                {"paw-one-el",
+                 [&]() {
+                     return potential.PAW_one_elec_energy(density);
+                 }},
+                {"paw",
+                 [&]() {
+                     return potential.PAW_total_energy();
+                 }},
+                {"fermi", [&]() {
+                     return kset.energy_fermi();
+                 }}};
 
-        if (!func.count(label)) {
-            RTE_THROW("wrong label: " + label);
-        }
+            if (!func.count(label)) {
+                RTE_THROW("wrong label: " + label);
+            }
 
-        *energy__ = func.at(label)();
-    }, error_code__);
+            *energy__ = func.at(label)();
+        },
+        error_code__);
 }
 
 /*
@@ -3083,8 +3173,7 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
 {
     PROFILE("sirius_api::sirius_get_wave_functions");
 
-    auto gvec_mapping = [&](Gvec const& gkvec)
-    {
+    auto gvec_mapping = [&](Gvec const& gkvec) {
         std::vector<int> igm(*num_gvec_loc__);
 
         sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
@@ -3092,9 +3181,9 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
         /* go in the order of host code */
         for (int ig = 0; ig < *num_gvec_loc__; ig++) {
             ///* G vector of host code */
-            //auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
+            // auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
             //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
-            //if (gvc.length() > kset.ctx().gk_cutoff()) {
+            // if (gvc.length() > kset.ctx().gk_cutoff()) {
             //    continue;
             //}
             int ig1 = gkvec.index_by_gvec({gv(0, ig), gv(1, ig), gv(2, ig)});
@@ -3118,7 +3207,6 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
 
     call_sirius(
         [&]() {
-
             auto& ks = get_ks(ks_handler__);
 
             auto& sim_ctx = ks.ctx();
@@ -3139,7 +3227,7 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
             for (int i = 0; i < ks.comm().size(); i++) {
                 if (buf[i] >= 0) {
                     dest_rank = i;
-                    jk = buf[i];
+                    jk        = buf[i];
                     break;
                 }
             }
@@ -3180,11 +3268,11 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
                     if (ngk != gkvec.num_gvec()) {
                         vector3d<double> vkl(vkl__);
                         std::stringstream s;
-                        s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk  << std::endl
+                        s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk << std::endl
                           << "expected number : " << gkvec.num_gvec() << std::endl
                           << "actual number   : " << ngk << std::endl
-                          << "local number of G+k vectors passed by rank " << gkvec.comm().rank()
-                          << " is " << *num_gvec_loc__;
+                          << "local number of G+k vectors passed by rank " << gkvec.comm().rank() << " is "
+                          << *num_gvec_loc__;
                         RTE_THROW(s);
                     }
                     wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
@@ -3203,9 +3291,9 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
 
                     /* send wave-functions */
                     if (ks.comm().rank() == src_rank) {
-                        auto kp = ks.get<double>(jk);
+                        auto kp   = ks.get<double>(jk);
                         int count = kp->gkvec().count();
-                        req = ks.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
+                        req       = ks.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
                                               count * sim_ctx.num_bands(), dest_rank, tag);
                     }
                     /* receive wave-functions */
@@ -3220,8 +3308,7 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
 
                         auto igmap = gvec_mapping(gkvec);
 
-                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s)
-                        {
+                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s) {
                             int ispn = s;
                             if (sim_ctx.num_mag_dims() == 1) {
                                 ispn = 0;
@@ -3253,7 +3340,6 @@ sirius_get_wave_functions_v2(void* const* ks_handler__, double const* vkl__, int
         },
         error_code__);
 }
-
 
 /*
 @api begin
@@ -3416,9 +3502,9 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                         std::unique_ptr<Wave_functions<double>> wf;
 
                         if (my_rank == r) {
-                            gvp = std::unique_ptr<Gvec_partition>(
-                                new Gvec_partition(gkvec, sim_ctx.comm_fft_coarse(), sim_ctx.comm_band_ortho_fft_coarse()));
-                            wf = std::unique_ptr<Wave_functions<double>>(
+                            gvp = std::unique_ptr<Gvec_partition>(new Gvec_partition(
+                                gkvec, sim_ctx.comm_fft_coarse(), sim_ctx.comm_band_ortho_fft_coarse()));
+                            wf  = std::unique_ptr<Wave_functions<double>>(
                                 new Wave_functions<double>(*gvp, sim_ctx.num_bands(), sim_ctx.preferred_memory_t()));
                         }
 
@@ -3461,7 +3547,7 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                             }
 
                             if (my_rank == rank_with_jk[r]) {
-                                auto kp = kset.get<double>(this_jk);
+                                auto kp         = kset.get<double>(this_jk);
                                 int gkvec_count = kp->gkvec().count();
                                 /* send wave-functions */
                                 req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
@@ -3477,8 +3563,8 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                                 /* store wave-functions */
                                 for (int i = 0; i < sim_ctx.num_bands(); i++) {
                                     /* gather full column of PW coefficients */
-                                    sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_count,
-                                                                  gkvec_offset);
+                                    sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(),
+                                                                  gkvec_count, gkvec_offset);
                                     store_wf(wf_tmp, i, s, evc);
                                 }
                             }
@@ -3489,7 +3575,8 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                     }
                 }
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3540,7 +3627,8 @@ sirius_add_atom_type_aw_descriptor(void* const* handler__, char const* label__, 
             auto& sim_ctx = get_sim_ctx(handler__);
             auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
             type.add_aw_descriptor(*n__, *l__, *enu__, *dme__, *auto_enu__);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3588,14 +3676,16 @@ sirius_add_atom_type_lo_descriptor:
 */
 void
 sirius_add_atom_type_lo_descriptor(void* const* handler__, char const* label__, int const* ilo__, int const* n__,
-                                   int const* l__, double const* enu__, int const* dme__, bool const* auto_enu__, int* error_code__)
+                                   int const* l__, double const* enu__, int const* dme__, bool const* auto_enu__,
+                                   int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
             type.add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3646,7 +3736,8 @@ sirius_set_atom_type_configuration(void* const* handler__, char const* label__, 
             auto& sim_ctx = get_sim_ctx(handler__);
             auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
             type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3709,7 +3800,6 @@ sirius_generate_xc_potential(void* const* handler__, int* error_code__)
         [&]() {
             auto& gs = get_gs(handler__);
             gs.potential().xc(gs.density());
-
         },
         error_code__);
 }
@@ -3740,7 +3830,8 @@ sirius_get_kpoint_inter_comm(void* const* handler__, int* fcomm__, int* error_co
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3769,7 +3860,8 @@ sirius_get_kpoint_inner_comm(void* const* handler__, int* fcomm__, int* error_co
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3798,7 +3890,8 @@ sirius_get_fft_comm(void* const* handler__, int* fcomm__, int* error_code__)
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -3899,7 +3992,8 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 auto d2 = sim_ctx.fft_grid().limits(2);
 
                 sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
-                std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
+                std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(),
+                          -1);
 
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
                     auto G = sim_ctx.gvec().gvec(ig);
@@ -4090,7 +4184,8 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
             comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
             comm_k.bcast(gkvec_len, *num_gkvec__, rank);
             comm_k.bcast(gkvec_tp__, *num_gkvec__ * 2, rank);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4121,8 +4216,8 @@ sirius_get_step_function:
 @api end
 */
 void
-sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__,
-                         int* num_rg_points__, int* error_code__) // TODO: generalise with get_periodic_function
+sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__, double* cfunrg__, int* num_rg_points__,
+                         int* error_code__) // TODO: generalise with get_periodic_function
 {
     call_sirius(
         [&]() {
@@ -4149,8 +4244,8 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
             if (is_local_rg) {
                 sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
             }
-    },
-    error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4237,7 +4332,8 @@ sirius_set_h_radial_integrals(void* const* handler__, int* ia__, int* lmmax__, d
             for (int lm = 0; lm < *lmmax__; lm++) {
                 sim_ctx.unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[lm] = val__[lm];
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4315,7 +4411,8 @@ sirius_set_o_radial_integral(void* const* handler__, int* ia__, double* val__, i
                 int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
                 sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *val__);
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4395,7 +4492,8 @@ sirius_set_o1_radial_integral(void* const* handler__, int* ia__, double* val__, 
                 RTE_THROW("2nd radial function index is not valid");
             }
             sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4471,14 +4569,16 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
                 }
             } else {
                 for (int ir = 0; ir < atom.num_mt_points(); ir++) {
-                    atom.symmetry_class().radial_function_derivative(ir, idxrf) = f__[ir] * atom.type().radial_grid()[ir];
+                    atom.symmetry_class().radial_function_derivative(ir, idxrf) =
+                        f__[ir] * atom.type().radial_grid()[ir];
                 }
             }
             if (l__ != nullptr && o__ != nullptr) {
                 int n = atom.num_mt_points();
                 atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4507,7 +4607,8 @@ sirius_set_equivalent_atoms(void* const* handler__, int* equivalent_atoms__, int
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             sim_ctx.unit_cell().set_equivalent_atoms(equivalent_atoms__);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4532,7 +4633,8 @@ sirius_update_atomic_potential(void* const* handler__, int* error_code__)
         [&]() {
             auto& gs = get_gs(handler__);
             gs.potential().update_atomic_potential();
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -4620,21 +4722,21 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
                 }
 
                 if (dict[el.key()]["items"]["type"] == "array") {
-                  if (dict[el.key()]["items"]["type"] == "string") {
-                    *type__ += 14;
-                  }
+                    if (dict[el.key()]["items"]["type"] == "string") {
+                        *type__ += 14;
+                    }
 
-                  if (dict[el.key()]["items"]["type"] == "integer") {
-                    *type__ += 11;
-                  }
+                    if (dict[el.key()]["items"]["type"] == "integer") {
+                        *type__ += 11;
+                    }
 
-                  if (dict[el.key()]["items"]["type"] == "number") {
-                    *type__ += 12;
-                  }
+                    if (dict[el.key()]["items"]["type"] == "number") {
+                        *type__ += 12;
+                    }
 
-                  if (dict[el.key()]["items"]["type"] == "boolean") {
-                    *type__ += 13;
-                  }
+                    if (dict[el.key()]["items"]["type"] == "boolean") {
+                        *type__ += 13;
+                    }
                 }
             } else {
                 if (dict[el.key()]["type"] == "string") {
@@ -4696,7 +4798,7 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
     if (parser[name].count("title")) {
         auto description = parser[name].value("title", "");
         if (description.size()) {
-          std::copy(description.begin(), description.end(), desc__);
+            std::copy(description.begin(), description.end(), desc__);
         }
     }
     if (parser[name].count("usage")) {
@@ -4928,7 +5030,7 @@ sirius_option_get_section_name(int* elem, char* section_name)
 
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
-      std::copy(el.key().begin(), el.key().end(), section_name);
+            std::copy(el.key().begin(), el.key().end(), section_name);
             break;
         }
         elem_++;
@@ -4981,7 +5083,8 @@ sirius_option_set_int:
 @api end
 */
 void
-sirius_option_set_int(void* const* handler__, const char* section__, const char* name__, const int* default_values__, const int* length__)
+sirius_option_set_int(void* const* handler__, const char* section__, const char* name__, const int* default_values__,
+                      const int* length__)
 {
     sirius_option_set_value__<int>(handler__, section__, name__, default_values__, length__);
 }
@@ -5014,7 +5117,8 @@ sirius_option_set_double:
 @api end
 */
 void
-sirius_option_set_double(void* const* handler__, const char* section__, const char* name__, const double* default_values__, const int* length__)
+sirius_option_set_double(void* const* handler__, const char* section__, const char* name__,
+                         const double* default_values__, const int* length__)
 {
     sirius_option_set_value__<double>(handler__, section__, name__, default_values__, length__);
 }
@@ -5047,9 +5151,10 @@ sirius_option_set_logical:
 @api end
 */
 void
-sirius_option_set_logical(void* const* handler__, const char* section__, const char* name__, const bool* default_values__, const int* length__)
+sirius_option_set_logical(void* const* handler__, const char* section__, const char* name__,
+                          const bool* default_values__, const int* length__)
 {
-  sirius_option_set_value__<bool>(handler__, section__, name__, default_values__, length__);
+    sirius_option_set_value__<bool>(handler__, section__, name__, default_values__, length__);
 }
 
 /*
@@ -5078,18 +5183,18 @@ sirius_option_set_string:
 void
 sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    auto section = std::string(section__);
+    auto& sim_ctx   = get_sim_ctx(handler__);
+    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
+    auto section    = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     auto name = std::string(name__);
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
     if (!default_values__) {
-      std::cout << "option not set up because the string is empty" << std::endl;
-      return;
+        std::cout << "option not set up because the string is empty" << std::endl;
+        return;
     }
-    auto st           = std::string(default_values__);
+    auto st = std::string(default_values__);
     std::transform(st.begin(), st.end(), st.begin(), ::tolower);
     conf_dict[section][name] = st;
 }
@@ -5124,7 +5229,7 @@ sirius_option_add_string_to(void* const* handler__, char* section__, char* name_
     // the first one is static
     const json& parser = sirius::get_options_dictionary()["properties"];
     json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    auto section = std::string(section__);
+    auto section       = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     auto name = std::string(name__);
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
@@ -5218,7 +5323,8 @@ sirius_get_fv_eigen_vectors(void* const* handler__, int const* ik__, std::comple
             mdarray<std::complex<double>, 2> fv_evec(fv_evec__, *ld__, *num_fv_states__);
             int ik = *ik__ - 1;
             ks.get<double>(ik)->get_fv_eigen_vectors(fv_evec);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5254,15 +5360,16 @@ sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_e
 {
     call_sirius(
         [&]() {
-        auto& ks = get_ks(handler__);
-        if (*num_fv_states__ != ks.ctx().num_fv_states()) {
-            RTE_THROW("wrong number of first-variational states");
-        }
-        int ik = *ik__ - 1;
-        for (int i = 0; i < *num_fv_states__; i++) {
-            fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
-        }
-    }, error_code__);
+            auto& ks = get_ks(handler__);
+            if (*num_fv_states__ != ks.ctx().num_fv_states()) {
+                RTE_THROW("wrong number of first-variational states");
+            }
+            int ik = *ik__ - 1;
+            for (int i = 0; i < *num_fv_states__; i++) {
+                fv_eval__[i] = ks.get<double>(ik)->fv_eigen_value(i);
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -5302,7 +5409,8 @@ sirius_get_sv_eigen_vectors(void* const* handler__, int const* ik__, std::comple
             mdarray<std::complex<double>, 2> sv_evec(sv_evec__, *num_bands__, *num_bands__);
             int ik = *ik__ - 1;
             ks.get<double>(ik)->get_sv_eigen_vectors(sv_evec);
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5434,7 +5542,8 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
             if (transform_to_pw__ && *transform_to_pw__) {
                 f->fft_transform(-1);
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5564,7 +5673,8 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                     }
                 }
             } /* loop over ranks */
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5605,7 +5715,8 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
                 /* swap z and y and change order x,z,y to x,y,z */
                 std::swap(total_mag[1], total_mag[2]);
             }
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5822,7 +5933,8 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
 #else
             RTE_THROW("SIRIUS was not compiled with NLCG option.");
 #endif
-        }, error_code__);
+        },
+        error_code__);
 }
 
 /*
@@ -5940,7 +6052,8 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 #else
             RTE_THROW("SIRIUS was not compiled with NLCG option.");
 #endif
-        }, error_code__);
+        },
+        error_code__);
 }
 
 } // extern "C"
