@@ -5,26 +5,34 @@
 !
 !> @brief Initialize the SIRIUS library.
 !> @param [in] call_mpi_init If .true. then MPI_Init must be called prior to initialization.
-subroutine sirius_initialize(call_mpi_init)
+!> @param [out] error_code Error code.
+subroutine sirius_initialize(call_mpi_init,error_code)
 implicit none
 !
 logical, target, intent(in) :: call_mpi_init
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: call_mpi_init_ptr
 logical(C_BOOL), target :: call_mpi_init_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_initialize_aux(call_mpi_init)&
+subroutine sirius_initialize_aux(call_mpi_init,error_code)&
 &bind(C, name="sirius_initialize")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: call_mpi_init
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 call_mpi_init_ptr = C_NULL_PTR
 call_mpi_init_c_type = call_mpi_init
 call_mpi_init_ptr = C_LOC(call_mpi_init_c_type)
-call sirius_initialize_aux(call_mpi_init_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_initialize_aux(call_mpi_init_ptr,error_code_ptr)
 end subroutine sirius_initialize
 
 !
@@ -32,12 +40,14 @@ end subroutine sirius_initialize
 !> @param [in] call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
 !> @param [in] call_device_reset If .true. then cuda device is reset after shutdown.
 !> @param [in] call_fftw_fin If .true. then fft_cleanup must be called after the shutdown.
-subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin)
+!> @param [out] error_code Error code.
+subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)
 implicit none
 !
 logical, optional, target, intent(in) :: call_mpi_fin
 logical, optional, target, intent(in) :: call_device_reset
 logical, optional, target, intent(in) :: call_fftw_fin
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: call_mpi_fin_ptr
 logical(C_BOOL), target :: call_mpi_fin_c_type
@@ -45,14 +55,16 @@ type(C_PTR) :: call_device_reset_ptr
 logical(C_BOOL), target :: call_device_reset_c_type
 type(C_PTR) :: call_fftw_fin_ptr
 logical(C_BOOL), target :: call_fftw_fin_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin)&
+subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)&
 &bind(C, name="sirius_finalize")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: call_mpi_fin
 type(C_PTR), value :: call_device_reset
 type(C_PTR), value :: call_fftw_fin
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -71,7 +83,12 @@ if (present(call_fftw_fin)) then
 call_fftw_fin_c_type = call_fftw_fin
 call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
 endif
-call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr,&
+&error_code_ptr)
 if (present(call_mpi_fin)) then
 endif
 if (present(call_device_reset)) then
@@ -83,19 +100,23 @@ end subroutine sirius_finalize
 !
 !> @brief Start the timer.
 !> @param [in] name Timer label.
-subroutine sirius_start_timer(name)
+!> @param [out] error_code Error code.
+subroutine sirius_start_timer(name,error_code)
 implicit none
 !
 character(*), target, intent(in) :: name
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_start_timer_aux(name)&
+subroutine sirius_start_timer_aux(name,error_code)&
 &bind(C, name="sirius_start_timer")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: name
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -103,26 +124,34 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_start_timer_aux(name_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_start_timer_aux(name_ptr,error_code_ptr)
 deallocate(name_c_type)
 end subroutine sirius_start_timer
 
 !
 !> @brief Stop the running timer.
 !> @param [in] name Timer label.
-subroutine sirius_stop_timer(name)
+!> @param [out] error_code Error code.
+subroutine sirius_stop_timer(name,error_code)
 implicit none
 !
 character(*), target, intent(in) :: name
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_stop_timer_aux(name)&
+subroutine sirius_stop_timer_aux(name,error_code)&
 &bind(C, name="sirius_stop_timer")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: name
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -130,51 +159,67 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_stop_timer_aux(name_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_stop_timer_aux(name_ptr,error_code_ptr)
 deallocate(name_c_type)
 end subroutine sirius_stop_timer
 
 !
 !> @brief Print all timers.
 !> @param [in] flatten If true, flat list of timers is printed.
-subroutine sirius_print_timers(flatten)
+!> @param [out] error_code Error code.
+subroutine sirius_print_timers(flatten,error_code)
 implicit none
 !
 logical, target, intent(in) :: flatten
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: flatten_ptr
 logical(C_BOOL), target :: flatten_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_print_timers_aux(flatten)&
+subroutine sirius_print_timers_aux(flatten,error_code)&
 &bind(C, name="sirius_print_timers")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: flatten
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 flatten_ptr = C_NULL_PTR
 flatten_c_type = flatten
 flatten_ptr = C_LOC(flatten_c_type)
-call sirius_print_timers_aux(flatten_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_print_timers_aux(flatten_ptr,error_code_ptr)
 end subroutine sirius_print_timers
 
 !
 !> @brief Save all timers to JSON file.
 !> @param [in] fname Name of the output JSON file.
-subroutine sirius_serialize_timers(fname)
+!> @param [out] error_code Error code.
+subroutine sirius_serialize_timers(fname,error_code)
 implicit none
 !
 character(*), target, intent(in) :: fname
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: fname_ptr
 character(C_CHAR), target, allocatable :: fname_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_serialize_timers_aux(fname)&
+subroutine sirius_serialize_timers_aux(fname,error_code)&
 &bind(C, name="sirius_serialize_timers")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: fname
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -182,7 +227,11 @@ fname_ptr = C_NULL_PTR
 allocate(fname_c_type(len(fname)+1))
 fname_c_type = string_f2c(fname)
 fname_ptr = C_LOC(fname_c_type)
-call sirius_serialize_timers_aux(fname_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_serialize_timers_aux(fname_ptr,error_code_ptr)
 deallocate(fname_c_type)
 end subroutine sirius_serialize_timers
 
@@ -1944,30 +1993,34 @@ end subroutine sirius_set_atom_type_radial_grid
 !> @param [in] label Atom type label.
 !> @param [in] num_radial_points Number of radial grid points.
 !> @param [in] radial_points List of radial grid points.
+!> @param [out] error_code Error code.
 subroutine sirius_set_atom_type_radial_grid_inf(handler,label,num_radial_points,&
-&radial_points)
+&radial_points,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
 real(8), target, dimension(num_radial_points), intent(in) :: radial_points
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: num_radial_points_ptr
 type(C_PTR) :: radial_points_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,&
-&radial_points)&
+&radial_points,error_code)&
 &bind(C, name="sirius_set_atom_type_radial_grid_inf")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: num_radial_points
 type(C_PTR), value :: radial_points
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1981,8 +2034,12 @@ num_radial_points_ptr = C_NULL_PTR
 num_radial_points_ptr = C_LOC(num_radial_points)
 radial_points_ptr = C_NULL_PTR
 radial_points_ptr = C_LOC(radial_points)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_atom_type_radial_grid_inf_aux(handler_ptr,label_ptr,num_radial_points_ptr,&
-&radial_points_ptr)
+&radial_points_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid_inf
 
@@ -1998,8 +2055,9 @@ end subroutine sirius_set_atom_type_radial_grid_inf
 !> @param [in] idxrf1 First index of radial function (for Q-operator).
 !> @param [in] idxrf2 Second index of radial function (for Q-operator).
 !> @param [in] occ Occupancy of the wave-function.
+!> @param [out] error_code Error code.
 subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ)
+&n,l,idxrf1,idxrf2,occ,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -2012,6 +2070,7 @@ integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: idxrf1
 integer, optional, target, intent(in) :: idxrf2
 real(8), optional, target, intent(in) :: occ
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: atom_type_ptr
@@ -2025,10 +2084,11 @@ type(C_PTR) :: l_ptr
 type(C_PTR) :: idxrf1_ptr
 type(C_PTR) :: idxrf2_ptr
 type(C_PTR) :: occ_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ)&
+&n,l,idxrf1,idxrf2,occ,error_code)&
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2041,6 +2101,7 @@ type(C_PTR), value :: l
 type(C_PTR), value :: idxrf1
 type(C_PTR), value :: idxrf2
 type(C_PTR), value :: occ
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2078,8 +2139,12 @@ occ_ptr = C_NULL_PTR
 if (present(occ)) then
 occ_ptr = C_LOC(occ)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_add_atom_type_radial_function_aux(handler_ptr,atom_type_ptr,label_ptr,&
-&rf_ptr,num_points_ptr,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
+&rf_ptr,num_points_ptr,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr,error_code_ptr)
 deallocate(atom_type_c_type)
 deallocate(label_c_type)
 end subroutine sirius_add_atom_type_radial_function
@@ -2096,7 +2161,9 @@ end subroutine sirius_add_atom_type_radial_function
 !> @param [in] alpha J_alpha for the simple interaction treatment.
 !> @param [in] beta J_beta for the simple interaction treatment.
 !> @param [in] J0 J0 for the simple interaction treatment.
-subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0)
+!> @param [out] error_code Error code.
+subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -2109,6 +2176,7 @@ real(8), target, intent(in) :: J
 real(8), target, intent(in) :: alpha
 real(8), target, intent(in) :: beta
 real(8), target, intent(in) :: J0
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2121,10 +2189,11 @@ type(C_PTR) :: J_ptr
 type(C_PTR) :: alpha_ptr
 type(C_PTR) :: beta_ptr
 type(C_PTR) :: J0_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,&
-&J0)&
+&J0,error_code)&
 &bind(C, name="sirius_set_atom_type_hubbard")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2137,6 +2206,7 @@ type(C_PTR), value :: J
 type(C_PTR), value :: alpha
 type(C_PTR), value :: beta
 type(C_PTR), value :: J0
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2162,8 +2232,12 @@ beta_ptr = C_NULL_PTR
 beta_ptr = C_LOC(beta)
 J0_ptr = C_NULL_PTR
 J0_ptr = C_LOC(J0)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_atom_type_hubbard_aux(handler_ptr,label_ptr,l_ptr,n_ptr,occ_ptr,&
-&U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr)
+&U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_hubbard
 
@@ -2173,28 +2247,32 @@ end subroutine sirius_set_atom_type_hubbard
 !> @param [in] label Atom type label.
 !> @param [in] num_beta Number of beta-projectors.
 !> @param [in] dion Ionic part of D-operator matrix.
-subroutine sirius_set_atom_type_dion(handler,label,num_beta,dion)
+!> @param [out] error_code Error code.
+subroutine sirius_set_atom_type_dion(handler,label,num_beta,dion,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_beta
 real(8), target, dimension(num_beta, num_beta), intent(in) :: dion
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: num_beta_ptr
 type(C_PTR) :: dion_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_atom_type_dion_aux(handler,label,num_beta,dion)&
+subroutine sirius_set_atom_type_dion_aux(handler,label,num_beta,dion,error_code)&
 &bind(C, name="sirius_set_atom_type_dion")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: num_beta
 type(C_PTR), value :: dion
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2208,7 +2286,11 @@ num_beta_ptr = C_NULL_PTR
 num_beta_ptr = C_LOC(num_beta)
 dion_ptr = C_NULL_PTR
 dion_ptr = C_LOC(dion)
-call sirius_set_atom_type_dion_aux(handler_ptr,label_ptr,num_beta_ptr,dion_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_atom_type_dion_aux(handler_ptr,label_ptr,num_beta_ptr,dion_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_dion
 
@@ -2219,7 +2301,9 @@ end subroutine sirius_set_atom_type_dion
 !> @param [in] core_energy Core-electrons energy contribution.
 !> @param [in] occupations array of orbital occupancies
 !> @param [in] num_occ size of the occupations array
-subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_occ)
+!> @param [out] error_code Error code.
+subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_occ,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -2227,6 +2311,7 @@ character(*), target, intent(in) :: label
 real(8), target, intent(in) :: core_energy
 real(8), target, dimension(num_occ), intent(in) :: occupations
 integer, target, intent(in) :: num_occ
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2234,9 +2319,11 @@ character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: core_energy_ptr
 type(C_PTR) :: occupations_ptr
 type(C_PTR) :: num_occ_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)&
+subroutine sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ,&
+&error_code)&
 &bind(C, name="sirius_set_atom_type_paw")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2244,6 +2331,7 @@ type(C_PTR), value :: label
 type(C_PTR), value :: core_energy
 type(C_PTR), value :: occupations
 type(C_PTR), value :: num_occ
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2259,8 +2347,12 @@ occupations_ptr = C_NULL_PTR
 occupations_ptr = C_LOC(occupations)
 num_occ_ptr = C_NULL_PTR
 num_occ_ptr = C_LOC(num_occ)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_atom_type_paw_aux(handler_ptr,label_ptr,core_energy_ptr,occupations_ptr,&
-&num_occ_ptr)
+&num_occ_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_paw
 
@@ -2270,28 +2362,32 @@ end subroutine sirius_set_atom_type_paw
 !> @param [in] label Atom type label.
 !> @param [in] position Atom position in lattice coordinates.
 !> @param [in] vector_field Starting magnetization.
-subroutine sirius_add_atom(handler,label,position,vector_field)
+!> @param [out] error_code Error code.
+subroutine sirius_add_atom(handler,label,position,vector_field,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, dimension(3), intent(in) :: position
 real(8), optional, target, dimension(3), intent(in) :: vector_field
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: position_ptr
 type(C_PTR) :: vector_field_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_add_atom_aux(handler,label,position,vector_field)&
+subroutine sirius_add_atom_aux(handler,label,position,vector_field,error_code)&
 &bind(C, name="sirius_add_atom")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: position
 type(C_PTR), value :: vector_field
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2307,7 +2403,11 @@ vector_field_ptr = C_NULL_PTR
 if (present(vector_field)) then
 vector_field_ptr = C_LOC(vector_field)
 endif
-call sirius_add_atom_aux(handler_ptr,label_ptr,position_ptr,vector_field_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_add_atom_aux(handler_ptr,label_ptr,position_ptr,vector_field_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_add_atom
 
@@ -2316,24 +2416,28 @@ end subroutine sirius_add_atom
 !> @param [in] handler Simulation context handler.
 !> @param [in] ia Index of atom; index starts form 1
 !> @param [in] position Atom position in lattice coordinates.
-subroutine sirius_set_atom_position(handler,ia,position)
+!> @param [out] error_code Error code.
+subroutine sirius_set_atom_position(handler,ia,position,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 real(8), target, dimension(3), intent(in) :: position
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
 type(C_PTR) :: position_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_atom_position_aux(handler,ia,position)&
+subroutine sirius_set_atom_position_aux(handler,ia,position,error_code)&
 &bind(C, name="sirius_set_atom_position")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: ia
 type(C_PTR), value :: position
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2343,7 +2447,11 @@ ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 position_ptr = C_NULL_PTR
 position_ptr = C_LOC(position)
-call sirius_set_atom_position_aux(handler_ptr,ia_ptr,position_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_atom_position_aux(handler_ptr,ia_ptr,position_ptr,error_code_ptr)
 end subroutine sirius_set_atom_position
 
 !
@@ -2355,8 +2463,9 @@ end subroutine sirius_set_atom_position
 !> @param [in] ngv Local number of G-vectors.
 !> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
 !> @param [in] comm MPI communicator used in distribution of G-vectors
+!> @param [out] error_code Error code.
 subroutine sirius_set_pw_coeffs(handler,label,pw_coeffs,transform_to_rg,ngv,gvl,&
-&comm)
+&comm,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -2366,6 +2475,7 @@ logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(in) :: ngv
 integer, optional, target, dimension(3, *), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2376,10 +2486,11 @@ logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg,ngv,&
-&gvl,comm)&
+&gvl,comm,error_code)&
 &bind(C, name="sirius_set_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2389,6 +2500,7 @@ type(C_PTR), value :: transform_to_rg
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
 type(C_PTR), value :: comm
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2417,8 +2529,12 @@ comm_ptr = C_NULL_PTR
 if (present(comm)) then
 comm_ptr = C_LOC(comm)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_pw_coeffs_aux(handler_ptr,label_ptr,pw_coeffs_ptr,transform_to_rg_ptr,&
-&ngv_ptr,gvl_ptr,comm_ptr)
+&ngv_ptr,gvl_ptr,comm_ptr,error_code_ptr)
 deallocate(label_c_type)
 if (present(transform_to_rg)) then
 endif
@@ -2432,7 +2548,8 @@ end subroutine sirius_set_pw_coeffs
 !> @param [in] ngv Local number of G-vectors.
 !> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
 !> @param [in] comm MPI communicator used in distribution of G-vectors
-subroutine sirius_get_pw_coeffs(handler,label,pw_coeffs,ngv,gvl,comm)
+!> @param [out] error_code Error code.
+subroutine sirius_get_pw_coeffs(handler,label,pw_coeffs,ngv,gvl,comm,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -2441,6 +2558,7 @@ complex(8), target, dimension(*), intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
 integer, optional, target, dimension(3, *), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2449,9 +2567,10 @@ type(C_PTR) :: pw_coeffs_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv,gvl,comm)&
+subroutine sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv,gvl,comm,error_code)&
 &bind(C, name="sirius_get_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2460,6 +2579,7 @@ type(C_PTR), value :: pw_coeffs
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
 type(C_PTR), value :: comm
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2483,8 +2603,12 @@ comm_ptr = C_NULL_PTR
 if (present(comm)) then
 comm_ptr = C_LOC(comm)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_get_pw_coeffs_aux(handler_ptr,label_ptr,pw_coeffs_ptr,ngv_ptr,gvl_ptr,&
-&comm_ptr)
+&comm_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs
 
@@ -2612,47 +2736,63 @@ end subroutine sirius_find_eigen_states
 !
 !> @brief Generate initial density.
 !> @param [in] handler Ground state handler.
-subroutine sirius_generate_initial_density(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_generate_initial_density(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_generate_initial_density_aux(handler)&
+subroutine sirius_generate_initial_density_aux(handler,error_code)&
 &bind(C, name="sirius_generate_initial_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-call sirius_generate_initial_density_aux(handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_initial_density_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_generate_initial_density
 
 !
 !> @brief Generate effective potential and magnetic field.
 !> @param [in] handler Ground state handler.
-subroutine sirius_generate_effective_potential(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_generate_effective_potential(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_generate_effective_potential_aux(handler)&
+subroutine sirius_generate_effective_potential_aux(handler,error_code)&
 &bind(C, name="sirius_generate_effective_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-call sirius_generate_effective_potential_aux(handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_effective_potential_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_generate_effective_potential
 
 !
@@ -2660,26 +2800,30 @@ end subroutine sirius_generate_effective_potential
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] add_core Add core charge density in the muffin-tins.
 !> @param [in] transform_to_rg If true, density and magnetization are transformed to real-space grid.
-subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg)
+!> @param [out] error_code Error code.
+subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 logical, optional, target, intent(in) :: add_core
 logical, optional, target, intent(in) :: transform_to_rg
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: add_core_ptr
 logical(C_BOOL), target :: add_core_c_type
 type(C_PTR) :: transform_to_rg_ptr
 logical(C_BOOL), target :: transform_to_rg_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg)&
+subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg,error_code)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: add_core
 type(C_PTR), value :: transform_to_rg
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2695,7 +2839,12 @@ if (present(transform_to_rg)) then
 transform_to_rg_c_type = transform_to_rg
 transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
-call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr,&
+&error_code_ptr)
 if (present(add_core)) then
 endif
 if (present(transform_to_rg)) then
@@ -2708,27 +2857,31 @@ end subroutine sirius_generate_density
 !> @param [in] ik Global index of k-point.
 !> @param [in] ispn Spin component.
 !> @param [in] band_occupancies Array of band occupancies.
-subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies)
+!> @param [out] error_code Error code.
+subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(in) :: band_occupancies
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: ispn_ptr
 type(C_PTR) :: band_occupancies_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
+subroutine sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies,error_code)&
 &bind(C, name="sirius_set_band_occupancies")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: ik
 type(C_PTR), value :: ispn
 type(C_PTR), value :: band_occupancies
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2740,7 +2893,12 @@ ispn_ptr = C_NULL_PTR
 ispn_ptr = C_LOC(ispn)
 band_occupancies_ptr = C_NULL_PTR
 band_occupancies_ptr = C_LOC(band_occupancies)
-call sirius_set_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr,&
+&error_code_ptr)
 end subroutine sirius_set_band_occupancies
 
 !
@@ -2749,27 +2907,31 @@ end subroutine sirius_set_band_occupancies
 !> @param [in] ik Global index of k-point.
 !> @param [in] ispn Spin component.
 !> @param [out] band_occupancies Array of band occupancies.
-subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
+!> @param [out] error_code Error code.
+subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(out) :: band_occupancies
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: ispn_ptr
 type(C_PTR) :: band_occupancies_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
+subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies,error_code)&
 &bind(C, name="sirius_get_band_occupancies")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: ik
 type(C_PTR), value :: ispn
 type(C_PTR), value :: band_occupancies
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2781,7 +2943,12 @@ ispn_ptr = C_NULL_PTR
 ispn_ptr = C_LOC(ispn)
 band_occupancies_ptr = C_NULL_PTR
 band_occupancies_ptr = C_LOC(band_occupancies)
-call sirius_get_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_band_occupancies
 
 !
@@ -2790,27 +2957,31 @@ end subroutine sirius_get_band_occupancies
 !> @param [in] ik Global index of k-point.
 !> @param [in] ispn Spin component.
 !> @param [out] band_energies Array of band energies.
-subroutine sirius_get_band_energies(ks_handler,ik,ispn,band_energies)
+!> @param [out] error_code Error code.
+subroutine sirius_get_band_energies(ks_handler,ik,ispn,band_energies,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(out) :: band_energies
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: ispn_ptr
 type(C_PTR) :: band_energies_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)&
+subroutine sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies,error_code)&
 &bind(C, name="sirius_get_band_energies")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: ik
 type(C_PTR), value :: ispn
 type(C_PTR), value :: band_energies
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2822,7 +2993,12 @@ ispn_ptr = C_NULL_PTR
 ispn_ptr = C_LOC(ispn)
 band_energies_ptr = C_NULL_PTR
 band_energies_ptr = C_LOC(band_energies)
-call sirius_get_band_energies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_energies_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_band_energies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_energies_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_band_energies
 
 !
@@ -2830,25 +3006,29 @@ end subroutine sirius_get_band_energies
 !> @param [in] handler DFT ground state handler.
 !> @param [in] label Label of the energy component to get.
 !> @param [out] energy Total energy component.
-subroutine sirius_get_energy(handler,label,energy)
+!> @param [out] error_code Error code.
+subroutine sirius_get_energy(handler,label,energy,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, intent(out) :: energy
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: energy_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_energy_aux(handler,label,energy)&
+subroutine sirius_get_energy_aux(handler,label,energy,error_code)&
 &bind(C, name="sirius_get_energy")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: energy
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2860,7 +3040,11 @@ label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 energy_ptr = C_NULL_PTR
 energy_ptr = C_LOC(energy)
-call sirius_get_energy_aux(handler_ptr,label_ptr,energy_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_energy_aux(handler_ptr,label_ptr,energy_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_get_energy
 
@@ -2916,7 +3100,7 @@ end subroutine sirius_get_forces
 !> @param [in] handler DFT ground state handler.
 !> @param [in] label Label of the stress tensor component to get.
 !> @param [out] stress_tensor Component of the total stress tensor.
-!> @param [out] error_code Error code..
+!> @param [out] error_code Error code.
 subroutine sirius_get_stress_tensor(handler,label,stress_tensor,error_code)
 implicit none
 !
@@ -3105,7 +3289,8 @@ end subroutine sirius_get_wave_functions_v2
 !> @param [out] evc Wave-functions.
 !> @param [in] ld1 Leading dimension of evc array.
 !> @param [in] ld2 Second dimension of evc array.
-subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
+!> @param [out] error_code Error code
+subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
@@ -3116,6 +3301,7 @@ integer, target, intent(in) :: gvec_k
 complex(8), target, intent(out) :: evc
 integer, target, intent(in) :: ld1
 integer, target, intent(in) :: ld2
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
@@ -3125,9 +3311,11 @@ type(C_PTR) :: gvec_k_ptr
 type(C_PTR) :: evc_ptr
 type(C_PTR) :: ld1_ptr
 type(C_PTR) :: ld2_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)&
+subroutine sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2,&
+&error_code)&
 &bind(C, name="sirius_get_wave_functions")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
@@ -3138,6 +3326,7 @@ type(C_PTR), value :: gvec_k
 type(C_PTR), value :: evc
 type(C_PTR), value :: ld1
 type(C_PTR), value :: ld2
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3157,8 +3346,12 @@ ld1_ptr = C_NULL_PTR
 ld1_ptr = C_LOC(ld1)
 ld2_ptr = C_NULL_PTR
 ld2_ptr = C_LOC(ld2)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k_ptr,&
-&evc_ptr,ld1_ptr,ld2_ptr)
+&evc_ptr,ld1_ptr,ld2_ptr,error_code_ptr)
 end subroutine sirius_get_wave_functions
 
 !
@@ -3170,7 +3363,9 @@ end subroutine sirius_get_wave_functions
 !> @param [in] enu Linearization energy.
 !> @param [in] dme Order of energy derivative.
 !> @param [in] auto_enu True if automatic search of linearization energy is allowed for this radial solution.
-subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu)
+!> @param [out] error_code Error code
+subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3180,6 +3375,7 @@ integer, target, intent(in) :: l
 real(8), target, intent(in) :: enu
 integer, target, intent(in) :: dme
 logical, target, intent(in) :: auto_enu
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -3190,9 +3386,11 @@ type(C_PTR) :: enu_ptr
 type(C_PTR) :: dme_ptr
 type(C_PTR) :: auto_enu_ptr
 logical(C_BOOL), target :: auto_enu_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu)&
+subroutine sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu,&
+&error_code)&
 &bind(C, name="sirius_add_atom_type_aw_descriptor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3202,6 +3400,7 @@ type(C_PTR), value :: l
 type(C_PTR), value :: enu
 type(C_PTR), value :: dme
 type(C_PTR), value :: auto_enu
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3222,8 +3421,12 @@ dme_ptr = C_LOC(dme)
 auto_enu_ptr = C_NULL_PTR
 auto_enu_c_type = auto_enu
 auto_enu_ptr = C_LOC(auto_enu_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_add_atom_type_aw_descriptor_aux(handler_ptr,label_ptr,n_ptr,l_ptr,enu_ptr,&
-&dme_ptr,auto_enu_ptr)
+&dme_ptr,auto_enu_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_add_atom_type_aw_descriptor
 
@@ -3237,7 +3440,9 @@ end subroutine sirius_add_atom_type_aw_descriptor
 !> @param [in] enu Linearization energy.
 !> @param [in] dme Order of energy derivative.
 !> @param [in] auto_enu True if automatic search of linearization energy is allowed for this radial solution.
-subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto_enu)
+!> @param [out] error_code Error code
+subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto_enu,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3248,6 +3453,7 @@ integer, target, intent(in) :: l
 real(8), target, intent(in) :: enu
 integer, target, intent(in) :: dme
 logical, target, intent(in) :: auto_enu
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -3259,10 +3465,11 @@ type(C_PTR) :: enu_ptr
 type(C_PTR) :: dme_ptr
 type(C_PTR) :: auto_enu_ptr
 logical(C_BOOL), target :: auto_enu_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,&
-&auto_enu)&
+&auto_enu,error_code)&
 &bind(C, name="sirius_add_atom_type_lo_descriptor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3273,6 +3480,7 @@ type(C_PTR), value :: l
 type(C_PTR), value :: enu
 type(C_PTR), value :: dme
 type(C_PTR), value :: auto_enu
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3295,8 +3503,12 @@ dme_ptr = C_LOC(dme)
 auto_enu_ptr = C_NULL_PTR
 auto_enu_c_type = auto_enu
 auto_enu_ptr = C_LOC(auto_enu_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_add_atom_type_lo_descriptor_aux(handler_ptr,label_ptr,ilo_ptr,n_ptr,&
-&l_ptr,enu_ptr,dme_ptr,auto_enu_ptr)
+&l_ptr,enu_ptr,dme_ptr,auto_enu_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_add_atom_type_lo_descriptor
 
@@ -3309,7 +3521,9 @@ end subroutine sirius_add_atom_type_lo_descriptor
 !> @param [in] k kappa (used in relativistic solver).
 !> @param [in] occupancy Level occupancy.
 !> @param [in] core Tru if this is a core state.
-subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core)
+!> @param [out] error_code Error code
+subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3319,6 +3533,7 @@ integer, target, intent(in) :: l
 integer, target, intent(in) :: k
 real(8), target, intent(in) :: occupancy
 logical, target, intent(in) :: core
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -3329,10 +3544,11 @@ type(C_PTR) :: k_ptr
 type(C_PTR) :: occupancy_ptr
 type(C_PTR) :: core_ptr
 logical(C_BOOL), target :: core_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,&
-&core)&
+&core,error_code)&
 &bind(C, name="sirius_set_atom_type_configuration")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3342,6 +3558,7 @@ type(C_PTR), value :: l
 type(C_PTR), value :: k
 type(C_PTR), value :: occupancy
 type(C_PTR), value :: core
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3362,8 +3579,12 @@ occupancy_ptr = C_LOC(occupancy)
 core_ptr = C_NULL_PTR
 core_c_type = core
 core_ptr = C_LOC(core_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_atom_type_configuration_aux(handler_ptr,label_ptr,n_ptr,l_ptr,k_ptr,&
-&occupancy_ptr,core_ptr)
+&occupancy_ptr,core_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_set_atom_type_configuration
 
@@ -3441,21 +3662,25 @@ end subroutine sirius_generate_xc_potential
 !> @brief Get communicator which is used to split k-points
 !> @param [in] handler Simulation context handler
 !> @param [out] fcomm Fortran communicator
-subroutine sirius_get_kpoint_inter_comm(handler,fcomm)
+!> @param [out] error_code Error code
+subroutine sirius_get_kpoint_inter_comm(handler,fcomm,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_kpoint_inter_comm_aux(handler,fcomm)&
+subroutine sirius_get_kpoint_inter_comm_aux(handler,fcomm,error_code)&
 &bind(C, name="sirius_get_kpoint_inter_comm")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: fcomm
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3463,28 +3688,36 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
-call sirius_get_kpoint_inter_comm_aux(handler_ptr,fcomm_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_kpoint_inter_comm_aux(handler_ptr,fcomm_ptr,error_code_ptr)
 end subroutine sirius_get_kpoint_inter_comm
 
 !
 !> @brief Get communicator which is used to parallise band problem
 !> @param [in] handler Simulation context handler
 !> @param [out] fcomm Fortran communicator
-subroutine sirius_get_kpoint_inner_comm(handler,fcomm)
+!> @param [out] error_code Error code
+subroutine sirius_get_kpoint_inner_comm(handler,fcomm,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_kpoint_inner_comm_aux(handler,fcomm)&
+subroutine sirius_get_kpoint_inner_comm_aux(handler,fcomm,error_code)&
 &bind(C, name="sirius_get_kpoint_inner_comm")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: fcomm
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3492,28 +3725,36 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
-call sirius_get_kpoint_inner_comm_aux(handler_ptr,fcomm_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_kpoint_inner_comm_aux(handler_ptr,fcomm_ptr,error_code_ptr)
 end subroutine sirius_get_kpoint_inner_comm
 
 !
 !> @brief Get communicator which is used to parallise FFT
 !> @param [in] handler Simulation context handler
 !> @param [out] fcomm Fortran communicator
-subroutine sirius_get_fft_comm(handler,fcomm)
+!> @param [out] error_code Error code
+subroutine sirius_get_fft_comm(handler,fcomm,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_fft_comm_aux(handler,fcomm)&
+subroutine sirius_get_fft_comm_aux(handler,fcomm,error_code)&
 &bind(C, name="sirius_get_fft_comm")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: fcomm
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3521,7 +3762,11 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
-call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr,error_code_ptr)
 end subroutine sirius_get_fft_comm
 
 !
@@ -3748,8 +3993,9 @@ end subroutine sirius_get_max_num_gkvec
 !> @param [out] gkvec_cart G+k vectors in Cartesian coordinates.
 !> @param [out] gkvec_len Length of G+k vectors.
 !> @param [out] gkvec_tp Theta and Phi angles of G+k vectors.
+!> @param [out] error_code Error code.
 subroutine sirius_get_gkvec_arrays(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkvec_cart,&
-&gkvec_len,gkvec_tp)
+&gkvec_len,gkvec_tp,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: ks_handler
@@ -3760,6 +4006,7 @@ real(8), target, dimension(3, *), intent(out) :: gkvec
 real(8), target, dimension(3, *), intent(out) :: gkvec_cart
 real(8), target, dimension(*), intent(out) :: gkvec_len
 real(8), target, dimension(2, *), intent(out) :: gkvec_tp
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: ik_ptr
@@ -3769,10 +4016,11 @@ type(C_PTR) :: gkvec_ptr
 type(C_PTR) :: gkvec_cart_ptr
 type(C_PTR) :: gkvec_len_ptr
 type(C_PTR) :: gkvec_tp_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,&
-&gkvec_cart,gkvec_len,gkvec_tp)&
+&gkvec_cart,gkvec_len,gkvec_tp,error_code)&
 &bind(C, name="sirius_get_gkvec_arrays")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
@@ -3783,6 +4031,7 @@ type(C_PTR), value :: gkvec
 type(C_PTR), value :: gkvec_cart
 type(C_PTR), value :: gkvec_len
 type(C_PTR), value :: gkvec_tp
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3802,8 +4051,12 @@ gkvec_len_ptr = C_NULL_PTR
 gkvec_len_ptr = C_LOC(gkvec_len)
 gkvec_tp_ptr = C_NULL_PTR
 gkvec_tp_ptr = C_LOC(gkvec_tp)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_get_gkvec_arrays_aux(ks_handler_ptr,ik_ptr,num_gkvec_ptr,gvec_index_ptr,&
-&gkvec_ptr,gkvec_cart_ptr,gkvec_len_ptr,gkvec_tp_ptr)
+&gkvec_ptr,gkvec_cart_ptr,gkvec_len_ptr,gkvec_tp_ptr,error_code_ptr)
 end subroutine sirius_get_gkvec_arrays
 
 !
@@ -3868,7 +4121,9 @@ end subroutine sirius_get_step_function
 !> @param [in] l2 2nd index of orbital quantum number.
 !> @param [in] o2 2nd index of radial function order for l2.
 !> @param [in] ilo2 2nd index or local orbital.
-subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,ilo2)
+!> @param [out] error_code Error code.
+subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,ilo2,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3881,6 +4136,7 @@ integer, optional, target, intent(in) :: ilo1
 integer, optional, target, intent(in) :: l2
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
@@ -3892,10 +4148,11 @@ type(C_PTR) :: ilo1_ptr
 type(C_PTR) :: l2_ptr
 type(C_PTR) :: o2_ptr
 type(C_PTR) :: ilo2_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_h_radial_integrals_aux(handler,ia,lmmax,val,l1,o1,ilo1,l2,&
-&o2,ilo2)&
+&o2,ilo2,error_code)&
 &bind(C, name="sirius_set_h_radial_integrals")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3908,6 +4165,7 @@ type(C_PTR), value :: ilo1
 type(C_PTR), value :: l2
 type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -3943,8 +4201,12 @@ ilo2_ptr = C_NULL_PTR
 if (present(ilo2)) then
 ilo2_ptr = C_LOC(ilo2)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_h_radial_integrals_aux(handler_ptr,ia_ptr,lmmax_ptr,val_ptr,l1_ptr,&
-&o1_ptr,ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr)
+&o1_ptr,ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr,error_code_ptr)
 end subroutine sirius_set_h_radial_integrals
 
 !
@@ -3957,7 +4219,8 @@ end subroutine sirius_set_h_radial_integrals
 !> @param [in] ilo1 1st index or local orbital.
 !> @param [in] o2 2nd index of radial function order.
 !> @param [in] ilo2 2nd index or local orbital.
-subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2)
+!> @param [out] error_code Error code.
+subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -3968,6 +4231,7 @@ integer, optional, target, intent(in) :: o1
 integer, optional, target, intent(in) :: ilo1
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
@@ -3977,9 +4241,10 @@ type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
 type(C_PTR) :: o2_ptr
 type(C_PTR) :: ilo2_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_o_radial_integral_aux(handler,ia,val,l,o1,ilo1,o2,ilo2)&
+subroutine sirius_set_o_radial_integral_aux(handler,ia,val,l,o1,ilo1,o2,ilo2,error_code)&
 &bind(C, name="sirius_set_o_radial_integral")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -3990,6 +4255,7 @@ type(C_PTR), value :: o1
 type(C_PTR), value :: ilo1
 type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4017,8 +4283,12 @@ ilo2_ptr = C_NULL_PTR
 if (present(ilo2)) then
 ilo2_ptr = C_LOC(ilo2)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_o_radial_integral_aux(handler_ptr,ia_ptr,val_ptr,l_ptr,o1_ptr,ilo1_ptr,&
-&o2_ptr,ilo2_ptr)
+&o2_ptr,ilo2_ptr,error_code_ptr)
 end subroutine sirius_set_o_radial_integral
 
 !
@@ -4032,7 +4302,8 @@ end subroutine sirius_set_o_radial_integral
 !> @param [in] l2 2nd index of orbital quantum number.
 !> @param [in] o2 2nd index of radial function order for l2.
 !> @param [in] ilo2 2nd index or local orbital.
-subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)
+!> @param [out] error_code Error code.
+subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -4044,6 +4315,7 @@ integer, optional, target, intent(in) :: ilo1
 integer, optional, target, intent(in) :: l2
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
@@ -4054,9 +4326,11 @@ type(C_PTR) :: ilo1_ptr
 type(C_PTR) :: l2_ptr
 type(C_PTR) :: o2_ptr
 type(C_PTR) :: ilo2_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_o1_radial_integral_aux(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)&
+subroutine sirius_set_o1_radial_integral_aux(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2,&
+&error_code)&
 &bind(C, name="sirius_set_o1_radial_integral")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -4068,6 +4342,7 @@ type(C_PTR), value :: ilo1
 type(C_PTR), value :: l2
 type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4101,8 +4376,12 @@ ilo2_ptr = C_NULL_PTR
 if (present(ilo2)) then
 ilo2_ptr = C_LOC(ilo2)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_o1_radial_integral_aux(handler_ptr,ia_ptr,val_ptr,l1_ptr,o1_ptr,&
-&ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr)
+&ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr,error_code_ptr)
 end subroutine sirius_set_o1_radial_integral
 
 !
@@ -4114,7 +4393,8 @@ end subroutine sirius_set_o1_radial_integral
 !> @param [in] l Orbital quantum number.
 !> @param [in] o Order of radial function for l.
 !> @param [in] ilo Local orbital index.
-subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo)
+!> @param [out] error_code Error code.
+subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -4124,6 +4404,7 @@ real(8), target, intent(in) :: f
 integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: o
 integer, optional, target, intent(in) :: ilo
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
@@ -4132,9 +4413,10 @@ type(C_PTR) :: f_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: o_ptr
 type(C_PTR) :: ilo_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
+subroutine sirius_set_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo,error_code)&
 &bind(C, name="sirius_set_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -4144,6 +4426,7 @@ type(C_PTR), value :: f
 type(C_PTR), value :: l
 type(C_PTR), value :: o
 type(C_PTR), value :: ilo
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4167,29 +4450,37 @@ ilo_ptr = C_NULL_PTR
 if (present(ilo)) then
 ilo_ptr = C_LOC(ilo)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_radial_function_aux(handler_ptr,ia_ptr,deriv_order_ptr,f_ptr,l_ptr,&
-&o_ptr,ilo_ptr)
+&o_ptr,ilo_ptr,error_code_ptr)
 end subroutine sirius_set_radial_function
 
 !
 !> @brief Set equivalent atoms.
 !> @param [in] handler Simulation context handler.
 !> @param [in] equivalent_atoms Array with equivalent atom IDs.
-subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms)
+!> @param [out] error_code Error code.
+subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, dimension(*), intent(in) :: equivalent_atoms
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: equivalent_atoms_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)&
+subroutine sirius_set_equivalent_atoms_aux(handler,equivalent_atoms,error_code)&
 &bind(C, name="sirius_set_equivalent_atoms")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: equivalent_atoms
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -4197,30 +4488,42 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 equivalent_atoms_ptr = C_NULL_PTR
 equivalent_atoms_ptr = C_LOC(equivalent_atoms)
-call sirius_set_equivalent_atoms_aux(handler_ptr,equivalent_atoms_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_equivalent_atoms_aux(handler_ptr,equivalent_atoms_ptr,error_code_ptr)
 end subroutine sirius_set_equivalent_atoms
 
 !
 !> @brief Set the new spherical potential.
 !> @param [in] handler Ground state handler.
-subroutine sirius_update_atomic_potential(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_update_atomic_potential(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_update_atomic_potential_aux(handler)&
+subroutine sirius_update_atomic_potential_aux(handler,error_code)&
 &bind(C, name="sirius_update_atomic_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-call sirius_update_atomic_potential_aux(handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_update_atomic_potential_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_update_atomic_potential
 
 !
@@ -5034,7 +5337,8 @@ end subroutine sirius_dump_runtime_setup
 !> @param [out] fv_evec Output first-variational eigenvector array
 !> @param [in] ld Leading dimension of fv_evec
 !> @param [in] num_fv_states Number of first-variational states
-subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
+!> @param [out] error_code Error code
+subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -5042,15 +5346,17 @@ integer, target, intent(in) :: ik
 complex(8), target, intent(out) :: fv_evec
 integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_fv_states
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: fv_evec_ptr
 type(C_PTR) :: ld_ptr
 type(C_PTR) :: num_fv_states_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)&
+subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states,error_code)&
 &bind(C, name="sirius_get_fv_eigen_vectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5058,6 +5364,7 @@ type(C_PTR), value :: ik
 type(C_PTR), value :: fv_evec
 type(C_PTR), value :: ld
 type(C_PTR), value :: num_fv_states
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5071,7 +5378,12 @@ ld_ptr = C_NULL_PTR
 ld_ptr = C_LOC(ld)
 num_fv_states_ptr = C_NULL_PTR
 num_fv_states_ptr = C_LOC(num_fv_states)
-call sirius_get_fv_eigen_vectors_aux(handler_ptr,ik_ptr,fv_evec_ptr,ld_ptr,num_fv_states_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_fv_eigen_vectors_aux(handler_ptr,ik_ptr,fv_evec_ptr,ld_ptr,num_fv_states_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_fv_eigen_vectors
 
 !
@@ -5130,27 +5442,31 @@ end subroutine sirius_get_fv_eigen_values
 !> @param [in] ik Global index of the k-point
 !> @param [out] sv_evec Output second-variational eigenvector array
 !> @param [in] num_bands Number of second-variational bands.
-subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands)
+!> @param [out] error_code Error code
+subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 complex(8), target, intent(out) :: sv_evec
 integer, target, intent(in) :: num_bands
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ik_ptr
 type(C_PTR) :: sv_evec_ptr
 type(C_PTR) :: num_bands_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)&
+subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands,error_code)&
 &bind(C, name="sirius_get_sv_eigen_vectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: ik
 type(C_PTR), value :: sv_evec
 type(C_PTR), value :: num_bands
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5162,7 +5478,12 @@ sv_evec_ptr = C_NULL_PTR
 sv_evec_ptr = C_LOC(sv_evec)
 num_bands_ptr = C_NULL_PTR
 num_bands_ptr = C_LOC(num_bands)
-call sirius_get_sv_eigen_vectors_aux(handler_ptr,ik_ptr,sv_evec_ptr,num_bands_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_sv_eigen_vectors_aux(handler_ptr,ik_ptr,sv_evec_ptr,num_bands_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_sv_eigen_vectors
 
 !
@@ -5175,8 +5496,9 @@ end subroutine sirius_get_sv_eigen_vectors
 !> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
 !> @param [in] values Values of the function (local buffer for each MPI rank).
 !> @param [in] transform_to_pw If true, transform function to PW domain.
+!> @param [out] error_code Error code
 subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_pw)
+&fcomm,values,transform_to_pw,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -5187,6 +5509,7 @@ integer, target, intent(in) :: local_box_size
 integer, target, intent(in) :: fcomm
 real(8), target, intent(in) :: values
 logical, optional, target, intent(in) :: transform_to_pw
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -5198,10 +5521,11 @@ type(C_PTR) :: fcomm_ptr
 type(C_PTR) :: values_ptr
 type(C_PTR) :: transform_to_pw_ptr
 logical(C_BOOL), target :: transform_to_pw_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_pw)&
+&fcomm,values,transform_to_pw,error_code)&
 &bind(C, name="sirius_set_rg_values")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5212,6 +5536,7 @@ type(C_PTR), value :: local_box_size
 type(C_PTR), value :: fcomm
 type(C_PTR), value :: values
 type(C_PTR), value :: transform_to_pw
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5236,8 +5561,12 @@ if (present(transform_to_pw)) then
 transform_to_pw_c_type = transform_to_pw
 transform_to_pw_ptr = C_LOC(transform_to_pw_c_type)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_rg_values_aux(handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
-&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_pw_ptr)
+&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_pw_ptr,error_code_ptr)
 deallocate(label_c_type)
 if (present(transform_to_pw)) then
 endif
@@ -5253,8 +5582,9 @@ end subroutine sirius_set_rg_values
 !> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
 !> @param [out] values Values of the function (local buffer for each MPI rank).
 !> @param [in] transform_to_rg If true, transform function to regular grid before fetching the values.
+!> @param [out] error_code Error code
 subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_rg)
+&fcomm,values,transform_to_rg,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -5265,6 +5595,7 @@ integer, target, intent(in) :: local_box_size
 integer, target, intent(in) :: fcomm
 real(8), target, intent(out) :: values
 logical, optional, target, intent(in) :: transform_to_rg
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -5276,10 +5607,11 @@ type(C_PTR) :: fcomm_ptr
 type(C_PTR) :: values_ptr
 type(C_PTR) :: transform_to_rg_ptr
 logical(C_BOOL), target :: transform_to_rg_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_rg)&
+&fcomm,values,transform_to_rg,error_code)&
 &bind(C, name="sirius_get_rg_values")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5290,6 +5622,7 @@ type(C_PTR), value :: local_box_size
 type(C_PTR), value :: fcomm
 type(C_PTR), value :: values
 type(C_PTR), value :: transform_to_rg
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5314,8 +5647,12 @@ if (present(transform_to_rg)) then
 transform_to_rg_c_type = transform_to_rg
 transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_get_rg_values_aux(handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
-&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_rg_ptr)
+&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_rg_ptr,error_code_ptr)
 deallocate(label_c_type)
 if (present(transform_to_rg)) then
 endif
@@ -5325,21 +5662,25 @@ end subroutine sirius_get_rg_values
 !> @brief Get the total magnetization of the system.
 !> @param [in] handler DFT ground state handler.
 !> @param [out] mag 3D magnetization vector (x,y,z components).
-subroutine sirius_get_total_magnetization(handler,mag)
+!> @param [out] error_code Error code
+subroutine sirius_get_total_magnetization(handler,mag,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 real(8), target, intent(out) :: mag
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: mag_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_total_magnetization_aux(handler,mag)&
+subroutine sirius_get_total_magnetization_aux(handler,mag,error_code)&
 &bind(C, name="sirius_get_total_magnetization")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: mag
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5347,7 +5688,11 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 mag_ptr = C_NULL_PTR
 mag_ptr = C_LOC(mag)
-call sirius_get_total_magnetization_aux(handler_ptr,mag_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_total_magnetization_aux(handler_ptr,mag_ptr,error_code_ptr)
 end subroutine sirius_get_total_magnetization
 
 !
@@ -5487,21 +5832,25 @@ end subroutine sirius_set_callback_function
 !> @brief Robust wave function optimizer
 !> @param [in] handler Ground state handler
 !> @param [in] ks_handler point set handler
-subroutine sirius_nlcg(handler,ks_handler)
+!> @param [out] error_code Error code.
+subroutine sirius_nlcg(handler,ks_handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 type(C_PTR), target, intent(in) :: ks_handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_nlcg_aux(handler,ks_handler)&
+subroutine sirius_nlcg_aux(handler,ks_handler,error_code)&
 &bind(C, name="sirius_nlcg")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: ks_handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5509,7 +5858,11 @@ handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
 ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
-call sirius_nlcg_aux(handler_ptr,ks_handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_nlcg_aux(handler_ptr,ks_handler_ptr,error_code_ptr)
 end subroutine sirius_nlcg
 
 !
@@ -5524,8 +5877,9 @@ end subroutine sirius_nlcg
 !> @param [in] maxiter CG maxiter
 !> @param [in] restart CG restart
 !> @param [in] processing_unit processing_unit = ["cpu"|"gpu"|"none"]
+!> @param [out] error_code Error code.
 subroutine sirius_nlcg_params(handler,ks_handler,temp,smearing,kappa,tau,tol,maxiter,&
-&restart,processing_unit)
+&restart,processing_unit,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -5538,6 +5892,7 @@ real(8), target, intent(in) :: tol
 integer, target, intent(in) :: maxiter
 integer, target, intent(in) :: restart
 character(*), target, intent(in) :: processing_unit
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ks_handler_ptr
@@ -5551,10 +5906,11 @@ type(C_PTR) :: maxiter_ptr
 type(C_PTR) :: restart_ptr
 type(C_PTR) :: processing_unit_ptr
 character(C_CHAR), target, allocatable :: processing_unit_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_nlcg_params_aux(handler,ks_handler,temp,smearing,kappa,tau,tol,&
-&maxiter,restart,processing_unit)&
+&maxiter,restart,processing_unit,error_code)&
 &bind(C, name="sirius_nlcg_params")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5567,6 +5923,7 @@ type(C_PTR), value :: tol
 type(C_PTR), value :: maxiter
 type(C_PTR), value :: restart
 type(C_PTR), value :: processing_unit
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -5594,8 +5951,12 @@ processing_unit_ptr = C_NULL_PTR
 allocate(processing_unit_c_type(len(processing_unit)+1))
 processing_unit_c_type = string_f2c(processing_unit)
 processing_unit_ptr = C_LOC(processing_unit_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_nlcg_params_aux(handler_ptr,ks_handler_ptr,temp_ptr,smearing_ptr,kappa_ptr,&
-&tau_ptr,tol_ptr,maxiter_ptr,restart_ptr,processing_unit_ptr)
+&tau_ptr,tol_ptr,maxiter_ptr,restart_ptr,processing_unit_ptr,error_code_ptr)
 deallocate(smearing_c_type)
 deallocate(processing_unit_c_type)
 end subroutine sirius_nlcg_params
