@@ -259,7 +259,6 @@ Occupation_matrix::symmetrize()
         } else {
             local_tmp[at_lvl].zero();
         }
-
     }
 
     for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
@@ -469,7 +468,8 @@ Occupation_matrix::init()
             int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
             const int lmax_at = 2 * il + 1;
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy.size()) {
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+              /* if we specify the occcupancy in the input file */
+              for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
                         this->local_[at_lvl](m, m, ispn) = atom.type()
                                                                .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)

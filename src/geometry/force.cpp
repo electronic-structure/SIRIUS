@@ -681,10 +681,10 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                     int const lmax_at = 2 * atom.type().lo_descriptor_hub(lo).l + 1;
                     const int offset  = potential_.hubbard_potential().offset(at_lvl);
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        for (int m1 = 0; m1 < lmax_at; m1++) {
-                            for (int m2 = 0; m2 < lmax_at; m2++) {
-                                d += potential_.hubbard_potential().local(at_lvl)(m2, m1, ispn) *
-                                     dn(offset + m1, offset + m2, ispn, dir, ia);
+                        for (int m2 = 0; m2 < lmax_at; m2++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                d += potential_.hubbard_potential().local(at_lvl)(m1, m2, ispn) *
+                                    dn(offset + m2, offset + m1, ispn, dir, ia);
                             }
                         }
                     }
@@ -713,7 +713,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                     for (int is = 0; is < ctx_.num_spins(); is++) {
                         for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                                auto result1_ = z1 * dn(offset1 + m1, offset2 + m2, is, dir, ia) *
+                                auto result1_ = z1 * dn(offset2 + m2, offset1 + m1, is, dir, ia) *
                                                 potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
                                 d += std::real(result1_);
                             }

@@ -150,8 +150,6 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
     mdarray<double_complex, 4> dn_tmp(kp.hubbard_wave_functions_S().num_wf(), kp.hubbard_wave_functions_S().num_wf(),
                                       ctx_.num_spins(), 3);
 
-    mdarray<double_complex, 2> phase_factor(kp.hubbard_wave_functions_S().num_wf(), kp.hubbard_wave_functions_S().num_wf());
-
     auto r       = ctx_.unit_cell().num_hubbard_wf();
     auto offset_ = r.second;
 

@@ -390,8 +390,8 @@ class U_operator
             if (atom_type.lo_descriptor_hub(lo_ind).use_for_calculation()) {
                 int lmmax_at = 2 * atom_type.lo_descriptor_hub(lo_ind).l + 1;
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    for (int m1 = 0; m1 < lmmax_at; m1++) {
-                        for (int m2 = 0; m2 < lmmax_at; m2++) {
+                    for (int m2 = 0; m2 < lmmax_at; m2++) {
+                        for (int m1 = 0; m1 < lmmax_at; m1++) {
                             um_(um1__.offset(at_lvl) + m1, um1__.offset(at_lvl) + m2, j) =
                                 um1__.local(at_lvl)(m1, m2, j);
                         }
@@ -417,14 +417,17 @@ class U_operator
             int at2_lvl = um1__.find_orbital_index(ja, nl.n()[1], jl);
 
             auto z1 = std::exp(double_complex(0, -twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
-            // QE double count the link and the potential should be hermitian so we need to divide by two
+            // QE does not explicitly make the potential hermitian (and we
+            // should have in practice since links [i,J,T] have their
+            // counterpart [j,i,-T] in the list) but for sanity sake I enforce
+            // the Hermiticity so 1/2 is need here
             for (int is = 0; is < ctx__.num_spins(); is++) {
                 for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                         um_(um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2, is) +=
-                          0.5 * z1 * um1__.nonlocal(i)(m1, m2, is);
+                            0.5 * z1 * um1__.nonlocal(i)(m1, m2, is);
                         um_(um1__.offset(at2_lvl) + m2, um1__.offset(at1_lvl) + m1, is) +=
-                          0.5 * conj(z1 * um1__.nonlocal(i)(m1, m2, is));
+                            0.5 * conj(z1 * um1__.nonlocal(i)(m1, m2, is));
                     }
                 }
             }

@@ -450,9 +450,12 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
     sddk::inner(ctx__.spla_context(), spins__, hub_wf__, 0, hub_wf__.num_wf(), phi__, N__, n__, dm, 0, 0);
 
     dmatrix<std::complex<T>> Up(hub_wf__.num_wf(), n__);
-    Up.zero();
+    if (ctx__.processing_unit() == device_t::GPU) {
+        Up.allocate(memory_t::device);
+    }
 
     if (ctx__.num_mag_dims() == 3) {
+        Up.zero();
         #pragma omp parallel for schedule(static)
         for (int at_lvl = 0; at_lvl < (int)um__.atomic_orbitals().size(); at_lvl++) {
             const int ia     = um__.atomic_orbitals(at_lvl).first;
@@ -479,17 +482,14 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
                 }
             }
         }
+        if (ctx__.processing_unit() == device_t::GPU) {
+            Up.copy_to(memory_t::device);
+        }
     } else {
         linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &linalg_const<double_complex>::one(),
                         um__.at(mt, 0, 0, spins__()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
                         &linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
     }
-
-    if (ctx__.processing_unit() == device_t::GPU) {
-        Up.allocate(memory_t::device);
-        Up.copy_to(memory_t::device);
-    }
-
     transform<std::complex<T>, std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
         Up, 0, 0, 1.0, {&hphi__}, N__, n__);
 }
