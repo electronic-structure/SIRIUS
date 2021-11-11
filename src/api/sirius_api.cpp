@@ -2006,12 +2006,12 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
 
         if (label == "beta") { /* beta-projectors */
             if (l__ == nullptr) {
-                TERMINATE("orbital quantum number must be provided for beta-projector");
+                RTE_THROW("orbital quantum number must be provided for beta-projector");
             }
             type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
         } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
             if (l__ == nullptr) {
-                TERMINATE("orbital quantum number must be provided for pseudo-atomic radial function");
+                RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");
             }
 
             int n      = (n__) ? *n__ : -1;
@@ -2026,10 +2026,10 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
             type.local_potential(std::vector<double>(rf__, rf__ + *num_points__));
         } else if (label == "q_aug") { /* augmentation charge */
             if (l__ == nullptr) {
-                TERMINATE("orbital quantum number must be provided for augmentation charge radial function");
+                RTE_THROW("orbital quantum number must be provided for augmentation charge radial function");
             }
             if (idxrf1__ == nullptr || idxrf2__ == nullptr) {
-                TERMINATE("both radial-function indices must be provided for augmentation charge radial function");
+                RTE_THROW("both radial-function indices must be provided for augmentation charge radial function");
             }
             type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(rf__, rf__ + *num_points__));
         } else if (label == "ae_paw_wf") {
@@ -2043,7 +2043,7 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
         } else {
             std::stringstream s;
             s << "wrong label of radial function: " << label__;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }, error_code__);
 }
@@ -2194,7 +2194,7 @@ sirius_set_atom_type_paw(void* const* handler__, char const* label__, double con
         auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
 
         if (*num_occ__ != type.num_beta_radial_functions()) {
-            TERMINATE("PAW error: different number of occupations and wave functions!");
+            RTE_THROW("PAW error: different number of occupations and wave functions!");
         }
 
         /* we load PAW, so we set is_paw to true */
@@ -2339,7 +2339,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
             } else if (label == "rm2_inv") {
                 gs.potential().set_rm2_inv_pw(pw_coeffs__);
             } else {
-                TERMINATE("wrong label");
+                RTE_THROW("wrong label: " + label);
             }
         } else {
             assert(ngv__ != nullptr);
@@ -2369,7 +2369,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                                 dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                             s << "wrong index of G-vector" << std::endl
                               << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                            TERMINATE(s);
+                            RTE_THROW(s);
                         } else {
                             v[ig] = std::conj(pw_coeffs__[i]);
                         }
@@ -2393,13 +2393,14 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 {"dveff", &gs.potential().dveff()},
             };
 
-            try {
-                func.at(label)->scatter_f_pw(v);
-                if (transform_to_rg__ && *transform_to_rg__) {
-                    func.at(label)->fft_transform(1);
-                }
-            } catch (...) {
-                TERMINATE("wrong label");
+            if (!func.count(label)) {
+                RTE_THROW("wrong label: " + label);
+            }
+
+            func.at(label)->scatter_f_pw(v);
+
+            if (transform_to_rg__ && *transform_to_rg__) {
+                func.at(label)->fft_transform(1);
             }
         }
     }, error_code__);
@@ -2470,12 +2471,10 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 {"vloc", &gs.potential().local_potential()},
                 {"rhoc", &gs.density().rho_pseudo_core()}};
 
-            std::vector<double_complex> v;
-            try {
-                v = func.at(label)->gather_f_pw();
-            } catch (...) {
-                TERMINATE("wrong label");
+            if (!func.count(label)) {
+                RTE_THROW("wrong label: " + label);
             }
+            auto v = func.at(label)->gather_f_pw();
 
             for (int i = 0; i < *ngv__; i++) {
                 vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
@@ -2497,7 +2496,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                     auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                     s << "wrong index of G-vector" << std::endl
                       << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                    TERMINATE(s);
+                    RTE_THROW(s);
                 }
                 if (is_inverse) {
                     pw_coeffs__[i] = std::conj(v[ig]);
@@ -2873,13 +2872,11 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             {"fermi",      [&](){ return kset.energy_fermi(); }}
         };
 
-        try {
-            *energy__ = func.at(label)();
-        } catch (...) {
-            std::stringstream s;
-            s << "[sirius_get_energy] wrong label: " << label;
-            TERMINATE(s);
+        if (!func.count(label)) {
+            RTE_THROW("wrong label: " + label);
         }
+
+        *energy__ = func.at(label)();
     }, error_code__);
 }
 
@@ -3455,7 +3452,7 @@ sirius_get_wave_functions(void* const* ks_handler__, int const* ik__, int const*
                                           << "     send size   : " << send_size1 << "\n"
                                           << "  receive size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
                                           << " number of bands : " << sim_ctx.num_bands();
-                                        TERMINATE(s);
+                                        RTE_THROW(s);
                                     }
                                 }
                                 if (my_rank == rank_with_jk[r]) {
@@ -4219,14 +4216,14 @@ sirius_set_h_radial_integrals(void* const* handler__, int* ia__, int* lmmax__, d
             int idxrf2{-1};
             if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
                 (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
-                TERMINATE("wrong combination of radial function indices");
+                RTE_THROW("wrong combination of radial function indices");
             }
             if (l1__ != nullptr && o1__ != nullptr) {
                 idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
             } else if (ilo1__ != nullptr) {
                 idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
             } else {
-                TERMINATE("1st radial function index is not valid");
+                RTE_THROW("1st radial function index is not valid");
             }
 
             if (l2__ != nullptr && o2__ != nullptr) {
@@ -4234,7 +4231,7 @@ sirius_set_h_radial_integrals(void* const* handler__, int* ia__, int* lmmax__, d
             } else if (ilo2__ != nullptr) {
                 idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
             } else {
-                TERMINATE("2nd radial function index is not valid");
+                RTE_THROW("2nd radial function index is not valid");
             }
 
             for (int lm = 0; lm < *lmmax__; lm++) {
@@ -4296,7 +4293,7 @@ sirius_set_o_radial_integral(void* const* handler__, int* ia__, double* val__, i
             auto& sim_ctx = get_sim_ctx(handler__);
             int ia        = *ia__ - 1;
             if ((o1__ != nullptr && ilo1__ != nullptr) || (o2__ != nullptr && ilo2__ != nullptr)) {
-                TERMINATE("wrong combination of radial function indices");
+                RTE_THROW("wrong combination of radial function indices");
             }
 
             if (o1__ != nullptr && ilo2__ != nullptr) {
@@ -4380,14 +4377,14 @@ sirius_set_o1_radial_integral(void* const* handler__, int* ia__, double* val__, 
             int idxrf2{-1};
             if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
                 (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
-                TERMINATE("wrong combination of radial function indices");
+                RTE_THROW("wrong combination of radial function indices");
             }
             if (l1__ != nullptr && o1__ != nullptr) {
                 idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
             } else if (ilo1__ != nullptr) {
                 idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
             } else {
-                TERMINATE("1st radial function index is not valid");
+                RTE_THROW("1st radial function index is not valid");
             }
 
             if (l2__ != nullptr && o2__ != nullptr) {
@@ -4395,7 +4392,7 @@ sirius_set_o1_radial_integral(void* const* handler__, int* ia__, double* val__, 
             } else if (ilo2__ != nullptr) {
                 idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
             } else {
-                TERMINATE("2nd radial function index is not valid");
+                RTE_THROW("2nd radial function index is not valid");
             }
             sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
         }, error_code__);
@@ -4453,10 +4450,10 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             auto& atom = sim_ctx.unit_cell().atom(ia);
 
             if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
-                TERMINATE("wrong combination of radial function indices");
+                RTE_THROW("wrong combination of radial function indices");
             }
             if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
-                TERMINATE("wrond radial derivative order");
+                RTE_THROW("wrond radial derivative order");
             }
 
             int idxrf{-1};
@@ -4465,7 +4462,7 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             } else if (ilo__ != nullptr) {
                 idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
             } else {
-                TERMINATE("radial function index is not valid");
+                RTE_THROW("radial function index is not valid");
             }
 
             if (*deriv_order__ == 0) {
@@ -5259,7 +5256,7 @@ sirius_get_fv_eigen_values(void* const* handler__, int const* ik__, double* fv_e
         [&]() {
         auto& ks = get_ks(handler__);
         if (*num_fv_states__ != ks.ctx().num_fv_states()) {
-            TERMINATE("wrong number of first-variational states");
+            RTE_THROW("wrong number of first-variational states");
         }
         int ik = *ik__ - 1;
         for (int i = 0; i < *num_fv_states__; i++) {
@@ -5373,7 +5370,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                       << "\n"
                          "  host code:       "
                       << grid_dims__[0] << " " << grid_dims__[1] << " " << grid_dims__[2];
-                    TERMINATE(s.str());
+                    RTE_THROW(s);
                 }
             }
 
@@ -5388,55 +5385,54 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                 {"by", &gs.potential().effective_magnetic_field(2)},
                 {"vxc", &gs.potential().xc_potential()},
             };
+            if (!func.count(label)) {
+                RTE_THROW("wrong label: " + label);
+            }
 
-            try {
-                auto& f = func.at(label);
+            auto& f = func.at(label);
 
-                auto& comm = Communicator::map_fcomm(*fcomm__);
+            auto& comm = Communicator::map_fcomm(*fcomm__);
 
-                mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
-                mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+            mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+            mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
 
-                for (int rank = 0; rank < comm.size(); rank++) {
-                    /* dimensions of this rank's local box */
-                    int nx = local_box_size(0, rank);
-                    int ny = local_box_size(1, rank);
-                    int nz = local_box_size(2, rank);
+            for (int rank = 0; rank < comm.size(); rank++) {
+                /* dimensions of this rank's local box */
+                int nx = local_box_size(0, rank);
+                int ny = local_box_size(1, rank);
+                int nz = local_box_size(2, rank);
 
-                    mdarray<double, 3> buf(nx, ny, nz);
-                    /* if this is that rank's turn to broadcast */
-                    if (comm.rank() == rank) {
-                        /* copy values to buf */
-                        std::copy(values__, values__ + nx * ny * nz, &buf[0]);
-                    }
-                    /* send a copy of local box to all ranks */
-                    comm.bcast(&buf[0], nx * ny * nz, rank);
+                mdarray<double, 3> buf(nx, ny, nz);
+                /* if this is that rank's turn to broadcast */
+                if (comm.rank() == rank) {
+                    /* copy values to buf */
+                    std::copy(values__, values__ + nx * ny * nz, &buf[0]);
+                }
+                /* send a copy of local box to all ranks */
+                comm.bcast(&buf[0], nx * ny * nz, rank);
 
-                    for (int iz = 0; iz < nz; iz++) {
-                        /* global z coordinate inside FFT box */
-                        int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
-                        /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
-                        if (z >= gs.ctx().spfft<double>().local_z_offset() &&
-                            z < gs.ctx().spfft<double>().local_z_offset() + gs.ctx().spfft<double>().local_z_length()) {
-                            /* make z local for SIRIUS FFT partitioning */
-                            z -= gs.ctx().spfft<double>().local_z_offset();
-                            for (int iy = 0; iy < ny; iy++) {
-                                /* global y coordinate inside FFT box */
-                                int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
-                                for (int ix = 0; ix < nx; ix++) {
-                                    /* global x coordinate inside FFT box */
-                                    int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
-                                    f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
-                                }
+                for (int iz = 0; iz < nz; iz++) {
+                    /* global z coordinate inside FFT box */
+                    int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
+                    /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
+                    if (z >= gs.ctx().spfft<double>().local_z_offset() &&
+                        z < gs.ctx().spfft<double>().local_z_offset() + gs.ctx().spfft<double>().local_z_length()) {
+                        /* make z local for SIRIUS FFT partitioning */
+                        z -= gs.ctx().spfft<double>().local_z_offset();
+                        for (int iy = 0; iy < ny; iy++) {
+                            /* global y coordinate inside FFT box */
+                            int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
+                            for (int ix = 0; ix < nx; ix++) {
+                                /* global x coordinate inside FFT box */
+                                int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
+                                f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
                             }
                         }
                     }
-                } /* loop over ranks */
-                if (transform_to_pw__ && *transform_to_pw__) {
-                    f->fft_transform(-1);
                 }
-            } catch (...) {
-                TERMINATE("wrong label");
+            } /* loop over ranks */
+            if (transform_to_pw__ && *transform_to_pw__) {
+                f->fft_transform(-1);
             }
         }, error_code__);
 }
@@ -5499,7 +5495,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             for (int x : {0, 1, 2}) {
                 if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
-                    TERMINATE("wrong FFT grid size");
+                    RTE_THROW("wrong FFT grid size");
                 }
             }
 
@@ -5515,59 +5511,59 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 {"vxc", &gs.potential().xc_potential()},
             };
 
-            try {
-                auto& f = func.at(label);
+            if (!func.count(label)) {
+                RTE_THROW("wrong label: " + label);
+            }
 
-                auto& comm = Communicator::map_fcomm(*fcomm__);
+            auto& f = func.at(label);
 
-                if (transform_to_rg__ && *transform_to_rg__) {
-                    f->fft_transform(1);
+            auto& comm = Communicator::map_fcomm(*fcomm__);
+
+            if (transform_to_rg__ && *transform_to_rg__) {
+                f->fft_transform(1);
+            }
+
+            auto& fft_comm = gs.ctx().comm_fft();
+            auto spl_z     = split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
+
+            mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+            mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+
+            for (int rank = 0; rank < fft_comm.size(); rank++) {
+                /* slab of FFT grid for a given rank */
+                mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+                if (rank == fft_comm.rank()) {
+                    std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
+                fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
 
-                auto& fft_comm = gs.ctx().comm_fft();
-                auto spl_z     = split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
+                /* ranks on the F90 side */
+                int r = comm.rank();
 
-                mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
-                mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+                /* dimensions of this rank's local box */
+                int nx = local_box_size(0, r);
+                int ny = local_box_size(1, r);
+                int nz = local_box_size(2, r);
+                mdarray<double, 3> values(values__, nx, ny, nz);
 
-                for (int rank = 0; rank < fft_comm.size(); rank++) {
-                    /* slab of FFT grid for a given rank */
-                    mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
-                    if (rank == fft_comm.rank()) {
-                        std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
-                    }
-                    fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
-
-                    /* ranks on the F90 side */
-                    int r = comm.rank();
-
-                    /* dimensions of this rank's local box */
-                    int nx = local_box_size(0, r);
-                    int ny = local_box_size(1, r);
-                    int nz = local_box_size(2, r);
-                    mdarray<double, 3> values(values__, nx, ny, nz);
-
-                    for (int iz = 0; iz < nz; iz++) {
-                        /* global z coordinate inside FFT box */
-                        int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
-                        if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
-                            /* make z local for SIRIUS FFT partitioning */
-                            z -= spl_z.global_offset(rank);
-                            for (int iy = 0; iy < ny; iy++) {
-                                /* global y coordinate inside FFT box */
-                                int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
-                                for (int ix = 0; ix < nx; ix++) {
-                                    /* global x coordinate inside FFT box */
-                                    int x              = local_box_origin(0, r) + ix - 1; /* Fortran counts from 1 */
-                                    values(ix, iy, iz) = buf(x, y, z);
-                                }
+                for (int iz = 0; iz < nz; iz++) {
+                    /* global z coordinate inside FFT box */
+                    int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
+                    if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                        /* make z local for SIRIUS FFT partitioning */
+                        z -= spl_z.global_offset(rank);
+                        for (int iy = 0; iy < ny; iy++) {
+                            /* global y coordinate inside FFT box */
+                            int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
+                            for (int ix = 0; ix < nx; ix++) {
+                                /* global x coordinate inside FFT box */
+                                int x              = local_box_origin(0, r) + ix - 1; /* Fortran counts from 1 */
+                                values(ix, iy, iz) = buf(x, y, z);
                             }
                         }
                     }
-                } /* loop over ranks */
-            } catch (...) {
-                TERMINATE("wrong label");
-            }
+                }
+            } /* loop over ranks */
         }, error_code__);
 }
 
