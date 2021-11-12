@@ -193,7 +193,7 @@ sirius::Simulation_context&
 get_sim_ctx(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
-        throw std::runtime_error("Non-existing simulation context handler");
+        RTE_THROW("Non-existing simulation context handler");
     }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
 }
@@ -202,7 +202,7 @@ sirius::DFT_ground_state&
 get_gs(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
-        throw std::runtime_error("Non-existing DFT ground state handler");
+        RTE_THROW("Non-existing DFT ground state handler");
     }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
 }
@@ -211,7 +211,7 @@ sirius::K_point_set&
 get_ks(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
-        throw std::runtime_error("Non-existing K-point set handler");
+        RTE_THROW("Non-existing K-point set handler");
     }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
 }
@@ -1266,12 +1266,12 @@ sirius_set_periodic_function(void* const* handler__, char const* label__, double
                 {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
                 {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
                 {"vha", &gs.potential().hartree_potential()}};
-            if (func_map.count(label) == 0) {
-                throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+            if (!func_map.count(label)) {
+                RTE_THROW("wrong label (" + label + ") for the periodic function");
             }
             if (f_rg__) {
                 if (f_rg_global__ == nullptr) {
-                    throw std::runtime_error("missing bool argument 'f_rg_global'");
+                    RTE_THROW("missing bool argument 'f_rg_global'");
                 }
                 bool is_local = !(*f_rg_global__);
                 func_map[label]->copy_from(nullptr, f_rg__, is_local);
@@ -1340,37 +1340,37 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                 {"vha", &gs.potential().hartree_potential()}, {"exc", &gs.potential().xc_energy_density()},
                 {"vxc", &gs.potential().xc_potential()}};
 
-            if (func_map.count(label) == 0) {
-                throw std::runtime_error("wrong label (" + label + ") for the periodic function");
+            if (!func_map.count(label)) {
+                RTE_THROW("wrong label (" + label + ") for the periodic function");
             }
 
             auto& f = *func_map[label];
 
             if (f_mt__) {
                 if (!lmmax__) {
-                    throw std::runtime_error("missing 'lmmax' argument");
+                    RTE_THROW("missing 'lmmax' argument");
                 }
                 if (*lmmax__ != f.angular_domain_size()) {
-                    throw std::runtime_error("wrong number of spherical harmonics");
+                    RTE_THROW("wrong number of spherical harmonics");
                 }
                 if (!max_num_mt_points__) {
-                    throw std::runtime_error("missing 'max_num_mt_points' argument");
+                    RTE_THROW("missing 'max_num_mt_points' argument");
                 }
                 if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
-                    throw std::runtime_error("wrong maximum number of muffin-tin radial points");
+                    RTE_THROW("wrong maximum number of muffin-tin radial points");
                 }
                 if (!num_atoms__) {
-                    throw std::runtime_error("missing 'num_atoms' argument");
+                    RTE_THROW("missing 'num_atoms' argument");
                 }
                 if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
-                    throw std::runtime_error("wrong number of atoms");
+                    RTE_THROW("wrong number of atoms");
                 }
                 f.copy_to(f_mt__, nullptr, false);
             }
 
             if (f_rg__) {
                 if (!num_rg_points__) {
-                    throw std::runtime_error("missing 'num_rg_points' argument");
+                    RTE_THROW("missing 'num_rg_points' argument");
                 }
                 bool is_local_rg;
                 if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
@@ -1378,7 +1378,7 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                 } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
                     is_local_rg = true;
                 } else {
-                    throw std::runtime_error("wrong number of regular grid points");
+                    RTE_THROW("wrong number of regular grid points");
                 }
                 f.copy_to(nullptr, f_rg__, is_local_rg);
             }
@@ -1783,7 +1783,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
             } else if (smear.compare("GS") == 0) {
                 smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
             } else {
-                throw std::runtime_error("invalid smearing type given");
+                RTE_THROW("invalid smearing type given");
             }
 
             sirius::Energy energy(kset, density, potential);
@@ -1793,7 +1793,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
                 } else if (pu.compare("cpu") == 0) {
                     nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             } else {
                 if (pu.empty() || pu.compare("gpu") == 0) {
@@ -1801,13 +1801,13 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
                 } else if (pu.compare("cpu") == 0) {
                     nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             }
         },
         error_code__);
 #else
-    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+    RTE_THROW("SIRIUS was not compiled with NLCG option.");
 #endif
 }
 
@@ -2999,8 +2999,8 @@ sirius_get_forces(void* const* handler__, char const* label__, double* forces__,
                 {"hubbard", &sirius::Force::calc_forces_hubbard}, {"ibs", &sirius::Force::calc_forces_ibs},
                 {"hf", &sirius::Force::calc_forces_hf},           {"rho", &sirius::Force::calc_forces_rho}};
 
-            if (func.count(label) == 0) {
-                throw std::runtime_error("wrong label (" + label + ") for the component of forces");
+            if (!func.count(label)) {
+                RTE_THROW("wrong label (" + label + ") for the component of forces");
             }
 
             get_forces((forces.*func.at(label))());
@@ -3050,8 +3050,8 @@ sirius_get_stress_tensor(void* const* handler__, char const* label__, double* st
                 {"core", &sirius::Stress::calc_stress_core},   {"hubbard", &sirius::Stress::calc_stress_hubbard},
             };
 
-            if (func.count(label) == 0) {
-                throw std::runtime_error("wrong label (" + label + ") for the component of stress tensor");
+            if (!func.count(label)) {
+                RTE_THROW("wrong label (" + label + ") for the component of stress tensor");
             }
 
             matrix3d<double> s;
@@ -4213,7 +4213,7 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
             } else if (static_cast<int>(spfft_grid_size(fft)) == *num_rg_points__) {
                 is_local_rg = true;
             } else {
-                throw std::runtime_error("wrong number of regular grid points");
+                RTE_THROW("wrong number of regular grid points");
             }
 
             int offs = (is_local_rg) ? 0 : fft.dim_x() * fft.dim_y() * fft.local_z_offset();
@@ -5832,9 +5832,7 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
             } else if (label == "ps_rho_ri") {
                 sim_ctx.ps_rho_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
             } else {
-                std::stringstream s;
-                s << "Wrong label of the callback function: " << label;
-                throw std::runtime_error(s.str());
+                RTE_THROW("Wrong label of the callback function: " + label);
             }
         },
         error_code__);
@@ -5890,7 +5888,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
             } else if (smear.compare("GS") == 0) {
                 smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
             } else {
-                throw std::runtime_error("invalid smearing type given");
+                RTE_THROW("invalid smearing type given: " + smear);
             }
 
             sirius::Energy energy(kset, density, potential);
@@ -5900,7 +5898,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
                 } else if (pu.compare("cpu") == 0) {
                     nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             } else {
                 if (pu.empty() || pu.compare("gpu") == 0) {
@@ -5908,7 +5906,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
                 } else if (pu.compare("cpu") == 0) {
                     nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             }
 #else
@@ -6002,7 +6000,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             } else if (smear.compare("GS") == 0) {
                 smearing_t = nlcglib::smearing_type::GAUSSIAN_SPLINE;
             } else {
-                throw std::runtime_error("invalid smearing type given");
+                RTE_THROW("invalid smearing type given: " + smear);
             }
 
             if (pu.compare("none") == 0) {
@@ -6019,7 +6017,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
                 } else if (pu.compare("cpu") == 0) {
                     info = nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             } else {
                 if (pu.empty() || pu.compare("cpu") == 0) {
@@ -6027,7 +6025,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
                 } else if (pu.compare("gpu") == 0) {
                     info = nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                 } else {
-                    throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
                 }
             }
 #else
