@@ -2,9 +2,9 @@ program test_fortran_api
 use mpi
 use sirius
 implicit none
-type(C_PTR) :: handler
-type(C_PTR) :: kset
-type(C_PTR) :: dft
+type(sirius_context_handler) :: handler
+type(sirius_kpoint_set_handler) :: kset
+type(sirius_ground_state_handler) :: dft
 logical :: stat
 integer i,j,k,l
 character(100) key
@@ -16,8 +16,7 @@ real(8) rmin, rmax, t
 
 call sirius_initialize(call_mpi_init=.true.)
 
-i = MPI_COMM_WORLD
-call sirius_create_context(i, handler)
+call sirius_create_context(MPI_COMM_WORLD, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "full_potential_lapwlo"},&

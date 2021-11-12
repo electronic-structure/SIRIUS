@@ -243,7 +243,7 @@ end subroutine sirius_serialize_timers
 subroutine sirius_context_initialized(handler,status,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 logical, target, intent(out) :: status
 integer, optional, target, intent(out) :: error_code
 !
@@ -263,7 +263,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 status_ptr = C_NULL_PTR
 status_ptr = C_LOC(status_c_type)
 error_code_ptr = C_NULL_PTR
@@ -288,7 +288,7 @@ subroutine sirius_create_context(fcomm,handler,fcomm_k,fcomm_band,error_code)
 implicit none
 !
 integer, value, intent(in) :: fcomm
-type(C_PTR), target, intent(out) :: handler
+type(sirius_context_handler), target, intent(out) :: handler
 integer, optional, target, intent(in) :: fcomm_k
 integer, optional, target, intent(in) :: fcomm_band
 integer, optional, target, intent(out) :: error_code
@@ -311,7 +311,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 fcomm_k_ptr = C_NULL_PTR
 if (present(fcomm_k)) then
 fcomm_k_ptr = C_LOC(fcomm_k)
@@ -335,7 +335,7 @@ end subroutine sirius_create_context
 subroutine sirius_import_parameters(handler,str,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), optional, target, intent(in) :: str
 integer, optional, target, intent(out) :: error_code
 !
@@ -355,7 +355,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 str_ptr = C_NULL_PTR
 if (present(str)) then
 allocate(str_c_type(len(str)+1))
@@ -411,7 +411,7 @@ subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(in) :: lmax_apw
 integer, optional, target, intent(in) :: lmax_rho
 integer, optional, target, intent(in) :: lmax_pot
@@ -525,7 +525,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 lmax_apw_ptr = C_NULL_PTR
 if (present(lmax_apw)) then
 lmax_apw_ptr = C_LOC(lmax_apw)
@@ -725,7 +725,7 @@ subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &evp_work_count,num_loc_op_applied,num_sym_op,electronic_structure_method,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: lmax_apw
 integer, optional, target, intent(out) :: lmax_rho
 integer, optional, target, intent(out) :: lmax_pot
@@ -815,7 +815,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 lmax_apw_ptr = C_NULL_PTR
 if (present(lmax_apw)) then
 lmax_apw_ptr = C_LOC(lmax_apw)
@@ -941,7 +941,7 @@ end subroutine sirius_get_parameters
 subroutine sirius_add_xc_functional(handler,name,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: name
 integer, optional, target, intent(out) :: error_code
 !
@@ -961,7 +961,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
@@ -983,7 +983,7 @@ end subroutine sirius_add_xc_functional
 subroutine sirius_set_mpi_grid_dims(handler,ndims,dims,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ndims
 integer, target, dimension(ndims), intent(in) :: dims
 integer, optional, target, intent(out) :: error_code
@@ -1005,7 +1005,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ndims_ptr = C_NULL_PTR
 ndims_ptr = C_LOC(ndims)
 dims_ptr = C_NULL_PTR
@@ -1027,7 +1027,7 @@ end subroutine sirius_set_mpi_grid_dims
 subroutine sirius_set_lattice_vectors(handler,a1,a2,a3,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 real(8), target, dimension(3), intent(in) :: a1
 real(8), target, dimension(3), intent(in) :: a2
 real(8), target, dimension(3), intent(in) :: a3
@@ -1052,7 +1052,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 a1_ptr = C_NULL_PTR
 a1_ptr = C_LOC(a1)
 a2_ptr = C_NULL_PTR
@@ -1073,7 +1073,7 @@ end subroutine sirius_set_lattice_vectors
 subroutine sirius_initialize_context(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1089,7 +1089,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1104,7 +1104,7 @@ end subroutine sirius_initialize_context
 subroutine sirius_update_context(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1120,7 +1120,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1135,7 +1135,7 @@ end subroutine sirius_update_context
 subroutine sirius_print_info(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1151,7 +1151,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1163,7 +1163,7 @@ end subroutine sirius_print_info
 !> @brief Free any handler of object created by SIRIUS.
 !> @param [inout] handler Handler of the object.
 !> @param [out] error_code Error code
-subroutine sirius_free_handler(handler,error_code)
+subroutine sirius_free_object_handler(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(inout) :: handler
@@ -1173,8 +1173,8 @@ type(C_PTR) :: handler_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_free_handler_aux(handler,error_code)&
-&bind(C, name="sirius_free_handler")
+subroutine sirius_free_object_handler_aux(handler,error_code)&
+&bind(C, name="sirius_free_object_handler")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: error_code
@@ -1187,8 +1187,8 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_free_handler_aux(handler_ptr,error_code_ptr)
-end subroutine sirius_free_handler
+call sirius_free_object_handler_aux(handler_ptr,error_code_ptr)
+end subroutine sirius_free_object_handler
 
 !
 !> @brief Set pointer to density or megnetization.
@@ -1200,7 +1200,7 @@ end subroutine sirius_free_handler
 subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), optional, target, intent(in) :: f_mt
 real(8), optional, target, intent(in) :: f_rg
@@ -1226,7 +1226,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -1258,7 +1258,7 @@ end subroutine sirius_set_periodic_function_ptr
 subroutine sirius_set_periodic_function(handler,label,f_rg,f_rg_global,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), optional, target, dimension(*), intent(in) :: f_rg
 logical, optional, target, intent(in) :: f_rg_global
@@ -1285,7 +1285,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -1325,7 +1325,7 @@ subroutine sirius_get_periodic_function(handler,label,f_mt,lmmax,max_num_mt_poin
 &num_atoms,f_rg,num_rg_points,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), optional, target, intent(out) :: f_mt
 integer, optional, target, intent(in) :: lmmax
@@ -1364,7 +1364,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -1415,12 +1415,12 @@ subroutine sirius_create_kset(handler,num_kpoints,kpoints,kpoint_weights,init_ks
 &kset_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: num_kpoints
 real(8), target, dimension(3,num_kpoints), intent(in) :: kpoints
 real(8), target, dimension(num_kpoints), intent(in) :: kpoint_weights
 logical, target, intent(in) :: init_kset
-type(C_PTR), target, intent(out) :: kset_handler
+type(sirius_kpoint_set_handler), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1448,7 +1448,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 num_kpoints_ptr = C_NULL_PTR
 num_kpoints_ptr = C_LOC(num_kpoints)
 kpoints_ptr = C_NULL_PTR
@@ -1459,7 +1459,7 @@ init_kset_ptr = C_NULL_PTR
 init_kset_c_type = init_kset
 init_kset_ptr = C_LOC(init_kset_c_type)
 kset_handler_ptr = C_NULL_PTR
-kset_handler_ptr = C_LOC(kset_handler)
+kset_handler_ptr = C_LOC(kset_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1480,11 +1480,11 @@ subroutine sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry,kset
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, dimension(3), intent(in) :: k_grid
 integer, target, dimension(3), intent(in) :: k_shift
 logical, target, intent(in) :: use_symmetry
-type(C_PTR), target, intent(out) :: kset_handler
+type(sirius_kpoint_set_handler), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1510,7 +1510,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 k_grid_ptr = C_NULL_PTR
 k_grid_ptr = C_LOC(k_grid)
 k_shift_ptr = C_NULL_PTR
@@ -1519,7 +1519,7 @@ use_symmetry_ptr = C_NULL_PTR
 use_symmetry_c_type = use_symmetry
 use_symmetry_ptr = C_LOC(use_symmetry_c_type)
 kset_handler_ptr = C_NULL_PTR
-kset_handler_ptr = C_LOC(kset_handler)
+kset_handler_ptr = C_LOC(kset_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1536,8 +1536,8 @@ end subroutine sirius_create_kset_from_grid
 subroutine sirius_create_ground_state(ks_handler,gs_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
-type(C_PTR), target, intent(out) :: gs_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(out) :: gs_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -1555,9 +1555,9 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1573,7 +1573,7 @@ end subroutine sirius_create_ground_state
 subroutine sirius_initialize_kset(ks_handler,count,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, optional, target, dimension(*), intent(in) :: count
 integer, optional, target, intent(out) :: error_code
 !
@@ -1592,7 +1592,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 count_ptr = C_NULL_PTR
 if (present(count)) then
 count_ptr = C_LOC(count)
@@ -1618,7 +1618,7 @@ subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,max_niter,
 &save_state,converged,niter,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 real(8), optional, target, intent(in) :: density_tol
 real(8), optional, target, intent(in) :: energy_tol
 integer, optional, target, intent(in) :: max_niter
@@ -1655,7 +1655,7 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 density_tol_ptr = C_NULL_PTR
 if (present(density_tol)) then
 density_tol_ptr = C_LOC(density_tol)
@@ -1701,7 +1701,7 @@ end subroutine sirius_find_ground_state
 subroutine sirius_check_scf_density(gs_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -1717,7 +1717,7 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1741,8 +1741,8 @@ subroutine sirius_find_ground_state_robust(gs_handler,ks_handler,scf_density_tol
 &scf_energy_tol,scf_ninit,temp,tol,cg_restart,kappa,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 real(8), optional, target, intent(in) :: scf_density_tol
 real(8), optional, target, intent(in) :: scf_energy_tol
 integer, optional, target, intent(in) :: scf_ninit
@@ -1782,9 +1782,9 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 scf_density_tol_ptr = C_NULL_PTR
 if (present(scf_density_tol)) then
 scf_density_tol_ptr = C_LOC(scf_density_tol)
@@ -1828,7 +1828,7 @@ end subroutine sirius_find_ground_state_robust
 subroutine sirius_update_ground_state(gs_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -1844,7 +1844,7 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -1865,7 +1865,7 @@ end subroutine sirius_update_ground_state
 subroutine sirius_add_atom_type(handler,label,fname,zn,symbol,mass,spin_orbit,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 character(*), optional, target, intent(in) :: fname
 integer, optional, target, intent(in) :: zn
@@ -1904,7 +1904,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -1962,7 +1962,7 @@ subroutine sirius_set_atom_type_radial_grid(handler,label,num_radial_points,radi
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
 real(8), target, dimension(num_radial_points), intent(in) :: radial_points
@@ -1989,7 +1989,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2018,7 +2018,7 @@ subroutine sirius_set_atom_type_radial_grid_inf(handler,label,num_radial_points,
 &radial_points,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
 real(8), target, dimension(num_radial_points), intent(in) :: radial_points
@@ -2045,7 +2045,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2080,7 +2080,7 @@ subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_p
 &n,l,idxrf1,idxrf2,occ,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: atom_type
 character(*), target, intent(in) :: label
 real(8), target, dimension(num_points), intent(in) :: rf
@@ -2126,7 +2126,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 atom_type_ptr = C_NULL_PTR
 allocate(atom_type_c_type(len(atom_type)+1))
 atom_type_c_type = string_f2c(atom_type)
@@ -2186,7 +2186,7 @@ subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0,
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: l
 integer, target, intent(in) :: n
@@ -2231,7 +2231,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2271,7 +2271,7 @@ end subroutine sirius_set_atom_type_hubbard
 subroutine sirius_set_atom_type_dion(handler,label,num_beta,dion,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_beta
 real(8), target, dimension(num_beta, num_beta), intent(in) :: dion
@@ -2297,7 +2297,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2326,7 +2326,7 @@ subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_oc
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, intent(in) :: core_energy
 real(8), target, dimension(num_occ), intent(in) :: occupations
@@ -2356,7 +2356,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2386,7 +2386,7 @@ end subroutine sirius_set_atom_type_paw
 subroutine sirius_add_atom(handler,label,position,vector_field,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, dimension(3), intent(in) :: position
 real(8), optional, target, dimension(3), intent(in) :: vector_field
@@ -2412,7 +2412,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2440,7 +2440,7 @@ end subroutine sirius_add_atom
 subroutine sirius_set_atom_position(handler,ia,position,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 real(8), target, dimension(3), intent(in) :: position
 integer, optional, target, intent(out) :: error_code
@@ -2462,7 +2462,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 position_ptr = C_NULL_PTR
@@ -2488,7 +2488,7 @@ subroutine sirius_set_pw_coeffs(handler,label,pw_coeffs,transform_to_rg,ngv,gvl,
 &comm,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 complex(8), target, dimension(*), intent(in) :: pw_coeffs
 logical, optional, target, intent(in) :: transform_to_rg
@@ -2525,7 +2525,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2572,7 +2572,7 @@ end subroutine sirius_set_pw_coeffs
 subroutine sirius_get_pw_coeffs(handler,label,pw_coeffs,ngv,gvl,comm,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 complex(8), target, dimension(*), intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
@@ -2604,7 +2604,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -2640,8 +2640,8 @@ end subroutine sirius_get_pw_coeffs
 subroutine sirius_initialize_subspace(gs_handler,ks_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -2659,9 +2659,9 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -2682,8 +2682,8 @@ subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute_pw,precompu
 &precompute_ri,iter_solver_tol,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 logical, optional, target, intent(in) :: precompute_pw
 logical, optional, target, intent(in) :: precompute_rf
 logical, optional, target, intent(in) :: precompute_ri
@@ -2717,9 +2717,9 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 precompute_pw_ptr = C_NULL_PTR
 if (present(precompute_pw)) then
 precompute_pw_c_type = precompute_pw
@@ -2760,7 +2760,7 @@ end subroutine sirius_find_eigen_states
 subroutine sirius_generate_initial_density(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2776,7 +2776,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -2791,7 +2791,7 @@ end subroutine sirius_generate_initial_density
 subroutine sirius_generate_effective_potential(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2807,7 +2807,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -2824,7 +2824,7 @@ end subroutine sirius_generate_effective_potential
 subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: gs_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 logical, optional, target, intent(in) :: add_core
 logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(out) :: error_code
@@ -2848,7 +2848,7 @@ end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler)
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 add_core_ptr = C_NULL_PTR
 if (present(add_core)) then
 add_core_c_type = add_core
@@ -2881,7 +2881,7 @@ end subroutine sirius_generate_density
 subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(in) :: band_occupancies
@@ -2906,7 +2906,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 ispn_ptr = C_NULL_PTR
@@ -2931,7 +2931,7 @@ end subroutine sirius_set_band_occupancies
 subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(out) :: band_occupancies
@@ -2956,7 +2956,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 ispn_ptr = C_NULL_PTR
@@ -2981,7 +2981,7 @@ end subroutine sirius_get_band_occupancies
 subroutine sirius_get_band_energies(ks_handler,ik,ispn,band_energies,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 real(8), target, intent(out) :: band_energies
@@ -3006,7 +3006,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 ispn_ptr = C_NULL_PTR
@@ -3030,7 +3030,7 @@ end subroutine sirius_get_band_energies
 subroutine sirius_get_energy(handler,label,energy,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, intent(out) :: energy
 integer, optional, target, intent(out) :: error_code
@@ -3053,7 +3053,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3077,7 +3077,7 @@ end subroutine sirius_get_energy
 subroutine sirius_get_forces(handler,label,forces,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, dimension(3, *), intent(out) :: forces
 integer, optional, target, intent(out) :: error_code
@@ -3100,7 +3100,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3124,7 +3124,7 @@ end subroutine sirius_get_forces
 subroutine sirius_get_stress_tensor(handler,label,stress_tensor,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, dimension(3, 3), intent(out) :: stress_tensor
 integer, optional, target, intent(out) :: error_code
@@ -3147,7 +3147,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3171,7 +3171,7 @@ end subroutine sirius_get_stress_tensor
 subroutine sirius_get_num_beta_projectors(handler,label,num_bp,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(out) :: num_bp
 integer, optional, target, intent(out) :: error_code
@@ -3194,7 +3194,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3224,7 +3224,7 @@ subroutine sirius_get_wave_functions_v2(ks_handler,vkl,spin,num_gvec_loc,gvec_lo
 &evec,ld,num_spin_comp,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 real(8), optional, target, dimension(3), intent(in) :: vkl
 integer, optional, target, intent(in) :: spin
 integer, optional, target, intent(in) :: num_gvec_loc
@@ -3262,7 +3262,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 vkl_ptr = C_NULL_PTR
 if (present(vkl)) then
 vkl_ptr = C_LOC(vkl)
@@ -3313,7 +3313,7 @@ end subroutine sirius_get_wave_functions_v2
 subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
 integer, target, intent(in) :: npw
@@ -3351,7 +3351,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 ispn_ptr = C_NULL_PTR
@@ -3388,7 +3388,7 @@ subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: n
 integer, target, intent(in) :: l
@@ -3425,7 +3425,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3465,7 +3465,7 @@ subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: ilo
 integer, target, intent(in) :: n
@@ -3505,7 +3505,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3546,7 +3546,7 @@ subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: n
 integer, target, intent(in) :: l
@@ -3583,7 +3583,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -3616,7 +3616,7 @@ end subroutine sirius_set_atom_type_configuration
 subroutine sirius_generate_coulomb_potential(handler,vh_el,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 real(8), optional, target, dimension(*), intent(out) :: vh_el
 integer, optional, target, intent(out) :: error_code
 !
@@ -3635,7 +3635,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 vh_el_ptr = C_NULL_PTR
 if (present(vh_el)) then
 vh_el_ptr = C_LOC(vh_el)
@@ -3654,7 +3654,7 @@ end subroutine sirius_generate_coulomb_potential
 subroutine sirius_generate_xc_potential(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3670,7 +3670,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -3686,7 +3686,7 @@ end subroutine sirius_generate_xc_potential
 subroutine sirius_get_kpoint_inter_comm(handler,fcomm,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
 integer, optional, target, intent(out) :: error_code
 !
@@ -3705,7 +3705,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
 error_code_ptr = C_NULL_PTR
@@ -3723,7 +3723,7 @@ end subroutine sirius_get_kpoint_inter_comm
 subroutine sirius_get_kpoint_inner_comm(handler,fcomm,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
 integer, optional, target, intent(out) :: error_code
 !
@@ -3742,7 +3742,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
 error_code_ptr = C_NULL_PTR
@@ -3760,7 +3760,7 @@ end subroutine sirius_get_kpoint_inner_comm
 subroutine sirius_get_fft_comm(handler,fcomm,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: fcomm
 integer, optional, target, intent(out) :: error_code
 !
@@ -3779,7 +3779,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
 error_code_ptr = C_NULL_PTR
@@ -3797,7 +3797,7 @@ end subroutine sirius_get_fft_comm
 subroutine sirius_get_num_gvec(handler,num_gvec,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: num_gvec
 integer, optional, target, intent(out) :: error_code
 !
@@ -3816,7 +3816,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 num_gvec_ptr = C_NULL_PTR
 num_gvec_ptr = C_LOC(num_gvec)
 error_code_ptr = C_NULL_PTR
@@ -3838,7 +3838,7 @@ subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec,
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, dimension(3, *), intent(in) :: gvec
 real(8), optional, target, dimension(3, *), intent(in) :: gvec_cart
 real(8), optional, target, dimension(*), intent(in) :: gvec_len
@@ -3867,7 +3867,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 gvec_ptr = C_NULL_PTR
 if (present(gvec)) then
 gvec_ptr = C_LOC(gvec)
@@ -3900,7 +3900,7 @@ end subroutine sirius_get_gvec_arrays
 subroutine sirius_get_num_fft_grid_points(handler,num_fft_grid_points,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: num_fft_grid_points
 integer, optional, target, intent(out) :: error_code
 !
@@ -3919,7 +3919,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 num_fft_grid_points_ptr = C_NULL_PTR
 num_fft_grid_points_ptr = C_LOC(num_fft_grid_points)
 error_code_ptr = C_NULL_PTR
@@ -3937,7 +3937,7 @@ end subroutine sirius_get_num_fft_grid_points
 subroutine sirius_get_fft_index(handler,fft_index,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(out) :: fft_index
 integer, optional, target, intent(out) :: error_code
 !
@@ -3956,7 +3956,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 fft_index_ptr = C_NULL_PTR
 fft_index_ptr = C_LOC(fft_index)
 error_code_ptr = C_NULL_PTR
@@ -3974,7 +3974,7 @@ end subroutine sirius_get_fft_index
 subroutine sirius_get_max_num_gkvec(ks_handler,max_num_gkvec,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(out) :: max_num_gkvec
 integer, optional, target, intent(out) :: error_code
 !
@@ -3993,7 +3993,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 max_num_gkvec_ptr = C_NULL_PTR
 max_num_gkvec_ptr = C_LOC(max_num_gkvec)
 error_code_ptr = C_NULL_PTR
@@ -4018,7 +4018,7 @@ subroutine sirius_get_gkvec_arrays(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkve
 &gkvec_len,gkvec_tp,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(out) :: num_gkvec
 integer, target, dimension(*), intent(out) :: gvec_index
@@ -4056,7 +4056,7 @@ end subroutine
 end interface
 !
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 num_gkvec_ptr = C_NULL_PTR
@@ -4089,7 +4089,7 @@ end subroutine sirius_get_gkvec_arrays
 subroutine sirius_get_step_function(handler,cfunig,cfunrg,num_rg_points,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 complex(8), target, dimension(*), intent(out) :: cfunig
 real(8), target, dimension(*), intent(out) :: cfunrg
 integer, target, intent(in) :: num_rg_points
@@ -4114,7 +4114,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 cfunig_ptr = C_NULL_PTR
 cfunig_ptr = C_LOC(cfunig)
 cfunrg_ptr = C_NULL_PTR
@@ -4146,7 +4146,7 @@ subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,i
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: lmmax
 real(8), target, intent(in) :: val
@@ -4190,7 +4190,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 lmmax_ptr = C_NULL_PTR
@@ -4243,7 +4243,7 @@ end subroutine sirius_set_h_radial_integrals
 subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 real(8), target, intent(in) :: val
 integer, target, intent(in) :: l
@@ -4280,7 +4280,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 val_ptr = C_NULL_PTR
@@ -4326,7 +4326,7 @@ end subroutine sirius_set_o_radial_integral
 subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 real(8), target, intent(in) :: val
 integer, optional, target, intent(in) :: l1
@@ -4367,7 +4367,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 val_ptr = C_NULL_PTR
@@ -4417,7 +4417,7 @@ end subroutine sirius_set_o1_radial_integral
 subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: deriv_order
 real(8), target, intent(in) :: f
@@ -4451,7 +4451,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 deriv_order_ptr = C_NULL_PTR
@@ -4486,7 +4486,7 @@ end subroutine sirius_set_radial_function
 subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, dimension(*), intent(in) :: equivalent_atoms
 integer, optional, target, intent(out) :: error_code
 !
@@ -4505,7 +4505,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 equivalent_atoms_ptr = C_NULL_PTR
 equivalent_atoms_ptr = C_LOC(equivalent_atoms)
 error_code_ptr = C_NULL_PTR
@@ -4522,7 +4522,7 @@ end subroutine sirius_set_equivalent_atoms
 subroutine sirius_update_atomic_potential(handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -4538,7 +4538,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -5043,7 +5043,7 @@ end subroutine sirius_option_get_number_of_sections
 subroutine sirius_option_set_int(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 integer, target, intent(in) :: default_values
@@ -5070,7 +5070,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
@@ -5099,7 +5099,7 @@ end subroutine sirius_option_set_int
 subroutine sirius_option_set_double(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 real(8), target, intent(in) :: default_values
@@ -5126,7 +5126,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
@@ -5155,7 +5155,7 @@ end subroutine sirius_option_set_double
 subroutine sirius_option_set_logical(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 logical, target, intent(in) :: default_values
@@ -5183,7 +5183,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
@@ -5212,7 +5212,7 @@ end subroutine sirius_option_set_logical
 subroutine sirius_option_set_string(handler,section,name,default_values)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 character(*), target, intent(in) :: default_values
@@ -5237,7 +5237,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
@@ -5265,7 +5265,7 @@ end subroutine sirius_option_set_string
 subroutine sirius_option_add_string_to(handler,section,name,default_values)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 character(*), target, intent(in) :: default_values
@@ -5290,7 +5290,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
@@ -5317,7 +5317,7 @@ end subroutine sirius_option_add_string_to
 subroutine sirius_dump_runtime_setup(handler,filename,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: filename
 integer, optional, target, intent(out) :: error_code
 !
@@ -5337,7 +5337,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 filename_ptr = C_NULL_PTR
 allocate(filename_c_type(len(filename)+1))
 filename_c_type = string_f2c(filename)
@@ -5361,7 +5361,7 @@ end subroutine sirius_dump_runtime_setup
 subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 complex(8), target, intent(out) :: fv_evec
 integer, target, intent(in) :: ld
@@ -5389,7 +5389,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 fv_evec_ptr = C_NULL_PTR
@@ -5416,7 +5416,7 @@ end subroutine sirius_get_fv_eigen_vectors
 subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 real(8), target, intent(out) :: fv_eval
 integer, target, intent(in) :: num_fv_states
@@ -5441,7 +5441,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 fv_eval_ptr = C_NULL_PTR
@@ -5466,7 +5466,7 @@ end subroutine sirius_get_fv_eigen_values
 subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 complex(8), target, intent(out) :: sv_evec
 integer, target, intent(in) :: num_bands
@@ -5491,7 +5491,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 sv_evec_ptr = C_NULL_PTR
@@ -5521,7 +5521,7 @@ subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_pw,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: grid_dims
 integer, target, intent(in) :: local_box_origin
@@ -5561,7 +5561,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -5607,7 +5607,7 @@ subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_rg,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: grid_dims
 integer, target, intent(in) :: local_box_origin
@@ -5647,7 +5647,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -5686,7 +5686,7 @@ end subroutine sirius_get_rg_values
 subroutine sirius_get_total_magnetization(handler,mag,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 real(8), target, intent(out) :: mag
 integer, optional, target, intent(out) :: error_code
 !
@@ -5705,7 +5705,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 mag_ptr = C_NULL_PTR
 mag_ptr = C_LOC(mag)
 error_code_ptr = C_NULL_PTR
@@ -5723,7 +5723,7 @@ end subroutine sirius_get_total_magnetization
 subroutine sirius_get_num_kpoints(handler,num_kpoints,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(out) :: num_kpoints
 integer, optional, target, intent(out) :: error_code
 !
@@ -5742,7 +5742,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 num_kpoints_ptr = C_NULL_PTR
 num_kpoints_ptr = C_LOC(num_kpoints)
 error_code_ptr = C_NULL_PTR
@@ -5762,7 +5762,7 @@ end subroutine sirius_get_num_kpoints
 subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
 real(8), target, intent(out) :: weight
 real(8), optional, target, intent(out) :: coordinates
@@ -5787,7 +5787,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ik_ptr = C_NULL_PTR
 ik_ptr = C_LOC(ik)
 weight_ptr = C_NULL_PTR
@@ -5813,7 +5813,7 @@ end subroutine sirius_get_kpoint_properties
 subroutine sirius_set_callback_function(handler,label,fptr,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 type(C_FUNPTR), value, intent(in) :: fptr
 integer, optional, target, intent(out) :: error_code
@@ -5835,7 +5835,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
 label_c_type = string_f2c(label)
@@ -5849,15 +5849,15 @@ deallocate(label_c_type)
 end subroutine sirius_set_callback_function
 
 !
-!> @brief Robust wave function optimizer
-!> @param [in] handler Ground state handler
-!> @param [in] ks_handler point set handler
+!> @brief Robust wave function optimizer.
+!> @param [in] handler Ground state handler.
+!> @param [in] ks_handler K-point set handler.
 !> @param [out] error_code Error code.
 subroutine sirius_nlcg(handler,ks_handler,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5875,9 +5875,9 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
@@ -5887,8 +5887,8 @@ end subroutine sirius_nlcg
 
 !
 !> @brief Robust wave function optimizer
-!> @param [in] handler Ground state handler
-!> @param [in] ks_handler point set handler
+!> @param [in] handler Ground state handler.
+!> @param [in] ks_handler K-point set handler.
 !> @param [in] temp Temperature in Kelvin
 !> @param [in] smearing smearing label
 !> @param [in] kappa pseudo-Hamiltonian scalar preconditioner
@@ -5902,8 +5902,8 @@ subroutine sirius_nlcg_params(handler,ks_handler,temp,smearing,kappa,tau,tol,max
 &restart,processing_unit,error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
-type(C_PTR), target, intent(in) :: ks_handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
+type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 real(8), target, intent(in) :: temp
 character(*), target, intent(in) :: smearing
 real(8), target, intent(in) :: kappa
@@ -5948,9 +5948,9 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
+ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
 temp_ptr = C_NULL_PTR
 temp_ptr = C_LOC(temp)
 smearing_ptr = C_NULL_PTR

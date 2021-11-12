@@ -2,9 +2,9 @@ program test_fortran_api
 use mpi
 use sirius
 implicit none
-type(C_PTR) :: handler
-type(C_PTR) :: kset
-type(C_PTR) :: dft
+type(sirius_context_handler) :: handler
+type(sirius_ground_state_handler) :: dft
+type(sirius_kpoint_set_handler) :: kset
 integer i, rank
 real(8) :: lat_vec(3,3), lat_vec1(3,3), pos(3), forces(3, 5), stress(3,3), energy, scf_correction
 real(8) :: alpha

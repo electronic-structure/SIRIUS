@@ -4,6 +4,25 @@ module sirius
 
 use, intrinsic :: ISO_C_BINDING
 
+!> @brief Opaque wrapper for simulation context handler.
+type sirius_context_handler
+    type(C_PTR) :: handler_ptr_
+end type
+
+!> @brief Opaque wrapper for DFT ground statee handler.
+type sirius_ground_state_handler
+    type(C_PTR) :: handler_ptr_
+end type
+
+!> @brief Opaque wrapper for K-point set handler.
+type sirius_kpoint_set_handler
+    type(C_PTR) :: handler_ptr_
+end type
+
+interface sirius_free_handler
+    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft
+end interface
+
 contains
 
 function string_f2c(f_string) result(res)
@@ -34,5 +53,33 @@ function string_c2f(c_string) result(res)
 end function string_c2f
 
 include 'generated.f90'
+
+subroutine sirius_free_handler_ctx(handler, error_code)
+    implicit none
+    type(sirius_context_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_ctx
+
+subroutine sirius_free_handler_ks(handler, error_code)
+    implicit none
+    type(sirius_kpoint_set_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_ks
+
+subroutine sirius_free_handler_dft(handler, error_code)
+    implicit none
+    type(sirius_ground_state_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_dft
+
+!subroutine sirius_free_handler_ptr(handler, error_code)
+!    implicit none
+!    type(C_PTR), intent(inout) :: handler
+!    integer, optional, target, intent(out) :: error_code
+!    call sirius_free_object_handler(handler, error_code)
+!end subroutine sirius_free_handler_ptr
 
 end module

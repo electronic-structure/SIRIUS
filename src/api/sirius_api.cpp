@@ -34,6 +34,21 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 
+struct sirius_context_handler_t
+{
+    void* handler_ptr_{nullptr};
+};
+
+struct sirius_ground_state_handler_t
+{
+    void* handler_ptr_{nullptr};
+};
+
+struct sirius_kpoint_set_handler_t
+{
+    void* handler_ptr_{nullptr};
+};
+
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
 template <typename T>
@@ -250,11 +265,7 @@ sirius_initialize:
 void
 sirius_initialize(bool const* call_mpi_init__, int* error_code__)
 {
-    call_sirius(
-        [&]() {
-            sirius::initialize(*call_mpi_init__);
-        },
-        error_code__);
+    call_sirius([&]() { sirius::initialize(*call_mpi_init__); }, error_code__);
 }
 
 /*
@@ -325,11 +336,7 @@ sirius_start_timer:
 void
 sirius_start_timer(char const* name__, int* error_code__)
 {
-    call_sirius(
-        [&]() {
-            ::utils::global_rtgraph_timer.start(name__);
-        },
-        error_code__);
+    call_sirius([&]() { ::utils::global_rtgraph_timer.start(name__); }, error_code__);
 }
 
 /*
@@ -350,11 +357,7 @@ sirius_stop_timer:
 void
 sirius_stop_timer(char const* name__, int* error_code__)
 {
-    call_sirius(
-        [&]() {
-            ::utils::global_rtgraph_timer.stop(name__);
-        },
-        error_code__);
+    call_sirius([&]() { ::utils::global_rtgraph_timer.stop(name__); }, error_code__);
 }
 
 /*
@@ -421,7 +424,7 @@ sirius_context_initialized:
   doc: Check if the simulation context is initialized.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     status:
@@ -460,7 +463,7 @@ sirius_create_context:
       attr: in, required, value
       doc: Entire communicator of the simulation.
     handler:
-      type: void*
+      type: ctx_handler
       attr: out, required
       doc: New empty simulation context.
     fcomm_k:
@@ -497,7 +500,7 @@ sirius_import_parameters:
   doc: Import parameters of simulation from a JSON string
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     str:
@@ -531,7 +534,7 @@ sirius_set_parameters:
   doc: Set parameters of the simulation.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     lmax_apw:
@@ -766,7 +769,7 @@ sirius_get_parameters:
   doc: Get parameters of the simulation.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     lmax_apw:
@@ -954,7 +957,7 @@ sirius_add_xc_functional:
   doc: Add one of the XC functionals.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     name:
@@ -984,7 +987,7 @@ sirius_set_mpi_grid_dims:
   doc: Set dimensions of the MPI grid.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     ndims:
@@ -1020,7 +1023,7 @@ sirius_set_lattice_vectors:
   doc: Set vectors of the unit cell.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     a1:
@@ -1060,7 +1063,7 @@ sirius_initialize_context:
   doc: Initialize simulation context.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     error_code:
@@ -1087,7 +1090,7 @@ sirius_update_context:
   doc: Update simulation context after changing lattice or atomic positions.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     error_code:
@@ -1114,7 +1117,7 @@ sirius_print_info:
   doc: Print basic info
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     error_code:
@@ -1136,7 +1139,7 @@ sirius_print_info(void* const* handler__, int* error_code__)
 
 /*
 @api begin
-sirius_free_handler:
+sirius_free_object_handler:
   doc: Free any handler of object created by SIRIUS.
   arguments:
     handler:
@@ -1150,7 +1153,7 @@ sirius_free_handler:
 @api end
 */
 void
-sirius_free_handler(void** handler__, int* error_code__)
+sirius_free_object_handler(void** handler__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1168,7 +1171,7 @@ sirius_set_periodic_function_ptr:
   doc: Set pointer to density or megnetization.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the DFT ground state object.
     label:
@@ -1227,7 +1230,7 @@ sirius_set_periodic_function:
   doc: Set values of the periodic function.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the DFT ground state object.
     label:
@@ -1283,7 +1286,7 @@ sirius_get_periodic_function:
   doc: Get values of the periodic function.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the DFT ground state object.
     label:
@@ -1389,7 +1392,7 @@ sirius_create_kset:
   doc: Create k-point set from the list of k-points.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     num_kpoints:
@@ -1409,7 +1412,7 @@ sirius_create_kset:
       attr: in, required
       doc: If .true. k-set will be initialized.
     kset_handler:
-      type: void*
+      type: ks_handler
       attr: out, required
       doc: Handler of the newly created k-point set.
     error_code:
@@ -1444,7 +1447,7 @@ sirius_create_kset_from_grid:
   doc: Create k-point set from a grid.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     k_grid:
@@ -1460,7 +1463,7 @@ sirius_create_kset_from_grid:
       attr: in, required
       doc: If .true. k-set will be generated using symmetries.
     kset_handler:
-      type: void*
+      type: ks_handler
       attr: out, required
       doc: Handler of the newly created k-point set.
     error_code:
@@ -1500,11 +1503,11 @@ sirius_create_ground_state:
   doc: Create a ground state object.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: Handler of the k-point set.
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: out, required
       doc: Handler of the newly created ground state object.
     error_code:
@@ -1531,7 +1534,7 @@ sirius_initialize_kset:
   doc: Initialize k-point set.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     count:
@@ -1566,7 +1569,7 @@ sirius_find_ground_state:
   doc: Find the ground state.
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the ground state.
     density_tol:
@@ -1658,7 +1661,7 @@ sirius_check_scf_density:
   doc: Check the self-consistent density
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the ground state.
     error_code:
@@ -1684,11 +1687,11 @@ sirius_find_ground_state_robust:
   doc: Find the ground state using the robust
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Handler of the ground state.
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: Handler of the k-point set.
     scf_density_tol:
@@ -1814,7 +1817,7 @@ sirius_update_ground_state:
   doc: Update a ground state object after change of atomic coordinates or lattice vectors.
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground-state handler.
     error_code:
@@ -1840,7 +1843,7 @@ sirius_add_atom_type:
   doc: Add new atom type to the unit cell.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -1909,7 +1912,7 @@ sirius_set_atom_type_radial_grid:
   doc: Set radial grid of the atom type.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -1950,7 +1953,7 @@ sirius_set_atom_type_radial_grid_inf:
   doc: Set radial grid of the free atom (up to effectice infinity).
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -1991,7 +1994,7 @@ sirius_add_atom_type_radial_function:
   doc: Add one of the radial functions.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     atom_type:
@@ -2099,7 +2102,7 @@ sirius_set_atom_type_hubbard:
   doc: Set the hubbard correction for the atomic type.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -2166,7 +2169,7 @@ sirius_set_atom_type_dion:
   doc: Set ionic part of D-operator matrix.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -2207,7 +2210,7 @@ sirius_set_atom_type_paw:
   doc: Set PAW related data.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -2262,7 +2265,7 @@ sirius_add_atom:
   doc: Add atom to the unit cell.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -2306,7 +2309,7 @@ sirius_set_atom_position:
   doc: Set new atomic position.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     ia:
@@ -2340,7 +2343,7 @@ sirius_set_pw_coeffs:
   doc: Set plane-wave coefficients of a periodic function.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Ground state handler.
     label:
@@ -2467,7 +2470,7 @@ sirius_get_pw_coeffs:
   doc: Get plane-wave coefficients of a periodic function.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     label:
@@ -2571,11 +2574,11 @@ sirius_initialize_subspace:
   doc: Initialize the subspace of wave-functions.
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     error_code:
@@ -2603,11 +2606,11 @@ sirius_find_eigen_states:
   doc: Find eigen-states of the Hamiltonian
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     precompute_pw:
@@ -2667,7 +2670,7 @@ sirius_generate_initial_density:
   doc: Generate initial density.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     error_code:
@@ -2693,7 +2696,7 @@ sirius_generate_effective_potential:
   doc: Generate effective potential and magnetic field.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     error_code:
@@ -2719,7 +2722,7 @@ sirius_generate_density:
   doc: Generate charge density and magnetization.
   arguments:
     gs_handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     add_core:
@@ -2763,7 +2766,7 @@ sirius_set_band_occupancies:
   doc: Set band occupancies.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     ik:
@@ -2805,7 +2808,7 @@ sirius_get_band_occupancies:
   doc: Set band occupancies.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     ik:
@@ -2847,7 +2850,7 @@ sirius_get_band_energies:
   doc: Get band energies.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     ik:
@@ -2889,7 +2892,7 @@ sirius_get_energy:
   doc: Get one of the total energy components.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     label:
@@ -2922,69 +2925,22 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             std::string label(label__);
 
             std::map<std::string, std::function<double()>> func = {
-                {"total",
-                 [&]() {
-                     return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy());
-                 }},
-                {"evalsum",
-                 [&]() {
-                     return sirius::eval_sum(unit_cell, kset);
-                 }},
-                {"exc",
-                 [&]() {
-                     return sirius::energy_exc(density, potential);
-                 }},
-                {"vxc",
-                 [&]() {
-                     return sirius::energy_vxc(density, potential);
-                 }},
-                {"bxc",
-                 [&]() {
-                     return sirius::energy_bxc(density, potential);
-                 }},
-                {"veff",
-                 [&]() {
-                     return sirius::energy_veff(density, potential);
-                 }},
-                {"vloc",
-                 [&]() {
-                     return sirius::energy_vloc(density, potential);
-                 }},
-                {"vha",
-                 [&]() {
-                     return sirius::energy_vha(potential);
-                 }},
-                {"enuc",
-                 [&]() {
-                     return sirius::energy_enuc(ctx, potential);
-                 }},
-                {"kin",
-                 [&]() {
-                     return sirius::energy_kin(ctx, kset, density, potential);
-                 }},
-                {"one-el",
-                 [&]() {
-                     return sirius::one_electron_energy(density, potential);
-                 }},
-                {"descf",
-                 [&]() {
-                     return gs.scf_energy();
-                 }},
-                {"demet",
-                 [&]() {
-                     return kset.entropy_sum();
-                 }},
-                {"paw-one-el",
-                 [&]() {
-                     return potential.PAW_one_elec_energy(density);
-                 }},
-                {"paw",
-                 [&]() {
-                     return potential.PAW_total_energy();
-                 }},
-                {"fermi", [&]() {
-                     return kset.energy_fermi();
-                 }}};
+                {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
+                {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
+                {"exc", [&]() { return sirius::energy_exc(density, potential); }},
+                {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
+                {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
+                {"veff", [&]() { return sirius::energy_veff(density, potential); }},
+                {"vloc", [&]() { return sirius::energy_vloc(density, potential); }},
+                {"vha", [&]() { return sirius::energy_vha(potential); }},
+                {"enuc", [&]() { return sirius::energy_enuc(ctx, potential); }},
+                {"kin", [&]() { return sirius::energy_kin(ctx, kset, density, potential); }},
+                {"one-el", [&]() { return sirius::one_electron_energy(density, potential); }},
+                {"descf", [&]() { return gs.scf_energy(); }},
+                {"demet", [&]() { return kset.entropy_sum(); }},
+                {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
+                {"paw", [&]() { return potential.PAW_total_energy(); }},
+                {"fermi", [&]() { return kset.energy_fermi(); }}};
 
             if (!func.count(label)) {
                 RTE_THROW("wrong label: " + label);
@@ -3001,7 +2957,7 @@ sirius_get_forces:
   doc: Get one of the total force components.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     label:
@@ -3058,7 +3014,7 @@ sirius_get_stress_tensor:
   doc: Get one of the stress tensor components.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     label:
@@ -3117,7 +3073,7 @@ sirius_get_num_beta_projectors:
   doc: Get the number of beta-projectors for an atom type.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -3154,7 +3110,7 @@ sirius_get_wave_functions_v2:
   doc: Get wave-functions.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     vkl:
@@ -3372,7 +3328,7 @@ sirius_get_wave_functions:
   doc: Get wave-functions.
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     ik:
@@ -3610,7 +3566,7 @@ sirius_add_atom_type_aw_descriptor:
   doc: Add descriptor of the augmented wave radial function.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -3662,7 +3618,7 @@ sirius_add_atom_type_lo_descriptor:
   doc: Add descriptor of the local orbital radial function.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -3719,7 +3675,7 @@ sirius_set_atom_type_configuration:
   doc: Set configuration of atomic levels.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -3771,7 +3727,7 @@ sirius_generate_coulomb_potential:
   doc: Generate Coulomb potential by solving Poisson equation
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler
     vh_el:
@@ -3809,7 +3765,7 @@ sirius_generate_xc_potential:
   doc: Generate XC potential using LibXC
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler
     error_code:
@@ -3835,7 +3791,7 @@ sirius_get_kpoint_inter_comm:
   doc: Get communicator which is used to split k-points
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     fcomm:
@@ -3865,7 +3821,7 @@ sirius_get_kpoint_inner_comm:
   doc: Get communicator which is used to parallise band problem
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     fcomm:
@@ -3895,7 +3851,7 @@ sirius_get_fft_comm:
   doc: Get communicator which is used to parallise FFT
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     fcomm:
@@ -3925,7 +3881,7 @@ sirius_get_num_gvec:
   doc: Get total number of G-vectors on the fine grid.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     num_gvec:
@@ -3955,7 +3911,7 @@ sirius_get_gvec_arrays:
   doc: Get G-vector arrays.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     gvec:
@@ -4036,7 +3992,7 @@ sirius_get_num_fft_grid_points:
   doc: Get local number of FFT grid points.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     num_fft_grid_points:
@@ -4066,7 +4022,7 @@ sirius_get_fft_index:
   doc: Get mapping between G-vector index and FFT index
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     fft_index:
@@ -4099,7 +4055,7 @@ sirius_get_max_num_gkvec:
   doc: Get maximum number of G+k vectors across all k-points in the set
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     max_num_gkvec:
@@ -4129,7 +4085,7 @@ sirius_get_gkvec_arrays:
   doc: Get all G+k vector related arrays
   arguments:
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler.
     ik:
@@ -4219,7 +4175,7 @@ sirius_get_step_function:
   doc: Get the unit-step function.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler
     cfunig:
@@ -4279,7 +4235,7 @@ sirius_set_h_radial_integrals:
   doc: Set LAPW Hamiltonian radial integrals.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     ia:
@@ -4367,7 +4323,7 @@ sirius_set_o_radial_integral:
   doc: Set LAPW overlap radial integral.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     ia:
@@ -4446,7 +4402,7 @@ sirius_set_o1_radial_integral:
   doc: Set a correction to LAPW overlap radial integral.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     ia:
@@ -4527,7 +4483,7 @@ sirius_set_radial_function:
   doc: Set LAPW radial functions
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     ia:
@@ -4612,7 +4568,7 @@ sirius_set_equivalent_atoms:
   doc: Set equivalent atoms.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     equivalent_atoms:
@@ -4642,7 +4598,7 @@ sirius_update_atomic_potential:
   doc: Set the new spherical potential.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     error_code:
@@ -5086,7 +5042,7 @@ sirius_option_set_int:
   doc: set the value of the option name in a  (internal) json dictionary
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     section:
@@ -5120,7 +5076,7 @@ sirius_option_set_double:
   doc: set the value of the option name in a (internal) json dictionary
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     section:
@@ -5154,7 +5110,7 @@ sirius_option_set_logical:
   doc: set the value of the option name in a  (internal) json dictionary
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     section:
@@ -5188,7 +5144,7 @@ sirius_option_set_string:
   doc: set the value of the option name in a  (internal) json dictionary
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     section:
@@ -5230,7 +5186,7 @@ sirius_option_add_string_to:
   doc: add a string value to the option in the json dictionary
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     section:
@@ -5281,7 +5237,7 @@ sirius_dump_runtime_setup:
   doc: Dump the runtime setup in a file.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     filename:
@@ -5313,7 +5269,7 @@ sirius_get_fv_eigen_vectors:
   doc: Get the first-variational eigen vectors
   arguments:
     handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler
     ik:
@@ -5358,7 +5314,7 @@ sirius_get_fv_eigen_values:
   doc: Get the first-variational eigen values
   arguments:
     handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler
     ik:
@@ -5403,7 +5359,7 @@ sirius_get_sv_eigen_vectors:
   doc: Get the second-variational eigen vectors
   arguments:
     handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: K-point set handler
     ik:
@@ -5444,7 +5400,7 @@ sirius_set_rg_values:
   doc: Set the values of the function on the regular grid.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     label:
@@ -5577,7 +5533,7 @@ sirius_get_rg_values:
   doc: Get the values of the function on the regular grid.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     label:
@@ -5708,7 +5664,7 @@ sirius_get_total_magnetization:
   doc: Get the total magnetization of the system.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
     mag:
@@ -5750,7 +5706,7 @@ sirius_get_num_kpoints:
   doc: Get the total number of kpoints
   arguments:
     handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: Kpoint set handler
     num_kpoints:
@@ -5781,7 +5737,7 @@ sirius_get_kpoint_properties:
   doc: Get the kpoint properties
   arguments:
     handler:
-      type: void*
+      type: ks_handler
       attr: in, required
       doc: Kpoint set handler
     ik:
@@ -5828,7 +5784,7 @@ sirius_set_callback_function:
   doc: Set callback function to compute various radial integrals.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     label:
@@ -5887,16 +5843,16 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
 /*
 @api begin
 sirius_nlcg:
-  doc: Robust wave function optimizer
+  doc: Robust wave function optimizer.
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
-      doc: Ground state handler
+      doc: Ground state handler.
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
-      doc: point set handler
+      doc: K-point set handler.
     error_code:
       type: int
       attr: out, optional
@@ -5968,13 +5924,13 @@ sirius_nlcg_params:
   doc: Robust wave function optimizer
   arguments:
     handler:
-      type: void*
+      type: gs_handler
       attr: in, required
-      doc: Ground state handler
+      doc: Ground state handler.
     ks_handler:
-      type: void*
+      type: ks_handler
       attr: in, required
-      doc: point set handler
+      doc: K-point set handler.
     temp:
       type: double
       attr: in, required
