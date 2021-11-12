@@ -2884,7 +2884,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, intent(in) :: band_occupancies
+real(8), target, dimension(*), intent(in) :: band_occupancies
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -2934,7 +2934,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, intent(out) :: band_occupancies
+real(8), target, dimension(*), intent(out) :: band_occupancies
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -2984,7 +2984,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, intent(out) :: band_energies
+real(8), target, dimension(*), intent(out) :: band_energies
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr

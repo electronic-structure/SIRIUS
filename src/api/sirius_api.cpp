@@ -2779,7 +2779,7 @@ sirius_set_band_occupancies:
       doc: Spin component.
     band_occupancies:
       type: double
-      attr: in, required
+      attr: in, required, dimension(*)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2821,7 +2821,7 @@ sirius_get_band_occupancies:
       doc: Spin component.
     band_occupancies:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2863,7 +2863,7 @@ sirius_get_band_energies:
       doc: Spin component.
     band_energies:
       type: double
-      attr: out, required
+      attr: out, required, dimension(*)
       doc: Array of band energies.
     error_code:
       type: int
