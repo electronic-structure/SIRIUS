@@ -2488,7 +2488,7 @@ subroutine sirius_set_pw_coeffs(handler,label,pw_coeffs,transform_to_rg,ngv,gvl,
 &comm,error_code)
 implicit none
 !
-type(sirius_context_handler), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 complex(8), target, dimension(*), intent(in) :: pw_coeffs
 logical, optional, target, intent(in) :: transform_to_rg

@@ -2343,7 +2343,7 @@ sirius_set_pw_coeffs:
   doc: Set plane-wave coefficients of a periodic function.
   arguments:
     handler:
-      type: ctx_handler
+      type: gs_handler
       attr: in, required
       doc: Ground state handler.
     label:
