@@ -33,6 +33,18 @@ type_info = {
     'complex' : {
         'f_type' : 'complex(8)',
         'c_type' : 'complex(C_DOUBLE)'
+    },
+    'gs_handler' : {
+        'f_type' : 'type(sirius_ground_state_handler)',
+        'c_type' : 'type(C_PTR)'
+    },
+    'ks_handler' : {
+        'f_type' : 'type(sirius_kpoint_set_handler)',
+        'c_type' : 'type(C_PTR)'
+    },
+    'ctx_handler' : {
+        'f_type' : 'type(sirius_context_handler)',
+        'c_type' : 'type(C_PTR)'
     }
 }
 
@@ -170,6 +182,9 @@ class Argument:
                 out.write(f'{self.name()}_c_type = {self.name()}\n')
             if self.attr().pass_by() == 'ptr':
                 out.write(f'{self.name()}_ptr = C_LOC({self.name()}_c_type)\n')
+        elif self.type_id() in ['gs_handler', 'ks_handler', 'ctx_handler']:
+            if self.attr().pass_by() == 'ptr':
+                out.write(f'{self.name()}_ptr = C_LOC({self.name()}%handler_ptr_)\n')
         else:
             if self.attr().pass_by() == 'ptr':
                 out.write(f'{self.name()}_ptr = C_LOC({self.name()})\n')
