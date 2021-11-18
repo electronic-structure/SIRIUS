@@ -51,7 +51,8 @@ struct sirius_kpoint_set_handler_t
 
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
-enum option_type {
+enum class option_type_t : int
+{
   INTEGER_TYPE = 1,
   LOGICAL_TYPE = 2,
   STRING_TYPE = 3,
@@ -4690,25 +4691,26 @@ sirius_option_get_name_and_type:
 */
 
 void
-sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int *key_name_string_length__, int* type__, int *error_code__)
+sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__,
+                                int *key_name_string_length__, int* type__, int *error_code__)
 {
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    const json& dict = sirius::get_section_options(section);
+    auto const& dict = sirius::get_section_options(section);
     int elem         = 0;
     *type__ = -1;
-    std::map<std::string, enum option_type> type_list__ {{"string", STRING_TYPE},
-                                                         {"number", NUMBER_TYPE},
-                                                         {"integer", INTEGER_TYPE},
-                                                         {"boolean", LOGICAL_TYPE},
-                                                         {"array", ARRAY_TYPE},
-                                                         {"object", OBJECT_TYPE},
-                                                         {"number_array_type", NUMBER_ARRAY_TYPE},
-                                                         {"boolean_array_type", LOGICAL_ARRAY_TYPE},
-                                                         {"integer_array_type", INTEGER_ARRAY_TYPE},
-                                                         {"string_array_type", STRING_ARRAY_TYPE},
-                                                         {"object_array_type", OBJECT_ARRAY_TYPE},
-                                                         {"array_array_type", ARRAY_ARRAY_TYPE}};
+    std::map<std::string, option_type_t> type_list {{"string", option_type_t::STRING_TYPE},
+                                                       {"number", option_type_t::NUMBER_TYPE},
+                                                       {"integer", option_type_t::INTEGER_TYPE},
+                                                       {"boolean", option_type_t::LOGICAL_TYPE},
+                                                       {"array", option_type_t::ARRAY_TYPE},
+                                                       {"object", option_type_t::OBJECT_TYPE},
+                                                       {"number_array_type", option_type_t::NUMBER_ARRAY_TYPE},
+                                                       {"boolean_array_type", option_type_t::LOGICAL_ARRAY_TYPE},
+                                                       {"integer_array_type", option_type_t::INTEGER_ARRAY_TYPE},
+                                                       {"string_array_type", option_type_t::STRING_ARRAY_TYPE},
+                                                       {"object_array_type", option_type_t::OBJECT_ARRAY_TYPE},
+                                                       {"array_array_type", option_type_t::ARRAY_ARRAY_TYPE}};
     std::memset(key_name__, 0, *key_name_string_length__);
     *type__          = -1;
     for (auto& el : dict.items()) {
@@ -4721,9 +4723,9 @@ sirius_option_get_name_and_type(char const* section__, int const* elem__, char* 
             }
             if (dict[el.key()]["type"] == "array") {
                 std::string tmp = dict[el.key()]["items"]["type"].get<std::string>() + "_array_type";
-                *type__ = type_list__[tmp];
+                *type__ = static_cast<int>(type_list[tmp]);
             } else {
-                *type__ = type_list__[dict[el.key()]["type"].get<std::string>()];
+                *type__ = static_cast<int>(type_list[dict[el.key()]["type"].get<std::string>()]);
             }
             if (((int)el.key().size()) < *key_name_string_length__) {
                 std::string tmp = el.key();
