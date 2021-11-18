@@ -51,6 +51,21 @@ struct sirius_kpoint_set_handler_t
 
 sirius::Simulation_context& get_sim_ctx(void* const* h);
 
+enum option_type {
+  INTEGER_TYPE = 1,
+  LOGICAL_TYPE = 2,
+  STRING_TYPE = 3,
+  NUMBER_TYPE = 4,
+  OBJECT_TYPE = 5,
+  ARRAY_TYPE = 6,
+  INTEGER_ARRAY_TYPE = 7,
+  LOGICAL_ARRAY_TYPE = 8,
+  NUMBER_ARRAY_TYPE = 9,
+  STRING_ARRAY_TYPE = 10,
+  OBJECT_ARRAY_TYPE = 11,
+  ARRAY_ARRAY_TYPE = 12
+};
+
 template <typename T>
 void
 sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__,
@@ -4631,15 +4646,21 @@ sirius_option_get_length:
       type: int
       attr: out, required
       doc: number of options contained in  the section
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_length(char const* section__, int* length__)
+sirius_option_get_length(char const* section__, int* length__, int *error_code__)
 {
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     auto const& parser = sirius::get_section_options(section);
     *length__          = parser.size();
+    if (error_code__)
+        *error_code__ = 0;
 }
 
 /*
@@ -4659,88 +4680,69 @@ sirius_option_get_name_and_type:
       type: string
       attr: out, required
       doc: Name of the option.
+    key_name_string_length:
+      type: int
+      attr: in, required,
+      doc: maximum length for the string (on the caller side). No allocation is done.
     type:
       type: int
       attr: out, required
       doc: Type of the option (real, integer, boolean, string).
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 
 void
-sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int* type__)
+sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int *key_name_string_length__, int* type__, int *error_code__)
 {
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     const json& dict = sirius::get_section_options(section);
     int elem         = 0;
+    *type__ = -1;
+    std::map<std::string, enum option_type> type_list__ {{"string", STRING_TYPE},
+                                                         {"number", NUMBER_TYPE},
+                                                         {"integer", INTEGER_TYPE},
+                                                         {"boolean", LOGICAL_TYPE},
+                                                         {"array", ARRAY_TYPE},
+                                                         {"object", OBJECT_TYPE},
+                                                         {"number_array_type", NUMBER_ARRAY_TYPE},
+                                                         {"boolean_array_type", LOGICAL_ARRAY_TYPE},
+                                                         {"integer_array_type", INTEGER_ARRAY_TYPE},
+                                                         {"string_array_type", STRING_ARRAY_TYPE},
+                                                         {"object_array_type", OBJECT_ARRAY_TYPE},
+                                                         {"array_array_type", ARRAY_ARRAY_TYPE}};
+    std::memset(key_name__, 0, *key_name_string_length__);
     *type__          = -1;
     for (auto& el : dict.items()) {
         if (elem == *elem__) {
-
             if (!dict[el.key()].count("default")) {
                 std::cout << "sirius_option_get_name_and_type\n";
                 std::cout << "section: " << section << " key : " << el.key() << "\n the default key is missing"
                           << std::endl;
                 exit(0);
             }
-
             if (dict[el.key()]["type"] == "array") {
-                *type__ = 10;
-                if (dict[el.key()]["items"]["type"] == "string") {
-                    *type__ += 4;
-                }
-
-                if (dict[el.key()]["items"]["type"] == "integer") {
-                    *type__ += 1;
-                }
-
-                if (dict[el.key()]["items"]["type"] == "number") {
-                    *type__ += 2;
-                }
-
-                if (dict[el.key()]["items"]["type"] == "boolean") {
-                    *type__ += 3;
-                }
-
-                if (dict[el.key()]["items"]["type"] == "array") {
-                    if (dict[el.key()]["items"]["type"] == "string") {
-                        *type__ += 14;
-                    }
-
-                    if (dict[el.key()]["items"]["type"] == "integer") {
-                        *type__ += 11;
-                    }
-
-                    if (dict[el.key()]["items"]["type"] == "number") {
-                        *type__ += 12;
-                    }
-
-                    if (dict[el.key()]["items"]["type"] == "boolean") {
-                        *type__ += 13;
-                    }
-                }
+                std::string tmp = dict[el.key()]["items"]["type"].get<std::string>() + "_array_type";
+                *type__ = type_list__[tmp];
             } else {
-                if (dict[el.key()]["type"] == "string") {
-                    *type__ = 4;
-                }
-
-                if (dict[el.key()]["type"] == "integer") {
-                    *type__ = 1;
-                }
-
-                if (dict[el.key()]["type"] == "number") {
-                    *type__ = 2;
-                }
-
-                if (dict[el.key()]["type"] == "boolean") {
-                    *type__ = 3;
-                }
+                *type__ = type_list__[dict[el.key()]["type"].get<std::string>()];
             }
-            std::copy(el.key().begin(), el.key().end(), key_name__);
+            if (((int)el.key().size()) < *key_name_string_length__) {
+                std::string tmp = el.key();
+                std::copy(tmp.begin(), tmp.end(), key_name__);
+            } else {
+                RTE_THROW("the key_name string variable needs to be large enough to contain the full option name");
+            }
             break;
         }
         elem++;
     }
+    if (error_code__)
+        *error_code__ = 0;
 }
 
 /*
@@ -4760,126 +4762,121 @@ sirius_option_get_description_usage:
       type: string
       attr: out, required
       doc: description of the option
+    desc_string_length:
+      type: int
+      attr: in, required
+      doc: maximum length of the string (truncated if needed)
     usage:
       type: string
       attr: out, required
       doc: how to use the option
+    usage_string_length:
+      type: int
+      attr: in, required
+      doc: maximum length of the string (truncated if needed)
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__, char* usage__)
+sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__, const int *desc_string_length__, char* usage__, const int *usage_string_length__, int *error_code__)
 {
-
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     const json& parser = sirius::get_section_options(section);
 
     auto name = std::string(name__);
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
+    std::memset(desc__, 0, *desc_string_length__);
+    std::memset(usage__, 0, *usage_string_length__);
     if (parser[name].count("title")) {
-        auto description = parser[name].value("title", "");
+        auto description = parser[name].value<std::string>("title", "");
         if (description.size()) {
-            std::copy(description.begin(), description.end(), desc__);
+            if (((int)description.size()) < *desc_string_length__) {
+                std::copy(description.begin(), description.end(), desc__);
+            } else {
+                std::copy(description.begin(), description.begin() + *desc_string_length__ - 2, desc__);
+            }
         }
     }
-    if (parser[name].count("usage")) {
-        auto usage = parser[name].value("usage", "");
-        std::copy(usage.begin(), usage.end(), usage__);
+
+    if (parser[name].count("description")) {
+        auto usage = parser[name].value<std::string>("description", "");
+        if (usage.length()) {
+            if (((int)usage.length()) < *usage_string_length__) {
+                std::copy(usage.begin(), usage.end(), usage__);
+            } else {
+                std::copy(usage.begin(), usage.begin() + (*usage_string_length__ - 2), usage__);
+            }
+        }
+    }
+    if (error_code__)
+        *error_code__ = 0;
+}
+
+/*
+@api begin
+sirius_option_get:
+  doc: return the default value of the option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section of interest
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element
+    default_value_int:
+      type: int
+      attr: out, optional
+      doc: table containing the default values (if vector)
+    default_value_double:
+      type: double
+      attr: out, optional
+      doc: table containing the default values (if vector)
+    default_value_logical:
+      type: bool
+      attr: out, optional
+      doc: table containing the default values (if vector)
+    length:
+      type: int
+      attr: out, required
+      doc: length of the table containing the default values
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+
+void
+sirius_option_get(char const* section__, char const* name__, int* default_value_int__, double *default_value_double__, bool *default_value_logical__, int* length__, int *error_code__)
+{
+    if (error_code__)
+        *error_code__ = 0;
+    if (default_value_int__) {
+        sirius_option_get_value__<int>(section__, name__, default_value_int__, length__);
+        return;
+    }
+    if (default_value_double__) {
+        sirius_option_get_value__<double>(section__, name__, default_value_double__, length__);
+        return;
+    }
+    if (default_value_logical__) {
+        sirius_option_get_value__<bool>(section__, name__, default_value_logical__, length__);
+        return;
     }
 }
 
-/*
-@api begin
-sirius_option_get_int:
-  doc: return the default value of the option
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section of interest
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element
-    default_value:
-      type: int
-      attr: out, required
-      doc: table containing the default values (if vector)
-    length:
-      type: int
-      attr: out, required
-      doc: length of the table containing the default values
-@api end
-*/
-
-void
-sirius_option_get_int(char const* section__, char const* name__, int* default_value__, int* length__)
-{
-    sirius_option_get_value__<int>(section__, name__, default_value__, length__);
-}
-
-/*
-@api begin
-sirius_option_get_double:
-  doc: return the default value of the option
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section of interest
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element
-    default_value:
-      type: double
-      attr: out, required
-      doc: table containing the default values (if vector)
-    length:
-      type: int
-      attr: out, required
-      doc: length of the table containing the default values
-@api end
-*/
-void
-sirius_option_get_double(char* section__, char* name__, double* default_value__, int* length__)
-{
-    sirius_option_get_value__<double>(section__, name__, default_value__, length__);
-}
-
-/*
-@api begin
-sirius_option_get_logical:
-  doc: return the default value of the option
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element
-    default_value:
-      type: bool
-      attr: out, required
-      doc: table containing the default values
-    length:
-      type: int
-      attr: out, required
-      doc: length of the table containing the default values
-@api end
-*/
-void
-sirius_option_get_logical(char* section__, char* name__, bool* default_value__, int* length__)
-{
-    sirius_option_get_value__<bool>(section__, name__, default_value__, length__);
-}
 
 /*
 @api begin
 sirius_option_get_string:
-  doc: return the default value of the option
+  doc: return the default value of the option of string type
   arguments:
     section:
       type: string
@@ -4889,25 +4886,62 @@ sirius_option_get_string:
       type: string
       attr: in, required
       doc: name of the option
+    elem_index:
+      type: int
+      attr: in, optional
+      doc: i element of all possible value that the string can have
     default_value:
       type: string
       attr: out, required
       doc: table containing the string
+    max_str_len:
+      type: int
+      attr: in, required
+      doc: Maximum size of the string (value is truncated if needed, no \0 at the end)
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_string(char* section__, char* name__, char* default_value__)
+sirius_option_get_string(char* section__, char* name__, const int *elem_index__, char* default_value__, const int *max_str_len__, int *error_code__)
 {
+    if (error_code__)
+        *error_code__ = 0;
+
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
     auto name = std::string(name__);
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     const json& parser = sirius::get_section_options(section);
-    if (!parser[name].count("default"))
-        std::cout << "default value is missing" << std::endl;
+    std::memset(default_value__, 0, *max_str_len__);
+    // for string I do not consider a table of several strings to be returned. I
+    // need to specialize however the possible values that the string can have
+    if (parser[name].count("enum")) {
+        auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
+        if ((elem_index__ != nullptr) && (((int)tmp[*elem_index__].size()) < *max_str_len__)) {
+            std::copy(tmp[*elem_index__].begin(), tmp[*elem_index__].end(), default_value__);
+        } else {
+            std::stringstream s;
+            s << "section name: " << section;
+            s << "\noption name: " << name;
+            s << "\n this option accept a selected number of strings values as argument but the index of the specific value option is not given\n";
+            RTE_THROW(s);
+        }
+        return;
+    }
     std::string value = parser[name].value("default", "");
     if (value.size() != 0) {
-        std::copy(value.begin(), value.end(), default_value__);
+        if (((int)value.size()) < *max_str_len__) {
+            std::copy(value.begin(), value.end(), default_value__);
+        } else {
+            std::stringstream s;
+            s << "section name: " << section;
+            s << "\noption name: " << name;
+            s << "\n Please allocate enough memory to contain the full string\n";
+            RTE_THROW(s);
+        }
     }
 }
 
@@ -4928,11 +4962,17 @@ sirius_option_get_number_of_possible_values:
       type: int
       attr: out, required
       doc: number of elements
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_number_of_possible_values(char* section__, char* name__, int* num_)
+sirius_option_get_number_of_possible_values(char* section__, char* name__, int* num_, int *error_code__)
 {
+    if (error_code__)
+        *error_code__ = 0;
 
     auto section = std::string(section__);
     std::transform(section.begin(), section.end(), section.begin(), ::tolower);
@@ -4940,51 +4980,16 @@ sirius_option_get_number_of_possible_values(char* section__, char* name__, int* 
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     const json& parser = sirius::get_section_options(section);
 
-    if (parser[name].count("possible_values")) {
+    if (parser[name].count("enum")) {
         auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
         *num_    = tmp.size();
         return;
     }
-    *num_ = -1;
-}
 
-/*
-@api begin
-sirius_option_string_get_value:
-  doc: return the possible values for a string parameter
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the option
-    elem_:
-      type: int
-      attr: in, required
-      doc: index of the value
-    value_n:
-      type: string
-      attr: out, required
-      doc: string containing the value
-@api end
-*/
-void
-sirius_option_string_get_value(char* section__, char* name__, int* elem_, char* value_n)
-{
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto name = std::string(name__);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    const json& parser = sirius::get_section_options(section);
+    if (parser[name].count("default")) {
 
-    // for string I do not consider a table of several strings to be returned. I
-    // need to specialize however the possible values that the string can have
-    if (parser[name].count("enum")) {
-        auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
-        std::copy(tmp[*elem_].begin(), tmp[*elem_].end(), value_n);
+      *num_ = 1;
+      return;
     }
 }
 
@@ -5001,14 +5006,29 @@ sirius_option_get_section_name:
       type: string
       attr: out, required
       doc: name of the section
+    max_section_name_length:
+      type: int
+      attr: in, required
+      doc: Maximum length of the string. Truncated if needed
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_section_name(int* elem, char* section_name)
+sirius_option_get_section_name(int* elem, char* section_name, const int *max_section_name_length__, int *error_code__)
 {
+    if (error_code__)
+        *error_code__ = 0;
+
     const json& dict = sirius::get_options_dictionary();
     int elem_        = 0;
 
+    // we initialize the string to zero. The fortran interface takes care of
+    // finishing the string with the proper character for fortran.
+
+    std::memset(section_name, 0, *max_section_name_length__);
     for (auto& el : dict["properties"].items()) {
         if (elem_ == *elem) {
             std::copy(el.key().begin(), el.key().end(), section_name);
@@ -5027,18 +5047,86 @@ sirius_option_get_number_of_sections:
       type: int
       attr: out, required
       doc: number of sections
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_get_number_of_sections(int* length)
+sirius_option_get_number_of_sections(int* length, int *error_code__)
 {
+    if (error_code__)
+        *error_code__ = 0;
+
     const json& parser = sirius::get_options_dictionary();
     *length            = parser["properties"].size();
 }
 
 /*
 @api begin
-sirius_option_set_int:
+sirius_option_set:
+  doc: set the value of the option name in a  (internal) json dictionary
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: string containing the options in json format
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values_int:
+      type: int
+      attr: in, optional
+      doc: table containing the values
+    default_values_double:
+      type: double
+      attr: in, optional
+      doc: table containing the values
+    default_values_logical:
+      type: bool
+      attr: in, optional
+      doc: table containing the values
+    length:
+      type: int
+      attr: in, required
+      doc: length of the table containing the values
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_option_set(void* const* handler__, const char* section__, const char* name__, const int* default_values_int__, const double* default_values_double__, const bool* default_values_logical__, const int* length__, int *error_code__)
+{
+    if (error_code__)
+        *error_code__ = 0;
+
+    if (default_values_int__) {
+        sirius_option_set_value__<int>(handler__, section__, name__, default_values_int__, length__);
+        return;
+    }
+
+    if (default_values_double__) {
+        sirius_option_set_value__<double>(handler__, section__, name__, default_values_double__, length__);
+        return;
+    }
+
+    if (default_values_logical__) {
+        sirius_option_set_value__<bool>(handler__, section__, name__, default_values_logical__, length__);
+        return;
+    }
+}
+
+/*
+@api begin
+sirius_option_set_string:
   doc: set the value of the option name in a  (internal) json dictionary
   arguments:
     handler:
@@ -5054,116 +5142,22 @@ sirius_option_set_int:
       attr: in, required
       doc: name of the element to pick
     default_values:
-      type: int
+      type: string
       attr: in, required
-      doc: table containing the values
-    length:
+      doc: value of the string
+    error_code:
       type: int
-      attr: in, required
-      doc: length of the table containing the values
-@api end
-*/
-void
-sirius_option_set_int(void* const* handler__, const char* section__, const char* name__, const int* default_values__,
-                      const int* length__)
-{
-    sirius_option_set_value__<int>(handler__, section__, name__, default_values__, length__);
-}
+      attr: out, optional
+      doc: Error code.
 
-/*
-@api begin
-sirius_option_set_double:
-  doc: set the value of the option name in a (internal) json dictionary
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element to pick
-    default_values:
-      type: double
-      attr: in, required
-      doc: table containing the values
-    length:
-      type: int
-      attr: in, required
-      doc: length of the table containing the values
 @api end
 */
 void
-sirius_option_set_double(void* const* handler__, const char* section__, const char* name__,
-                         const double* default_values__, const int* length__)
+sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
 {
-    sirius_option_set_value__<double>(handler__, section__, name__, default_values__, length__);
-}
+    if (error_code__)
+        *error_code__ = 0;
 
-/*
-@api begin
-sirius_option_set_logical:
-  doc: set the value of the option name in a  (internal) json dictionary
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element to pick
-    default_values:
-      type: bool
-      attr: in, required
-      doc: table containing the values
-    length:
-      type: int
-      attr: in, required
-      doc: length of the table containing the values
-@api end
-*/
-void
-sirius_option_set_logical(void* const* handler__, const char* section__, const char* name__,
-                          const bool* default_values__, const int* length__)
-{
-    sirius_option_set_value__<bool>(handler__, section__, name__, default_values__, length__);
-}
-
-/*
-@api begin
-sirius_option_set_string:
-  doc: set the value of the option name in a  (internal) json dictionary
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element to pick
-    default_values:
-      type: string
-      attr: in, required
-      doc: table containing the values
-@api end
-*/
-void
-sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__)
-{
     auto& sim_ctx   = get_sim_ctx(handler__);
     json& conf_dict = sim_ctx.get_runtime_options_dictionary();
     auto section    = std::string(section__);
@@ -5201,11 +5195,18 @@ sirius_option_add_string_to:
       type: string
       attr: in, required
       doc: string to be added
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
-sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__)
+sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
 {
+    if (error_code__)
+        *error_code__ = 0;
+
     auto& sim_ctx = get_sim_ctx(handler__);
     // the first one is static
     const json& parser = sirius::get_options_dictionary()["properties"];
