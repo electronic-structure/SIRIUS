@@ -4548,8 +4548,8 @@ end subroutine sirius_update_atomic_potential
 
 !
 !> @brief return the number of options in a given section
-!> @param [in] section name of the seciton
-!> @param [out] length number of options contained in  the section
+!> @param [in] section Name of the seciton.
+!> @param [out] length Number of options contained in the section.
 !> @param [out] error_code Error code.
 subroutine sirius_option_get_length(section,length,error_code)
 implicit none
@@ -4590,7 +4590,7 @@ end subroutine sirius_option_get_length
 !
 !> @brief Return the name and a type of an option from its index.
 !> @param [in] section Name of the section.
-!> @param [in] elem Index of the option.
+!> @param [in] elem Index of the option (starting from 1)
 !> @param [out] key_name Name of the option.
 !> @param [in] key_name_string_length maximum length for the string (on the caller side). No allocation is done.
 !> @param [out] type Type of the option (real, integer, boolean, string).
@@ -5025,22 +5025,22 @@ end subroutine sirius_option_get_number_of_sections
 !> @param [in] handler Simulation context handler.
 !> @param [in] section string containing the options in json format
 !> @param [in] name name of the element to pick
+!> @param [in] length length of the table containing the values
 !> @param [in] default_values_int table containing the values
 !> @param [in] default_values_double table containing the values
 !> @param [in] default_values_logical table containing the values
-!> @param [in] length length of the table containing the values
 !> @param [out] error_code Error code.
-subroutine sirius_option_set(handler,section,name,default_values_int,default_values_double,&
-&default_values_logical,length,error_code)
+subroutine sirius_option_set(handler,section,name,length,default_values_int,default_values_double,&
+&default_values_logical,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
+integer, target, intent(in) :: length
 integer, optional, target, intent(in) :: default_values_int
 real(8), optional, target, intent(in) :: default_values_double
 logical, optional, target, intent(in) :: default_values_logical
-integer, target, intent(in) :: length
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5048,25 +5048,25 @@ type(C_PTR) :: section_ptr
 character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: length_ptr
 type(C_PTR) :: default_values_int_ptr
 type(C_PTR) :: default_values_double_ptr
 type(C_PTR) :: default_values_logical_ptr
 logical(C_BOOL), target :: default_values_logical_c_type
-type(C_PTR) :: length_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_option_set_aux(handler,section,name,default_values_int,default_values_double,&
-&default_values_logical,length,error_code)&
+subroutine sirius_option_set_aux(handler,section,name,length,default_values_int,&
+&default_values_double,default_values_logical,error_code)&
 &bind(C, name="sirius_option_set")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
+type(C_PTR), value :: length
 type(C_PTR), value :: default_values_int
 type(C_PTR), value :: default_values_double
 type(C_PTR), value :: default_values_logical
-type(C_PTR), value :: length
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -5081,6 +5081,8 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
 default_values_int_ptr = C_NULL_PTR
 if (present(default_values_int)) then
 default_values_int_ptr = C_LOC(default_values_int)
@@ -5094,14 +5096,12 @@ if (present(default_values_logical)) then
 default_values_logical_c_type = default_values_logical
 default_values_logical_ptr = C_LOC(default_values_logical_c_type)
 endif
-length_ptr = C_NULL_PTR
-length_ptr = C_LOC(length)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_set_aux(handler_ptr,section_ptr,name_ptr,default_values_int_ptr,&
-&default_values_double_ptr,default_values_logical_ptr,length_ptr,error_code_ptr)
+call sirius_option_set_aux(handler_ptr,section_ptr,name_ptr,length_ptr,default_values_int_ptr,&
+&default_values_double_ptr,default_values_logical_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
 if (present(default_values_logical)) then

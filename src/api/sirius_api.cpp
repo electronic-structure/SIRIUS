@@ -4636,11 +4636,11 @@ sirius_option_get_length:
     section:
       type: string
       attr: in, required
-      doc: name of the seciton
+      doc: Name of the seciton.
     length:
       type: int
       attr: out, required
-      doc: number of options contained in  the section
+      doc: Number of options contained in the section.
     error_code:
       type: int
       attr: out, optional
@@ -4648,14 +4648,15 @@ sirius_option_get_length:
 @api end
 */
 void
-sirius_option_get_length(char const* section__, int* length__, int *error_code__)
+sirius_option_get_length(char const* section__, int* length__, int* error_code__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto const& parser = sirius::get_section_options(section);
-    *length__          = parser.size();
-    if (error_code__)
-        *error_code__ = 0;
+    call_sirius(
+        [&]() {
+            auto section = std::string(section__);
+            std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+            auto const& parser = sirius::get_section_options(section);
+            *length__          = parser.size();
+        }, error_code__);
 }
 
 /*
@@ -4670,7 +4671,7 @@ sirius_option_get_name_and_type:
     elem:
       type: int
       attr: in, required
-      doc: Index of the option.
+      doc: Index of the option (starting from 1)
     key_name:
       type: string
       attr: out, required
@@ -4692,53 +4693,48 @@ sirius_option_get_name_and_type:
 
 void
 sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__,
-                                int *key_name_string_length__, int* type__, int *error_code__)
+                                int* key_name_string_length__, int* type__, int *error_code__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto const& dict = sirius::get_section_options(section);
-    int elem         = 0;
-    *type__ = -1;
-    std::map<std::string, option_type_t> type_list {{"string", option_type_t::STRING_TYPE},
-                                                       {"number", option_type_t::NUMBER_TYPE},
-                                                       {"integer", option_type_t::INTEGER_TYPE},
-                                                       {"boolean", option_type_t::LOGICAL_TYPE},
-                                                       {"array", option_type_t::ARRAY_TYPE},
-                                                       {"object", option_type_t::OBJECT_TYPE},
-                                                       {"number_array_type", option_type_t::NUMBER_ARRAY_TYPE},
-                                                       {"boolean_array_type", option_type_t::LOGICAL_ARRAY_TYPE},
-                                                       {"integer_array_type", option_type_t::INTEGER_ARRAY_TYPE},
-                                                       {"string_array_type", option_type_t::STRING_ARRAY_TYPE},
-                                                       {"object_array_type", option_type_t::OBJECT_ARRAY_TYPE},
-                                                       {"array_array_type", option_type_t::ARRAY_ARRAY_TYPE}};
-    std::memset(key_name__, 0, *key_name_string_length__);
-    *type__          = -1;
-    for (auto& el : dict.items()) {
-        if (elem == *elem__) {
-            if (!dict[el.key()].count("default")) {
-                std::cout << "sirius_option_get_name_and_type\n";
-                std::cout << "section: " << section << " key : " << el.key() << "\n the default key is missing"
-                          << std::endl;
-                exit(0);
+    call_sirius(
+        [&]() {
+            auto section = std::string(section__);
+            std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+            auto const& dict = sirius::get_section_options(section);
+
+            std::map<std::string, option_type_t> type_list = {
+                {"string", option_type_t::STRING_TYPE},
+                {"number", option_type_t::NUMBER_TYPE},
+                {"integer", option_type_t::INTEGER_TYPE},
+                {"boolean", option_type_t::LOGICAL_TYPE},
+                {"array", option_type_t::ARRAY_TYPE},
+                {"object", option_type_t::OBJECT_TYPE},
+                {"number_array_type", option_type_t::NUMBER_ARRAY_TYPE},
+                {"boolean_array_type", option_type_t::LOGICAL_ARRAY_TYPE},
+                {"integer_array_type", option_type_t::INTEGER_ARRAY_TYPE},
+                {"string_array_type", option_type_t::STRING_ARRAY_TYPE},
+                {"object_array_type", option_type_t::OBJECT_ARRAY_TYPE},
+                {"array_array_type", option_type_t::ARRAY_ARRAY_TYPE}
+            };
+            std::fill(key_name__, key_name__ + *key_name_string_length__, ' ');
+            auto it = dict.begin();
+            /* we can't do pointer arighmetics on the iterator */
+            for (int i = 0; i < *elem__ - 1; i++, it++);
+            auto key = it.key();
+            if (!dict[key].count("default")) {
+                RTE_THROW("the default value is missing for key '" + key + "' in section '" + section + "'");
             }
-            if (dict[el.key()]["type"] == "array") {
-                std::string tmp = dict[el.key()]["items"]["type"].get<std::string>() + "_array_type";
+            if (dict[key]["type"] == "array") {
+                std::string tmp = dict[key]["items"]["type"].get<std::string>() + "_array_type";
                 *type__ = static_cast<int>(type_list[tmp]);
             } else {
-                *type__ = static_cast<int>(type_list[dict[el.key()]["type"].get<std::string>()]);
+                *type__ = static_cast<int>(type_list[dict[key]["type"].get<std::string>()]);
             }
-            if (((int)el.key().size()) < *key_name_string_length__) {
-                std::string tmp = el.key();
-                std::copy(tmp.begin(), tmp.end(), key_name__);
+            if (static_cast<int>(key.size()) < *key_name_string_length__) {
+                std::copy(key.begin(), key.end(), key_name__);
             } else {
                 RTE_THROW("the key_name string variable needs to be large enough to contain the full option name");
             }
-            break;
-        }
-        elem++;
-    }
-    if (error_code__)
-        *error_code__ = 0;
+        }, error_code__);
 }
 
 /*
