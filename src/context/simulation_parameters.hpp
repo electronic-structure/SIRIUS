@@ -39,7 +39,9 @@ namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
 nlohmann::json const& get_options_dictionary();
-nlohmann::json const& get_section_options(const std::string& section__);
+
+nlohmann::json const& get_section_options(std::string const& section__);
+
 class Config : public config_t
 {
   public:

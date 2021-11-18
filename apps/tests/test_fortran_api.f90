@@ -79,7 +79,7 @@ call sirius_option_get_length('control', i)
 write(*,*)'length of control:', i
 
 do j=1,i
-  call sirius_option_get_name_and_type('control', j, key, k)
+  call sirius_option_get_name_and_type('control', j, key, len(key), k)
   write(*,*)j,trim(adjustl(key)),k
 enddo
 

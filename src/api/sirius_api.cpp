@@ -68,34 +68,28 @@ enum option_type {
 
 template <typename T>
 void
-sirius_option_set_value__(void* const* handler__, const char* section__, const char* name__, const T* default_values__,
-                          const int* length__)
+sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string section__, std::string name__,
+                        T const* default_values__, int length__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
 
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
-    auto name = std::string(name__);
-    if (name.size() > 1)
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto& conf_dict = sim_ctx__.get_runtime_options_dictionary();
 
-    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    const json& parser = sirius::get_section_options(section);
-    if (parser.count(name)) {
-        // check that the option exists
-        if (*length__ > 1) {
-            // we are dealing with a vector
-            std::vector<T> v(*length__);
-            for (int s = 0; s < *length__; s++)
-                v[s] = default_values__[s];
-            conf_dict[section][name] = v;
+    const auto& section_schema = sirius::get_section_options(section__);
+
+    if (section_schema.count(name__)) {
+        /* check that the option exists */
+        if (length__ > 1) {
+            /* we are dealing with a vector */
+            std::vector<T> v(default_values__, default_values__ + length__);
+            conf_dict[section__][name__] = v;
         } else {
-            conf_dict[section][name] = *default_values__;
+            conf_dict[section__][name__] = *default_values__;
         }
     } else {
-        std::cout << "Section: " << section;
-        std::cout << "Option: " << name << " is invalid.\n";
+        RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
     }
 }
 
@@ -5080,6 +5074,10 @@ sirius_option_set:
       type: string
       attr: in, required
       doc: name of the element to pick
+    length:
+      type: int
+      attr: in, required
+      doc: length of the table containing the values
     default_values_int:
       type: int
       attr: in, optional
@@ -5092,10 +5090,6 @@ sirius_option_set:
       type: bool
       attr: in, optional
       doc: table containing the values
-    length:
-      type: int
-      attr: in, required
-      doc: length of the table containing the values
     error_code:
       type: int
       attr: out, optional
@@ -5103,25 +5097,31 @@ sirius_option_set:
 @api end
 */
 void
-sirius_option_set(void* const* handler__, const char* section__, const char* name__, const int* default_values_int__, const double* default_values_double__, const bool* default_values_logical__, const int* length__, int *error_code__)
+sirius_option_set(void* const* handler__, char const* section__, char const* name__, int const* length__,
+                  int const* default_values_int__, double const* default_values_double__,
+                  bool const* default_values_logical__, int *error_code__)
 {
-    if (error_code__)
-        *error_code__ = 0;
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            std::string section(section__);
+            std::string name(name__);
+            int length = *length__;
+            if (default_values_int__) {
+                sirius_option_set_value<int>(sim_ctx, section, name, default_values_int__, length);
+                return;
+            }
 
-    if (default_values_int__) {
-        sirius_option_set_value__<int>(handler__, section__, name__, default_values_int__, length__);
-        return;
-    }
+            if (default_values_double__) {
+                sirius_option_set_value<double>(sim_ctx, section, name, default_values_double__, length);
+                return;
+            }
 
-    if (default_values_double__) {
-        sirius_option_set_value__<double>(handler__, section__, name__, default_values_double__, length__);
-        return;
-    }
-
-    if (default_values_logical__) {
-        sirius_option_set_value__<bool>(handler__, section__, name__, default_values_logical__, length__);
-        return;
-    }
+            if (default_values_logical__) {
+                sirius_option_set_value<bool>(sim_ctx, section, name, default_values_logical__, length);
+                return;
+            }
+        }, error_code__);
 }
 
 /*
