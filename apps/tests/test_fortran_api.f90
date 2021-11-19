@@ -6,8 +6,8 @@ type(sirius_context_handler) :: handler
 type(sirius_kpoint_set_handler) :: kset
 type(sirius_ground_state_handler) :: dft
 logical :: stat
-integer i,j,k,l
-character(100) key
+integer i,j,k,l,n
+character(100) key, section, desc, usage
 real(8) :: lat_vec(3,3), pos(3)
 integer lmax
 integer nr
@@ -75,25 +75,40 @@ if (stat) then
     stop 'error'
 endif
 
-call sirius_option_get_length('control', i)
-write(*,*)'length of control:', i
-
-do j=1,i
-  call sirius_option_get_name_and_type('control', j, key, len(key), k)
-  write(*,*)j,trim(adjustl(key)),k
+call sirius_option_get_number_of_sections(n)
+write(*,*)'number of sections : ', n
+do i = 1, n
+  call sirius_option_get_section_name(i, section, len(section))
+  call sirius_option_get_section_length(trim(adjustl(section)), l)
+  write(*,'("section : ",I2," [",A,"],  length : ",I2)')i,trim(adjustl(section)),l
+  do j = 1, l
+    call sirius_option_get_name_and_type(trim(adjustl(section)), j, key, len(key), k)
+    write(*,'(" key : ", I2," [",A,"], type : ",I2)')j,trim(adjustl(key)),k
+    call sirius_option_get_description_usage(trim(adjustl(section)), trim(adjustl(key)), desc, len(desc), usage, len(usage))
+    write(*,*)trim(adjustl(desc))
+    write(*,*)trim(adjustl(usage))
+  enddo
 enddo
 
+!call sirius_option_get_length('control', i)
+!write(*,*)'length of control:', i
+!
+!do j=1,i
+!  call sirius_option_get_name_and_type('control', j, key, len(key), k)
+!  write(*,*)j,trim(adjustl(key)),k
+!enddo
+
 call sirius_initialize_context(handler)
-call sirius_print_info(handler)
+!call sirius_print_info(handler)
+!
+!call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
+!
+!call sirius_create_ground_state(kset, dft)
+!call sirius_find_ground_state(dft)
 
-call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
 
-call sirius_create_ground_state(kset, dft)
-call sirius_find_ground_state(dft)
-
-
-call sirius_free_handler(dft)
-call sirius_free_handler(kset)
+!call sirius_free_handler(dft)
+!call sirius_free_handler(kset)
 call sirius_free_handler(handler)
 
 call sirius_finalize

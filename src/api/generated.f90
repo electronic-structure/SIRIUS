@@ -4547,11 +4547,86 @@ call sirius_update_atomic_potential_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_update_atomic_potential
 
 !
-!> @brief return the number of options in a given section
+!> @brief Return the total number of sections defined in the input JSON schema.
+!> @param [out] length Number of sections.
+!> @param [out] error_code Error code.
+subroutine sirius_option_get_number_of_sections(length,error_code)
+implicit none
+!
+integer, target, intent(out) :: length
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: length_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_option_get_number_of_sections_aux(length,error_code)&
+&bind(C, name="sirius_option_get_number_of_sections")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: length
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_option_get_number_of_sections_aux(length_ptr,error_code_ptr)
+end subroutine sirius_option_get_number_of_sections
+
+!
+!> @brief Return the name of a given section.
+!> @param [in] elem Index of the section (starting from 1).
+!> @param [out] section_name Name of the section
+!> @param [in] section_name_length Maximum length of the output string. Enough capacity should be provided.
+!> @param [out] error_code Error code.
+subroutine sirius_option_get_section_name(elem,section_name,section_name_length,&
+&error_code)
+implicit none
+!
+integer, value, intent(in) :: elem
+character(*), target, intent(out) :: section_name
+integer, value, intent(in) :: section_name_length
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: section_name_ptr
+character(C_CHAR), target, allocatable :: section_name_c_type(:)
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_option_get_section_name_aux(elem,section_name,section_name_length,&
+&error_code)&
+&bind(C, name="sirius_option_get_section_name")
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT), value :: elem
+type(C_PTR), value :: section_name
+integer(C_INT), value :: section_name_length
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+section_name_ptr = C_NULL_PTR
+allocate(section_name_c_type(len(section_name)+1))
+section_name_ptr = C_LOC(section_name_c_type)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_option_get_section_name_aux(elem,section_name_ptr,section_name_length,&
+&error_code_ptr)
+section_name = string_c2f(section_name_c_type)
+deallocate(section_name_c_type)
+end subroutine sirius_option_get_section_name
+
+!
+!> @brief Return the number of options in a given section.
 !> @param [in] section Name of the seciton.
 !> @param [out] length Number of options contained in the section.
 !> @param [out] error_code Error code.
-subroutine sirius_option_get_length(section,length,error_code)
+subroutine sirius_option_get_section_length(section,length,error_code)
 implicit none
 !
 character(*), target, intent(in) :: section
@@ -4564,8 +4639,8 @@ type(C_PTR) :: length_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_option_get_length_aux(section,length,error_code)&
-&bind(C, name="sirius_option_get_length")
+subroutine sirius_option_get_section_length_aux(section,length,error_code)&
+&bind(C, name="sirius_option_get_section_length")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: length
@@ -4583,16 +4658,16 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_length_aux(section_ptr,length_ptr,error_code_ptr)
+call sirius_option_get_section_length_aux(section_ptr,length_ptr,error_code_ptr)
 deallocate(section_c_type)
-end subroutine sirius_option_get_length
+end subroutine sirius_option_get_section_length
 
 !
 !> @brief Return the name and a type of an option from its index.
 !> @param [in] section Name of the section.
 !> @param [in] elem Index of the option (starting from 1)
 !> @param [out] key_name Name of the option.
-!> @param [in] key_name_string_length maximum length for the string (on the caller side). No allocation is done.
+!> @param [in] key_name_string_length Maximum length for the string (on the caller side). No allocation is done.
 !> @param [out] type Type of the option (real, integer, boolean, string).
 !> @param [out] error_code Error code.
 subroutine sirius_option_get_name_and_type(section,elem,key_name,key_name_string_length,&
@@ -4600,18 +4675,16 @@ subroutine sirius_option_get_name_and_type(section,elem,key_name,key_name_string
 implicit none
 !
 character(*), target, intent(in) :: section
-integer, target, intent(in) :: elem
+integer, value, intent(in) :: elem
 character(*), target, intent(out) :: key_name
-integer, target, intent(in) :: key_name_string_length
+integer, value, intent(in) :: key_name_string_length
 integer, target, intent(out) :: type
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: section_ptr
 character(C_CHAR), target, allocatable :: section_c_type(:)
-type(C_PTR) :: elem_ptr
 type(C_PTR) :: key_name_ptr
 character(C_CHAR), target, allocatable :: key_name_c_type(:)
-type(C_PTR) :: key_name_string_length_ptr
 type(C_PTR) :: type_ptr
 type(C_PTR) :: error_code_ptr
 !
@@ -4621,9 +4694,9 @@ subroutine sirius_option_get_name_and_type_aux(section,elem,key_name,key_name_st
 &bind(C, name="sirius_option_get_name_and_type")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
-type(C_PTR), value :: elem
+integer(C_INT), value :: elem
 type(C_PTR), value :: key_name
-type(C_PTR), value :: key_name_string_length
+integer(C_INT), value :: key_name_string_length
 type(C_PTR), value :: type
 type(C_PTR), value :: error_code
 end subroutine
@@ -4633,20 +4706,16 @@ section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
 section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
-elem_ptr = C_NULL_PTR
-elem_ptr = C_LOC(elem)
 key_name_ptr = C_NULL_PTR
 allocate(key_name_c_type(len(key_name)+1))
 key_name_ptr = C_LOC(key_name_c_type)
-key_name_string_length_ptr = C_NULL_PTR
-key_name_string_length_ptr = C_LOC(key_name_string_length)
 type_ptr = C_NULL_PTR
 type_ptr = C_LOC(type)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_name_and_type_aux(section_ptr,elem_ptr,key_name_ptr,key_name_string_length_ptr,&
+call sirius_option_get_name_and_type_aux(section_ptr,elem,key_name_ptr,key_name_string_length,&
 &type_ptr,error_code_ptr)
 deallocate(section_c_type)
 key_name = string_c2f(key_name_c_type)
@@ -4654,13 +4723,13 @@ deallocate(key_name_c_type)
 end subroutine sirius_option_get_name_and_type
 
 !
-!> @brief return the description and usage of a given option
-!> @param [in] section name of the section
-!> @param [in] name name of the option
-!> @param [out] desc description of the option
-!> @param [in] desc_string_length maximum length of the string (truncated if needed)
-!> @param [out] usage how to use the option
-!> @param [in] usage_string_length maximum length of the string (truncated if needed)
+!> @brief Return the description and usage of a given option.
+!> @param [in] section Name of the section.
+!> @param [in] name Name of the option.
+!> @param [out] desc Description of the option.
+!> @param [in] desc_string_length Maximum length of the string (truncated if needed).
+!> @param [out] usage Extended description how to use the option.
+!> @param [in] usage_string_length Maximum length of the string (truncated if needed).
 !> @param [out] error_code Error code.
 subroutine sirius_option_get_description_usage(section,name,desc,desc_string_length,&
 &usage,usage_string_length,error_code)
@@ -4669,9 +4738,9 @@ implicit none
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 character(*), target, intent(out) :: desc
-integer, target, intent(in) :: desc_string_length
+integer, value, intent(in) :: desc_string_length
 character(*), target, intent(out) :: usage
-integer, target, intent(in) :: usage_string_length
+integer, value, intent(in) :: usage_string_length
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: section_ptr
@@ -4680,10 +4749,8 @@ type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: desc_ptr
 character(C_CHAR), target, allocatable :: desc_c_type(:)
-type(C_PTR) :: desc_string_length_ptr
 type(C_PTR) :: usage_ptr
 character(C_CHAR), target, allocatable :: usage_c_type(:)
-type(C_PTR) :: usage_string_length_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
@@ -4694,9 +4761,9 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
 type(C_PTR), value :: desc
-type(C_PTR), value :: desc_string_length
+integer(C_INT), value :: desc_string_length
 type(C_PTR), value :: usage
-type(C_PTR), value :: usage_string_length
+integer(C_INT), value :: usage_string_length
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -4712,19 +4779,15 @@ name_ptr = C_LOC(name_c_type)
 desc_ptr = C_NULL_PTR
 allocate(desc_c_type(len(desc)+1))
 desc_ptr = C_LOC(desc_c_type)
-desc_string_length_ptr = C_NULL_PTR
-desc_string_length_ptr = C_LOC(desc_string_length)
 usage_ptr = C_NULL_PTR
 allocate(usage_c_type(len(usage)+1))
 usage_ptr = C_LOC(usage_c_type)
-usage_string_length_ptr = C_NULL_PTR
-usage_string_length_ptr = C_LOC(usage_string_length)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_description_usage_aux(section_ptr,name_ptr,desc_ptr,desc_string_length_ptr,&
-&usage_ptr,usage_string_length_ptr,error_code_ptr)
+call sirius_option_get_description_usage_aux(section_ptr,name_ptr,desc_ptr,desc_string_length,&
+&usage_ptr,usage_string_length,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
 desc = string_c2f(desc_c_type)
@@ -4734,13 +4797,13 @@ deallocate(usage_c_type)
 end subroutine sirius_option_get_description_usage
 
 !
-!> @brief return the default value of the option
-!> @param [in] section name of the section of interest
-!> @param [in] name name of the element
-!> @param [out] default_value_int table containing the default values (if vector)
-!> @param [out] default_value_double table containing the default values (if vector)
-!> @param [out] default_value_logical table containing the default values (if vector)
-!> @param [out] length length of the table containing the default values
+!> @brief Return the default value of the option.
+!> @param [in] section Name of the section of interest.
+!> @param [in] name Name of the element
+!> @param [out] default_value_int Table containing the default values (if vector).
+!> @param [out] default_value_double Table containing the default values (if vector).
+!> @param [out] default_value_logical Table containing the default values (if vector).
+!> @param [out] length Length of the table containing the default values.
 !> @param [out] error_code Error code.
 subroutine sirius_option_get(section,name,default_value_int,default_value_double,&
 &default_value_logical,length,error_code)
@@ -4816,44 +4879,44 @@ endif
 end subroutine sirius_option_get
 
 !
-!> @brief return the default value of the option of string type
-!> @param [in] section name of the section
-!> @param [in] name name of the option
-!> @param [in] elem_index i element of all possible value that the string can have
-!> @param [out] default_value table containing the string
+!> @brief Return the default value of the option of string type.
+!> @param [in] section Name of the section.
+!> @param [in] name Name of the option.
+!> @param [out] default_value Output buffer for the string.
 !> @param [in] max_str_len Maximum size of the string (value is truncated if needed, no \0 at the end)
+!> @param [in] elem_index Index of the string element in the case of array of strings.
 !> @param [out] error_code Error code.
-subroutine sirius_option_get_string(section,name,elem_index,default_value,max_str_len,&
+subroutine sirius_option_get_string(section,name,default_value,max_str_len,elem_index,&
 &error_code)
 implicit none
 !
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
-integer, optional, target, intent(in) :: elem_index
 character(*), target, intent(out) :: default_value
 integer, target, intent(in) :: max_str_len
+integer, optional, target, intent(in) :: elem_index
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: section_ptr
 character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
-type(C_PTR) :: elem_index_ptr
 type(C_PTR) :: default_value_ptr
 character(C_CHAR), target, allocatable :: default_value_c_type(:)
 type(C_PTR) :: max_str_len_ptr
+type(C_PTR) :: elem_index_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_option_get_string_aux(section,name,elem_index,default_value,max_str_len,&
+subroutine sirius_option_get_string_aux(section,name,default_value,max_str_len,elem_index,&
 &error_code)&
 &bind(C, name="sirius_option_get_string")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-type(C_PTR), value :: elem_index
 type(C_PTR), value :: default_value
 type(C_PTR), value :: max_str_len
+type(C_PTR), value :: elem_index
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -4866,21 +4929,21 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-elem_index_ptr = C_NULL_PTR
-if (present(elem_index)) then
-elem_index_ptr = C_LOC(elem_index)
-endif
 default_value_ptr = C_NULL_PTR
 allocate(default_value_c_type(len(default_value)+1))
 default_value_ptr = C_LOC(default_value_c_type)
 max_str_len_ptr = C_NULL_PTR
 max_str_len_ptr = C_LOC(max_str_len)
+elem_index_ptr = C_NULL_PTR
+if (present(elem_index)) then
+elem_index_ptr = C_LOC(elem_index)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_string_aux(section_ptr,name_ptr,elem_index_ptr,default_value_ptr,&
-&max_str_len_ptr,error_code_ptr)
+call sirius_option_get_string_aux(section_ptr,name_ptr,default_value_ptr,max_str_len_ptr,&
+&elem_index_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
 default_value = string_c2f(default_value_c_type)
@@ -4940,88 +5003,7 @@ deallocate(name_c_type)
 end subroutine sirius_option_get_number_of_possible_values
 
 !
-!> @brief return the name of a given section
-!> @param [in] elem index of the section
-!> @param [out] section_name name of the section
-!> @param [in] max_section_name_length Maximum length of the string. Truncated if needed
-!> @param [out] error_code Error code.
-subroutine sirius_option_get_section_name(elem,section_name,max_section_name_length,&
-&error_code)
-implicit none
-!
-integer, target, intent(in) :: elem
-character(*), target, intent(out) :: section_name
-integer, target, intent(in) :: max_section_name_length
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: elem_ptr
-type(C_PTR) :: section_name_ptr
-character(C_CHAR), target, allocatable :: section_name_c_type(:)
-type(C_PTR) :: max_section_name_length_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_option_get_section_name_aux(elem,section_name,max_section_name_length,&
-&error_code)&
-&bind(C, name="sirius_option_get_section_name")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: elem
-type(C_PTR), value :: section_name
-type(C_PTR), value :: max_section_name_length
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-elem_ptr = C_NULL_PTR
-elem_ptr = C_LOC(elem)
-section_name_ptr = C_NULL_PTR
-allocate(section_name_c_type(len(section_name)+1))
-section_name_ptr = C_LOC(section_name_c_type)
-max_section_name_length_ptr = C_NULL_PTR
-max_section_name_length_ptr = C_LOC(max_section_name_length)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_option_get_section_name_aux(elem_ptr,section_name_ptr,max_section_name_length_ptr,&
-&error_code_ptr)
-section_name = string_c2f(section_name_c_type)
-deallocate(section_name_c_type)
-end subroutine sirius_option_get_section_name
-
-!
-!> @brief return the number of sections
-!> @param [out] length number of sections
-!> @param [out] error_code Error code.
-subroutine sirius_option_get_number_of_sections(length,error_code)
-implicit none
-!
-integer, target, intent(out) :: length
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: length_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_option_get_number_of_sections_aux(length,error_code)&
-&bind(C, name="sirius_option_get_number_of_sections")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: length
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-length_ptr = C_NULL_PTR
-length_ptr = C_LOC(length)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_option_get_number_of_sections_aux(length_ptr,error_code_ptr)
-end subroutine sirius_option_get_number_of_sections
-
-!
-!> @brief set the value of the option name in a  (internal) json dictionary
+!> @brief Set the value of the option name in a (internal) json dictionary
 !> @param [in] handler Simulation context handler.
 !> @param [in] section string containing the options in json format
 !> @param [in] name name of the element to pick
