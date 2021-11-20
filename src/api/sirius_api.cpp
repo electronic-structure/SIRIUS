@@ -74,51 +74,63 @@ sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string secti
 {
     std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
 
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-
     auto& conf_dict = sim_ctx__.get_runtime_options_dictionary();
 
     const auto& section_schema = sirius::get_section_options(section__);
 
-    if (section_schema.count(name__)) {
-        /* check that the option exists */
-        if (length__ > 1) {
-            /* we are dealing with a vector */
-            std::vector<T> v(default_values__, default_values__ + length__);
-            conf_dict[section__][name__] = v;
-        } else {
-            conf_dict[section__][name__] = *default_values__;
-        }
-    } else {
+    if (!section_schema.count(name__)) {
+        std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    }
+    if (!section_schema.count(name__)) {
         RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
+    }
+
+    /* check that the option exists */
+    if (length__ > 1) {
+        /* we are dealing with a vector */
+        std::vector<T> v(default_values__, default_values__ + length__);
+        conf_dict[section__][name__] = v;
+    } else {
+        conf_dict[section__][name__] = *default_values__;
     }
 }
 
 template <typename T>
 void
-sirius_option_get_value__(const char* section__, const char* name__, T* default_value__, int* length__)
+sirius_option_get_value(std::string section__, std::string name__, T* default_value__, int const* max_length__,
+                        int* length__)
 {
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+    const auto& section_schema = sirius::get_section_options(section__);
 
-    auto name = std::string(name__);
-    if (name.size() > 1)
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    if (!section_schema.count(name__)) {
+        std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    }
+    if (!section_schema.count(name__)) {
+        RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
+    }
 
-    const json& parser = sirius::get_section_options(section);
+    if (!section_schema[name__].count("default")) {
+        RTE_THROW("default value for '" + name__ + "' is missing");
+    }
 
-    if (!parser[name].count("default"))
-        std::cout << "default value is missing" << std::endl;
-    if (parser[name]["type"] == "array") {
-        if (parser[name]["items"] != "array") {
-            std::vector<T> v = parser[name]["default"].get<std::vector<T>>();
-            *length__        = v.size();
+    if (section_schema[name__]["type"] == "array") {
+        if (max_length__ == nullptr) {
+            RTE_THROW("maximum length of the output buffer is not provided");
+        }
+        if (length__ == nullptr) {
+            RTE_THROW("actual length of the buffer is not provided as the output argument");
+        }
+        if (section_schema[name__]["items"] != "array") {
+            std::vector<T> v = section_schema[name__]["default"].get<std::vector<T>>();
+            int l = static_cast<int>(v.size());
+            if (l > *max_length__) {
+                RTE_THROW("not enough space to store '" + name__ + "' values");
+            }
+            *length__ = l;
             std::copy(v.begin(), v.end(), default_value__);
         }
     } else {
-        *length__ = 1;
-        if (parser[name].count("default"))
-            *default_value__ = parser[name]["default"].get<T>();
+        *default_value__ = section_schema[name__]["default"].get<T>();
     }
 }
 
@@ -4856,10 +4868,16 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
             json const& parser = sirius::get_section_options(section);
 
             auto name = std::string(name__);
-            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
             std::fill(desc__, desc__ + desc_string_length__, 0);
             std::fill(usage__, usage__ + usage_string_length__, 0);
+
+            if (!parser.count(name)) {
+                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            }
+            if (!parser.count(name)) {
+                RTE_THROW("option '" + name + "' not found");
+            }
 
             if (parser[name].count("title")) {
                 auto description = parser[name].value<std::string>("title", "");
@@ -4888,7 +4906,7 @@ sirius_option_get_description_usage(char const* section__, char const* name__, c
 /*
 @api begin
 sirius_option_get:
-  doc: Return the default value of the option.
+  doc: Return the default value of the option as defined in the JSON schema.
   arguments:
     section:
       type: string
@@ -4898,46 +4916,55 @@ sirius_option_get:
       type: string
       attr: in, required
       doc: Name of the element
-    default_value_int:
+    type:
       type: int
-      attr: out, optional
-      doc: Table containing the default values (if vector).
-    default_value_double:
-      type: double
-      attr: out, optional
-      doc: Table containing the default values (if vector).
-    default_value_logical:
-      type: bool
-      attr: out, optional
-      doc: Table containing the default values (if vector).
+      attr: in, required
+      doc: Type of the option (real, integer, boolean)
+    data_ptr:
+      type: void*
+      attr: in, required, value
+      doc: Output buffer for the default value or list of values.
+    max_length:
+      type: int
+      attr: in, optional
+      doc: Maximum Length of the buffer containing the default values.
     length:
       type: int
-      attr: out, required
-      doc: Length of the table containing the default values.
+      attr: out, optional
+      doc: Length of the buffer containing the default values.
     error_code:
       type: int
       attr: out, optional
       doc: Error code.
 @api end
 */
-
 void
-sirius_option_get(char const* section__, char const* name__, int* default_value_int__, double *default_value_double__,
-                  bool *default_value_logical__, int* length__, int *error_code__)
+sirius_option_get(char const* section__, char const* name__, int const* type__, void* data_ptr__,
+                  int const* max_length__, int* length__, int* error_code__)
 {
+    /* data_ptr is desctibed as `in, required, value`; this is small hack to allow Fortran to pass C_LOC(var) directly;
+     * this is justified because pointer itself is really unchanged and thus can be 'in' */
     call_sirius(
         [&]() {
-            if (default_value_int__) {
-                sirius_option_get_value__<int>(section__, name__, default_value_int__, length__);
-                return;
-            }
-            if (default_value_double__) {
-                sirius_option_get_value__<double>(section__, name__, default_value_double__, length__);
-                return;
-            }
-            if (default_value_logical__) {
-                sirius_option_get_value__<bool>(section__, name__, default_value_logical__, length__);
-                return;
+            auto t = static_cast<option_type_t>(*type__);
+            std::string section(section__);
+            std::string name(name__);
+            switch (t) {
+                case option_type_t::INTEGER_TYPE:
+                case option_type_t::INTEGER_ARRAY_TYPE: {
+                    sirius_option_get_value<int>(section, name, static_cast<int*>(data_ptr__), max_length__, length__);
+                    break;
+                }
+                case option_type_t::NUMBER_TYPE:
+                case option_type_t::NUMBER_ARRAY_TYPE: {
+                    sirius_option_get_value<double>(section, name, static_cast<double*>(data_ptr__), max_length__, length__);
+                    break;
+                }
+                case option_type_t::LOGICAL_TYPE:
+                case option_type_t::LOGICAL_ARRAY_TYPE: {
+                    sirius_option_get_value<bool>(section, name, static_cast<bool*>(data_ptr__), max_length__, length__);
+                    break;
+                }
             }
         }, error_code__);
 }

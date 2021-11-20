@@ -4797,47 +4797,43 @@ deallocate(usage_c_type)
 end subroutine sirius_option_get_description_usage
 
 !
-!> @brief Return the default value of the option.
+!> @brief Return the default value of the option as defined in the JSON schema.
 !> @param [in] section Name of the section of interest.
 !> @param [in] name Name of the element
-!> @param [out] default_value_int Table containing the default values (if vector).
-!> @param [out] default_value_double Table containing the default values (if vector).
-!> @param [out] default_value_logical Table containing the default values (if vector).
-!> @param [out] length Length of the table containing the default values.
+!> @param [in] type Type of the option (real, integer, boolean)
+!> @param [in] data_ptr Output buffer for the default value or list of values.
+!> @param [in] max_length Maximum Length of the buffer containing the default values.
+!> @param [out] length Length of the buffer containing the default values.
 !> @param [out] error_code Error code.
-subroutine sirius_option_get(section,name,default_value_int,default_value_double,&
-&default_value_logical,length,error_code)
+subroutine sirius_option_get(section,name,type,data_ptr,max_length,length,error_code)
 implicit none
 !
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
-integer, optional, target, intent(out) :: default_value_int
-real(8), optional, target, intent(out) :: default_value_double
-logical, optional, target, intent(out) :: default_value_logical
-integer, target, intent(out) :: length
+integer, target, intent(in) :: type
+type(C_PTR), value, intent(in) :: data_ptr
+integer, optional, target, intent(in) :: max_length
+integer, optional, target, intent(out) :: length
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: section_ptr
 character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
-type(C_PTR) :: default_value_int_ptr
-type(C_PTR) :: default_value_double_ptr
-type(C_PTR) :: default_value_logical_ptr
-logical(C_BOOL), target :: default_value_logical_c_type
+type(C_PTR) :: type_ptr
+type(C_PTR) :: max_length_ptr
 type(C_PTR) :: length_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_option_get_aux(section,name,default_value_int,default_value_double,&
-&default_value_logical,length,error_code)&
+subroutine sirius_option_get_aux(section,name,type,data_ptr,max_length,length,error_code)&
 &bind(C, name="sirius_option_get")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-type(C_PTR), value :: default_value_int
-type(C_PTR), value :: default_value_double
-type(C_PTR), value :: default_value_logical
+type(C_PTR), value :: type
+type(C_PTR), value :: data_ptr
+type(C_PTR), value :: max_length
 type(C_PTR), value :: length
 type(C_PTR), value :: error_code
 end subroutine
@@ -4851,31 +4847,24 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-default_value_int_ptr = C_NULL_PTR
-if (present(default_value_int)) then
-default_value_int_ptr = C_LOC(default_value_int)
-endif
-default_value_double_ptr = C_NULL_PTR
-if (present(default_value_double)) then
-default_value_double_ptr = C_LOC(default_value_double)
-endif
-default_value_logical_ptr = C_NULL_PTR
-if (present(default_value_logical)) then
-default_value_logical_ptr = C_LOC(default_value_logical_c_type)
+type_ptr = C_NULL_PTR
+type_ptr = C_LOC(type)
+max_length_ptr = C_NULL_PTR
+if (present(max_length)) then
+max_length_ptr = C_LOC(max_length)
 endif
 length_ptr = C_NULL_PTR
+if (present(length)) then
 length_ptr = C_LOC(length)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_aux(section_ptr,name_ptr,default_value_int_ptr,default_value_double_ptr,&
-&default_value_logical_ptr,length_ptr,error_code_ptr)
+call sirius_option_get_aux(section_ptr,name_ptr,type_ptr,data_ptr,max_length_ptr,&
+&length_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
-if (present(default_value_logical)) then
-default_value_logical = default_value_logical_c_type
-endif
 end subroutine sirius_option_get
 
 !
