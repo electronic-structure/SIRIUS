@@ -129,6 +129,52 @@ sirius_option_get_value(std::string section__, std::string name__, T* default_va
     }
 }
 
+void
+sirius_option_get_value(std::string section__, std::string name__, char* default_value__, int const* max_length__,
+                        int const* enum_idx__)
+{
+    const auto& section_schema = sirius::get_section_options(section__);
+
+    if (!section_schema.count(name__)) {
+        std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    }
+    if (!section_schema.count(name__)) {
+        RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
+    }
+
+    if (!section_schema[name__].count("default")) {
+        RTE_THROW("default value for '" + name__ + "' is missing");
+    }
+
+    if (section_schema[name__]["type"] == "array") {
+        RTE_THROW("array of strings is not supported");
+    } else {
+        if (section_schema[name__]["type"] != "string") {
+            RTE_THROW("not a string type");
+        }
+        std::string v;
+        if (enum_idx__ == nullptr) {
+            v = section_schema[name__]["default"].get<std::string>();
+        } else {
+            if (section_schema[name__].count("enum")) {
+                v = section_schema[name__]["enum"][*enum_idx__ - 1].get<std::string>();
+            } else{
+                RTE_THROW("not an enum type");
+            }
+        }
+        if (max_length__ == nullptr) {
+            RTE_THROW("length of the string is not provided");
+        }
+        if (static_cast<int>(v.size()) > *max_length__) {
+            std::stringstream s;
+            s << "option '" << name__ << "' is too large to fit into output string of size " << *max_length__;
+            RTE_THROW(s);
+        }
+        std::fill(default_value__, default_value__ + *max_length__, ' ');
+        std::copy(v.begin(), v.end(), default_value__);
+    }
+}
+
 static inline void
 sirius_print_error(int error_code__, std::string msg__ = "")
 {
@@ -4767,6 +4813,10 @@ sirius_option_get_info:
       type: int
       attr: out, required
       doc: Length of the default value (1 for the scalar types, otherwise the lenght of the array).
+    enum_size:
+      type: int
+      attr: out, required
+      doc: Number of elements in the enum type, zero otherwise.
     title:
       type: string
       attr: out, required
@@ -4792,8 +4842,8 @@ sirius_option_get_info:
 
 void
 sirius_option_get_info(char const* section__, int elem__, char* key_name__, int key_name_len__, int* type__,
-                       int* length__, char* title__, int title_len__,  char* description__, int description_len__,
-                       int *error_code__)
+                       int* length__, int* enum_size__, char* title__, int title_len__,  char* description__,
+                       int description_len__, int *error_code__)
 {
     call_sirius(
         [&]() {
@@ -4831,9 +4881,15 @@ sirius_option_get_info(char const* section__, int elem__, char* key_name__, int 
                 std::string tmp = dict[key]["items"]["type"].get<std::string>() + "_array_type";
                 *type__ = static_cast<int>(type_list[tmp]);
                 *length__ = static_cast<int>(dict[key]["default"].size());
+                *enum_size__ = 0;
             } else {
                 *type__ = static_cast<int>(type_list[dict[key]["type"].get<std::string>()]);
                 *length__ = 1;
+                if (dict[key].count("enum")) {
+                    *enum_size__ = static_cast<int>(dict[key]["enum"].size());
+                } else {
+                    *enum_size__ = 0;
+                }
             }
             if (static_cast<int>(key.size()) < key_name_len__ - 1) {
                 std::copy(key.begin(), key.end(), key_name__);
@@ -4890,6 +4946,10 @@ sirius_option_get:
       type: int
       attr: in, optional
       doc: Maximum Length of the buffer containing the default values.
+    enum_idx:
+      type: int
+      attr: in, optional
+      doc: Index of the element in case of the enum type.
     error_code:
       type: int
       attr: out, optional
@@ -4898,7 +4958,7 @@ sirius_option_get:
 */
 void
 sirius_option_get(char const* section__, char const* name__, int const* type__, void* data_ptr__,
-                  int const* max_length__, int* error_code__)
+                  int const* max_length__, int const* enum_idx__, int* error_code__)
 {
     /* data_ptr is desctibed as `in, required, value`; this is small hack to allow Fortran to pass C_LOC(var) directly;
      * this is justified because pointer itself is really unchanged and thus can be 'in' */
@@ -4923,137 +4983,16 @@ sirius_option_get(char const* section__, char const* name__, int const* type__, 
                     sirius_option_get_value<bool>(section, name, static_cast<bool*>(data_ptr__), max_length__);
                     break;
                 }
-            }
-        }, error_code__);
-}
-
-/*
-@api begin
-sirius_option_get_string:
-  doc: Return the default value of the option of string type.
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: Name of the section.
-    name:
-      type: string
-      attr: in, required
-      doc: Name of the option.
-    default_value:
-      type: string
-      attr: out, required
-      doc: Output buffer for the string.
-    max_str_len:
-      type: int
-      attr: in, required
-      doc: Maximum size of the string (value is truncated if needed, no \0 at the end)
-    elem_index:
-      type: int
-      attr: in, optional
-      doc: Index of the string element in the case of array of strings.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_option_get_string(char* section__, char* name__, char* default_value__,
-                         int const* max_str_len__, int const* elem_index__, int *error_code__)
-{
-    call_sirius(
-        [&]() {
-            auto section = std::string(section__);
-            std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-            auto name = std::string(name__);
-            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-            json const& parser = sirius::get_section_options(section);
-            std::fill(default_value__, default_value__ + *max_str_len__, 0);
-            // for string I do not consider a table of several strings to be returned. I
-            // need to specialize however the possible values that the string can have
-            if (parser[name].count("enum")) {
-                if (elem_index__ == nullptr) {
-                    RTE_THROW("parameter '" + name + "' of the section '" + section +
-                            "' is array, but the index of the specific value option is not given");
+                case option_type_t::STRING_TYPE: {
+                    sirius_option_get_value(section, name, static_cast<char*>(data_ptr__), max_length__, enum_idx__);
+                    break;
                 }
-                int elem_index = *elem_index__ - 1;
-                auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
-                if (static_cast<int>(tmp[elem_index].size()) < *max_str_len__) {
-                    std::copy(tmp[elem_index].begin(), tmp[elem_index].end(), default_value__);
-                } else {
-                    std::stringstream s;
-                    s << "not enough space to store parameter '" << name
-                      << "' of the section '" << section << "'" << std::endl
-                      << "  index : " << elem_index << std::endl
-                      << "  value : " << tmp[elem_index] << std::endl
-                      << "  output string size : " << *max_str_len__;
-                    RTE_THROW(s);
-                }
-            } else {
-                std::string value = parser[name].value("default", "");
-                if (value.size() != 0) {
-                    if (static_cast<int>(value.size()) < *max_str_len__) {
-                        std::copy(value.begin(), value.end(), default_value__);
-                    } else {
-                        std::stringstream s;
-                        s << "not enough space to store parameter '" << name
-                          << "' of the section '" << section << "'" << std::endl
-                          << "  value : " << value << std::endl
-                          << "  output string size : " << *max_str_len__;
-                        RTE_THROW(s);
-                    }
+                default: {
+                    RTE_THROW("wrong option type");
+                    break;
                 }
             }
         }, error_code__);
-}
-
-/*
-@api begin
-sirius_option_get_number_of_possible_values:
-  doc: return the number of possible values for a string option
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the option
-    num_:
-      type: int
-      attr: out, required
-      doc: number of elements
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_option_get_number_of_possible_values(char* section__, char* name__, int* num_, int *error_code__)
-{
-    if (error_code__)
-        *error_code__ = 0;
-
-    auto section = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto name = std::string(name__);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    const json& parser = sirius::get_section_options(section);
-
-    if (parser[name].count("enum")) {
-        auto tmp = parser[name]["enum"].get<std::vector<std::string>>();
-        *num_    = tmp.size();
-        return;
-    }
-
-    if (parser[name].count("default")) {
-
-      *num_ = 1;
-      return;
-    }
 }
 
 /*
