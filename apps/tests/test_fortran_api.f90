@@ -13,6 +13,7 @@ integer lmax
 integer nr
 real(8), allocatable :: rgrid(:), ae_rho(:)
 real(8) , target :: rmin, rmax, t, d
+real(8), target, allocatable :: d_array(:)
 type(c_ptr) :: iptr
 
 call sirius_initialize(call_mpi_init=.true.)
@@ -83,9 +84,8 @@ do i = 1, n
   call sirius_option_get_section_length(trim(adjustl(section)), l)
   write(*,'("section : ",I2," [",A,"],  length : ",I2)')i,trim(adjustl(section)),l
   do j = 1, l
-    call sirius_option_get_name_and_type(trim(adjustl(section)), j, key, len(key), ctype)
-    write(*,'(" key : ", I2," [",A,"], type : ",I2)')j,trim(adjustl(key)),ctype
-    call sirius_option_get_description_usage(trim(adjustl(section)), trim(adjustl(key)), desc, len(desc), usage, len(usage))
+    call sirius_option_get_info(trim(adjustl(section)), j, key, len(key), ctype, l, desc, len(desc), usage, len(usage))
+    write(*,'(" key : ", I2," [",A,"], type : ",I2,", lenght : ",I2)')j,trim(adjustl(key)),ctype,l
     write(*,*)trim(adjustl(desc))
     write(*,*)trim(adjustl(usage))
     if (ctype == SIRIUS_INTEGER_TYPE) then
@@ -95,6 +95,11 @@ do i = 1, n
     if (ctype == SIRIUS_NUMBER_TYPE) then
       call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(d))
       write(*,*)'default value : ', d
+    endif
+    if (ctype == SIRIUS_NUMBER_ARRAY_TYPE) then
+      allocate(d_array(l))
+      call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(d_array), l)
+      write(*,*)'default value : ', d_array
     endif
   enddo
 enddo

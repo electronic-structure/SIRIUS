@@ -97,8 +97,7 @@ sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string secti
 
 template <typename T>
 void
-sirius_option_get_value(std::string section__, std::string name__, T* default_value__, int const* max_length__,
-                        int* length__)
+sirius_option_get_value(std::string section__, std::string name__, T* default_value__, int const* max_length__)
 {
     const auto& section_schema = sirius::get_section_options(section__);
 
@@ -117,16 +116,12 @@ sirius_option_get_value(std::string section__, std::string name__, T* default_va
         if (max_length__ == nullptr) {
             RTE_THROW("maximum length of the output buffer is not provided");
         }
-        if (length__ == nullptr) {
-            RTE_THROW("actual length of the buffer is not provided as the output argument");
-        }
         if (section_schema[name__]["items"] != "array") {
             std::vector<T> v = section_schema[name__]["default"].get<std::vector<T>>();
             int l = static_cast<int>(v.size());
             if (l > *max_length__) {
                 RTE_THROW("not enough space to store '" + name__ + "' values");
             }
-            *length__ = l;
             std::copy(v.begin(), v.end(), default_value__);
         }
     } else {
@@ -3650,7 +3645,7 @@ sirius_add_atom_type_lo_descriptor:
     ilo:
       type: int
       attr: in, required
-      doc: Index of the local orbital to which the descriptro is added.
+      doc: Index of the local orbital to which the descriptor is added.
     n:
       type: int
       attr: in, required
@@ -4660,8 +4655,8 @@ sirius_option_get_number_of_sections(int* length__, int *error_code__)
 {
     call_sirius(
         [&]() {
-            auto const& parser = sirius::get_options_dictionary();
-            *length__          = static_cast<int>(parser["properties"].size());
+            auto const& dict = sirius::get_options_dictionary();
+            *length__        = static_cast<int>(dict["properties"].size());
         }, error_code__);
 }
 
@@ -4703,7 +4698,7 @@ sirius_option_get_section_name(int elem__, char* section_name__, int section_nam
             /* we can't do pointer arighmetics on the iterator */
             for (int i = 0; i < elem__ - 1; i++, it++);
             auto key = it.key();
-            if (static_cast<int>(key.size()) > section_name_length__) {
+            if (static_cast<int>(key.size()) > section_name_length__ - 1) {
                 std::stringstream s;
                 s << "section name '" << key << "' is too large to fit into output string of size " << section_name_length__;
                 RTE_THROW(s);
@@ -4739,14 +4734,14 @@ sirius_option_get_section_length(char const* section__, int* length__, int* erro
             auto section = std::string(section__);
             std::transform(section.begin(), section.end(), section.begin(), ::tolower);
             auto const& parser = sirius::get_section_options(section);
-            *length__          = parser.size();
+            *length__          = static_cast<int>(parser.size());
         }, error_code__);
 }
 
 /*
 @api begin
-sirius_option_get_name_and_type:
-  doc: Return the name and a type of an option from its index.
+sirius_option_get_info:
+  doc: Return information about the option.
   arguments:
     section:
       type: string
@@ -4760,14 +4755,34 @@ sirius_option_get_name_and_type:
       type: string
       attr: out, required
       doc: Name of the option.
-    key_name_string_length:
+    key_name_len:
       type: int
       attr: in, required, value
       doc: Maximum length for the string (on the caller side). No allocation is done.
     type:
       type: int
       attr: out, required
-      doc: Type of the option (real, integer, boolean, string).
+      doc: Type of the option (real, integer, boolean, string, or array of the same types).
+    length:
+      type: int
+      attr: out, required
+      doc: Length of the default value (1 for the scalar types, otherwise the lenght of the array).
+    title:
+      type: string
+      attr: out, required
+      doc: Short description of the option (can be empty).
+    title_len:
+      type: int
+      attr: in, required, value
+      doc: Maximum length for the short description.
+    description:
+      type: string
+      attr: out, required
+      doc: Detailed description of the option (can be empty).
+    description_len:
+      type: int
+      attr: in, required, value
+      doc: Maximum length for the detailed description.
     error_code:
       type: int
       attr: out, optional
@@ -4776,8 +4791,9 @@ sirius_option_get_name_and_type:
 */
 
 void
-sirius_option_get_name_and_type(char const* section__, int elem__, char* key_name__,
-                                int key_name_string_length__, int* type__, int *error_code__)
+sirius_option_get_info(char const* section__, int elem__, char* key_name__, int key_name_len__, int* type__,
+                       int* length__, char* title__, int title_len__,  char* description__, int description_len__,
+                       int *error_code__)
 {
     call_sirius(
         [&]() {
@@ -4799,7 +4815,11 @@ sirius_option_get_name_and_type(char const* section__, int elem__, char* key_nam
                 {"object_array_type", option_type_t::OBJECT_ARRAY_TYPE},
                 {"array_array_type", option_type_t::ARRAY_ARRAY_TYPE}
             };
-            std::fill(key_name__, key_name__ + key_name_string_length__, 0);
+
+            std::fill(key_name__, key_name__ + key_name_len__, 0);
+            std::fill(title__, title__ + title_len__, 0);
+            std::fill(description__, description__ + description_len__, 0);
+
             auto it = dict.begin();
             /* we can't do pointer arighmetics on the iterator */
             for (int i = 0; i < elem__ - 1; i++, it++);
@@ -4810,93 +4830,35 @@ sirius_option_get_name_and_type(char const* section__, int elem__, char* key_nam
             if (dict[key]["type"] == "array") {
                 std::string tmp = dict[key]["items"]["type"].get<std::string>() + "_array_type";
                 *type__ = static_cast<int>(type_list[tmp]);
+                *length__ = static_cast<int>(dict[key]["default"].size());
             } else {
                 *type__ = static_cast<int>(type_list[dict[key]["type"].get<std::string>()]);
+                *length__ = 1;
             }
-            if (static_cast<int>(key.size()) < key_name_string_length__) {
+            if (static_cast<int>(key.size()) < key_name_len__ - 1) {
                 std::copy(key.begin(), key.end(), key_name__);
             } else {
                 RTE_THROW("the key_name string variable needs to be large enough to contain the full option name");
             }
-        }, error_code__);
-}
 
-/*
-@api begin
-sirius_option_get_description_usage:
-  doc: Return the description and usage of a given option.
-  arguments:
-    section:
-      type: string
-      attr: in, required
-      doc: Name of the section.
-    name:
-      type: string
-      attr: in, required
-      doc: Name of the option.
-    desc:
-      type: string
-      attr: out, required
-      doc: Description of the option.
-    desc_string_length:
-      type: int
-      attr: in, required, value
-      doc: Maximum length of the string (truncated if needed).
-    usage:
-      type: string
-      attr: out, required
-      doc: Extended description how to use the option.
-    usage_string_length:
-      type: int
-      attr: in, required, value
-      doc: Maximum length of the string (truncated if needed).
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__,
-                                    int desc_string_length__, char* usage__, int usage_string_length__,
-                                    int* error_code__)
-{
-    call_sirius(
-        [&]() {
-            auto section = std::string(section__);
-            std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-            json const& parser = sirius::get_section_options(section);
-
-            auto name = std::string(name__);
-
-            std::fill(desc__, desc__ + desc_string_length__, 0);
-            std::fill(usage__, usage__ + usage_string_length__, 0);
-
-            if (!parser.count(name)) {
-                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-            }
-            if (!parser.count(name)) {
-                RTE_THROW("option '" + name + "' not found");
-            }
-
-            if (parser[name].count("title")) {
-                auto description = parser[name].value<std::string>("title", "");
-                if (description.size()) {
-                    if (static_cast<int>(description.size()) < desc_string_length__) {
-                        std::copy(description.begin(), description.end(), desc__);
+            if (dict[key].count("title")) {
+                auto title = dict[key].value<std::string>("title", "");
+                if (title.size()) {
+                    if (static_cast<int>(title.size()) < title_len__ - 1) {
+                        std::copy(title.begin(), title.end(), title__);
                     } else {
-                        std::copy(description.begin(), description.begin() + desc_string_length__, desc__);
+                        std::copy(title.begin(), title.begin() + title_len__ - 1, title__);
                     }
                 }
             }
 
-            if (parser[name].count("description")) {
-                auto usage = parser[name].value<std::string>("description", "");
-                if (usage.length()) {
-                    if (static_cast<int>(usage.length()) < usage_string_length__) {
-                        std::copy(usage.begin(), usage.end(), usage__);
+            if (dict[key].count("description")) {
+                auto description = dict[key].value<std::string>("description", "");
+                if (description.size()) {
+                    if (static_cast<int>(description.size()) < description_len__ - 1) {
+                        std::copy(description.begin(), description.end(), description__);
                     } else {
-                        std::copy(usage.begin(), usage.begin() + usage_string_length__, usage__);
+                        std::copy(description.begin(), description.begin() + description_len__ - 1, description__);
                     }
                 }
             }
@@ -4928,10 +4890,6 @@ sirius_option_get:
       type: int
       attr: in, optional
       doc: Maximum Length of the buffer containing the default values.
-    length:
-      type: int
-      attr: out, optional
-      doc: Length of the buffer containing the default values.
     error_code:
       type: int
       attr: out, optional
@@ -4940,7 +4898,7 @@ sirius_option_get:
 */
 void
 sirius_option_get(char const* section__, char const* name__, int const* type__, void* data_ptr__,
-                  int const* max_length__, int* length__, int* error_code__)
+                  int const* max_length__, int* error_code__)
 {
     /* data_ptr is desctibed as `in, required, value`; this is small hack to allow Fortran to pass C_LOC(var) directly;
      * this is justified because pointer itself is really unchanged and thus can be 'in' */
@@ -4952,17 +4910,17 @@ sirius_option_get(char const* section__, char const* name__, int const* type__, 
             switch (t) {
                 case option_type_t::INTEGER_TYPE:
                 case option_type_t::INTEGER_ARRAY_TYPE: {
-                    sirius_option_get_value<int>(section, name, static_cast<int*>(data_ptr__), max_length__, length__);
+                    sirius_option_get_value<int>(section, name, static_cast<int*>(data_ptr__), max_length__);
                     break;
                 }
                 case option_type_t::NUMBER_TYPE:
                 case option_type_t::NUMBER_ARRAY_TYPE: {
-                    sirius_option_get_value<double>(section, name, static_cast<double*>(data_ptr__), max_length__, length__);
+                    sirius_option_get_value<double>(section, name, static_cast<double*>(data_ptr__), max_length__);
                     break;
                 }
                 case option_type_t::LOGICAL_TYPE:
                 case option_type_t::LOGICAL_ARRAY_TYPE: {
-                    sirius_option_get_value<bool>(section, name, static_cast<bool*>(data_ptr__), max_length__, length__);
+                    sirius_option_get_value<bool>(section, name, static_cast<bool*>(data_ptr__), max_length__);
                     break;
                 }
             }
