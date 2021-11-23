@@ -69,8 +69,12 @@ call sirius_add_atom(handler, "H", (/0.d0, 0.d0, 0.d0/))
 
 call sirius_add_atom_type_radial_function(handler, "H", "ae_rho", ae_rho, 3 * nr)
 
-call sirius_add_xc_functional(handler, "XC_LDA_X")
-call sirius_add_xc_functional(handler, "XC_LDA_C_VWN")
+str_val = "XC_LDA_X"
+call sirius_option_set(handler, "parameters", "xc_functionals", SIRIUS_STRING_TYPE, C_LOC(str_val), len(trim(str_val)), .true.)
+str_val = "XC_LDA_C_VWN"
+call sirius_option_set(handler, "parameters", "xc_functionals", SIRIUS_STRING_TYPE, C_LOC(str_val), len(trim(str_val)), .true.)
+!call sirius_add_xc_functional(handler, "XC_LDA_X")
+!call sirius_add_xc_functional(handler, "XC_LDA_C_VWN")
 
 stat = .true.
 call sirius_context_initialized(handler, stat)

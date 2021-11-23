@@ -92,7 +92,7 @@ class Simulation_parameters
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
     /// JSON dictionary containing all runtime options set up through the interface.
-    nlohmann::json runtime_options_dictionary_;
+    //nlohmann::json runtime_options_dictionary_;
 
     /// Storage for various memory pools.
     mutable std::map<memory_t, memory_pool> memory_pool_;
@@ -520,10 +520,10 @@ class Simulation_parameters
     }
 
     /// Get the options set at runtime.
-    nlohmann::json& get_runtime_options_dictionary()
-    {
-        return runtime_options_dictionary_;
-    }
+    //nlohmann::json& get_runtime_options_dictionary()
+    //{
+    //    return runtime_options_dictionary_;
+    //}
 
     /// Set the variable which controls the type of sperical coverage.
     inline int sht_coverage(int sht_coverage__)

@@ -70,11 +70,11 @@ enum class option_type_t : int
 template <typename T>
 void
 sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string section__, std::string name__,
-                        T const* default_values__, int length__)
+                        T const* values__, int const* max_length__)
 {
     std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
 
-    auto& conf_dict = sim_ctx__.get_runtime_options_dictionary();
+    auto& conf_dict = const_cast<nlohmann::json&>(sim_ctx__.cfg().dict());
 
     const auto& section_schema = sirius::get_section_options(section__);
 
@@ -85,13 +85,45 @@ sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string secti
         RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
     }
 
-    /* check that the option exists */
-    if (length__ > 1) {
-        /* we are dealing with a vector */
-        std::vector<T> v(default_values__, default_values__ + length__);
+    if (section_schema[name__]["type"] == "array") {
+        if (max_length__ == nullptr) {
+            RTE_THROW("maximum length of the input buffer is not provided");
+        }
+        std::vector<T> v(values__, values__ + *max_length__);
         conf_dict[section__][name__] = v;
     } else {
-        conf_dict[section__][name__] = *default_values__;
+        conf_dict[section__][name__] = *values__;
+    }
+}
+
+void
+sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string section__, std::string name__,
+                        char const* values__, int const* max_length__, bool append__)
+{
+    std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
+
+    auto& conf_dict = const_cast<nlohmann::json&>(sim_ctx__.cfg().dict());
+
+    const auto& section_schema = sirius::get_section_options(section__);
+
+    if (!section_schema.count(name__)) {
+        std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    }
+    if (!section_schema.count(name__)) {
+        RTE_THROW("section : " + section__ + ", option : " + name__ + " is invalid");
+    }
+
+    if (max_length__ == nullptr) {
+        RTE_THROW("maximum length of the input string is not provided");
+    }
+    auto st = std::string(values__, *max_length__);
+    if (!append__) {
+        conf_dict[section__][name__] = st;
+    } else {
+        conf_dict[section__][name__].push_back(st);
+    }
+    for (auto e:  sim_ctx__.cfg().parameters().xc_functionals()) {
+        std::cout << e << std::endl;
     }
 }
 
@@ -585,7 +617,8 @@ sirius_import_parameters(void* const* handler__, char const* str__, int* error_c
             if (str__) {
                 sim_ctx.import(std::string(str__));
             } else {
-                sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
+                RTE_THROW("check this case");
+                //sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
             }
         },
         error_code__);
@@ -4945,7 +4978,7 @@ sirius_option_get:
     max_length:
       type: int
       attr: in, optional
-      doc: Maximum Length of the buffer containing the default values.
+      doc: Maximum length of the buffer containing the default values.
     enum_idx:
       type: int
       attr: in, optional
@@ -5012,22 +5045,22 @@ sirius_option_set:
       type: string
       attr: in, required
       doc: name of the element to pick
-    length:
+    type:
       type: int
       attr: in, required
-      doc: length of the table containing the values
-    default_values_int:
+      doc: Type of the option (real, integer, boolean)
+    data_ptr:
+      type: void*
+      attr: in, required, value
+      doc: Buffer for the value or list of values.
+    max_length:
       type: int
       attr: in, optional
-      doc: table containing the values
-    default_values_double:
-      type: double
-      attr: in, optional
-      doc: table containing the values
-    default_values_logical:
+      doc: Maximum length of the buffer containing the default values.
+    append:
       type: bool
       attr: in, optional
-      doc: table containing the values
+      doc: If true then value is appended to the list of values.
     error_code:
       type: int
       attr: out, optional
@@ -5035,140 +5068,151 @@ sirius_option_set:
 @api end
 */
 void
-sirius_option_set(void* const* handler__, char const* section__, char const* name__, int const* length__,
-                  int const* default_values_int__, double const* default_values_double__,
-                  bool const* default_values_logical__, int *error_code__)
+sirius_option_set(void* const* handler__, char const* section__, char const* name__, int const* type__,
+                  void const* data_ptr__, int const* max_length__, bool const* append__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
+            auto t = static_cast<option_type_t>(*type__);
             std::string section(section__);
             std::string name(name__);
-            int length = *length__;
-            if (default_values_int__) {
-                sirius_option_set_value<int>(sim_ctx, section, name, default_values_int__, length);
-                return;
-            }
-
-            if (default_values_double__) {
-                sirius_option_set_value<double>(sim_ctx, section, name, default_values_double__, length);
-                return;
-            }
-
-            if (default_values_logical__) {
-                sirius_option_set_value<bool>(sim_ctx, section, name, default_values_logical__, length);
-                return;
+            switch (t) {
+                case option_type_t::INTEGER_TYPE:
+                case option_type_t::INTEGER_ARRAY_TYPE: {
+                    sirius_option_set_value<int>(sim_ctx, section, name, static_cast<int const*>(data_ptr__), max_length__);
+                    break;
+                }
+                case option_type_t::NUMBER_TYPE:
+                case option_type_t::NUMBER_ARRAY_TYPE: {
+                    sirius_option_set_value<double>(sim_ctx, section, name, static_cast<double const*>(data_ptr__), max_length__);
+                    break;
+                }
+                case option_type_t::LOGICAL_TYPE:
+                case option_type_t::LOGICAL_ARRAY_TYPE: {
+                    sirius_option_set_value<bool>(sim_ctx, section, name, static_cast<bool const*>(data_ptr__), max_length__);
+                    break;
+                }
+                case option_type_t::STRING_TYPE: {
+                    bool append = (append__ != nullptr) ? *append__ : false;
+                    sirius_option_set_value(sim_ctx, section, name, static_cast<char const*>(data_ptr__), max_length__, append);
+                    break;
+                }
+                default: {
+                    RTE_THROW("wrong option type");
+                    break;
+                }
             }
         }, error_code__);
 }
 
-/*
-@api begin
-sirius_option_set_string:
-  doc: set the value of the option name in a  (internal) json dictionary
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    section:
-      type: string
-      attr: in, required
-      doc: string containing the options in json format
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element to pick
-    default_values:
-      type: string
-      attr: in, required
-      doc: value of the string
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
+///*
+//api begin
+//sirius_option_set_string:
+//  doc: set the value of the option name in a  (internal) json dictionary
+//  arguments:
+//    handler:
+//      type: ctx_handler
+//      attr: in, required
+//      doc: Simulation context handler.
+//    section:
+//      type: string
+//      attr: in, required
+//      doc: string containing the options in json format
+//    name:
+//      type: string
+//      attr: in, required
+//      doc: name of the element to pick
+//    default_values:
+//      type: string
+//      attr: in, required
+//      doc: value of the string
+//    error_code:
+//      type: int
+//      attr: out, optional
+//      doc: Error code.
+//
+//api end
+//*/
+//void
+//sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
+//{
+//    if (error_code__)
+//        *error_code__ = 0;
+//
+//    auto& sim_ctx   = get_sim_ctx(handler__);
+//    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
+//    auto section    = std::string(section__);
+//    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+//    auto name = std::string(name__);
+//    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+//
+//    if (!default_values__) {
+//        std::cout << "option not set up because the string is empty" << std::endl;
+//        return;
+//    }
+//    auto st = std::string(default_values__);
+//    std::transform(st.begin(), st.end(), st.begin(), ::tolower);
+//    conf_dict[section][name] = st;
+//}
 
-@api end
-*/
-void
-sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
-{
-    if (error_code__)
-        *error_code__ = 0;
-
-    auto& sim_ctx   = get_sim_ctx(handler__);
-    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
-    auto section    = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto name = std::string(name__);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-
-    if (!default_values__) {
-        std::cout << "option not set up because the string is empty" << std::endl;
-        return;
-    }
-    auto st = std::string(default_values__);
-    std::transform(st.begin(), st.end(), st.begin(), ::tolower);
-    conf_dict[section][name] = st;
-}
-
-/*
-@api begin
-sirius_option_add_string_to:
-  doc: add a string value to the option in the json dictionary
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    section:
-      type: string
-      attr: in, required
-      doc: name of the section
-    name:
-      type: string
-      attr: in, required
-      doc: name of the element to pick
-    default_values:
-      type: string
-      attr: in, required
-      doc: string to be added
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
-{
-    if (error_code__)
-        *error_code__ = 0;
-
-    auto& sim_ctx = get_sim_ctx(handler__);
-    // the first one is static
-    const json& parser = sirius::get_options_dictionary()["properties"];
-    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-    auto section       = std::string(section__);
-    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-    auto name = std::string(name__);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto v = std::string(default_values__);
-    std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-    if (parser[section].count(name)) {
-        if (!default_values__) {
-            std::cout << "option not set up because the string is empty" << std::endl;
-            return;
-        }
-        if (conf_dict[section].count(name)) {
-            conf_dict[section][name].push_back(v);
-        } else {
-            std::vector<std::string> st;
-            st.push_back(v);
-            conf_dict[section][name] = st;
-        }
-    }
-}
+///*
+//api begin
+//sirius_option_add_string_to:
+//  doc: add a string value to the option in the json dictionary
+//  arguments:
+//    handler:
+//      type: ctx_handler
+//      attr: in, required
+//      doc: Simulation context handler.
+//    section:
+//      type: string
+//      attr: in, required
+//      doc: name of the section
+//    name:
+//      type: string
+//      attr: in, required
+//      doc: name of the element to pick
+//    default_values:
+//      type: string
+//      attr: in, required
+//      doc: string to be added
+//    error_code:
+//      type: int
+//      attr: out, optional
+//      doc: Error code.
+//api end
+//*/
+//void
+//sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
+//{
+//    if (error_code__)
+//        *error_code__ = 0;
+//
+//    auto& sim_ctx = get_sim_ctx(handler__);
+//    // the first one is static
+//    const json& parser = sirius::get_options_dictionary()["properties"];
+//    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
+//    auto section       = std::string(section__);
+//    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+//    auto name = std::string(name__);
+//    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+//    auto v = std::string(default_values__);
+//    std::transform(v.begin(), v.end(), v.begin(), ::tolower);
+//    if (parser[section].count(name)) {
+//        if (!default_values__) {
+//            std::cout << "option not set up because the string is empty" << std::endl;
+//            return;
+//        }
+//        if (conf_dict[section].count(name)) {
+//            conf_dict[section][name].push_back(v);
+//        } else {
+//            std::vector<std::string> st;
+//            st.push_back(v);
+//            conf_dict[section][name] = st;
+//        }
+//    }
+//}
 
 /*
 @api begin

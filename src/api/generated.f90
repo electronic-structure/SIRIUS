@@ -4766,7 +4766,7 @@ end subroutine sirius_option_get_info
 !> @param [in] name Name of the element
 !> @param [in] type Type of the option (real, integer, boolean)
 !> @param [in] data_ptr Output buffer for the default value or list of values.
-!> @param [in] max_length Maximum Length of the buffer containing the default values.
+!> @param [in] max_length Maximum length of the buffer containing the default values.
 !> @param [in] enum_idx Index of the element in case of the enum type.
 !> @param [out] error_code Error code.
 subroutine sirius_option_get(section,name,type,data_ptr,max_length,enum_idx,error_code)
@@ -4837,22 +4837,22 @@ end subroutine sirius_option_get
 !> @param [in] handler Simulation context handler.
 !> @param [in] section string containing the options in json format
 !> @param [in] name name of the element to pick
-!> @param [in] length length of the table containing the values
-!> @param [in] default_values_int table containing the values
-!> @param [in] default_values_double table containing the values
-!> @param [in] default_values_logical table containing the values
+!> @param [in] type Type of the option (real, integer, boolean)
+!> @param [in] data_ptr Buffer for the value or list of values.
+!> @param [in] max_length Maximum length of the buffer containing the default values.
+!> @param [in] append If true then value is appended to the list of values.
 !> @param [out] error_code Error code.
-subroutine sirius_option_set(handler,section,name,length,default_values_int,default_values_double,&
-&default_values_logical,error_code)
+subroutine sirius_option_set(handler,section,name,type,data_ptr,max_length,append,&
+&error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
-integer, target, intent(in) :: length
-integer, optional, target, intent(in) :: default_values_int
-real(8), optional, target, intent(in) :: default_values_double
-logical, optional, target, intent(in) :: default_values_logical
+integer, target, intent(in) :: type
+type(C_PTR), value, intent(in) :: data_ptr
+integer, optional, target, intent(in) :: max_length
+logical, optional, target, intent(in) :: append
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -4860,25 +4860,24 @@ type(C_PTR) :: section_ptr
 character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
-type(C_PTR) :: length_ptr
-type(C_PTR) :: default_values_int_ptr
-type(C_PTR) :: default_values_double_ptr
-type(C_PTR) :: default_values_logical_ptr
-logical(C_BOOL), target :: default_values_logical_c_type
+type(C_PTR) :: type_ptr
+type(C_PTR) :: max_length_ptr
+type(C_PTR) :: append_ptr
+logical(C_BOOL), target :: append_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_option_set_aux(handler,section,name,length,default_values_int,&
-&default_values_double,default_values_logical,error_code)&
+subroutine sirius_option_set_aux(handler,section,name,type,data_ptr,max_length,append,&
+&error_code)&
 &bind(C, name="sirius_option_set")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-type(C_PTR), value :: length
-type(C_PTR), value :: default_values_int
-type(C_PTR), value :: default_values_double
-type(C_PTR), value :: default_values_logical
+type(C_PTR), value :: type
+type(C_PTR), value :: data_ptr
+type(C_PTR), value :: max_length
+type(C_PTR), value :: append
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -4893,156 +4892,28 @@ name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
 name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-length_ptr = C_NULL_PTR
-length_ptr = C_LOC(length)
-default_values_int_ptr = C_NULL_PTR
-if (present(default_values_int)) then
-default_values_int_ptr = C_LOC(default_values_int)
+type_ptr = C_NULL_PTR
+type_ptr = C_LOC(type)
+max_length_ptr = C_NULL_PTR
+if (present(max_length)) then
+max_length_ptr = C_LOC(max_length)
 endif
-default_values_double_ptr = C_NULL_PTR
-if (present(default_values_double)) then
-default_values_double_ptr = C_LOC(default_values_double)
-endif
-default_values_logical_ptr = C_NULL_PTR
-if (present(default_values_logical)) then
-default_values_logical_c_type = default_values_logical
-default_values_logical_ptr = C_LOC(default_values_logical_c_type)
+append_ptr = C_NULL_PTR
+if (present(append)) then
+append_c_type = append
+append_ptr = C_LOC(append_c_type)
 endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_set_aux(handler_ptr,section_ptr,name_ptr,length_ptr,default_values_int_ptr,&
-&default_values_double_ptr,default_values_logical_ptr,error_code_ptr)
+call sirius_option_set_aux(handler_ptr,section_ptr,name_ptr,type_ptr,data_ptr,max_length_ptr,&
+&append_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
-if (present(default_values_logical)) then
+if (present(append)) then
 endif
 end subroutine sirius_option_set
-
-!
-!> @brief set the value of the option name in a  (internal) json dictionary
-!> @param [in] handler Simulation context handler.
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [in] default_values value of the string
-!> @param [out] error_code Error code.
-subroutine sirius_option_set_string(handler,section,name,default_values,error_code)
-implicit none
-!
-type(sirius_context_handler), target, intent(in) :: handler
-character(*), target, intent(in) :: section
-character(*), target, intent(in) :: name
-character(*), target, intent(in) :: default_values
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: section_c_type(:)
-type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
-type(C_PTR) :: default_values_ptr
-character(C_CHAR), target, allocatable :: default_values_c_type(:)
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_option_set_string_aux(handler,section,name,default_values,error_code)&
-&bind(C, name="sirius_option_set_string")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: section
-type(C_PTR), value :: name
-type(C_PTR), value :: default_values
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler%handler_ptr_)
-section_ptr = C_NULL_PTR
-allocate(section_c_type(len(section)+1))
-section_c_type = string_f2c(section)
-section_ptr = C_LOC(section_c_type)
-name_ptr = C_NULL_PTR
-allocate(name_c_type(len(name)+1))
-name_c_type = string_f2c(name)
-name_ptr = C_LOC(name_c_type)
-default_values_ptr = C_NULL_PTR
-allocate(default_values_c_type(len(default_values)+1))
-default_values_c_type = string_f2c(default_values)
-default_values_ptr = C_LOC(default_values_c_type)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_option_set_string_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr,&
-&error_code_ptr)
-deallocate(section_c_type)
-deallocate(name_c_type)
-deallocate(default_values_c_type)
-end subroutine sirius_option_set_string
-
-!
-!> @brief add a string value to the option in the json dictionary
-!> @param [in] handler Simulation context handler.
-!> @param [in] section name of the section
-!> @param [in] name name of the element to pick
-!> @param [in] default_values string to be added
-!> @param [out] error_code Error code.
-subroutine sirius_option_add_string_to(handler,section,name,default_values,error_code)
-implicit none
-!
-type(sirius_context_handler), target, intent(in) :: handler
-character(*), target, intent(in) :: section
-character(*), target, intent(in) :: name
-character(*), target, intent(in) :: default_values
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: section_c_type(:)
-type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
-type(C_PTR) :: default_values_ptr
-character(C_CHAR), target, allocatable :: default_values_c_type(:)
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_option_add_string_to_aux(handler,section,name,default_values,error_code)&
-&bind(C, name="sirius_option_add_string_to")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: section
-type(C_PTR), value :: name
-type(C_PTR), value :: default_values
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler%handler_ptr_)
-section_ptr = C_NULL_PTR
-allocate(section_c_type(len(section)+1))
-section_c_type = string_f2c(section)
-section_ptr = C_LOC(section_c_type)
-name_ptr = C_NULL_PTR
-allocate(name_c_type(len(name)+1))
-name_c_type = string_f2c(name)
-name_ptr = C_LOC(name_c_type)
-default_values_ptr = C_NULL_PTR
-allocate(default_values_c_type(len(default_values)+1))
-default_values_c_type = string_f2c(default_values)
-default_values_ptr = C_LOC(default_values_c_type)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_option_add_string_to_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr,&
-&error_code_ptr)
-deallocate(section_c_type)
-deallocate(name_c_type)
-deallocate(default_values_c_type)
-end subroutine sirius_option_add_string_to
 
 !
 !> @brief Dump the runtime setup in a file.
