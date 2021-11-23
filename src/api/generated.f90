@@ -2072,8 +2072,8 @@ end subroutine sirius_set_atom_type_radial_grid_inf
 !> @param [in] num_points Length of radial function array.
 !> @param [in] n Orbital quantum number.
 !> @param [in] l angular momentum.
-!> @param [in] idxrf1 First index of radial function (for Q-operator).
-!> @param [in] idxrf2 Second index of radial function (for Q-operator).
+!> @param [in] idxrf1 First index of radial function (for Q-operator). Indices start from 1.
+!> @param [in] idxrf2 Second index of radial function (for Q-operator). Indices start form 1.
 !> @param [in] occ Occupancy of the wave-function.
 !> @param [out] error_code Error code.
 subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_points,&
@@ -2875,7 +2875,7 @@ end subroutine sirius_generate_density
 !> @brief Set band occupancies.
 !> @param [in] ks_handler K-point set handler.
 !> @param [in] ik Global index of k-point.
-!> @param [in] ispn Spin component.
+!> @param [in] ispn Spin component index.
 !> @param [in] band_occupancies Array of band occupancies.
 !> @param [out] error_code Error code.
 subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies,error_code)
@@ -3298,81 +3298,6 @@ endif
 call sirius_get_wave_functions_v2_aux(ks_handler_ptr,vkl_ptr,spin_ptr,num_gvec_loc_ptr,&
 &gvec_loc_ptr,evec_ptr,ld_ptr,num_spin_comp_ptr,error_code_ptr)
 end subroutine sirius_get_wave_functions_v2
-
-!
-!> @brief Get wave-functions.
-!> @param [in] ks_handler K-point set handler.
-!> @param [in] ik Global index of k-point
-!> @param [in] ispn Spin index.
-!> @param [in] npw Local number of G+k vectors.
-!> @param [in] gvec_k List of G-vectors.
-!> @param [out] evc Wave-functions.
-!> @param [in] ld1 Leading dimension of evc array.
-!> @param [in] ld2 Second dimension of evc array.
-!> @param [out] error_code Error code
-subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2,error_code)
-implicit none
-!
-type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
-integer, target, intent(in) :: ik
-integer, target, intent(in) :: ispn
-integer, target, intent(in) :: npw
-integer, target, intent(in) :: gvec_k
-complex(8), target, intent(out) :: evc
-integer, target, intent(in) :: ld1
-integer, target, intent(in) :: ld2
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: ks_handler_ptr
-type(C_PTR) :: ik_ptr
-type(C_PTR) :: ispn_ptr
-type(C_PTR) :: npw_ptr
-type(C_PTR) :: gvec_k_ptr
-type(C_PTR) :: evc_ptr
-type(C_PTR) :: ld1_ptr
-type(C_PTR) :: ld2_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2,&
-&error_code)&
-&bind(C, name="sirius_get_wave_functions")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: ks_handler
-type(C_PTR), value :: ik
-type(C_PTR), value :: ispn
-type(C_PTR), value :: npw
-type(C_PTR), value :: gvec_k
-type(C_PTR), value :: evc
-type(C_PTR), value :: ld1
-type(C_PTR), value :: ld2
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler%handler_ptr_)
-ik_ptr = C_NULL_PTR
-ik_ptr = C_LOC(ik)
-ispn_ptr = C_NULL_PTR
-ispn_ptr = C_LOC(ispn)
-npw_ptr = C_NULL_PTR
-npw_ptr = C_LOC(npw)
-gvec_k_ptr = C_NULL_PTR
-gvec_k_ptr = C_LOC(gvec_k)
-evc_ptr = C_NULL_PTR
-evc_ptr = C_LOC(evc)
-ld1_ptr = C_NULL_PTR
-ld1_ptr = C_LOC(ld1)
-ld2_ptr = C_NULL_PTR
-ld2_ptr = C_LOC(ld2)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k_ptr,&
-&evc_ptr,ld1_ptr,ld2_ptr,error_code_ptr)
-end subroutine sirius_get_wave_functions
 
 !
 !> @brief Add descriptor of the augmented wave radial function.
