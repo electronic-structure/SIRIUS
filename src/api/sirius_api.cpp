@@ -1469,9 +1469,9 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                     RTE_THROW("missing 'num_rg_points' argument");
                 }
                 bool is_local_rg;
-                if (gs.ctx().fft_grid().num_points() == *num_rg_points__) {
+                if (*num_rg_points__ == spfft_grid_size(gs.ctx().spfft<double>()) == *num_rg_points__) {
                     is_local_rg = false;
-                } else if (static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>())) == *num_rg_points__) {
+                } else if (*num_rg_points__ == spfft_grid_size_local(gs.ctx().spfft<double>())) {
                     is_local_rg = true;
                 } else {
                     RTE_THROW("wrong number of regular grid points");
@@ -4303,13 +4303,14 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
                 cfunig__[ig] = sim_ctx.theta_pw(ig);
             }
             auto& fft = sim_ctx.spfft<double>();
+
             bool is_local_rg;
-            if (sim_ctx.fft_grid().num_points() == *num_rg_points__) {
+            if (*num_rg_points__ == spfft_grid_size(fft)) {
                 is_local_rg = false;
-            } else if (static_cast<int>(spfft_grid_size(fft)) == *num_rg_points__) {
+            } else if (*num_rg_points__ == spfft_grid_size_local(fft)) {
                 is_local_rg = true;
             } else {
-                RTE_THROW("wrong number of regular grid points");
+                RTE_THROW("wrong number of real space points");
             }
 
             int offs = (is_local_rg) ? 0 : fft.dim_x() * fft.dim_y() * fft.local_z_offset();
@@ -4318,7 +4319,7 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
                     cfunrg__[offs + i] = sim_ctx.theta(i);
                 }
             }
-            if (is_local_rg) {
+            if (!is_local_rg) {
                 sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
             }
         },
