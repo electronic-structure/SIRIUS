@@ -45,6 +45,20 @@ inline void throw_impl(const char* func__, const char* file__, int line__, std::
     ::rte::throw_impl(__func__, __FILE__, __LINE__, __VA_ARGS__);\
 }
 
+#ifdef NDEBUG
+#define RTE_ASSERT(condition__)
+#else
+#define RTE_ASSERT(condition__)                                  \
+{                                                                \
+    if (!(condition__)) {                                        \
+        std::stringstream _s;                                    \
+        _s << "Assertion (" <<  #condition__ << ") failed "      \
+           << "at line " << __LINE__ << " of file " << __FILE__; \
+        RTE_THROW(_s);                                           \
+    }                                                            \
+}
+#endif
+
 }
 
 #endif
