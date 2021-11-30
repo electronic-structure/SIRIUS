@@ -336,7 +336,7 @@ subroutine sirius_import_parameters(handler,str,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-character(*), optional, target, intent(in) :: str
+character(*), target, intent(in) :: str
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -357,19 +357,15 @@ end interface
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler%handler_ptr_)
 str_ptr = C_NULL_PTR
-if (present(str)) then
 allocate(str_c_type(len(str)+1))
 str_c_type = string_f2c(str)
 str_ptr = C_LOC(str_c_type)
-endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_import_parameters_aux(handler_ptr,str_ptr,error_code_ptr)
-if (present(str)) then
 deallocate(str_c_type)
-endif
 end subroutine sirius_import_parameters
 
 !

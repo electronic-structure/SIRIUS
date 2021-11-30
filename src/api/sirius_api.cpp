@@ -600,7 +600,7 @@ sirius_import_parameters:
       doc: Simulation context handler.
     str:
       type: string
-      attr: in, optional
+      attr: in, required
       doc: JSON string with parameters or a JSON file.
     error_code:
       type: int
@@ -614,12 +614,7 @@ sirius_import_parameters(void* const* handler__, char const* str__, int* error_c
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            if (str__) {
-                sim_ctx.import(std::string(str__));
-            } else {
-                RTE_THROW("check this case");
-                //sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
-            }
+            sim_ctx.import(std::string(str__));
         },
         error_code__);
 }
@@ -5107,114 +5102,6 @@ sirius_option_set(void* const* handler__, char const* section__, char const* nam
         }, error_code__);
 }
 
-///*
-//api begin
-//sirius_option_set_string:
-//  doc: set the value of the option name in a  (internal) json dictionary
-//  arguments:
-//    handler:
-//      type: ctx_handler
-//      attr: in, required
-//      doc: Simulation context handler.
-//    section:
-//      type: string
-//      attr: in, required
-//      doc: string containing the options in json format
-//    name:
-//      type: string
-//      attr: in, required
-//      doc: name of the element to pick
-//    default_values:
-//      type: string
-//      attr: in, required
-//      doc: value of the string
-//    error_code:
-//      type: int
-//      attr: out, optional
-//      doc: Error code.
-//
-//api end
-//*/
-//void
-//sirius_option_set_string(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
-//{
-//    if (error_code__)
-//        *error_code__ = 0;
-//
-//    auto& sim_ctx   = get_sim_ctx(handler__);
-//    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
-//    auto section    = std::string(section__);
-//    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-//    auto name = std::string(name__);
-//    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-//
-//    if (!default_values__) {
-//        std::cout << "option not set up because the string is empty" << std::endl;
-//        return;
-//    }
-//    auto st = std::string(default_values__);
-//    std::transform(st.begin(), st.end(), st.begin(), ::tolower);
-//    conf_dict[section][name] = st;
-//}
-
-///*
-//api begin
-//sirius_option_add_string_to:
-//  doc: add a string value to the option in the json dictionary
-//  arguments:
-//    handler:
-//      type: ctx_handler
-//      attr: in, required
-//      doc: Simulation context handler.
-//    section:
-//      type: string
-//      attr: in, required
-//      doc: name of the section
-//    name:
-//      type: string
-//      attr: in, required
-//      doc: name of the element to pick
-//    default_values:
-//      type: string
-//      attr: in, required
-//      doc: string to be added
-//    error_code:
-//      type: int
-//      attr: out, optional
-//      doc: Error code.
-//api end
-//*/
-//void
-//sirius_option_add_string_to(void* const* handler__, char* section__, char* name__, char* default_values__, int *error_code__)
-//{
-//    if (error_code__)
-//        *error_code__ = 0;
-//
-//    auto& sim_ctx = get_sim_ctx(handler__);
-//    // the first one is static
-//    const json& parser = sirius::get_options_dictionary()["properties"];
-//    json& conf_dict    = sim_ctx.get_runtime_options_dictionary();
-//    auto section       = std::string(section__);
-//    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
-//    auto name = std::string(name__);
-//    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-//    auto v = std::string(default_values__);
-//    std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-//    if (parser[section].count(name)) {
-//        if (!default_values__) {
-//            std::cout << "option not set up because the string is empty" << std::endl;
-//            return;
-//        }
-//        if (conf_dict[section].count(name)) {
-//            conf_dict[section][name].push_back(v);
-//        } else {
-//            std::vector<std::string> st;
-//            st.push_back(v);
-//            conf_dict[section][name] = st;
-//        }
-//    }
-//}
-
 /*
 @api begin
 sirius_dump_runtime_setup:
@@ -5846,7 +5733,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
 {
     call_sirius(
         [&]() {
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
             // call nlcg solver
             auto& gs        = get_gs(handler__);
             auto& potential = gs.potential();
@@ -5958,7 +5845,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 {
     call_sirius(
         [&]() {
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
             // call nlcg solver
             auto& gs        = get_gs(handler__);
             auto& potential = gs.potential();
