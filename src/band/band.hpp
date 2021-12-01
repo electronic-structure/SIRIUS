@@ -87,7 +87,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve the band eigen-problem for pseudopotential case.
     template <typename T, typename F>
-    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__) const;
+    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const;
 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>

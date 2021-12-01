@@ -2,22 +2,24 @@ program test_fortran_api
 use mpi
 use sirius
 implicit none
-type(C_PTR) :: handler
-type(C_PTR) :: kset
-type(C_PTR) :: dft
+type(sirius_context_handler) :: handler
+type(sirius_kpoint_set_handler) :: kset
+type(sirius_ground_state_handler) :: dft
 logical :: stat
-integer i,j,k,l
-character(100) key
+integer, target :: i,j,k,l,n,ctype, enum_size
+character(100) ,target :: key, section, desc, usage
+character(100), target :: str_val
 real(8) :: lat_vec(3,3), pos(3)
 integer lmax
 integer nr
 real(8), allocatable :: rgrid(:), ae_rho(:)
-real(8) rmin, rmax, t
+real(8) , target :: rmin, rmax, t, d
+real(8), target, allocatable :: d_array(:)
+type(c_ptr) :: iptr
 
 call sirius_initialize(call_mpi_init=.true.)
 
-i = MPI_COMM_WORLD
-call sirius_create_context(i, handler)
+call sirius_create_context(MPI_COMM_WORLD, handler)
 
 call sirius_import_parameters(handler, &
     '{"parameters" : {"electronic_structure_method" : "full_potential_lapwlo"},&
@@ -67,8 +69,12 @@ call sirius_add_atom(handler, "H", (/0.d0, 0.d0, 0.d0/))
 
 call sirius_add_atom_type_radial_function(handler, "H", "ae_rho", ae_rho, 3 * nr)
 
-call sirius_add_xc_functional(handler, "XC_LDA_X")
-call sirius_add_xc_functional(handler, "XC_LDA_C_VWN")
+str_val = "XC_LDA_X"
+call sirius_option_set(handler, "parameters", "xc_functionals", SIRIUS_STRING_TYPE, C_LOC(str_val), len(trim(str_val)), .true.)
+str_val = "XC_LDA_C_VWN"
+call sirius_option_set(handler, "parameters", "xc_functionals", SIRIUS_STRING_TYPE, C_LOC(str_val), len(trim(str_val)), .true.)
+!call sirius_add_xc_functional(handler, "XC_LDA_X")
+!call sirius_add_xc_functional(handler, "XC_LDA_C_VWN")
 
 stat = .true.
 call sirius_context_initialized(handler, stat)
@@ -76,25 +82,57 @@ if (stat) then
     stop 'error'
 endif
 
-call sirius_option_get_length('control', i)
-write(*,*)'length of control:', i
-
-do j=1,i
-  call sirius_option_get_name_and_type('control', j, key, k)
-  write(*,*)j,trim(adjustl(key)),k
+call sirius_option_get_number_of_sections(n)
+write(*,*)'number of sections : ', n
+do i = 1, n
+  call sirius_option_get_section_name(i, section, len(section))
+  call sirius_option_get_section_length(trim(adjustl(section)), l)
+  write(*,'("section : ",I2," [",A,"],  length : ",I2)')i,trim(adjustl(section)),l
+  do j = 1, l
+    call sirius_option_get_info(trim(adjustl(section)), j, key, len(key), ctype, l, enum_size,&
+        &desc, len(desc), usage, len(usage))
+    write(*,'(" key : ", I2," [",A,"], type : ",I2,", lenght : ",I2)')j,trim(adjustl(key)),ctype,l
+    write(*,*)trim(adjustl(desc))
+    write(*,*)trim(adjustl(usage))
+    if (ctype == SIRIUS_INTEGER_TYPE) then
+      call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(k))
+      write(*,*)'default value : ', k
+    endif
+    if (ctype == SIRIUS_NUMBER_TYPE) then
+      call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(d))
+      write(*,*)'default value : ', d
+    endif
+    if (ctype == SIRIUS_NUMBER_ARRAY_TYPE) then
+      allocate(d_array(l))
+      call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(d_array), l)
+      write(*,*)'default value : ', d_array
+      deallocate(d_array)
+    endif
+    if (ctype == SIRIUS_STRING_TYPE) then
+      call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(str_val), len(str_val))
+      write(*,*)'default value  : ', trim(str_val)
+      if (enum_size .ne. 0) then
+          do k = 1, enum_size
+            call sirius_option_get(trim(adjustl(section)), trim(adjustl(key)), ctype, C_LOC(str_val), len(str_val), k)
+            write(*,*)'possible value: ', trim(str_val)
+          enddo
+      endif
+    endif
+  enddo
 enddo
 
+
 call sirius_initialize_context(handler)
-call sirius_print_info(handler)
+!call sirius_print_info(handler)
+!
+!call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
+!
+!call sirius_create_ground_state(kset, dft)
+!call sirius_find_ground_state(dft)
 
-call sirius_create_kset_from_grid(handler, (/2, 2, 2/), (/0, 0, 0/), .true., kset)
 
-call sirius_create_ground_state(kset, dft)
-call sirius_find_ground_state(dft)
-
-
-call sirius_free_handler(dft)
-call sirius_free_handler(kset)
+!call sirius_free_handler(dft)
+!call sirius_free_handler(kset)
 call sirius_free_handler(handler)
 
 call sirius_finalize

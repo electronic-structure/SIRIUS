@@ -140,7 +140,7 @@ get_options_dictionary()
 
 /// Get all possible options of a given input section. It is a json dictionary.
 nlohmann::json const&
-get_section_options(const std::string& section__)
+get_section_options(std::string const& section__)
 {
     if (input_schema.size() == 0) {
         throw std::runtime_error("Dictionary not initialized\n");

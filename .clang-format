@@ -14,6 +14,8 @@ BraceWrapping: {
     BeforeCatch : 'false'
     BeforeElse : 'false'
     IndentBraces : 'false'
+    AfterExternBlock : 'false'
+    BeforeLambdaBody : 'false'
 }
 IndentCaseLabels: 'true'
 AccessModifierOffset: -2
@@ -40,5 +42,8 @@ Cpp11BracedListStyle: 'true'
 
 #AlwaysBreakAfterReturnType: None
 AlwaysBreakAfterReturnType: 'TopLevelDefinitions'
+
+#AllowShortLambdasOnASingleLine: None
+#AlignAfterOpenBracket: Align
 
 ...

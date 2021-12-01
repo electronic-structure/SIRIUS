@@ -158,19 +158,20 @@ int num_devices();
 }
 
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
-#define CALL_DEVICE_API(func__, args__)                                                                                \
-{                                                                                                                      \
-    if (acc::num_devices()) {                                                                                          \
-        acc_error_t error;                                                                                             \
-        error = GPU_PREFIX(func__) args__;                                                                             \
-        if (error != GPU_PREFIX(Success)) {                                                                            \
-            char nm[1024];                                                                                             \
-            gethostname(nm, 1024);                                                                                     \
-            std::printf("hostname: %s\n", nm);                                                                         \
-            std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
-            stack_backtrace();                                                                                         \
-        }                                                                                                              \
-    }                                                                                                                  \
+#define CALL_DEVICE_API(func__, args__)                                         \
+{                                                                               \
+    if (acc::num_devices()) {                                                   \
+        acc_error_t error;                                                      \
+        error = GPU_PREFIX(func__) args__;                                      \
+        if (error != GPU_PREFIX(Success)) {                                     \
+            char nm[1024];                                                      \
+            gethostname(nm, 1024);                                              \
+            std::printf("hostname: %s\n", nm);                                  \
+            std::printf("Error in %s at line %i of file %s: %s\n",              \
+              #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
+            stack_backtrace();                                                  \
+        }                                                                       \
+    }                                                                           \
 }
 #else
 #define CALL_DEVICE_API(func__, args__)
