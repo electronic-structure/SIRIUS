@@ -3216,8 +3216,8 @@ end subroutine sirius_get_num_beta_projectors
 !> @param [in] ld Leading dimension of evec array.
 !> @param [in] num_spin_comp Number of spin components.
 !> @param [out] error_code Error code
-subroutine sirius_get_wave_functions_v2(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,&
-&evec,ld,num_spin_comp,error_code)
+subroutine sirius_get_wave_functions(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,evec,&
+&ld,num_spin_comp,error_code)
 implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
@@ -3241,9 +3241,9 @@ type(C_PTR) :: num_spin_comp_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_wave_functions_v2_aux(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,&
+subroutine sirius_get_wave_functions_aux(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,&
 &evec,ld,num_spin_comp,error_code)&
-&bind(C, name="sirius_get_wave_functions_v2")
+&bind(C, name="sirius_get_wave_functions")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: vkl
@@ -3291,9 +3291,9 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_get_wave_functions_v2_aux(ks_handler_ptr,vkl_ptr,spin_ptr,num_gvec_loc_ptr,&
+call sirius_get_wave_functions_aux(ks_handler_ptr,vkl_ptr,spin_ptr,num_gvec_loc_ptr,&
 &gvec_loc_ptr,evec_ptr,ld_ptr,num_spin_comp_ptr,error_code_ptr)
-end subroutine sirius_get_wave_functions_v2
+end subroutine sirius_get_wave_functions
 
 !
 !> @brief Add descriptor of the augmented wave radial function.
