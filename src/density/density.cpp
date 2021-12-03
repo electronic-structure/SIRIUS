@@ -1935,11 +1935,11 @@ void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     const bool init_mt = ctx_.full_potential();
 
     /* initialize functions */
-    //if (mixer_cfg__.use_hartree()) {
-    //    this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
-    //} else {
+    if (mixer_cfg__.use_hartree()) {
+        this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
+    } else {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
-    //}
+    }
     if (ctx_.num_mag_dims() > 0) {
         this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, init_mt);
     }
