@@ -1464,9 +1464,9 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                     RTE_THROW("missing 'num_rg_points' argument");
                 }
                 bool is_local_rg;
-                if (*num_rg_points__ == spfft_grid_size(gs.ctx().spfft<double>()) == *num_rg_points__) {
+                if (*num_rg_points__ == static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>()))) {
                     is_local_rg = false;
-                } else if (*num_rg_points__ == spfft_grid_size_local(gs.ctx().spfft<double>())) {
+                } else if (*num_rg_points__ == static_cast<int>(spfft_grid_size_local(gs.ctx().spfft<double>()))) {
                     is_local_rg = true;
                 } else {
                     RTE_THROW("wrong number of regular grid points");
@@ -4062,9 +4062,9 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
             auto& fft = sim_ctx.spfft<double>();
 
             bool is_local_rg;
-            if (*num_rg_points__ == spfft_grid_size(fft)) {
+            if (*num_rg_points__ == static_cast<int>(spfft_grid_size(fft))) {
                 is_local_rg = false;
-            } else if (*num_rg_points__ == spfft_grid_size_local(fft)) {
+            } else if (*num_rg_points__ == static_cast<int>(spfft_grid_size_local(fft))) {
                 is_local_rg = true;
             } else {
                 RTE_THROW("wrong number of real space points");
