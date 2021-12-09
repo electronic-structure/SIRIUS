@@ -316,8 +316,8 @@
                     "items" : {
                         "type" : "integer"
                     },
-                    "title" : "Dimensions of the MPI grid (if used).",
-                    "default" : []
+                    "title" : "the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.",
+                    "default" : [1, 1]
                 },
                 "cyclic_block_size" : {
                     "type" : "integer",

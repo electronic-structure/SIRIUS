@@ -122,9 +122,6 @@ sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string secti
     } else {
         conf_dict[section__][name__].push_back(st);
     }
-    for (auto e:  sim_ctx__.cfg().parameters().xc_functionals()) {
-        std::cout << e << std::endl;
-    }
 }
 
 template <typename T>
