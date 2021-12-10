@@ -245,7 +245,7 @@ class config_t
             tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
             between the two. This is how it is done in the code: 
             \code{.cpp}
-            double old_tol = ctx_.iterative_solver().energy_tolerance();
+            double old_tol = ctx_.iterative_solver_tolerance();
             // estimate new tolerance of iterative solver
             double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
             tol = std::max(ctx_.settings().itsol_tol_min_, tol);
@@ -378,6 +378,7 @@ class config_t
             }
             dict_["/unit_cell/atom_coordinate_units"_json_pointer] = atom_coordinate_units__;
         }
+        /// List of atom type labels
         inline auto atom_types() const
         {
             return dict_.at("/unit_cell/atom_types"_json_pointer).get<std::vector<std::string>>();
@@ -635,7 +636,7 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// Dimensions of the MPI grid (if used).
+        /// the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.
         inline auto mpi_grid_dims() const
         {
             return dict_.at("/control/mpi_grid_dims"_json_pointer).get<std::vector<int>>();
@@ -716,6 +717,7 @@ class config_t
             }
             dict_["/control/fft_mode"_json_pointer] = fft_mode__;
         }
+        /// Main processing unit to use during the execution.
         inline auto processing_unit() const
         {
             return dict_.at("/control/processing_unit"_json_pointer).get<std::string>();
@@ -785,6 +787,7 @@ class config_t
             }
             dict_["/control/verification"_json_pointer] = verification__;
         }
+        /// Number of eigen-values that are printed to the standard output.
         inline auto num_bands_to_print() const
         {
             return dict_.at("/control/num_bands_to_print"_json_pointer).get<int>();
