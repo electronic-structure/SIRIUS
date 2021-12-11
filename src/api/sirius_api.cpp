@@ -4728,7 +4728,7 @@ sirius_option_get:
       doc: Type of the option (real, integer, boolean)
     data_ptr:
       type: void*
-      attr: in, required, value
+      attr: out, required
       doc: Output buffer for the default value or list of values.
     max_length:
       type: int

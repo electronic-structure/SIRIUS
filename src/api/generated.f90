@@ -4686,7 +4686,7 @@ end subroutine sirius_option_get_info
 !> @param [in] section Name of the section of interest.
 !> @param [in] name Name of the element
 !> @param [in] type Type of the option (real, integer, boolean)
-!> @param [in] data_ptr Output buffer for the default value or list of values.
+!> @param [out] data_ptr Output buffer for the default value or list of values.
 !> @param [in] max_length Maximum length of the buffer containing the default values.
 !> @param [in] enum_idx Index of the element in case of the enum type.
 !> @param [out] error_code Error code.
@@ -4696,7 +4696,7 @@ implicit none
 character(*), target, intent(in) :: section
 character(*), target, intent(in) :: name
 integer, target, intent(in) :: type
-type(C_PTR), value, intent(in) :: data_ptr
+type(C_PTR), target, intent(out) :: data_ptr
 integer, optional, target, intent(in) :: max_length
 integer, optional, target, intent(in) :: enum_idx
 integer, optional, target, intent(out) :: error_code
@@ -4706,6 +4706,7 @@ character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
 character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: type_ptr
+type(C_PTR) :: data_ptr_ptr
 type(C_PTR) :: max_length_ptr
 type(C_PTR) :: enum_idx_ptr
 type(C_PTR) :: error_code_ptr
@@ -4735,6 +4736,8 @@ name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 type_ptr = C_NULL_PTR
 type_ptr = C_LOC(type)
+data_ptr_ptr = C_NULL_PTR
+data_ptr_ptr = C_LOC(data_ptr)
 max_length_ptr = C_NULL_PTR
 if (present(max_length)) then
 max_length_ptr = C_LOC(max_length)
@@ -4747,7 +4750,7 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_option_get_aux(section_ptr,name_ptr,type_ptr,data_ptr,max_length_ptr,&
+call sirius_option_get_aux(section_ptr,name_ptr,type_ptr,data_ptr_ptr,max_length_ptr,&
 &enum_idx_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
