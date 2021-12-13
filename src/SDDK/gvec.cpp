@@ -22,8 +22,10 @@
  *  \brief Contains the implementation of Gvec class.
  *
  */
+
 #include "symmetry/lattice.hpp"
 #include "gvec.hpp"
+#include "serializer.hpp"
 
 namespace sddk {
 
@@ -180,6 +182,8 @@ void Gvec::distribute_z_columns()
     if (ng != num_gvec_) {
         throw std::runtime_error("wrong number of G-vectors");
     }
+    this->offset_ = this->gvec_offset(this->comm().rank());
+    this->count_ = this->gvec_count(this->comm().rank());
 }
 
 void Gvec::find_gvec_shells()
@@ -404,6 +408,8 @@ Gvec& Gvec::operator=(Gvec&& src__)
         reduce_gvec_       = src__.reduce_gvec_;
         bare_gvec_         = src__.bare_gvec_;
         num_gvec_          = src__.num_gvec_;
+        offset_            = src__.offset_;
+        count_             = src__.count_;
         gvec_full_index_   = std::move(src__.gvec_full_index_);
         gvec_shell_        = std::move(src__.gvec_shell_);
         num_gvec_shells_   = std::move(src__.num_gvec_shells_);
@@ -476,57 +482,22 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     return ig;
 }
 
-void Gvec::pack(serializer& s__) const
-{
-    serialize(s__, vk_);
-    serialize(s__, Gmax_);
-    serialize(s__, lattice_vectors_);
-    serialize(s__, reduce_gvec_);
-    serialize(s__, bare_gvec_);
-    serialize(s__, num_gvec_);
-    serialize(s__, num_gvec_shells_);
-    serialize(s__, gvec_full_index_);
-    serialize(s__, gvec_shell_);
-    serialize(s__, gvec_shell_len_);
-    serialize(s__, gvec_index_by_xy_);
-    serialize(s__, z_columns_);
-    serialize(s__, gvec_distr_);
-    serialize(s__, zcol_distr_);
-    serialize(s__, gvec_base_mapping_);
-}
-
-void Gvec::unpack(serializer& s__, Gvec& gv__) const
-{
-    deserialize(s__, gv__.vk_);
-    deserialize(s__, gv__.Gmax_);
-    deserialize(s__, gv__.lattice_vectors_);
-    deserialize(s__, gv__.reduce_gvec_);
-    deserialize(s__, gv__.bare_gvec_);
-    deserialize(s__, gv__.num_gvec_);
-    deserialize(s__, gv__.num_gvec_shells_);
-    deserialize(s__, gv__.gvec_full_index_);
-    deserialize(s__, gv__.gvec_shell_);
-    deserialize(s__, gv__.gvec_shell_len_);
-    deserialize(s__, gv__.gvec_index_by_xy_);
-    deserialize(s__, gv__.z_columns_);
-    deserialize(s__, gv__.gvec_distr_);
-    deserialize(s__, gv__.zcol_distr_);
-    deserialize(s__, gv__.gvec_base_mapping_);
-}
-
-void Gvec::send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
+Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
     serializer s;
 
     if (comm__.rank() == source__) {
-        this->pack(s);
+        ::sddk::serialize(s, gv_src__);
     }
 
     s.send_recv(comm__, source__, dest__);
 
+    Gvec gv(gv_src__.comm());
+
     if (comm__.rank() == dest__) {
-        this->unpack(s, gv__);
+        ::sddk::deserialize(s, gv);
     }
+    return gv;
 }
 
 void Gvec_partition::build_fft_distr()
@@ -649,24 +620,6 @@ mdarray<int, 2> Gvec_partition::get_gvec() const
     return gv;
 }
 
-void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const
-{
-    int rank = gvec().comm().rank();
-    /* collect scattered PW coefficients */
-    comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_fft_slab().counts.data(),
-                               gvec_fft_slab().offsets.data());
-}
-
-void Gvec_partition::gather_pw_global(std::complex<double>* f_pw_fft__, std::complex<double>* f_pw_global__) const
-{
-    for (int ig = 0; ig < gvec().count(); ig++) {
-        /* position inside fft buffer */
-        int ig1                             = gvec_fft_slab().offsets[comm_ortho_fft().rank()] + ig;
-        f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
-    }
-    gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
-}
-
 Gvec_shells::Gvec_shells(Gvec const& gvec__)
     : comm_(gvec__.comm())
     , gvec_(gvec__)
@@ -743,6 +696,48 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             throw std::runtime_error("Wrong remapped shell of G-vector");
         }
     }
+}
+
+void serialize(serializer& s__, Gvec const& gv__)
+{
+    serialize(s__, gv__.vk_);
+    serialize(s__, gv__.Gmax_);
+    serialize(s__, gv__.lattice_vectors_);
+    serialize(s__, gv__.reduce_gvec_);
+    serialize(s__, gv__.bare_gvec_);
+    serialize(s__, gv__.num_gvec_);
+    serialize(s__, gv__.num_gvec_shells_);
+    serialize(s__, gv__.gvec_full_index_);
+    serialize(s__, gv__.gvec_shell_);
+    serialize(s__, gv__.gvec_shell_len_);
+    serialize(s__, gv__.gvec_index_by_xy_);
+    serialize(s__, gv__.z_columns_);
+    serialize(s__, gv__.gvec_distr_);
+    serialize(s__, gv__.zcol_distr_);
+    serialize(s__, gv__.gvec_base_mapping_);
+    serialize(s__, gv__.offset_);
+    serialize(s__, gv__.count_);
+}
+
+void deserialize(serializer& s__, Gvec& gv__)
+{
+    deserialize(s__, gv__.vk_);
+    deserialize(s__, gv__.Gmax_);
+    deserialize(s__, gv__.lattice_vectors_);
+    deserialize(s__, gv__.reduce_gvec_);
+    deserialize(s__, gv__.bare_gvec_);
+    deserialize(s__, gv__.num_gvec_);
+    deserialize(s__, gv__.num_gvec_shells_);
+    deserialize(s__, gv__.gvec_full_index_);
+    deserialize(s__, gv__.gvec_shell_);
+    deserialize(s__, gv__.gvec_shell_len_);
+    deserialize(s__, gv__.gvec_index_by_xy_);
+    deserialize(s__, gv__.z_columns_);
+    deserialize(s__, gv__.gvec_distr_);
+    deserialize(s__, gv__.zcol_distr_);
+    deserialize(s__, gv__.gvec_base_mapping_);
+    deserialize(s__, gv__.offset_);
+    deserialize(s__, gv__.count_);
 }
 
 } // namespace sddk

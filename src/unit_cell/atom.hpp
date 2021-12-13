@@ -220,7 +220,9 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::memcpy(rf_coef.at(memory_t::host, 0, 0, i), rf_spline[i].coeffs().at(memory_t::host), nmtp * 4 * sizeof(double));
+                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
+                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
+                              rf_coef.at(memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -248,8 +250,10 @@ class Atom
             PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
             result.allocate(memory_t::device);
-            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp, rgrid.x().at(memory_t::device),
-                                        rgrid.dx().at(memory_t::device), rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device), result.at(memory_t::device));
+            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
+                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
+                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
+                                        result.at(memory_t::device));
             acc::sync();
             //if (type().parameters().control().print_performance_) {
             //    double tval = t2.stop();

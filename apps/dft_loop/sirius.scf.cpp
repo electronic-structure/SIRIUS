@@ -112,10 +112,9 @@ double ground_state(Simulation_context& ctx,
         dft.initial_state();
     }
 
-    double initial_tol = ctx.iterative_solver_tolerance();
-
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+            inp.num_dft_iter(), write_state);
     /* compute forces and stress */
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -198,7 +197,8 @@ double ground_state(Simulation_context& ctx,
             }
             ctx.unit_cell().set_lattice_vectors(lv1);
             dft.update();
-            auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
+            auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                    inp.num_dft_iter(), write_state);
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
                 Stress& s       = dft.stress();
                 auto stress_tot = s.calc_stress_total();
@@ -302,6 +302,11 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
+        if (ctx->comm().rank() == 0) {
+            auto dict = ctx->serialize();
+            std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
+        }
         //if (ctx->full_potential()) {
         //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
         //}
@@ -310,7 +315,7 @@ void run_tasks(cmd_args const& args)
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
-        ctx->iterative_solver_tolerance(1e-12);
+        ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {
@@ -365,7 +370,7 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
-        Hamiltonian0 H0(potential);
+        Hamiltonian0<double> H0(potential);
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
@@ -374,9 +379,9 @@ void run_tasks(cmd_args const& args)
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        band.solve(ks, H0, true);
+        band.solve<double, double>(ks, H0, true, ctx->cfg().iterative_solver().energy_tolerance());
 
-        ks.sync_band<sync_band_t::energy>();
+        ks.sync_band<double, sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
@@ -396,13 +401,13 @@ void run_tasks(cmd_args const& args)
                 json bnd_k;
                 bnd_k["kpoint"] = std::vector<double>(3, 0);
                 for (int x = 0; x < 3; x++) {
-                    bnd_k["kpoint"][x] = ks[ik]->vk()[x];
+                    bnd_k["kpoint"][x] = ks.get<double>(ik)->vk()[x];
                 }
                 std::vector<double> bnd_e;
 
                 for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
                     for (int j = 0; j < ctx->num_bands(); j++) {
-                        bnd_e.push_back(ks[ik]->band_energy(j, ispn));
+                        bnd_e.push_back(ks.get<double>(ik)->band_energy(j, ispn));
                     }
                 }
                 //ks.get_band_energies(ik, bnd_e.data());

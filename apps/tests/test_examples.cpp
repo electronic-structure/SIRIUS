@@ -1,5 +1,6 @@
 #include <sirius.hpp>
 #include <spla/spla.hpp>
+#include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
 
@@ -126,7 +127,7 @@ dmatrix<double_complex> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
 Wave_functions<double> tmp(gvp, N, memory_t::host);
 /* orthogonalize wave-functions */
-orthogonalize<double_complex, 0, 0>(spla_ctx, memory_t::host, linalg_t::blas, ispn, {&wf}, 0, N, o, tmp);
+orthogonalize<double_complex>(spla_ctx, memory_t::host, linalg_t::blas, spin_range(ispn), 0, 0, {&wf}, 0, N, o, tmp);
 /* compute overlap */
 inner(spla_ctx, spin_range(ispn), wf, 0, N, wf, 0, N, o, 0, 0);
 /* get the diagonal of the matrix */

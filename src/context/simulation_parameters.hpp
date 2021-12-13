@@ -39,7 +39,9 @@ namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
 nlohmann::json const& get_options_dictionary();
-nlohmann::json const& get_section_options(const std::string& section__);
+
+nlohmann::json const& get_section_options(std::string const& section__);
+
 class Config : public config_t
 {
   public:
@@ -48,6 +50,10 @@ class Config : public config_t
     void lock()
     {
         dict_["locked"] = true;
+    }
+    void unlock()
+    {
+        dict_.erase("locked");
     }
 };
 
@@ -84,9 +90,6 @@ class Simulation_parameters
 
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
-
-    /// JSON dictionary containing all runtime options set up through the interface.
-    nlohmann::json runtime_options_dictionary_;
 
     /// Storage for various memory pools.
     mutable std::map<memory_t, memory_pool> memory_pool_;
@@ -500,19 +503,6 @@ class Simulation_parameters
         return use_symmetry__;
     }
 
-    /// Get tolerance of the iterative solver.
-    double iterative_solver_tolerance() const
-    {
-        return cfg().iterative_solver().energy_tolerance();
-    }
-
-    /// Set the tolerance of the iterative solver.
-    double iterative_solver_tolerance(double tolerance__)
-    {
-        cfg().iterative_solver().energy_tolerance(tolerance__);
-        return tolerance__;
-    }
-
     std::string iterative_solver_type(std::string type__)
     {
         cfg().iterative_solver().type(type__);
@@ -524,12 +514,6 @@ class Simulation_parameters
     {
         cfg().iterative_solver().empty_states_tolerance(tolerance__);
         return tolerance__;
-    }
-
-    /// Get the options set at runtime.
-    nlohmann::json& get_runtime_options_dictionary()
-    {
-        return runtime_options_dictionary_;
     }
 
     /// Set the variable which controls the type of sperical coverage.

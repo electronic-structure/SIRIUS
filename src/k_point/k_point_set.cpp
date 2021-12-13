@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-template <sync_band_t what>
+template <typename T, sync_band_t what>
 void K_point_set::sync_band()
 {
     PROFILE("sirius::K_point_set::sync_band");
@@ -38,15 +38,14 @@ void K_point_set::sync_band()
     #pragma omp parallel
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
+        auto kp = this->get<T>(ik);
         switch (what) {
             case sync_band_t::energy: {
-                std::copy(&kpoints_[ik]->band_energies_(0, 0), &kpoints_[ik]->band_energies_(0, 0) + nb,
-                    &data(0, 0, ik));
+                std::copy(&kp->band_energies_(0, 0), &kp->band_energies_(0, 0) + nb, &data(0, 0, ik));
                 break;
             }
             case sync_band_t::occupancy: {
-                std::copy(&kpoints_[ik]->band_occupancies_(0, 0), &kpoints_[ik]->band_occupancies_(0, 0) + nb,
-                    &data(0, 0, ik));
+                std::copy(&kp->band_occupancies_(0, 0), &kp->band_occupancies_(0, 0) + nb, &data(0, 0, ik));
                 break;
             }
         }
@@ -57,13 +56,14 @@ void K_point_set::sync_band()
 
     #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
+        auto kp = this->get<T>(ik);
         switch (what) {
             case sync_band_t::energy: {
-                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_energies_(0, 0));
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kp->band_energies_(0, 0));
                 break;
             }
             case sync_band_t::occupancy: {
-                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_occupancies_(0, 0));
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kp->band_occupancies_(0, 0));
                 break;
             }
         }
@@ -71,11 +71,22 @@ void K_point_set::sync_band()
 }
 
 template
-void K_point_set::sync_band<sync_band_t::energy>();
+void
+K_point_set::sync_band<double, sync_band_t::energy>();
 
 template
-void K_point_set::sync_band<sync_band_t::occupancy>();
+void
+K_point_set::sync_band<double, sync_band_t::occupancy>();
 
+#if defined(USE_FP32)
+template
+void
+K_point_set::sync_band<float, sync_band_t::energy>();
+
+template
+void
+K_point_set::sync_band<float, sync_band_t::occupancy>();
+#endif
 
 void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
 {
@@ -136,6 +147,9 @@ void K_point_set::initialize(std::vector<int> const& counts)
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+#if defined(USE_FP32)
+        kpoints_float_[spl_num_kpoints_[ikloc]]->initialize();
+#endif
     }
 
     if (ctx_.verbosity() > 0) {
@@ -188,10 +202,16 @@ double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
  *  \param  maxstep max number of Newton iterations
  */
 template <class Nt, class DNt, class D2Nt>
-double
+auto
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
 {
-    double mu  = mu0;
+    struct {
+        double mu; // chemical potential
+        int iter; // newton information
+        std::vector<double> ys; // newton history
+    } res;
+    double mu = mu0;
+    double alpha{1.0}; // Newton damping
     int iter{0};
     while (true) {
         // compute
@@ -199,33 +219,43 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         double dNf  = dN(mu);
         double ddNf = ddN(mu);
         /* minimize (N(mu) - ne)^2  */
-        double F = (Nf-ne)*(Nf-ne);
-        double dF = 2*(Nf-ne) * dNf;
-        double ddF = 2*dNf*dNf + 2*(Nf-ne) * ddNf;
-        mu = mu - dF / std::abs(ddF);
+        //double F = (Nf - ne) * (Nf - ne);
+        double dF = 2 * (Nf - ne) * dNf;
+        double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
+        mu = mu - alpha * dF / std::abs(ddF);
+
+        res.ys.push_back(mu);
 
         if (std::abs(dF) < tol) {
-            return mu;
+            res.iter = iter;
+            res.mu = mu;
+            return res;
         }
 
         if (std::abs(ddF) < 1e-10) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!\n";
-            TERMINATE(s);
+            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!";
+            RTE_THROW(s);
         }
 
         iter++;
         if (iter > maxstep) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed after 10000 steps!\n";
-            TERMINATE(s);
+            s << "Newton minimization (chemical potential) failed after " << maxstep << " steps!" << std::endl
+              << "target number of electrons : " << ne << std::endl
+              << "initial guess for chemical potential : " << mu0 << std::endl
+              << "current value of chemical potential : " << mu;
+            RTE_THROW(s);
         }
     }
 }
 
+template <typename T>
 void K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
+
+    double tol{1e-11};
 
     auto band_occ_callback = ctx_.band_occ_callback();
     if (band_occ_callback) {
@@ -246,7 +276,7 @@ void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    energy_fermi_ = std::max(energy_fermi_, kpoints_[ik]->band_energy(j, ispn));
+                    energy_fermi_ = std::max(energy_fermi_, this->get<T>(ik)->band_energy(j, ispn));
                 }
             }
         }
@@ -255,17 +285,17 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp parallel for
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    kpoints_[ik]->band_occupancy(j, ispn, ctx_.max_occupancy());
+                    this->get<T>(ik)->band_occupancy(j, ispn, ctx_.max_occupancy());
                 }
             }
         }
 
-        this->sync_band<sync_band_t::occupancy>();
+        this->sync_band<T, sync_band_t::occupancy>();
         return;
     }
 
     if (ctx_.smearing_width() == 0) {
-        throw std::runtime_error("[find_band_occupancies] zero smearing width");
+        RTE_THROW("zero smearing width");
     }
 
     /* get minimum and maximum band energies */
@@ -277,8 +307,8 @@ void K_point_set::find_band_occupancies()
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            emin = std::min(emin, kpoints_[ik]->band_energy(0, ispn));
-            emax = std::max(emax, kpoints_[ik]->band_energy(ctx_.num_bands() - 1, ispn));
+            emin = std::min(emin, this->get<T>(ik)->band_energy(0, ispn));
+            emax = std::max(emax, this->get<T>(ik)->band_energy(ctx_.num_bands() - 1, ispn));
         }
     }
     comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
@@ -292,11 +322,11 @@ void K_point_set::find_band_occupancies()
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
             int ik = spl_num_kpoints_[ikloc];
             double tmp{0};
-#pragma omp parallel reduction(+ : tmp)
+            #pragma omp parallel reduction(+ : tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp for
+                #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
-                    tmp += f(ef - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+                    tmp += f(ef - this->get<T>(ik)->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
                 }
             }
             ne += tmp * kpoints_[ik]->weight();
@@ -314,32 +344,43 @@ void K_point_set::find_band_occupancies()
         f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
     }
 
-    auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-    energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+    try {
+        auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+        energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
 
-    /* for cold and Methfessel Paxton smearing start newton minimization  */
-    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-        f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-        auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
-        auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
-        auto N   = [&](double mu) { return compute_ne(mu, f); };
-        auto dN  = [&](double mu) { return compute_ne(mu, df); };
-        auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-        energy_fermi_ = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, 1e-11);
+        /* for cold and Methfessel Paxton smearing start newton minimization  */
+        if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+            f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
+            auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
+            auto N   = [&](double mu) { return compute_ne(mu, f); };
+            auto dN  = [&](double mu) { return compute_ne(mu, df); };
+            auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
+            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
+            energy_fermi_ = res_newton.mu;
+            ctx_.message(2, __function_name__, "newton iteration converged after %d steps\n", res_newton.iter);
+
+        }
+    } catch(std::exception const& e) {
+        ctx_.message(2, __function_name__, "%s\n", e.what());
+        ctx_.message(2, __function_name__, "%s\n", "fallback to bisection search\n");
+        f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+        auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+        energy_fermi_ = bisection_search(F, emin, emax, tol);
     }
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                kpoints_[ik]->band_occupancy(j, ispn, o);
+                auto o = f(energy_fermi_ - this->get<T>(ik)->band_energy(j, ispn)) * ctx_.max_occupancy();
+                this->get<T>(ik)->band_occupancy(j, ispn, o);
             }
         }
     }
 
-    this->sync_band<sync_band_t::occupancy>();
+    this->sync_band<T, sync_band_t::occupancy>();
 
     band_gap_ = 0.0;
 
@@ -356,8 +397,8 @@ void K_point_set::find_band_occupancies()
                 eminmax.second = std::numeric_limits<double>::lowest();
 
                 for (int ik = 0; ik < num_kpoints(); ik++) {
-                    eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
-                    eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
+                    eminmax.first  = std::min(eminmax.first, this->get<T>(ik)->band_energy(j, ispn));
+                    eminmax.second = std::max(eminmax.second, this->get<T>(ik)->band_energy(j, ispn));
                 }
 
                 eband[j + ispn * ctx_.num_bands()] = eminmax;
@@ -375,8 +416,16 @@ void K_point_set::find_band_occupancies()
             band_gap_ = eband[ist].first - eband[ist - 1].second;
         }
     }
-    }
+}
 
+template
+void K_point_set::find_band_occupancies<double>();
+#if defined(USE_FP32)
+template
+void K_point_set::find_band_occupancies<float>();
+#endif
+
+template <typename T>
 double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
@@ -385,7 +434,7 @@ double K_point_set::valence_eval_sum() const
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = kpoints_[ik];
+        auto const& kp = this->get<T>(ik);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
@@ -400,6 +449,21 @@ double K_point_set::valence_eval_sum() const
     return eval_sum;
 }
 
+double K_point_set::valence_eval_sum() const
+{
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
+        return this->valence_eval_sum<float>();
+#else
+        RTE_THROW("not compiled with FP32 support");
+        return 0; // make compiled happy
+#endif
+    } else {
+        return this->valence_eval_sum<double>();
+    }
+}
+
+template <typename T>
 double K_point_set::entropy_sum() const
 {
     double s_sum{0};
@@ -419,7 +483,7 @@ double K_point_set::entropy_sum() const
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = kpoints_[ik];
+        auto const& kp = this->get<T>(ik);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
@@ -432,6 +496,20 @@ double K_point_set::entropy_sum() const
     ctx_.comm().allreduce(&s_sum, 1);
 
     return s_sum;
+}
+
+double K_point_set::entropy_sum() const
+{
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
+        return this->entropy_sum<float>();
+#else
+        RTE_THROW("not compiled with FP32 support");
+        return 0; // make compiler happy
+#endif
+    } else {
+        return this->entropy_sum<double>();
+    }
 }
 
 void K_point_set::print_info()
@@ -484,7 +562,7 @@ void K_point_set::save(std::string const& name__) const
     for (int ik = 0; ik < num_kpoints(); ik++) {
         /* check if this ranks stores the k-point */
         if (ctx_.comm_k().rank() == spl_num_kpoints_.local_rank(ik)) {
-            kpoints_[ik]->save(name__, ik);
+            this->get<double>(ik)->save(name__, ik);
         }
         /* wait for all */
         ctx_.comm().barrier();

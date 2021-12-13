@@ -4,14 +4,9 @@
 using namespace sirius;
 
 template <typename T>
-double test_diag(BLACS_grid const& blacs_grid__,
-               int N__,
-               int n__,
-               int nev__,
-               int bs__,
-               bool test_gen__,
-               std::string name__,
-               Eigensolver& solver)
+double
+test_diag(BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__, std::string name__,
+          Eigensolver& solver)
 {
     auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
     dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
@@ -57,6 +52,9 @@ double test_diag(BLACS_grid const& blacs_grid__,
             printf("complex data type\n");
         }
     }
+    if (blacs_grid__.comm().rank() == 0) {
+        sirius::print_memory_usage(__FILE__, __LINE__);
+    }
     double t = -utils::wtime();
     if (test_gen__) {
         if (n__ == nev__) {
@@ -72,6 +70,9 @@ double test_diag(BLACS_grid const& blacs_grid__,
         }
     }
     t += utils::wtime();
+    if (blacs_grid__.comm().rank() == 0) {
+        sirius::print_memory_usage(__FILE__, __LINE__);
+    }
 
     if (blacs_grid__.comm().rank() == 0) {
         printf("eigen-values (min, max): %18.12f %18.12f\n", eval.front(), eval.back());

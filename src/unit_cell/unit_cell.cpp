@@ -507,24 +507,36 @@ Unit_cell::generate_radial_integrals()
 {
     PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
-        int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
+    try {
+        for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
+            int ic = spl_num_atom_symmetry_classes(icloc);
+            atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
+        }
+
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            int rank = spl_num_atom_symmetry_classes().local_rank(ic);
+            atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
+        }
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in generating atom_symmetry_class radial integrals";
+        RTE_THROW(s, e.what());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-        int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
-    }
+    try {
+        for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
+            int ia = spl_num_atoms_[ialoc];
+            atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
+        }
 
-    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
-        int ia = spl_num_atoms_[ialoc];
-        atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
-    }
-
-    for (int ia = 0; ia < num_atoms(); ia++) {
-        int rank = spl_num_atoms().local_rank(ia);
-        atom(ia).sync_radial_integrals(comm_, rank);
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int rank = spl_num_atoms().local_rank(ia);
+            atom(ia).sync_radial_integrals(comm_, rank);
+        }
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in generating atom radial integrals";
+        RTE_THROW(s, e.what());
     }
 }
 
@@ -552,10 +564,6 @@ Unit_cell::chemical_formula()
 Atom_type&
 Unit_cell::add_atom_type(const std::string label__, const std::string file_name__)
 {
-    if (atoms_.size()) {
-        WARNING("New feature in use: add new atom type if atoms are already added. Please check your results!");
-    }
-
     int id = next_atom_type_id(label__);
     atom_types_.push_back(std::shared_ptr<Atom_type>(new Atom_type(parameters_, id, label__, file_name__)));
     return *atom_types_.back();
@@ -567,13 +575,13 @@ Unit_cell::add_atom(const std::string label, vector3d<double> position, vector3d
     if (atom_type_id_map_.count(label) == 0) {
         std::stringstream s;
         s << "atom type with label " << label << " is not found";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     if (atom_id_by_position(position) >= 0) {
         std::stringstream s;
         s << "atom with the same position is already in list" << std::endl
           << "  position : " << position[0] << " " << position[1] << " " << position[2];
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     atoms_.push_back(std::shared_ptr<Atom>(new Atom(atom_type(label), position, vector_field)));

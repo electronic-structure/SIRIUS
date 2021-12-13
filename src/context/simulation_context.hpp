@@ -36,7 +36,7 @@
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "spfft/spfft.hpp"
+#include "SDDK/fft.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -72,6 +72,9 @@ class Simulation_context : public Simulation_parameters
     /// Communicator for this simulation.
     Communicator const& comm_;
 
+    Communicator comm_k_;
+    Communicator comm_band_;
+
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
 
@@ -97,6 +100,10 @@ class Simulation_context : public Simulation_parameters
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<spfft::Transform> spfft_transform_;
     std::unique_ptr<spfft::Grid> spfft_grid_;
+#if defined(USE_FP32)
+    std::unique_ptr<spfft::TransformFloat> spfft_transform_float_;
+    std::unique_ptr<spfft::GridFloat> spfft_grid_float_;
+#endif
 
     /// Grid descriptor for the coarse-grained FFT transform.
     sddk::FFT3D_grid fft_coarse_grid_;
@@ -104,6 +111,10 @@ class Simulation_context : public Simulation_parameters
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
+#if defined(USE_FP32)
+    std::unique_ptr<spfft::TransformFloat> spfft_transform_coarse_float_;
+    std::unique_ptr<spfft::GridFloat> spfft_grid_coarse_float_;
+#endif
 
     /// G-vectors within the Gmax cutoff.
     std::unique_ptr<Gvec> gvec_;
@@ -249,8 +260,6 @@ class Simulation_context : public Simulation_parameters
     /// Total number of iterative solver steps.
     mutable int num_itsol_steps_{0};
 
-    double iterative_solver_tolerance_;
-
     /// True if the context is already initialized.
     bool initialized_{false};
 
@@ -319,6 +328,16 @@ class Simulation_context : public Simulation_parameters
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
     }
+
+    Simulation_context(Communicator const& comm__, Communicator const& comm_k__, Communicator const& comm_band__)
+        : comm_(comm__)
+        , comm_k_(comm_k__)
+        , comm_band_(comm_band__)
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+    }
+
 
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
@@ -436,8 +455,7 @@ class Simulation_context : public Simulation_parameters
     /** This communicator is used to split k-points */
     Communicator const& comm_k() const
     {
-        /* 1st dimension of the MPI grid is used for k-point distribution */
-        return mpi_grid_->communicator(1 << 0);
+        return comm_k_;
     }
 
     /// Band parallelization communicator.
@@ -445,8 +463,7 @@ class Simulation_context : public Simulation_parameters
         to create the BLACS grid. Diagonalization might be sequential. */
     Communicator const& comm_band() const
     {
-        /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
-        return mpi_grid_->communicator(1 << 1 | 1 << 2);
+        return comm_band_;
     }
 
     /// Communicator of the dense FFT grid.
@@ -754,30 +771,20 @@ class Simulation_context : public Simulation_parameters
         cfg().settings().fft_grid_size(fft_grid_size__);
     }
 
-    spfft::Grid& spfft_grid_coarse()
-    {
-        return *spfft_grid_coarse_;
-    }
+    template <typename T>
+    spfft_grid_type<T>& spfft_grid_coarse();
 
-    spfft::Transform& spfft()
-    {
-        return *spfft_transform_;
-    }
+    template <typename T>
+    spfft_transform_type<T>& spfft();
 
-    spfft::Transform const& spfft() const
-    {
-        return *spfft_transform_;
-    }
+    template <typename T>
+    spfft_transform_type<T> const& spfft() const;
 
-    spfft::Transform& spfft_coarse()
-    {
-        return *spfft_transform_coarse_;
-    }
+    template <typename T>
+    spfft_transform_type<T>& spfft_coarse();
 
-    spfft::Transform const& spfft_coarse() const
-    {
-        return *spfft_transform_coarse_;
-    }
+    template <typename T>
+    spfft_transform_type<T> const& spfft_coarse() const;
 
     sddk::FFT3D_grid const& fft_grid() const
     {
@@ -887,19 +894,6 @@ class Simulation_context : public Simulation_parameters
         return veff_callback_;
     }
 
-    /// Get tolerance of the iterative solver.
-    double iterative_solver_tolerance() const
-    {
-        return iterative_solver_tolerance_;
-    }
-
-    /// Set the tolerance of the iterative solver.
-    double iterative_solver_tolerance(double tolerance__)
-    {
-        iterative_solver_tolerance_ = tolerance__;
-        return tolerance__;
-    }
-
     /// Export parameters of simulation context as a JSON dictionary.
     nlohmann::json serialize()
     {
@@ -907,7 +901,7 @@ class Simulation_context : public Simulation_parameters
         dict["config"] = cfg().dict();
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid = {spfft_coarse().dim_x(), spfft_coarse().dim_y(), spfft_coarse().dim_z()};
+        auto fftgrid = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(), spfft_transform_coarse_->dim_z()};
         dict["fft_coarse_grid"] = fftgrid;
         dict["mpi_grid"] = mpi_grid_dims();
         dict["omega"] = unit_cell().omega();

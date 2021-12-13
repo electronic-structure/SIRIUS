@@ -72,8 +72,10 @@ void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_fu
 }
 
 // If complex type, no scaling required
+#if defined(USE_FP32)
 template <>
 void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions<float>& bra) {}
+#endif
 
 template <>
 void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions<double>& bra) {}
@@ -186,7 +188,7 @@ template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range isp
                                     Wave_functions<double>& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
                                     int irow0__, int jcol0__);
 
-#ifdef USE_FP32
+#if defined(USE_FP32)
 template void inner<float>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions<float>& bra__,
                             int i0__, int m__, Wave_functions<float>& ket__, int j0__, int n__, dmatrix<float>& result__,
                             int irow0__, int jcol0__);

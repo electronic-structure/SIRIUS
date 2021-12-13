@@ -90,9 +90,15 @@ class DFT_ground_state
     }
     ~DFT_ground_state()
     {
-        ctx_.message(2, __function_name__, "local op. applied: %i\n", ctx_.num_loc_op_applied());
-        ctx_.message(2, __function_name__, "evp. work count: %f\n", ctx_.evp_work_count());
-        ctx_.message(2, __function_name__, "number of iterative solver steps: %i\n", ctx_.num_itsol_steps());
+        int n = ctx_.num_loc_op_applied();
+        kset_.comm().allreduce(&n, 1);
+        ctx_.message(2, __function_name__, "local op. applied: %i\n", n);
+        double d = ctx_.evp_work_count();
+        kset_.comm().allreduce(&d, 1);
+        ctx_.message(2, __function_name__, "evp. work count: %f\n", d);
+        n = ctx_.num_itsol_steps();
+        kset_.comm().allreduce(&n, 1);
+        ctx_.message(2, __function_name__, "number of iterative solver steps: %i\n", n);
     }
 
     /// Return reference to a simulation context.

@@ -82,94 +82,83 @@ void Force::symmetrize(mdarray<double, 2>& forces__) const
     double* sbuf = ctx_.unit_cell().spl_num_atoms().local_size() ? sym_forces.at(memory_t::host) : nullptr;
     ctx_.comm().allgather(sbuf, forces__.at(memory_t::host), 3 * ctx_.unit_cell().spl_num_atoms().local_size(),
         3 * ctx_.unit_cell().spl_num_atoms().global_offset());
-
-
-    ////#pragma omp parallel for
-    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-
-    //    for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
-    //        int ja  = ctx_.unit_cell().symmetry().sym_table(ia, isym);
-    //        auto Rc = ctx_.unit_cell().symmetry().lattice_vectors() *
-    //            matrix3d<double>(ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R) *
-    //            ctx_.unit_cell().symmetry().inverse_lattice_vectors();
-
-    //        force_ja = Rc * force_ia;
-
-    //        //#pragma omp atomic update
-    //        sym_forces(0, ja) += force_ja[0];
-
-    //        //#pragma omp atomic update
-    //        sym_forces(1, ja) += force_ja[1];
-
-    //        //#pragma omp atomic update
-    //        sym_forces(2, ja) += force_ja[2];
-    //    }
-    //}
-    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-    //    for (int x: {0, 1, 2}) {
-    //        sym_forces(x, ia) /= (double)ctx_.unit_cell().symmetry().num_mag_sym();
-    //    }
-    //}
-    //sym_forces >> forces__;
-
-
-
-    //for (int i = 0; i < sym__.num_mag_sym(); i++) {
-    //    /* full space-group symmetry operation is {R|t} */
-    //    int pr = sym__.magnetic_group_symmetry(i).spg_op.proper;
-    //    auto eang = sym__.magnetic_group_symmetry(i).spg_op.euler_angles;
-    //    int isym = sym__.magnetic_group_symmetry(i).isym;
-    //    SHT::rotation_matrix(lmax, eang, pr, rotm);
-
-    //    for (int ia = 0; ia < sym__.num_atoms(); ia++) {
-    //        int ja = sym__.sym_table(ia, isym);
-    //        auto location = spl_atoms.location(ja);
-    //        if (location.rank == comm__.rank()) {
-    //            linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-    //                                        frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
-    //                                        fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
-    //        }
-    //    }
-    //}
-    //double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    //comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
-    //        lmmax * nrmax * spl_atoms.global_offset());
-
-
-
 }
 
+template <typename T>
+void Force::calc_forces_nonloc_aux()
+{
+    forces_nonloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_nonloc_.zero();
+
+    auto& spl_num_kp = kset_.spl_num_kpoints();
+
+    for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
+        auto* kp = kset_.get<T>(spl_num_kp[ikploc]);
+
+        if (ctx_.gamma_point()) {
+            add_k_point_contribution<T>(*kp, forces_nonloc_);
+        } else {
+            add_k_point_contribution<std::complex<T>>(*kp, forces_nonloc_);
+        }
+    }
+
+    ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+    symmetrize(forces_nonloc_);
+}
+
+sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
+{
+    PROFILE("sirius::Force::calc_forces_nonloc");
+
+    if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(USE_FP32)
+        this->calc_forces_nonloc_aux<float>();
+#endif
+    } else {
+        this->calc_forces_nonloc_aux<double>();
+    }
+    return forces_nonloc_;
+}
 
 template <typename T>
-void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
+void Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
+            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
         }
     }
 
     Non_local_functor<T> nlf(ctx_, bp_grad);
 
-    nlf.add_k_point_contribution(kpoint, forces__);
+    sddk::mdarray<real_type<T>, 2> f(3, ctx_.unit_cell().num_atoms());
+    f.zero();
+
+    nlf.add_k_point_contribution(kp__, f);
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        for (int x: {0, 1, 2}) {
+            forces__(x, ia) += f(x, ia);
+        }
+    }
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* deallocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
 }
 
-void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
+void Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
 {
     dm__.zero();
 
@@ -267,11 +256,11 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0 H0(potential_);
+    Hamiltonian0<double> H0(potential_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
-        auto hk = H0(*kset_[ik]);
-        add_ibs_force(kset_[ik], hk, ffac, forces_ibs_);
+        auto hk = H0(*kset_.get<double>(ik));
+        add_ibs_force(kset_.get<double>(ik), hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
@@ -348,12 +337,12 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
         /* recompute the hubbard potential */
         ::sirius::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
 
-        Q_operator q_op(ctx_);
+        Q_operator<double> q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
             int ik  = kset_.spl_num_kpoints(ikloc);
-            auto kp = kset_[ik];
+            auto kp = kset_.get<double>(ik);
             kp->beta_projectors().prepare();
             if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
@@ -655,7 +644,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
     return forces_core_;
 }
 
-void Force::hubbard_force_add_k_contribution_collinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
+void Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_)
 {
     mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
@@ -755,7 +744,7 @@ mdarray<double, 2> const& Force::calc_forces_usnl()
     return forces_usnl_;
 }
 
-void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
+void Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 
@@ -906,32 +895,6 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
     } // ia
 }
 
-mdarray<double, 2> const& Force::calc_forces_nonloc()
-{
-    PROFILE("sirius::Force::calc_forces_nonloc");
-
-    forces_nonloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-    forces_nonloc_.zero();
-
-    auto& spl_num_kp = kset_.spl_num_kpoints();
-
-    for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-        K_point* kp = kset_[spl_num_kp[ikploc]];
-
-        if (ctx_.gamma_point()) {
-            add_k_point_contribution<double>(*kp, forces_nonloc_);
-        } else {
-            add_k_point_contribution<double_complex>(*kp, forces_nonloc_);
-        }
-    }
-
-    ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
-
-    symmetrize(forces_nonloc_);
-
-    return forces_nonloc_;
-}
-
 void Force::print_info()
 {
     if (ctx_.comm().rank() == 0) {
@@ -966,5 +929,14 @@ void Force::print_info()
         }
     }
 }
+
+template
+void
+Force::calc_forces_nonloc_aux<double>();
+#if defined(USE_FP32)
+template
+void
+Force::calc_forces_nonloc_aux<float>();
+#endif
 
 } // namespace sirius

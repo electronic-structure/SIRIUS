@@ -62,11 +62,16 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
+    if (ctx_.full_potential()) {
+        using gc_z = Gaunt_coefficients<double_complex>;
+        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+    }
+
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
+        xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
-            xc_func_.back()->set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
+            xc_func_.back().set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
     }
 
@@ -85,13 +90,13 @@ Potential::Potential(Simulation_context& ctx__)
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
         for (int i = 0; i < nsigma ; i++) {
-            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
         }
     }
 
     if (!ctx_.full_potential()) {
-        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
-        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
+        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
         dveff_->zero();
     }
 
@@ -132,13 +137,6 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     update();
-}
-
-Potential::~Potential()
-{
-    for (auto& ixc: xc_func_) {
-        delete ixc;
-    }
 }
 
 void Potential::update()
@@ -210,8 +208,8 @@ void Potential::update()
 
     // VDWXC depends on unit cell, which might have changed.
     for (auto& xc : xc_func_) {
-        if (xc->is_vdw()) {
-            xc->vdw_update_unit_cell(ctx_.spfft(), ctx_.unit_cell().lattice_vectors());
+        if (xc.is_vdw()) {
+            xc.vdw_update_unit_cell(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors());
         }
     }
 }
@@ -220,20 +218,11 @@ bool Potential::is_gradient_correction() const
 {
     bool is_gga{false};
     for (auto& ixc : xc_func_) {
-        if (ixc->is_gga() || ixc->is_vdw()) {
+        if (ixc.is_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
     return is_gga;
-}
-
-void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
-{
-    /* create list of XC functionals */
-    for (auto& xc_label : labels__) {
-        xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label,
-                    ctx_.num_spins()));
-    }
 }
 
 void Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
@@ -344,6 +333,82 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
                 aux_bf_(x, ia) *= ctx_.cfg().parameters().reduce_aux_bf();
             }
         }
+    }
+}
+
+void Potential::save()
+{
+    effective_potential().hdf5_write(storage_file_name, "effective_potential");
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        std::stringstream s;
+        s << "effective_magnetic_field/" << j;
+        effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
+    }
+    if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
+        HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
+        for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+            if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
+                fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+            }
+        }
+    }
+    comm_.barrier();
+}
+
+void Potential::load()
+{
+    HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+
+    int ngv;
+    fin.read("/parameters/num_gvec", &ngv, 1);
+    if (ngv != ctx_.gvec().num_gvec()) {
+        TERMINATE("wrong number of G-vectors");
+    }
+    mdarray<int, 2> gv(3, ngv);
+    fin.read("/parameters/gvec", gv);
+
+    effective_potential().hdf5_read(fin["effective_potential"], gv);
+
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        effective_magnetic_field(j).hdf5_read(fin["effective_magnetic_field"][j], gv);
+    }
+
+    if (ctx_.full_potential()) {
+        update_atomic_potential();
+    }
+
+    if (!ctx_.full_potential()) {
+        HDF5_tree fout(storage_file_name, hdf5_access_t::read_only);
+        for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+            fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+        }
+    }
+}
+
+void Potential::update_atomic_potential()
+{
+    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+        int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+        int nmtp = unit_cell_.atom(ia).num_mt_points();
+
+        std::vector<double> veff(nmtp);
+
+        for (int ir = 0; ir < nmtp; ir++) {
+            veff[ir] = y00 * effective_potential().f_mt<index_domain_t::global>(0, ir, ia);
+        }
+
+        unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        double* veff = &effective_potential().f_mt<index_domain_t::global>(0, 0, ia);
+
+        double* beff[] = {nullptr, nullptr, nullptr};
+        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+            beff[i] = &effective_magnetic_field(i).f_mt<index_domain_t::global>(0, 0, ia);
+        }
+
+        unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
     }
 }
 

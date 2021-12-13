@@ -444,7 +444,16 @@ class Atom_type
     inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__,
             std::vector<double> f__, double occ__ = 0.0)
     {
-        ps_atomic_wfs_.emplace_back(n__, am__, occ__, Spline<double>(radial_grid_, f__));
+        Spline<double> rwf(radial_grid_, f__);
+        auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
+        if (d < 1e-4) {
+            std::stringstream s;
+            s << "small norm (" << d << ") of radial atomic pseudo wave-function for n=" << n__
+              << " and j=" << am__.j();
+            RTE_THROW(s);
+        }
+
+        ps_atomic_wfs_.emplace_back(n__, am__, occ__, std::move(rwf));
     }
 
     /// Return a tuple describing a given atomic radial function

@@ -212,6 +212,8 @@ class Stress
      *   \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) = \sin(\theta) \sin(\phi) \\
      *   \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi) = \cos(\theta)
      * \f]
+     *
+     * \tparam T  One of float, double, complex<float> or complex<double> types for generic or Gamma point case.
      */
     template <typename T>
     void calc_stress_nonloc_aux();
@@ -377,6 +379,9 @@ class Stress
      *  -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} (G+k)_{\mu} (G+k)_{\nu} \sum_j f_j  |\psi_j({\bf G + k})|^2
      *  \f]
      */
+    template <typename T>
+    void calc_stress_kin_aux();
+
     matrix3d<double> calc_stress_kin();
 
     inline matrix3d<double> stress_kin() const

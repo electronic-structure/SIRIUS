@@ -78,9 +78,19 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define STOP() TERMINATE("terminated by request")
 
+inline void print_checksum(std::string label__, float cs__)
+{
+    std::printf("checksum(%s): %18.6f\n", label__.c_str(), cs__);
+}
+
 inline void print_checksum(std::string label__, double cs__)
 {
     std::printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
+}
+
+inline void print_checksum(std::string label__, std::complex<float> cs__)
+{
+    std::printf("checksum(%s): %18.6f %18.6f\n", label__.c_str(), cs__.real(), cs__.imag());
 }
 
 inline void print_checksum(std::string label__, std::complex<double> cs__)
@@ -343,6 +353,18 @@ template <>
 inline std::complex<double> random<std::complex<double>>()
 {
     return std::complex<double>(random<double>(), random<double>());
+}
+
+template <>
+inline float random<float>()
+{
+    return static_cast<float>(random<double>());
+}
+
+template <>
+inline std::complex<float> random<std::complex<float>>()
+{
+    return std::complex<float>(random<float>(), random<float>());
 }
 
 inline long get_page_size()

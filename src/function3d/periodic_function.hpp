@@ -87,7 +87,7 @@ class Periodic_function : public Smooth_periodic_function<T>
   public:
     /// Constructor
     Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
-        : Smooth_periodic_function<T>(ctx__.spfft(), ctx__.gvec_partition())
+        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_partition())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
@@ -155,15 +155,21 @@ class Periodic_function : public Smooth_periodic_function<T>
     inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
     {
         if (f_rg__) {
-            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
-            std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
-                      f_rg__ + offs);
+            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() *
+                                             this->spfft_->local_z_offset();
+            if (this->spfft_->local_slice_size()) {
+                std::copy(
+                    this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
+                    f_rg__ + offs);
+            }
             if (!is_local_rg__) {
-                sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
+                sddk::Communicator(
+                    this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
             }
         }
         if (ctx_.full_potential() && f_mt__) {
-            sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+            sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(),
+                                     unit_cell_.num_atoms());
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
                 std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
@@ -178,8 +184,12 @@ class Periodic_function : public Smooth_periodic_function<T>
     inline void copy_from(T const* f_mt__, T const* f_rg__, bool is_local_rg__)
     {
         if (f_rg__) {
-            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
-            std::copy(f_rg__ + offs, f_rg__ + offs + this->spfft_->local_slice_size(), this->f_rg_.at(memory_t::host));
+            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() *
+                                             this->spfft_->local_z_offset();
+            if (this->spfft_->local_slice_size()) {
+                std::copy(f_rg__ + offs, f_rg__ + offs + this->spfft_->local_slice_size(),
+                          this->f_rg_.at(memory_t::host));
+            }
         }
         if (ctx_.full_potential() && f_mt__) {
             //sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());

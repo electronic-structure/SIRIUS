@@ -42,10 +42,11 @@ Band::Band(Simulation_context& ctx__)
     }
 }
 
-template <typename T>
+template <typename T, typename F>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& op_phi__, dmatrix<T>& mtrx__,
-                        dmatrix<T>* mtrx_old__) const
+Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__,
+                        Wave_functions<real_type<T>>& op_phi__, dmatrix<F>& mtrx__,
+                        dmatrix<F>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
 
@@ -135,8 +136,9 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
     }
 }
 
+template <typename T>
 void
-Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
+Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
@@ -149,12 +151,12 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__[ik];
+        auto kp = kset__.get<T>(ik);
         auto Hk = H0__(*kp);
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            initialize_subspace<double>(Hk, N);
+            initialize_subspace<T>(Hk, N);
         } else {
-            initialize_subspace<double_complex>(Hk, N);
+            initialize_subspace<std::complex<T>>(Hk, N);
         }
     }
 
@@ -162,15 +164,16 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__[ik]->band_energy(i, ispn, 0);
-                kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
+                kset__.get<T>(ik)->band_energy(i, ispn, 0);
+                kset__.get<T>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
             }
         }
     }
 }
 
 template <typename T>
-void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
+void
+Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -178,9 +181,9 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;
-            s << "[sirius::Band::initialize_subspace] S-operator matrix is not positive definite\n"
+            s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
-            TERMINATE(s);
+            WARNING(s);
         }
     }
 
@@ -268,7 +271,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
     sddk::dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
     sddk::dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
 
-    std::vector<double> eval(num_bands);
+    std::vector<real_type<T>> eval(num_bands);
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -311,7 +314,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        Hk__.apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
+        Hk__.template apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
         /* do some checks */
         if (ctx_.cfg().control().verification() >= 1) {
@@ -325,18 +328,18 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
             if (max_diff > 1e-12) {
                 std::stringstream s;
                 s << "overlap matrix is not hermitian, max_err = " << max_diff;
-                TERMINATE(s);
+                WARNING(s);
             }
-            std::vector<double> eo(num_phi_tot);
+            std::vector<real_type<T>> eo(num_phi_tot);
             auto& std_solver = ctx_.std_evp_solver();
             if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";
-                TERMINATE(s);
+                WARNING(s);
             }
             Hk__.kp().message(1, __function_name__, "minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
             if (eo[0] < 0) {
-                TERMINATE("overlap matrix is not positively defined");
+                WARNING("overlap matrix is not positively defined");
             }
         }
 
@@ -351,15 +354,13 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (gen_solver.solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
-            std::stringstream s;
-            s << "[sirius::Band::initialize_subspace] error in diagonalziation";
-            TERMINATE(s);
+            RTE_THROW("error in diagonalization");
         }
 
         if (ctx_.print_checksum()) {
             auto cs = evec.checksum();
             evec.blacs_grid().comm().allreduce(&cs, 1);
-            double cs1{0};
+            real_type<T> cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];
             }
@@ -374,7 +375,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0,
+        transform<T, T>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0,
                      0, {&Hk__.kp().spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
@@ -423,7 +424,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 }
 
 template <typename T>
-void Band::check_residuals(Hamiltonian_k& Hk__) const
+void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     auto& kp = Hk__.kp();
     kp.message(1, __function_name__, "%s", "checking residuals\n");
@@ -453,7 +454,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
         /* apply Hamiltonian and S operators to the wave-functions */
-        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -465,7 +466,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
                 for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
                     res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
                                                        spsi.pw_coeffs(ispn).prime(ig, j) *
-                                                       kp.band_energy(j, ispin_step);
+                                                       static_cast<real_type<T>>(kp.band_energy(j, ispin_step));
                 }
             }
         }
@@ -487,7 +488,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
 
 /// Check wave-functions for orthonormalization.
 template <typename T>
-void Band::check_wave_functions(Hamiltonian_k& Hk__) const
+void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     auto& kp = Hk__.kp();
     kp.message(1, __function_name__, "%s", "checking wave-functions\n");
@@ -520,7 +521,7 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
             auto sr = spin_range(nc_mag ? 2 : ispin_step);
             /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+            Hk__.template apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
             inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 
             double diff = check_identity(ovlp, ctx_.num_bands());
@@ -543,12 +544,58 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
+Band::set_subspace_mtrx<double, double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                 dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
+Band::set_subspace_mtrx<double_complex, double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
+
+template
+void
+Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
+
+template
+void
+Band::initialize_subspace<double>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<std::complex<double>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
+
+#if defined(USE_FP32)
+template
+void
+Band::set_subspace_mtrx<float, float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                               dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<float, double>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                               dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<std::complex<float>, std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                                             dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<std::complex<float>, std::complex<double>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
+                                             dmatrix<std::complex<double>>& mtrx__, dmatrix<std::complex<double>>* mtrx_old__) const;
+
+template
+void
+Band::initialize_subspace<float>(K_point_set& kset__, Hamiltonian0<float>& H0__) const;
+
+template
+void
+Band::initialize_subspace<float>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+
+template
+void
+Band::initialize_subspace<std::complex<float>>(Hamiltonian_k<float>& Hk__, int num_ao__) const;
+#endif
 
 }

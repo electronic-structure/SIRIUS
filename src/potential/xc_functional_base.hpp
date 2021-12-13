@@ -1528,7 +1528,7 @@ class XC_functional_base
     }
 
     /// Get LDA contribution.
-    void get_lda(const int size, const double* rho, double* v, double* e)
+    void get_lda(const int size, const double* rho, double* v, double* e) const
     {
         if (family() != XC_FAMILY_LDA) {
             TERMINATE("wrong XC");
@@ -1556,7 +1556,7 @@ class XC_functional_base
     }
 
     /// Get LSDA contribution.
-    void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e)
+    void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e) const
     {
         if (family() != XC_FAMILY_LDA) {
             TERMINATE("wrong XC");
@@ -1596,7 +1596,7 @@ class XC_functional_base
     }
 
     /// Get GGA contribution.
-    void get_gga(const int size, const double* rho, const double* sigma, double* vrho, double* vsigma, double* e)
+    void get_gga(const int size, const double* rho, const double* sigma, double* vrho, double* vsigma, double* e) const
     {
         if (family() != XC_FAMILY_GGA)
             TERMINATE("wrong XC");
@@ -1624,7 +1624,7 @@ class XC_functional_base
     /// Get spin-resolved GGA contribution.
     void get_gga(const int size, const double* rho_up, const double* rho_dn, const double* sigma_uu,
                  const double* sigma_ud, const double* sigma_dd, double* vrho_up, double* vrho_dn, double* vsigma_uu,
-                 double* vsigma_ud, double* vsigma_dd, double* e)
+                 double* vsigma_ud, double* vsigma_dd, double* e) const
     {
         if (family() != XC_FAMILY_GGA) {
             TERMINATE("wrong XC");

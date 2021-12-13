@@ -3,6 +3,7 @@
 #include <memory.hpp>
 #include <complex>
 #include <sys/time.h>
+#include <random>
 
 using double_complex = std::complex<double>;
 using namespace sddk;
@@ -179,7 +180,9 @@ void test7()
             auto n = (utils::rand() & 0b1111111111) + 1;
             v[i] = mp.allocate<double>(n);
         }
-        std::random_shuffle(v.begin(), v.end());
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(v.begin(), v.end(), g);
         for (int i = 0; i < N; i++) {
             mp.free(v[i]);
         }

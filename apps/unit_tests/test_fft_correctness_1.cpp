@@ -4,9 +4,15 @@
 
 using namespace sirius;
 
+template <typename T>
 int test_fft(cmd_args& args, device_t pu__)
 {
-    bool verbose{false};
+    bool verbose = args.exist("verbose");
+
+    double eps = 1e-12;
+    if (typeid(T) == typeid(float)) {
+        eps = 1e-6;
+    }
 
     double cutoff = args.value<double>("cutoff", 8);
 
@@ -22,20 +28,20 @@ int test_fft(cmd_args& args, device_t pu__)
 
     auto spfft_pu = (pu__ == device_t::CPU) ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
-    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
+    spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
                            spfft_pu, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = SPFFT_TRANS_C2C;
 
     auto gv = gvp.get_gvec();
-    spfft::Transform spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+    spfft_transform_type<T> spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
-    mdarray<double_complex, 1> f(gvec.num_gvec());
+    sddk::mdarray<std::complex<T>, 1> f(gvec.num_gvec());
     if (pu__ == device_t::GPU) {
         f.allocate(memory_t::device);
     }
-    mdarray<double_complex, 1> ftmp(gvp.gvec_count_fft());
+    sddk::mdarray<std::complex<T>, 1> ftmp(gvp.gvec_count_fft());
 
     int result{0};
 
@@ -55,11 +61,11 @@ int test_fft(cmd_args& args, device_t pu__)
         for (int igloc = 0; igloc < gvp.gvec_count_fft(); igloc++) {
             ftmp[igloc] = f[gvp.idx_gvec(igloc)];
         }
-        spfft.backward(reinterpret_cast<double const*>(&ftmp[0]), SPFFT_PU_HOST);
+        spfft.backward(reinterpret_cast<T const*>(&ftmp[0]), SPFFT_PU_HOST);
 
-        auto ptr = reinterpret_cast<double_complex*>(spfft.space_domain_data(SPFFT_PU_HOST));
+        auto ptr = reinterpret_cast<std::complex<T>*>(spfft.space_domain_data(SPFFT_PU_HOST));
 
-        double diff = 0;
+        double diff{0};
         /* loop over 3D array (real space) */
         for (int j0 = 0; j0 < fft_grid[0]; j0++) {
             for (int j1 = 0; j1 < fft_grid[1]; j1++) {
@@ -71,32 +77,39 @@ int test_fft(cmd_args& args, device_t pu__)
                     int idx = fft_grid.index_by_coord(j0, j1, j2);
 
                     /* compare value with the exponent */
-                    diff += std::pow(std::abs(ptr[idx] - std::exp(double_complex(0.0, twopi * dot(rl, v)))), 2);
+                    auto phase = twopi * dot(rl, v);
+                    /* compute e^{i * 2 * Pi * G * r} */
+                    // this variant leads to a larger error
+                    //auto ref_val = std::exp(std::complex<T>(0.0, phase));
+                    /* this variant gives a more accurate result */
+                    auto ref_val = static_cast<std::complex<T>>(std::exp(std::complex<double>(0.0, phase)));
+                    diff = std::max(diff, static_cast<double>(std::abs(ptr[idx] - ref_val)));
                 }
             }
         }
-        Communicator::world().allreduce(&diff, 1);
-        diff = std::sqrt(diff / fft_grid.num_points());
-        if (diff > 1e-10) {
+        Communicator::world().allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+        if (diff > eps) {
             result++;
         }
         if (verbose) {
-            if (diff > 1e-10) {
-                printf("Fail\n");
+            if (diff > eps) {
+                printf("Fail");
             } else {
-                printf("OK\n");
+                printf("OK");
             }
+            printf(" (error: %18.12e)\n", diff);
         }
     }
 
     return result;
 }
 
+template <typename T>
 int run_test(cmd_args& args)
 {
-    int result = test_fft(args, device_t::CPU);
+    int result = test_fft<T>(args, device_t::CPU);
 #ifdef SIRIUS_GPU
-    result += test_fft(args, device_t::GPU);
+    result += test_fft<T>(args, device_t::GPU);
 #endif
     return result;
 }
@@ -105,6 +118,8 @@ int main(int argn, char **argv)
 {
     cmd_args args;
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
+    args.register_key("--verbose", "enable verbose output");
+    args.register_key("--fp32",    "run in FP32 arithmetics");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -115,7 +130,16 @@ int main(int argn, char **argv)
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
+    int result{0};
+    if (args.exist("fp32")) {
+#if defined(USE_FP32)
+        result = run_test<float>(args);
+#else
+        RTE_THROW("not compiled with FP32 support");
+#endif
+    } else {
+        result = run_test<double>(args);
+    }
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {

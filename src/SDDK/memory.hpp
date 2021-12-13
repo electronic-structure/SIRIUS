@@ -671,18 +671,19 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                                                                                    \
-    {                                                                                                                  \
-        if (!(condition__)) {                                                                                          \
-            std::fprintf(stderr, "Assertion (%s) failed ", #condition__);                                              \
-            std::fprintf(stderr, "at line %i of file %s\n", __LINE__, __FILE__);                                       \
-            std::fprintf(stderr, "array label: %s\n", label_.c_str());                                                 \
-            for (int i = 0; i < N; i++) {                                                                              \
-                std::fprintf(stderr, "dim[%i].size = %li\n", i, dims_[i].size());                                      \
-            }                                                                                                          \
-            std::fflush(stderr);                                                                                       \
-            raise(SIGABRT);                                                                                            \
-        }                                                                                                              \
+#define mdarray_assert(condition__)                                               \
+    {                                                                             \
+        if (!(condition__)) {                                                     \
+            std::stringstream _s;                                                 \
+            _s << "Assertion (" <<  #condition__ << ") failed "                   \
+               << "at line " << __LINE__ << " of file " << __FILE__ << std::endl  \
+               << "array label: " << label_ << std::endl;                         \
+            for (int i = 0; i < N; i++) {                                         \
+                _s << "dims[" << i << "].size = " << dims_[i].size() << std::endl;\
+            }                                                                     \
+            throw std::runtime_error(_s.str());                                   \
+            raise(SIGABRT);                                                       \
+        }                                                                         \
     }
 #endif
 
@@ -1308,7 +1309,7 @@ class mdarray
     /// Access operator[] for the elements of multidimensional array using a linear index in the range [0, size).
     inline T const& operator[](size_t const idx__) const
     {
-        assert(idx__ >= 0 && idx__ < size());
+        mdarray_assert(idx__ >= 0 && idx__ < size());
         return raw_ptr_[idx__];
     }
 

@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-void K_point::generate_spinor_wave_functions()
+template <typename T>
+void K_point<T>::generate_spinor_wave_functions()
 {
     PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
@@ -70,7 +71,7 @@ void K_point::generate_spinor_wave_functions()
                 o = 0;
             }
             /* multiply consecutively up and dn blocks */
-            transform(ctx_.spla_context(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0,
+            sddk::transform<complex_type<T>, complex_type<T>>(ctx_.spla_context(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0,
                       spinor_wave_functions(), 0, nbnd);
         }
 
@@ -88,5 +89,10 @@ void K_point::generate_spinor_wave_functions()
         throw std::runtime_error("not implemented");
     }
 }
+
+template void K_point<double>::generate_spinor_wave_functions();
+#ifdef USE_FP32
+template void K_point<float>::generate_spinor_wave_functions();
+#endif
 
 } // namespace sirius

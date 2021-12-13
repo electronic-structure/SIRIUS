@@ -69,8 +69,24 @@ reset_handle(SplaProcessingUnit op = SPLA_PU_HOST)
 }
 
 inline void
+sgemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha, ftn_single const* A,
+      ftn_int lda, ftn_single const* B, ftn_int ldb, ftn_single const* beta, ftn_single* C, ftn_int ldc)
+{
+    ::spla::gemm(get_spla_operation(transa), get_spla_operation(transb), m, n, k, *alpha, A, lda, B, ldb, *beta, C, ldc,
+                 *get_handle_ptr());
+}
+
+inline void
 dgemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha, ftn_double const* A,
       ftn_int lda, ftn_double const* B, ftn_int ldb, ftn_double const* beta, ftn_double* C, ftn_int ldc)
+{
+    ::spla::gemm(get_spla_operation(transa), get_spla_operation(transb), m, n, k, *alpha, A, lda, B, ldb, *beta, C, ldc,
+                 *get_handle_ptr());
+}
+
+inline void
+cgemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha, ftn_complex const* A,
+      ftn_int lda, ftn_complex const* B, ftn_int ldb, ftn_complex const* beta, ftn_complex* C, ftn_int ldc)
 {
     ::spla::gemm(get_spla_operation(transa), get_spla_operation(transb), m, n, k, *alpha, A, lda, B, ldb, *beta, C, ldc,
                  *get_handle_ptr());

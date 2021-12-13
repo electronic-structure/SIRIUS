@@ -23,66 +23,63 @@
  */
 #ifndef __WF_ORTHO_HPP__
 #define __WF_ORTHO_HPP__
+
 #include "wave_functions.hpp"
 #include <spla/spla.hpp>
 
 namespace sddk {
 
 /// Orthogonalize n new wave-functions to the N old wave-functions
-template <typename T, int idx_bra__, int idx_ket__>
-void orthogonalize(::spla::Context&                           spla_ctx__,
-                   memory_t                                   mem__,
-                   linalg_t                                   la__,
-                   int                                        ispn__,
-                   std::vector<Wave_functions<real_type<T>>*> wfs__,
-                   int                                        N__,
-                   int                                        n__,
-                   dmatrix<T>&                                o__,
-                   Wave_functions<real_type<T>>&              tmp__);
+/** Orthogonalize sets of wave-fuctionsfuctions.
+\tparam T                      Type of the wave-functions in real space (one of float, double, complex<float>, complex<double>).
+\param [in]      spla_ctx      SPLA library context.
+\param [in]      mem           Type of memory where data resides.
+\param [in]      la            Type of linear algebra backend.
+\param [in]      spins         Spin index range.
+\param [in]      idx_bra       Index of the <bra| wave-functions in the input vector to compute the projection matrix.
+\param [in]      idx_ket       Index of the |ket> wave-functions in the input vector.to compute the projection matrix.
+\param [in,out]  wfs           List of wave-functions sets (typically phi, hphi and sphi).
+\param [in]      N             Number of old wave-functions defining the existing subspace.
+\param [out]     o             Work matrix to compute overlap <phi|S|phi>
+\param [out]     tmp           Temporary wave-functions to store intermediate results.
+\param [in]      project_out   Project out old subspace (if this was not done before).
+\return                        Number of linearly independent wave-functions found.
+*/
+template <typename T, typename F>
+int
+orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+              int idx_bra__, int idx_ket__, std::vector<Wave_functions<real_type<T>>*> wfs__, int N__,
+              int n__, dmatrix<F>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true);
 
-template <typename T>
-inline void orthogonalize(::spla::Context& spla_ctx__,
-                          memory_t                      mem__,
-                          linalg_t                      la__,
-                          int                           ispn__,
-                          Wave_functions<real_type<T>>& phi__,
-                          Wave_functions<real_type<T>>& hphi__,
-                          int                           N__,
-                          int                           n__,
-                          dmatrix<T>&                   o__,
-                          Wave_functions<real_type<T>>& tmp__)
+template <typename T, typename F>
+int
+orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+              Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__, int N__, int n__,
+              dmatrix<F>& o__, Wave_functions<real_type<T>>& tmp__, bool project_out__ = true)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
-                      std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
+                  std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
                   "wrong type");
 
-    auto wfs = {&phi__, &hphi__};
-
-    orthogonalize<T, 0, 0>(spla_ctx__, mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
+    return orthogonalize<T, F>(spla_ctx__, mem__, la__, spins__, 0, 0, {&phi__, &hphi__}, N__, n__, o__, tmp__,
+                               project_out__);
 }
 
-template <typename T>
-inline void orthogonalize(::spla::Context&              spla_ctx__,
-                          memory_t                      mem__,
-                          linalg_t                      la__,
-                          int                           ispn__,
-                          Wave_functions<real_type<T>>& phi__,
-                          Wave_functions<real_type<T>>& hphi__,
-                          Wave_functions<real_type<T>>& ophi__,
-                          int                           N__,
-                          int                           n__,
-                          dmatrix<T>&                   o__,
-                          Wave_functions<real_type<T>>& tmp__)
+template <typename T, typename F>
+int
+orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_range spins__,
+              Wave_functions<real_type<T>>& phi__, Wave_functions<real_type<T>>& hphi__,
+              Wave_functions<real_type<T>>& ophi__, int N__, int n__, dmatrix<F>& o__,
+              Wave_functions<real_type<T>>& tmp__, bool project_out__ = true)
 {
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value ||
-                      std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
+                  std::is_same<T, float>::value || std::is_same<T, std::complex<float>>::value,
                   "wrong type");
 
-    auto wfs = {&phi__, &hphi__, &ophi__};
-
-    orthogonalize<T, 0, 2>(spla_ctx__, mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
+    return orthogonalize<T, F>(spla_ctx__, mem__, la__, spins__, 0, 2, {&phi__, &hphi__, &ophi__}, N__, n__, o__, tmp__,
+                               project_out__);
 }
 
-
 }
+
 #endif

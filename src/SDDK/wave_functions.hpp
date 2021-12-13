@@ -322,7 +322,7 @@ class Wave_functions
         return preferred_memory_t_;
     }
 
-    inline std::complex<T> checksum(device_t pu__, int ispn__, int i0__, int n__) const
+    inline auto checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
@@ -344,55 +344,55 @@ class Wave_functions
     void copy_from(device_t pu__, int n__, Wave_functions<T> const& src__, int ispn__, int i0__, int jspn__, int j0__);
 
     template <typename F>
-    void copy_from(device_t pu__, int n__, Wave_functions<F> const& src__, int ispn__, int i0__, int jspn__, int j0__){
-    assert(ispn__ == 0 || ispn__ == 1);
-    assert(jspn__ == 0 || jspn__ == 1);
-    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-    std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
+    void copy_from(device_t pu__, int n__, Wave_functions<F> const& src__, int ispn__, int i0__, int jspn__, int j0__) {
+        assert(ispn__ == 0 || ispn__ == 1);
+        assert(jspn__ == 0 || jspn__ == 1);
+        std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+        std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
 
-    int ngv = pw_coeffs(jspn__).num_rows_loc();
-    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+        int ngv = pw_coeffs(jspn__).num_rows_loc();
+        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
-    switch (pu__) {
-        case device_t::CPU: {
-            /* copy PW part */
-            std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
-                      src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
-                      pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
-            /* copy MT part */
-            if (has_mt()) {
-                std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
-                          src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
-                          mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
+        switch (pu__) {
+            case device_t::CPU: {
+                /* copy PW part */
+                std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
+                          pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
+                /* copy MT part */
+                if (has_mt()) {
+                    std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
+                              mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
+                }
+                break;
             }
-            break;
+            case device_t::GPU: {
+                throw std::runtime_error("Copy mixed precision type not supported in device memory");
+                break;
+            }
         }
-        case device_t::GPU: {
-            throw std::runtime_error("Copy mixed precision type not supported in device memory");
-            break;
-        }
-    }
     }
 
     /// Copy from and to preferred memory.
     void copy_from(Wave_functions<T> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
 
     template <typename F>
-    void copy_from(Wave_functions<F> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__){
-    assert(ispn__ == 0 || ispn__ == 1);
-    assert(jspn__ == 0 || jspn__ == 1);
-    std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-    std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
+    void copy_from(Wave_functions<F> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__) {
+        assert(ispn__ == 0 || ispn__ == 1);
+        assert(jspn__ == 0 || jspn__ == 1);
+        std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
+        std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
 
-    int ngv = pw_coeffs(jspn__).num_rows_loc();
-    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+        int ngv = pw_coeffs(jspn__).num_rows_loc();
+        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
-    copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
-         preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
-    if (has_mt()) {
-        copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
-             preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
-    }
+        copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+             preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
+        if (has_mt()) {
+            copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+                 preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
+        }
     }
 
     /// Compute the checksum of the spin-components.

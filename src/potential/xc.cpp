@@ -43,9 +43,9 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     bool is_gga = is_gradient_correction();
 
-    int num_points = ctx_.spfft().local_slice_size();
+    int num_points = ctx_.spfft<double>().local_slice_size();
 
-    Smooth_periodic_function<double> rho(ctx_.spfft(), gvp);
+    Smooth_periodic_function<double> rho(ctx_.spfft<double>(), gvp);
 
     /* we can use this comm for parallelization */
     //auto& comm = ctx_.gvec().comm_ortho_fft();
@@ -66,7 +66,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    Communicator(ctx_.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    Communicator(ctx_.spfft<double>().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
     /* even a small negative density is a sign of something bing wrong; don't remove this check */
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
@@ -128,7 +128,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     Smooth_periodic_function<double> vsigma;
     if (is_gga) {
-        vsigma = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
+        vsigma = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
         vsigma_[0]->zero();
     }
 
@@ -138,15 +138,15 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
         PROFILE_START("sirius::Potential::xc_rg_nonmagnetic|libxc");
-        if (ixc->is_vdw()) {
+        if (ixc.is_vdw()) {
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc->get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(memory_t::host), &vsigma.f_rg(0),
+                ixc.get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(memory_t::host), &vsigma.f_rg(0),
                              exc.at(memory_t::host));
             } else {
-                ixc->get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
+                ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
             TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
@@ -158,18 +158,18 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 /* split local size between threads */
                 splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
-                if (ixc->is_lda()) {
-                    ixc->get_lda(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
-                                 vxc.at(memory_t::host, spl_t.global_offset()),
-                                 exc.at(memory_t::host, spl_t.global_offset()));
+                if (ixc.is_lda()) {
+                    ixc.get_lda(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
+                                vxc.at(memory_t::host, spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
-                if (ixc->is_gga()) {
-                    ixc->get_gga(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
-                                 &grad_rho_grad_rho.f_rg(spl_t.global_offset()),
-                                 vxc.at(memory_t::host, spl_t.global_offset()),
-                                 &vsigma.f_rg(spl_t.global_offset()),
-                                 exc.at(memory_t::host, spl_t.global_offset()));
+                if (ixc.is_gga()) {
+                    ixc.get_gga(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
+                                &grad_rho_grad_rho.f_rg(spl_t.global_offset()),
+                                vxc.at(memory_t::host, spl_t.global_offset()),
+                                &vsigma.f_rg(spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
                         ///* this is the same expression between gga and vdw corrections.
@@ -191,7 +191,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             } // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
-        if (ixc->is_gga()) { /* generic for gga and vdw */
+        if (ixc.is_gga()) { /* generic for gga and vdw */
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
@@ -219,7 +219,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                     vxc(ir) -= 2 * (vsigma.f_rg(ir) * lapl_rho.f_rg(ir) + grad_vsigma_grad_rho.f_rg(ir));
                 }
             } else {
-                Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.spfft(), gvp);
+                Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.spfft<double>(), gvp);
 
                 for (int x: {0, 1, 2}) {
                     for (int ir = 0; ir < num_points; ir++) {
@@ -258,7 +258,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
 
     bool is_gga = is_gradient_correction();
 
-    int num_points = ctx_.spfft().local_slice_size();
+    int num_points = ctx_.spfft<double>().local_slice_size();
 
     auto result = get_rho_up_dn<add_pseudo_core__>(density__, add_delta_rho_xc_, add_delta_mag_xc_);
 
@@ -322,9 +322,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> vsigma_dd;
 
     if (is_gga) {
-        vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
-        vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
-        vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
+        vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
+        vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
+        vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
         for (int i = 0; i < 3; i++) {
             vsigma_[i]->zero();
         }
@@ -337,15 +337,15 @@ void Potential::xc_rg_magnetic(Density const& density__)
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
         PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
-        if (ixc->is_vdw()) {
+        if (ixc.is_vdw()) {
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
-                ixc->get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
+                ixc.get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
                              &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
                              &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(memory_t::host));
             } else {
-                ixc->get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
             TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
@@ -357,32 +357,32 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 /* split local size between threads */
                 splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
-                if (ixc->is_lda()) {
-                    ixc->get_lda(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
-                                 &rho_dn.f_rg(spl_t.global_offset()),
-                                 vxc_up.at(memory_t::host, spl_t.global_offset()),
-                                 vxc_dn.at(memory_t::host, spl_t.global_offset()),
-                                 exc.at(memory_t::host, spl_t.global_offset()));
+                if (ixc.is_lda()) {
+                    ixc.get_lda(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
+                                &rho_dn.f_rg(spl_t.global_offset()),
+                                vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
-                if (ixc->is_gga()) {
-                    ixc->get_gga(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
-                                 &rho_dn.f_rg(spl_t.global_offset()),
-                                 &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
-                                 &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                 &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                 vxc_up.at(memory_t::host, spl_t.global_offset()),
-                                 vxc_dn.at(memory_t::host, spl_t.global_offset()),
-                                 &vsigma_uu.f_rg(spl_t.global_offset()),
-                                 &vsigma_ud.f_rg(spl_t.global_offset()),
-                                 &vsigma_dd.f_rg(spl_t.global_offset()),
-                                 exc.at(memory_t::host, spl_t.global_offset()));
+                if (ixc.is_gga()) {
+                    ixc.get_gga(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
+                                &rho_dn.f_rg(spl_t.global_offset()),
+                                &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
+                                &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                &vsigma_uu.f_rg(spl_t.global_offset()),
+                                &vsigma_ud.f_rg(spl_t.global_offset()),
+                                &vsigma_dd.f_rg(spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
             } // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
-        if (ixc->is_gga()) {
+        if (ixc.is_gga()) {
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
@@ -391,8 +391,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 vsigma_[2]->f_rg(ir) += vsigma_dd.f_rg(ir);
             }
 
-            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
-            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
+            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_partition());
+            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_partition());
             for (int x: {0, 1, 2}) {
                 for(int ir = 0; ir < num_points; ir++) {
                   up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);

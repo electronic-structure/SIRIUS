@@ -53,37 +53,25 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
-    void diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const;
+    void diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-    void diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) const;
+    void diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__) const;
 
     /// Solve second-variational problem.
-    void diag_full_potential_second_variation(Hamiltonian_k& Hk__) const;
+    void diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) const;
 
     /// Get singular components of the LAPW overlap matrix.
     /** Singular components are the eigen-vectors with a very small eigen-value. */
-    void get_singular_components(Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& odiag__) const;
-
-    /// Diagonalize a pseudo-potential Hamiltonian.
-    template <typename T>
-    int diag_pseudo_potential(Hamiltonian_k& Hk__) const;
+    void get_singular_components(Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& odiag__) const;
 
     /// Exact (not iterative) diagonalization of the Hamiltonian.
     template <typename T>
-    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const;
-
-    /// Iterative Davidson diagonalization.
-    template <typename T>
-    int diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const;
+    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
-    sddk::mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
-
-    ///// RMM-DIIS diagonalization.
-    // template <typename T>
-    // void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+    sddk::mdarray<real_type<T>, 1> diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
 
   public:
     /// Constructor
@@ -92,37 +80,40 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-    template <typename T>
+    template <typename T, typename F>
     void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions<real_type<T>>& phi__,
-                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<T>& mtrx__,
-                           sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
+                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<F>& mtrx__,
+                           sddk::dmatrix<F>* mtrx_old__ = nullptr) const;
 
     /// Solve the band eigen-problem for pseudopotential case.
-    template <typename T>
-    int solve_pseudo_potential(Hamiltonian_k& Hk__) const;
+    template <typename T, typename F>
+    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const;
 
     /// Solve the band eigen-problem for full-potential case.
-    void solve_full_potential(Hamiltonian_k& Hk__) const;
+    template <typename T>
+    void solve_full_potential(Hamiltonian_k<T>& Hk__) const;
 
     /// Check the residuals of wave-functions.
     template <typename T>
-    void check_residuals(Hamiltonian_k& Hk__) const;
+    void check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
-    void check_wave_functions(Hamiltonian_k& Hk__) const;
+    void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    void solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const;
+    template <typename T, typename F>
+    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const;
 
     /// Initialize the subspace for the entire k-point set.
-    void initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const;
+    template <typename T>
+    void initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const;
 
     /// Initialize the wave-functions subspace at a given k-point.
     /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
      *  are created from the random numbers. */
     template <typename T>
-    void initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const;
+    void initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const;
 };
 
 }

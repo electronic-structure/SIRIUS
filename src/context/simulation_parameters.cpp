@@ -140,7 +140,7 @@ get_options_dictionary()
 
 /// Get all possible options of a given input section. It is a json dictionary.
 nlohmann::json const&
-get_section_options(const std::string& section__)
+get_section_options(std::string const& section__)
 {
     if (input_schema.size() == 0) {
         throw std::runtime_error("Dictionary not initialized\n");
@@ -220,7 +220,6 @@ Simulation_parameters::smearing(std::string name__)
     cfg_.parameters().smearing(name__);
     smearing_ = smearing::get_smearing_t(name__);
 }
-
 
 void
 Simulation_parameters::electronic_structure_method(std::string name__)

@@ -25,7 +25,8 @@
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
-__global__ void mul_by_veff_real_real_gpu_kernel(int nr__, double* buf__, double const* veff__)
+template <typename T>
+__global__ void mul_by_veff_real_real_gpu_kernel(int nr__, T* buf__, T const* veff__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < nr__) {
@@ -33,15 +34,24 @@ __global__ void mul_by_veff_real_real_gpu_kernel(int nr__, double* buf__, double
     }
 }
 
-extern "C" void mul_by_veff_real_real_gpu(int nr__, double* buf__, double const* veff__)
+extern "C" void mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float const* veff__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nr__, grid_t.x));
 
-    accLaunchKernel((mul_by_veff_real_real_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
+    accLaunchKernel((mul_by_veff_real_real_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
 }
 
-__global__ void mul_by_veff_complex_real_gpu_kernel(int nr__, acc_complex_double_t* buf__, double const* veff__)
+extern "C" void mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double const* veff__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nr__, grid_t.x));
+
+    accLaunchKernel((mul_by_veff_real_real_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
+}
+
+template <typename T>
+__global__ void mul_by_veff_complex_real_gpu_kernel(int nr__, gpu_complex_type<T>* buf__, T const* veff__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < nr__) {
@@ -50,17 +60,41 @@ __global__ void mul_by_veff_complex_real_gpu_kernel(int nr__, acc_complex_double
     }
 }
 
-extern "C" void mul_by_veff_complex_real_gpu(int nr__, acc_complex_double_t* buf__, double const* veff__)
+extern "C" void mul_by_veff_complex_real_gpu_float(int nr__, acc_complex_float_t* buf__, float const* veff__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nr__, grid_t.x));
 
-    accLaunchKernel((mul_by_veff_complex_real_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
+    accLaunchKernel((mul_by_veff_complex_real_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
 }
 
+extern "C" void mul_by_veff_complex_real_gpu_double(int nr__, acc_complex_double_t* buf__, double const* veff__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nr__, grid_t.x));
 
-__global__ void mul_by_veff_complex_complex_gpu_kernel(int nr__, acc_complex_double_t* buf__, double pref__,
-                                                       double const* vx__, double const* vy__)
+    accLaunchKernel((mul_by_veff_complex_real_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, veff__);
+}
+
+template <typename T>
+__global__ void mul_by_veff_complex_complex_gpu_kernel(int nr__, gpu_complex_type<T>* buf__, T pref__,
+                                                       T const* vx__, T const* vy__);
+
+template <>
+__global__ void mul_by_veff_complex_complex_gpu_kernel<float>(int nr__, acc_complex_float_t* buf__, float pref__,
+                                                               float const* vx__, float const* vy__)
+{
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < nr__) {
+        acc_complex_float_t z = buf__[i];
+        acc_complex_float_t v = make_accFloatComplex(vx__[i], pref__ * vy__[i]);
+        buf__[i] = accCmulf(z, v);
+    }
+}
+
+template <>
+__global__ void mul_by_veff_complex_complex_gpu_kernel<double>(int nr__, acc_complex_double_t* buf__, double pref__,
+                                                               double const* vx__, double const* vy__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < nr__) {
@@ -70,12 +104,22 @@ __global__ void mul_by_veff_complex_complex_gpu_kernel(int nr__, acc_complex_dou
     }
 }
 
-extern "C" void mul_by_veff_complex_complex_gpu(int nr__, acc_complex_double_t* buf__, double pref__,
-                                                double const* vx__, double const* vy__)
+extern "C" void mul_by_veff_complex_complex_gpu_float(int nr__, acc_complex_float_t* buf__, float pref__,
+                                                      float const* vx__, float const* vy__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nr__, grid_t.x));
 
-    accLaunchKernel((mul_by_veff_complex_complex_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, pref__,
-                     vx__, vy__);
+    accLaunchKernel((mul_by_veff_complex_complex_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__,
+                    pref__, vx__, vy__);
+}
+
+extern "C" void mul_by_veff_complex_complex_gpu_double(int nr__, acc_complex_double_t* buf__, double pref__,
+                                                       double const* vx__, double const* vy__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nr__, grid_t.x));
+
+    accLaunchKernel((mul_by_veff_complex_complex_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__,
+                    pref__, vx__, vy__);
 }

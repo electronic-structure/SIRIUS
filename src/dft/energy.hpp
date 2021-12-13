@@ -136,6 +136,9 @@ double energy_vloc(Density const& density, Potential const& potential);
 double core_eval_sum(Unit_cell const& unit_cell);
 
 /// TODO doc
+double valence_eval_sum(K_point_set const& kset);
+
+/// TODO doc
 double eval_sum(Unit_cell const& unit_cell, K_point_set const& kset);
 
 /// TODO doc

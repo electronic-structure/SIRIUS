@@ -35,7 +35,8 @@ class Occupation_matrix : public Hubbard_matrix {
   public:
     Occupation_matrix(Simulation_context& ctx__);
 
-    void add_k_point_contribution(K_point& kp__);
+    template <typename T>
+    void add_k_point_contribution(K_point<T>& kp__);
 
     /** The initial occupancy is calculated following Hund rules. We first
      *  fill the d (f) states according to the hund's rules and with majority

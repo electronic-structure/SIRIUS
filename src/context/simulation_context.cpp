@@ -66,6 +66,68 @@ unit_step_function_form_factors(double R__, double g__)
     }
 }
 
+template <>
+spfft::Transform& Simulation_context::spfft<double>()
+{
+    return *spfft_transform_;
+}
+
+template <>
+spfft::Transform const& Simulation_context::spfft<double>() const
+{
+    return *spfft_transform_;
+}
+
+template <>
+spfft::Transform& Simulation_context::spfft_coarse<double>()
+{
+    return *spfft_transform_coarse_;
+}
+
+template <>
+spfft::Transform const& Simulation_context::spfft_coarse<double>() const
+{
+    return *spfft_transform_coarse_;
+}
+
+template <>
+spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
+{
+    return *spfft_grid_coarse_;
+}
+
+#if defined(USE_FP32)
+template <>
+spfft::TransformFloat& Simulation_context::spfft<float>()
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat const& Simulation_context::spfft<float>() const
+{
+    return *spfft_transform_float_;
+}
+
+template <>
+spfft::TransformFloat& Simulation_context::spfft_coarse<float>()
+{
+    return *spfft_transform_coarse_float_;
+}
+
+template <>
+spfft::TransformFloat const& Simulation_context::spfft_coarse<float>() const
+{
+    return *spfft_transform_coarse_float_;
+}
+
+template <>
+spfft::GridFloat& Simulation_context::spfft_grid_coarse<float>()
+{
+    return *spfft_grid_coarse_float_;
+}
+#endif
+
 void
 Simulation_context::init_fft_grid()
 {
@@ -268,6 +330,12 @@ Simulation_context::initialize()
     if (initialized_) {
         RTE_THROW("Simulation parameters are already initialized.");
     }
+
+    auto verb_lvl = utils::get_env<int>("SIRIUS_VERBOSITY");
+    if (verb_lvl) {
+        this->verbosity(*verb_lvl);
+    }
+
     electronic_structure_method(cfg().parameters().electronic_structure_method());
     core_relativity(cfg().parameters().core_relativity());
     valence_relativity(cfg().parameters().valence_relativity());
@@ -288,7 +356,7 @@ Simulation_context::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
 #if !defined(SIRIUS_GPU)
-        throw std::runtime_error("not compiled with GPU support!");
+        RTE_THROW("not compiled with GPU support!");
 #endif
     }
 
@@ -361,7 +429,7 @@ Simulation_context::initialize()
                 blas_linalg_t_ = linalg_t::gpublas;
             }
             if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
                 blas_linalg_t_ = linalg_t::gpublas;
 #else
                 blas_linalg_t_ = linalg_t::cublasxt;
@@ -536,13 +604,6 @@ Simulation_context::initialize()
                     } else {
                         evsn[i] = "lapack";
                     }
-                    // if (is_cuda) {
-                    //    evsn[i] = "cusolver";
-                    //} else if (is_magma) {
-                    //    evsn[i] = "magma";
-                    //} else {
-                    //    evsn[i] = "lapack";
-                    //}
                 } else {
                     if (is_cuda) {
                         evsn[i] = "cusolver";
@@ -561,6 +622,12 @@ Simulation_context::initialize()
                 }
             }
         }
+    }
+
+    auto pstr = utils::get_env<std::string>("SIRIUS_EV_SOLVER");
+    if (pstr) {
+        evsn[0] = *pstr;
+        evsn[1] = *pstr;
     }
 
     std_evp_solver_name(evsn[0]);
@@ -610,8 +677,6 @@ Simulation_context::initialize()
         print_info();
     }
 
-    iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
-
     if (this->hubbard_correction()) {
         /* if spin orbit coupling or non collinear magnetisms are activated, then
            we consider the full spherical hubbard correction */
@@ -620,8 +685,21 @@ Simulation_context::initialize()
         }
     }
 
+    if (cfg().parameters().precision_wf() == "fp32" && cfg().parameters().precision_gs() == "fp64") {
+        double t = std::numeric_limits<float>::epsilon() * 10;
+        auto tol = std::max(cfg().settings().itsol_tol_min(), t);
+        cfg().settings().itsol_tol_min(tol);
+    }
+
     initialized_ = true;
     cfg().lock();
+
+    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
+    if (save_config && this->comm().rank() == 0) {
+        std::ofstream fi(*save_config, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = this->serialize();
+        fi << conf_dict.dump(4);
+    }
 }
 
 void
@@ -790,7 +868,7 @@ Simulation_context::print_info() const
             default: {
                 std::stringstream s;
                 s << "wrong eigen-value solver: " << evsn[i];
-                throw std::runtime_error(s.str());
+                RTE_THROW(s);
             }
         }
     }
@@ -813,6 +891,12 @@ Simulation_context::print_info() const
     std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
     std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
     std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
+    std::printf("precision_wf                       : %s\n", cfg().parameters().precision_wf().c_str());
+    std::printf("precision_hs                       : %s\n", cfg().parameters().precision_hs().c_str());
+    std::printf("mixer                              : %s\n", cfg().mixer().type().c_str());
+    std::printf("mixing beta                        : %.2f\n", cfg().mixer().beta());
+    std::printf("max_history                        : %i\n", cfg().mixer().max_history());
+    std::printf("use_hartree                        : %s\n", utils::boolstr(cfg().mixer().use_hartree()).c_str());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),
@@ -833,7 +917,7 @@ Simulation_context::print_info() const
     std::printf("XC functionals\n");
     std::printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
-        XC_functional xc(spfft(), unit_cell().lattice_vectors(), xc_label, num_spins());
+        XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(SIRIUS_USE_VDWXC)
         if (xc.is_vdw()) {
             std::printf("Van der Walls functional\n");
@@ -932,7 +1016,7 @@ Simulation_context::print_info() const
                         static_cast<int>(size_aug >> 20));
         }
         /* FFT buffers of fine and coarse meshes */
-        size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
+        size_t size_fft = spfft<double>().local_slice_size() + spfft_coarse<double>().local_slice_size();
         size_fft *= sizeof(double);
         if (!gamma_point()) {
             size_fft *= 2;
@@ -971,10 +1055,16 @@ Simulation_context::update()
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
-        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
-            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
-
+        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
+            new spfft::Grid(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
+                            gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                            comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+#ifdef USE_FP32
+        spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(
+            new spfft::GridFloat(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
+                                 gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                                 comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+#endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
@@ -985,6 +1075,12 @@ Simulation_context::update()
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gv.at(memory_t::host))));
+#ifdef USE_FP32
+        spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
+            spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
+            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            gv.at(memory_t::host))));
+#endif
     } else {
         gvec_coarse_->lattice_vectors(rlv);
     }
@@ -998,16 +1094,27 @@ Simulation_context::update()
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_partition_->zcol_count_fft(),
-                            spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
-
+            new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
+                            gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                            comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+#if defined(USE_FP32)
+        spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
+            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2],
+                                 gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                                 comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+#endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
         auto gv = gvec_partition_->get_gvec();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
-            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
+            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+#if defined(USE_FP32)
+        spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
+            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
+            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+#endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
            do not change during the execution */
@@ -1372,13 +1479,14 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
-    vector3d<double> delta(1.0 / spfft().dim_x(), 1.0 / spfft().dim_y(), 1.0 / spfft().dim_z());
+    vector3d<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
 
-    int z_off = spfft().local_z_offset();
+    int z_off = spfft<double>().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
-    vector3d<int> grid_end(spfft().dim_x(), spfft().dim_y(), z_off + spfft().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__}, {R__, R__, -R__},
-                                             {-R__, -R__, R__},  {R__, -R__, R__},  {-R__, R__, R__},  {R__, R__, R__}};
+    vector3d<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
+    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
+                                             {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
+                                             {-R__, R__, R__},   {R__, R__, R__}};
 
     auto bounds_box = [&](vector3d<double> pos) {
         std::vector<vector3d<double>> verts;
@@ -1441,27 +1549,36 @@ Simulation_context::init_step_function()
         return unit_step_function_form_factors(R, g);
     });
 
-    theta_    = mdarray<double, 1>(spfft().local_slice_size());
-    theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
+    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
+    theta_pw_ = sddk::mdarray<double_complex, 1>(gvec().num_gvec());
 
-    for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-        theta_pw_[ig] = -v[ig];
-    }
-    theta_pw_[0] += 1.0;
+    try {
+        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+            theta_pw_[ig] = -v[ig];
+        }
+        theta_pw_[0] += 1.0;
 
-    std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-    for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
-        ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+        std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
+        for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
+            ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+        }
+        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
+        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
+        spfft_output(spfft<double>(), theta_ptr);
+    } catch (...) {
+        std::stringstream s;
+        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
+          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
+          << "gvec_partition().gvec_count_fft() = " << gvec_partition().gvec_count_fft();
+        RTE_THROW(s);
     }
-    spfft().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
-    spfft_output(spfft(), &theta_[0]);
 
     double vit{0};
-    for (int i = 0; i < spfft().local_slice_size(); i++) {
+    for (int i = 0; i < spfft<double>().local_slice_size(); i++) {
         vit += theta_[i];
     }
     vit *= (unit_cell().omega() / fft_grid().num_points());
-    Communicator(spfft().communicator()).allreduce(&vit, 1);
+    Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
 
     if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
         std::stringstream s;
@@ -1474,7 +1591,7 @@ Simulation_context::init_step_function()
     if (cfg().control().print_checksum()) {
         double_complex z1 = theta_pw_.checksum();
         double d1         = theta_.checksum();
-        Communicator(spfft().communicator()).allreduce(&d1, 1);
+        Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
         if (comm().rank() == 0) {
             utils::print_checksum("theta", d1);
             utils::print_checksum("theta_pw", z1);
@@ -1510,8 +1627,14 @@ Simulation_context::init_comm()
         RTE_THROW(s);
     }
 
+    /* create k- and band- communicators */
+    if (comm_k_.is_null() && comm_band_.is_null()) {
+        comm_band_ = comm_.split(comm_.rank() / npb);
+        comm_k_    = comm_.split(comm_.rank() % npb);
+    }
+
     /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npc, npr}, comm_band_));
 
     /* here we know the number of ranks for band parallelization */
 
@@ -1526,5 +1649,4 @@ Simulation_context::init_comm()
     /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
     comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
-
 } // namespace sirius
