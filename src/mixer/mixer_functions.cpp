@@ -399,45 +399,61 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
 
     auto scale_func = [](double alpha, Hubbard_matrix& x) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    x.local(ia)[i] *= alpha;
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                x.local(at_lvl)[i] *= alpha;
+            }
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                x.nonlocal(at_lvl)[i] *= alpha;
             }
         }
     };
 
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                x.local(ia) >> y.local(ia);
-            }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            x.local(at_lvl) >> y.local(at_lvl);
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            x.nonlocal(at_lvl) >> y.nonlocal(at_lvl);
         }
     };
 
     auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    y.local(ia)[i] = alpha * x.local(ia)[i] + y.local(ia)[i];
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                y.local(at_lvl)[i] = alpha * x.local(at_lvl)[i] + y.local(at_lvl)[i];
+            }
+        }
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                y.nonlocal(at_lvl)[i] = alpha * x.nonlocal(at_lvl)[i] + y.nonlocal(at_lvl)[i];
             }
         }
     };
 
     auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    auto xi = x.local(ia)[i];
-                    auto yi = y.local(ia)[i];
-                    x.local(ia)[i] = xi * c + yi * s;
-                    y.local(ia)[i] = yi * c - xi * s;
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                auto xi = x.local(at_lvl)[i];
+                auto yi = y.local(at_lvl)[i];
+                x.local(at_lvl)[i] = xi * c + yi * s;
+                y.local(at_lvl)[i] = yi * c - xi * s;
+            }
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                auto xi = x.nonlocal(at_lvl)[i];
+                auto yi = y.nonlocal(at_lvl)[i];
+                x.nonlocal(at_lvl)[i] = xi * c + yi * s;
+                y.nonlocal(at_lvl)[i] = yi * c - xi * s;
             }
         }
     };
@@ -445,8 +461,6 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
     return FunctionProperties<Hubbard_matrix>(global_size_func, inner_prod_func, scale_func, copy_func, axpy_func,
                                               rotate_func);
 }
-
 } // namespace mixer
 
 } // namespace sirius
-

@@ -101,6 +101,11 @@ class Hubbard_matrix
         return local_;
     }
 
+    auto &nonlocal() const
+    {
+        return nonlocal_;
+    }
+
     sddk::mdarray<double_complex, 3>& nonlocal(int idx__)
     {
         return nonlocal_[idx__];

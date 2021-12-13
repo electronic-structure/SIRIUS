@@ -368,7 +368,9 @@ K_point<T>::orthogonalize_hubbard_orbitals(Wave_functions<T>& phi__, Wave_functi
             break;
     }
 
-    if (!(ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().normalize())) {
+    if (!(ctx_.cfg().hubbard().orthogonalize() ||
+          ctx_.cfg().hubbard().normalize() ||
+          ctx_.cfg().hubbard().full_orthogonalization())) {
         for (int s = 0; s < ctx_.num_spins(); s++) {
             phi_hub__.copy_from(ctx_.processing_unit(), nwfu, phi__, s, 0, s, 0);
         }
