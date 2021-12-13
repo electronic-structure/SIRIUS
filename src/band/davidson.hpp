@@ -259,6 +259,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     PROFILE_START("sirius::davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spinors; ispin_step++) {
+        ctx.print_memory_usage(__FILE__, __LINE__);
 
         /* converged vectors */
         int num_locked = 0;
@@ -565,6 +566,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             result.niter++;
 
         } /* loop over iterative steps k */
+        ctx.print_memory_usage(__FILE__, __LINE__);
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
 
@@ -576,6 +578,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     }
 
     kp.release_hubbard_orbitals_on_device();
+    ctx.print_memory_usage(__FILE__, __LINE__);
     return result;
 }
 
