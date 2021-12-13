@@ -181,9 +181,9 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;
-            s << "[sirius::Band::initialize_subspace] S-operator matrix is not positive definite\n"
+            s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
-            TERMINATE(s);
+            WARNING(s);
         }
     }
 
@@ -328,18 +328,18 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             if (max_diff > 1e-12) {
                 std::stringstream s;
                 s << "overlap matrix is not hermitian, max_err = " << max_diff;
-                TERMINATE(s);
+                WARNING(s);
             }
             std::vector<real_type<T>> eo(num_phi_tot);
             auto& std_solver = ctx_.std_evp_solver();
             if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";
-                TERMINATE(s);
+                WARNING(s);
             }
             Hk__.kp().message(1, __function_name__, "minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
             if (eo[0] < 0) {
-                TERMINATE("overlap matrix is not positively defined");
+                WARNING("overlap matrix is not positively defined");
             }
         }
 
@@ -354,9 +354,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (gen_solver.solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
-            std::stringstream s;
-            s << "[sirius::Band::initialize_subspace] error in diagonalziation";
-            TERMINATE(s);
+            RTE_THROW("error in diagonalization");
         }
 
         if (ctx_.print_checksum()) {
@@ -561,11 +559,11 @@ Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0_
 template
 void
 Band::initialize_subspace<double>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
-  
+
 template
 void
 Band::initialize_subspace<std::complex<double>>(Hamiltonian_k<double>& Hk__, int num_ao__) const;
-  
+
 #if defined(USE_FP32)
 template
 void

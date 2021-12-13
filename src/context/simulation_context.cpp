@@ -356,7 +356,7 @@ Simulation_context::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
 #if !defined(SIRIUS_GPU)
-        throw std::runtime_error("not compiled with GPU support!");
+        RTE_THROW("not compiled with GPU support!");
 #endif
     }
 
@@ -693,6 +693,13 @@ Simulation_context::initialize()
 
     initialized_ = true;
     cfg().lock();
+
+    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
+    if (save_config && this->comm().rank() == 0) {
+        std::ofstream fi(*save_config, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = this->serialize();
+        fi << conf_dict.dump(4);
+    }
 }
 
 void
@@ -861,7 +868,7 @@ Simulation_context::print_info() const
             default: {
                 std::stringstream s;
                 s << "wrong eigen-value solver: " << evsn[i];
-                throw std::runtime_error(s.str());
+                RTE_THROW(s);
             }
         }
     }
