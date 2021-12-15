@@ -31,13 +31,18 @@
 #include "SDDK/wf_trans.hpp"
 #include "residuals.hpp"
 
+namespace sirius {
+
 /// Result of Davidson solver.
 struct davidson_result_t {
     int niter;
     sddk::mdarray<double, 2> eval;
 };
 
-namespace sirius {
+enum class davidson_evp_t {
+    hamiltonian,
+    overlap
+};
 
 template <typename T, typename F>
 inline void
@@ -101,12 +106,12 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 /**
 \tparam T                     Type of the wave-functions in real space (one of float, double, complex<float>, complex<double>).
 \tparam F                     Type of the subspace matrices.
+\tparam what                  What to solve: 0: H|psi> = e*S|psi>, 1: S|psi> = o|psi>
 \param [in]     Hk            Hamiltonian for a given k-point.
 \param [in]     num_bands     Number of eigen-states (bands) to compute.
 \param [in]     num_mag_dims  Number of magnetic dimensions (0, 1 or 3).
 \param [in,out] psi           Wave-functions. On input they are used for the starting guess of the subspace basis.
                               On output they are the solutions of Hk|psi> = e S|psi> eigen-problem. 
-\param [in]     occupancy     Lambda-function for the band occupancy numbers.
 \param [in]     tolerance     Lambda-function for the band energy tolerance.
 \param [in]     res_tol       Residual tolerance.
 \param [in]     num_stpes     Number of iterative steps.
@@ -118,18 +123,17 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 \param [in]     verbosity     Verbosity level.
 \return                       List of eigen-values.
 */
-template <typename T, typename F>
+template <typename T, typename F, davidson_evp_t what>
 inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
-         std::function<double(int, int)> occupancy__, std::function<double(int, int)> tolerance__, double res_tol__,
+         std::function<double(int, int)> tolerance__, double res_tol__,
          int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, bool extra_ortho__,
-         std::ostream& out__, int verbosity__ = 0)
+         std::ostream& out__, int verbosity__)
 {
     PROFILE("sirius::davidson");
 
     auto& ctx = Hk__.H0().ctx();
     ctx.print_memory_usage(__FILE__, __LINE__);
-
 
     auto& kp      = Hk__.kp();
     auto& gkvecp  = kp.gkvec_partition();
@@ -230,6 +234,27 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     /* get diagonal elements for preconditioning */
     auto h_o_diag = Hk__.template get_h_o_diag_pw<T, 3>();
+
+    sddk::mdarray<real_type<T>, 2>* h_diag{nullptr};;
+    sddk::mdarray<real_type<T>, 2>* o_diag{nullptr};
+
+    switch (what) {
+        case davidson_evp_t::hamiltonian: {
+            h_diag = &h_o_diag.first;
+            o_diag = &h_o_diag.second;
+            break;
+        }
+        case davidson_evp_t::overlap: {
+            h_diag = &h_o_diag.second;
+            o_diag = &h_o_diag.first;
+            for (int ispn = 0; ispn < static_cast<int>(o_diag->size(1)); ispn++) {
+                for (int j = 0; j < static_cast<int>(o_diag->size(0)); j++) {
+                    (*o_diag)(j, ispn) = 1.0;
+                }
+            }
+            break;
+        }
+    }
 
     if (ctx.print_checksum()) {
         auto cs1 = h_o_diag.first.checksum();
@@ -390,7 +415,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
                 auto result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                                            spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked, eval, evec,
-                                           hphi, sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
+                                           hphi, sphi, hpsi, spsi, res, *h_diag, *o_diag,
                                            estimate_eval__, res_tol__, is_converged);
 
                 num_unconverged        = result.unconverged_residuals;
@@ -560,8 +585,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n",
                 iter_step, N, num_phi);
             for (int i = 0; i < num_bands__ - num_locked; i++) {
-                kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
-                           std::abs(eval[i] - eval_old[i]), occupancy__(i, ispin_step));
+                kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i],
+                           std::abs(eval[i] - eval_old[i]));
             }
             result.niter++;
 
