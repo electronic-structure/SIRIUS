@@ -205,7 +205,7 @@ class dmatrix : public matrix<T>
 
     void make_real_diag(int n__);
 
-    mdarray<T, 1> get_diag(int n__);
+    sddk::mdarray<T, 1> get_diag(int n__);
 
     inline splindex<splindex_t::block_cyclic> const& spl_col() const
     {

@@ -287,7 +287,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         ctx.print_memory_usage(__FILE__, __LINE__);
 
         /* converged vectors */
-        int num_locked = 0;
+        int num_locked{0};
 
         sddk::mdarray<real_type<F>, 1> eval(num_bands__);
         sddk::mdarray<real_type<F>, 1> eval_old(num_bands__);
@@ -323,25 +323,36 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, &hphi, &sphi);
+        switch (what) {
+            case davidson_evp_t::hamiltonian: {
+                Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, &hphi, &sphi);
+                break;
+            }
+            case davidson_evp_t::overlap: {
+                Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, nullptr, &sphi);
+                break;
+            }
+        }
 
         /* DEBUG */
         if (ctx.cfg().control().verification() >= 1) {
             /* setup eigen-value problem */
-            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
-            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
-
-            auto max_diff = check_hermitian(hmlt, num_bands__);
-            if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
-                std::stringstream s;
-                s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
-                  << "  happened before entering the iterative loop" << std::endl;
-                WARNING(s);
-                if (num_bands__ <= 20) {
-                    hmlt.serialize("davidson:H_first", num_bands__);
+            if (what != davidson_evp_t::overlap) {
+                Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+                auto max_diff = check_hermitian(hmlt, num_bands__);
+                if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
+                    std::stringstream s;
+                    s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
+                      << "  happened before entering the iterative loop" << std::endl;
+                    WARNING(s);
+                    if (num_bands__ <= 20) {
+                        hmlt.serialize("davidson:H_first", num_bands__);
+                    }
                 }
             }
-            max_diff = check_hermitian(ovlp, num_bands__);
+
+            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
+            auto max_diff = check_hermitian(ovlp, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
@@ -354,12 +365,38 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
         /* END DEBUG */
 
-        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(), spin_range(nc_mag ? 2 : 0),
-                         phi, hphi, sphi, 0, num_bands__, ovlp, res);
+        /* orthogonalize subspace basis functions */
+        switch (what) {
+            case davidson_evp_t::hamiltonian: {
+                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                        spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, 0, num_bands__, ovlp, res);
+                break;
+            }
+            case davidson_evp_t::overlap: {
+                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                        spin_range(nc_mag ? 2 : 0), phi, sphi, 0, num_bands__, ovlp, res);
+                break;
+            }
+        }
 
         /* setup eigen-value problem */
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+        switch (what) {
+            case davidson_evp_t::hamiltonian: {
+                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+                break;
+            }
+            case davidson_evp_t::overlap: {
+                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, hmlt, &hmlt_old);
+                break;
+            }
+        }
 
+        auto diag = hmlt.get_diag(num_bands__);
+        for (int j = 0; j < num_bands__; j++) {
+            eval_old[j] = std::real(diag[j]);
+        }
+
+        /* DEBUG */
         if (ctx.cfg().control().verification() >= 1) {
             auto max_diff = check_hermitian(hmlt, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
@@ -376,15 +413,20 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* current subspace size */
         int N = num_bands__;
 
-        // Seems like a smaller block size is not always improving time to solution much,
-        // so keep it num_bands.
+        /* Seems like a smaller block size is not always improving time to solution much,
+           so keep it num_bands. */
         int block_size = num_bands__;
 
-        /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
+        /* solve eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands__, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             RTE_THROW(s);
+        }
+
+        for (int j = 0; j < num_bands__; j++) {
+            std::cout << "j=" << j << " diff=" << std::abs(eval_old[j] - eval[j]) << " converged=" <<
+                is_converged(j, ispin_step) << std::endl;
         }
 
         ctx.evp_work_count(1);
@@ -569,7 +611,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             /* increase size of the variation space */
             N += expand_with;
 
-            // Copy the Ritz values
+            /* copy the Ritz values */
             eval >> eval_old;
 
             kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands__ - num_locked);
