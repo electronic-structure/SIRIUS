@@ -52,7 +52,7 @@ def parse_radial_grid(upf_dict, root):
         if np != len(rg):
             print("Wrong number of radial points")
     except KeyError:
-        print('Warning missing size field in attributes')
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['radial_grid'] = rg
 
 
@@ -118,7 +118,7 @@ def parse_non_local(upf_dict, root):
     # ------------------------------------
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
-    if node.attrib['q_with_l'] != 'T':
+    if not node.attrib['q_with_l'].lower() in ['t', 'true']:
         print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
@@ -324,7 +324,7 @@ def parse_upf2_from_string(upf2_str):
         if np != len(vloc):
             print("Wrong number of points")
     except KeyError:
-        print('Warning missing size field in attributes ' + str(node))
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['local_potential'] = vloc
 
     # non-local part of potential
