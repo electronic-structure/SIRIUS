@@ -70,9 +70,22 @@ def parse_non_local(upf_dict, root):
 
     for i in range(proj_num):
         node = root.findall("./PP_NONLOCAL/PP_BETA.%i" % (i + 1))[0]
-        nr = int(node.attrib['cutoff_radius_index'])
-        upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
+
+        try:
+            # cutoff_radius_index is optional
+            nr = int(node.attrib['cutoff_radius_index'])
+        except KeyError:
+            # ... and per the standard we should take the full list,
+            # but we should cut off the long tail for numerical stability
+            try:
+                # find the first value from the back bigger than...
+                nr = -next(idx for idx, val in enumerate(beta[::-1]) if val > 1e-80)
+            except StopIteration:
+                # if that fails, take the whole thing
+                nr = len(beta)
+
+        upf_dict['beta_projectors'].append({})
         upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
         if 'label' in node.attrib:
             upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
