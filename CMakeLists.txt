@@ -1,5 +1,4 @@
-# We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 
 project(SIRIUS VERSION 7.3.1)
 
@@ -25,7 +24,7 @@ set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
 set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
 set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
 set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
-set(CUDA_ARCH "none"        CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
+set(CUDA_ARCH               OFF CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
 set_property(CACHE USE_FP32 PROPERTY STRINGS
@@ -58,7 +57,7 @@ add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 #   message(FATAL_ERROR "Unsupported compiler")
 # endif()
 
-set_property(CACHE CUDA_ARCH PROPERTY STRINGS "none" "30" "32" "35" "37"
+set_property(CACHE CUDA_ARCH PROPERTY STRINGS OFF "30" "32" "35" "37"
   "50" "52" "53" "60" "61" "62" "70" "72" "75" "80")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
@@ -203,15 +202,6 @@ if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
   include(cmake/cudalibs_target.cmake)
-  # In CMake 3.18+ we should be using the CUDA_ARCHITECTURES target property
-  # instead of setting compiler by hand
-  if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
-    foreach(arch ${CUDA_ARCH})
-      if (NOT ${arch} STREQUAL "none")
-        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_${arch},code=compute_${arch}")
-      endif()
-    endforeach()
-  endif()
 endif(USE_CUDA)
 
 if(USE_ROCM)
