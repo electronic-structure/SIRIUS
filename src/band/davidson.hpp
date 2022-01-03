@@ -106,7 +106,7 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 /**
 \tparam T                     Type of the wave-functions in real space (one of float, double, complex<float>, complex<double>).
 \tparam F                     Type of the subspace matrices.
-\tparam what                  What to solve: 0: H|psi> = e*S|psi>, 1: S|psi> = o|psi>
+\tparam what                  What to solve: H|psi> = e*S|psi> or S|psi> = o|psi>
 \param [in]     Hk            Hamiltonian for a given k-point.
 \param [in]     num_bands     Number of eigen-states (bands) to compute.
 \param [in]     num_mag_dims  Number of magnetic dimensions (0, 1 or 3).
@@ -189,11 +189,10 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     const int bs = ctx.cyclic_block_size();
 
-    dmatrix<F> hmlt(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<F> ovlp(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    //dmatrix<F> ovlp(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
     dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<F> hmlt_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<F> ovlp_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx.aux_preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
@@ -223,8 +222,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
         if (ctx.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
-            ovlp.allocate(mpd);
-            hmlt.allocate(mpd);
+            //ovlp.allocate(mpd);
+            H.allocate(mpd);
         }
     }
 
@@ -338,28 +337,28 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         if (ctx.cfg().control().verification() >= 1) {
             /* setup eigen-value problem */
             if (what != davidson_evp_t::overlap) {
-                Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
-                auto max_diff = check_hermitian(hmlt, num_bands__);
+                Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, H);
+                auto max_diff = check_hermitian(H, num_bands__);
                 if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                     std::stringstream s;
                     s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                       << "  happened before entering the iterative loop" << std::endl;
                     WARNING(s);
                     if (num_bands__ <= 20) {
-                        hmlt.serialize("davidson:H_first", num_bands__);
+                        H.serialize("davidson:H_first", num_bands__);
                     }
                 }
             }
 
-            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, sphi, ovlp, &ovlp_old);
-            auto max_diff = check_hermitian(ovlp, num_bands__);
+            Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, sphi, H);
+            auto max_diff = check_hermitian(H, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
                 if (num_bands__ <= 20) {
-                    hmlt.serialize("davidson:O_first", num_bands__);
+                    H.serialize("davidson:O_first", num_bands__);
                 }
             }
         }
@@ -369,12 +368,12 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         switch (what) {
             case davidson_evp_t::hamiltonian: {
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                        spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, 0, num_bands__, ovlp, res);
+                        spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, 0, num_bands__, H, res);
                 break;
             }
             case davidson_evp_t::overlap: {
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                        spin_range(nc_mag ? 2 : 0), phi, sphi, 0, num_bands__, ovlp, res);
+                        spin_range(nc_mag ? 2 : 0), phi, sphi, 0, num_bands__, H, res);
                 break;
             }
         }
@@ -382,30 +381,30 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* setup eigen-value problem */
         switch (what) {
             case davidson_evp_t::hamiltonian: {
-                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, hmlt, &hmlt_old);
+                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, H, &H_old);
                 break;
             }
             case davidson_evp_t::overlap: {
-                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, hmlt, &hmlt_old);
+                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, H, &H_old);
                 break;
             }
         }
 
-        auto diag = hmlt.get_diag(num_bands__);
-        for (int j = 0; j < num_bands__; j++) {
-            eval_old[j] = std::real(diag[j]);
-        }
+        //auto diag = hmlt.get_diag(num_bands__);
+        //for (int j = 0; j < num_bands__; j++) {
+        //    eval_old[j] = std::real(diag[j]);
+        //}
 
         /* DEBUG */
         if (ctx.cfg().control().verification() >= 1) {
-            auto max_diff = check_hermitian(hmlt, num_bands__);
+            auto max_diff = check_hermitian(H, num_bands__);
             if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                 std::stringstream s;
                 s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
                 if (num_bands__ <= 20) {
-                    hmlt.serialize("davidson:H", num_bands__);
+                    H.serialize("davidson:H", num_bands__);
                 }
             }
         }
@@ -418,16 +417,16 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         int block_size = num_bands__;
 
         /* solve eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (std_solver.solve(N, num_bands__, hmlt, &eval[0], evec)) {
+        if (std_solver.solve(N, num_bands__, H, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             RTE_THROW(s);
         }
 
-        for (int j = 0; j < num_bands__; j++) {
-            std::cout << "j=" << j << " diff=" << std::abs(eval_old[j] - eval[j]) << " converged=" <<
-                is_converged(j, ispin_step) << std::endl;
-        }
+        //for (int j = 0; j < num_bands__; j++) {
+        //    std::cout << "j=" << j << " diff=" << std::abs(eval_old[j] - eval[j]) << " converged=" <<
+        //        is_converged(j, ispin_step) << std::endl;
+        //}
 
         ctx.evp_work_count(1);
 
@@ -454,12 +453,25 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
-                /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                auto result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                           spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked, eval, evec,
-                                           hphi, sphi, hpsi, spsi, res, *h_diag, *o_diag,
-                                           estimate_eval__, res_tol__, is_converged);
+                residual_result result;
+                /* get new preconditionined residuals, and also hpsi and spsi as a by-product */
+                switch (what) {
+                    case davidson_evp_t::hamiltonian: {
+                        result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                              eval, evec, hphi, sphi, hpsi, spsi, res, *h_diag, *o_diag,
+                                              estimate_eval__, res_tol__, is_converged);
 
+                        break;
+                    }
+                    case davidson_evp_t::overlap: {
+                        result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                              eval, evec, sphi, phi, spsi, psi__, res, *h_diag, *o_diag,
+                                              estimate_eval__, res_tol__, is_converged);
+                        break;
+                    }
+                }
                 num_unconverged        = result.unconverged_residuals;
                 num_lockable           = result.num_consecutive_smallest_converged;
                 current_frobenius_norm = result.frobenius_norm;
@@ -472,15 +484,15 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             /* verify convergence criteria */
             int num_converged              = num_ritz - num_unconverged;
-            bool converged_by_relative_tol = iter_step > 0 && current_frobenius_norm < relative_frobenius_tolerance;
-            bool converged_by_absolute_tol = num_locked + num_converged + itso.min_num_res() >= num_bands__;
+            bool converged_by_relative_tol = (iter_step > 0) && (current_frobenius_norm < relative_frobenius_tolerance);
+            bool converged_by_absolute_tol = (num_locked + num_converged + itso.min_num_res()) >= num_bands__;
 
             bool converged = converged_by_relative_tol || converged_by_absolute_tol;
 
-            /* Todo: num_unconverged might be very small at some point slowing down convergence
+            /* TODO: num_unconverged might be very small at some point slowing down convergence
                      can we add more? */
             int expand_with     = std::min(num_unconverged, block_size);
-            bool should_restart = ((N + expand_with) > num_phi) ||
+            bool should_restart = (N + expand_with > num_phi) ||
                                   (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
 
             kp.message(3, __function_name__,
@@ -495,22 +507,12 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
 
-                /* No need to recompute the wave functions when converged in the first iteration */
-                if (iter_step != 0 || num_unconverged != 0 || ctx.cfg().settings().always_update_wf()) {
-                    /* in case of non-collinear magnetism transform two components */
-                    transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
-                                 0, 0, {&psi__}, num_locked, num_ritz);
+                transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
+                             0, 0, {&psi__}, num_locked, num_ritz);
 
-                    /* update eigen-values */
-                    for (int j = num_locked; j < num_bands__; j++) {
-                        result.eval(j, ispin_step) = eval[j - num_locked];
-                    }
-
-                } else {
-                    kp.message(3, __function_name__, "%s", "wave-functions are not recomputed\n");
-                    for (int j = 0; j < num_bands__; j++) {
-                        result.eval(j, ispin_step) = kp.band_energy(j, ispin_step);
-                    }
+                /* update eigen-values */
+                for (int j = num_locked; j < num_bands__; j++) {
+                    result.eval(j, ispin_step) = eval[j - num_locked];
                 }
 
                 if (last_iteration && !converged) {
@@ -523,7 +525,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (converged || last_iteration) {
                     kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n",
-                      num_unconverged, iter_step);
+                               num_unconverged, iter_step);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
@@ -531,22 +533,36 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     // TODO: consider keeping more than num_bands when nearly all Ritz vectors have converged.
                     int keep = num_bands__;
 
-                    /* need to compute all hpsi and opsi states (not only unconverged) */
+                    /* need to compute all hpsi and spsi states (not only unconverged - that was done
+                     * by the residuals() function before) */
                     if (estimate_eval__) {
-                        transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                     std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
-                                     N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
+                        switch (what) {
+                            case davidson_evp_t::hamiltonian: {
+                                transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
+                                             std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
+                                             N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
+                                break;
+                            }
+                            case davidson_evp_t::overlap: {
+                                transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
+                                             std::vector<Wave_functions<real_type<T>>*>({&sphi, &phi}), num_locked,
+                                             N - num_locked, evec, 0, 0, 0.0, {&spsi, &psi__}, 0, num_ritz);
+                                break;
+                            }
+                        }
                     }
 
-                    /* update basis functions, hphi and ophi */
+                    /* update basis functions, hphi and sphi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
                         phi.copy_from(psi__, keep - num_locked, nc_mag ? ispn : ispin_step, num_locked,
                                       nc_mag ? ispn : 0, num_locked);
-                        hphi.copy_from(hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
+                        if (what == davidson_evp_t::hamiltonian) {
+                            hphi.copy_from(hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
+                        }
                         sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
 
-                    // Remove locked Ritz values so indexing starts at unconverged eigenpairs
+                    /* remove locked Ritz values so indexing starts at unconverged eigenpairs */
                     if (locking__ && num_lockable > 0) {
                         for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
@@ -554,9 +570,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     }
 
                     /* remove the locked block from the projected matrix too */
-                    hmlt_old.zero();
+                    H_old.zero();
                     for (int i = 0; i < keep - num_locked; i++) {
-                        hmlt_old.set(i, i, eval[i]);
+                        H_old.set(i, i, eval[i]);
                     }
 
                     /* number of basis functions that we already have */
@@ -574,7 +590,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
-            project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, ovlp);
+            project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H);
 
             //std::cout << "expand_with before = " << expand_with << std::endl;
             //expand_with = remove_linearly_dependent(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, N,
@@ -582,25 +598,42 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             //std::cout << "expand_with after = " << expand_with << std::endl;
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
+            switch (what) {
+                case davidson_evp_t::hamiltonian: {
+                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
+                    break;
+                }
+                case davidson_evp_t::overlap: {
+                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, nullptr, &sphi);
+                    break;
+                }
+            }
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
 
-            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                             spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
+            switch (what) {
+                case davidson_evp_t::hamiltonian: {
+                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                     spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, H, res, false);
 
-            if (extra_ortho__) {
-                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                 spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, ovlp, res, false);
+                    if (extra_ortho__) {
+                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, H, res, false);
+                    }
+                    break;
+                }
+                case davidson_evp_t::overlap: {
+                    break;
+                }
             }
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
-            Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
+            Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, H, &H_old);
 
             if (ctx.cfg().control().verification() >= 1) {
-                real_type<T> max_diff = check_hermitian(hmlt, N + expand_with - num_locked);
+                auto max_diff = check_hermitian(H, N + expand_with - num_locked);
                 if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                     std::stringstream s;
                     kp.message(1, __function_name__, "H matrix of size %i is not Hermitian, maximum error: %18.12e\n",
@@ -616,7 +649,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands__ - num_locked);
             /* solve standard eigen-value problem with the size N */
-            if (std_solver.solve(N - num_locked, num_bands__ - num_locked, hmlt, &eval[0], evec)) {
+            if (std_solver.solve(N - num_locked, num_bands__ - num_locked, H, &eval[0], evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 RTE_THROW(s);
