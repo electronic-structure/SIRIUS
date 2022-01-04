@@ -184,6 +184,8 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
             WARNING(s);
+        } else {
+            ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
         }
     }
 
