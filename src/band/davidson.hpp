@@ -623,6 +623,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     break;
                 }
                 case davidson_evp_t::overlap: {
+                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                     spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
+
+                    if (extra_ortho__) {
+                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
+                    }
                     break;
                 }
             }
@@ -630,7 +637,16 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
-            Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, H, &H_old);
+            switch (what) {
+                case davidson_evp_t::hamiltonian: {
+                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, H, &H_old);
+                    break;
+                }
+                case davidson_evp_t::overlap: {
+                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, sphi, H, &H_old);
+                    break;
+                }
+            }
 
             if (ctx.cfg().control().verification() >= 1) {
                 auto max_diff = check_hermitian(H, N + expand_with - num_locked);
