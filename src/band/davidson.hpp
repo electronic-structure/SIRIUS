@@ -390,11 +390,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             }
         }
 
-        //auto diag = hmlt.get_diag(num_bands__);
-        //for (int j = 0; j < num_bands__; j++) {
-        //    eval_old[j] = std::real(diag[j]);
-        //}
-
         /* DEBUG */
         if (ctx.cfg().control().verification() >= 1) {
             auto max_diff = check_hermitian(H, num_bands__);
@@ -545,8 +540,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                             }
                             case davidson_evp_t::overlap: {
                                 transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                             std::vector<Wave_functions<real_type<T>>*>({&sphi, &phi}), num_locked,
-                                             N - num_locked, evec, 0, 0, 0.0, {&spsi, &psi__}, 0, num_ritz);
+                                             std::vector<Wave_functions<real_type<T>>*>({&sphi}), num_locked,
+                                             N - num_locked, evec, 0, 0, 0.0, {&spsi}, 0, num_ritz);
                                 break;
                             }
                         }
@@ -590,12 +585,16 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
-            project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H);
-
-            //std::cout << "expand_with before = " << expand_with << std::endl;
-            //expand_with = remove_linearly_dependent(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, N,
-            //                                        expand_with, ovlp);
-            //std::cout << "expand_with after = " << expand_with << std::endl;
+            switch (what) {
+                case davidson_evp_t::hamiltonian: {
+                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H);
+                    break;
+                }
+                case davidson_evp_t::overlap: {
+                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, phi, N, expand_with, H);
+                    break;
+                }
+            }
 
             /* apply Hamiltonian and S operators to the new basis functions */
             switch (what) {
