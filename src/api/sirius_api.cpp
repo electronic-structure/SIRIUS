@@ -1228,7 +1228,8 @@ sirius_print_info(void* const* handler__, int* error_code__)
 /*
 @api begin
 sirius_free_object_handler:
-  doc: Free any handler of object created by SIRIUS.
+  doc: Free any object handler created by SIRIUS.
+  full_doc: This is an internal function. Use sirius_free_handler() in your code.
   arguments:
     handler:
       type: void*
@@ -1772,7 +1773,8 @@ sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
 /*
 @api begin
 sirius_find_ground_state_robust:
-  doc: Find the ground state using the robust
+  doc: Find the ground state using the robust wave-function optimisation method.
+  full_doc: The code has to be compiled with NLCG library in order to enable this feature.
   arguments:
     gs_handler:
       type: gs_handler
