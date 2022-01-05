@@ -3,7 +3,7 @@ spack:
   - sirius@develop %gcc +vdwxc +tests +apps +rocm amdgpu_target=gfx906
     ^spfft +rocm amdgpu_target=gfx906
     ^rocfft amdgpu_target=gfx906
-    ^rocblas tensile_architecture=gfx906
+    ^rocblas tensile_architecture=gfx906:xnack-
     ^openmpi
     ^openblas
   view: false
