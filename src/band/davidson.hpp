@@ -169,29 +169,37 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     /* allocate wave-functions */
 
+    using wf_t = Wave_functions<real_type<T>>;
+
     /* auxiliary wave-functions */
-    Wave_functions<real_type<T>> phi(mp, gkvecp, num_phi, ctx.aux_preferred_memory_t(), num_sc);
+    wf_t phi(mp, gkvecp, num_phi, ctx.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions<real_type<T>> hphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
+    //Wave_functions<real_type<T>> hphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
+    std::unique_ptr<wf_t> hphi{nullptr};
+    if (what == davidson_evp_t::hamiltonian) {
+        hphi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc));
+    }
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions<real_type<T>> sphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
+    wf_t sphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions<real_type<T>> hpsi(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
+    std::unique_ptr<wf_t> hpsi{nullptr};
+    if (what == davidson_evp_t::hamiltonian) {
+        hpsi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc));
+    }
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions<real_type<T>> spsi(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
+    wf_t spsi(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions<real_type<T>> res(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
+    wf_t res(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc);
 
     const int bs = ctx.cyclic_block_size();
 
     dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
     dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    //dmatrix<F> ovlp(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
     dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx.aux_preferred_memory_t())) {
@@ -213,16 +221,19 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         for (int i = 0; i < num_sc; i++) {
             res.pw_coeffs(i).allocate(mpd);
 
-            hphi.pw_coeffs(i).allocate(mpd);
+            if (hphi) {
+                hphi->pw_coeffs(i).allocate(mpd);
+            }
             sphi.pw_coeffs(i).allocate(mpd);
 
-            hpsi.pw_coeffs(i).allocate(mpd);
+            if (hpsi) {
+                hpsi->pw_coeffs(i).allocate(mpd);
+            }
             spsi.pw_coeffs(i).allocate(mpd);
         }
 
         if (ctx.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
-            //ovlp.allocate(mpd);
             H.allocate(mpd);
         }
     }
@@ -324,7 +335,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* apply Hamiltonian and S operators to the basis functions */
         switch (what) {
             case davidson_evp_t::hamiltonian: {
-                Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, &hphi, &sphi);
+                Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, hphi.get(), &sphi);
                 break;
             }
             case davidson_evp_t::overlap: {
@@ -337,7 +348,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         if (ctx.cfg().control().verification() >= 1) {
             /* setup eigen-value problem */
             if (what != davidson_evp_t::overlap) {
-                Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, hphi, H);
+                Band(ctx).set_subspace_mtrx<T, F>(0, num_bands__, 0, phi, *hphi, H);
                 auto max_diff = check_hermitian(H, num_bands__);
                 if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
                     std::stringstream s;
@@ -364,27 +375,19 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
         /* END DEBUG */
 
-        /* orthogonalize subspace basis functions */
+        /* orthogonalize subspace basis functions and setup eigen-value problem */
         switch (what) {
             case davidson_evp_t::hamiltonian: {
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                        spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, 0, num_bands__, H, res);
+                        spin_range(nc_mag ? 2 : 0), phi, *hphi, sphi, 0, num_bands__, H, res);
+                /* setup eigen-value problem */
+                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, *hphi, H, &H_old);
                 break;
             }
             case davidson_evp_t::overlap: {
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                         spin_range(nc_mag ? 2 : 0), phi, sphi, 0, num_bands__, H, res);
-                break;
-            }
-        }
-
-        /* setup eigen-value problem */
-        switch (what) {
-            case davidson_evp_t::hamiltonian: {
-                Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, hphi, H, &H_old);
-                break;
-            }
-            case davidson_evp_t::overlap: {
+                /* setup eigen-value problem */
                 Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, phi, sphi, H, &H_old);
                 break;
             }
@@ -418,11 +421,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             RTE_THROW(s);
         }
 
-        //for (int j = 0; j < num_bands__; j++) {
-        //    std::cout << "j=" << j << " diff=" << std::abs(eval_old[j] - eval[j]) << " converged=" <<
-        //        is_converged(j, ispin_step) << std::endl;
-        //}
-
         ctx.evp_work_count(1);
 
         for (int i = 0; i < num_bands__; i++) {
@@ -454,7 +452,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     case davidson_evp_t::hamiltonian: {
                         result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                                               spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
-                                              eval, evec, hphi, sphi, hpsi, spsi, res, *h_diag, *o_diag,
+                                              eval, evec, *hphi, sphi, *hpsi, spsi, res, *h_diag, *o_diag,
                                               estimate_eval__, res_tol__, is_converged);
 
                         break;
@@ -501,7 +499,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 PROFILE("sirius::davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-
                 transform<T>(ctx.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
                              0, 0, {&psi__}, num_locked, num_ritz);
 
@@ -534,8 +531,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         switch (what) {
                             case davidson_evp_t::hamiltonian: {
                                 transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                             std::vector<Wave_functions<real_type<T>>*>({&hphi, &sphi}), num_locked,
-                                             N - num_locked, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
+                                             std::vector<Wave_functions<real_type<T>>*>({hphi.get(), &sphi}), num_locked,
+                                             N - num_locked, evec, 0, 0, 0.0, {hpsi.get(), &spsi}, 0, num_ritz);
                                 break;
                             }
                             case davidson_evp_t::overlap: {
@@ -552,7 +549,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         phi.copy_from(psi__, keep - num_locked, nc_mag ? ispn : ispin_step, num_locked,
                                       nc_mag ? ispn : 0, num_locked);
                         if (what == davidson_evp_t::hamiltonian) {
-                            hphi.copy_from(hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
+                            hphi->copy_from(*hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
                         }
                         sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
@@ -585,67 +582,40 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 phi.copy_from(res, expand_with, ispn, 0, ispn, N);
             }
 
-            switch (what) {
-                case davidson_evp_t::hamiltonian: {
-                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H);
-                    break;
-                }
-                case davidson_evp_t::overlap: {
-                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, phi, N, expand_with, H);
-                    break;
-                }
-            }
-
-            /* apply Hamiltonian and S operators to the new basis functions */
-            switch (what) {
-                case davidson_evp_t::hamiltonian: {
-                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
-                    break;
-                }
-                case davidson_evp_t::overlap: {
-                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, nullptr, &sphi);
-                    break;
-                }
-            }
-
-            kp.message(3, __function_name__, "Orthogonalize %d to %d\n", expand_with, N);
-
-            switch (what) {
-                case davidson_evp_t::hamiltonian: {
-                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                     spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, H, res, false);
-
-                    if (extra_ortho__) {
-                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                         spin_range(nc_mag ? 2 : 0), phi, hphi, sphi, N, expand_with, H, res, false);
-                    }
-                    break;
-                }
-                case davidson_evp_t::overlap: {
-                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                     spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
-
-                    if (extra_ortho__) {
-                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                         spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
-                    }
-                    break;
-                }
-            }
-
-            /* setup eigen-value problem
+            /* now, when we added new basis functions to phi, we can project out the old subspace,
+             * then apply Hamiltonian and overlap to the remaining part and then orthogonalise the
+             * new part of phi and finally, setup the eigen-vaule problem
+             *
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
             switch (what) {
                 case davidson_evp_t::hamiltonian: {
-                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, hphi, H, &H_old);
+                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H);
+                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, hphi.get(), &sphi);
+                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                     spin_range(nc_mag ? 2 : 0), phi, *hphi, sphi, N, expand_with, H, res, false);
+                    if (extra_ortho__) {
+                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         spin_range(nc_mag ? 2 : 0), phi, *hphi, sphi, N, expand_with, H, res, false);
+                    }
+                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, *hphi, H, &H_old);
                     break;
                 }
                 case davidson_evp_t::overlap: {
+                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, phi, N, expand_with, H);
+                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, nullptr, &sphi);
+                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                     spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
+                    if (extra_ortho__) {
+                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
+                    }
                     Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, phi, sphi, H, &H_old);
                     break;
                 }
             }
+
+            kp.message(3, __function_name__, "Orthogonalized %d to %d\n", expand_with, N);
 
             if (ctx.cfg().control().verification() >= 1) {
                 auto max_diff = check_hermitian(H, N + expand_with - num_locked);
