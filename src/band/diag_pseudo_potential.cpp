@@ -267,7 +267,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
         }
     }
 
-    auto result = davidson<T, T, davidson_evp_t::overlap>(Hk__, nevec, ctx_.num_mag_dims(), psi,
+    auto result = davidson<T, T, davidson_evp_t::overlap>(Hk__, nevec, num_mag_dims, psi,
             [](int i, int ispn){ return 1e-10; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             10, itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
 

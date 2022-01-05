@@ -243,7 +243,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     ctx.print_memory_usage(__FILE__, __LINE__);
 
     /* get diagonal elements for preconditioning */
-    auto h_o_diag = Hk__.template get_h_o_diag_pw<T, 3>();
+    auto h_o_diag = (ctx.full_potential()) ?
+        Hk__.template get_h_o_diag_lapw<3>() : Hk__.template get_h_o_diag_pw<T, 3>();
 
     sddk::mdarray<real_type<T>, 2>* h_diag{nullptr};;
     sddk::mdarray<real_type<T>, 2>* o_diag{nullptr};
@@ -339,7 +340,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 break;
             }
             case davidson_evp_t::overlap: {
-                Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, nullptr, &sphi);
+                if (ctx.full_potential()) {
+                    Hk__.template apply_fv_h_o(true, false, 0, num_bands__, phi, nullptr, &sphi);
+                } else {
+                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, nullptr, &sphi);
+                }
                 break;
             }
         }
@@ -603,7 +608,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 }
                 case davidson_evp_t::overlap: {
                     project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), phi, phi, N, expand_with, H);
-                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, nullptr, &sphi);
+                    if (ctx.full_potential()) {
+                        Hk__.template apply_fv_h_o(true, false, N, expand_with, phi, nullptr, &sphi);
+                    } else {
+                        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, nullptr, &sphi);
+                    }
                     orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                                      spin_range(nc_mag ? 2 : 0), phi, sphi, N, expand_with, H, res, false);
                     if (extra_ortho__) {
