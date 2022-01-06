@@ -50,7 +50,6 @@ set(_SOURSES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
-  "k_point/generate_gklo_basis.cpp"
   "k_point/test_fv_states.cpp"
   "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
