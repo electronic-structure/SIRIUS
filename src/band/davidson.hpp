@@ -101,6 +101,28 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
     return n;
 }
 
+template <typename T>
+inline std::unique_ptr<Wave_functions<real_type<T>>>
+wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, int num_wf__, int num_sc__)
+{
+    using wf_t = Wave_functions<real_type<T>>;
+    std::unique_ptr<wf_t> wf{nullptr};
+    if (ctx__.full_potential()) {
+        wf = std::unique_ptr<wf_t>(new wf_t(ctx__.mem_pool(ctx__.host_memory_t()), kp__.gkvec_partition(),
+            ctx__.unit_cell().num_atoms(), [&](int ia) { return ctx__.unit_cell().atom(ia).mt_lo_basis_size(); },
+            num_wf__, ctx__.aux_preferred_memory_t(), num_sc__));
+    } else {
+        wf = std::unique_ptr<wf_t>(new wf_t(ctx__.mem_pool(ctx__.host_memory_t()), kp__.gkvec_partition(),
+                    num_wf__, ctx__.aux_preferred_memory_t(), num_sc__));
+    }
+    if (is_device_memory(ctx__.preferred_memory_t())) {
+        auto& mpd = ctx__.mem_pool(ctx__.preferred_memory_t());
+        wf->allocate(spin_range(num_sc__ == 1 ? 0 : 2), mpd);
+    }
+
+    return wf;
+}
+
 
 /// Solve the eigen-problem using Davidson iterative method.
 /**
@@ -178,7 +200,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     //Wave_functions<real_type<T>> hphi(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc);
     std::unique_ptr<wf_t> hphi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
-        hphi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc));
+        //hphi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_phi, ctx.preferred_memory_t(), num_sc));
+        hphi = wave_function_factory(ctx, kp, num_phi, num_sc);
     }
 
     /* S operator, applied to auxiliary wave-functions */
@@ -187,7 +210,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     /* Hamiltonain, applied to new Psi wave-functions */
     std::unique_ptr<wf_t> hpsi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
-        hpsi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc));
+        hpsi = wave_function_factory(ctx, kp, num_bands__, num_sc);
+        //hpsi = std::unique_ptr<wf_t>(new wf_t(mp, gkvecp, num_bands__, ctx.preferred_memory_t(), num_sc));
     }
 
     /* S operator, applied to new Psi wave-functions */
@@ -222,12 +246,12 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             res.pw_coeffs(i).allocate(mpd);
 
             if (hphi) {
-                hphi->pw_coeffs(i).allocate(mpd);
+                //hphi->pw_coeffs(i).allocate(mpd);
             }
             sphi.pw_coeffs(i).allocate(mpd);
 
             if (hpsi) {
-                hpsi->pw_coeffs(i).allocate(mpd);
+                //hpsi->pw_coeffs(i).allocate(mpd);
             }
             spsi.pw_coeffs(i).allocate(mpd);
         }
@@ -308,11 +332,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             return std::abs(eval[j__] - eval_old[j__]) <= tolerance__(j__ + num_locked, ispn__);
         };
 
-        if (itso.init_eval_old()) {
-            eval_old = [&](int64_t j) { return kp.band_energy(j, ispin_step); };
-        } else {
+        //if (itso.init_eval_old()) {
+        //    eval_old = [&](int64_t j) { return kp.band_energy(j, ispin_step); };
+        //} else {
             eval_old = []() { return 1e10; };
-        }
+        //}
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -330,7 +354,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             }
         }
 
-        /* first phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+        /* first phase: setup and diagonalise reduced Hamiltonian and get eigen-values;
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
@@ -341,7 +365,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             }
             case davidson_evp_t::overlap: {
                 if (ctx.full_potential()) {
-                    Hk__.template apply_fv_h_o(true, false, 0, num_bands__, phi, nullptr, &sphi);
+                    Hk__.apply_fv_h_o(true, false, 0, num_bands__, phi, nullptr, &sphi);
                 } else {
                     Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__, phi, nullptr, &sphi);
                 }

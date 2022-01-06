@@ -129,6 +129,46 @@ Wave_functions<T>::Wave_functions(const Gvec_partition& gkvecp__, int num_atoms_
 }
 
 template <typename T>
+Wave_functions<T>::Wave_functions(memory_pool &mp__, const Gvec_partition& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
+                               int num_wf__, memory_t preferred_memory_t__, int num_sc__)
+    : comm_(gkvecp__.gvec().comm())
+    , gkvecp_(gkvecp__)
+    , num_wf_(num_wf__)
+    , num_sc_(num_sc__)
+    , has_mt_(true)
+    , preferred_memory_t_(preferred_memory_t__)
+{
+    if (!(num_sc__ == 1 || num_sc__ == 2)) {
+        TERMINATE("wrong number of spin components");
+    }
+
+    for (int ispn = 0; ispn < num_sc_; ispn++) {
+        pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(mp__, gkvecp_, num_wf_));
+    }
+
+    /* TODO: remove reduntant code */
+    spl_num_atoms_   = splindex<splindex_t::block>(num_atoms__, comm_.size(), comm_.rank());
+    mt_coeffs_distr_ = block_data_descriptor(comm_.size());
+
+    for (int ia = 0; ia < num_atoms__; ia++) {
+        int rank = spl_num_atoms_.local_rank(ia);
+        if (rank == comm_.rank()) {
+            offset_mt_coeffs_.push_back(mt_coeffs_distr_.counts[rank]);
+        }
+        mt_coeffs_distr_.counts[rank] += mt_size__(ia);
+    }
+    mt_coeffs_distr_.calc_offsets();
+
+    num_mt_coeffs_ = mt_coeffs_distr_.offsets.back() + mt_coeffs_distr_.counts.back();
+
+    for (int ispn = 0; ispn < num_sc_; ispn++) {
+        mt_coeffs_[ispn] = std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>(
+            new matrix_storage<std::complex<T>, matrix_storage_t::slab>(mp__, mt_coeffs_distr_.counts[comm_.rank()], num_wf_));
+    }
+}
+
+template <typename T>
 void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T>& src__, int ispn__, int i0__,
                                   int jspn__, int j0__)
 {

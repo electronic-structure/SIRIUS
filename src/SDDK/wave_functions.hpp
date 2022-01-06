@@ -250,6 +250,12 @@ class Wave_functions
     Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
                    memory_t preferred_memory_t__, int num_sc__ = 1);
 
+    /// Constructor for LAPW wave-functions.
+    /** Memory to store wave-function coefficients is allocated from the memory pool. */
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_atoms__,
+                   std::function<int(int)> mt_size__, int num_wf__,
+                   memory_t preferred_memory_t__, int num_sc__ = 1);
+
     /// Communicator of the G+k vector distribution.
     Communicator const& comm() const
     {

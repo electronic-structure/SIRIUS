@@ -264,7 +264,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
 }
 
-void Band::get_singular_components(Hamiltonian_k<double>& Hk__, mdarray<double, 2>& o_diag__) const
+void Band::get_singular_components(Hamiltonian_k<double>& Hk__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
@@ -302,7 +302,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
          }
     }
 
-    get_singular_components(Hk__, h_o_diag.second);
+    get_singular_components(Hk__);
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
