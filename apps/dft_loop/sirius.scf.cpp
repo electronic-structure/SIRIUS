@@ -14,7 +14,8 @@ enum class task_t : int
 {
     ground_state_new     = 0,
     ground_state_restart = 1,
-    k_point_path         = 2
+    k_point_path         = 2,
+    eos                  = 3
 };
 
 void json_output_common(json& dict__)
@@ -30,13 +31,15 @@ void rewrite_relative_paths(json& dict__, fs::path const &working_directory = fs
     // which should be relative to the json file. So better make them
     // absolute such that the simulation context does not have to be
     // aware of paths.
-    if (!dict__.count("unit_cell"))
+    if (!dict__.count("unit_cell")) {
         return;
+    }
 
     auto &section = dict__["unit_cell"];
 
-    if (!section.count("atom_files"))
+    if (!section.count("atom_files")) {
         return;
+    }
 
     auto &atom_files = section["atom_files"];
 
@@ -60,10 +63,9 @@ nlohmann::json preprocess_json_input(std::string fname__)
     }
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
-                                                   cmd_args const& args__)
+std::unique_ptr<Simulation_context>
+create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
-
     auto json = preprocess_json_input(fname__);
 
     auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
@@ -80,10 +82,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
 }
 
 
-double ground_state(Simulation_context& ctx,
-                    task_t              task,
-                    cmd_args const&     args,
-                    int                 write_output)
+double
+ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int write_output)
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
 
@@ -312,6 +312,33 @@ void run_tasks(cmd_args const& args)
         //}
         ground_state(*ctx, task, args, 1);
     }
+    if (task == task_t::eos) {
+        auto s0 = std::pow(args.value<double>("volume_scale0"), 1.0 / 3);
+        auto s1 = std::pow(args.value<double>("volume_scale1"), 1.0 / 3);
+
+        int rank{0};
+        int num_steps{10};
+        std::vector<double> volume;
+        std::vector<double> energy;
+        for (int i = 0; i < num_steps; i++) {
+            double s = s0 + i * (s1 - s0) / (num_steps - 1);
+            auto ctx = create_sim_ctx(fname, args);
+            rank = ctx->comm().rank();
+            /* scale lattice vectors */
+            auto lv = ctx->unit_cell().lattice_vectors() * s;
+            ctx->unit_cell().set_lattice_vectors(lv);
+            ctx->initialize();
+            auto e = ground_state(*ctx, task_t::ground_state_new, args, 0);
+            volume.push_back(ctx->unit_cell().omega());
+            energy.push_back(e);
+        }
+        if (rank == 0) {
+            std::cout << "final result:" << std::endl;
+            for (int i = 0; i < num_steps; i++) {
+                std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
+            }
+        }
+    }
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
@@ -446,6 +473,8 @@ int main(int argn, char** argv)
     args.register_key("--iterative_solver.early_restart=", "{double} value between 0 and 1 to control the early restart ratio in Davidson");
     args.register_key("--mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)");
     args.register_key("--mixer.beta=", "{double} mixing parameter");
+    args.register_key("--volume_scale0=", "{double} starting volume scale for EOS calculation");
+    args.register_key("--volume_scale1=", "{double} final volume scale for EOS calculation");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {

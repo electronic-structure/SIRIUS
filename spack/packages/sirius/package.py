@@ -90,6 +90,7 @@ class Sirius(CMakePackage, CudaPackage):
     depends_on('spglib')
     depends_on('hdf5+hl')
     depends_on('pkgconfig', type='build')
+    depends_on('cmake@3.18:', when='@7.3.1:', type='build')
     depends_on('py-numpy', when='+python', type=('build', 'run'))
     depends_on('py-scipy', when='+python', type=('build', 'run'))
     depends_on('py-h5py', when='+python', type=('build', 'run'))

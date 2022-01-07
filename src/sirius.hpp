@@ -236,7 +236,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
   For a quick start please refer to the main development page at
   <a href="https://github.com/electronic-structure/SIRIUS">GitHub</a>.
 
-  The generated Fortran API is described here: generated.f90
+  The generated Fortran API is described in the file sirius.f90.
 
   The frequent variable names are listed on the page \ref stdvarname.
 

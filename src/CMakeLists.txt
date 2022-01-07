@@ -50,7 +50,6 @@ set(_SOURSES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
-  "k_point/generate_gklo_basis.cpp"
   "k_point/test_fv_states.cpp"
   "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
@@ -97,11 +96,7 @@ else()
   add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 endif()
 
-if(USE_CUDA AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
-  if(${CUDA_ARCH})
-    set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
-  endif()
-endif()
+set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla

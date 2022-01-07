@@ -52,7 +52,7 @@ def parse_radial_grid(upf_dict, root):
         if np != len(rg):
             print("Wrong number of radial points")
     except KeyError:
-        print('Warning missing size field in attributes')
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['radial_grid'] = rg
 
 
@@ -70,9 +70,22 @@ def parse_non_local(upf_dict, root):
 
     for i in range(proj_num):
         node = root.findall("./PP_NONLOCAL/PP_BETA.%i" % (i + 1))[0]
-        nr = int(node.attrib['cutoff_radius_index'])
-        upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
+
+        try:
+            # cutoff_radius_index is optional
+            nr = int(node.attrib['cutoff_radius_index'])
+        except KeyError:
+            # ... and per the standard we should take the full list,
+            # but we should cut off the long tail for numerical stability
+            try:
+                # find the first value from the back bigger than...
+                nr = -next(idx for idx, val in enumerate(beta[::-1]) if val > 1e-80)
+            except StopIteration:
+                # if that fails, take the whole thing
+                nr = len(beta)
+
+        upf_dict['beta_projectors'].append({})
         upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
         if 'label' in node.attrib:
             upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
@@ -105,7 +118,7 @@ def parse_non_local(upf_dict, root):
     # ------------------------------------
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
-    if node.attrib['q_with_l'] != 'T':
+    if not node.attrib['q_with_l'].lower() in ['t', 'true']:
         print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
@@ -311,7 +324,7 @@ def parse_upf2_from_string(upf2_str):
         if np != len(vloc):
             print("Wrong number of points")
     except KeyError:
-        print('Warning missing size field in attributes ' + str(node))
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['local_potential'] = vloc
 
     # non-local part of potential
