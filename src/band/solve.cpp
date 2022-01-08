@@ -29,7 +29,7 @@ namespace sirius {
 
 template <typename T>
 void
-Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
+Band::solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
     if (ctx_.cfg().control().use_second_variation()) {
@@ -38,7 +38,7 @@ Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
         if (itso.type() == "exact") {
             diag_full_potential_first_variation_exact(Hk__);
         } else if (itso.type() == "davidson") {
-            diag_full_potential_first_variation_davidson(Hk__);
+            diag_full_potential_first_variation_davidson(Hk__, itsol_tol__);
         }
         /* generate first-variational states */
         Hk__.kp().generate_fv_states();
@@ -55,12 +55,12 @@ Band::solve_full_potential(Hamiltonian_k<T>& Hk__) const
 
 template
 void
-Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__) const;
+Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
 
 #if defined(USE_FP32)
 template<>
 void
-Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__) const
+Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__) const
 {
     RTE_THROW("FP32 is not implemented for FP-LAPW");
 }
@@ -100,10 +100,8 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
         };
 
         auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, ctx_.num_bands(), ctx_.num_mag_dims(),
-                kp.spinor_wave_functions(), tolerance,
-                ctx_.cfg().iterative_solver().residual_tolerance(), ctx_.cfg().iterative_solver().num_steps(),
-                ctx_.cfg().iterative_solver().locking(), ctx_.cfg().iterative_solver().subspace_size(),
-                ctx_.cfg().iterative_solver().converge_by_energy(), ctx_.cfg().iterative_solver().extra_ortho(),
+                kp.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itso.num_steps(),
+                itso.locking(), itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(),
                 std::cout, 0);
 
         niter = result.niter;
@@ -143,7 +141,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     double empy_tol{itsol_tol__};
-    if (!ctx_.full_potential()) {
+    if (ctx_.cfg().iterative_solver().type() == "davidson") {
         empy_tol = std::max(itsol_tol__ * ctx_.cfg().settings().itsol_tol_ratio(),
                                    ctx_.cfg().iterative_solver().empty_states_tolerance());
         ctx_.message(2, __function_name__, "iterative solver tolerance (occupied, empty) : %1.4e, %1.4e\n",
@@ -158,7 +156,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
-            solve_full_potential<T>(Hk);
+            solve_full_potential<T>(Hk, itsol_tol__);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);

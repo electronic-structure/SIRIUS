@@ -56,7 +56,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-    void diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__) const;
+    void diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
 
     /// Solve second-variational problem.
     void diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) const;
@@ -91,7 +91,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>
-    void solve_full_potential(Hamiltonian_k<T>& Hk__) const;
+    void solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const;
 
     /// Check the residuals of wave-functions.
     template <typename T>

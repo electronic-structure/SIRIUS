@@ -382,10 +382,10 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
             halm_col.zero();
         }
 
-#pragma omp parallel
+        #pragma omp parallel
         {
             int tid = omp_get_thread_num();
-#pragma omp for
+            #pragma omp for
             for (int ia = ia_begin; ia < ia_end; ia++) {
                 auto& atom = uc.atom(ia);
                 auto& type = atom.type();
@@ -979,7 +979,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     /* generate matching coefficients Alm(G+k) for a block of atoms */
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
-#pragma omp parallel
+        #pragma omp parallel
         {
             int tid = omp_get_thread_num();
             for (int ia = atom_begin; ia < atom_end; ia++) {
@@ -1152,7 +1152,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             matrix<std::complex<T>> phi_lo_ia(type.mt_lo_basis_size(), n__);
 
             if (ia_location.rank == kp().comm().rank()) {
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < n__; i++) {
                     std::memcpy(&phi_lo_ia(0, i),
                                 phi__.mt_coeffs(0).prime().at(memory_t::host,
@@ -1162,8 +1162,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             }
             /* broadcast from a rank */
             kp().comm().bcast(phi_lo_ia.at(memory_t::host), static_cast<int>(phi_lo_ia.size()), ia_location.rank);
-/* wrtite into a proper position in a block */
-#pragma omp parallel for schedule(static)
+            /* wrtite into a proper position in a block */
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < n__; i++) {
                 std::memcpy(&phi_lo_block(offsets_lo[ialoc], i), &phi_lo_ia(0, i),
                             type.mt_lo_basis_size() * sizeof(std::complex<T>));
@@ -1225,7 +1225,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 int naw    = type.mt_aw_basis_size();
                 int nlo    = type.mt_lo_basis_size();
 
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
                     /* local orbital indices */
@@ -1307,7 +1307,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 if (ia_location.rank == kp().comm().rank()) {
                     int offset_mt_coeffs = phi__.offset_mt_coeffs(ia_location.local_index);
 
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                         int xi_lo = type.mt_aw_basis_size() + ilo;
                         /* local orbital indices */

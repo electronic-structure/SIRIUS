@@ -176,7 +176,8 @@ void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T
     assert(jspn__ == 0 || jspn__ == 1);
 
     int ngv = pw_coeffs(jspn__).num_rows_loc();
-    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+    bool has_mt = this->has_mt() && src__.has_mt();
+    int nmt = has_mt ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
     switch (pu__) {
         case device_t::CPU: {
@@ -185,7 +186,7 @@ void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T
                       src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
                       pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
             /* copy MT part */
-            if (has_mt()) {
+            if (has_mt) {
                 std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
                           src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
                           mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
@@ -197,7 +198,7 @@ void Wave_functions<T>::copy_from(device_t pu__, int n__, const Wave_functions<T
             acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
                       src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), ngv * n__);
             /* copy MT part */
-            if (has_mt()) {
+            if (has_mt) {
                 acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
                           src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
             }
@@ -212,12 +213,14 @@ void Wave_functions<T>::copy_from(const Wave_functions<T>& src__, int n__, int i
     assert(ispn__ == 0 || ispn__ == 1);
     assert(jspn__ == 0 || jspn__ == 1);
 
+    bool has_mt = this->has_mt() && src__.has_mt();
+
     int ngv = pw_coeffs(jspn__).num_rows_loc();
-    int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+    int nmt = has_mt ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
     copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
          preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
-    if (has_mt()) {
+    if (has_mt) {
         copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
              preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
     }
