@@ -225,7 +225,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     auto spsi = wave_function_factory(ctx, kp, num_bands__, num_sc, mt_part);
 
     /* residuals */
-    auto res = wave_function_factory(ctx, kp, num_bands__, num_sc, mt_part);
+    /* res is also used as a temporary array in orthogonalize() and the first time num_extra_phi + num_bands
+     * states will be orthogonalized */
+    auto res = wave_function_factory(ctx, kp, num_bands__ + num_extra_phi, num_sc, mt_part);
 
     const int bs = ctx.cyclic_block_size();
 
@@ -415,7 +417,10 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                       << "  happened before entering the iterative loop" << std::endl;
                     WARNING(s);
                     if (N <= 20) {
-                        H.serialize("davidson:H_first", N);
+                        auto s1 = H.serialize("davidson:H_first", N, N);
+                        if (Hk__.kp().comm().rank() == 0) {
+                            std::cout << s1.str() << std::endl;
+                        }
                     }
                 }
             }
@@ -428,11 +433,22 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
                 if (N <= 20) {
-                    H.serialize("davidson:O_first", N);
+                    auto s1 = H.serialize("davidson:O_first", N, N);
+                    if (Hk__.kp().comm().rank() == 0) {
+                        std::cout << s1.str() << std::endl;
+                    }
                 }
             }
         }
         /* END DEBUG */
+
+        if (ctx.print_checksum()) {
+            phi->print_checksum(device_t::CPU, "phi", 0, N);
+            if (hphi) {
+                hphi->print_checksum(device_t::CPU, "hphi", 0, N);
+            }
+            sphi->print_checksum(device_t::CPU, "sphi", 0, N);
+        }
 
         if (verbosity__ >= 1) {
             out__ << "orthogonalize " << N << " states" << std::endl;
@@ -443,6 +459,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             case davidson_evp_t::hamiltonian: {
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                         spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, 0, N, H, *res);
+                if (ctx.print_checksum()) {
+                    phi->print_checksum(device_t::CPU, "phi", 0, N);
+                    if (hphi) {
+                        hphi->print_checksum(device_t::CPU, "hphi", 0, N);
+                    }
+                    sphi->print_checksum(device_t::CPU, "sphi", 0, N);
+                }
                 /* setup eigen-value problem */
                 Band(ctx).set_subspace_mtrx<T>(0, N, 0, *phi, *hphi, H, &H_old);
                 break;
@@ -469,7 +492,10 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                   << "  happened before entering the iterative loop" << std::endl;
                 WARNING(s);
                 if (N <= 20) {
-                    H.serialize("davidson:H", N);
+                    auto s1 = H.serialize("davidson:H", N, N);
+                    if (Hk__.kp().comm().rank() == 0) {
+                        std::cout << s1.str() << std::endl;
+                    }
                 }
             }
         }

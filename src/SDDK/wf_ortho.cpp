@@ -27,6 +27,7 @@
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 #include "linalg/eigensolver.hpp"
 #include "type_definition.hpp"
 
@@ -86,7 +87,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     if (sddk_debug >= 2) {
         if (o__.comm().rank() == 0) {
-            std::printf("check QR decomposition, matrix size : %i\n", n__);
+            std::cout << "check QR decomposition, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -101,7 +102,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         }
 
         if (o__.comm().rank() == 0) {
-            std::printf("check eigen-values, matrix size : %i\n", n__);
+            std::cout << "check eigen-values, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -128,8 +129,12 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
+        auto cs = o__.checksum(n__, n__);
         if (o__.comm().rank() == 0) {
-            std::printf("check diagonal\n");
+            utils::print_checksum("n x n overlap", cs);
+        }
+        if (o__.comm().rank() == 0) {
+            std::cout << "check diagonal" << std::endl;
         }
         auto diag = o__.get_diag(n__);
         for (int i = 0; i < n__; i++) {
@@ -138,14 +143,19 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             }
         }
         if (o__.comm().rank() == 0) {
-            std::printf("check hermitian\n");
+            std::cout << "check hermitian" << std::endl;
         }
-        real_type<T> d = check_hermitian(o__, n__);
-        if (d > 1e-12 && o__.comm().rank() == 0) {
-            std::stringstream s;
-            s << "matrix is not hermitian, max diff = " << d;
-            WARNING(s);
+        auto d = check_hermitian(o__, n__);
+        if (o__.comm().rank() == 0) {
+            if (d > 1e-12) {
+                std::stringstream s;
+                s << "matrix is not hermitian, max diff = " << d;
+                WARNING(s);
+            } else {
+                std::cout << "OK! n x overlap matrix is hermitian" << std::endl;
+            }
         }
+
     }
 
     if (sddk_pp) {
@@ -169,11 +179,11 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             if (int info = linalg(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
             /* inversion of triangular matrix */
             if (linalg(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
-                TERMINATE("error in inversion");
+                RTE_THROW("error in inversion");
             }
         } else { /* CPU version */
             /* Cholesky factorization */
@@ -185,11 +195,11 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
                   << "number of wave_functions: " << wfs__.size() << std::endl
                   << "idx_bra: " << idx_bra__ << " "
                   << "idx_ket:" << idx_ket__;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
             /* inversion of triangular matrix */
             if (linalg(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
-                TERMINATE("error in inversion");
+                RTE_THROW("error in inversion");
             }
             if (is_device_memory(mem__)) {
                 acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
@@ -198,7 +208,6 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         PROFILE_STOP("sddk::orthogonalize|tmtrx");
 
         PROFILE_START("sddk::orthogonalize|transform");
-
         int sid{0};
         for (int s : spins__) {
             /* multiplication by triangular matrix */
@@ -255,13 +264,13 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             if (sddk_debug >= 1) {
                 s << std::endl << "  diag = " << diag[info - 1];
             }
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         PROFILE_STOP("sddk::orthogonalize|potrf");
 
         PROFILE_START("sddk::orthogonalize|trtri");
         if (linalg(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
-            TERMINATE("error in inversion");
+            RTE_THROW("error in inversion");
         }
         PROFILE_STOP("sddk::orthogonalize|trtri");
 
@@ -270,6 +279,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             for (int j = i + 1; j < n__; j++) {
                 o__.set(j, i, 0);
             }
+        }
+
+        if (tmp__.num_wf() < n__) {
+            RTE_THROW("not enough workspace");
         }
 
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi
@@ -281,10 +294,12 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             }
         }
     }
-    if (sddk_debug >= 2) {
+    if (sddk_debug >= 1) {
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         auto err = check_identity(o__, n__);
-        std::cout << "wf_ortho: error in (n, n) overlap matrix : " << err << std::endl;
+        if (o__.comm().rank() == 0) {
+            std::cout << "wf_ortho: error in (n, n) overlap matrix : " << err << std::endl;
+        }
     }
     return 0;
 }

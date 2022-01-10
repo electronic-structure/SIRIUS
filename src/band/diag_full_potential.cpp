@@ -80,10 +80,8 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
 
     if (ctx_.print_checksum()) {
-        auto z1 = h.checksum();
-        auto z2 = o.checksum();
-        kp.comm().allreduce(&z1, 1);
-        kp.comm().allreduce(&z2, 1);
+        auto z1 = h.checksum(ngklo, ngklo);
+        auto z2 = o.checksum(ngklo, ngklo);
         if (kp.comm().rank() == 0) {
             utils::print_checksum("h_lapw", z1);
             utils::print_checksum("o_lapw", z2);
@@ -112,8 +110,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
 
     if (ctx_.print_checksum()) {
-        auto z1 = kp.fv_eigen_vectors().checksum();
-        kp.comm().allreduce(&z1, 1);
+        auto z1 = kp.fv_eigen_vectors().checksum(kp.gklo_basis_size(), ctx_.num_fv_states());
         if (kp.comm().rank() == 0) {
             utils::print_checksum("fv_eigen_vectors", z1);
         }
