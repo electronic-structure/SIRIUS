@@ -265,7 +265,7 @@ class dmatrix : public matrix<T>
 
     void save_to_hdf5(std::string name__, int m__, int n__);
 
-    std::stringstream serialize(std::string name__, int m__, int n__) const
+    sddk::mdarray<T, 2> get_full_matrix() const
     {
         mdarray<T, 2> full_mtrx(num_rows(), num_cols());
         full_mtrx.zero();
@@ -278,16 +278,39 @@ class dmatrix : public matrix<T>
         if (blacs_grid_) {
             blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
         }
+        return full_mtrx;
+    }
 
-        // json dict;
-        // dict["mtrx_re"] = json::array();
-        // for (int i = 0; i < num_rows(); i++) {
-        //    dict["mtrx_re"].push_back(json::array());
-        //    for (int j = 0; j < num_cols(); j++) {
-        //        dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
-        //    }
-        //}
-        //
+    nlohmann::json serialize_to_json(int m__, int n__) const
+    {
+        auto full_mtrx = get_full_matrix();
+
+        nlohmann::json dict;
+        dict["mtrx_re"] = nlohmann::json::array();
+        for (int i = 0; i < num_rows(); i++) {
+            dict["mtrx_re"].push_back(nlohmann::json::array());
+            for (int j = 0; j < num_cols(); j++) {
+                dict["mtrx_re"][i].push_back(std::real(full_mtrx(i, j)));
+            }
+        }
+        if (!std::is_scalar<T>::value) {
+            dict["mtrx_im"] = nlohmann::json::array();
+            for (int i = 0; i < num_rows(); i++) {
+                dict["mtrx_im"].push_back(nlohmann::json::array());
+                for (int j = 0; j < num_cols(); j++) {
+                    dict["mtrx_im"][i].push_back(std::imag(full_mtrx(i, j)));
+                }
+            }
+        }
+        return dict;
+        // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+        // ofs << dict.dump(4);
+    }
+
+    std::stringstream serialize(std::string name__, int m__, int n__) const
+    {
+        auto full_mtrx = get_full_matrix();
+
         std::stringstream out;
         using namespace fmt;
         out << std::setprecision(12) << std::setw(24) << std::fixed;
@@ -310,31 +333,6 @@ class dmatrix : public matrix<T>
         }
         out << "}";
 
-        //if (!blacs_grid_ || blacs_grid_->comm().rank() == 0) {
-        //    // std::cout << "mtrx: " << name__ << std::endl;
-        //    // std::cout << dict.dump(4);
-
-        //    std::printf("matrix label: %s\n", name__.c_str());
-        //    std::printf("{\n");
-        //    for (int i = 0; i < n__; i++) {
-        //        std::printf("{");
-        //        for (int j = 0; j < n__; j++) {
-        //            std::printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
-        //            if (j != n__ - 1) {
-        //                std::printf(",");
-        //            }
-        //        }
-        //        if (i != n__ - 1) {
-        //            std::printf("},\n");
-        //        } else {
-        //            std::printf("}\n");
-        //        }
-        //    }
-        //    std::printf("}\n");
-        //}
-
-        // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        // ofs << dict.dump(4);
         return out;
     }
 
@@ -365,7 +363,6 @@ class dmatrix : public matrix<T>
     }
 
 };
-
 
 } // namespace sddk
 
