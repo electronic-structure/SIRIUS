@@ -113,7 +113,8 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         std::vector<real_type<F>> eo(n__);
         dmatrix<F> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory("lapack", nullptr);
+        auto solver = (o__.comm().size() == 1) ? Eigensolver_factory("lapack", nullptr) :
+                                                 Eigensolver_factory("scalapack", nullptr);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {
@@ -152,7 +153,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
                 s << "matrix is not hermitian, max diff = " << d;
                 WARNING(s);
             } else {
-                std::cout << "OK! n x overlap matrix is hermitian" << std::endl;
+                std::cout << "OK! n x n overlap matrix is hermitian" << std::endl;
             }
         }
 
