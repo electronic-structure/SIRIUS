@@ -236,12 +236,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx.preferred_memory_t())) {
-        auto& mpd = ctx.mem_pool(memory_t::device);
+        auto& mpd = ctx.mem_pool(ctx.preferred_memory_t());
+        psi__.prepare(spin_range(psi__.num_sc() == 2 ? 2 : 0), true, &mpd);
 
-        for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
-            psi__.pw_coeffs(ispn).allocate(mpd);
-            psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands__);
-        }
+        //for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
+        //    psi__.pw_coeffs(ispn).allocate(mpd);
+        //    psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands__);
+        //}
 
         if (ctx.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
@@ -782,10 +783,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     PROFILE_STOP("sirius::davidson|iter");
 
     if (is_device_memory(ctx.preferred_memory_t())) {
-        for (int ispn = 0; ispn < num_spins; ispn++) {
-            psi__.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands__);
-            psi__.pw_coeffs(ispn).deallocate(memory_t::device);
-        }
+        psi__.dismiss(spin_range(psi__.num_sc() == 2 ? 2 : 0), true);
+        //for (int ispn = 0; ispn < num_spins; ispn++) {
+        //    psi__.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands__);
+        //    psi__.pw_coeffs(ispn).deallocate(memory_t::device);
+        //}
     }
 
     kp.release_hubbard_orbitals_on_device();

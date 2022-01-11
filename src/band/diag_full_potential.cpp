@@ -313,7 +313,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     }
 
     /* copy [0, ncomp) from kp.singular_components() to [nlo, nlo+ncomp) in phi_extra */
-    phi_extra->copy_from(kp.singular_components(), ncomp, 0, 0, 0, nlo);
+    phi_extra->copy_from(device_t::CPU, ncomp, kp.singular_components(), 0, 0, 0, nlo);
 
     /* short notation for target wave-functions */
     auto& psi = kp.fv_eigen_vectors_slab();

@@ -29,8 +29,9 @@
 #include <iostream>
 #include "linalg/linalg.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "utils/env.hpp"
 #include "SDDK/gvec.hpp"
+#include "utils/env.hpp"
+#include "utils/rte.hpp"
 #include "matrix_storage.hpp"
 #include "type_definition.hpp"
 #ifdef SIRIUS_GPU
@@ -437,7 +438,7 @@ class Wave_functions
         if (is_device_memory(preferred_memory_t_)) {
             if (mp__) {
                 if (!is_device_memory(mp__->memory_type())) {
-                    TERMINATE("not a device memory pool");
+                    RTE_THROW("not a device memory pool");
                 }
                 this->allocate(spins__, *mp__);
             } else {
