@@ -261,7 +261,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
 }
 
-void Band::get_singular_components(Hamiltonian_k<double>& Hk__) const
+void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
@@ -276,7 +276,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__) const
     auto& itso = ctx_.cfg().iterative_solver();
 
     auto result = davidson<double_complex, double_complex, davidson_evp_t::overlap>(Hk__, ncomp, 0, psi,
-            [](int i, int ispn){ return 1e-10; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
+            [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
 
     kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", result.eval[0]);
@@ -290,7 +290,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     auto& itso = ctx_.cfg().iterative_solver();
 
-    get_singular_components(Hk__);
+    get_singular_components(Hk__, itsol_tol__);
 
     /* total number of local orbitals */
     int nlo = ctx_.unit_cell().mt_lo_basis_size();
@@ -325,7 +325,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     auto result = davidson<std::complex<double>, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             ctx_.num_fv_states(), 0, psi, tolerance, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0,
-            phi_extra.get(), &ncomp, &nlo);
+            phi_extra.get());
 
     kp.set_fv_eigen_values(&result.eval[0]);
 }

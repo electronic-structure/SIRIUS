@@ -150,15 +150,14 @@ inline davidson_result_t
 davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> tolerance__, double res_tol__,
          int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, bool extra_ortho__,
-         std::ostream& out__, int verbosity__, Wave_functions<real_type<T>>* phi_extra__ = nullptr,
-         int const* ncomp__ = nullptr, int const* nlo__ = nullptr)
+         std::ostream& out__, int verbosity__, Wave_functions<real_type<T>>* phi_extra__ = nullptr)
 {
     PROFILE("sirius::davidson");
 
     auto& ctx = Hk__.H0().ctx();
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto& kp      = Hk__.kp();
+    auto& kp = Hk__.kp();
 
     auto& itso = ctx.cfg().iterative_solver();
 
@@ -180,9 +179,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     /* maximum subspace size */
     int num_phi = subspace_size__ * num_bands__;
     int num_extra_phi{0};
-    if (what == davidson_evp_t::hamiltonian && ctx.full_potential()) {
-        num_extra_phi = *ncomp__ + *nlo__;
-        num_phi += num_extra_phi;
+    if (phi_extra__) {
+        num_extra_phi = phi_extra__->num_wf();
     }
 
     if (num_phi > kp.gklo_basis_size()) {
@@ -313,12 +311,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                << "  number of spins     : " << num_spins << std::endl
                << "  non-collinear       : " << nc_mag << std::endl
                << "  number of extra phi : " << num_extra_phi << std::endl;
-        if (nlo__) {
-            out__ << "  number of local orbitals      : " << *nlo__ << std::endl;
-        }
-        if (ncomp__) {
-            out__ << "  number of singular components : " << *ncomp__ << std::endl;
-        }
      }
 
     PROFILE_START("sirius::davidson|iter");
