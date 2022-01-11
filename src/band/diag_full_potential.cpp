@@ -277,9 +277,12 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
 
     auto result = davidson<double_complex, double_complex, davidson_evp_t::overlap>(Hk__, ncomp, 0, psi,
             [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
-            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
+            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, ctx_.verbosity() - 2);
 
     kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", result.eval[0]);
+    for (int i = 0; i < ncomp; i++) {
+        kp.message(3, __function_name__, "singular component eigen-value[%i] : %20.16f\n", i, result.eval[i]);
+    }
 }
 
 void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__, double itsol_tol__) const
@@ -324,7 +327,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     auto result = davidson<std::complex<double>, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             ctx_.num_fv_states(), 0, psi, tolerance, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
-            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0,
+            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), std::cout, ctx_.verbosity() - 2,
             phi_extra.get());
 
     kp.set_fv_eigen_values(&result.eval[0]);

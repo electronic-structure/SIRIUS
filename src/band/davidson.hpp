@@ -181,6 +181,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     int num_extra_phi{0};
     if (phi_extra__) {
         num_extra_phi = phi_extra__->num_wf();
+        num_phi += num_extra_phi;
     }
 
     if (num_phi > kp.gklo_basis_size()) {
