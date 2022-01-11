@@ -253,12 +253,19 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         PROFILE_STOP("sddk::orthogonalize|transform");
     } else { /* parallel transformation */
         PROFILE_START("sddk::orthogonalize|potrf");
-        mdarray<F, 1> diag;
+        sddk::mdarray<F, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
-        if (int info = linalg(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        auto o_ptr = (o__.size_local() == 0) ? nullptr : o__.at(memory_t::host);
+        if (sddk_debug >= 2 && n__ <= 20) {
+            auto s1 = o__.serialize("wf_ortho:o_nn", n__, n__);
+            if (o__.comm().rank() == 0) {
+                std::cout << s1.str() << std::endl;
+            }
+        }
+        if (int info = linalg(linalg_t::scalapack).potrf(n__, o_ptr, o__.ld(), o__.descriptor())) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             if (sddk_debug >= 1) {
@@ -269,7 +276,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         PROFILE_STOP("sddk::orthogonalize|potrf");
 
         PROFILE_START("sddk::orthogonalize|trtri");
-        if (linalg(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        if (linalg(linalg_t::scalapack).trtri(n__, o_ptr, o__.ld(), o__.descriptor())) {
             RTE_THROW("error in inversion");
         }
         PROFILE_STOP("sddk::orthogonalize|trtri");
