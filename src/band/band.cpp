@@ -61,11 +61,12 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
         if (mtrx_old__) {
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < spl_col.local_size(); i++) {
-                std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            if (spl_row.local_size()) {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+                }
             }
         }
 
@@ -117,9 +118,11 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+        if (spl_row.local_size()) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+            }
         }
     }
 }
