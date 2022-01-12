@@ -413,7 +413,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     if (N <= 20) {
                         auto s1 = H.serialize("davidson:H_first", N, N);
                         if (Hk__.kp().comm().rank() == 0) {
-                            std::cout << s1.str() << std::endl;
+                            out__ << s1.str() << std::endl;
                         }
                     }
                 }
@@ -429,7 +429,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:O_first", N, N);
                     if (Hk__.kp().comm().rank() == 0) {
-                        std::cout << s1.str() << std::endl;
+                        out__ << s1.str() << std::endl;
                     }
                 }
             }
@@ -488,7 +488,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:H", N, N);
                     if (Hk__.kp().comm().rank() == 0) {
-                        std::cout << s1.str() << std::endl;
+                        out__ << s1.str() << std::endl;
                     }
                 }
             }

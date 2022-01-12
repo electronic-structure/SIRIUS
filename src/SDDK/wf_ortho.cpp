@@ -87,7 +87,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     if (sddk_debug >= 2) {
         if (o__.comm().rank() == 0) {
-            std::cout << "check QR decomposition, matrix size : " << n__ << std::endl;
+            RTE_OUT(std::cout) << "check QR decomposition, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -96,13 +96,13 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (std::abs(diag[i]) < std::numeric_limits<real_type<T>>::epsilon() * 10) {
-                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+                    RTE_OUT(std::cout) << "small norm: " << i << " " << diag[i] << std::endl;
                 }
             }
         }
 
         if (o__.comm().rank() == 0) {
-            std::cout << "check eigen-values, matrix size : " << n__ << std::endl;
+            RTE_OUT(std::cout) << "check eigen-values, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -120,7 +120,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (eo[i] < 1e-6) {
-                    std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
+                    RTE_OUT(std::cout) << "small eigen-value " << i << " " << eo[i] << std::endl;
                 }
             }
         }
@@ -132,19 +132,19 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     if (sddk_debug >= 1) {
         auto cs = o__.checksum(n__, n__);
         if (o__.comm().rank() == 0) {
-            utils::print_checksum("n x n overlap", cs);
+            //utils::print_checksum("n x n overlap", cs);
         }
         if (o__.comm().rank() == 0) {
-            std::cout << "check diagonal" << std::endl;
+            RTE_OUT(std::cout) << "check diagonal" << std::endl;
         }
         auto diag = o__.get_diag(n__);
         for (int i = 0; i < n__; i++) {
             if (std::real(diag[i]) <= 0 || std::imag(diag[i]) > 1e-12) {
-                std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
+                RTE_OUT(std::cout) << "wrong diagonal: " << i << " " << diag[i] << std::endl;
             }
         }
         if (o__.comm().rank() == 0) {
-            std::cout << "check hermitian" << std::endl;
+            RTE_OUT(std::cout) << "check hermitian" << std::endl;
         }
         auto d = check_hermitian(o__, n__);
         if (o__.comm().rank() == 0) {
@@ -153,7 +153,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
                 s << "matrix is not hermitian, max diff = " << d;
                 WARNING(s);
             } else {
-                std::cout << "OK! n x n overlap matrix is hermitian" << std::endl;
+                RTE_OUT(std::cout) << "OK! n x n overlap matrix is hermitian" << std::endl;
             }
         }
 
@@ -299,7 +299,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         auto err = check_identity(o__, n__);
         if (o__.comm().rank() == 0) {
-            std::cout << "wf_ortho: error in (n, n) overlap matrix : " << err << std::endl;
+            RTE_OUT(std::cout) << "orthogonalization error : " << err << std::endl;
         }
     }
     return 0;
