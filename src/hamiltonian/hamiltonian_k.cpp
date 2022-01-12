@@ -856,6 +856,18 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     //     phi__.print_checksum(pu, "phi", N__, n__);
     // }
 
+    auto pp_raw = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+
+    int pp = (pp_raw == nullptr) ? 0 : *pp_raw;
+
+    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
+    double ngop{8e-9}; // default value for complex type
+    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
+        ngop = 2e-9;
+    }
+    double gflops{0};
+    double time{0};
+
     if (!apw_only__) {
         if (hphi__ != nullptr) {
             /* zero the local-orbital part */
@@ -1279,7 +1291,20 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         matrix<std::complex<T>> alm_phi;
         matrix<std::complex<T>> halm_phi;
 
+        utils::time_point_t t0;
+        if (pp) {
+            t0 = utils::time_now();
+        }
         compute_alm_phi(alm_phi, halm_phi, num_mt_aw);
+        if (pp) {
+            if (hphi__) {
+                gflops += ngop * num_mt_aw * n__ * ngv;
+            }
+            if (ophi__) {
+                gflops += ngop * num_mt_aw * n__ * ngv;
+            }
+            time += utils::time_interval(t0);
+        }
 
         if (!phi_is_lo__) {
             compute_apw_apw(alm_phi, halm_phi, num_mt_aw);
@@ -1383,6 +1408,9 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         if (ophi__ != nullptr) {
             ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
+    }
+    if (pp && kp().comm().rank() == 0) {
+        RTE_OUT(std::cout) << "matrix multiplication performance : " << gflops / time << ", GFlop/s" << std::endl;
     }
     // if (ctx.control().print_checksum_) {
     //     if (hphi__) {
