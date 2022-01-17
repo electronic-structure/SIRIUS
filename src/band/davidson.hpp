@@ -358,10 +358,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
             }
             phi->copy_from(*phi_extra__, num_extra_phi, 0, 0, 0, num_bands__);
         }
-        if (phi_extra__) {
-            phi_extra__->print_checksum(device_t::CPU, "phi_extra", 0, num_extra_phi - nlo);
-            phi_extra__->print_checksum(device_t::CPU, "phi_extra", num_extra_phi - nlo, nlo);
-        }
 
         if (ctx.print_checksum()) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
