@@ -321,6 +321,9 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             }
         }
     }
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        phi_extra->copy_to(spin_range(0), memory_t::device, 0, nlo + ncomp);
+    }
 
     /* short notation for target wave-functions */
     auto& psi = kp.fv_eigen_vectors_slab();

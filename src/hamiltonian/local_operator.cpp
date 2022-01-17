@@ -710,7 +710,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
     auto spfft_buf = spfftk__.space_domain_data(spfft_mem);
 
     for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
-        PROFILE_START("sirius::Local_operator::apply_h_o|pot");
+        //PROFILE_START("sirius::Local_operator::apply_h_o|pot");
         /* phi(G) -> phi(r) */
         spfftk__.backward(reinterpret_cast<T const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)), spfft_mem);
         if (ophi__ != nullptr) {
@@ -757,10 +757,10 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             spfftk__.forward(spfft_mem, reinterpret_cast<T*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
                              SPFFT_FULL_SCALING);
         }
-        PROFILE_STOP("sirius::Local_operator::apply_h_o|pot");
+        //PROFILE_STOP("sirius::Local_operator::apply_h_o|pot");
 
         if (hphi__ != nullptr) {
-            PROFILE("sirius::Local_operator::apply_h_o|kin");
+            //PROFILE("sirius::Local_operator::apply_h_o|kin");
             /* add kinetic energy */
             for (int x : {0, 1, 2}) {
                 #pragma omp parallel for schedule(static)
