@@ -308,18 +308,19 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     phi_extra->pw_coeffs(0).zero(memory_t::host, 0, nlo + ncomp);
     phi_extra->mt_coeffs(0).zero(memory_t::host, 0, nlo + ncomp);
 
-    /* add pure local orbitals to the basis */
+    /* copy [0, ncomp) from kp.singular_components() to [0, ncomp) in phi_extra */
+    phi_extra->copy_from(device_t::CPU, ncomp, kp.singular_components(), 0, 0, 0, 0);
+
+    /* add pure local orbitals to the basis staring from ncomp index */
     if (nlo) {
         for (int ialoc = 0; ialoc < phi_extra->spl_num_atoms().local_size(); ialoc++) {
             int ia = phi_extra->spl_num_atoms()[ialoc];
             for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
-                phi_extra->mt_coeffs(0).prime(phi_extra->offset_mt_coeffs(ialoc) + xi, unit_cell_.atom(ia).offset_lo() + xi) = 1.0;
+                phi_extra->mt_coeffs(0).prime(phi_extra->offset_mt_coeffs(ialoc) + xi,
+                                              unit_cell_.atom(ia).offset_lo() + xi + ncomp) = 1.0;
             }
         }
     }
-
-    /* copy [0, ncomp) from kp.singular_components() to [nlo, nlo+ncomp) in phi_extra */
-    phi_extra->copy_from(device_t::CPU, ncomp, kp.singular_components(), 0, 0, 0, nlo);
 
     /* short notation for target wave-functions */
     auto& psi = kp.fv_eigen_vectors_slab();
