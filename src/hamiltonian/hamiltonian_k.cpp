@@ -1104,6 +1104,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             }
         }
 
+        PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
         if (hphi__ != nullptr) {
             kp().comm().allreduce(halm_phi.at(memory_t::host), num_mt_aw * n__);
             if (pu == device_t::GPU) {
@@ -1117,6 +1118,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 alm_phi.copy_to(memory_t::device);
             }
         }
+        PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
     };
 
     auto compute_apw_apw = [&](matrix<std::complex<T>>& alm_phi, matrix<std::complex<T>>& halm_phi, int num_mt_aw) {
@@ -1305,6 +1307,10 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             }
             time += utils::time_interval(t0);
         }
+        //if (pp && kp().comm().rank() == 0) {
+        //    RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time
+        //                       << ", GFlop/s [m,n,k]=[" << num_mt_aw << ", " << n__ << ", " << ngv << "]" << std::endl;
+        //}
 
         if (!phi_is_lo__) {
             compute_apw_apw(alm_phi, halm_phi, num_mt_aw);
@@ -1410,7 +1416,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         }
     }
     if (pp && kp().comm().rank() == 0) {
-        RTE_OUT(std::cout) << "matrix multiplication performance : " << gflops / time << ", GFlop/s" << std::endl;
+        RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
     }
     // if (ctx.control().print_checksum_) {
     //     if (hphi__) {
