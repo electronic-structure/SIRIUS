@@ -5666,4 +5666,75 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
         error_code__);
 }
 
+/*
+@api begin
+sirius_linear_solver:
+  doc: Interface to linear solver.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point in lattice coordinates
+    vkq:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K+q-point in lattice coordinates
+    num_gvec_k_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors for k-point
+    gvec_k_loc:
+      type: int
+      attr: in, required, dimension(3, num_gvec_k_loc)
+      doc: Local list of G-vectors for k-point.
+    num_gvec_kq_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors for k+q-point
+    gvec_kq_loc:
+      type: int
+      attr: in, required, dimension(3, num_gvec_kq_loc)
+      doc: Local list of G-vectors for k+q-point.
+    dpsi:
+      type: complex
+      attr: inout, required, dimension(ld, num_spin_comp, *)
+      doc: Left-hand side of the linear equation.
+    dvpsi:
+      type: complex
+      attr: inout, required, dimension(ld, num_spin_comp, *)
+      doc: Right-hand side of the linear equation.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of dpsi and dvpsi.
+    num_spin_comp:
+      type: int
+      attr: in, required
+      doc: Number of spin components.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_linear_solver(void* const* handler__, double const* vk__, double const* vkq__, int const* num_gvec_k_loc__,
+        int const* gvec_k_loc__, int const* num_gvec_kq_loc__, int const* gvec_kq_loc__,
+        std::complex<double>* dpsi__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
+        int* error_code__)
+{
+
+}
+
+/*
+ *
+ * ! CALL sirius_linear_solver( sctx, vk=MATMUL(TRANSPOSE(at), xk(:,ikk)), vkq=MATMUL(TRANSPOSE(at), xk(:,ikq)),
++        !    num_gvec_k_loc=npw, gvec_k_loc=vg_k(:,:), num_gvec_kq_loc=npwq, gvec_kq_loc=vg_kq(:,:), dpsi=dpsi(:,:),
++        !    dvpsi=dvpsi(:,:), ld=npwx, num_spin_comp=npol)
++
+*/
+
 } // extern "C"
