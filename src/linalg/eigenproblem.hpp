@@ -298,7 +298,7 @@ class Eigensolver_lapack : public Eigensolver
         auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
         int nb, lwork, liwork;
-        int lrwork; // only required in complex
+        int lrwork = 0; // only required in complex
         if (std::is_same<T, double>::value) {
             nb     = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
             lwork  = (nb + 3) * matrix_size__ + 1024;
