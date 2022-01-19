@@ -5776,11 +5776,27 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 }
 
 /*
- *
- * ! CALL sirius_linear_solver( sctx, vk=MATMUL(TRANSPOSE(at), xk(:,ikk)), vkq=MATMUL(TRANSPOSE(at), xk(:,ikq)),
-+        !    num_gvec_k_loc=npw, gvec_k_loc=vg_k(:,:), num_gvec_kq_loc=npwq, gvec_kq_loc=vg_kq(:,:), dpsi=dpsi(:,:),
-+        !    dvpsi=dvpsi(:,:), ld=npwx, num_spin_comp=npol)
-+
+@api begin
+sirius_generate_d_operator_matrix:
+  doc: Generate D-operator matrix.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground state handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
 */
+void sirius_generate_d_operator_matrix(void* const* handler__, int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.potential().generate_D_operator_matrix();
+        }, error_code__);
+}
 
 } // extern "C"
