@@ -5726,6 +5726,52 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
         std::complex<double>* dpsi__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
         int* error_code__)
 {
+    call_sirius(
+        [&]() {
+            std::cout << "checking G+k and G+k+q vectors" << std::endl;
+
+            vector3d<double> vk(vk__);
+            vector3d<double> vkq(vkq__);
+
+            auto& sctx = get_sim_ctx(handler__);
+
+            Gvec gvk(vk, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+            Gvec gvkq(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+
+            int num_gvec_k_loc = *num_gvec_k_loc__;
+            int num_gvec_k = num_gvec_k_loc;
+            sctx.comm_k().allreduce(&num_gvec_k, 1);
+
+            if (num_gvec_k != gvk.num_gvec()) {
+                RTE_THROW("wrong number of G+k vectors");
+            }
+
+            sddk::mdarray<int, 2> gvec_k_loc(const_cast<int*>(gvec_k_loc__), 3, num_gvec_k_loc);
+
+            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k_loc(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found");
+                }
+            }
+
+            int num_gvec_kq_loc = *num_gvec_kq_loc__;
+            int num_gvec_kq = num_gvec_kq_loc;
+            sctx.comm_k().allreduce(&num_gvec_kq, 1);
+
+            if (num_gvec_kq != gvkq.num_gvec()) {
+                RTE_THROW("wrong number of G+k vectors for k");
+            }
+
+            sddk::mdarray<int, 2> gvec_kq_loc(const_cast<int*>(gvec_kq_loc__), 3, num_gvec_kq_loc);
+
+            for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
+                auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq_loc(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found for k+q");
+                }
+            }
+        }, error_code__);
 
 }
 
