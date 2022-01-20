@@ -1080,6 +1080,16 @@ class Atom_type
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
+
+    inline int lmax_apw() const
+    {
+        return parameters_.cfg().parameters().lmax_apw();
+    }
+
+    inline int lmmax_apw() const
+    {
+        return utils::lmmax(this->lmax_apw());
+    }
 };
 
 } // namespace

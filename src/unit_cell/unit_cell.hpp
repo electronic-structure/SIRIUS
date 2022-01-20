@@ -509,6 +509,15 @@ class Unit_cell
         return lmax_;
     }
 
+    inline int lmax_apw() const
+    {
+        int lmax{0};
+        for (int iat = 0; iat < this->num_atom_types(); iat++) {
+            lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
+        }
+        return lmax;
+    }
+
     inline int num_nearest_neighbours(int ia) const
     {
         return static_cast<int>(nearest_neighbours_[ia].size());

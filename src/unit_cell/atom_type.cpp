@@ -71,15 +71,15 @@ void Atom_type::init(int offset_lo__)
 
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
-            init_aw_descriptors(parameters_.lmax_apw());
+            init_aw_descriptors(this->lmax_apw());
         }
 
-        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) {
+        if (static_cast<int>(aw_descriptors_.size()) != (this->lmax_apw() + 1)) {
             RTE_THROW("wrong size of augmented wave descriptors");
         }
 
         max_aw_order_ = 0;
-        for (int l = 0; l <= parameters_.lmax_apw(); l++) {
+        for (int l = 0; l <= this->lmax_apw(); l++) {
             max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
         }
 

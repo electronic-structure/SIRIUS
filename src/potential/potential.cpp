@@ -64,7 +64,7 @@ Potential::Potential(Simulation_context& ctx__)
 
     if (ctx_.full_potential()) {
         using gc_z = Gaunt_coefficients<double_complex>;
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.unit_cell().lmax_apw(), ctx_.lmax_pot(), ctx_.unit_cell().lmax_apw(), SHT::gaunt_hybrid));
     }
 
     /* create list of XC functionals */

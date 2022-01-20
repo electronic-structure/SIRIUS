@@ -180,7 +180,7 @@ Hamiltonian0<T>::apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector
         auto& atom = unit_cell_.atom(ia);
         int offset = psi__.offset_mt_coeffs(ialoc);
 
-        for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+        for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */
             int nrf = atom.type().indexr().num_rf(l);
 

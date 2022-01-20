@@ -98,7 +98,7 @@ Density::Density(Simulation_context& ctx__)
     if (ctx_.full_potential()) {
         using gc_z = Gaunt_coefficients<double_complex>;
         gaunt_coefs_ =
-            std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+            std::unique_ptr<gc_z>(new gc_z(ctx_.unit_cell().lmax_apw(), ctx_.lmax_rho(), ctx_.unit_cell().lmax_apw(), SHT::gaunt_hybrid));
     }
 
     l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
