@@ -33,6 +33,7 @@
 #include "nlcglib/nlcglib.hpp"
 #endif
 #include "symmetry/crystal_symmetry.hpp"
+#include "band/davidson.hpp"
 
 struct sirius_context_handler_t
 {
@@ -5672,9 +5673,9 @@ sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
     handler:
-      type: ctx_handler
+      type: gs_handler
       attr: in, required
-      doc: Simulation context handler.
+      doc: DFT ground staate handler.
     vk:
       type: double
       attr: in, required, dimension(3)
@@ -5733,7 +5734,8 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             vector3d<double> vk(vk__);
             vector3d<double> vkq(vkq__);
 
-            auto& sctx = get_sim_ctx(handler__);
+            auto& gs = get_gs(handler__);
+            auto& sctx = gs.ctx();
 
             Gvec gvk(vk, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
             Gvec gvkq(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
@@ -5771,6 +5773,27 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                     RTE_THROW("index of G-vector is not found for k+q");
                 }
             }
+
+            sirius::Hamiltonian0<double> H0(gs.potential());
+
+            sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), vk__, 1.0, 0);
+            kp.initialize();
+
+            auto Hk = H0(kp);
+
+            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf());
+
+            auto& itsol = sctx.cfg().iterative_solver();
+
+            auto result = sirius::davidson<std::complex<double>, std::complex<double>>(Hk, sctx.num_bands(), sctx.num_mag_dims(),
+                    kp.spinor_wave_functions(), [](int i, int ispn){ return 1.0; }, [](int i, int ispn){ return 1e-12; },
+                    itsol.residual_tolerance(), itsol.num_steps(), itsol.locking(), itsol.subspace_size(), itsol.converge_by_energy(),
+                    itsol.extra_ortho(), std::cout, 0);
+
+            for (int i = 0; i < sctx.num_bands(); i++) {
+                std::cout << "band: " << i << ", eval: " << result.eval[i] << std::endl;
+            }
+
         }, error_code__);
 
 }

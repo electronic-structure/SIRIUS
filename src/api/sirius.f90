@@ -5582,7 +5582,7 @@ end subroutine sirius_nlcg_params
 
 !
 !> @brief Interface to linear solver.
-!> @param [in] handler Simulation context handler.
+!> @param [in] handler DFT ground staate handler.
 !> @param [in] vk K-point in lattice coordinates
 !> @param [in] vkq K+q-point in lattice coordinates
 !> @param [in] num_gvec_k_loc Local number of G-vectors for k-point
@@ -5598,7 +5598,7 @@ subroutine sirius_linear_solver(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gve
 &gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)
 implicit none
 !
-type(sirius_context_handler), target, intent(in) :: handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 real(8), target, dimension(3), intent(in) :: vk
 real(8), target, dimension(3), intent(in) :: vkq
 integer, target, intent(in) :: num_gvec_k_loc
