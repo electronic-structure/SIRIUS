@@ -4,13 +4,13 @@
       "processing_unit" : "cpu",
       "std_evp_solver_name" : "lapack",
       "gen_evp_solver_name" : "lapack",
-      "verbosity" : 1,
+      "verbosity" : 2,
       "print_forces" : true,
       "print_stress" : true,
       "!verification" : 1
   },
   "settings" : {
-    "itsol_tol_min" : 1e-16
+    "itsol_tol_min" : 1e-13
   },
 
   "parameters" : {
