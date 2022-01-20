@@ -5785,8 +5785,8 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 
             auto& itsol = sctx.cfg().iterative_solver();
 
-            auto result = sirius::davidson<std::complex<double>, std::complex<double>>(Hk, sctx.num_bands(), sctx.num_mag_dims(),
-                    kp.spinor_wave_functions(), [](int i, int ispn){ return 1.0; }, [](int i, int ispn){ return 1e-12; },
+            auto result = sirius::davidson<std::complex<double>, std::complex<double>, sirius::davidson_evp_t::hamiltonian>(Hk, sctx.num_bands(), sctx.num_mag_dims(),
+                    kp.spinor_wave_functions(), [](int i, int ispn){ return 1e-12; },
                     itsol.residual_tolerance(), itsol.num_steps(), itsol.locking(), itsol.subspace_size(), itsol.converge_by_energy(),
                     itsol.extra_ortho(), std::cout, 0);
 
@@ -5800,24 +5800,48 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             gvk.comm().allgather(gk_in_distr.counts.data(), 1, gvk.comm().rank());
             gk_in_distr.calc_offsets();
 
+            /* offset in the incomming G-vector index */
+            int offset = gk_in_distr.offsets[gvk.comm().rank()];
+
             sddk::mdarray<int, 2> gvec_k(3, gvk.num_gvec());
             for (int ig = 0; ig < num_gvec_k_loc; ig++) {
                 for (int x: {0, 1, 2}) {
-                    gvec_k(x, gk_in_distr.offsets[gvk.comm().rank()] + ig) = gvec_k_loc(x, ig);
+                    gvec_k(x, offset + ig) = gvec_k_loc(x, ig);
                 }
             }
-            gvk.comm().allgather(&gvec_k(0, 0), gk_in_distr.counts[gvk.comm().rank()] * 3,
-                                 gk_in_distr.offsets[gvk.comm().rank()] * 3);
+            gvk.comm().allgather(&gvec_k(0, 0), 3 * num_gvec_k_loc, 3 * offset);
 
+            std::vector<int> igmap(num_gvec_k);
             for (int ig = 0; ig < num_gvec_k; ig++) {
                 auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k(0, ig)));
                 if (i == -1) {
                     RTE_THROW("index of G-vector is not found");
                 }
+                igmap[i] = ig;
             }
 
-            sddk::mdarray<std::complex<double>> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
-            //auto dpsi_wf = wave_fu
+            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            auto dpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+
+            std::vector<std::complex<double>> tmp(num_gvec_k);
+
+            for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                for (int i = 0; i < sctx.num_bands(); i++) {
+                    /* gather the full wave-function in the order of QE */
+                    for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                        tmp[offset + ig] = dpsi(ig, ispn, i);
+                    }
+                    gvk.comm().allgather(tmp.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    /* copy local part */
+                    for (int ig = 0; ig < gvk.count(); ig++) {
+                        dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp[igmap[ig + gvk.offset()]];
+                    }
+                }
+            }
+
+            /* at this point dpsi_wf should be in the order of SIRIUS.
+             * TODO: how to check the corectness?
+             */
 
 
         }, error_code__);
