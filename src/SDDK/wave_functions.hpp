@@ -29,8 +29,9 @@
 #include <iostream>
 #include "linalg/linalg.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "utils/env.hpp"
 #include "SDDK/gvec.hpp"
+#include "utils/env.hpp"
+#include "utils/rte.hpp"
 #include "matrix_storage.hpp"
 #include "type_definition.hpp"
 #ifdef SIRIUS_GPU
@@ -250,6 +251,12 @@ class Wave_functions
     Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
                    memory_t preferred_memory_t__, int num_sc__ = 1);
 
+    /// Constructor for LAPW wave-functions.
+    /** Memory to store wave-function coefficients is allocated from the memory pool. */
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_atoms__,
+                   std::function<int(int)> mt_size__, int num_wf__,
+                   memory_t preferred_memory_t__, int num_sc__ = 1);
+
     /// Communicator of the G+k vector distribution.
     Communicator const& comm() const
     {
@@ -451,7 +458,7 @@ class Wave_functions
         if (is_device_memory(preferred_memory_t_)) {
             if (mp__) {
                 if (!is_device_memory(mp__->memory_type())) {
-                    TERMINATE("not a device memory pool");
+                    RTE_THROW("not a device memory pool");
                 }
                 this->allocate(spins__, *mp__);
             } else {

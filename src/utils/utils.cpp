@@ -23,6 +23,7 @@
  *
  */
 #include "utils/utils.hpp"
+#include "utils/rte.hpp"
 
 namespace utils {
 std::string timestamp(std::string fmt)
@@ -106,7 +107,7 @@ nlohmann::json read_json_from_file(std::string const &filename) {
     if (!file.is_open()) {
         std::stringstream s;
         s << "file " << filename << " can't be opened";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return try_parse(file);

@@ -15,7 +15,8 @@ enum class task_t : int
     ground_state_new     = 0,
     ground_state_restart = 1,
     k_point_path         = 2,
-    eos                  = 3
+    eos                  = 3,
+    read_config          = 4
 };
 
 void json_output_common(json& dict__)
@@ -338,6 +339,35 @@ void run_tasks(cmd_args const& args)
                 std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
             }
         }
+    }
+    if (task == task_t::read_config) {
+        //int count{0};
+        //while (true) {
+        //    std::stringstream s;
+        //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
+        //    fname = s.str();
+        //    try {
+        //        auto dict = utils::read_json_from_file_or_string(fname);
+        //        Simulation_context ctx(dict["config"].dump());
+        //    } catch(...) {
+        //        break;
+        //    }
+        //    count++;
+        //}
+        auto dict1 = utils::read_json_from_file_or_string("sirius000030.json");
+        Simulation_context ctx1(dict1["config"].dump());
+        ctx1.initialize();
+
+        auto dict2 = utils::read_json_from_file_or_string("sirius000031.json");
+        Simulation_context ctx2(dict1["config"].dump());
+        ctx2.initialize();
+
+        ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
+        for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
+            ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
+        }
+        ctx1.update();
+
     }
 
     if (task == task_t::k_point_path) {
