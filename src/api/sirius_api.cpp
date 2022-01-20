@@ -5794,6 +5794,32 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 std::cout << "band: " << i << ", eval: " << result.eval[i] << std::endl;
             }
 
+            /* collect local G+k vector sizes across all ranks */
+            block_data_descriptor gk_in_distr(gvk.comm().size());
+            gk_in_distr.counts[gvk.comm().rank()] = num_gvec_k_loc;
+            gvk.comm().allgather(gk_in_distr.counts.data(), 1, gvk.comm().rank());
+            gk_in_distr.calc_offsets();
+
+            sddk::mdarray<int, 2> gvec_k(3, gvk.num_gvec());
+            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                for (int x: {0, 1, 2}) {
+                    gvec_k(x, gk_in_distr.offsets[gvk.comm().rank()] + ig) = gvec_k_loc(x, ig);
+                }
+            }
+            gvk.comm().allgather(&gvec_k(0, 0), gk_in_distr.counts[gvk.comm().rank()] * 3,
+                                 gk_in_distr.offsets[gvk.comm().rank()] * 3);
+
+            for (int ig = 0; ig < num_gvec_k; ig++) {
+                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found");
+                }
+            }
+
+            sddk::mdarray<std::complex<double>> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            //auto dpsi_wf = wave_fu
+
+
         }, error_code__);
 
 }
