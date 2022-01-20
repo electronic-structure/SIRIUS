@@ -38,7 +38,7 @@ __global__ void spherical_harmonics_ylm_gpu_kernel(int lmax__, int ntp__, double
 
     if (itp < ntp__) {
         double theta = tp__[2 * itp];
-        double phi   = tp__[2 * itp + 1];
+        // double phi   = tp__[2 * itp + 1];
         double sint = sin(theta);
         double cost = cos(theta);
 

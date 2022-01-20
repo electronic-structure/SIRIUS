@@ -162,6 +162,8 @@ inline double wtime()
     return double(t.tv_sec) + double(t.tv_usec) / 1e6;
 }
 
+using time_point_t = std::chrono::high_resolution_clock::time_point;
+
 inline std::chrono::high_resolution_clock::time_point time_now()
 {
     return std::chrono::high_resolution_clock::now();

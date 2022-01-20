@@ -27,6 +27,7 @@
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 #include "linalg/eigensolver.hpp"
 #include "type_definition.hpp"
 
@@ -86,7 +87,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
 
     if (sddk_debug >= 2) {
         if (o__.comm().rank() == 0) {
-            std::printf("check QR decomposition, matrix size : %i\n", n__);
+            RTE_OUT(std::cout) << "check QR decomposition, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -95,13 +96,13 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (std::abs(diag[i]) < std::numeric_limits<real_type<T>>::epsilon() * 10) {
-                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+                    RTE_OUT(std::cout) << "small norm: " << i << " " << diag[i] << std::endl;
                 }
             }
         }
 
         if (o__.comm().rank() == 0) {
-            std::printf("check eigen-values, matrix size : %i\n", n__);
+            RTE_OUT(std::cout) << "check eigen-values, matrix size : " << n__ << std::endl;
         }
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -112,13 +113,14 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         std::vector<real_type<F>> eo(n__);
         dmatrix<F> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory("lapack", nullptr);
+        auto solver = (o__.comm().size() == 1) ? Eigensolver_factory("lapack", nullptr) :
+                                                 Eigensolver_factory("scalapack", nullptr);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (eo[i] < 1e-6) {
-                    std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
+                    RTE_OUT(std::cout) << "small eigen-value " << i << " " << eo[i] << std::endl;
                 }
             }
         }
@@ -128,24 +130,33 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
+        auto cs = o__.checksum(n__, n__);
         if (o__.comm().rank() == 0) {
-            std::printf("check diagonal\n");
+            //utils::print_checksum("n x n overlap", cs);
+        }
+        if (o__.comm().rank() == 0) {
+            RTE_OUT(std::cout) << "check diagonal" << std::endl;
         }
         auto diag = o__.get_diag(n__);
         for (int i = 0; i < n__; i++) {
             if (std::real(diag[i]) <= 0 || std::imag(diag[i]) > 1e-12) {
-                std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
+                RTE_OUT(std::cout) << "wrong diagonal: " << i << " " << diag[i] << std::endl;
             }
         }
         if (o__.comm().rank() == 0) {
-            std::printf("check hermitian\n");
+            RTE_OUT(std::cout) << "check hermitian" << std::endl;
         }
-        real_type<T> d = check_hermitian(o__, n__);
-        if (d > 1e-12 && o__.comm().rank() == 0) {
-            std::stringstream s;
-            s << "matrix is not hermitian, max diff = " << d;
-            WARNING(s);
+        auto d = check_hermitian(o__, n__);
+        if (o__.comm().rank() == 0) {
+            if (d > 1e-12) {
+                std::stringstream s;
+                s << "matrix is not hermitian, max diff = " << d;
+                WARNING(s);
+            } else {
+                RTE_OUT(std::cout) << "OK! n x n overlap matrix is hermitian" << std::endl;
+            }
         }
+
     }
 
     if (sddk_pp) {
@@ -169,11 +180,11 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             if (int info = linalg(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
             /* inversion of triangular matrix */
             if (linalg(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
-                TERMINATE("error in inversion");
+                RTE_THROW("error in inversion");
             }
         } else { /* CPU version */
             /* Cholesky factorization */
@@ -185,11 +196,11 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
                   << "number of wave_functions: " << wfs__.size() << std::endl
                   << "idx_bra: " << idx_bra__ << " "
                   << "idx_ket:" << idx_ket__;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
             /* inversion of triangular matrix */
             if (linalg(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
-                TERMINATE("error in inversion");
+                RTE_THROW("error in inversion");
             }
             if (is_device_memory(mem__)) {
                 acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
@@ -198,7 +209,6 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         PROFILE_STOP("sddk::orthogonalize|tmtrx");
 
         PROFILE_START("sddk::orthogonalize|transform");
-
         int sid{0};
         for (int s : spins__) {
             /* multiplication by triangular matrix */
@@ -244,24 +254,31 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
         PROFILE_STOP("sddk::orthogonalize|transform");
     } else { /* parallel transformation */
         PROFILE_START("sddk::orthogonalize|potrf");
-        mdarray<F, 1> diag;
+        sddk::mdarray<F, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
-        if (int info = linalg(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        auto o_ptr = (o__.size_local() == 0) ? nullptr : o__.at(memory_t::host);
+        if (sddk_debug >= 2 && n__ <= 20) {
+            auto s1 = o__.serialize("wf_ortho:o_nn", n__, n__);
+            if (o__.comm().rank() == 0) {
+                std::cout << s1.str() << std::endl;
+            }
+        }
+        if (int info = linalg(linalg_t::scalapack).potrf(n__, o_ptr, o__.ld(), o__.descriptor())) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             if (sddk_debug >= 1) {
                 s << std::endl << "  diag = " << diag[info - 1];
             }
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         PROFILE_STOP("sddk::orthogonalize|potrf");
 
         PROFILE_START("sddk::orthogonalize|trtri");
-        if (linalg(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
-            TERMINATE("error in inversion");
+        if (linalg(linalg_t::scalapack).trtri(n__, o_ptr, o__.ld(), o__.descriptor())) {
+            RTE_THROW("error in inversion");
         }
         PROFILE_STOP("sddk::orthogonalize|trtri");
 
@@ -270,6 +287,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             for (int j = i + 1; j < n__; j++) {
                 o__.set(j, i, 0);
             }
+        }
+
+        if (tmp__.num_wf() < n__) {
+            RTE_THROW("not enough workspace");
         }
 
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi
@@ -281,10 +302,12 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             }
         }
     }
-    if (sddk_debug >= 2) {
+    if (sddk_debug >= 1) {
         inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         auto err = check_identity(o__, n__);
-        std::cout << "wf_ortho: error in (n, n) overlap matrix : " << err << std::endl;
+        if (o__.comm().rank() == 0) {
+            RTE_OUT(std::cout) << "orthogonalization error : " << err << std::endl;
+        }
     }
     return 0;
 }

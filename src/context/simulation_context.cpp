@@ -665,18 +665,6 @@ Simulation_context::initialize()
     /* placeholder for augmentation operator for each atom type */
     augmentation_op_.resize(unit_cell().num_atom_types());
 
-    /* create G-vectors on the first call to update() */
-    update();
-
-    this->print_memory_usage(__FILE__, __LINE__);
-
-    /* set the smearing */
-    smearing(cfg().parameters().smearing());
-
-    if (verbosity() >= 1 && comm().rank() == 0) {
-        print_info();
-    }
-
     if (this->hubbard_correction()) {
         /* if spin orbit coupling or non collinear magnetisms are activated, then
            we consider the full spherical hubbard correction */
@@ -691,15 +679,21 @@ Simulation_context::initialize()
         cfg().settings().itsol_tol_min(tol);
     }
 
+
+    /* set the smearing */
+    smearing(cfg().parameters().smearing());
+
+    /* create G-vectors on the first call to update() */
+    update();
+
+    this->print_memory_usage(__FILE__, __LINE__);
+
+    if (verbosity() >= 1 && comm().rank() == 0) {
+        print_info();
+    }
+
     initialized_ = true;
     cfg().lock();
-
-    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
-    if (save_config && this->comm().rank() == 0) {
-        std::ofstream fi(*save_config, std::ofstream::out | std::ofstream::trunc);
-        auto conf_dict = this->serialize();
-        fi << conf_dict.dump(4);
-    }
 }
 
 void
@@ -1373,6 +1367,23 @@ Simulation_context::update()
 
     if (full_potential()) { // TODO: add corresponging radial integarls of Theta
         init_step_function();
+    }
+
+    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
+    if (save_config && this->comm().rank() == 0) {
+        std::string name;
+        if (*save_config == "all") {
+            static int count{0};
+            std::stringstream s;
+            s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
+            name = s.str();
+            count++;
+        } else {
+            name = *save_config;
+        }
+        std::ofstream fi(name, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = this->serialize();
+        fi << conf_dict.dump(4);
     }
 }
 
