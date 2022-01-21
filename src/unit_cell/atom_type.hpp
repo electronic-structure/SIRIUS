@@ -33,6 +33,7 @@
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
 #include "sht/sht.hpp"
+#include "sht/gaunt.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {
@@ -223,10 +224,13 @@ class Atom_type
     /// Name of the input file for this atom type.
     std::string file_name_;
 
-    mdarray<int, 2> idx_radial_integrals_;
+    sddk::mdarray<int, 2> idx_radial_integrals_;
 
-    mutable mdarray<double, 3> rf_coef_;
-    mutable mdarray<double, 3> vrf_coef_;
+    mutable sddk::mdarray<double, 3> rf_coef_;
+    mutable sddk::mdarray<double, 3> vrf_coef_;
+
+    /// Non-zero Gaunt coefficients.
+    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
 
     /// True if the atom type was initialized.
     /** After initialization it is forbidden to modify the parameters of the atom type. */
@@ -257,7 +261,7 @@ class Atom_type
         assert(lmax >= -1);
 
         if (lmax >= 0 && aw_default_l_.size() == 0) {
-            TERMINATE("default AW descriptor is empty");
+            RTE_THROW("default AW descriptor is empty");
         }
 
         aw_descriptors_.clear();
@@ -356,7 +360,7 @@ class Atom_type
     inline void set_free_atom_radial_grid(int num_points__, double const* points__)
     {
         if (num_points__ <= 0) {
-            TERMINATE("wrong number of radial points");
+            RTE_THROW("wrong number of radial points");
         }
         free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
     }
@@ -409,7 +413,7 @@ class Atom_type
                   << "n: " << l << std::endl
                   << "l: " << n << std::endl
                   << "expected l: " << lo_descriptors_[ilo].l << std::endl;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
         }
 
@@ -462,23 +466,12 @@ class Atom_type
         return ps_atomic_wfs_[idx__];
     }
 
-    /// Return maximum orbital quantum number for the atomic wave-functions.
-    inline int lmax_ps_atomic_wf() const
-    {
-        int lmax{-1};
-        for (auto& e: ps_atomic_wfs_) {
-            auto l = e.am.l();
-            lmax = std::max(lmax, l);
-        }
-        return lmax;
-    }
-
     /// Add a radial function of beta-projector to a list of functions.
     /** This is the only allowed way to add beta projectors. */
     inline void add_beta_radial_function(int l__, std::vector<double> beta__)
     {
         if (augment_) {
-            TERMINATE("can't add more beta projectors");
+            RTE_THROW("can't add more beta projectors");
         }
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
@@ -501,18 +494,6 @@ class Atom_type
     inline Spline<double> const& beta_radial_function(int idxrf__) const
     {
         return beta_radial_functions_[idxrf__].second;
-    }
-
-    /// Maximum orbital quantum number between all beta-projector radial functions.
-    inline int lmax_beta() const
-    {
-        int lmax{-1};
-
-        /* need to take |l| since the total angular momentum is encoded in the sign of l */
-        for (auto& e: beta_radial_functions_) {
-            lmax = std::max(lmax, std::abs(e.first));
-        }
-        return lmax;
     }
 
     /// Number of beta-radial functions.
@@ -1089,6 +1070,43 @@ class Atom_type
     inline int lmmax_apw() const
     {
         return utils::lmmax(this->lmax_apw());
+    }
+
+    inline int lmax_lo() const
+    {
+        int lmax{-1};
+        for (auto& e: lo_descriptors_) {
+            lmax = std::max(lmax, e.l);
+        }
+        return lmax;
+    }
+
+    /// Return maximum orbital quantum number for the atomic wave-functions.
+    inline int lmax_ps_atomic_wf() const
+    {
+        int lmax{-1};
+        for (auto& e: ps_atomic_wfs_) {
+            auto l = e.am.l();
+            lmax = std::max(lmax, l);
+        }
+        return lmax;
+    }
+
+    /// Maximum orbital quantum number between all beta-projector radial functions.
+    inline int lmax_beta() const
+    {
+        int lmax{-1};
+
+        /* need to take |l| since the total angular momentum is encoded in the sign of l */
+        for (auto& e: beta_radial_functions_) {
+            lmax = std::max(lmax, std::abs(e.first));
+        }
+        return lmax;
+    }
+
+    auto const& gaunt_coefs() const
+    {
+        return *gaunt_coefs_;
     }
 };
 

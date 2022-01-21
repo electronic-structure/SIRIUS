@@ -72,7 +72,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
-                                                                 potential().gaunt_coefs().gaunt_vector(lm1, lm2));
+                                                                 atom__.type().gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     linalg(linalg_t::blas)
@@ -134,7 +134,7 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
                     int lm1    = atom.type().indexb(xi1).lm;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
 
-                    zm(xi1, xi2, i) = this->potential().gaunt_coefs().sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    zm(xi1, xi2, i) = atom.type().gaunt_coefs().sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
                 }
             }
         }

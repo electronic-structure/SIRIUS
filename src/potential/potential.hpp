@@ -165,7 +165,7 @@ class Potential : public Field4D
 
     /// Gaunt coefficients needed for the full-potential Hamiltonian applications.
     /** The coefficients are created once and stored for the entire life-time of the potential. */
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
+    //std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
     void init_PAW();
 
@@ -877,10 +877,10 @@ class Potential : public Field4D
         return hubbard_potential_;
     }
 
-    auto const& gaunt_coefs() const
-    {
-        return *gaunt_coefs_;
-    }
+    //auto const& gaunt_coefs() const
+    //{
+    //    return *gaunt_coefs_;
+    //}
 };
 
 }; // namespace sirius

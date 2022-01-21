@@ -202,6 +202,15 @@ void Atom_type::init(int offset_lo__)
             free_atom_density_[i] = std::exp(-x) * zn_ / 8 / pi;
         }
     }
+
+    if (parameters_.full_potential()) {
+        using gc_z = Gaunt_coefficients<double_complex>;
+        gaunt_coefs_ =
+            std::unique_ptr<gc_z>(new gc_z(std::max(this->lmax_apw(), this->lmax_lo()),
+                                           std::max(parameters_.lmax_rho(),parameters_.lmax_pot()),
+                                           std::max(this->lmax_apw(), this->lmax_lo()), SHT::gaunt_hybrid));
+    }
+
     initialized_ = true;
 }
 
