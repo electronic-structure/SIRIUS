@@ -232,6 +232,9 @@ class Atom_type
     /// Non-zero Gaunt coefficients.
     std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
 
+    /// Maximul orbital quantum number of LAPW basis functions.
+    int lmax_apw_{-1};
+
     /// True if the atom type was initialized.
     /** After initialization it is forbidden to modify the parameters of the atom type. */
     bool initialized_{false};
@@ -256,16 +259,16 @@ class Atom_type
     inline void read_input(std::string const& str__);
 
     /// Initialize descriptors of the augmented-wave radial functions.
-    inline void init_aw_descriptors(int lmax)
+    inline void init_aw_descriptors()
     {
-        assert(lmax >= -1);
+        RTE_ASSERT(this->lmax_apw() >= -1);
 
-        if (lmax >= 0 && aw_default_l_.size() == 0) {
+        if (this->lmax_apw() >= 0 && aw_default_l_.size() == 0) {
             RTE_THROW("default AW descriptor is empty");
         }
 
         aw_descriptors_.clear();
-        for (int l = 0; l <= lmax; l++) {
+        for (int l = 0; l <= this->lmax_apw(); l++) {
             aw_descriptors_.push_back(aw_default_l_);
             for (size_t ord = 0; ord < aw_descriptors_[l].size(); ord++) {
                 aw_descriptors_[l][ord].n = l + 1;
@@ -275,7 +278,7 @@ class Atom_type
 
         for (size_t i = 0; i < aw_specific_l_.size(); i++) {
             int l = aw_specific_l_[i][0].l;
-            if (l < lmax) {
+            if (l < this->lmax_apw()) {
                 aw_descriptors_[l] = aw_specific_l_[i];
             }
         }
@@ -1064,7 +1067,11 @@ class Atom_type
 
     inline int lmax_apw() const
     {
-        return parameters_.cfg().parameters().lmax_apw();
+        if (this->lmax_apw_ == -1) {
+            return parameters_.cfg().parameters().lmax_apw();
+        } else {
+            return this->lmax_apw_;
+        }
     }
 
     inline int lmmax_apw() const
