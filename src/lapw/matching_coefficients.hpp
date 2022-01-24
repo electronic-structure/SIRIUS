@@ -73,9 +73,6 @@ class Matching_coefficients // TODO: compute on GPU
     /// Precomputed values for the linear equations for matching coefficients.
     sddk::mdarray<double_complex, 4> alm_b_;
 
-    /// Maximum l for APW functions.
-    //int lmax_apw_{-1};
-
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk           Number of G+k vectors.
      *  \param [in] phase_factors Phase factors of G+k vectors.
@@ -159,7 +156,7 @@ class Matching_coefficients // TODO: compute on GPU
         #pragma omp parallel
         {
             /* value and first two derivatives of spherical Bessel functions */
-            mdarray<double, 2> sbessel_mt(lmax_apw + 2, 3);
+            sddk::mdarray<double, 2> sbessel_mt(lmax_apw + 2, 3);
 
             #pragma omp for
             for (int igk = 0; igk < num_gkvec_; igk++) {
