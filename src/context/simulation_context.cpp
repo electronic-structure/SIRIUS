@@ -531,8 +531,8 @@ Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        set_lmax_rho(unit_cell().lmax() * 2);
-        set_lmax_pot(unit_cell().lmax() * 2);
+        lmax_rho(unit_cell().lmax() * 2);
+        lmax_pot(unit_cell().lmax() * 2);
         lmax_apw(-1);
     }
 

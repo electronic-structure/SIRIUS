@@ -20,8 +20,8 @@ void test_lapw_xc(cmd_args const& args__)
 
     int lmax{8};
     ctx.lmax_apw(lmax);
-    ctx.set_lmax_pot(lmax);
-    ctx.set_lmax_rho(lmax);
+    ctx.lmax_pot(lmax);
+    ctx.lmax_rho(lmax);
     ctx.add_xc_functional("XC_GGA_X_PW91");
     ctx.add_xc_functional("XC_GGA_C_PW91");
 

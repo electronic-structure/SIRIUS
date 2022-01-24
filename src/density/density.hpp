@@ -224,9 +224,6 @@ class Density : public Field4D
      */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
-    /// Non-zero Gaunt coefficients.
-    //std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
-
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 

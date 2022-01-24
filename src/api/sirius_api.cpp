@@ -762,10 +762,10 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 sim_ctx.lmax_apw(*lmax_apw__);
             }
             if (lmax_rho__ != nullptr) {
-                sim_ctx.set_lmax_rho(*lmax_rho__);
+                sim_ctx.lmax_rho(*lmax_rho__);
             }
             if (lmax_pot__ != nullptr) {
-                sim_ctx.set_lmax_pot(*lmax_pot__);
+                sim_ctx.lmax_pot(*lmax_pot__);
             }
             if (num_fv_states__ != nullptr) {
                 sim_ctx.num_fv_states(*num_fv_states__);

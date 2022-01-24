@@ -36,9 +36,9 @@ void plot(cmd_args& args)
     ctx.set_pw_cutoff(inp.pw_cutoff_);
     ctx.set_aw_cutoff(inp.aw_cutoff_);
     ctx.set_gk_cutoff(inp.gk_cutoff_);
-    ctx.set_lmax_apw(inp.lmax_apw_);
-    ctx.set_lmax_pot(inp.lmax_pot_);
-    ctx.set_lmax_rho(inp.lmax_rho_);
+    ctx.lmax_apw(inp.lmax_apw_);
+    ctx.lmax_pot(inp.lmax_pot_);
+    ctx.lmax_rho(inp.lmax_rho_);
     ctx.set_num_mag_dims(inp.num_mag_dims_);
     ctx.set_auto_rmt(inp.auto_rmt_);
 
