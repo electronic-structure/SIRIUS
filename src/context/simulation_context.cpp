@@ -531,9 +531,9 @@ Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        set_lmax_rho(unit_cell().lmax() * 2);
-        set_lmax_pot(unit_cell().lmax() * 2);
-        set_lmax_apw(-1);
+        lmax_rho(unit_cell().lmax() * 2);
+        lmax_pot(unit_cell().lmax() * 2);
+        lmax_apw(-1);
     }
 
     /* initialize FFT grid dimensions */
@@ -777,7 +777,7 @@ Simulation_context::print_info() const
     std::printf("number of magnetic dimensions      : %i\n", num_mag_dims());
     std::printf("number of spinor components        : %i\n", num_spinor_comp());
     std::printf("number of spinors per band index   : %i\n", num_spinors());
-    std::printf("lmax_apw                           : %i\n", lmax_apw());
+    std::printf("lmax_apw                           : %i\n", unit_cell().lmax_apw());
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
     std::printf("lmax_rf                            : %i\n", unit_cell().lmax());

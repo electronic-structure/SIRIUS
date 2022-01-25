@@ -163,10 +163,6 @@ class Potential : public Field4D
     /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
     double add_delta_mag_xc_{0};
 
-    /// Gaunt coefficients needed for the full-potential Hamiltonian applications.
-    /** The coefficients are created once and stored for the entire life-time of the potential. */
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
-
     void init_PAW();
 
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
@@ -875,11 +871,6 @@ class Potential : public Field4D
     auto const& hubbard_potential() const
     {
         return hubbard_potential_;
-    }
-
-    auto const& gaunt_coefs() const
-    {
-        return *gaunt_coefs_;
     }
 };
 

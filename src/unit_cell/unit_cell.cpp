@@ -40,7 +40,7 @@ std::vector<double>
 Unit_cell::find_mt_radii()
 {
     if (nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
+        RTE_THROW("array of nearest neighbours is empty");
     }
 
     std::vector<double> Rmt(num_atom_types(), 1e10);
@@ -108,6 +108,8 @@ Unit_cell::find_mt_radii()
             }
         }
 
+        std::vector<double> Rmt_infl(num_atom_types(), 1e10);
+
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
             if (nearest_neighbours_[ia].size() > 1) {
@@ -116,10 +118,14 @@ Unit_cell::find_mt_radii()
                 double dist = nearest_neighbours_[ia][1].distance;
 
                 if (scale_Rmt[id1] && !scale_Rmt[id2]) {
-                    Rmt[id1]       = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
-                    scale_Rmt[id1] = false;
+                    Rmt_infl[id1] = std::min(Rmt_infl[id1], std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2])));
+                } else {
+                    Rmt_infl[id1] = Rmt[id1];
                 }
             }
+        }
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            Rmt[iat] = Rmt_infl[iat];
         }
     }
 
@@ -128,7 +134,7 @@ Unit_cell::find_mt_radii()
             std::stringstream s;
             s << "muffin-tin radius for atom type " << i << " (" << atom_type(i).label()
               << ") is too small: " << Rmt[i];
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
 
@@ -139,7 +145,7 @@ bool
 Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
     if (num_atoms() != 0 && nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
+        RTE_THROW("array of nearest neighbours is empty");
     }
 
     for (int ia = 0; ia < num_atoms(); ia++) {
@@ -782,8 +788,12 @@ Unit_cell::update()
     auto v1 = lattice_vector(1);
     auto v2 = lattice_vector(2);
 
-    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                        parameters_.cfg().parameters().nn_radius());
+    double r{0};
+    if (parameters_.cfg().parameters().nn_radius() < 0) {
+        r = std::max(v0.length(), std::max(v1.length(), v2.length()));
+    } else {
+        r = parameters_.cfg().parameters().nn_radius();
+    }
 
     find_nearest_neighbours(r);
 
@@ -807,7 +817,7 @@ Unit_cell::update()
               << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
               << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
               << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         min_mt_radius_ = 1e100;
@@ -887,7 +897,7 @@ Unit_cell::next_atom_type_id(std::string label__)
     if (atom_type_id_map_.count(label__) != 0) {
         std::stringstream s;
         s << "atom type with label " << label__ << " is already in list";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     /* take text id */
     atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());

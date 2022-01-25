@@ -35,12 +35,12 @@ K_point<T>::initialize()
 {
     PROFILE("sirius::K_point::initialize");
 
-    zil_.resize(ctx_.lmax_apw() + 1);
-    for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+    zil_.resize(ctx_.unit_cell().lmax_apw() + 1);
+    for (int l = 0; l <= ctx_.unit_cell().lmax_apw(); l++) {
         zil_[l] = std::pow(std::complex<T>(0, 1), l);
     }
 
-    l_by_lm_ = utils::l_by_lm(ctx_.lmax_apw());
+    l_by_lm_ = utils::l_by_lm(ctx_.unit_cell().lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -384,11 +384,11 @@ void K_point<T>::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
-    if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw()) &&
+    if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.unit_cell().lmax_apw()) &&
         ctx_.comm().rank() == 0 && ctx_.verbosity() >= 0) {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
-          << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
+          << ctx_.unit_cell().lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
           << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
         WARNING(s);
     }
@@ -425,23 +425,19 @@ void K_point<T>::update()
 
     if (ctx_.full_potential()) {
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
-                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
-            alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
-                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec()));
+            alm_coeffs_row_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_row(), igk_row_, gkvec());
+            alm_coeffs_col_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_col(), igk_col_, gkvec());
         }
-        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec()));
+        alm_coeffs_loc_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_loc(), igk_loc_, gkvec());
     }
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_loc_);
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_col_));
-
+            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_row_);
+            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_col_);
         }
 
         if (ctx_.hubbard_correction()) {
