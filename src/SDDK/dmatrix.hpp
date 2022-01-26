@@ -77,6 +77,8 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
     /// Matrix distribution used for SPLA library functions
     spla::MatrixDistribution spla_dist_{spla::MatrixDistribution::create_mirror(MPI_COMM_SELF)};
 
+    costa::grid_layout<T> grid_layout_;
+
     void init()
     {
 #ifdef SIRIUS_SCALAPACK
@@ -85,6 +87,10 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
                                   spl_row_.local_size());
         }
 #endif
+        grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
+                this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
+                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                this->blacs_grid().comm().rank());
     }
 
     /* forbid copy constructor */
@@ -364,12 +370,9 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
         }
     }
 
-    auto grid_layout()
+    costa::grid_layout<T>& grid_layout()
     {
-        return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
-                this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
-                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
-                this->blacs_grid().comm().rank());
+        return grid_layout_;
     }
 
 };
@@ -383,6 +386,7 @@ class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
     int num_cols_;
     splindex<splindex_t::chunk, int> spl_row_;
     Communicator comm_;
+    costa::grid_layout<T> grid_layout_;
   public:
     dmatrix(int num_rows__, int num_cols__, std::vector<int> counts__, Communicator const& comm__)
         : matrix<T>(counts__[comm__.rank()], num_cols__)
@@ -391,10 +395,7 @@ class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
         , comm_(comm__)
     {
         spl_row_ = splindex<splindex_t::chunk, int>(num_rows__, comm_.size(), comm_.rank(), counts__);
-    }
 
-    auto grid_layout()
-    {
         std::vector<int> rowsplit(comm_.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < comm_.size(); i++) {
@@ -411,8 +412,13 @@ class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
         localblock.row = comm_.rank();
         localblock.col = 0;
 
-        return costa::custom_layout<T>(comm_.size(), 1, rowsplit.data(), colsplit.data(),
+        grid_layout_ = costa::custom_layout<T>(comm_.size(), 1, rowsplit.data(), colsplit.data(),
                 owners.data(), 1, &localblock, 'C');
+    }
+
+    costa::grid_layout<T>& grid_layout()
+    {
+        return grid_layout_;
     }
 
 };

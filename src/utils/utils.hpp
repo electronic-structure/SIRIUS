@@ -244,6 +244,16 @@ inline int num_blocks(int length__, int block_size__)
     return (length__ / block_size__) + std::min(length__ % block_size__, 1);
 }
 
+/// Split the `length` elements into blocks with the initial block size.
+/** Return number of blocks and final maximum block size */
+inline std::pair<int, int> split_in_blocks(int length__, int block_size__)
+{
+    int nb = num_blocks(length__, block_size__);
+    /* adjust the block size; this is done to prevent very unequal block sizes */
+    block_size__ = length__ / nb + std::min(1, length__ % nb);
+    return std::make_pair(nb, block_size__);
+}
+
 inline double round(double a__, int n__)
 {
     double a0 = std::floor(a__);
