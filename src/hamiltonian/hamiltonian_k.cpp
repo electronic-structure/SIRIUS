@@ -881,7 +881,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+        H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+                kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
 
         // if (ctx.control().print_checksum_) {
         //     if (hphi__) {
@@ -1001,27 +1002,27 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                     auto& type = atom.type();
 
                     /* wrapper for matching coefficients for a given atom */
-                    mdarray<std::complex<T>, 2> alm_tmp;
-                    mdarray<std::complex<T>, 2> halm_tmp;
+                    sddk::mdarray<std::complex<T>, 2> alm_tmp;
+                    sddk::mdarray<std::complex<T>, 2> halm_tmp;
                     switch (pu) {
                         case device_t::CPU: {
-                            alm_tmp = mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                  ngv, type.mt_aw_basis_size());
+                            alm_tmp = sddk::mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
+                                                                        ngv, type.mt_aw_basis_size());
                             if (hphi__ != nullptr) {
-                                halm_tmp = mdarray<std::complex<T>, 2>(
+                                halm_tmp = sddk::mdarray<std::complex<T>, 2>(
                                     halm_block.at(memory_t::host, 0, offsets_aw[ialoc]), ngv, type.mt_aw_basis_size());
                             }
                             break;
                         }
                         case device_t::GPU: {
-                            alm_tmp = mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                  alm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
-                                                                  ngv, type.mt_aw_basis_size());
+                            alm_tmp = sddk::mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
+                                                                       alm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
+                                                                       ngv, type.mt_aw_basis_size());
                             if (hphi__ != nullptr) {
                                 halm_tmp =
-                                    mdarray<std::complex<T>, 2>(halm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                halm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
-                                                                ngv, type.mt_aw_basis_size());
+                                    sddk::mdarray<std::complex<T>, 2>(halm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
+                                                                      halm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
+                                                                      ngv, type.mt_aw_basis_size());
                             }
                             break;
                         }
@@ -1267,6 +1268,97 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     };
 
     PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
+
+    /* <A_{lm}^{\alpha}(G) | C_j(G) > */
+    sddk::dmatrix<std::complex<T>> Blm(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(),
+            ctx.cyclic_block_size(), ctx.cyclic_block_size());
+    sddk::dmatrix<std::complex<T>> hBlm(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(),
+            ctx.cyclic_block_size(), ctx.cyclic_block_size());
+    /* global offset in the mt_aw_basis index */
+    int offset_aw{0};
+    /* loop over blocks of atoms */
+    for (int iblk = 0; iblk < nblk; iblk++) {
+        int atom_begin = iblk * num_atoms_in_block;
+        int atom_end   = std::min(ctx.unit_cell().num_atoms(), (iblk + 1) * num_atoms_in_block);
+        /* actual number of AW radial functions in a block of atoms */
+        int num_mt_aw{0};
+        /* actual number of local orbitals in a block of atoms */
+        int num_mt_lo{0};
+        std::vector<int> offsets_aw(num_atoms_in_block);
+        std::vector<int> offsets_lo(num_atoms_in_block);
+        for (int ia = atom_begin; ia < atom_end; ia++) {
+            int ialoc         = ia - atom_begin;
+            auto& atom        = ctx.unit_cell().atom(ia);
+            auto& type        = atom.type();
+            offsets_aw[ialoc] = num_mt_aw;
+            offsets_lo[ialoc] = num_mt_lo;
+            num_mt_aw += type.mt_aw_basis_size();
+            num_mt_lo += type.mt_lo_basis_size();
+        }
+
+        /* created alm and halm for a block of atoms */
+        generate_alm(atom_begin, atom_end, offsets_aw);
+
+        spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_TRANSPOSE, 1.0,
+                alm_block.at(memory_t::host), alm_block.ld(),
+                phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
+                0.0, Blm.at(memory_t::host), Blm.ld(), offset_aw, 0, Blm.spla_distribution(), ctx.spla_context());
+
+        offset_aw += num_mt_aw;
+    }
+    std::vector<int> mt_aw_counts(kp().comm().size(), 0);
+    for (int r = 0; r < kp().comm().size(); r++) {
+        for (int ialoc = 0; ialoc < ctx.unit_cell().spl_num_atoms().local_size(r); ialoc++) {
+            int ia = ctx.unit_cell().spl_num_atoms().global_index(ialoc, r);
+            mt_aw_counts[r] += ctx.unit_cell().atom(ia).mt_aw_basis_size();
+        }
+    }
+
+    sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> Blm_slab(ctx.unit_cell().mt_aw_basis_size(), n__,
+            mt_aw_counts, kp().comm());
+
+    sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> hBlm_slab(ctx.unit_cell().mt_aw_basis_size(), n__,
+            mt_aw_counts, kp().comm());
+
+    auto grid_layout_in = Blm.grid_layout();
+    auto grid_layout_out = Blm_slab.grid_layout();
+
+    costa::transform(grid_layout_in, grid_layout_out, 'N', linalg_const<std::complex<T>>::one(),
+            linalg_const<std::complex<T>>::zero(), kp().comm().mpi_comm());
+
+
+    offset_aw = 0;
+    for (int ialoc = 0; ialoc < ctx.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+        int ia = ctx.unit_cell().spl_num_atoms(ialoc);
+        auto& atom = ctx.unit_cell().atom(ia);
+        auto& type = atom.type();
+
+        sddk::mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+        /* compute the muffin-tin Hamiltonian */
+        for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
+            int lm2    = type.indexb(j2).lm;
+            int idxrf2 = type.indexb(j2).idxrf;
+            for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
+                int lm1    = type.indexb(j1).lm;
+                int idxrf1 = type.indexb(j1).idxrf;
+                hmt(j1, j2) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
+                                                                     type.gaunt_coefs().gaunt_vector(lm1, lm2));
+            }
+        }
+        linalg(linalg_t::blas)
+            .gemm('N', 'N', type.mt_aw_basis_size(), type.mt_aw_basis_size(), n__, &linalg_const<std::complex<T>>::one(),
+                  hmt.at(memory_t::host), hmt.ld(), Blm_slab.at(memory_t::host, offset_aw, 0), Blm_slab.ld(),
+                  &linalg_const<std::complex<T>>::zero(), hBlm_slab.at(memory_t::host, offset_aw, 0), hBlm_slab.ld());
+
+        offset_aw += type.mt_aw_basis_size();
+    }
+
+    grid_layout_in = hBlm_slab.grid_layout();
+    grid_layout_out = hBlm.grid_layout();
+
+    costa::transform(grid_layout_in, grid_layout_out, 'N', linalg_const<std::complex<T>>::one(),
+            linalg_const<std::complex<T>>::zero(), kp().comm().mpi_comm());
+
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         int atom_begin = iblk * num_atoms_in_block;

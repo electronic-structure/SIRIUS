@@ -35,8 +35,6 @@ namespace sddk {
 /* forward declaration */
 template <typename T>
 class Wave_functions;
-template <typename T>
-class dmatrix;
 class spin_range;
 }
 

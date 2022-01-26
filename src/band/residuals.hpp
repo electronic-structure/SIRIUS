@@ -29,10 +29,9 @@
 #include "memory.hpp"
 #include "linalg/linalg.hpp"
 #include "context/simulation_context.hpp"
+#include "SDDK/type_definition.hpp"
 
 namespace sddk {
-template <typename T>
-class dmatrix;
 template <typename T>
 class Wave_functions;
 class spin_range;
@@ -43,7 +42,6 @@ struct residual_result {
   int unconverged_residuals;
   double frobenius_norm;
 };
-
 
 #if defined(SIRIUS_GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,

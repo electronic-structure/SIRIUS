@@ -72,7 +72,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
-                                                                 atom__.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                                                                 type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     linalg(linalg_t::blas)
