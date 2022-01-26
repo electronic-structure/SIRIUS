@@ -1145,12 +1145,12 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                             alm_block.ld(), alm_phi.at(mt), alm_phi.ld(), &linalg_const<std::complex<T>>::one(),
                             ophi__->pw_coeffs(0).prime().at(mt, 0, N__), ophi__->pw_coeffs(0).prime().ld());
         }
-        if (hphi__ != nullptr) {
-            /* APW-APW contribution to Hamiltonian */
-            linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<std::complex<T>>::one(), alm_block.at(mt),
-                            alm_block.ld(), halm_phi.at(mt), halm_phi.ld(), &linalg_const<std::complex<T>>::one(),
-                            hphi__->pw_coeffs(0).prime().at(mt, 0, N__), hphi__->pw_coeffs(0).prime().ld());
-        }
+        //if (hphi__ != nullptr) {
+        //    /* APW-APW contribution to Hamiltonian */
+        //    linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<std::complex<T>>::one(), alm_block.at(mt),
+        //                    alm_block.ld(), halm_phi.at(mt), halm_phi.ld(), &linalg_const<std::complex<T>>::one(),
+        //                    hphi__->pw_coeffs(0).prime().at(mt, 0, N__), hphi__->pw_coeffs(0).prime().ld());
+        //}
     };
 
     auto collect_lo = [&](int atom_begin, int atom_end, std::vector<int>& offsets_lo,
@@ -1272,8 +1272,10 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     /* <A_{lm}^{\alpha}(G) | C_j(G) > */
     sddk::dmatrix<std::complex<T>> Blm(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(),
             ctx.cyclic_block_size(), ctx.cyclic_block_size());
+
     sddk::dmatrix<std::complex<T>> hBlm(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(),
             ctx.cyclic_block_size(), ctx.cyclic_block_size());
+
     /* global offset in the mt_aw_basis index */
     int offset_aw{0};
     /* loop over blocks of atoms */
@@ -1299,7 +1301,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         /* created alm and halm for a block of atoms */
         generate_alm(atom_begin, atom_end, offsets_aw);
 
-        spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_TRANSPOSE, 1.0,
+        spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_CONJ_TRANSPOSE, 1.0,
                 alm_block.at(memory_t::host), alm_block.ld(),
                 phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
                 0.0, Blm.at(memory_t::host), Blm.ld(), offset_aw, 0, Blm.spla_distribution(), ctx.spla_context());
@@ -1323,10 +1325,11 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     auto grid_layout_in = Blm.grid_layout();
     auto grid_layout_out = Blm_slab.grid_layout();
 
+    std::cout << "costa: block_cyclic -> slab" << std::endl;
     costa::transform(grid_layout_in, grid_layout_out, 'N', linalg_const<std::complex<T>>::one(),
             linalg_const<std::complex<T>>::zero(), kp().comm().mpi_comm());
 
-
+    std::cout << "apply Hmt" << std::endl;
     offset_aw = 0;
     for (int ialoc = 0; ialoc < ctx.unit_cell().spl_num_atoms().local_size(); ialoc++) {
         int ia = ctx.unit_cell().spl_num_atoms(ialoc);
@@ -1353,11 +1356,51 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         offset_aw += type.mt_aw_basis_size();
     }
 
-    grid_layout_in = hBlm_slab.grid_layout();
-    grid_layout_out = hBlm.grid_layout();
+    auto grid_layout_in1 = hBlm_slab.grid_layout();
+    auto grid_layout_out1 = hBlm.grid_layout();
 
-    costa::transform(grid_layout_in, grid_layout_out, 'N', linalg_const<std::complex<T>>::one(),
+    std::cout << "costa: slab -> block_cyclic" << std::endl;
+    costa::transform(grid_layout_in1, grid_layout_out1, 'N', linalg_const<std::complex<T>>::one(),
             linalg_const<std::complex<T>>::zero(), kp().comm().mpi_comm());
+
+    /* global offset in the mt_aw_basis index */
+    offset_aw = 0;
+    /* loop over blocks of atoms */
+    for (int iblk = 0; iblk < nblk; iblk++) {
+        int atom_begin = iblk * num_atoms_in_block;
+        int atom_end   = std::min(ctx.unit_cell().num_atoms(), (iblk + 1) * num_atoms_in_block);
+        /* actual number of AW radial functions in a block of atoms */
+        int num_mt_aw{0};
+        /* actual number of local orbitals in a block of atoms */
+        int num_mt_lo{0};
+        std::vector<int> offsets_aw(num_atoms_in_block);
+        std::vector<int> offsets_lo(num_atoms_in_block);
+        for (int ia = atom_begin; ia < atom_end; ia++) {
+            int ialoc         = ia - atom_begin;
+            auto& atom        = ctx.unit_cell().atom(ia);
+            auto& type        = atom.type();
+            offsets_aw[ialoc] = num_mt_aw;
+            offsets_lo[ialoc] = num_mt_lo;
+            num_mt_aw += type.mt_aw_basis_size();
+            num_mt_lo += type.mt_lo_basis_size();
+        }
+
+        /* created alm and halm for a block of atoms */
+        generate_alm(atom_begin, atom_end, offsets_aw);
+
+        if (hphi__) {
+            spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
+                    alm_block.at(memory_t::host), alm_block.ld(),
+                    hBlm.at(memory_t::host),  hBlm.ld(), 0, offset_aw, hBlm.spla_distribution(),
+                    linalg_const<std::complex<T>>::one(),
+                    hphi__->pw_coeffs(0).prime().at(memory_t::host, 0, N__), hphi__->pw_coeffs(0).prime().ld(),
+                    ctx.spla_context());
+
+        }
+        offset_aw += num_mt_aw;
+    }
+
+    /* OLD CODE BELOW */
 
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
