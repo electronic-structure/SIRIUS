@@ -1332,6 +1332,51 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     /* NEW CODE */
 
+    /*
+     * Application of LAPW Hamiltonian splits into four parts:
+     *                                                          n                n
+     *                               n     +----------------+ +---+   +------+ +---+
+     * +----------------+------+   +---+   |                | |   |   |      | |   |
+     * |                |      |   |   |   |                | |   |   |      |x|lo |
+     * |                |      |   |   |   |                | |   |   |      | |   |
+     * |                |      |   |   |   |                | |   |   |      | +---+
+     * |                |      |   |   |   |    APW-APW     |x|APW| + |APW-lo|
+     * |     APW-APW    |APW-lo|   |APW|   |                | |   |   |      |
+     * |                |      |   |   |   |                | |   |   |      |
+     * |                |      | x |   |   |                | |   |   |      |
+     * |                |      |   |   |   +----------------+ +---+   +------+
+     * +----------------+------+   +---+ =
+     * |                |      |   |   |   +----------------+ +---+   +------+ +---+
+     * |    lo-APW      |lo-lo |   |lo |   |                | |   |   |      | |   |
+     * |                |      |   |   |   |     lo-APW     |x|   | + |lo-lo |x|lo |
+     * +----------------+------+   +---+   |                | |   |   |      | |   |
+     *                                     +----------------+ |   |   +------+ +---+
+     *                                                        |APW|
+     *                                                        |   |
+     *                                                        |   |
+     *                                                        |   |
+     *                                                        |   |
+     *                                                        +---+
+     */
+
+
+    /* Prepare APW-lo contribution for the entire index of APW basis functions. Here we compute the action
+     * of the APW-lo Hamiltonian and overlap on the local-orbital part of wave-functions.
+     *
+     *            n
+     * +------+ +---+
+     * |      | |   |
+     * |      |x|lo |
+     * |      | |   |
+     * |      | +---+
+     * |APW-lo|
+     * |      |
+     * |      |
+     * |      |
+     * +------+
+     *
+     */
+    // TODO: use one temporay slab matrix
     sddk::dmatrix<std::complex<T>> h_apw_lo_phi_lo(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
     sddk::dmatrix<std::complex<T>> o_apw_lo_phi_lo(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
 
@@ -1432,6 +1477,64 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         }
     }
 
+    /* lo-lo contribution (lo-lo Hamiltonian and overlap are block-diagonal in atom index and the whole application is
+     * local to MPI rank)
+     *
+     *            n
+     * +------+ +---+
+     * |      | |   |
+     * |lo-lo |x|lo |
+     * |      | |   |
+     * +------+ +---+
+     *
+     */
+    if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+        /* lo-lo contribution */
+        for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
+            int ia =  phi__.spl_num_atoms()[ialoc];
+            auto& atom = ctx.unit_cell().atom(ia);
+            auto& type = atom.type();
+            int naw    = type.mt_aw_basis_size();
+            int nlo    = type.mt_lo_basis_size();
+
+            int offset_mt_coeffs = phi__.offset_mt_coeffs(ialoc);
+
+            // TODO: is omp statement in the rignt place, or should it be move to atom index?
+            #pragma omp parallel for schedule(static)
+            for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+                int xi_lo = type.mt_aw_basis_size() + ilo;
+                /* local orbital indices */
+                int l_lo     = type.indexb(xi_lo).l;
+                int lm_lo    = type.indexb(xi_lo).lm;
+                int order_lo = type.indexb(xi_lo).order;
+                int idxrf_lo = type.indexb(xi_lo).idxrf;
+
+                /* lo-lo contribution */
+                for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
+                    int xi_lo1 = type.mt_aw_basis_size() + jlo;
+                    int lm1    = type.indexb(xi_lo1).lm;
+                    int order1 = type.indexb(xi_lo1).order;
+                    int idxrf1 = type.indexb(xi_lo1).idxrf;
+                    if (lm_lo == lm1 && ophi__ != nullptr) {
+                        for (int i = 0; i < n__; i++) {
+                            ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
+                                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
+                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
+                        }
+                    }
+                    if (hphi__ != nullptr) {
+                        auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
+                        for (int i = 0; i < n__; i++) {
+                            hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
+                                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
+                                static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     int offset_aw_global{0};
     /* loop over blocks of atoms */
     for (int ib = 0; ib < nblk; ib++) {
@@ -1461,7 +1564,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             mt_aw_counts[spl_atoms.location(i).rank] += type.mt_aw_basis_size();
         }
 
-        /* generate Alm for a block of atoms */
+        /* generate complex conjugated Alm coefficients for a block of atoms */
         auto alm = generate_alm_new(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
 
         if (!phi_is_lo__) {
@@ -1633,28 +1736,30 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                         int order_lo = type.indexb(xi_lo).order;
                         int idxrf_lo = type.indexb(xi_lo).idxrf;
 
-                        /* lo-lo contribution */
-                        for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
-                            int xi_lo1 = type.mt_aw_basis_size() + jlo;
-                            int lm1    = type.indexb(xi_lo1).lm;
-                            int order1 = type.indexb(xi_lo1).order;
-                            int idxrf1 = type.indexb(xi_lo1).idxrf;
-                            if (lm_lo == lm1 && ophi__ != nullptr) {
-                                for (int i = 0; i < n__; i++) {
-                                    ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                        phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
-                                }
-                            }
-                            if (hphi__ != nullptr) {
-                                auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
-                                for (int i = 0; i < n__; i++) {
-                                    hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                        phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                        static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
-                                }
-                            }
-                        }
+                        ///* lo-lo contribution */
+                        //for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
+                        //    int xi_lo1 = type.mt_aw_basis_size() + jlo;
+                        //    int lm1    = type.indexb(xi_lo1).lm;
+                        //    int order1 = type.indexb(xi_lo1).order;
+                        //    int idxrf1 = type.indexb(xi_lo1).idxrf;
+                        //    if (lm_lo == lm1 && ophi__ != nullptr) {
+                        //        for (int i = 0; i < n__; i++) {
+                        //            ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
+                        //                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
+                        //                //phi_lo_block(offsets_lo[ialoc] + jlo, i) *
+                        //                    static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
+                        //        }
+                        //    }
+                        //    if (hphi__ != nullptr) {
+                        //        auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
+                        //        for (int i = 0; i < n__; i++) {
+                        //            hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
+                        //                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
+                        //                //phi_lo_block(offsets_lo[ialoc] + jlo, i) *
+                        //                static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
+                        //        }
+                        //    }
+                        //}
 
                         /* lo-APW contribution */
                         if (!phi_is_lo__) {
