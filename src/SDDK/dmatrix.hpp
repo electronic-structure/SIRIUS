@@ -375,6 +375,14 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
         return grid_layout_;
     }
 
+    costa::grid_layout<T> grid_layout(int irow0__, int jcol0__, int mrow__, int ncol__)
+    {
+        return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
+                this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
+                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                this->blacs_grid().comm().rank());
+    }
+
 };
 
 /// Distributed matrix.
