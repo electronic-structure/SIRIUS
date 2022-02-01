@@ -173,10 +173,10 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     Ftp vsigma_uu_tp;
     Ftp vsigma_ud_tp;
     Ftp vsigma_dd_tp;
-    Ftp lapl_rho_up_tp;
-    Ftp lapl_rho_dn_tp;
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp;
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_tp;
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_vsigma_tp;
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_vsigma_tp;
 
     if (is_gga) {
         /* compute gradient in Rlm spherical harmonics */
@@ -184,6 +184,9 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
         auto grad_rho_dn_lm = gradient(rho_dn_lm);
         grad_rho_up_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
         grad_rho_dn_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_up_vsigma_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_dn_vsigma_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++) {
             transform(sht__, grad_rho_up_lm[x], grad_rho_up_tp[x]);
@@ -197,10 +200,6 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
         vsigma_uu_tp = Ftp(sht__.num_points(), rgrid__);
         vsigma_ud_tp = Ftp(sht__.num_points(), rgrid__);
         vsigma_dd_tp = Ftp(sht__.num_points(), rgrid__);
-
-        /* backward transform Laplacians from Rlm to (theta, phi) */
-        lapl_rho_up_tp = transform(sht__, laplacian(rho_up_lm));
-        lapl_rho_dn_tp = transform(sht__, laplacian(rho_dn_lm));
     }
 
     for (auto& ixc: xc_func__) {
@@ -218,38 +217,25 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
                     vsigma_ud_tp.at(sddk::memory_t::host), vsigma_dd_tp.at(sddk::memory_t::host), exc_tp.at(sddk::memory_t::host));
 
             /* directly add to Vxc available contributions */
-            vxc_up_tp -= (2.0 * vsigma_uu_tp * lapl_rho_up_tp + vsigma_ud_tp * lapl_rho_dn_tp);
-            vxc_dn_tp -= (2.0 * vsigma_dd_tp * lapl_rho_dn_tp + vsigma_ud_tp * lapl_rho_up_tp);
-
-            /* forward transform vsigma to Rlm */
-            auto vsigma_uu_lm = transform(sht__, vsigma_uu_tp);
-            auto vsigma_ud_lm = transform(sht__, vsigma_ud_tp);
-            auto vsigma_dd_lm = transform(sht__, vsigma_dd_tp);
-
-            /* compute gradient of vsgima in spherical harmonics */
-            auto grad_vsigma_uu_lm = gradient(vsigma_uu_lm);
-            auto grad_vsigma_ud_lm = gradient(vsigma_ud_lm);
-            auto grad_vsigma_dd_lm = gradient(vsigma_dd_lm);
-
-            /* backward transform gradient from Rlm to (theta, phi) */
-            Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_uu_tp(sht__.num_points(), rgrid__);
-            Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_ud_tp(sht__.num_points(), rgrid__);
-            Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_dd_tp(sht__.num_points(), rgrid__);
-            for (int x = 0; x < 3; x++) {
-                grad_vsigma_uu_tp[x] = transform(sht__, grad_vsigma_uu_lm[x]);
-                grad_vsigma_ud_tp[x] = transform(sht__, grad_vsigma_ud_lm[x]);
-                grad_vsigma_dd_tp[x] = transform(sht__, grad_vsigma_dd_lm[x]);
+            for (int x: {0, 1, 2}) {
+                grad_rho_up_vsigma_tp[x] = (2.0 * vsigma_uu_tp * grad_rho_up_tp[x] + vsigma_ud_tp * grad_rho_dn_tp[x]);
+                grad_rho_dn_vsigma_tp[x] = (2.0 * vsigma_dd_tp * grad_rho_dn_tp[x] + vsigma_ud_tp * grad_rho_up_tp[x]);
             }
 
-            /* compute scalar product of two gradients */
-            auto grad_vsigma_uu_grad_rho_up_tp = grad_vsigma_uu_tp * grad_rho_up_tp;
-            auto grad_vsigma_dd_grad_rho_dn_tp = grad_vsigma_dd_tp * grad_rho_dn_tp;
-            auto grad_vsigma_ud_grad_rho_up_tp = grad_vsigma_ud_tp * grad_rho_up_tp;
-            auto grad_vsigma_ud_grad_rho_dn_tp = grad_vsigma_ud_tp * grad_rho_dn_tp;
+            Spheric_vector_function<function_domain_t::spectral, double> grad_rho_up_vsigma_lm(sht__.lmmax(), rgrid__);
+            Spheric_vector_function<function_domain_t::spectral, double> grad_rho_dn_vsigma_lm(sht__.lmmax(), rgrid__);
+
+            for (int x: {0, 1, 2}) {
+                grad_rho_up_vsigma_lm[x] = transform(sht__, grad_rho_up_vsigma_tp[x]);
+                grad_rho_dn_vsigma_lm[x] = transform(sht__, grad_rho_dn_vsigma_tp[x]);
+            }
+
+            auto div_grad_rho_up_vsigma_lm = divergence(grad_rho_up_vsigma_lm);
+            auto div_grad_rho_dn_vsigma_lm = divergence(grad_rho_dn_vsigma_lm);
 
             /* add remaining terms to Vxc */
-            vxc_up_tp -= (2.0 * grad_vsigma_uu_grad_rho_up_tp + grad_vsigma_ud_grad_rho_dn_tp);
-            vxc_dn_tp -= (2.0 * grad_vsigma_dd_grad_rho_dn_tp + grad_vsigma_ud_grad_rho_up_tp);
+            vxc_up_tp -= transform(sht__, div_grad_rho_up_vsigma_lm) ;
+            vxc_dn_tp -= transform(sht__, div_grad_rho_dn_vsigma_lm);
         }
         /* generate magnetic field and effective potential inside MT sphere */
         for (int ir = 0; ir < rgrid__.num_points(); ir++) {
