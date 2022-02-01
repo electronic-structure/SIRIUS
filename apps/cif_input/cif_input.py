@@ -86,8 +86,8 @@ def main():
 
         if not label in initial_atoms_list: initial_atoms_list[label] = []
 
-        initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)), \
-                                          "y" : float(remove_ending_braces(atom._atom_site_fract_y)), \
+        initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)),
+                                          "y" : float(remove_ending_braces(atom._atom_site_fract_y)),
                                           "z" : float(remove_ending_braces(atom._atom_site_fract_z))})
     print("Initial list of atoms")
     for label in initial_atoms_list:
@@ -150,7 +150,7 @@ def main():
     unit_cell["atom_files"] = atom_files
 
     fout = open("sirius.json", "w")
-    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", ", ", \
+    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", ", ",
         json.dumps({"unit_cell" : unit_cell}, indent = 4)))
     fout.close()
 
