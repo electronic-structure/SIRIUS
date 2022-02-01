@@ -427,7 +427,7 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
-        Hamiltonian0<double> H0(potential);
+        Hamiltonian0<double> H0(potential, true);
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
@@ -436,7 +436,7 @@ void run_tasks(cmd_args const& args)
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        band.solve<double, double>(ks, H0, true, ctx->cfg().iterative_solver().energy_tolerance());
+        band.solve<double, double>(ks, H0, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {

@@ -199,7 +199,7 @@ void ground_state(Simulation_context& ctx,
             inp.num_dft_iter(), false);
 
     // now do something linear responsy.
-    Hamiltonian0<double> H0(potential);
+    Hamiltonian0<double> H0(potential, true);
 
     for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset.spl_num_kpoints(ikloc);
