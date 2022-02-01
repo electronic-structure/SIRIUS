@@ -220,7 +220,7 @@ def write_str_to_f90(o, string):
         # no more commas left in the string or string is short
         if p == -1 or len(string) <= 80:
             o.write("%s\n"%string)
-            break;
+            break
         # position after comma
         p += 1
         if p >= 80:
