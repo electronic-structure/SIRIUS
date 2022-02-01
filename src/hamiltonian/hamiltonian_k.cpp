@@ -934,7 +934,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     auto& comm = kp().comm();
 
-    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
+    //PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
 
     /* matching coefficients for a block of atoms */
     //matrix<std::complex<T>> alm_block;
@@ -986,11 +986,13 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     //        }
     //    }
     //}
-    PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
+    //PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
 
     /* generate Alm coefficients for the block of atoms */
     auto generate_alm_new = [&ctx, &ngv, this](int atom_begin, int na, int mt_size, std::vector<int> offsets_aw)
     {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
+
         auto pu = ctx.processing_unit();
 
         sddk::mdarray<std::complex<T>, 2> alm;
@@ -1379,6 +1381,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     std::vector<int> mt_lo_offsets;
 
     if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
+
         mt_aw_offsets = std::vector<int>(phi__.spl_num_atoms().local_size(), 0);
         mt_lo_offsets = std::vector<int>(phi__.spl_num_atoms().local_size(), 0);
 
@@ -1462,6 +1466,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
      *
      */
     if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-lo");
         /* lo-lo contribution */
         for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
             int ia =  phi__.spl_num_atoms()[ialoc];
@@ -1563,6 +1568,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         auto alm = generate_alm_new(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
 
         if (!phi_is_lo__) {
+            PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
 
             /* compute B(lm, n) = < Alm | C > */
             spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_CONJ_TRANSPOSE, 1.0,
@@ -1621,6 +1627,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             }
         }
         if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+            PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
             if (hphi__) {
                 /* APW-lo contribution to hphi */
                 spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
@@ -1658,6 +1665,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
      */
 
     if (!apw_only__ && !phi_is_lo__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-apw");
+
         sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
             alm_phi_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
 
