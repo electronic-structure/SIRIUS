@@ -5580,6 +5580,132 @@ deallocate(smearing_c_type)
 deallocate(processing_unit_c_type)
 end subroutine sirius_nlcg_params
 
+!
+!> @brief Interface to linear solver.
+!> @param [in] handler DFT ground staate handler.
+!> @param [in] vk K-point in lattice coordinates
+!> @param [in] vkq K+q-point in lattice coordinates
+!> @param [in] num_gvec_k_loc Local number of G-vectors for k-point
+!> @param [in] gvec_k_loc Local list of G-vectors for k-point.
+!> @param [in] num_gvec_kq_loc Local number of G-vectors for k+q-point
+!> @param [in] gvec_kq_loc Local list of G-vectors for k+q-point.
+!> @param [inout] dpsi Left-hand side of the linear equation.
+!> @param [inout] dvpsi Right-hand side of the linear equation.
+!> @param [in] ld Leading dimension of dpsi and dvpsi.
+!> @param [in] num_spin_comp Number of spin components.
+!> @param [out] error_code Error code
+subroutine sirius_linear_solver(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
+&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+real(8), target, dimension(3), intent(in) :: vk
+real(8), target, dimension(3), intent(in) :: vkq
+integer, target, intent(in) :: num_gvec_k_loc
+integer, target, dimension(3, num_gvec_k_loc), intent(in) :: gvec_k_loc
+integer, target, intent(in) :: num_gvec_kq_loc
+integer, target, dimension(3, num_gvec_kq_loc), intent(in) :: gvec_kq_loc
+complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dpsi
+complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dvpsi
+integer, target, intent(in) :: ld
+integer, target, intent(in) :: num_spin_comp
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: vk_ptr
+type(C_PTR) :: vkq_ptr
+type(C_PTR) :: num_gvec_k_loc_ptr
+type(C_PTR) :: gvec_k_loc_ptr
+type(C_PTR) :: num_gvec_kq_loc_ptr
+type(C_PTR) :: gvec_kq_loc_ptr
+type(C_PTR) :: dpsi_ptr
+type(C_PTR) :: dvpsi_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_linear_solver_aux(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
+&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)&
+&bind(C, name="sirius_linear_solver")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: vk
+type(C_PTR), value :: vkq
+type(C_PTR), value :: num_gvec_k_loc
+type(C_PTR), value :: gvec_k_loc
+type(C_PTR), value :: num_gvec_kq_loc
+type(C_PTR), value :: gvec_kq_loc
+type(C_PTR), value :: dpsi
+type(C_PTR), value :: dvpsi
+type(C_PTR), value :: ld
+type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+vk_ptr = C_NULL_PTR
+vk_ptr = C_LOC(vk)
+vkq_ptr = C_NULL_PTR
+vkq_ptr = C_LOC(vkq)
+num_gvec_k_loc_ptr = C_NULL_PTR
+num_gvec_k_loc_ptr = C_LOC(num_gvec_k_loc)
+gvec_k_loc_ptr = C_NULL_PTR
+gvec_k_loc_ptr = C_LOC(gvec_k_loc)
+num_gvec_kq_loc_ptr = C_NULL_PTR
+num_gvec_kq_loc_ptr = C_LOC(num_gvec_kq_loc)
+gvec_kq_loc_ptr = C_NULL_PTR
+gvec_kq_loc_ptr = C_LOC(gvec_kq_loc)
+dpsi_ptr = C_NULL_PTR
+dpsi_ptr = C_LOC(dpsi)
+dvpsi_ptr = C_NULL_PTR
+dvpsi_ptr = C_LOC(dvpsi)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+num_spin_comp_ptr = C_NULL_PTR
+num_spin_comp_ptr = C_LOC(num_spin_comp)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_linear_solver_aux(handler_ptr,vk_ptr,vkq_ptr,num_gvec_k_loc_ptr,gvec_k_loc_ptr,&
+&num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,dpsi_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,&
+&error_code_ptr)
+end subroutine sirius_linear_solver
+
+!
+!> @brief Generate D-operator matrix.
+!> @param [in] handler Ground state handler.
+!> @param [out] error_code Error code
+subroutine sirius_generate_d_operator_matrix(handler,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_generate_d_operator_matrix_aux(handler,error_code)&
+&bind(C, name="sirius_generate_d_operator_matrix")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_d_operator_matrix_aux(handler_ptr,error_code_ptr)
+end subroutine sirius_generate_d_operator_matrix
+
 
 subroutine sirius_free_handler_ctx(handler, error_code)
     implicit none
