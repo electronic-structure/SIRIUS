@@ -932,12 +932,6 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     int nblk = spl.first;
     int num_atoms_in_block = spl.second;
 
-    /* maximum number of AW radial functions in a block of atoms */
-    //int max_mt_aw = num_atoms_in_block * ctx.unit_cell().max_mt_aw_basis_size();
-
-    /* maximum number of LO radial functions in a block of atoms */
-    //int max_mt_lo = num_atoms_in_block * ctx.unit_cell().max_mt_lo_basis_size();
-
     auto& comm = kp().comm();
 
     PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
@@ -1473,14 +1467,24 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             int ia =  phi__.spl_num_atoms()[ialoc];
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
-            //int naw    = type.mt_aw_basis_size();
-            //int nlo    = type.mt_lo_basis_size();
+            int naw    = type.mt_aw_basis_size();
+            int nlo    = type.mt_lo_basis_size();
 
             int offset_mt_coeffs = phi__.offset_mt_coeffs(ialoc);
 
-            auto& hmt = H0_.hmt(ia);
+            if (hphi__ != nullptr) {
+                auto& hmt = H0_.hmt(ia);
+                linalg(la).gemm('N', 'N', nlo, n__, nlo, &linalg_const<std::complex<T>>::one(),
+                                hmt.at(mem, naw, naw), hmt.ld(),
+                                phi__.mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
+                                phi__.mt_coeffs(0).prime().ld(),
+                                &linalg_const<std::complex<T>>::one(),
+                                hphi__->mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
+                                hphi__->mt_coeffs(0).prime().ld());
+            }
 
             // TODO: is omp statement in the rignt place, or should it be move to atom index?
+            // TODO: check if l.o. are orthogonal; in this case this term must vanish
             #pragma omp parallel for schedule(static)
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
@@ -1499,12 +1503,6 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                             ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
                                 phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
                                 static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
-                        }
-                    }
-                    if (hphi__ != nullptr) {
-                        for (int i = 0; i < n__; i++) {
-                            hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) * hmt(xi_lo, xi_lo1);
                         }
                     }
                 }
