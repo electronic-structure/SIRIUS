@@ -127,16 +127,16 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
 
 template <typename T, typename F>
 void
-Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const
+Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const
 {
     PROFILE("sirius::Band::solve");
 
-    if (precompute__ && ctx_.full_potential()) {
-        H0__.potential().generate_pw_coefs();
-        H0__.potential().update_atomic_potential();
-        unit_cell_.generate_radial_functions();
-        unit_cell_.generate_radial_integrals();
-    }
+    //if (precompute__ && ctx_.full_potential()) {
+    //    H0__.potential().generate_pw_coefs();
+    //    H0__.potential().update_atomic_potential();
+    //    unit_cell_.generate_radial_functions();
+    //    unit_cell_.generate_radial_integrals();
+    //}
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -196,16 +196,16 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, doubl
 
 template
 void
-Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, bool precompute__, double itsol_tol__) const;
+Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, double itsol_tol__) const;
 
 #if defined(USE_FP32)
 template
 void
-Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
+Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 
 template
 void
-Band::solve<float, double>(K_point_set& kset__, Hamiltonian0<float>& H0__, bool precompute__, double itsol_tol__) const;
+Band::solve<float, double>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 #endif
 
 } // namespace

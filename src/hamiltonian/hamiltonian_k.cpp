@@ -1376,7 +1376,6 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
      * +------+
      *
      */
-    // TODO: use one temporay slab matrix
     sddk::dmatrix<std::complex<T>> h_apw_lo_phi_lo(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
     sddk::dmatrix<std::complex<T>> o_apw_lo_phi_lo(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
 
@@ -1400,10 +1399,10 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
             mt_lo_counts[loc.rank] += type.mt_lo_basis_size();
         }
 
-        if (hphi__) {
-            sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
-                h_apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
+        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
+            apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
 
+        if (hphi__) {
             for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
                 int ia =  phi__.spl_num_atoms()[ialoc];
                 auto& atom = ctx.unit_cell().atom(ia);
@@ -1411,34 +1410,22 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 int naw    = type.mt_aw_basis_size();
                 int nlo    = type.mt_lo_basis_size();
 
-                sddk::matrix<std::complex<T>> hmt(naw, nlo);
-                for (int ilo = 0; ilo < nlo; ilo++) {
-                    int xi_lo = naw + ilo;
-                    /* local orbital indices */
-                    int lm_lo    = type.indexb(xi_lo).lm;
-                    int idxrf_lo = type.indexb(xi_lo).idxrf;
-                    for (int xi = 0; xi < naw; xi++) {
-                        int lm_aw    = type.indexb(xi).lm;
-                        int idxrf_aw = type.indexb(xi).idxrf;
-                        auto& gc     = type.gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
-                        hmt(xi, ilo) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
-                    }
-                }
+                auto& hmt = H0_.hmt(ia);
+
                 //if (pu == device_t::GPU) {
                 //    hmt.allocate(memory_t::device).copy_to(memory_t::device);
                 //}
-                linalg(la).gemm('N', 'N', naw, n__, nlo, &linalg_const<std::complex<T>>::one(), hmt.at(mem), hmt.ld(),
+                linalg(la).gemm('N', 'N', naw, n__, nlo, &linalg_const<std::complex<T>>::one(), hmt.at(mem, 0, naw), hmt.ld(),
                                 phi__.mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
                                 phi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-                                h_apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), h_apw_lo_phi_lo_slab.ld());
+                                apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), apw_lo_phi_lo_slab.ld());
             }
 
-            costa::transform(h_apw_lo_phi_lo_slab.grid_layout(), h_apw_lo_phi_lo.grid_layout(), 'N',
+            costa::transform(apw_lo_phi_lo_slab.grid_layout(), h_apw_lo_phi_lo.grid_layout(), 'N',
                     linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
         }
         if (ophi__) {
-            sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
-                o_apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
+            apw_lo_phi_lo_slab.zero();
 
             for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
                 int ia =  phi__.spl_num_atoms()[ialoc];
@@ -1447,32 +1434,23 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 int naw    = type.mt_aw_basis_size();
                 int nlo    = type.mt_lo_basis_size();
 
-                sddk::matrix<std::complex<T>> omt(naw, nlo);
-                omt.zero();
-                for (int ilo = 0; ilo < nlo; ilo++) {
-                    int xi_lo = naw + ilo;
-                    /* local orbital indices */
-                    int l_lo     = type.indexb(xi_lo).l;
-                    int lm_lo    = type.indexb(xi_lo).lm;
-                    int order_lo = type.indexb(xi_lo).order;
-                    for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
-                        omt(type.indexb_by_lm_order(lm_lo, order_aw), ilo) =
-                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
+                for (int j = 0; j < n__; j++) {
+                    for (int ilo = 0; ilo < nlo; ilo++) {
+                        int xi_lo = naw + ilo;
+                        /* local orbital indices */
+                        int l_lo     = type.indexb(xi_lo).l;
+                        int lm_lo    = type.indexb(xi_lo).lm;
+                        int order_lo = type.indexb(xi_lo).order;
+                        for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+                            apw_lo_phi_lo_slab(mt_aw_offsets[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw), j) +=
+                                phi__.mt_coeffs(0).prime(mt_lo_offsets[ialoc] + ilo, N__ + j) *
+                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
+                        }
                     }
                 }
-
-                //if (pu == device_t::GPU) {
-                //    hmt.allocate(memory_t::device).copy_to(memory_t::device);
-                //}
-                // TODO: omt is a sparse, block-diagonal matrix; this zegemm can be optimised by doing
-                // a manual multiplication of non-zero elements of omt
-                linalg(la).gemm('N', 'N', naw, n__, nlo, &linalg_const<std::complex<T>>::one(), omt.at(mem), omt.ld(),
-                                phi__.mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
-                                phi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-                                o_apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), o_apw_lo_phi_lo_slab.ld());
             }
 
-            costa::transform(o_apw_lo_phi_lo_slab.grid_layout(), o_apw_lo_phi_lo.grid_layout(), 'N',
+            costa::transform(apw_lo_phi_lo_slab.grid_layout(), o_apw_lo_phi_lo.grid_layout(), 'N',
                     linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
 
         }
@@ -1538,6 +1516,23 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     /* <A_{lm}^{\alpha}(G) | C_j(G) > for a block of Alm */
     sddk::dmatrix<std::complex<T>> alm_phi(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
+
+
+    /*  compute APW-APW contribution
+     *                         n
+     *  +----------------+   +---+
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |    APW-APW     | x |APW|
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  +----------------+   +---+
+     *
+     *  we are going to split the Alm coefficients into blocks of atoms
+     */
 
     int offset_aw_global{0};
     /* loop over blocks of atoms */
@@ -1607,18 +1602,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                     auto& atom = ctx.unit_cell().atom(ia);
                     auto& type = atom.type();
 
-                    sddk::mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
-                    /* compute the muffin-tin Hamiltonian */
-                    for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-                        int lm2    = type.indexb(j2).lm;
-                        int idxrf2 = type.indexb(j2).idxrf;
-                        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-                            int lm1    = type.indexb(j1).lm;
-                            int idxrf1 = type.indexb(j1).idxrf;
-                            hmt(j1, j2) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
-                                                                                 type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                        }
-                    }
+                    auto& hmt = H0_.hmt(ia);
+
                     linalg(linalg_t::blas).gemm('N', 'N', type.mt_aw_basis_size(), n__, type.mt_aw_basis_size(),
                             &linalg_const<std::complex<T>>::one(), hmt.at(memory_t::host), hmt.ld(),
                             alm_phi_slab.at(memory_t::host, offset_aw, 0), alm_phi_slab.ld(),
