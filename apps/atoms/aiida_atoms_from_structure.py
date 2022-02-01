@@ -13,7 +13,7 @@ struct_q.set_group(structure_grp, exclude=False)
 symbols = []
 for node in struct_q.run_query():
     for s in node.get_symbols_set():
-        if not s in symbols: symbols.append(s) 
+        if s not in symbols: symbols.append(s)
 
 fout = open("run.x", "w")
 for s in symbols:

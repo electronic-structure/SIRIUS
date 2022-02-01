@@ -84,7 +84,7 @@ def main():
         label = atom._atom_site_label
         label = re.sub("[0-9]+", " ", label).strip()
 
-        if not label in initial_atoms_list: initial_atoms_list[label] = []
+        if label not in initial_atoms_list: initial_atoms_list[label] = []
 
         initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)),
                                           "y" : float(remove_ending_braces(atom._atom_site_fract_y)),
