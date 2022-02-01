@@ -1478,6 +1478,8 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
             int offset_mt_coeffs = phi__.offset_mt_coeffs(ialoc);
 
+            auto& hmt = H0_.hmt(ia);
+
             // TODO: is omp statement in the rignt place, or should it be move to atom index?
             #pragma omp parallel for schedule(static)
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
@@ -1486,14 +1488,12 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 int l_lo     = type.indexb(xi_lo).l;
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
-                int idxrf_lo = type.indexb(xi_lo).idxrf;
 
                 /* lo-lo contribution */
                 for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
                     int xi_lo1 = type.mt_aw_basis_size() + jlo;
                     int lm1    = type.indexb(xi_lo1).lm;
                     int order1 = type.indexb(xi_lo1).order;
-                    int idxrf1 = type.indexb(xi_lo1).idxrf;
                     if (lm_lo == lm1 && ophi__ != nullptr) {
                         for (int i = 0; i < n__; i++) {
                             ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
@@ -1502,11 +1502,9 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                         }
                     }
                     if (hphi__ != nullptr) {
-                        auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
                         for (int i = 0; i < n__; i++) {
                             hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
-                                static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
+                                phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) * hmt(xi_lo, xi_lo1);
                         }
                     }
                 }
@@ -1681,7 +1679,6 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                     /* local orbital indices */
                     int l_lo     = type.indexb(xi_lo).l;
                     int lm_lo    = type.indexb(xi_lo).lm;
-                    //int idxrf_lo = type.indexb(xi_lo).idxrf;
                     int order_lo = type.indexb(xi_lo).order;
                     for (int i = 0; i < n__; i++) {
                         /* lo-APW contribution to ophi */
@@ -1694,26 +1691,12 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
                 }
             }
             if (hphi__ != nullptr) {
-                for (int i = 0; i < n__; i++) {
-                    for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
-                        int xi_lo = type.mt_aw_basis_size() + ilo;
-                        /* local orbital indices */
-                        //int l_lo     = type.indexb(xi_lo).l;
-                        int lm_lo    = type.indexb(xi_lo).lm;
-                        //int order_lo = type.indexb(xi_lo).order;
-                        int idxrf_lo = type.indexb(xi_lo).idxrf;
-                        std::complex<T> z(0, 0);
-                        for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                            int lm_aw    = type.indexb(xi).lm;
-                            int idxrf_aw = type.indexb(xi).idxrf;
-                            auto& gc     = type.gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
-                            z += static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc)) *
-                                 alm_phi_slab(mt_aw_offsets[ialoc] + xi, i);
-                        }
-                        /* lo-APW contribution to hphi */
-                        hphi__->mt_coeffs(0).prime(mt_lo_offsets[ialoc] + ilo, N__ + i) += z;
-                    }
-                }
+                auto& hmt = H0_.hmt(ia);
+                linalg(la).gemm('N', 'N', nlo, n__, naw, &linalg_const<std::complex<T>>::one(), hmt.at(mem, naw, 0), hmt.ld(),
+                                alm_phi_slab.at(mem, mt_aw_offsets[ialoc], 0), alm_phi_slab.ld(),
+                                &linalg_const<std::complex<T>>::one(),
+                                hphi__->mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
+                                hphi__->mt_coeffs(0).prime().ld());
             }
         }
     }
