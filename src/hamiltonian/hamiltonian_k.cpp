@@ -849,9 +849,6 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     auto pu = ctx.processing_unit();
 
-    /* quick hack: apply O using CPU; GPU is buggy */
-    //auto pu = (hphi__) ? ctx.processing_unit() : device_t::CPU;
-
     auto la  = (pu == device_t::CPU) ? linalg_t::blas : linalg_t::gpublas;
     auto mem = (pu == device_t::CPU) ? memory_t::host : memory_t::device;
 
