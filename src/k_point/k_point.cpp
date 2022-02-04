@@ -425,23 +425,19 @@ void K_point<T>::update()
 
     if (ctx_.full_potential()) {
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
-                    new Matching_coefficients(unit_cell_, num_gkvec_row(), igk_row_, gkvec()));
-            alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
-                    new Matching_coefficients(unit_cell_, num_gkvec_col(), igk_col_, gkvec()));
+            alm_coeffs_row_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_row(), igk_row_, gkvec());
+            alm_coeffs_col_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_col(), igk_col_, gkvec());
         }
-        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, num_gkvec_loc(), igk_loc_, gkvec()));
+        alm_coeffs_loc_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_loc(), igk_loc_, gkvec());
     }
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_loc_));
+        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_loc_);
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_row_));
-            beta_projectors_col_ = std::unique_ptr<Beta_projectors<T>>(new Beta_projectors<T>(ctx_, gkvec(), igk_col_));
-
+            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_row_);
+            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_col_);
         }
 
         if (ctx_.hubbard_correction()) {
