@@ -54,6 +54,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute__)
             ctx_.unit_cell().generate_radial_integrals();
         }
         hmt_ = std::vector<sddk::mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());
+        #pragma omp parallel for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& atom = ctx_.unit_cell().atom(ia);
             auto& type = atom.type();
