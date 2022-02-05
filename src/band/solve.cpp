@@ -131,13 +131,6 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 {
     PROFILE("sirius::Band::solve");
 
-    //if (precompute__ && ctx_.full_potential()) {
-    //    H0__.potential().generate_pw_coefs();
-    //    H0__.potential().update_atomic_potential();
-    //    unit_cell_.generate_radial_functions();
-    //    unit_cell_.generate_radial_integrals();
-    //}
-
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     double empy_tol{itsol_tol__};

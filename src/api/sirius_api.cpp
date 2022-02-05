@@ -2736,13 +2736,11 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
             auto& ks   = get_ks(ks_handler__);
             double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance()
                                                         : *iter_solver_tol__;
-            // TODO: this "precompute" is a bad idea. When we creaate H0, it should already be in a correct state
-            sirius::Hamiltonian0<double> H0(gs.potential(), false);
             if (precompute_pw__ && *precompute_pw__) {
-                H0.potential().generate_pw_coefs();
+                gs.potential().generate_pw_coefs();
             }
             if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
-                H0.potential().update_atomic_potential();
+                gs.potential().update_atomic_potential();
             }
             if (precompute_rf__ && *precompute_rf__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
@@ -2750,6 +2748,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
             if (precompute_ri__ && *precompute_ri__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
             }
+            sirius::Hamiltonian0<double> H0(gs.potential(), false);
             sirius::Band(ks.ctx()).solve<double, double>(ks, H0, tol);
         },
         error_code__);
