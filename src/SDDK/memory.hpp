@@ -1358,6 +1358,11 @@ class mdarray
         return label_;
     }
 
+    inline bool on_host() const
+    {
+        return (raw_ptr_ != nullptr);
+    }
+
     mdarray<T, N>& operator=(std::function<T(void)> f__)
     {
         for (size_t i = 0; i < this->size(); i++) {
@@ -1450,6 +1455,43 @@ copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
         }
     }
     std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
+}
+
+template <class numeric_t, std::size_t... Ts>
+auto
+_empty_like_inner(std::index_sequence<Ts...>& seq, std::size_t (&dims)[sizeof...(Ts)], memory_pool* mempool)
+{
+    if (mempool == nullptr) {
+        return mdarray<numeric_t, sizeof...(Ts)>{dims[Ts]...};
+    } else {
+        mdarray<numeric_t, sizeof...(Ts)> out{dims[Ts]...};
+        out.allocate(*mempool);
+        return out;
+    }
+}
+
+template <typename T, int N>
+auto
+empty_like(const mdarray<T, N>& src)
+{
+    auto I = std::make_index_sequence<N>{};
+    std::size_t dims[N];
+    for (int i = 0; i < N; ++i) {
+        dims[i] = src.size(i);
+    }
+    return _empty_like_inner<T>(I, dims, nullptr);
+}
+
+template <typename T, int N>
+auto
+empty_like(const mdarray<T, N>& src, memory_pool& mempool)
+{
+    auto I = std::make_index_sequence<N>{};
+    std::size_t dims[N];
+    for (int i = 0; i < N; ++i) {
+        dims[i] = src.size(i);
+    }
+    return _empty_like_inner<T>(I, dims, &mempool);
 }
 
 } // namespace sddk
