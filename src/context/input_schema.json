@@ -656,9 +656,9 @@
                 },
                 "precision_gs" : {
                     "type" : "string",
-                    "default" : "fp32",
-                    "enum" : ["fp32", "fp64"],
-                    "title" : "The final floating point precision of the ground state DFT calculation."
+                    "default" : "auto",
+                    "enum" : ["auto", "fp32", "fp64"],
+                    "title" : "The final floating point precision of the ground state DFT calculation (dev options)."
                 }
             }
         },

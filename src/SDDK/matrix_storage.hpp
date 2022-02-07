@@ -96,6 +96,17 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Constructor.
+    /** Memory for prime storage is allocated from the memory pool */
+    matrix_storage(memory_pool& mp__, Gvec_partition const& gvp__, int num_cols__)
+        : gvp_(&gvp__)
+        , num_rows_loc_(gvp__.gvec().count())
+        , num_cols_(num_cols__)
+    {
+        /* primary storage of PW wave functions: slabs */
+        prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, mp__, "matrix_storage.prime_");
+    }
+
+    /// Constructor.
     matrix_storage(int num_rows_loc__, int num_cols__)
         : num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
@@ -105,10 +116,8 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Constructor.
-    /** Memory for prime storage is allocated from the memory pool */
-    matrix_storage(memory_pool& mp__, Gvec_partition const& gvp__, int num_cols__)
-        : gvp_(&gvp__)
-        , num_rows_loc_(gvp__.gvec().count())
+    matrix_storage(memory_pool& mp__, int num_rows_loc__, int num_cols__)
+        : num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
     {
         /* primary storage of PW wave functions: slabs */

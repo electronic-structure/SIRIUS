@@ -249,30 +249,32 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         itsol_tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
 
 #if defined(USE_FP32)
-        /* if the final precision is not equal to the current precision */
-        if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
-            /* if we reached the mimimum tolerance for fp32 */
-            if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
-                (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
-                std::cout << "switching to FP64" << std::endl;
-                ctx_.cfg().unlock();
-                ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
-                ctx_.cfg().parameters().precision_wf("fp64");
-                ctx_.cfg().parameters().precision_hs("fp64");
-                ctx_.cfg().lock();
+        if (ctx_.cfg().parameters().precision_gs() != "auto") {
+            /* if the final precision is not equal to the current precision */
+            if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
+                /* if we reached the mimimum tolerance for fp32 */
+                if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
+                    (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
+                    std::cout << "switching to FP64" << std::endl;
+                    ctx_.cfg().unlock();
+                    ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
+                    ctx_.cfg().parameters().precision_wf("fp64");
+                    ctx_.cfg().parameters().precision_hs("fp64");
+                    ctx_.cfg().lock();
 
-                for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-                    int ik = kset_.spl_num_kpoints(ikloc);
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        kset_.get<double>(ik)->spinor_wave_functions().copy_from(device_t::CPU, ctx_.num_bands(),
-                                kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+                        int ik = kset_.spl_num_kpoints(ikloc);
+                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                            kset_.get<double>(ik)->spinor_wave_functions().copy_from(device_t::CPU, ctx_.num_bands(),
+                                                                                     kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                        }
                     }
-                }
-                for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
-                    for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                        for (int j = 0; j < ctx_.num_bands(); j++) {
-                            kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
-                            kset_.get<double>(ik)->band_occupancy(j, ispn, kset_.get<float>(ik)->band_occupancy(j, ispn));
+                    for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+                        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                            for (int j = 0; j < ctx_.num_bands(); j++) {
+                                kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
+                                kset_.get<double>(ik)->band_occupancy(j, ispn, kset_.get<float>(ik)->band_occupancy(j, ispn));
+                            }
                         }
                     }
                 }
@@ -491,7 +493,7 @@ void DFT_ground_state::print_info(std::ostream& out__) const
     auto write_energy2 = [&](std::string label__, double value__)
     {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right
-              << std::setw(16) << std::setprecision(8) << std::fixed << value__ << " (Ha), " 
+              << std::setw(16) << std::setprecision(8) << std::fixed << value__ << " (Ha), "
               << std::setw(16) << std::setprecision(8) << std::fixed << value__ * 2 << " (Ry)" << std::endl;
     };
 

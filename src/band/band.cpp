@@ -38,7 +38,7 @@ Band::Band(Simulation_context& ctx__)
     , blacs_grid_(ctx__.blacs_grid())
 {
     if (!ctx_.initialized()) {
-        TERMINATE("Simulation_context is not initialized");
+        RTE_THROW("Simulation_context is not initialized");
     }
 }
 
@@ -61,22 +61,17 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
         if (mtrx_old__) {
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < spl_col.local_size(); i++) {
-                std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            if (spl_row.local_size()) {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+                }
             }
         }
 
         if (ctx_.print_checksum()) {
-            double_complex cs(0, 0);
-            for (int i = 0; i < spl_col.local_size(); i++) {
-                for (int j = 0; j < spl_row.local_size(); j++) {
-                    cs += mtrx__(j, i);
-                }
-            }
-            mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+            auto cs = mtrx__.checksum(N__ - num_locked, N__ - num_locked);
             if (ctx_.comm_band().rank() == 0) {
                 utils::print_checksum("subspace_mtrx_old", cs);
             }
@@ -107,19 +102,13 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-        double_complex cs(0, 0);
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            for (int j = 0; j < spl_row.local_size(); j++) {
-                cs += mtrx__(j, i);
-            }
-        }
-        mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+        auto cs = mtrx__.checksum(N__ + n__ - num_locked, N__ + n__ - num_locked);
         if (ctx_.comm_band().rank() == 0) {
             utils::print_checksum("subspace_mtrx", cs);
         }
     }
 
-    /* kill any numerical noise */
+    /* remove any numerical noise */
     mtrx__.make_real_diag(N__ + n__ - num_locked);
 
     /* save new matrix */
@@ -129,9 +118,11 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+        if (spl_row.local_size()) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+            }
         }
     }
 }
@@ -184,6 +175,8 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
             WARNING(s);
+        } else {
+            ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
         }
     }
 
@@ -321,7 +314,10 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
             set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
             if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
-                ovlp.serialize("overlap", num_phi_tot);
+                auto s = ovlp.serialize("overlap", num_phi_tot, num_phi_tot);
+                if (Hk__.kp().comm().rank() == 0) {
+                    std::cout << s.str() << std::endl;
+                }
             }
 
             double max_diff = check_hermitian(ovlp, num_phi_tot);
@@ -348,8 +344,11 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
 
         if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
-            hmlt.serialize("hmlt", num_phi_tot);
-            ovlp.serialize("ovlp", num_phi_tot);
+            auto s1 = hmlt.serialize("hmlt", num_phi_tot, num_phi_tot);
+            auto s2 = hmlt.serialize("ovlp", num_phi_tot, num_phi_tot);
+            if (Hk__.kp().comm().rank() == 0) {
+                std::cout << s1.str() << std::endl << s2.str() << std::endl;
+            }
         }
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
@@ -358,8 +357,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         }
 
         if (ctx_.print_checksum()) {
-            auto cs = evec.checksum();
-            evec.blacs_grid().comm().allreduce(&cs, 1);
+            auto cs = evec.checksum(num_phi_tot, num_bands);
             real_type<T> cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];

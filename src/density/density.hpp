@@ -224,9 +224,6 @@ class Density : public Field4D
      */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
-    /// Non-zero Gaunt coefficients.
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
-
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
@@ -253,7 +250,6 @@ class Density : public Field4D
      */
     template <int num_mag_dims>
     void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<double_complex, 4> const& zdens__,
-                               Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
                                sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.

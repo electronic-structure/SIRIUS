@@ -531,9 +531,9 @@ Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        set_lmax_rho(unit_cell().lmax() * 2);
-        set_lmax_pot(unit_cell().lmax() * 2);
-        set_lmax_apw(-1);
+        lmax_rho(unit_cell().lmax() * 2);
+        lmax_pot(unit_cell().lmax() * 2);
+        lmax_apw(-1);
     }
 
     /* initialize FFT grid dimensions */
@@ -665,18 +665,6 @@ Simulation_context::initialize()
     /* placeholder for augmentation operator for each atom type */
     augmentation_op_.resize(unit_cell().num_atom_types());
 
-    /* create G-vectors on the first call to update() */
-    update();
-
-    this->print_memory_usage(__FILE__, __LINE__);
-
-    /* set the smearing */
-    smearing(cfg().parameters().smearing());
-
-    if (verbosity() >= 1 && comm().rank() == 0) {
-        print_info();
-    }
-
     if (this->hubbard_correction()) {
         /* if spin orbit coupling or non collinear magnetisms are activated, then
            we consider the full spherical hubbard correction */
@@ -691,15 +679,21 @@ Simulation_context::initialize()
         cfg().settings().itsol_tol_min(tol);
     }
 
+
+    /* set the smearing */
+    smearing(cfg().parameters().smearing());
+
+    /* create G-vectors on the first call to update() */
+    update();
+
+    this->print_memory_usage(__FILE__, __LINE__);
+
+    if (verbosity() >= 1 && comm().rank() == 0) {
+        print_info();
+    }
+
     initialized_ = true;
     cfg().lock();
-
-    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
-    if (save_config && this->comm().rank() == 0) {
-        std::ofstream fi(*save_config, std::ofstream::out | std::ofstream::trunc);
-        auto conf_dict = this->serialize();
-        fi << conf_dict.dump(4);
-    }
 }
 
 void
@@ -783,7 +777,7 @@ Simulation_context::print_info() const
     std::printf("number of magnetic dimensions      : %i\n", num_mag_dims());
     std::printf("number of spinor components        : %i\n", num_spinor_comp());
     std::printf("number of spinors per band index   : %i\n", num_spinors());
-    std::printf("lmax_apw                           : %i\n", lmax_apw());
+    std::printf("lmax_apw                           : %i\n", unit_cell().lmax_apw());
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
     std::printf("lmax_rf                            : %i\n", unit_cell().lmax());
@@ -1373,6 +1367,23 @@ Simulation_context::update()
 
     if (full_potential()) { // TODO: add corresponging radial integarls of Theta
         init_step_function();
+    }
+
+    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
+    if (save_config && this->comm().rank() == 0) {
+        std::string name;
+        if (*save_config == "all") {
+            static int count{0};
+            std::stringstream s;
+            s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
+            name = s.str();
+            count++;
+        } else {
+            name = *save_config;
+        }
+        std::ofstream fi(name, std::ofstream::out | std::ofstream::trunc);
+        auto conf_dict = this->serialize();
+        fi << conf_dict.dump(4);
     }
 }
 

@@ -1446,10 +1446,13 @@ inline void linalg::tranc<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_c
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&linalg_const<ftn_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_complex*>(&linalg_const<ftn_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1472,10 +1475,13 @@ inline void linalg::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1498,10 +1504,13 @@ inline void linalg::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1524,9 +1533,12 @@ inline void linalg::tranc<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_si
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&linalg_const<ftn_single>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1549,9 +1561,12 @@ inline void linalg::tranu<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1574,9 +1589,12 @@ inline void linalg::tranc<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif

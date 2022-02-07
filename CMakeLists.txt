@@ -41,6 +41,10 @@ endif()
 
 set(CMAKE_CXX_STANDARD 14)
 
+# This ensures that -std=c++14 is passed to nvcc. See
+# https://github.com/electronic-structure/SIRIUS/issues/716 for details.
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
@@ -282,6 +286,7 @@ if(BUILD_APPS)
   add_subdirectory(apps/atoms)
   add_subdirectory(apps/hydrogen)
   add_subdirectory(apps/dft_loop)
+  add_subdirectory(apps/linear_response)
   if(USE_NLCGLIB)
     add_subdirectory(apps/nlcg)
   endif()
