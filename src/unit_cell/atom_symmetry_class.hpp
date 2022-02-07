@@ -143,7 +143,7 @@ class Atom_symmetry_class
     /// Get m-th order radial derivative of AW functions at the MT surface.
     inline double aw_surface_deriv(int l__, int order__, int dm__) const
     {
-        RTE_ASSERT(dm <= 2);
+        RTE_ASSERT(dm__ <= 2);
         int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
         return surface_derivatives_(dm__, idxrf);
     }
@@ -151,7 +151,7 @@ class Atom_symmetry_class
     /// Set surface derivative of AW radial functions.
     inline void aw_surface_deriv(int l__, int order__, int dm__, double deriv__)
     {
-        RTE_ASSERT(dm <= 2);
+        RTE_ASSERT(dm__ <= 2);
         int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
         surface_derivatives_(dm__, idxrf) = deriv__;
     }
