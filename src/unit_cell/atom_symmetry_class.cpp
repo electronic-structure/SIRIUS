@@ -35,7 +35,7 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
         RTE_THROW("atom type is not initialized");
     }
 
-    aw_surface_derivatives_ = sddk::mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 3);
+    surface_derivatives_ = sddk::mdarray<double, 2>(3, atom_type_.mt_radial_basis_size());
 
     radial_functions_ = sddk::mdarray<double, 3>(atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2);
 
@@ -104,9 +104,9 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
                     radial_functions_(ir, idxrf, 0) = p[ir] * norm;
                     radial_functions_(ir, idxrf, 1) = rdudr[ir] * norm;
                 }
-                aw_surface_derivatives_(order, l, 0) = norm * p.back() / atom_type_.mt_radius();
+                surface_derivatives_(0, idxrf) = norm * p.back() / atom_type_.mt_radius();
                 for (int i : {0, 1}) {
-                    aw_surface_derivatives_(order, l, i + 1) = uderiv[i] * norm;
+                    surface_derivatives_(i + 1, idxrf) = uderiv[i] * norm;
                 }
 
                 /* orthogonalize to previous radial functions */
@@ -125,7 +125,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
                         radial_functions_(ir, idxrf, 1) -= radial_functions_(ir, idxrf1, 1) * ovlp;
                     }
                     for (int i : {0, 1, 2}) {
-                        aw_surface_derivatives_(order, l, i) -= aw_surface_derivatives_(order1, l, i) * ovlp;
+                        surface_derivatives_(i, idxrf) -= surface_derivatives_(i, idxrf1) * ovlp;
                     }
                 }
 
@@ -152,7 +152,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
                     radial_functions_(ir, idxrf, 1) *= norm;
                 }
                 for (int i : {0, 1, 2}) {
-                    aw_surface_derivatives_(order, l, i) *= norm;
+                    surface_derivatives_(i, idxrf) *= norm;
                 }
             }
             /* divide by r */
@@ -509,7 +509,7 @@ Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int const
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
     comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
-    comm__.bcast(aw_surface_derivatives_.at(memory_t::host), (int)aw_surface_derivatives_.size(), rank__);
+    comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 

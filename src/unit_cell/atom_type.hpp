@@ -870,6 +870,7 @@ class Atom_type
         return indexb_.size_lo();
     }
 
+    /// Total number of muffin-tin basis functions (APW + LO).
     inline int mt_basis_size() const
     {
         return indexb_.size();

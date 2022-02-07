@@ -59,7 +59,7 @@ class Atom_symmetry_class
     sddk::mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.
-    sddk::mdarray<double, 3> aw_surface_derivatives_;
+    sddk::mdarray<double, 2> surface_derivatives_;
 
     /// Spherical part of radial integral.
     sddk::mdarray<double, 2> h_spherical_integrals_;
@@ -141,17 +141,19 @@ class Atom_symmetry_class
     void generate_radial_integrals(relativity_t rel__);
 
     /// Get m-th order radial derivative of AW functions at the MT surface.
-    inline double aw_surface_deriv(int l, int order, int dm) const
+    inline double aw_surface_deriv(int l__, int order__, int dm__) const
     {
-        assert(dm <= 2);
-        return aw_surface_derivatives_(order, l, dm);
+        RTE_ASSERT(dm <= 2);
+        int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
+        return surface_derivatives_(dm__, idxrf);
     }
 
     /// Set surface derivative of AW radial functions.
-    inline void aw_surface_deriv(int l, int order, int dm, double deriv)
+    inline void aw_surface_deriv(int l__, int order__, int dm__, double deriv__)
     {
-        assert(dm <= 2);
-        aw_surface_derivatives_(order, l, dm) = deriv;
+        RTE_ASSERT(dm <= 2);
+        int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
+        surface_derivatives_(dm__, idxrf) = deriv__;
     }
 
     /// Return symmetry class id.
@@ -231,7 +233,7 @@ class Atom_symmetry_class
 
     inline double ae_core_charge_density(int ir) const
     {
-        assert(ir >= 0 && ir < (int)ae_core_charge_density_.size());
+        RTE_ASSERT(ir >= 0 && ir < (int)ae_core_charge_density_.size());
 
         return ae_core_charge_density_[ir];
     }
