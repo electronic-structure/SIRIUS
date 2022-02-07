@@ -55,7 +55,7 @@ class Atom_symmetry_class
      *  are multiplied by \f$ x \f$.\n
      *  1-st dimension: index of radial point \n
      *  2-nd dimension: index of radial function \n
-     *  3-nd dimension: 0 - function itself, 1 - radial derivative */
+     *  3-nd dimension: 0 - function itself, 1 - radial derivative r*(du/dr) */
     sddk::mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.
@@ -91,10 +91,10 @@ class Atom_symmetry_class
     mutable std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Generate radial functions for augmented waves
-    inline void generate_aw_radial_functions(relativity_t rel__);
+    void generate_aw_radial_functions(relativity_t rel__);
 
     /// Generate local orbital raidal functions
-    inline void generate_lo_radial_functions(relativity_t rel__);
+    void generate_lo_radial_functions(relativity_t rel__);
 
   public:
     /// Constructor
@@ -104,6 +104,7 @@ class Atom_symmetry_class
     /** Atoms belonging to the same symmetry class have the same spherical potential. */
     void set_spherical_potential(std::vector<double> const& vs__);
 
+    /// Generate APW and LO radial functions.
     void generate_radial_functions(relativity_t rel__);
 
     void sync_radial_functions(Communicator const& comm__, int const rank__);
@@ -182,22 +183,20 @@ class Atom_symmetry_class
         return radial_functions_(ir, idx, 0);
     }
 
-    /// Get a reference to the value of the radial function.
-    inline double& radial_function(int ir, int idx)
+    /// Set radial function.
+    inline void radial_function(int idx__, std::vector<double> f__)
     {
-        return radial_functions_(ir, idx, 0);
+        for (int ir = 0; ir < this->atom_type().num_mt_points(); ir++) {
+            radial_functions_(ir, idx__, 0) = f__[ir];
+        }
     }
 
-    /// Get a value of the radial function derivative.
-    inline double radial_function_derivative(int ir, int idx) const
+    /// Set radial function derivative r*(du/dr).
+    inline void radial_function_derivative(int idx__, std::vector<double> f__)
     {
-        return radial_functions_(ir, idx, 1);
-    }
-
-    /// Get a reference to the value of the radial function derivative.
-    inline double& radial_function_derivative(int ir, int idx)
-    {
-        return radial_functions_(ir, idx, 1);
+        for (int ir = 0; ir < this->atom_type().num_mt_points(); ir++) {
+            radial_functions_(ir, idx__, 1) = f__[ir];
+        }
     }
 
     inline double h_spherical_integral(int i1, int i2) const
