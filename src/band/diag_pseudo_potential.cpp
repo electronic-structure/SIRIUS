@@ -114,26 +114,30 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
 
     sddk::mdarray<T, 2> btmp(kp.num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
 
-    kp.beta_projectors_row().prepare();
-    kp.beta_projectors_col().prepare();
-    for (int ichunk = 0; ichunk <  kp.beta_projectors_row().num_chunks(); ichunk++) {
-        /* generate beta-projectors for a block of atoms */
-        kp.beta_projectors_row().generate(ichunk);
-        kp.beta_projectors_col().generate(ichunk);
+    {
+        auto bp_gen        = kp.beta_projectors_row().make_generator();
+        auto bp_coeffs_row = bp_gen.prepare();
+        auto bp_coeffs_col = bp_gen.prepare();
 
-        auto& beta_row = kp.beta_projectors_row().pw_coeffs_a();
-        auto& beta_col = kp.beta_projectors_col().pw_coeffs_a();
+        for (int ichunk = 0; ichunk < kp.beta_projectors_row().num_chunks(); ichunk++) {
+            /* generate beta-projectors for a block of atoms */
+            bp_gen.generate(bp_coeffs_row, ichunk);
+            bp_gen.generate(bp_coeffs_col, ichunk);
 
-        for (int i = 0; i <  kp.beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
-            /* number of beta functions for a given atom */
-            int nbf  = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::nbf), i);
-            int offs = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::offset), i);
-            int ia   = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i);
+            auto& beta_row = bp_coeffs_row.pw_coeffs_a;
+            auto& beta_col = bp_coeffs_col.pw_coeffs_a;
 
-            for (int xi1 = 0; xi1 < nbf; xi1++) {
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    dop(xi1, xi2) = Dop.template value<T>(xi1, xi2, ispn__, ia);
-                    qop(xi1, xi2) = Qop.template value<T>(xi1, xi2, ispn__, ia);
+            for (int i = 0; i < bp_coeffs_row.beta_chunk.num_atoms_; i++) {
+                /* number of beta functions for a given atom */
+                int nbf  = bp_coeffs_row.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), i);
+                int offs = bp_coeffs_row.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), i);
+                int ia   = bp_coeffs_row.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), i);
+
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        dop(xi1, xi2) = Dop.template value<T>(xi1, xi2, ispn__, ia);
+                        qop(xi1, xi2) = Qop.template value<T>(xi1, xi2, ispn__, ia);
+                    }
                 }
             }
             /* compute <G+k|beta> D */
@@ -155,8 +159,6 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
             }
         } // i (atoms in chunk)
     }
-    kp.beta_projectors_row().dismiss();
-    kp.beta_projectors_col().dismiss();
 
     if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(ovlp, kp.num_gkvec());

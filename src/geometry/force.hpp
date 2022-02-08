@@ -26,6 +26,7 @@
 #define __FORCE_HPP__
 
 #include "hamiltonian/hamiltonian.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 
 namespace sirius {
 /* forward declaration */

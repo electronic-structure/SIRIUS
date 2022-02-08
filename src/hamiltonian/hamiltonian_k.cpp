@@ -45,9 +45,9 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__,
     PROFILE("sirius::Hamiltonian_k");
     H0_.local_op().prepare_k(kp_.gkvec_partition());
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
-            kp_.beta_projectors().prepare();
-        }
+        // if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
+        //     kp_.beta_projectors().prepare();
+        // }
         u_op_ = std::shared_ptr<U_operator<T>>(
             new U_operator<T>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
@@ -59,11 +59,11 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__,
 template <typename T>
 Hamiltonian_k<T>::~Hamiltonian_k()
 {
-    if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
-            kp_.beta_projectors().dismiss();
-        }
-    }
+    // if (!H0_.ctx().full_potential()) {
+    //     if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
+    //         kp_.beta_projectors().dismiss();
+    //     }
+    // }
     if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
         kp_.hubbard_wave_functions_S().dismiss(sddk::spin_range(0), false);
     }
@@ -814,7 +814,9 @@ Hamiltonian_k<T>::apply_h_s(sddk::spin_range spins__, int N__, int n__, sddk::Wa
 
     /* return if there are no beta-projectors */
     if (H0().ctx().unit_cell().mt_lo_basis_size()) {
-        apply_non_local_d_q<F>(spins__, N__, n__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+        auto bp_generator = kp().beta_projectors().make_generator();
+        auto beta_coeffs = bp_generator.prepare();
+        apply_non_local_d_q<F>(spins__, N__, n__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
     }
 
     /* apply the hubbard potential if relevant */

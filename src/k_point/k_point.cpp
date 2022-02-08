@@ -221,10 +221,10 @@ K_point<T>::generate_hubbard_orbitals()
     sphi.prepare(sddk::spin_range(0), false);
 
     /* compute S|phi> */
-    beta_projectors().prepare();
+    auto bp_generator = beta_projectors().make_generator();
+    auto bp_coeffs = bp_generator.prepare();
 
-    sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, beta_projectors(),
-            phi, q_op.get(), sphi);
+    sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, bp_generator, bp_coeffs, phi, q_op.get(), sphi);
 
     std::unique_ptr<sddk::Wave_functions<T>> wf_tmp;
     std::unique_ptr<sddk::Wave_functions<T>> swf_tmp;
@@ -246,7 +246,7 @@ K_point<T>::generate_hubbard_orbitals()
         sddk::transform<complex_type<T>>(ctx_.spla_context(), 0, {&phi}, 0, nwf, *B, 0, 0, {&sphi}, 0, nwf);
         phi.copy_from(sphi, nwf, 0, 0, 0, 0);
 
-        sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, beta_projectors(),
+        sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, bp_generator, bp_coeffs,
                 phi, q_op.get(), sphi);
 
         if (ctx_.cfg().control().verification() >= 1) {
@@ -257,7 +257,7 @@ K_point<T>::generate_hubbard_orbitals()
         }
     }
 
-    beta_projectors().dismiss();
+    // beta_projectors().dismiss();
     phi.dismiss(sddk::spin_range(0), true);
     sphi.dismiss(sddk::spin_range(0), true);
 

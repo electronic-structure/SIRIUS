@@ -1674,6 +1674,47 @@ inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
     std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
 }
 
+/// Copy all memory present on destination. TODO: remove this
+template <typename T, int N>
+__attribute_deprecated__
+void
+copy_new(mdarray<T, N>& dst, const mdarray<T, N>& src)
+{
+
+    assert(dst.size() == src.size());
+    // TODO: make sure dst and src don't overlap
+
+    if (dst.on_device()) {
+        acc::copy(dst.device_data(), src.device_data(), src.size());
+    }
+
+    if (dst.on_host()) {
+        std::copy(src.host_data(), src.host_data() + dst.size(), dst.host_data());
+    }
+}
+
+/// Copy memory specified by device from src to dst.
+template <typename T, int N>
+__attribute_deprecated__
+void
+copy_new(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
+{
+    // TODO add also compare shapes
+    if (src.size() == 0) {
+        // nothing TODO
+        return;
+    }
+
+    assert(src.size() == dst.size());
+    if (device == device_t::GPU) {
+        assert(src.on_device() && dst.on_device());
+        acc::copy(dst.device_data(), src.device_data(), dst.size());
+    } else if (device == device_t::CPU) {
+        assert(src.on_host() && dst.on_host());
+        std::copy(src.host_data(), src.host_data() + dst.size(), dst.host_data());
+    }
+}
+
 template <class numeric_t, std::size_t... Ts>
 auto
 _empty_like_inner(std::index_sequence<Ts...>& seq, std::size_t (&dims)[sizeof...(Ts)], memory_pool* mempool)

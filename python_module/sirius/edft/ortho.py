@@ -1,5 +1,5 @@
 import numpy as np
-from ..coefficient_array import CoefficientArray, spdiag, threaded
+from ..coefficient_array import CoefficientArray, spdiag, threaded, allthreaded
 
 
 @threaded
@@ -33,8 +33,29 @@ def modified_gram_schmidt(X):
     return Q
 
 
-def loewdin(X):
-    S = X.H @ X
-    w, U = S.eigh()
-    Sm2 = U @ spdiag(1/np.sqrt(w)) @ U.H
-    return X @ Sm2
+def loewdin_nc(X):
+    M = X.H @ X
+    w, U = np.linalg.eigh(M)
+    R = U @ spdiag(1/np.sqrt(w)) @ U.H
+
+    return X @ R
+
+
+def loewdin_overlap(X, S):
+    """
+
+    """
+    M = X.H @ (S @ X)
+    w, U = np.linalg.eigh(M)
+    R = U @ spdiag(1/np.sqrt(w)) @ U.H
+
+    return X @ R
+
+
+def loewdin(X, S=None):
+    """
+
+    """
+    if S is None:
+        return threaded(loewdin_nc)(X)
+    return allthreaded(loewdin_overlap)(X, S)

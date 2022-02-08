@@ -24,34 +24,15 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, sddk::Wave
     }
     auto H    = H0(kp);
     auto& ctx = H0.ctx();
-// #ifdef SIRIUS_GPU
-//     if (is_device_memory(ctx.preferred_memory_t())) {
-//         auto& mpd = ctx.mem_pool(memory_t::device);
-//         for (int ispn = 0; ispn < num_sc; ++ispn) {
-//             wf_out.pw_coeffs(ispn).allocate(mpd);
-//             wf.pw_coeffs(ispn).allocate(mpd);
-//             wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-//         }
-//     }
-// #endif
+
     /* apply H to all wave functions */
     int N = 0;
     int n = num_wf;
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
-        // sping_range: 2 for non-collinear magnetism, otherwise ispn_step
+        // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
-        H.apply_h_s<std::complex<double>>(spin_range, N, n, wf, &wf_out, swf.get());
+        H.template apply_h_s<std::complex<double>>(spin_range, N, n, wf, &wf_out, swf.get());
     }
-// #ifdef SIRIUS_GPU
-//     if (is_device_memory(ctx.preferred_memory_t())) {
-//         for (int ispn = 0; ispn < num_sc; ++ispn) {
-//             wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//             if (swf) {
-//                 swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//             }
-//         }
-//     }
-// #endif // SIRIUS_GPU
 }
 
 

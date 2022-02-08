@@ -17,9 +17,7 @@
 #include "utils/json.hpp"
 #include "unit_cell/free_atom.hpp"
 #include "dft/energy.hpp"
-#include "magnetization.hpp"
-#include "unit_cell_accessors.hpp"
-#include "make_sirius_comm.hpp"
+#include "py_sirius_util.hpp"
 #include "dft/smearing.hpp"
 
 using namespace pybind11::literals;
@@ -29,6 +27,8 @@ using namespace geometry3d;
 using json = nlohmann::json;
 
 using nlohmann::basic_json;
+
+void init_operators(py::module&);
 
 // inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object pj_convert(json& node)
@@ -149,6 +149,12 @@ PYBIND11_MODULE(py_sirius, m)
     } catch (...) {
         return;
     }
+
+    py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
+
+    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
+
+    init_operators(m);
 
     m.def("num_devices", &acc::num_devices);
 
@@ -327,6 +333,27 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<matrix3d<double>>())
         .def("det", &matrix3d<double>::det);
 
+    py::class_<matrix3d<int>>(m, "matrix3di")
+        .def(py::init<std::vector<std::vector<int>>>())
+        .def(py::init<>())
+        .def("__call__", [](const matrix3d<int>& obj, int x, int y) { return obj(x, y); })
+        .def(
+            "__array__",
+            [](const matrix3d<int>& mat) {
+                return py::array_t<int>({3, 3}, {3 * sizeof(int), sizeof(int)}, &mat(0, 0));
+            },
+            py::return_value_policy::reference_internal)
+        // .def(py::self * py::self)
+        .def("__getitem__", [](const matrix3d<int>& obj, int x, int y) { return obj(x, y); })
+        .def("__mul__",
+             [](const matrix3d<int>& obj, vector3d<int> const& b) {
+                 vector3d<int> res = dot(obj, b);
+                 return res;
+             })
+        // .def("__repr__", [](const matrix3d<int>& mat) { return show_mat(mat); })
+        .def(py::init<matrix3d<int>>())
+        .def("det", &matrix3d<int>::det);
+
     py::class_<Field4D>(m, "Field4D")
         .def(
             "f_pw_local",
@@ -451,16 +478,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("band_energy", py::overload_cast<int, int>(&K_point<double>::band_energy, py::const_))
         .def_property_readonly("vk", &K_point<double>::vk, py::return_value_policy::copy)
         .def("generate_fv_states", &K_point<double>::generate_fv_states)
-        .def("set_band_energy", [](K_point<double>& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
-        .def("band_energies",
-             [](K_point<double> const& kpoint, int ispn) {
-                 std::vector<double> energies(kpoint.ctx().num_bands());
-                 for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
-                     energies[i] = kpoint.band_energy(i, ispn);
-                 }
-                 return energies;
-             },
-             py::return_value_policy::copy)
+        .def("set_band_energy",
+             [](K_point<double>& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
+        .def(
+            "band_energies",
+            [](K_point<double> const& kpoint, int ispn) {
+                std::vector<double> energies(kpoint.ctx().num_bands());
+                for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
+                    energies[i] = kpoint.band_energy(i, ispn);
+                }
+                return energies;
+            },
+            py::return_value_policy::copy)
         .def("band_occupancy",
              [](K_point<double> const& kpoint, int ispn) {
                  std::vector<double> occ(kpoint.ctx().num_bands());
@@ -469,20 +498,23 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  return occ;
              })
-        .def("set_band_occupancy",
-             [](K_point<double>& kpoint, int ispn, const std::vector<double>& fn) {
-                 assert(static_cast<int>(fn.size()) == kpoint.ctx().num_bands());
-                 for (size_t i = 0; i < fn.size(); ++i) {
-                     kpoint.band_occupancy(i, ispn, fn[i]);
-                 }
-             },
-             "ispn"_a, "fn"_a)
+        .def(
+            "set_band_occupancy",
+            [](K_point<double>& kpoint, int ispn, const std::vector<double>& fn) {
+                assert(static_cast<int>(fn.size()) == kpoint.ctx().num_bands());
+                for (size_t i = 0; i < fn.size(); ++i) {
+                    kpoint.band_occupancy(i, ispn, fn[i]);
+                }
+            },
+            "ispn"_a, "fn"_a)
         .def("gkvec_partition", &K_point<double>::gkvec_partition, py::return_value_policy::reference_internal)
+        .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors), py::return_value_policy::reference_internal)
         .def("gkvec", &K_point<double>::gkvec, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
         .def("weight", &K_point<double>::weight)
-        .def("spinor_wave_functions", &K_point<double>::spinor_wave_functions, py::return_value_policy::reference_internal);
+        .def("spinor_wave_functions", &K_point<double>::spinor_wave_functions,
+             py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -516,12 +548,12 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
+    // py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
+    //     .def(py::init<Potential&>(), py::keep_alive<1, 2>())
+    //     .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
 
-    py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
-        .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
+    // py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
+    //     .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
@@ -640,10 +672,6 @@ PYBIND11_MODULE(py_sirius, m)
             return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
                                        arr.at(memory_t::host), obj);
         });
-
-    py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
-
-    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<Wave_functions<double>, std::shared_ptr<Wave_functions<double>>>(m, "Wave_functions")
@@ -776,6 +804,47 @@ PYBIND11_MODULE(py_sirius, m)
     }
     /* sirius.smearing submodules (end) */
 
+    // py::class_<beta_chunk_t>(m, "beta_chunk")
+    //     .def_readonly("num_beta", &beta_chunk_t::num_beta_)
+    //     .def_readonly("num_atoms", &beta_chunk_t::num_atoms_)
+    //     .def_readonly("desc", &beta_chunk_t::desc_, py::return_value_policy::reference_internal)
+    //     .def("__repr__",
+    //          [](const beta_chunk_t& obj) {
+    //              std::stringstream buffer;
+    //              for (int ia = 0; ia < obj.num_atoms_; ++ia) {
+    //                  buffer << "\t atom ia = " << ia << " ";
+    //                  buffer << "\t nbf     : " << std::setw(10) << obj.desc_(static_cast<int>(beta_desc_idx::nbf), ia)
+    //                         << " ";
+    //                  buffer << "\t offset  : " << std::setw(10)
+    //                         << obj.desc_(static_cast<int>(beta_desc_idx::offset), ia) << " ";
+    //                  buffer << "\t offset_t: " << std::setw(10)
+    //                         << obj.desc_(static_cast<int>(beta_desc_idx::offset_t), ia) << " ";
+    //                  buffer << "\t ja      : " << std::setw(10) << obj.desc_(static_cast<int>(beta_desc_idx::ia), ia)
+    //                         << " ";
+    //                  buffer << "\n";
+    //              }
+
+    //              return "num_beta: " + std::to_string(obj.num_beta_) + "\n" + "offset: " + std::to_string(obj.offset_) +
+    //                     "\n"
+    //                     "num_atoms: " +
+    //                     std::to_string(obj.num_atoms_) + "\n" + "desc:\n" + buffer.str();
+    //          })
+    //     .def_readonly("offset", &beta_chunk_t::offset_);
+
+    // py::class_<beta_projectors_coeffs_t<double>>(m, "beta_projector_coeffs")
+    //     .def_readonly("a", &beta_projectors_coeffs_t<double>::pw_coeffs_a, py::return_value_policy::reference_internal)
+    //     .def_readonly("chunk", &beta_projectors_coeffs_t<double>::beta_chunk, py::return_value_policy::reference_internal);
+
+    // py::class_<Beta_projector_generator<double>>(m, "Beta_projector_generator")
+    //     .def("generate", py::overload_cast<beta_projectors_coeffs_t<double>&, int>(&Beta_projector_generator<double>::generate, py::const_))
+    //     .def("generate_j", py::overload_cast<beta_projectors_coeffs_t<double>&, int, int>(&Beta_projector_generator<double>::generate, py::const_));
+
+    // py::class_<Beta_projectors_base<double>>(m, "Beta_projectors_base")
+    //     .def_property_readonly("num_chunks", &Beta_projectors_base<double>::num_chunks)
+    //     .def("make_generator", py::overload_cast<>(&Beta_projectors_base<double>::make_generator, py::const_), py::keep_alive<1, 0>());
+
+    // py::class_<Beta_projectors<double>, Beta_projectors_base<double>>(m, "Beta_projectors");
+
 }
 
 void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_functions<double>& wf_out,
@@ -820,6 +889,7 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_funct
     }
 #endif // SIRIUS_GPU
 }
+
 
 
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)

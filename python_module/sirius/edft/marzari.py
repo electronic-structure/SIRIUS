@@ -8,12 +8,14 @@ Conjugate gradient method for Marzari, Vanderbilt, Payne:
 from collections import namedtuple
 from scipy.constants import physical_constants
 import numpy as np
-from ..coefficient_array import diag, inner, spdiag
+from ..coefficient_array import diag, inner, spdiag, ones_like, l2norm
+from ..py_sirius import sprint_magnetization
 from .ortho import loewdin
 from ..helpers import save_state
 from ..logger import Logger
 from .smearing import Smearing
 from .preconditioner import IdentityPreconditioner
+from ..operators import US_Precond, Sinv_operator, S_operator
 
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
       physical_constants['Hartree energy in eV'][0])
@@ -76,7 +78,7 @@ class LineEvaluator():
     Evaluate free energy along a fixed direction.
     """
 
-    def __init__(self, X, fn, M, G_X):
+    def __init__(self, X, fn, M, G_X, overlap):
         """
         Keyword Arguments:
         X     -- plane-wave coefficients
@@ -89,6 +91,7 @@ class LineEvaluator():
         self.M = M
         # search direction
         self.G_X = G_X
+        self.overlap = overlap
 
     def __call__(self, t):
         """
@@ -102,7 +105,7 @@ class LineEvaluator():
         fn -- occupation numbers
         """
         X_new = self.X + t * self.G_X
-        X = loewdin(X_new)
+        X = loewdin(X_new, self.overlap)
 
         Point = namedtuple('Point', ['F', 'Hx', 'X', 'fn'])
 
@@ -148,7 +151,6 @@ class FreeEnergy:
 
 
 class CG:
-    fd_slope_check = False
 
     def __init__(self, free_energy, fd_slope_check=False):
         """
@@ -158,6 +160,18 @@ class CG:
         self.fd_slope_check = fd_slope_check
         self.free_energy = free_energy
         self.T = free_energy.T
+
+        # ultrasoft
+        kset = self.free_energy.energy.kpointset
+        potential = self.free_energy.energy.potential
+        ctx = kset.ctx()
+        self.is_ultrasoft = np.any([type.augment for type in kset.ctx().unit_cell().atom_types])
+        if self.is_ultrasoft:
+            self.Si = Sinv_operator(ctx, potential, kset)
+            self.S = S_operator(ctx, potential, kset)
+            self.K = US_Precond(ctx, potential, kset)
+        else:
+            self.S = None
 
     def run(self, X, fn,
             maxiter=100,
@@ -183,20 +197,30 @@ class CG:
         F, Hx = self.free_energy(X, fn)
         logger('initial free energy: %.10f' % F)
 
-        HX = Hx * kw
-        XhKHXF = X.H @ (K @ HX)
-        XhKX = X.H @ (K @ X)
-        LL = _solve(XhKX, XhKHXF)
+        if self.is_ultrasoft:
+            K = self.K
+            # TODO cleanup signature of run and don't pass the preconditioner anymore
 
-        g_X = HX * fn - X @ LL
-        dX = -K * (HX - X @ LL) / kw
+        HX = Hx * kw
+
+        # Lagrange multipliers
+        if self.is_ultrasoft:
+            SX = self.S @ X
+        else:
+            SX = X
+        XhKHX = SX.H @ (K @ HX)
+        XhKX = SX.H @ (K @ SX)
+        LL = _solve(XhKX, XhKHX)
+
+        g_X = HX * fn - SX @ LL
+        dX = -(K @ (HX - SX @ LL) / kw)
         G_X = dX
 
         for i in range(maxiter):
             try:
                 X, fn, F, Hx, slope_X = self.stepX(X, fn, F, G_X, g_X, tol=tol)
             except (StepError, SlopeError) as e:
-                fline = LineEvaluator(X=X, fn=fn, M=self.free_energy, G_X=G_X)
+                fline = LineEvaluator(X=X, fn=fn, M=self.free_energy, G_X=G_X, overlap=self.S)
                 res = fline(0)
                 F = res.F
 
@@ -218,6 +242,9 @@ class CG:
                 raise Exception('abort')
             callback(X=X, fn=fn, F=F, dX=dX, G_X=G_X, g_X=g_X, it=i)
             logger("step %5d F: %.11f res: X,fn %+10.5e %+10.5e" % (i, F, slope_X, slope_fn))
+            mag_str = sprint_magnetization(self.free_energy.energy.kpointset, self.free_energy.energy.density)
+            logger(mag_str)
+
 
             if np.abs(slope_fn) < tol and np.abs(slope_X) < tol:
                 return F, X, fn, True
@@ -251,24 +278,35 @@ class CG:
         kw = self.free_energy.energy.kpointset.w
         # compute new search direction
         HX = Hx * kw
-        XhKHXF = X.H @ (K @ HX)
-        XhKX = X.H @ (K @ X)
-        LL = _solve(XhKX, XhKHXF)
+
+        # Lagrange multipliers
+        if self.is_ultrasoft:
+            SX = self.S @ X
+        else:
+            SX = X
+        XhKHX = SX.H @ (K @ HX)
+        XhKX = SX.H @ (K @ SX)
+        LL = _solve(XhKX, XhKHX)
 
         # previous search directions (including subspace rotation)
         gXp = g_X @ U
         GXp = G_X @ U
         dXp = dX @ U
 
-        g_X = HX * fn - X @ LL
-        dX = -K * (HX - X @ LL) / kw
+        g_X = HX * fn - SX @ LL
+        dX = -(K @ (HX - SX @ LL) / kw)
         # conjugate directions
         if restart:
             beta_cg = 0
             G_X = dX
         else:
             beta_cg = max(0, np.real(inner(g_X, dX)) / np.real(inner(gXp, dXp)))
-            G_X = dX + beta_cg * (GXp - X @ (X.H @ GXp))
+            if self.is_ultrasoft:
+                gLL = _solve(X.H @ (self.S @ SX), X.H @ (self.S @ GXp))
+                G_X = dX + beta_cg * (GXp - SX@gLL)
+            else:
+                gLL = X.H@GXp
+                G_X = dX + beta_cg * (GXp - X@gLL)
 
         logger('beta_cg: %.6f' % beta_cg)
         return dX, G_X, g_X
@@ -282,7 +320,7 @@ class CG:
             logger('slope_X: %.4e' % slope)
             raise SlopeError
 
-        line_eval = LineEvaluator(X, fn, self.free_energy, G_X)
+        line_eval = LineEvaluator(X=X, fn=fn, M=self.free_energy, G_X=G_X, overlap=self.S)
 
         try:
             X, fn, F, Hx = self.stepX_quadratic(F0, line_eval, slope)
@@ -300,10 +338,10 @@ class CG:
         """
         tt = 0.2
         if self.fd_slope_check:
-            _dt = 1e-7
+            _dt = slope/50
             fx = T(_dt)
             slope_fd = (fx.F - F0) / _dt
-            logger('VERRBOSE slope: %.6f, slope_fd: %.6f'  % (slope, slope_fd))
+            logger('VERRBOSE slope: %.10f, slope_fd: %.10f' % (slope, slope_fd))
         b = slope
         c = F0
         while True:
@@ -348,8 +386,7 @@ class CG:
         _, fx = btsearch(T, 1, f0=F0, tau=tau)
         return fx.X, fx.fn, fx.F, fx.Hx
 
-    def step_fn(self, X, fn, tol, num_iter=2):
-        from ..coefficient_array import ones_like
+    def step_fn(self, X, fn, tol, num_iter):
 
         kset = self.free_energy.energy.kpointset
         kw = kset.w

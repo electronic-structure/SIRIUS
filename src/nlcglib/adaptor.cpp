@@ -7,12 +7,15 @@
 #include "hamiltonian/hamiltonian.hpp"
 #include "dft/energy.hpp"
 #include "SDDK/wf_inner.hpp"
+#include "utils/utils.hpp"
 
 using namespace nlcglib;
 
+using prec_t = double;
+
 namespace sirius {
 
-std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave_functions<double>>>& wfct,
+std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave_functions<prec_t>>>& wfct,
                                     const Simulation_context& ctx,
                                     const K_point_set& kset,
                                     nlcglib::memory_type memory = nlcglib::memory_type::none)
@@ -83,25 +86,13 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
     cphis.resize(nk);
     for (int i = 0; i < nk; ++i) {
         auto global_kpoint_index = kset.spl_num_kpoints(i);
-        auto& kp = *kset.get<double>(global_kpoint_index);
+        auto& kp = *kset.get<prec_t>(global_kpoint_index);
         int num_wf                        = ctx.num_bands();
         sddk::memory_t preferred_memory_t = ctx.preferred_memory_t();
         int num_spins                     = ctx.num_spins();
         // make a new wf for Hamiltonian apply...
-        hphis[i] = std::make_shared<sddk::Wave_functions<double>>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
-        hphis[i]->allocate(sddk::spin_range(num_spins), ctx.preferred_memory_t());
-        sphis[i] = std::make_shared<sddk::Wave_functions<double>>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
-        sphis[i]->allocate(sddk::spin_range(num_spins), ctx.preferred_memory_t());
+        hphis[i] = std::make_shared<sddk::Wave_functions<prec_t>>(kp.gkvec_partition(), num_wf, preferred_memory_t, num_spins);
         cphis[i] = kp.spinor_wave_functions_ptr();
-        // allocate on device
-        if (is_device_memory(ctx.preferred_memory_t())) {
-            const int num_sc = (ctx.num_mag_dims() == 3) ? 2 : 1;
-            auto& mpd = ctx.mem_pool(sddk::memory_t::device);
-            for (int ispn = 0; ispn < num_sc; ispn++) {
-                hphis[i]->pw_coeffs(ispn).allocate(mpd);
-                sphis[i]->pw_coeffs(ispn).allocate(mpd);
-            }
-        }
     }
     // need to allocate wavefunctions on GPU
 }
@@ -113,21 +104,7 @@ void Energy::compute()
     int num_bands = ctx.num_bands();
     int nk = kset.spl_num_kpoints().local_size();
 
-    // // // transfer from device to host (only if data on GPU is present)
-    // if(is_device_memory(ctx.preferred_memory_t())) {
-    //     for (int ik = 0; ik < nk; ++ik) {
-    //         for (int ispn = 0; ispn < num_spins; ++ispn) {
-    //             int num_wf = cphis[ik]->num_wf();
-    //             if (cphis[ik]->pw_coeffs(ispn).prime().on_device()) {
-    //                 // std::cout << "copying wfc from DEVICE -> HOST" << "\n";
-    //                 cphis[ik]->pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
-    //             }
-
-    //         }
-    //     }
-    // }
-
-    density.generate<double>(kset, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
+    density.generate<prec_t>(kset, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
 
     potential.generate(density, ctx.use_symmetry(), true);
 
@@ -135,7 +112,7 @@ void Energy::compute()
     auto H0 = Hamiltonian0<double>(potential, true);
     // apply Hamiltonian
     for (int i = 0; i < nk; ++i) {
-        auto& kp = *kset.get<double>(kset.spl_num_kpoints(i));
+        auto& kp = *kset.get<prec_t>(kset.spl_num_kpoints(i));
         std::vector<double> band_energies(num_bands);
 
         if (is_device_memory(ctx.preferred_memory_t())) {
@@ -148,9 +125,12 @@ void Energy::compute()
             }
         }
 
+        hphis[i]->allocate(sddk::spin_range(num_spins), ctx.preferred_memory_t());
+
         assert(cphis[i] == kp.spinor_wave_functions_ptr());
         apply_hamiltonian(H0, kp, *hphis[i], kp.spinor_wave_functions(), sphis[i]);
         // compute band energies
+        // std::cout << "DEBUG: printing band energies:" << "\n";
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
                 sddk::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
@@ -161,15 +141,30 @@ void Energy::compute()
                             /* out */ dmat, 0, 0);
                 // deal with memory...
                 // assert(std::abs(dmat(0, 0).imag()) < 1e-10);
+                // std::cout << std::setprecision(8) << dmat(0,0).real() << ", ";
                 kp.band_energy(jj, ispn, dmat(0, 0).real());
             }
         }
+
+        if (is_device_memory(ctx.preferred_memory_t())) {
+            // copy to host
+            for (int ispn = 0; ispn < num_spins; ispn++) {
+                int num_wf = cphis[i]->num_wf();
+                cphis[i]->pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
+                hphis[i]->pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
+            }
+            // free gpu memory
+            cphis[i]->deallocate(sddk::spin_range(num_spins), memory_t::device);
+            hphis[i]->deallocate(sddk::spin_range(num_spins), memory_t::device);
+        }
     }
+
     kset.sync_band<double, sync_band_t::energy>();
 
     // evaluate total energy
     double eewald = ewald_energy(ctx, ctx.gvec(), ctx.unit_cell());
-    this->etot    = total_energy(ctx, kset, density, potential, eewald);
+    this->energy_components = total_energy_components(ctx, kset, density, potential, eewald);
+    this->etot = ks_energy(ctx, this->energy_components);
 }
 
 
@@ -183,14 +178,16 @@ int Energy::nelectrons()
     return kset.unit_cell().num_electrons();
 }
 
-std::shared_ptr<nlcglib::MatrixBaseZ> Energy::get_hphi()
+std::shared_ptr<nlcglib::MatrixBaseZ>
+Energy::get_hphi(nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    return make_vector(this->hphis, this->kset.ctx(), this->kset);
+    return make_vector(this->hphis, this->kset.ctx(), this->kset, memory);
 }
 
-std::shared_ptr<nlcglib::MatrixBaseZ> Energy::get_sphi()
+std::shared_ptr<nlcglib::MatrixBaseZ>
+Energy::get_sphi(nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    return make_vector(this->sphis, this->kset.ctx(), this->kset);
+    return make_vector(this->sphis, this->kset.ctx(), this->kset, memory);
 }
 
 std::shared_ptr<nlcglib::MatrixBaseZ> Energy::get_C(nlcglib::memory_type memory = nlcglib::memory_type::none)
@@ -208,7 +205,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_fn()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp = *kset.get<double>(gidk);
+        auto& kp = *kset.get<prec_t>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> fn_local(nbands);
             for (int i = 0; i < nbands; ++i) {
@@ -231,15 +228,15 @@ void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vec
     #endif
 
     assert(static_cast<int>(fn.size()) == nk*ns);
-    for (size_t iloc = 0; iloc < fn.size(); ++iloc) {
+    for (auto iloc = 0u; iloc < fn.size(); ++iloc) {
         // global k-point index
         int gidk= keys[iloc].first;
         int ispn = keys[iloc].second;
-        auto& kp  = *kset.get<double>(gidk);
+        auto& kp  = *kset.get<prec_t>(gidk);
         const auto& fn_loc = fn[iloc];
         assert(static_cast<int>(fn_loc.size()) == nbands);
         for (int i = 0; i < nbands; ++i) {
-            assert(fn_loc[i] >= 0 && fn_loc[i] <= max_occ);
+            assert(fn_loc[i] >= 0);
             kp.band_occupancy(i, ispn, fn_loc[i]);
         }
     }
@@ -256,7 +253,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_ek()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp  = *kset.get<double>(gidk);
+        auto& kp  = *kset.get<prec_t>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> ek_local(nbands);
             for (int i = 0; i < nbands; ++i) {
@@ -278,7 +275,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_gkvec_ekin()
     for (int ik = 0; ik < nk; ++ik) {
         // global k-point index
         auto gidk = kset.spl_num_kpoints(ik);
-        auto& kp  = *kset.get<double>(gidk);
+        auto& kp  = *kset.get<prec_t>(gidk);
         for (int ispn = 0; ispn < ns; ++ispn) {
             int gkvec_count = kp.gkvec().count();
             auto& gkvec = kp.gkvec();
@@ -318,17 +315,23 @@ double Energy::get_total_energy()
     return etot;
 }
 
+std::map<std::string, double> Energy::get_energy_components()
+{
+    return energy_components;
+}
+
 void Energy::print_info() const
 {
     auto& ctx = kset.ctx();
     auto& unit_cell = kset.unit_cell();
+
 
     auto result_mag = density.get_magnetisation();
     // auto total_mag  = std::get<0>(result_mag);
     // auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    if (ctx.num_mag_dims()) {
+    if (ctx.num_mag_dims() && ctx.comm().rank() == 0) {
         std::printf("atom              moment                |moment|");
         std::printf("\n");
         for (int i = 0; i < 80; i++) {
@@ -344,6 +347,17 @@ void Energy::print_info() const
 
         std::printf("\n");
     }
+}
+
+void Energy::set_chemical_potential(double mu)
+{
+    // set Fermi energy.
+    kset.set_energy_fermi(mu);
+}
+
+double Energy::get_chemical_potential()
+{
+    return kset.energy_fermi();
 }
 
 Array1d::buffer_t Array1d::get(int i)

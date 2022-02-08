@@ -28,6 +28,7 @@
 #include <stdint.h>
 #ifdef SIRIUS_GPU
 #include "gpu/acc_blas.hpp"
+#include "gpu/acc_lapack.hpp"
 #endif
 #ifdef SIRIUS_MAGMA
 #include "gpu/magma.hpp"
@@ -61,6 +62,14 @@ class linalg
         : la_(la__)
     {
     }
+
+    /*
+        BLAS Level 1
+    */
+
+    /// vector addition
+    template <typename T>
+    inline void axpy(int n, T const* alpha, T const* x, int incx, T* y, int incy);
 
     /*
         matrix - matrix multiplication
@@ -116,6 +125,10 @@ class linalg
     /// LU factorization of general matrix.
     template <typename T>
     inline int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv) const;
+
+    template <typename T>
+    inline int getrs(char trans, ftn_int n, ftn_int nrhs, T const* A, ftn_int lda, ftn_int* ipiv, T* B,
+                     ftn_int ldb) const;
 
     /// U*D*U^H factorization of hermitian or symmetric matrix.
     template <typename T>
@@ -403,6 +416,35 @@ linalg::geqrf<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_single>& A, ft
             FORTRAN(sgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
             break;
         }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void
+linalg::axpy(int n, ftn_double_complex const* alpha, ftn_double_complex const* x, int incx, ftn_double_complex* y,
+             int incy)
+{
+    assert(n > 0);
+    assert(incx > 0);
+    assert(incy > 0);
+
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(zaxpy)(&n, alpha, x, &incx, y, &incy);
+            break;
+        }
+#if defined(SIRIUS_GPU)
+        case linalg_t::gpublas: {
+            accblas::zaxpy(n, reinterpret_cast<const acc_complex_double_t*>(alpha),
+                           reinterpret_cast<const acc_complex_double_t*>(x), incx,
+                           reinterpret_cast<acc_complex_double_t*>(y), incy);
+            break;
+        }
+#endif
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -1435,6 +1477,33 @@ inline int linalg::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_d
     }
     return -1;
 }
+
+template<>
+inline int linalg::getrs<ftn_double_complex>(char trans, ftn_int n, ftn_int nrhs, const ftn_double_complex *A, ftn_int lda, ftn_int *ipiv, ftn_double_complex* B, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(zgetrs)(&trans, &n, &nrhs, const_cast<ftn_double_complex*>(A), &lda, ipiv, B, &ldb, &info);
+            return info;
+            break;
+        }
+#if defined (SIRIUS_GPU)
+        case linalg_t::gpublas: {
+            return acclapack::getrs(trans, n, nrhs, reinterpret_cast<const acc_complex_double_t*>(A), lda, ipiv, reinterpret_cast<acc_complex_double_t*>(B), ldb);
+            break;
+        }
+#endif
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+
+
 
 template<>
 inline void linalg::tranc<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_complex>& A,

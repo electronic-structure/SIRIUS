@@ -27,6 +27,8 @@
 
 namespace sirius {
 
+using namespace sddk;
+
 template<typename T>
 void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoint__, sddk::mdarray<real_type<T>, 2>& collect_res__)
 {
@@ -42,25 +44,35 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
 
     double main_two_factor{-2};
 
-    for (int icnk = 0; icnk < bp_base_.num_chunks(); icnk++) {
+    auto bp_gen = bp.make_generator();
+    auto beta_coeffs = bp_gen.prepare();
 
-        bp.prepare();
+    auto bp_base_gen = bp_base_.make_generator();
+    auto beta_coeffs_base = bp_base_gen.prepare();
+
+    for (int icnk = 0; icnk < bp_base_.num_chunks(); icnk++) {
         /* generate chunk for inner product of beta */
-        bp.generate(icnk);
+        // bp.generate(icnk);
+        bp_gen.generate(beta_coeffs, icnk);
 
         /* store <beta|psi> for spin up and down */
         sddk::matrix<T> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kpoint__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = bp.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
+            // beta_phi_chunks[ispn] = bp.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
+            beta_phi_chunks[ispn] = inner<T>(ctx_.blas_linalg_t(), ctx_.processing_unit(), ctx_.preferred_memory_t(),
+                                             [&ctx=ctx_](device_t dev) -> memory_pool& {return ctx.mem_pool(dev); },
+                                             beta_coeffs, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
         }
-        bp.dismiss();
+        // bp.dismiss();
 
-        bp_base_.prepare();
+        // bp_base_.prepare();
+
         for (int x = 0; x < bp_base_.num_comp(); x++) {
             /* generate chunk for inner product of beta gradient */
-            bp_base_.generate(icnk, x);
+            // bp_base_.generate(icnk, x);
+            bp_base_gen.generate(beta_coeffs_base, icnk, x);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 int spin_factor = (ispn == 0 ? 1 : -1);
@@ -68,18 +80,21 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
                 int nbnd = kpoint__.num_occupied_bands(ispn);
 
                 /* inner product of beta gradient and WF */
-                auto bp_base_phi_chunk = bp_base_.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0,
-                                                                    nbnd);
+                // auto bp_base_phi_chunk = bp_base_.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
+                auto bp_base_phi_chunk = inner<T>(ctx_.blas_linalg_t(), ctx_.processing_unit(),
+                                                  ctx_.preferred_memory_t(),
+                                                  [&ctx=ctx_](device_t dev) -> memory_pool& {return ctx.mem_pool(dev); },
+                                                  beta_coeffs_base, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
 
                 sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
 
                 int nbnd_loc = spl_nbnd.local_size();
 
                 #pragma omp parallel for
-                for (int ia_chunk = 0; ia_chunk < bp_base_.chunk(icnk).num_atoms_; ia_chunk++) {
-                    int ia = bp_base_.chunk(icnk).desc_(static_cast<int>(beta_desc_idx::ia), ia_chunk);
-                    int offs = bp_base_.chunk(icnk).desc_(static_cast<int>(beta_desc_idx::offset), ia_chunk);
-                    int nbf = bp_base_.chunk(icnk).desc_(static_cast<int>(beta_desc_idx::nbf), ia_chunk);
+                for (int ia_chunk = 0; ia_chunk < beta_coeffs_base.beta_chunk.num_atoms_; ia_chunk++) {
+                    int ia = beta_coeffs_base.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia_chunk);
+                    int offs = beta_coeffs_base.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia_chunk);
+                    int nbf = beta_coeffs_base.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia_chunk);
                     int iat = unit_cell.atom(ia).type_id();
 
                     if (unit_cell.atom(ia).type().spin_orbit_coupling()) {
@@ -162,7 +177,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
         } // x
     }
 
-    bp_base_.dismiss();
+    // bp_base_.dismiss();
 }
 
 template void

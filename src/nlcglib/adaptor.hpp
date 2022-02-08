@@ -4,6 +4,7 @@
 #include <memory>
 #include <nlcglib/interface.hpp>
 #include <cmath>
+#include <map>
 
 #include "k_point/k_point_set.hpp"
 #include "density/density.hpp"
@@ -173,14 +174,17 @@ class Energy : public nlcglib::EnergyBase
     int occupancy() override;
     void compute() override;
     double get_total_energy() override;
-    std::shared_ptr<nlcglib::MatrixBaseZ> get_hphi() override;
-    std::shared_ptr<nlcglib::MatrixBaseZ> get_sphi() override;
+    std::map<std::string, double> get_energy_components() override;
+    std::shared_ptr<nlcglib::MatrixBaseZ> get_hphi(nlcglib::memory_type) override;
+    std::shared_ptr<nlcglib::MatrixBaseZ> get_sphi(nlcglib::memory_type) override;
     std::shared_ptr<nlcglib::MatrixBaseZ> get_C(nlcglib::memory_type) override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_fn() override;
     void set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn) override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_ek() override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_gkvec_ekin() override;
     std::shared_ptr<nlcglib::ScalarBaseZ> get_kpoint_weights() override;
+    void set_chemical_potential(double) override;
+    double get_chemical_potential() override;
     void print_info() const override;
 
   private:
@@ -191,7 +195,39 @@ class Energy : public nlcglib::EnergyBase
     std::vector<std::shared_ptr<sddk::Wave_functions<double>>> sphis;
     std::vector<std::shared_ptr<sddk::Wave_functions<double>>> cphis;
     double etot{std::nan("1")};
+    std::map<std::string, double> energy_components;
 };
+
+
+template <class numeric_t>
+auto
+make_matrix_view(nlcglib::buffer_protocol<numeric_t, 2>& buf)
+{
+    int nrows = buf.size[0];
+    int ncols = buf.size[1];
+
+    if (buf.stride[0] != 1 || buf.stride[1] != nrows) {
+        throw std::runtime_error("strides not compatible with sddk::mdarray");
+    }
+
+    numeric_t *device_ptr{nullptr}, *host_ptr{nullptr};
+
+    switch (buf.memtype) {
+        case nlcglib::memory_type::device: {
+            device_ptr = buf.data;
+            break;
+        }
+        case nlcglib::memory_type::host: {
+            host_ptr = buf.data;
+            break;
+        }
+        default:
+            throw std::runtime_error("buffer protocol invalid memory type.");
+            break;
+    }
+
+    return sddk::matrix<numeric_t>(host_ptr, device_ptr, nrows, ncols);
+}
 
 } // namespace sirius
 

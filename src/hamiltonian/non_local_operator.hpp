@@ -32,6 +32,7 @@
 #include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
+#include "traits.hpp"
 
 namespace sddk {
 template <typename T>
@@ -57,6 +58,8 @@ class Non_local_operator
 
     int packed_mtrx_size_;
 
+    int size_;
+
     sddk::mdarray<int, 1> packed_mtrx_offset_;
 
     /// Non-local operator matrix.
@@ -76,10 +79,10 @@ class Non_local_operator
     /// Constructor.
     Non_local_operator(Simulation_context const& ctx__);
 
-    /// Apply chunk of beta-projectors to all wave functions.
+    /// Apply chunk of beta-projectors to all wave functions. Real-valued variant.
     template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
     void apply(int chunk__, int ispn_block__, sddk::Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base<T>& beta__, sddk::matrix<F>& beta_phi__)
+               const beta_projectors_coeffs_t<T>& beta_coeffs__, sddk::matrix<F>& beta_phi__)
     {
         PROFILE("sirius::Non_local_operator::apply");
 
@@ -87,9 +90,11 @@ class Non_local_operator
             return;
         }
 
-        auto& beta_gk     = beta__.pw_coeffs_a();
-        int num_gkvec_loc = beta__.num_gkvec_loc();
-        int nbeta         = beta__.chunk(chunk__).num_beta_;
+        // auto& beta_gk     = beta__.pw_coeffs_a();
+        auto& beta_gk     = beta_coeffs__.pw_coeffs_a;
+        // int num_gkvec_loc = beta__.num_gkvec_loc();
+        int num_gkvec_loc = beta_gk.size(0);
+        int nbeta         = beta_coeffs__.beta_chunk.num_beta_;
 
         /* setup linear algebra parameters */
         sddk::memory_t mem{sddk::memory_t::none};
@@ -110,20 +115,20 @@ class Non_local_operator
         auto work = sddk::mdarray<T, 1>(nbeta * n__, ctx_.mem_pool(mem));
 
         /* compute O * <beta|phi> for atoms in a chunk */
-        #pragma omp parallel for
-        for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
+#pragma omp parallel for
+        for (int i = 0; i < beta_coeffs__.beta_chunk.num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
-            int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
-            int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
+            int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), i);
+            int offs = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), i);
+            int ia   = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), i);
 
             if (nbf == 0) {
                 continue;
             }
             sddk::linalg(la).gemm('N', 'N', nbf, n__, nbf, &sddk::linalg_const<T>::one(),
-                            op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0),
-                            beta_phi__.ld(), &sddk::linalg_const<T>::zero(), work.at(mem, offs), nbeta,
-                            stream_id(omp_get_thread_num()));
+                                  op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                  beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &sddk::linalg_const<T>::zero(),
+                                  work.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
         }
         switch (pu_) {
             case sddk::device_t::GPU: {
@@ -142,7 +147,7 @@ class Non_local_operator
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         sddk::linalg(ctx_.blas_linalg_t())
             .gemm('N', 'N', 2 * num_gkvec_loc, n__, nbeta, &sddk::linalg_const<T>::one(),
-                  reinterpret_cast<T*>(beta_gk.at(mem)), 2 * num_gkvec_loc, work.at(mem), nbeta,
+                  reinterpret_cast<const T*>(beta_gk.at(mem)), 2 * num_gkvec_loc, work.at(mem), nbeta,
                   &sddk::linalg_const<T>::one(),
                   reinterpret_cast<T*>(op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__)),
                   2 * op_phi__.pw_coeffs(jspn).prime().ld());
@@ -160,7 +165,7 @@ class Non_local_operator
 
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
     void apply(int chunk__, int ispn_block__, sddk::Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base<T>& beta__, sddk::matrix<F>& beta_phi__)
+               const beta_projectors_coeffs_t<T>& beta_coeffs__, sddk::matrix<F>& beta_phi__)
     {
         PROFILE("sirius::Non_local_operator::apply");
 
@@ -168,9 +173,10 @@ class Non_local_operator
             return;
         }
 
-        auto& beta_gk     = beta__.pw_coeffs_a();
-        int num_gkvec_loc = beta__.num_gkvec_loc();
-        int nbeta         = beta__.chunk(chunk__).num_beta_;
+        // auto& beta_gk     = beta__.pw_coeffs_a();
+        auto& beta_gk     = beta_coeffs__.pw_coeffs_a;
+        int num_gkvec_loc = beta_gk.size(0);
+        int nbeta         = beta_coeffs__.beta_chunk.num_beta_;
 
         /* setup linear algebra parameters */
         sddk::memory_t mem{sddk::memory_t::none};
@@ -195,12 +201,12 @@ class Non_local_operator
         {
             acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
-            #pragma omp for
-            for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
+#pragma omp for
+            for (int i = 0; i < beta_coeffs__.beta_chunk.num_atoms_; i++) {
                 /* number of beta functions for a given atom */
-                int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
-                int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
-                int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
+                int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), i);
+                int offs = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), i);
+                int ia   = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), i);
 
                 if (nbf) {
                     sddk::linalg(la).gemm(
@@ -246,18 +252,19 @@ class Non_local_operator
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
     void apply(int chunk__, int ia__, int ispn_block__, sddk::Wave_functions<T>& op_phi__, int idx0__, int n__,
-               Beta_projectors_base<T>& beta__, sddk::matrix<F>& beta_phi__)
+               const beta_projectors_coeffs_t<T>& beta_coeffs__, sddk::matrix<F>& beta_phi__)
     {
         if (is_null_) {
             return;
         }
 
-        auto& beta_gk     = beta__.pw_coeffs_a();
-        int num_gkvec_loc = beta__.num_gkvec_loc();
+        // auto& beta_gk     = beta__.pw_coeffs_a();
+        auto& beta_gk     = beta_coeffs__.pw_coeffs_a;
+        int num_gkvec_loc = beta_gk.size(0);
 
-        int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), ia__);
-        int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), ia__);
-        int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), ia__);
+        int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia__);
+        int offs = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia__);
+        int ia   = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia__);
 
         if (nbf == 0) {
             return;
@@ -283,15 +290,16 @@ class Non_local_operator
         auto work = sddk::mdarray<std::complex<T>, 1>(nbf * n__, ctx_.mem_pool(mem));
 
         sddk::linalg(la).gemm('N', 'N', nbf, n__, nbf, &sddk::linalg_const<std::complex<T>>::one(),
-                        reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
-                        beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
-                        work.at(mem), nbf);
+                              reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)),
+                              nbf, beta_phi__.at(mem, offs, 0), beta_phi__.ld(),
+                              &sddk::linalg_const<std::complex<T>>::zero(), work.at(mem), nbf);
 
         int jspn = ispn_block__ & 1;
 
         sddk::linalg(ctx_.blas_linalg_t())
-            .gemm('N', 'N', num_gkvec_loc, n__, nbf, &sddk::linalg_const<std::complex<T>>::one(), beta_gk.at(mem, 0, offs),
-                  num_gkvec_loc, work.at(mem), nbf, &sddk::linalg_const<std::complex<T>>::one(),
+            .gemm('N', 'N', num_gkvec_loc, n__, nbf, &sddk::linalg_const<std::complex<T>>::one(),
+                  beta_gk.at(mem, 0, offs), num_gkvec_loc, work.at(mem), nbf,
+                  &sddk::linalg_const<std::complex<T>>::one(),
                   op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
                   op_phi__.pw_coeffs(jspn).prime().ld());
         switch (pu_) {
@@ -306,6 +314,16 @@ class Non_local_operator
             }
         }
     }
+
+    /// computes α B*Q + β out
+    template <typename F>
+    void lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
+
+    /// computes α Q*B + β out
+    template <typename F>
+    void rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
     inline F value(int xi1__, int xi2__, int ia__)
@@ -328,10 +346,15 @@ class Non_local_operator
                                this->op_(1, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__));
     }
 
+    int size(int i) const;
+
     inline bool is_diag() const
     {
         return is_diag_;
     }
+
+    template <typename F>
+    sddk::matrix<F> get_matrix(int ispn, sddk::memory_t mem) const;
 };
 
 template <typename T>
@@ -461,12 +484,12 @@ class U_operator
         return offset_[ia__];
     }
 
-    auto operator()(int m1, int m2, int j)
+    std::complex<T> operator()(int m1, int m2, int j)
     {
         return um_[j](m1, m2);
     }
 
-    auto* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3)
+    std::complex<T>* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3)
     {
         return um_[idx3].at(mem__, idx1, idx2);
     }
@@ -537,39 +560,121 @@ class U_operator
  *  \param [out] sphi    Resulting |beta>Q<beta|phi>
  */
 template <typename T>
-void apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+void apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projector_generator<real_type<T>>& bp_generator__,
+                         beta_projectors_coeffs_t<real_type<T>>& beta_coeffs__,
                          sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
                          sddk::Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
                          sddk::Wave_functions<real_type<T>>* sphi__);
 
 template <typename T>
 void apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
-                      Beta_projectors<real_type<T>>& beta__, sddk::Wave_functions<real_type<T>>& phi__,
-                      Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
+                      Beta_projector_generator<real_type<T>>& bp_generator__,
+                      beta_projectors_coeffs_t<real_type<T>>& beta_coeffs__,
+                      sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__,
+                      sddk::Wave_functions<real_type<T>>& sphi__);
 
 template <typename T>
 void apply_U_operator(Simulation_context& ctx__, sddk::spin_range spins__, int N__, int n__,
-        sddk::Wave_functions<T>& hub_wf__, sddk::Wave_functions<T>& phi__, U_operator<T>& um__, sddk::Wave_functions<T>& hphi__);
+                      sddk::Wave_functions<T>& hub_wf__, sddk::Wave_functions<T>& phi__, U_operator<T>& um__,
+                      sddk::Wave_functions<T>& hphi__);
 
 /// Apply strain derivative of S-operator to all scalar functions.
-inline void
-apply_S_operator_strain_deriv(sddk::device_t pu__, int comp__, Beta_projectors<double>& bp__,
-                              Beta_projectors_strain_deriv<double>& bp_strain_deriv__, sddk::Wave_functions<double>& phi__,
-                              Q_operator<double>& q_op__, sddk::Wave_functions<double>& ds_phi__)
+void apply_S_operator_strain_deriv(int comp__, Beta_projector_generator<double>& bp__,
+                                   beta_projectors_coeffs_t<double>& bp_coeffs__,
+                                   Beta_projector_generator<double>& bp_strain_deriv__,
+                                   beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
+                                   sddk::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
+                                   sddk::Wave_functions<double>& ds_phi__);
+
+template <class T>
+template <class F>
+void
+Non_local_operator<T>::lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+                               identity_t<F> alpha, identity_t<F> beta) const
 {
-    RTE_ASSERT(ds_phi__.num_wf() == phi__.num_wf());
-    //ds_phi__.zero(pu__);
-    for (int ichunk = 0; ichunk < bp__.num_chunks(); ichunk++) {
-        /* generate beta-projectors for a block of atoms */
-        bp__.generate(ichunk);
-        /* generate derived beta-projectors for a block of atoms */
-        bp_strain_deriv__.generate(ichunk, comp__);
-        auto dbeta_phi = bp_strain_deriv__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
-        auto beta_phi = bp__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
-        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp__, dbeta_phi);
-        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp_strain_deriv__, beta_phi);
+    /* Computes Cᵢⱼ =∑ₖ Bᵢₖ Qₖⱼ = Bᵢⱼ Qⱼⱼ
+     * Note that Q is block-diagonal. */
+    auto& uc = this->ctx_.unit_cell();
+    std::vector<int> offsets(uc.num_atoms() + 1, 0);
+    for (int ia = 0; ia < uc.num_atoms(); ++ia) {
+        offsets[ia + 1] = offsets[ia] + uc.atom(ia).mt_basis_size();
+    }
+
+    // check shapes
+    assert(out.size(0) == B__.size(0) && static_cast<int>(out.size(1)) == this->size_);
+    assert(B__.size(1) == this->size_);
+
+    int num_atoms = uc.num_atoms();
+
+    sddk::linalg_t la;
+    if (is_host_memory(mem_t)) {
+        la = sddk::linalg_t::blas;
+    } else if (is_device_memory(mem_t)){
+        la = sddk::linalg_t::gpublas;
+    } else {
+        TERMINATE("invalid blas backend");
+    }
+
+    for (int ja = 0; ja < num_atoms; ++ja) {
+        int offset_ja = offsets[ja];
+        int size_ja = offsets[ja + 1] - offsets[ja];
+        // std::printf("\tlmatmul: nbf=%d, offs=%d, ia=%d\n", size_ja, offset_ja, ja);
+        const F* Bs = B__.at(mem_t, 0, offset_ja);
+        // Qjj
+        const F* Qs = reinterpret_cast<const F*>(
+            op_.at(mem_t, 0, packed_mtrx_offset_(ja), ispn_block__));
+        F* C = out.at(mem_t, 0, offset_ja);
+        int nbf = size_ja;
+        // compute Bij * Qjj
+        sddk::linalg(la).gemm('N', 'N', B__.size(0), size_ja, size_ja, &alpha, Bs, B__.ld(), Qs, nbf, &beta, C,
+                              out.ld());
+        }
+}
+
+template <class T>
+template <class F>
+void
+Non_local_operator<T>::rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+                               identity_t<F> alpha, identity_t<F> beta) const
+{
+    /* Computes Cᵢⱼ =  ∑ₖ Qᵢₖ * Bₖⱼ = Qᵢᵢ * Bᵢⱼ
+     * Note that Q is block-diagonal. */
+    auto& uc = this->ctx_.unit_cell();
+    std::vector<int> offsets(uc.num_atoms() + 1, 0);
+    for (int ia = 0; ia < uc.num_atoms(); ++ia) {
+        offsets[ia + 1] = offsets[ia] + uc.atom(ia).mt_basis_size();
+    }
+
+    // check shapes
+    assert(static_cast<int>(out.size(0)) == this->size_ && out.size(1) == B__.size(1));
+    assert(B__.size(0) == this->size_);
+
+    int num_atoms = uc.num_atoms();
+
+    sddk::linalg_t la;
+    if (is_host_memory(mem_t)) {
+        la = sddk::linalg_t::blas;
+    } else if (is_device_memory(mem_t)) {
+        la = sddk::linalg_t::gpublas;
+    } else {
+        TERMINATE("invalid blas backend");
+    }
+
+    for (int ia = 0; ia < num_atoms; ++ia) {
+        int offset_ia = offsets[ia];
+        int size_ia   = offsets[ia + 1] - offsets[ia];
+        const F* Bs = B__.at(mem_t, offset_ia, 0);
+        // Qii
+        const F* Qs = reinterpret_cast<const F*>(
+            op_.at(mem_t, 0, packed_mtrx_offset_(ia), ispn_block__));
+        F* C = out.at(mem_t, offset_ia, 0);
+        // compute Qii * Bij
+        sddk::linalg(la).gemm('N', 'N', size_ia, B__.size(1), size_ia, &alpha, Qs, size_ia, Bs, B__.ld(), &beta, C,
+                              out.ld());
     }
 }
+
+
 
 } // namespace sirius
 

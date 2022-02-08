@@ -152,7 +152,7 @@ Stress::calc_stress_hubbard()
         sddk::mdarray<double_complex, 4> dn(kp->hubbard_wave_functions_S().num_wf(),
                                             kp->hubbard_wave_functions_S().num_wf(), 2, 9);
         dn.zero();
-        kp->beta_projectors().prepare();
+        // kp->beta_projectors().prepare();
 
         if (ctx_.num_mag_dims() == 3) {
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
@@ -214,7 +214,6 @@ Stress::calc_stress_hubbard()
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
-        kp->beta_projectors().dismiss();
     }
 
     /* global reduction */

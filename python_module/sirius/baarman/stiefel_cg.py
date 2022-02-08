@@ -355,7 +355,7 @@ class CG:
                     E = self.A(Xnew, ynew)
                     # attempt to update
                     self.E = E
-                except Exception:
+                except:
                     save_state(self.A.energy.kpointset, X, Y, f, y, tau_min, sigma_min)
                     raise Exception('giving up')
 

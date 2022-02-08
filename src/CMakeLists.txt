@@ -7,8 +7,25 @@ if(CREATE_FORTRAN_BINDINGS)
 endif()
 
 if(USE_CUDA OR USE_ROCM)
-  file(GLOB_RECURSE CUFILES "gpu/*.cu")
-  set(_CUSOURCES "${CUFILES}")
+  set(_CUSOURCES
+    "gpu/add_pw_ekin.cu"
+    "gpu/augmentation_operator.cu"
+    "gpu/checksum.cu"
+    "gpu/create_beta_gk.cu"
+    "gpu/cuda_uspp_kernels.cu"
+    "gpu/density_rg.cu"
+    "gpu/fft_kernels.cu"
+    "gpu/generate_dm_pw.cu"
+    "gpu/generate_phase_factors.cu"
+    "gpu/mul_by_veff.cu"
+    "gpu/mul_veff_with_phase_factors.cu"
+    "gpu/random.cu"
+    "gpu/residuals_aux.cu"
+    "gpu/scale_matrix.cu"
+    "gpu/spherical_harmonics.cu"
+    "gpu/spline.cu"
+    "gpu/sum_q_pw_dm_pw.cu"
+    "preconditioner/diag_mm.cu")
 endif()
 
 set(_SOURSES

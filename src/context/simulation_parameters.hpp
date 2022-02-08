@@ -527,7 +527,7 @@ class Simulation_parameters
     }
 
     /// Get a default memory pool for a given device.
-    sddk::memory_pool& mem_pool(sddk::device_t dev__)
+    sddk::memory_pool& mem_pool(sddk::device_t dev__) const
     {
         switch (dev__) {
             case sddk::device_t::CPU: {

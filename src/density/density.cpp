@@ -843,21 +843,32 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
             return;
         }
 
-        kp__->beta_projectors().prepare();
+        auto bp_gen = kp__->beta_projectors().make_generator();
+        auto bp_coeffs = bp_gen.prepare();
+
+        auto linalg_t         = ctx_.blas_linalg_t();
+        auto processing_unit  = ctx_.processing_unit();
+        auto preferred_memory = ctx_.preferred_memory_t();
 
         if (ctx_.num_mag_dims() != 3) {
             for (int chunk = 0; chunk < kp__->beta_projectors().num_chunks(); chunk++) {
-                kp__->beta_projectors().generate(chunk);
+                // kp__->beta_projectors().generate(chunk);
+                bp_gen.generate(bp_coeffs, chunk);
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* total number of occupied bands for this spin */
                     int nbnd = kp__->num_occupied_bands(ispn);
                     /* compute <beta|psi> */
-                    auto beta_psi =
-                        kp__->beta_projectors().template inner<T>(chunk, kp__->spinor_wave_functions(), ispn, 0, nbnd);
+                    // auto beta_psi =
+                    //     kp__->beta_projectors().template inner<T>(chunk, kp__->spinor_wave_functions(), ispn, 0,
+                    //     nbnd);
+                    auto beta_psi = inner<T>(
+                        linalg_t, processing_unit, preferred_memory,
+                        [&ctx = ctx_](device_t dev) -> memory_pool& { return ctx.mem_pool(dev); }, bp_coeffs,
+                        kp__->spinor_wave_functions(), ispn, 0, nbnd);
 
                     /* number of beta projectors */
-                    int nbeta = kp__->beta_projectors().chunk(chunk).num_beta_;
+                    int nbeta = bp_coeffs.beta_chunk.num_beta_;
 
                     /* use communicator of the k-point to split band index */
                     sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
@@ -870,20 +881,16 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
                             sddk::mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
                             sddk::mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
                             #pragma omp for
-                            for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                                int nbf = kp__->beta_projectors().chunk(chunk).desc_(
-                                    static_cast<int>(beta_desc_idx::nbf), ia);
+                            for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+                                int nbf = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia);
                                 if (!nbf) {
                                     continue;
                                 }
-                                int offs = kp__->beta_projectors().chunk(chunk).desc_(
-                                    static_cast<int>(beta_desc_idx::offset), ia);
-                                int ja =
-                                    kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
+                                int offs = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                                int ja   = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia);
 
                                 for (int i = 0; i < nbnd_loc; i++) {
                                     int j = spl_nbnd[i];
-
                                     for (int xi = 0; xi < nbf; xi++) {
                                         bp1(xi, i) = beta_psi(offs + xi, j);
                                         bp2(xi, i) =
@@ -903,10 +910,11 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
             }
         } else {
             for (int chunk = 0; chunk < kp__->beta_projectors().num_chunks(); chunk++) {
-                kp__->beta_projectors().generate(chunk);
+                // kp__->beta_projectors().generate(chunk);
+                bp_gen.generate(bp_coeffs, chunk);
 
                 /* number of beta projectors */
-                int nbeta = kp__->beta_projectors().chunk(chunk).num_beta_;
+                int nbeta = bp_coeffs.beta_chunk.num_beta_;
 
                 /* total number of occupied bands */
                 int nbnd = kp__->num_occupied_bands();
@@ -920,9 +928,12 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* compute <beta|psi> */
-                    auto beta_psi =
-                        kp__->beta_projectors().template inner<T>(chunk, kp__->spinor_wave_functions(), ispn, 0, nbnd);
-                    #pragma omp parallel for schedule(static)
+                    auto beta_psi = inner<T>(
+                        linalg_t, processing_unit, preferred_memory,
+                        [&ctx = ctx_](device_t dev) -> memory_pool& { return ctx.mem_pool(dev); }, bp_coeffs,
+                        kp__->spinor_wave_functions(), ispn, 0, nbnd);
+
+#pragma omp parallel for schedule(static)
                     for (int i = 0; i < nbnd_loc; i++) {
                         int j = spl_nbnd[i];
 
@@ -933,13 +944,13 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
                         }
                     }
                 }
-                for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                    int nbf = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+                    int nbf  = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia);
                     if (!nbf) {
                         continue;
                     }
-                    int offs = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
-                    int ja   = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
+                    int offs = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                    int ja   = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia);
                     if (ctx_.unit_cell().atom(ja).type().spin_orbit_coupling()) {
                         sddk::mdarray<double_complex, 3> bp3(nbf, nbnd_loc, 2);
                         bp3.zero();
@@ -1009,11 +1020,11 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
 
                 if (nbnd_loc) {
                     #pragma omp parallel for
-                    for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                        int nbf = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                    for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+                        int nbf = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia);
                         int offs =
-                            kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
-                        int ja = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
+                            bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                        int ja = bp_coeffs.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia);
                         /* compute diagonal spin blocks */
                         for (int ispn = 0; ispn < 2; ispn++) {
                             sddk::linalg(sddk::linalg_t::blas)
@@ -1031,7 +1042,7 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
                 }
             }
         }
-        kp__->beta_projectors().dismiss();
+        // kp__->beta_projectors().dismiss();
     }
 }
 

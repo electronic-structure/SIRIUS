@@ -136,7 +136,7 @@ def make_kinetic_precond2(kpointset):
     Payne, M. C., Teter, M. P., Allan, D. C., Arias, T. A., & Joannopoulos, J.
     D., Iterative minimization techniques for ab initio total-energy
     calculations: molecular dynamics and conjugate gradients.
-    http://dx.doi.org/10.1103/RevModPhys.64.1045
+    https://dx.doi.org/10.1103/RevModPhys.64.1045
 
     """
     nk = len(kpointset)
@@ -147,8 +147,14 @@ def make_kinetic_precond2(kpointset):
         gkvec = kp.gkvec()
         assert (gkvec.num_gvec() == gkvec.count())
         N = gkvec.count()
-        ekin = lambda i: np.sum((np.array(gkvec.gkvec_cart(i))**2))
-        Tp = lambda T: 16*T**4 / (27 + 18*T + 12*T**2 + 8*T**3)
+
+        def ekin(i):
+            return np.sum((np.array(gkvec.gkvec_cart(i))**2))
+
+        def Tp(T):
+            """Teter preconditioner."""
+            return 16*T**4 / (27 + 18*T + 12*T**2 + 8*T**3)
+
         d = np.array([1 / (1 + Tp(ekin(i))) for i in range(N)])
         for ispn in range(nc):
             P[k, ispn] = dia_matrix((d, 0), shape=(N, N))

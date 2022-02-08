@@ -1,8 +1,7 @@
 #include "utils/profiler.hpp"
 #include <sirius.hpp>
 #include <utils/json.hpp>
-#include "nlcglib/adaptor.hpp"
-#include <nlcglib/nlcglib.hpp>
+#include "nlcglib/call_nlcg.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -69,61 +68,22 @@ double ground_state(Simulation_context& ctx,
     dft.initial_state();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
-            inp.num_dft_iter(), write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(), inp.num_dft_iter(), write_state);
 
+    std::cout << "nlcg after scf init (freeCudaMem): " << acc::get_free_mem() << "\n";
+    std::cout << "mempool (total/free): "
+              << ctx.mem_pool(device_t::GPU).total_size() << " / "
+              << ctx.mem_pool(device_t::GPU).free_size() << "\n";
     auto& nlcg_params  = ctx.cfg().nlcg();
-    double temp       = nlcg_params.T();
-    double tol        = nlcg_params.tol();
-    double kappa      = nlcg_params.kappa();
-    double tau        = nlcg_params.tau();
-    int maxiter       = nlcg_params.maxiter();
-    int restart       = nlcg_params.restart();
-
-    std::string smear = ctx.cfg().parameters().smearing();
-    auto pu = ctx.processing_unit();
-    Energy energy(*kset, density, potential);
-
-    nlcglib::smearing_type smearing;
-    if (smear.compare("fermi_dirac") == 0) {
-        smearing = nlcglib::smearing_type::FERMI_DIRAC;
-    } else if (smear.compare("gaussian_spline") == 0) {
-        smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
-    } else {
-        throw std::runtime_error("invalid smearing type given");
-    }
-
-    if (is_device_memory(ctx.preferred_memory_t())) {
-        switch (pu) {
-            case sddk::device_t::GPU: {
-                std::cout << "nlcg executing on gpu-gpu" << "\n";
-                nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                break;
-            }
-            case sddk::device_t::CPU: {
-                std::cout << "nlcg executing on gpu-cpu" << "\n";
-                nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                break;
-            }
-        }
-    } else {
-        switch (pu) {
-            case sddk::device_t::CPU: {
-                std::cout << "nlcg executing on cpu-cpu" << "\n";
-                nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                std::cout << "nlcg executing on cpu-gpu" << "\n";
-                nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                break;
-            }
-        }
-    }
-
     if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
+
+    Energy energy(*kset, density, potential);
+
+    nlcglib::initialize();
+    call_nlcg(ctx, nlcg_params, energy, *kset, potential);
+    nlcglib::finalize();
 
     //dft.print_magnetic_moment();
 
@@ -212,26 +172,6 @@ double ground_state(Simulation_context& ctx,
             std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
-
-        //if (args.exist("aiida_output")) {
-        //    json dict;
-        //    json_output_common(dict);
-        //    dict["task"] = static_cast<int>(task);
-        //    if (result >= 0) {
-        //        dict["task_status"] = "converged";
-        //        dict["num_scf_iterations"] =  result;
-        //    } else {
-        //        dict["task_status"] = "unconverged";
-        //    }
-        //    dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-        //    dict["volume_units"] = "angstrom^3";
-        //    dict["energy"] = dft.total_energy() * ha2ev;
-        //    dict["energy_units"] = "eV";
-        //    if (ctx.comm().rank() == 0) {
-        //        std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        //        ofs << dict.dump(4);
-        //    }
-        //}
     }
 
     /* wait for all */
@@ -257,9 +197,6 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
         ground_state(*ctx, task, args, 1);
     }
 
@@ -298,16 +235,7 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    int my_rank = sddk::Communicator::world().rank();
-
     sirius::finalize(1);
-
-    // if (my_rank == 0) {
-    //     const auto timing_result = ::utils::global_rtgraph_timer.process();
-    //     std::cout << timing_result.print();
-    //     std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-    //     ofs << timing_result.json();
-    // }
 
     return 0;
 }

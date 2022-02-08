@@ -84,6 +84,13 @@ class Energy:
             self.density, use_sym=self.ctx.use_symmetry(), transform_to_rg=True
         )
 
+        # print checksums before applying hamiltonian
+        # print('density checksum_pw: %.8f + %.8f I' % (np.real(self.density.get_rho().checksum_pw()), np.imag(self.density.get_rho().checksum_pw())))
+        # print('density checksum_rg: %.8f' % self.density.get_rho().checksum_rg())
+
+        # print('potential checksum_pw: %.8f + %.8f I' % (np.real(self.potential.scalar().checksum_pw()), np.imag(self.potential.scalar().checksum_pw())))
+        # print('potential checksum_rg: %.8f' % self.potential.scalar().checksum_rg())
+
         yn = self.H(X, scale=False)
 
         for key, val in yn.items():
@@ -92,11 +99,18 @@ class Energy:
             benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
             for j, ek in enumerate(benergies):
+                # print(np.real(ek), end=' ')
                 self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
 
         self.kpointset.sync_band_energy()
 
         Etot = pp_total_energy(self.potential, self.density, self.kpointset, self.ctx)
+
+        # comps = total_energy_components(self.ctx, self.kpointset, self.density, self.potential, 1000)
+
+        # print('energy by components:')
+        # for k in comps:
+        #     print(k, '%.12f' % comps[k])
 
         return Etot, yn
 
