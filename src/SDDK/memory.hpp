@@ -1349,6 +1349,38 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
 
+    T* host_data()
+    {
+        assert(raw_ptr_ != nullptr);
+        return raw_ptr_;
+    }
+
+    const T* host_data() const
+    {
+        assert(raw_ptr_ != nullptr);
+        return raw_ptr_;
+    }
+
+    T* device_data()
+    {
+#if defined(SIRIUS_GPU)
+        assert(raw_ptr_device_ != nullptr);
+        return raw_ptr_device_;
+#else
+        throw std::runtime_error("not compiled with GPU support");
+#endif
+    }
+
+    const T* device_data() const
+    {
+#if defined(SIRIUS_GPU)
+        assert(raw_ptr_device_ != nullptr);
+        return raw_ptr_device_;
+#else
+        throw std::runtime_error("not compiled with GPU support");
+#endif
+    }
+
     /// Return total size (number of elements) of the array.
     inline size_t size() const
     {
