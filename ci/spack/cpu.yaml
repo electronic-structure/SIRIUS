@@ -3,7 +3,7 @@ spack:
     - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^mpich
     - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^openmpi
     - sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
-  view: false
+  view: /root/local
 
   packages:
     all:
