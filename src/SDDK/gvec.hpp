@@ -36,6 +36,7 @@
 #include "serializer.hpp"
 #include "splindex.hpp"
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 
 using namespace geometry3d;
 
@@ -223,8 +224,7 @@ class Gvec
 
     /// Find a list of G-vector shells.
     /** G-vectors belonging to the same shell have the same length and transform to each other
-        under a lattice symmetry operation.
-     */
+        under a lattice symmetry operation. */
     void find_gvec_shells();
 
     /// Compute the Cartesian coordinates.
@@ -434,8 +434,7 @@ class Gvec
     /// Return G+k vector in fractional coordinates.
     inline auto gkvec(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return (vector3d<double>(G[0], G[1], G[2]) + vk_);
+        return gvec(ig__) + vk_;
     }
 
     /// Return G vector in Cartesian coordinates.
@@ -447,12 +446,16 @@ class Gvec
     }
 
     /// Return G vector in Cartesian coordinates.
-    template <index_domain_t idx_t>
+    template <index_domain_t idx_t, bool print_info = false>
     inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>>
     gvec_cart(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]));
+        auto G = gvec(ig__);
+        if (print_info) {
+            auto gc = dot(lattice_vectors_, G);
+            RTE_OUT(std::cout) << "ig="<<ig__<<", G="<<G<<", gc="<<gc<<", len="<<gc.length() << std::endl;
+        }
+        return dot(lattice_vectors_, G);
     }
 
     /// Return G+k vector in Cartesian coordinates.
