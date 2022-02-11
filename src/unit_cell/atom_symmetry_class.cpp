@@ -660,25 +660,22 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
     }
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
         o1_radial_integrals_.zero();
-        #pragma omp parallel default(shared)
-        {
+        #pragma omp parallel for
+        for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
             Spline<double> s(atom_type_.radial_grid());
-            #pragma omp for
-            for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
-                for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
-                    /* for spherical part of potential integrals are diagonal in l */
-                    if (atom_type_.indexr(i1).l == atom_type_.indexr(i2).l) {
-                        int ll = atom_type_.indexr(i1).l * (atom_type_.indexr(i1).l + 1);
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
-                            /* u_1(r) * u_2(r) */
-                            double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
-                            /* r*u'_1(r) * r*u'_2(r) */
-                            double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                            s(ir)     = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
-                        }
-                        o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
+            for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
+                /* for spherical part of potential integrals are diagonal in l */
+                if (atom_type_.indexr(i1).l == atom_type_.indexr(i2).l) {
+                    int ll = atom_type_.indexr(i1).l * (atom_type_.indexr(i1).l + 1);
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
+                        /* u_1(r) * u_2(r) */
+                        double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
+                        /* r*u'_1(r) * r*u'_2(r) */
+                        double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
+                        s(ir)     = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
                     }
+                    o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                 }
             }
         }
