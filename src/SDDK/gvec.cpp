@@ -133,9 +133,6 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(), -1);
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
             non_zero_columns(z_columns_[i].x, z_columns_[i].y) = i;
-            if (reduce_gvec_) {
-                non_zero_columns(-z_columns_[i].x, -z_columns_[i].y) = i;
-            }
         }
 
         std::vector<z_column_descriptor> z_columns_tmp;
@@ -156,11 +153,15 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
                     }
                     int i1 = non_zero_columns(G1[0], G1[1]);
                     if (i1 == -1) {
-                        std::stringstream s;
-                        s << "index of z-column is not found" << std::endl
-                          << "  G : " << G << std::endl
-                          << "  G1 : " << G1;
-                        RTE_THROW(s);
+                        G1 = G1 * (-1);
+                        i1 = non_zero_columns(G1[0], G1[1]);
+                        if (i1 == -1) {
+                            std::stringstream s;
+                            s << "index of z-column is not found" << std::endl
+                              << "  G : " << G << std::endl
+                              << "  G1 : " << G1;
+                            RTE_THROW(s);
+                        }
                     }
 
                     bool found{false};
