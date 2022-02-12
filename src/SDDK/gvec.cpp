@@ -164,13 +164,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
                         }
                     }
 
-                    bool found{false};
-                    for (int iz1 = 0; iz1 < static_cast<int>(z_columns_[i1].z.size()); iz1++) {
-                        if (z_columns_[i1].z[iz1] == G1[2]) {
-                            found = true;
-                            break;
-                        }
-                    }
+                    bool found = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) != std::end(z_columns_[i1].z));
                     found_for_all_sym = found_for_all_sym && found;
                 } // R
                 if (found_for_all_sym) {
