@@ -127,54 +127,62 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
               [](z_column_descriptor const& a, z_column_descriptor const& b) { return a.z.size() > b.z.size(); });
 
     /* now we have to remove edge G-vectors that don't form a complete shell */
-    auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
+    if (bare_gvec_) {
+        auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
 
-    std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(), -1);
-    for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
-        non_zero_columns(z_columns_[i].x, z_columns_[i].y) = i;
-    }
-
-    std::vector<z_column_descriptor> z_columns_tmp;
-
-    num_gvec_ = 0;
-    for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
-        std::vector<int> z;
-        for (int iz = 0; iz < static_cast<int>(z_columns_[i].z.size()); iz++) {
-            vector3d<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
-            bool found_for_all_sym{true};
-            for (auto& R: lat_sym) {
-                auto G1 = dot(R, G);
-                if (reduce_gvec_ && G1[0] == 0 && G1[1] == 0) {
-                    G1[2] = std::abs(G1[2]);
-                }
-                int i1 = non_zero_columns(G1[0], G1[1]);
-                if (i1 == -1) {
-                    G1 = G1 * (-1);
-                    i1 = non_zero_columns(G1[0], G1[1]);
-                    if (i1 == -1) {
-                        RTE_THROW("index of z-column is not found");
-                    }
-                }
-
-                bool found{false};
-                for (int iz1 = 0; iz1 < static_cast<int>(z_columns_[i1].z.size()); iz1++) {
-                    if (z_columns_[i1].z[iz1] == G1[2]) {
-                        found = true;
-                        break;
-                    }
-                }
-                found_for_all_sym = found_for_all_sym && found;
-            } // R
-            if (found_for_all_sym) {
-                z.push_back(z_columns_[i].z[iz]);
+        std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(), -1);
+        for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
+            non_zero_columns(z_columns_[i].x, z_columns_[i].y) = i;
+            if (reduce_gvec_) {
+                non_zero_columns(-z_columns_[i].x, -z_columns_[i].y) = i;
             }
-        } // iz
-        if (z.size()) {
-            z_columns_tmp.push_back(z_column_descriptor(z_columns_[i].x, z_columns_[i].y, z));
-            num_gvec_ += static_cast<int>(z.size());
         }
+
+        std::vector<z_column_descriptor> z_columns_tmp;
+
+        num_gvec_ = 0;
+        for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
+            std::vector<int> z;
+            for (int iz = 0; iz < static_cast<int>(z_columns_[i].z.size()); iz++) {
+                vector3d<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
+                bool found_for_all_sym{true};
+                for (auto& R: lat_sym) {
+                    /* apply lattice symmeetry operation to a G-vector */
+                    auto G1 = dot(R, G);
+                    if (reduce_gvec_) {
+                        if (G1[0] == 0 && G1[1] == 0) {
+                            G1[2] = std::abs(G1[2]);
+                        }
+                    }
+                    int i1 = non_zero_columns(G1[0], G1[1]);
+                    if (i1 == -1) {
+                        std::stringstream s;
+                        s << "index of z-column is not found" << std::endl
+                          << "  G : " << G << std::endl
+                          << "  G1 : " << G1;
+                        RTE_THROW(s);
+                    }
+
+                    bool found{false};
+                    for (int iz1 = 0; iz1 < static_cast<int>(z_columns_[i1].z.size()); iz1++) {
+                        if (z_columns_[i1].z[iz1] == G1[2]) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    found_for_all_sym = found_for_all_sym && found;
+                } // R
+                if (found_for_all_sym) {
+                    z.push_back(z_columns_[i].z[iz]);
+                }
+            } // iz
+            if (z.size()) {
+                z_columns_tmp.push_back(z_column_descriptor(z_columns_[i].x, z_columns_[i].y, z));
+                num_gvec_ += static_cast<int>(z.size());
+            }
+        }
+        z_columns_ = z_columns_tmp;
     }
-    z_columns_ = z_columns_tmp;
 }
 
 void Gvec::distribute_z_columns()
