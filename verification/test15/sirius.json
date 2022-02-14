@@ -7,7 +7,7 @@
       "verbosity" : 2,
       "print_forces" : true,
       "print_stress" : true,
-      "!verification" : 1
+      "verification" : 1
   },
   "settings" : {
     "itsol_tol_min" : 1e-13
@@ -24,7 +24,7 @@
 
       "gamma_point" : true,
 
-      "gk_cutoff" : 7.0,
+      "gk_cutoff" : 5.0,
       "pw_cutoff" : 30.00,
 
       "energy_tol" : 1e-8,
