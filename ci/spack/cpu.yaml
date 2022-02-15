@@ -1,8 +1,8 @@
 spack:
   specs:
-    - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^netlib-lapack ~external-blas %gcc ^mpich
-    - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^netlib-lapack ~external-blas %gcc ^openmpi
-    - sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^netlib-lapack ~external-blas ^mpich ~fortran
+    - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^mpich
+    - sirius@develop %gcc +vdwxc +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^openmpi
+    - sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
   view:
     gcc-with-mpich:
       root: /root/local/gcc-with-mpich
