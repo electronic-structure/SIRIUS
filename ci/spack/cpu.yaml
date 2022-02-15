@@ -5,13 +5,13 @@ spack:
     - sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^netlib-lapack ~external-blas ^mpich ~fortran
   view:
     gcc-with-mpich:
-      root:/root/local/gcc-with-mpich
+      root: /root/local/gcc-with-mpich
       select: ['%gcc ^mpich']
     gcc-with-openmpi:
-      root:/root/local/gcc-with-openmpi
+      root: /root/local/gcc-with-openmpi
       select: ['%gcc ^openmpi']
     clang-with-mpich:
-      root:/root/local/clang-with-mpich
+      root: /root/local/clang-with-mpich
       select: ['%clang ^openmpi']
 
   packages:
