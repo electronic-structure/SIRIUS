@@ -96,6 +96,9 @@ class Atom_symmetry_class
     /// Generate local orbital raidal functions
     void generate_lo_radial_functions(relativity_t rel__);
 
+    /// Orthogonalize the radial functions.
+    void orthogonalize_radial_functions();
+
   public:
     /// Constructor
     Atom_symmetry_class(int id_, Atom_type const& atom_type_);

@@ -438,6 +438,11 @@
                      "type" : "integer",
                      "default" : 256,
                      "title" : "Number of atoms in a chunk of beta-projectors."
+                 },
+                 "ortho_rf" : {
+                     "type" : "boolean",
+                     "default" : false,
+                     "title" : "Orthogonalize LAPW radial functions."
                  }
             }
         },

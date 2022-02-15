@@ -290,13 +290,22 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         }
     }
 
-    Spline<double> s(atom_type_.radial_grid());
+    if (atom_type_.parameters().cfg().control().verification() > 0 && num_lo_descriptors() > 0) {
+        check_lo_linear_independence(0.0001);
+    }
+}
+
+void
+Atom_symmetry_class::orthogonalize_radial_functions()
+{
+    int nmtp = atom_type().num_mt_points();
+    Spline<double> s(atom_type().radial_grid());
     /* orthogonalize local orbitals */
-    for (int l = 0; l <= atom_type_.indexr().lmax_lo(); l++) {
-        for (int j = 0; j < atom_type_.indexr().num_lo(l); j++) {
-            int idxrf = atom_type_.indexr().index_by_l_order(l, j + atom_type_.aw_order(l));
+    for (int l = 0; l <= atom_type().indexr().lmax_lo(); l++) {
+        for (int j = 0; j < atom_type().indexr().num_lo(l); j++) {
+            int idxrf = atom_type().indexr().index_by_l_order(l, j + atom_type_.aw_order(l));
             for (int j1 = 0; j1 < j; j1++) {
-                int idxrf1 = atom_type_.indexr().index_by_l_order(l, j1 + atom_type_.aw_order(l));
+                int idxrf1 = atom_type().indexr().index_by_l_order(l, j1 + atom_type().aw_order(l));
 
                 for (int ir = 0; ir < nmtp; ir++) {
                     s(ir) = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
@@ -335,10 +344,6 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
                 surface_derivatives_(i, idxrf) *= norm;
             }
         }
-    }
-
-    if (atom_type_.parameters().cfg().control().verification() > 0 && num_lo_descriptors() > 0) {
-        check_lo_linear_independence(0.0001);
     }
 }
 
@@ -540,6 +545,10 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     generate_aw_radial_functions(rel__);
 
     generate_lo_radial_functions(rel__);
+
+    if (atom_type().parameters().cfg().control().ortho_rf()) {
+       orthogonalize_radial_functions();
+    }
 
 //= #ifdef __PRINT_OBJECT_CHECKSUM
 //=     DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(spherical_potential_.data(), atom_type_.num_mt_points()).checksum());
