@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc +tests +apps +vdwxc build_type=RelWithDebInfo +cuda ^cuda@11.2.1 ^openblas ^mpich
+    - sirius@develop %gcc +tests +apps +vdwxc build_type=RelWithDebInfo +cuda ^cuda@11.2.1 ^netlib-lapack ~external-blas ^mpich
   view: false
 
   packages:

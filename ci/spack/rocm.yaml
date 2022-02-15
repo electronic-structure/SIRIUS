@@ -5,7 +5,7 @@ spack:
     ^rocfft amdgpu_target=gfx906
     ^rocblas tensile_architecture=gfx906:xnack-
     ^openmpi
-    ^openblas
+    ^netlib-lapack ~external-blas
   view: false
   packages:
     all:
