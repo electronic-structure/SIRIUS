@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC: "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^intel-mkl@2017: ^mpich"
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
@@ -32,21 +32,21 @@ jobs:
           cd ${GITHUB_WORKSPACE}/spack-build
           spack --color always -e ci_run build-env $SPEC -- ctest --output-on-failure -L cpu_serial
 
-  build_rocm:
-    runs-on: ubuntu-latest
-    container: stabbles/sirius-rocm
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Spack
-        run: |
-          spack --color always repo rm --scope site user
-          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
-          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
-      - name: Show the spec
-        run: spack --color always -e ci_run concretize
-      - name: Build SIRIUS
-        run: spack --color always -e ci_run install -v
+          #build_rocm:
+          #  runs-on: ubuntu-latest
+          #  container: stabbles/sirius-rocm
+          #  steps:
+          #    - uses: actions/checkout@v2
+          #    - name: Setup Spack
+          #      run: |
+          #        spack --color always repo rm --scope site user
+          #        spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          #        spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
+          #        spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
+          #    - name: Show the spec
+          #      run: spack --color always -e ci_run concretize
+          #    - name: Build SIRIUS
+          #      run: spack --color always -e ci_run install -v
 
   build_cuda_10:
     runs-on: ubuntu-latest
