@@ -870,6 +870,7 @@ class Atom_type
         return indexb_.size_lo();
     }
 
+    /// Total number of muffin-tin basis functions (APW + LO).
     inline int mt_basis_size() const
     {
         return indexb_.size();
@@ -881,18 +882,18 @@ class Atom_type
         return indexr_.size();
     }
 
-    inline sirius::experimental::basis_functions_index const& indexb_wfs() const
+    inline auto const& indexb_wfs() const
     {
         return indexb_wfs_;
     }
 
     /// Return whole index of hubbard basis functions.
-    inline sirius::experimental::basis_functions_index const& indexb_hub() const
+    inline auto const& indexb_hub() const
     {
         return indexb_hub_;
     }
 
-    inline Spline<double> const& hubbard_radial_function(int i) const
+    inline auto const& hubbard_radial_function(int i) const
     {
         return lo_descriptors_hub_[i].f();
     }
