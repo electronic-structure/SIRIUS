@@ -1377,7 +1377,7 @@ class config_t
             }
             dict_["/parameters/precision_hs"_json_pointer] = precision_hs__;
         }
-        /// The final floating point precision of the ground state DFT calculation.
+        /// The final floating point precision of the ground state DFT calculation (dev options).
         inline auto precision_gs() const
         {
             return dict_.at("/parameters/precision_gs"_json_pointer).get<std::string>();

@@ -33,7 +33,7 @@ y_ticks_label = []
 
 for e in timers_to_show:
     # if this is a dictionary
-    if type(e) == type({}):
+    if isinstance(e, dict):
         # loop over keys of dictionary
         for t in e:
             y_ticks_label.append(t)
@@ -85,7 +85,7 @@ ypos = 0
 idx_c = 0
 for e in timers_to_show:
 
-    if type(e) == type({}):
+    if isinstance(e, dict):
         # loop over keys of dictionary
         for t in e:
             # loop over values for the given key
