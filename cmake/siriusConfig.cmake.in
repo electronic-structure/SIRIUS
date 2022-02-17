@@ -38,6 +38,7 @@ if(NOT TARGET sirius::sirius)
   include("${CMAKE_CURRENT_LIST_DIR}/hdf5_target.cmake")
   find_package(SpFFT 0.9.6 CONFIG ${mode})
   find_package(SPLA 1.1.0 CONFIG ${mode})
+  find_package(costa CONFIG ${mode})
 
   if(@USE_OPENMP@)
     find_package(OpenMP ${mode})

@@ -202,7 +202,7 @@ if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
 endif(USE_VDWXC)
 
-find_package(costa REQUIRED)
+find_package(costa CONFIG REQUIRED)
 
 if(USE_CUDA)
   enable_language(CUDA)
