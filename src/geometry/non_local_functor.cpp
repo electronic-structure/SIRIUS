@@ -82,9 +82,9 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
                     int nbf = bp_base_.chunk(icnk).desc_(static_cast<int>(beta_desc_idx::nbf), ia_chunk);
                     int iat = unit_cell.atom(ia).type_id();
 
-                    if (unit_cell.atom(ia).type().spin_orbit_coupling()) {
-                        TERMINATE("stress and forces with SO coupling are not upported");
-                    }
+                    //if (unit_cell.atom(ia).type().spin_orbit_coupling()) {
+                    //    TERMINATE("stress and forces with SO coupling are not upported");
+                    //}
 
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij,

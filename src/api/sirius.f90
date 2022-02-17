@@ -2139,13 +2139,14 @@ end subroutine sirius_set_atom_type_radial_grid_inf
 !> @param [in] rf Array with radial function values.
 !> @param [in] num_points Length of radial function array.
 !> @param [in] n Orbital quantum number.
-!> @param [in] l angular momentum.
+!> @param [in] l Angular momentum.
+!> @param [in] s Spin number in case of spin-orbit (to describe l+1/2, l-1/2 states).
 !> @param [in] idxrf1 First index of radial function (for Q-operator). Indices start from 1.
 !> @param [in] idxrf2 Second index of radial function (for Q-operator). Indices start form 1.
 !> @param [in] occ Occupancy of the wave-function.
 !> @param [out] error_code Error code.
 subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ,error_code)
+&n,l,s,idxrf1,idxrf2,occ,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -2155,6 +2156,7 @@ real(8), target, dimension(num_points), intent(in) :: rf
 integer, target, intent(in) :: num_points
 integer, optional, target, intent(in) :: n
 integer, optional, target, intent(in) :: l
+integer, optional, target, intent(in) :: s
 integer, optional, target, intent(in) :: idxrf1
 integer, optional, target, intent(in) :: idxrf2
 real(8), optional, target, intent(in) :: occ
@@ -2169,6 +2171,7 @@ type(C_PTR) :: rf_ptr
 type(C_PTR) :: num_points_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
+type(C_PTR) :: s_ptr
 type(C_PTR) :: idxrf1_ptr
 type(C_PTR) :: idxrf2_ptr
 type(C_PTR) :: occ_ptr
@@ -2176,7 +2179,7 @@ type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_points,&
-&n,l,idxrf1,idxrf2,occ,error_code)&
+&n,l,s,idxrf1,idxrf2,occ,error_code)&
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2186,6 +2189,7 @@ type(C_PTR), value :: rf
 type(C_PTR), value :: num_points
 type(C_PTR), value :: n
 type(C_PTR), value :: l
+type(C_PTR), value :: s
 type(C_PTR), value :: idxrf1
 type(C_PTR), value :: idxrf2
 type(C_PTR), value :: occ
@@ -2215,6 +2219,10 @@ l_ptr = C_NULL_PTR
 if (present(l)) then
 l_ptr = C_LOC(l)
 endif
+s_ptr = C_NULL_PTR
+if (present(s)) then
+s_ptr = C_LOC(s)
+endif
 idxrf1_ptr = C_NULL_PTR
 if (present(idxrf1)) then
 idxrf1_ptr = C_LOC(idxrf1)
@@ -2232,7 +2240,7 @@ if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_add_atom_type_radial_function_aux(handler_ptr,atom_type_ptr,label_ptr,&
-&rf_ptr,num_points_ptr,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr,error_code_ptr)
+&rf_ptr,num_points_ptr,n_ptr,l_ptr,s_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr,error_code_ptr)
 deallocate(atom_type_c_type)
 deallocate(label_c_type)
 end subroutine sirius_add_atom_type_radial_function

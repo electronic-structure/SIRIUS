@@ -238,6 +238,8 @@ static inline void
 sirius_exit(int error_code__, std::string msg__ = "")
 {
     sirius_print_error(error_code__, msg__);
+    /* this can be back-traced in the debugger without a need to capture the exit function */
+    raise(SIGABRT);
     if (!Communicator::is_finalized()) {
         Communicator::world().abort(error_code__);
     } else {
@@ -2111,7 +2113,11 @@ sirius_add_atom_type_radial_function:
     l:
       type: int
       attr: in, optional
-      doc: angular momentum.
+      doc: Angular momentum.
+    s:
+      type: int
+      attr: in, optional
+      doc: Spin number in case of spin-orbit (to describe l+1/2, l-1/2 states).
     idxrf1:
       type: int
       attr: in, optional
@@ -2133,7 +2139,8 @@ sirius_add_atom_type_radial_function:
 void
 sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_type__, char const* label__,
                                      double const* rf__, int const* num_points__, int const* n__, int const* l__,
-                                     int const* idxrf1__, int const* idxrf2__, double const* occ__, int* error_code__)
+                                     int const* s__, int const* idxrf1__, int const* idxrf2__, double const* occ__,
+                                     int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -2151,9 +2158,14 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 if (l__ == nullptr) {
                     RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");
                 }
+                if (type.spin_orbit_coupling() && s__ == nullptr) {
+                    RTE_THROW("spin quantum number must be provided for pseudo-atomic radial function");
+                }
+                int l = *l__;
+                int s = (s__) ? *s__ : 0;
                 int n      = (n__) ? *n__ : -1;
                 double occ = (occ__) ? *occ__ : 0.0;
-                type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
+                type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(l, s),
                                       std::vector<double>(rf__, rf__ + *num_points__), occ);
             } else if (label == "ps_rho_core") {
                 type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
