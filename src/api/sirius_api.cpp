@@ -4399,14 +4399,10 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             }
 
             if (*deriv_order__ == 0) {
-                for (int ir = 0; ir < atom.num_mt_points(); ir++) {
-                    atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
-                }
+                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + atom.num_mt_points()));
             } else {
-                for (int ir = 0; ir < atom.num_mt_points(); ir++) {
-                    atom.symmetry_class().radial_function_derivative(ir, idxrf) =
-                        f__[ir] * atom.type().radial_grid()[ir];
-                }
+                atom.symmetry_class().radial_function_derivative(idxrf,
+                        std::vector<double>(f__, f__ + atom.num_mt_points()));
             }
             if (l__ != nullptr && o__ != nullptr) {
                 int n = atom.num_mt_points();

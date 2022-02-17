@@ -931,6 +931,18 @@ class config_t
             }
             dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
         }
+        /// Orthogonalize LAPW radial functions.
+        inline auto ortho_rf() const
+        {
+            return dict_.at("/control/ortho_rf"_json_pointer).get<bool>();
+        }
+        inline void ortho_rf(bool ortho_rf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
+        }
       private:
         nlohmann::json& dict_;
     };
