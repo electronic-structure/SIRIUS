@@ -5770,7 +5770,7 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 }
             }
 
-            sirius::Hamiltonian0<double> H0(gs.potential());
+            sirius::Hamiltonian0<double> H0(gs.potential(), true);
 
             sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), vk__, 1.0, 0);
             kp.initialize();
