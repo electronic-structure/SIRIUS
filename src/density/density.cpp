@@ -95,12 +95,6 @@ Density::Density(Simulation_context& ctx__)
         rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
     }
 
-    if (ctx_.full_potential()) {
-        using gc_z = Gaunt_coefficients<double_complex>;
-        gaunt_coefs_ =
-            std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-    }
-
     l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
 
     density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
@@ -1631,10 +1625,8 @@ Density::generate_rho_aug()
 }
 
 template <int num_mag_dims>
-void
-Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, mdarray<double_complex, 4> const& zdens__,
-                               Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
-                               mdarray<double, 3>& mt_density_matrix__)
+void Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, mdarray<double_complex, 4> const& zdens__,
+                                    sddk::mdarray<double, 3>& mt_density_matrix__)
 {
     mt_density_matrix__.zero();
 
@@ -1649,9 +1641,9 @@ Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, mdarray<d
             for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
                 int xi1 = atom_type__.indexb().index_by_idxrf(idxrf1);
                 for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
-                    for (int k = 0; k < gaunt_coeffs__.num_gaunt(lm1, lm2); k++) {
-                        int lm3 = gaunt_coeffs__.gaunt(lm1, lm2, k).lm3;
-                        auto gc = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
+                    for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
+                        int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;
+                        auto gc = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).coef;
                         switch (num_mag_dims) {
                             case 3: {
                                 mt_density_matrix__(lm3, offs, 2) += 2.0 * std::real(zdens__(xi1, xi2, 2, ia__) * gc);
@@ -1752,15 +1744,15 @@ Density::generate_valence_mt()
         PROFILE_START("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims()) {
             case 3: {
-                reduce_density_matrix<3>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<3>(atom_type, ia, density_matrix_, mt_density_matrix);
                 break;
             }
             case 1: {
-                reduce_density_matrix<1>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<1>(atom_type, ia, density_matrix_, mt_density_matrix);
                 break;
             }
             case 0: {
-                reduce_density_matrix<0>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
+                reduce_density_matrix<0>(atom_type, ia, density_matrix_, mt_density_matrix);
                 break;
             }
         }

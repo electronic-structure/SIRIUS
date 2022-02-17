@@ -961,7 +961,7 @@ int main(int argn, char** argv)
     bool rel = args.exist("rel");
 
     sirius::Simulation_parameters param;
-    param.set_lmax_apw(-1);
+    param.lmax_apw(-1);
     Free_atom a = init_atom_configuration(symbol, param);
 
     generate_atom_file(a, core_cutoff, lo_type, apw_order, apw_enu, auto_enu, write_to_xml, rel);

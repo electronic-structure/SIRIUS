@@ -33,6 +33,7 @@
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
 #include "sht/sht.hpp"
+#include "sht/gaunt.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {
@@ -222,10 +223,16 @@ class Atom_type
     /// Name of the input file for this atom type.
     std::string file_name_;
 
-    mdarray<int, 2> idx_radial_integrals_;
+    sddk::mdarray<int, 2> idx_radial_integrals_;
 
-    mutable mdarray<double, 3> rf_coef_;
-    mutable mdarray<double, 3> vrf_coef_;
+    mutable sddk::mdarray<double, 3> rf_coef_;
+    mutable sddk::mdarray<double, 3> vrf_coef_;
+
+    /// Non-zero Gaunt coefficients.
+    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
+
+    /// Maximul orbital quantum number of LAPW basis functions.
+    int lmax_apw_{-1};
 
     /// True if the atom type was initialized.
     /** After initialization it is forbidden to modify the parameters of the atom type. */
@@ -251,16 +258,16 @@ class Atom_type
     inline void read_input(std::string const& str__);
 
     /// Initialize descriptors of the augmented-wave radial functions.
-    inline void init_aw_descriptors(int lmax)
+    inline void init_aw_descriptors()
     {
-        assert(lmax >= -1);
+        RTE_ASSERT(this->lmax_apw() >= -1);
 
-        if (lmax >= 0 && aw_default_l_.size() == 0) {
-            TERMINATE("default AW descriptor is empty");
+        if (this->lmax_apw() >= 0 && aw_default_l_.size() == 0) {
+            RTE_THROW("default AW descriptor is empty");
         }
 
         aw_descriptors_.clear();
-        for (int l = 0; l <= lmax; l++) {
+        for (int l = 0; l <= this->lmax_apw(); l++) {
             aw_descriptors_.push_back(aw_default_l_);
             for (size_t ord = 0; ord < aw_descriptors_[l].size(); ord++) {
                 aw_descriptors_[l][ord].n = l + 1;
@@ -270,7 +277,7 @@ class Atom_type
 
         for (size_t i = 0; i < aw_specific_l_.size(); i++) {
             int l = aw_specific_l_[i][0].l;
-            if (l < lmax) {
+            if (l < this->lmax_apw()) {
                 aw_descriptors_[l] = aw_specific_l_[i];
             }
         }
@@ -351,7 +358,7 @@ class Atom_type
     inline void set_free_atom_radial_grid(int num_points__, double const* points__)
     {
         if (num_points__ <= 0) {
-            TERMINATE("wrong number of radial points");
+            RTE_THROW("wrong number of radial points");
         }
         free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
     }
@@ -404,7 +411,7 @@ class Atom_type
                   << "n: " << l << std::endl
                   << "l: " << n << std::endl
                   << "expected l: " << lo_descriptors_[ilo].l << std::endl;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
         }
 
@@ -439,7 +446,16 @@ class Atom_type
     inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__, std::vector<double> f__,
                                  double occ__ = 0.0)
     {
-        ps_atomic_wfs_.emplace_back(n__, am__, occ__, Spline<double>(radial_grid_, f__));
+        Spline<double> rwf(radial_grid_, f__);
+        auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
+        if (d < 1e-4) {
+            std::stringstream s;
+            s << "small norm (" << d << ") of radial atomic pseudo wave-function for n=" << n__
+              << " and j=" << am__.j();
+            RTE_THROW(s);
+        }
+
+        ps_atomic_wfs_.emplace_back(n__, am__, occ__, std::move(rwf));
     }
 
     /// Return a tuple describing a given atomic radial function
@@ -448,23 +464,12 @@ class Atom_type
         return ps_atomic_wfs_[idx__];
     }
 
-    /// Return maximum orbital quantum number for the atomic wave-functions.
-    inline int lmax_ps_atomic_wf() const
-    {
-        int lmax{-1};
-        for (auto& e : ps_atomic_wfs_) {
-            auto l = e.am.l();
-            lmax   = std::max(lmax, l);
-        }
-        return lmax;
-    }
-
     /// Add a radial function of beta-projector to a list of functions.
     /** This is the only allowed way to add beta projectors. */
     inline void add_beta_radial_function(int l__, std::vector<double> beta__)
     {
         if (augment_) {
-            TERMINATE("can't add more beta projectors");
+            RTE_THROW("can't add more beta projectors");
         }
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
@@ -487,18 +492,6 @@ class Atom_type
     inline Spline<double> const& beta_radial_function(int idxrf__) const
     {
         return beta_radial_functions_[idxrf__].second;
-    }
-
-    /// Maximum orbital quantum number between all beta-projector radial functions.
-    inline int lmax_beta() const
-    {
-        int lmax{-1};
-
-        /* need to take |l| since the total angular momentum is encoded in the sign of l */
-        for (auto& e : beta_radial_functions_) {
-            lmax = std::max(lmax, std::abs(e.first));
-        }
-        return lmax;
     }
 
     /// Number of beta-radial functions.
@@ -873,6 +866,7 @@ class Atom_type
         return indexb_.size_lo();
     }
 
+    /// Total number of muffin-tin basis functions (APW + LO).
     inline int mt_basis_size() const
     {
         return indexb_.size();
@@ -884,18 +878,18 @@ class Atom_type
         return indexr_.size();
     }
 
-    inline sirius::experimental::basis_functions_index const& indexb_wfs() const
+    inline auto const& indexb_wfs() const
     {
         return indexb_wfs_;
     }
 
     /// Return whole index of hubbard basis functions.
-    inline sirius::experimental::basis_functions_index const& indexb_hub() const
+    inline auto const& indexb_hub() const
     {
         return indexb_hub_;
     }
 
-    inline Spline<double> const& hubbard_radial_function(int i) const
+    inline auto const& hubbard_radial_function(int i) const
     {
         return lo_descriptors_hub_[i].f();
     }
@@ -1074,7 +1068,59 @@ class Atom_type
     {
         return lo_descriptors_hub_;
     }
-    /// update internal information
+
+    inline int lmax_apw() const
+    {
+        if (this->lmax_apw_ == -1) {
+            return parameters_.cfg().parameters().lmax_apw();
+        } else {
+            return this->lmax_apw_;
+        }
+    }
+
+    inline int lmmax_apw() const
+    {
+        return utils::lmmax(this->lmax_apw());
+    }
+
+    inline int lmax_lo() const
+    {
+        int lmax{-1};
+        for (auto& e: lo_descriptors_) {
+            lmax = std::max(lmax, e.l);
+        }
+        return lmax;
+    }
+
+    /// Return maximum orbital quantum number for the atomic wave-functions.
+    inline int lmax_ps_atomic_wf() const
+    {
+        int lmax{-1};
+        for (auto& e: ps_atomic_wfs_) {
+            auto l = e.am.l();
+            lmax = std::max(lmax, l);
+        }
+        return lmax;
+    }
+
+    /// Maximum orbital quantum number between all beta-projector radial functions.
+    inline int lmax_beta() const
+    {
+        int lmax{-1};
+
+        /* need to take |l| since the total angular momentum is encoded in the sign of l */
+        for (auto& e: beta_radial_functions_) {
+            lmax = std::max(lmax, std::abs(e.first));
+        }
+        return lmax;
+    }
+
+    auto const& gaunt_coefs() const
+    {
+        return *gaunt_coefs_;
+    }
+
+    /// Update internal information.
     inline void update()
     {
         read_hubbard_input();

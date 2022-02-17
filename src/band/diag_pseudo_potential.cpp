@@ -194,7 +194,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
 
     if (gen_solver.solve(kp.num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
-        s << "error in full diagonalziation";
+        s << "error in full diagonalization";
         TERMINATE(s);
     }
 
@@ -215,28 +215,18 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 
     auto& itso = ctx_.cfg().iterative_solver();
 
-    double iterative_solver_tolerance = 1e-12;
-
-    /* true if this is a non-collinear case */
-    const bool nc_mag = (ctx_.num_mag_dims() == 3);
+    /* for overlap matrix we do non-magnetic or non-collinear diagonalization */
+    const int num_mag_dims = (ctx_.num_mag_dims() == 3) ? 3 : 0;
 
     /* number of spin components, treated simultaneously
-     *   1 - in case of non-magnetic or collinear calculation
+     *   1 - in case of non-magnetic
      *   2 - in case of non-collinear calculation
      */
-    const int num_sc = nc_mag ? 2 : 1;
+    const int num_sc = (num_mag_dims == 3) ? 2 : 1;
 
     /* number of eigen-vectors to find */
-    const int nevec = 1;
+    const int nevec{1};
 
-    /* maximum subspace size */
-    int num_phi = itso.subspace_size() * nevec;
-
-    if (num_phi > kp.num_gkvec()) {
-        std::stringstream s;
-        s << "subspace size is too large!";
-        TERMINATE(s);
-    }
     /* alias for memory pool */
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
@@ -277,188 +267,14 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
         }
     }
 
-    /* auxiliary wave-functions */
-    Wave_functions<real_type<T>> phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
+    auto result = davidson<T, T, davidson_evp_t::overlap>(Hk__, nevec, num_mag_dims, psi,
+            [](int i, int ispn){ return 1e-10; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
+            10, itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
 
-    /* S operator, applied to auxiliary wave-functions */
-    Wave_functions<real_type<T>> sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
-
-    /* S operator, applied to new Psi wave-functions */
-    Wave_functions<real_type<T>> spsi(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
-
-    /* residuals */
-    Wave_functions<real_type<T>> res(mp, kp.gkvec_partition(), nevec, ctx_.preferred_memory_t(), num_sc);
-
-    const int bs = ctx_.cyclic_block_size();
-
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
-    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
-
-    if (is_device_memory(ctx_.aux_preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.pw_coeffs(ispn).allocate(mpd);
-        }
+    sddk::mdarray<real_type<T>, 1> eval(nevec);
+    for (int i = 0; i < nevec; i++) {
+        eval(i) = result.eval(i, 0);
     }
-
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            psi.pw_coeffs(ispn).allocate(mpd);
-            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, nevec);
-        }
-
-        for (int i = 0; i < num_sc; i++) {
-            res.pw_coeffs(i).allocate(mpd);
-            sphi.pw_coeffs(i).allocate(mpd);
-            spsi.pw_coeffs(i).allocate(mpd);
-        }
-
-        if (ctx_.blacs_grid().comm().size() == 1) {
-            evec.allocate(mpd);
-            ovlp.allocate(mpd);
-        }
-    }
-
-    /* allocate memory for the hubbard orbitals on device */
-    Hk__.kp().copy_hubbard_orbitals_on_device();
-
-    auto o_diag = Hk__.template get_h_o_diag_pw<T, 2>().second;
-
-    mdarray<real_type<T>, 2> o_diag1(kp.num_gkvec_loc(), num_sc);
-    for (int ispn = 0; ispn < num_sc; ispn++) {
-        for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
-            o_diag1(ig, ispn) = 1.0;
-        }
-    }
-    if (ctx_.processing_unit() == device_t::GPU) {
-        o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
-    }
-
-    auto& std_solver = ctx_.std_evp_solver();
-
-    for (int ispn = 0; ispn < num_sc; ispn++) {
-        /* trial basis functions */
-        phi.copy_from(psi, nevec, ispn, 0, ispn, 0);
-    }
-
-    /* current subspace size */
-    int N{0};
-
-    /* number of newly added basis functions */
-    int n = nevec;
-
-    mdarray<real_type<T>, 1> eval(nevec);
-    mdarray<real_type<T>, 1> eval_old(nevec);
-    eval_old = [](){return 1e10;};
-
-    /* tolerance for the norm of L2-norms of the residuals, used for
-     * relative convergence criterion. We can only compute this after
-     * we have the first residual norms available */
-    double relative_frobenius_tolerance{0};
-    double current_frobenius_norm{0};
-
-    for (int k = 0; k < itso.num_steps(); k++) {
-
-        /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
-
-        orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(),
-                         spin_range(nc_mag ? 2 : 0), phi, sphi, N, n, ovlp, res);
-
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
-        set_subspace_mtrx<T, T>(N, n, 0, phi, sphi, ovlp, &ovlp_old);
-        if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
-            ovlp.serialize("<i|S|j> subspace matrix", N + n);
-        }
-
-        /* increase size of the variation space */
-        N += n;
-
-        eval >> eval_old;
-
-        /* solve standard eigen-value problem with the size N */
-        if (std_solver.solve(N, nevec, ovlp, &eval[0], evec)) {
-            std::stringstream s;
-            s << "error in diagonalziation";
-            TERMINATE(s);
-        }
-
-        kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
-        for (int i = 0; i < nevec; i++) {
-            kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
-        }
-
-        /* don't compute residuals on last iteration */
-        if (k != itso.num_steps() - 1) {
-            if (ctx_.processing_unit() == device_t::GPU) {
-                o_diag.allocate(memory_t::device).copy_to(memory_t::device);
-                o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
-            }
-
-            /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(nc_mag ? 2 : 0),
-                                     N, nevec, 0, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
-                                     itso.converge_by_energy(), itso.residual_tolerance(),
-                                     [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
-            n = result.unconverged_residuals;
-            current_frobenius_norm = result.frobenius_norm;
-
-            /* set the relative tolerance convergence criterion */
-            if (k == 0) {
-                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance();
-            }
-        }
-
-        /* verify convergence criteria */
-        bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
-        bool converged_by_absolute_tol = n <= itso.min_num_res();
-        bool converged = converged_by_absolute_tol || converged_by_relative_tol;
-
-        /* check if running out of space */
-        bool should_restart = N + n > num_phi;
-
-        bool last_iteration = k == (itso.num_steps() - 1);
-
-        /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (should_restart || converged || last_iteration) {
-            /* recompute wave-functions */
-            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform<T, T>(ctx_.spla_context(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
-
-            /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (converged || last_iteration) {
-                break;
-            } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
-
-                if (itso.converge_by_energy()) {
-                    transform<T, T>(ctx_.spla_context(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);
-                }
-
-                ovlp_old.zero();
-                for (int i = 0; i < nevec; i++) {
-                    ovlp_old.set(i, i, eval[i]);
-                }
-                /* update basis functions */
-                for (int ispn = 0; ispn < num_sc; ispn++) {
-                    phi.copy_from(ctx_.processing_unit(), nevec, psi, ispn, 0, ispn, 0);
-                    sphi.copy_from(ctx_.processing_unit(), nevec, spsi, ispn, 0, ispn, 0);
-                }
-                /* number of basis functions that we already have */
-                N = nevec;
-            }
-        }
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            /* expand variational subspace with new basis vectors obtatined from residuals */
-            phi.copy_from(ctx_.processing_unit(), n, res, ispn, 0, ispn, N);
-        }
-    }
-
-    Hk__.kp().release_hubbard_orbitals_on_device();
 
     return eval;
 }

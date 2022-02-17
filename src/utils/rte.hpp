@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <sstream>
+#include <ostream>
 #include <vector>
 #include <iostream>
 
@@ -44,6 +45,47 @@ inline void throw_impl(const char* func__, const char* file__, int line__, std::
 {\
     ::rte::throw_impl(__func__, __FILE__, __LINE__, __VA_ARGS__);\
 }
+
+#ifdef NDEBUG
+#define RTE_ASSERT(condition__)
+#else
+#define RTE_ASSERT(condition__)                                  \
+{                                                                \
+    if (!(condition__)) {                                        \
+        std::stringstream _s;                                    \
+        _s << "Assertion (" <<  #condition__ << ") failed "      \
+           << "at line " << __LINE__ << " of file " << __FILE__; \
+        RTE_THROW(_s);                                           \
+    }                                                            \
+}
+#endif
+
+class rte_ostream : public std::ostringstream
+{
+  private:
+    std::ostream& out_;
+    std::string prefix_;
+  public:
+    rte_ostream(std::ostream& out__, std::string prefix__)
+        : out_(out__)
+        , prefix_(prefix__)
+    {
+    }
+    ~rte_ostream()
+    {
+        auto strings = rte::split(this->str());
+        for (size_t i = 0; i < strings.size(); i++) {
+            if (!(i == strings.size() - 1 && strings[i].size() == 0)) {
+                out_ << "[" << prefix_ << "] " << strings[i];
+            }
+            if (i != strings.size() - 1) {
+                out_ << std::endl;
+            }
+        }
+    }
+};
+
+#define RTE_OUT(_out) rte::rte_ostream(_out, __func__)
 
 }
 

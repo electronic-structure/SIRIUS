@@ -58,7 +58,7 @@ def parse_header(upf_dict, upf_str):
     s = upf.readline().split()
     upf_dict['header']['core_correction'] = (s[0][0] == 'T' or s[0][0] == 't') or 0
 
-    s = upf.readline();
+    s = upf.readline()
     #upf_dict["header"]["dft"] = s[:20]
 
     s = upf.readline().split()
@@ -91,7 +91,7 @@ def parse_header(upf_dict, upf_str):
     #    upf_dict["header"]["wavefunctions"][i]["lchi"] = int(s[1])
     #    upf_dict["header"]["wavefunctions"][i]["oc"] = float(s[2])
 
-    upf.close();
+    upf.close()
 
 #
 # QE subroutine read_pseudo_mesh
@@ -343,8 +343,8 @@ def parse_non_local(upf_dict, upf_str):
                             if x < R_inner[l]:
                                 qij_fixed[ir] = q_coefs[0 + l * num_q_coef]
                                 for n in range(1, num_q_coef):
-                                    qij_fixed[ir] += q_coefs[n + l * num_q_coef] * x2**n;
-                                qij_fixed[ir] *= x**(l + 2);
+                                    qij_fixed[ir] += q_coefs[n + l * num_q_coef] * x2**n
+                                qij_fixed[ir] *= x**(l + 2)
 
                         qij_dict = {}
                         qij_dict['radial_function'] = qij_fixed

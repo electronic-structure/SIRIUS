@@ -72,15 +72,19 @@ Atom_type::init(int offset_lo__)
 
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
-            init_aw_descriptors(parameters_.lmax_apw());
+            init_aw_descriptors();
         }
 
-        if (static_cast<int>(aw_descriptors_.size()) != (parameters_.lmax_apw() + 1)) {
-            RTE_THROW("wrong size of augmented wave descriptors");
+        if (static_cast<int>(aw_descriptors_.size()) != (this->lmax_apw() + 1)) {
+            std::stringstream s;
+            s << "wrong size of augmented wave descriptors" << std::endl
+              << "  aw_descriptors_.size() = " << aw_descriptors_.size() << std::endl
+              << "  lmax_apw = " << this->lmax_apw() << std::endl;
+            RTE_THROW(s);
         }
 
         max_aw_order_ = 0;
-        for (int l = 0; l <= parameters_.lmax_apw(); l++) {
+        for (int l = 0; l <= this->lmax_apw(); l++) {
             max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
         }
 
@@ -205,6 +209,14 @@ Atom_type::init(int offset_lo__)
             free_atom_density_[i] = std::exp(-x) * zn_ / 8 / pi;
         }
     }
+
+    if (parameters_.full_potential()) {
+        using gc_z   = Gaunt_coefficients<double_complex>;
+        gaunt_coefs_ = std::make_unique<gc_z>(std::max(this->lmax_apw(), this->lmax_lo()),
+                                              std::max(parameters_.lmax_rho(), parameters_.lmax_pot()),
+                                              std::max(this->lmax_apw(), this->lmax_lo()), SHT::gaunt_hybrid);
+    }
+
     initialized_ = true;
 }
 
@@ -309,6 +321,7 @@ Atom_type::print_info() const
     std::printf("total number of basis functions  : %i\n", indexb().size());
     std::printf("number of aw basis functions     : %i\n", indexb().size_aw());
     std::printf("number of lo basis functions     : %i\n", indexb().size_lo());
+    std::printf("lmax_apw                         : %i\n", this->lmax_apw());
     if (!parameters_.full_potential()) {
         std::printf("lmax of beta-projectors          : %i\n", this->lmax_beta());
         std::printf("number of ps wavefunctions       : %i\n", static_cast<int>(this->indexr_wfs().size()));
@@ -658,13 +671,14 @@ Atom_type::read_input(std::string const& str__)
     }
 
     if (parameters_.full_potential()) {
-        name_     = parser["name"].get<std::string>();
-        symbol_   = parser["symbol"].get<std::string>();
-        mass_     = parser["mass"].get<double>();
-        zn_       = parser["number"].get<int>();
-        double r0 = parser["rmin"].get<double>();
-        double R  = parser["rmt"].get<double>();
-        int nmtp  = parser["nrmt"].get<int>();
+        name_           = parser["name"].get<std::string>();
+        symbol_         = parser["symbol"].get<std::string>();
+        mass_           = parser["mass"].get<double>();
+        zn_             = parser["number"].get<int>();
+        double r0       = parser["rmin"].get<double>();
+        double R        = parser["rmt"].get<double>();
+        int nmtp        = parser["nrmt"].get<int>();
+        this->lmax_apw_ = parser.value("lmax_apw", this->lmax_apw_);
 
         auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
 

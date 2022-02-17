@@ -277,9 +277,8 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
             if (what & 1) {
                 h_diag[kp_.num_gkvec_loc() + nlo + ilo] =
-                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(
-                            idxrf_lo, idxrf_lo, H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm_lo))
-                        .real();
+                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
+                        type.gaunt_coefs().gaunt_vector(lm_lo, lm_lo)).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
@@ -550,8 +549,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(
-                idxrf, idxrf1, H0_.potential().gaunt_coefs().gaunt_vector(lm1, lm));
+            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf, idxrf1,
+                type.gaunt_coefs().gaunt_vector(lm1, lm));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_row(); igkloc++) {
@@ -592,8 +591,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(
-                idxrf1, idxrf, H0_.potential().gaunt_coefs().gaunt_vector(lm, lm1));
+            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf,
+                type.gaunt_coefs().gaunt_vector(lm, lm1));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp().num_gkvec_col(); igkloc++) {
@@ -644,8 +643,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(dmatrix<std::complex<T>>& h__, dmatrix<std::c
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
 
                 h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
-                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(
-                        idxrf1, idxrf2, H0_.potential().gaunt_coefs().gaunt_vector(lm1, lm2));
+                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
+                        atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
 
                 if (lm1 == lm2) {
                     int l      = kp.lo_basis_descriptor_row(irow).l;
@@ -874,6 +873,18 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     // if (ctx.control().print_checksum_) {
     //     phi__.print_checksum(pu, "phi", N__, n__);
     // }
+
+    auto pp_raw = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+
+    int pp = (pp_raw == nullptr) ? 0 : *pp_raw;
+
+    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
+    double ngop{8e-9}; // default value for complex type
+    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
+        ngop = 2e-9;
+    }
+    double gflops{0};
+    double time{0};
 
     if (!apw_only__) {
         if (hphi__ != nullptr) {
@@ -1112,6 +1123,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             }
         }
 
+        PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
         if (hphi__ != nullptr) {
             kp().comm().allreduce(halm_phi.at(memory_t::host), num_mt_aw * n__);
             if (pu == device_t::GPU) {
@@ -1125,6 +1137,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
                 alm_phi.copy_to(memory_t::device);
             }
         }
+        PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
     };
 
     auto compute_apw_apw = [&](matrix<std::complex<T>>& alm_phi, matrix<std::complex<T>>& halm_phi, int num_mt_aw) {
@@ -1217,7 +1230,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
                     for (int xi = 0; xi < naw; xi++) {
                         int lm_aw    = type.indexb(xi).lm;
                         int idxrf_aw = type.indexb(xi).idxrf;
-                        auto& gc     = H0_.potential().gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
+                        auto& gc     = atom.type().gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
                         hmt(xi, ilo) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
                     }
                 }
@@ -1299,7 +1312,24 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         matrix<std::complex<T>> alm_phi;
         matrix<std::complex<T>> halm_phi;
 
+        utils::time_point_t t0;
+        if (pp) {
+            t0 = utils::time_now();
+        }
         compute_alm_phi(alm_phi, halm_phi, num_mt_aw);
+        if (pp) {
+            if (hphi__) {
+                gflops += ngop * num_mt_aw * n__ * ngv;
+            }
+            if (ophi__) {
+                gflops += ngop * num_mt_aw * n__ * ngv;
+            }
+            time += utils::time_interval(t0);
+        }
+        //if (pp && kp().comm().rank() == 0) {
+        //    RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time
+        //                       << ", GFlop/s [m,n,k]=[" << num_mt_aw << ", " << n__ << ", " << ngv << "]" << std::endl;
+        //}
 
         if (!phi_is_lo__) {
             compute_apw_apw(alm_phi, halm_phi, num_mt_aw);
@@ -1350,7 +1380,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
                                 }
                             }
                             if (hphi__ != nullptr) {
-                                auto& gc = H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm1);
+                                auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
                                 for (int i = 0; i < n__; i++) {
                                     hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
                                         phi_lo_block(offsets_lo[ialoc] + jlo, i) *
@@ -1382,10 +1412,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
                                     for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
                                         int lm_aw    = type.indexb(xi).lm;
                                         int idxrf_aw = type.indexb(xi).idxrf;
-                                        auto& gc     = H0_.potential().gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
-                                        z += static_cast<std::complex<T>>(
-                                                 atom.template radial_integrals_sum_L3<spin_block_t::nm>(
-                                                     idxrf_lo, idxrf_aw, gc)) *
+                                        auto& gc     = type.gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
+                                        z += static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc)) *
                                              alm_phi(offsets_aw[ialoc] + xi, i);
                                     }
                                     /* lo-APW contribution to hphi */
@@ -1408,6 +1436,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         if (ophi__ != nullptr) {
             ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
+    }
+    if (pp && kp().comm().rank() == 0) {
+        RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
     }
     // if (ctx.control().print_checksum_) {
     //     if (hphi__) {

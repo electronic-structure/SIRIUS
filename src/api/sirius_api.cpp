@@ -33,6 +33,7 @@
 #include "nlcglib/nlcglib.hpp"
 #endif
 #include "symmetry/crystal_symmetry.hpp"
+#include "band/davidson.hpp"
 
 struct sirius_context_handler_t
 {
@@ -764,13 +765,13 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             if (lmax_apw__ != nullptr) {
-                sim_ctx.set_lmax_apw(*lmax_apw__);
+                sim_ctx.lmax_apw(*lmax_apw__);
             }
             if (lmax_rho__ != nullptr) {
-                sim_ctx.set_lmax_rho(*lmax_rho__);
+                sim_ctx.lmax_rho(*lmax_rho__);
             }
             if (lmax_pot__ != nullptr) {
-                sim_ctx.set_lmax_pot(*lmax_pot__);
+                sim_ctx.lmax_pot(*lmax_pot__);
             }
             if (num_fv_states__ != nullptr) {
                 sim_ctx.num_fv_states(*num_fv_states__);
@@ -976,7 +977,7 @@ sirius_get_parameters(void* const* handler__, int* lmax_apw__, int* lmax_rho__, 
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             if (lmax_apw__) {
-                *lmax_apw__ = sim_ctx.lmax_apw();
+                *lmax_apw__ = sim_ctx.unit_cell().lmax_apw();
             }
             if (lmax_rho__) {
                 *lmax_rho__ = sim_ctx.lmax_rho();
@@ -1238,7 +1239,8 @@ sirius_print_info(void* const* handler__, int* error_code__)
 /*
 @api begin
 sirius_free_object_handler:
-  doc: Free any handler of object created by SIRIUS.
+  doc: Free any object handler created by SIRIUS.
+  full_doc: This is an internal function. Use sirius_free_handler() in your code.
   arguments:
     handler:
       type: void*
@@ -1781,7 +1783,8 @@ sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
 /*
 @api begin
 sirius_find_ground_state_robust:
-  doc: Find the ground state using the robust
+  doc: Find the ground state using the robust wave-function optimisation method.
+  full_doc: The code has to be compiled with NLCG library in order to enable this feature.
   arguments:
     gs_handler:
       type: gs_handler
@@ -4442,14 +4445,10 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             }
 
             if (*deriv_order__ == 0) {
-                for (int ir = 0; ir < atom.num_mt_points(); ir++) {
-                    atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
-                }
+                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + atom.num_mt_points()));
             } else {
-                for (int ir = 0; ir < atom.num_mt_points(); ir++) {
-                    atom.symmetry_class().radial_function_derivative(ir, idxrf) =
-                        f__[ir] * atom.type().radial_grid()[ir];
-                }
+                atom.symmetry_class().radial_function_derivative(idxrf,
+                        std::vector<double>(f__, f__ + atom.num_mt_points()));
             }
             if (l__ != nullptr && o__ != nullptr) {
                 int n = atom.num_mt_points();
@@ -5712,8 +5711,6 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
         error_code__);
 }
 
-// Hubbard U+V functions
-
 /*
 @api begin
 sirius_add_hubbard_atom_pair:
@@ -5813,4 +5810,210 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
         }
         , error_code__);
 }
+
+/*
+@api begin
+sirius_linear_solver:
+  doc: Interface to linear solver.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT ground staate handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point in lattice coordinates
+    vkq:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K+q-point in lattice coordinates
+    num_gvec_k_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors for k-point
+    gvec_k_loc:
+      type: int
+      attr: in, required, dimension(3, num_gvec_k_loc)
+      doc: Local list of G-vectors for k-point.
+    num_gvec_kq_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors for k+q-point
+    gvec_kq_loc:
+      type: int
+      attr: in, required, dimension(3, num_gvec_kq_loc)
+      doc: Local list of G-vectors for k+q-point.
+    dpsi:
+      type: complex
+      attr: inout, required, dimension(ld, num_spin_comp, *)
+      doc: Left-hand side of the linear equation.
+    dvpsi:
+      type: complex
+      attr: inout, required, dimension(ld, num_spin_comp, *)
+      doc: Right-hand side of the linear equation.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of dpsi and dvpsi.
+    num_spin_comp:
+      type: int
+      attr: in, required
+      doc: Number of spin components.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_linear_solver(void* const* handler__, double const* vk__, double const* vkq__, int const* num_gvec_k_loc__,
+        int const* gvec_k_loc__, int const* num_gvec_kq_loc__, int const* gvec_kq_loc__,
+        std::complex<double>* dpsi__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
+        int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            std::cout << "checking G+k and G+k+q vectors" << std::endl;
+
+            vector3d<double> vk(vk__);
+            vector3d<double> vkq(vkq__);
+
+            auto& gs = get_gs(handler__);
+            auto& sctx = gs.ctx();
+
+            Gvec gvk(vk, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+            Gvec gvkq(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+
+            int num_gvec_k_loc = *num_gvec_k_loc__;
+            int num_gvec_k = num_gvec_k_loc;
+            sctx.comm_k().allreduce(&num_gvec_k, 1);
+
+            if (num_gvec_k != gvk.num_gvec()) {
+                RTE_THROW("wrong number of G+k vectors");
+            }
+
+            sddk::mdarray<int, 2> gvec_k_loc(const_cast<int*>(gvec_k_loc__), 3, num_gvec_k_loc);
+
+            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k_loc(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found");
+                }
+            }
+
+            int num_gvec_kq_loc = *num_gvec_kq_loc__;
+            int num_gvec_kq = num_gvec_kq_loc;
+            sctx.comm_k().allreduce(&num_gvec_kq, 1);
+
+            if (num_gvec_kq != gvkq.num_gvec()) {
+                RTE_THROW("wrong number of G+k vectors for k");
+            }
+
+            sddk::mdarray<int, 2> gvec_kq_loc(const_cast<int*>(gvec_kq_loc__), 3, num_gvec_kq_loc);
+
+            for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
+                auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq_loc(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found for k+q");
+                }
+            }
+
+            sirius::Hamiltonian0<double> H0(gs.potential());
+
+            sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), vk__, 1.0, 0);
+            kp.initialize();
+
+            auto Hk = H0(kp);
+
+            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf());
+
+            auto& itsol = sctx.cfg().iterative_solver();
+
+            auto result = sirius::davidson<std::complex<double>, std::complex<double>, sirius::davidson_evp_t::hamiltonian>(Hk, sctx.num_bands(), sctx.num_mag_dims(),
+                    kp.spinor_wave_functions(), [](int i, int ispn){ return 1e-12; },
+                    itsol.residual_tolerance(), itsol.num_steps(), itsol.locking(), itsol.subspace_size(), itsol.converge_by_energy(),
+                    itsol.extra_ortho(), std::cout, 0);
+
+            for (int i = 0; i < sctx.num_bands(); i++) {
+                std::cout << "band: " << i << ", eval: " << result.eval[i] << std::endl;
+            }
+
+            /* collect local G+k vector sizes across all ranks */
+            block_data_descriptor gk_in_distr(gvk.comm().size());
+            gk_in_distr.counts[gvk.comm().rank()] = num_gvec_k_loc;
+            gvk.comm().allgather(gk_in_distr.counts.data(), 1, gvk.comm().rank());
+            gk_in_distr.calc_offsets();
+
+            /* offset in the incomming G-vector index */
+            int offset = gk_in_distr.offsets[gvk.comm().rank()];
+
+            sddk::mdarray<int, 2> gvec_k(3, gvk.num_gvec());
+            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                for (int x: {0, 1, 2}) {
+                    gvec_k(x, offset + ig) = gvec_k_loc(x, ig);
+                }
+            }
+            gvk.comm().allgather(&gvec_k(0, 0), 3 * num_gvec_k_loc, 3 * offset);
+
+            std::vector<int> igmap(num_gvec_k);
+            for (int ig = 0; ig < num_gvec_k; ig++) {
+                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k(0, ig)));
+                if (i == -1) {
+                    RTE_THROW("index of G-vector is not found");
+                }
+                igmap[i] = ig;
+            }
+
+            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            auto dpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+
+            std::vector<std::complex<double>> tmp(num_gvec_k);
+
+            for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                for (int i = 0; i < sctx.num_bands(); i++) {
+                    /* gather the full wave-function in the order of QE */
+                    for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                        tmp[offset + ig] = dpsi(ig, ispn, i);
+                    }
+                    gvk.comm().allgather(tmp.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    /* copy local part */
+                    for (int ig = 0; ig < gvk.count(); ig++) {
+                        dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp[igmap[ig + gvk.offset()]];
+                    }
+                }
+            }
+
+            /* at this point dpsi_wf should be in the order of SIRIUS.
+             * TODO: how to check the corectness?
+             */
+
+
+        }, error_code__);
+
+}
+
+/*
+@api begin
+sirius_generate_d_operator_matrix:
+  doc: Generate D-operator matrix.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground state handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_generate_d_operator_matrix(void* const* handler__, int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.potential().generate_D_operator_matrix();
+        }, error_code__);
+}
+
 } // extern "C"
