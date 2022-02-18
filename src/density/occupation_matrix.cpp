@@ -136,13 +136,13 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                    relativistic wave functions have different total angular
                    momentum for the same n
                 */
+                int s_idx[2][2] = {{0, 3}, {2, 1}};
                 const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l + 1;
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                        int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
                         for (int mp = 0; mp < lmmax_at; mp++) {
                             for (int m = 0; m < lmmax_at; m++) {
-                                local_[at_lvl](m, mp, s) +=
+                                local_[at_lvl](m, mp, s_idx[s1][s2]) +=
                                     occ_mtrx(r.first * s1 + offset_[at_lvl] + m, r.first * s2 + offset_[at_lvl] + mp);
                             }
                         }
@@ -328,6 +328,7 @@ Occupation_matrix::symmetrize()
                 }
 
                 if (ctx_.num_mag_dims() == 3) {
+                    int s_idx[2][2] = {{0, 3}, {2, 1}};
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
                         for (int m2 = 0; m2 < lmmax_at; m2++) {
 
@@ -335,8 +336,7 @@ Occupation_matrix::symmetrize()
                             double_complex dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                                 for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                                    int s      = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                                    dm[s1][s2] = dm_ia(m1, m2, s);
+                                    dm[s1][s2] = dm_ia(m1, m2, s_idx[s1][s2]);
                                 }
                             }
 
@@ -353,8 +353,7 @@ Occupation_matrix::symmetrize()
 
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                                 for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                                    int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                                    local_[at_lvl](m1, m2, s) += dm1[s1][s2];
+                                    local_[at_lvl](m1, m2, s_idx[s1][s2]) += dm1[s1][s2];
                                 }
                             }
                         }
