@@ -94,7 +94,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
     // available
     // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    sddk::mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
     /* compute the muffin-tin Hamiltonian */
     for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
         int lm2    = type.indexb(j2).lm;

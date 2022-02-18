@@ -264,6 +264,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         int ia = spl_num_atoms[ialoc];
         auto& atom = uc.atom(ia);
         auto& type = atom.type();
+        auto& hmt = H0_.hmt(ia);
         #pragma omp parallel for
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
@@ -272,9 +273,9 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             int idxrf_lo = type.indexb(xi_lo).idxrf;
 
             if (what & 1) {
-                h_diag[kp_.num_gkvec_loc() + nlo + ilo] =
-                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
-                        type.gaunt_coefs().gaunt_vector(lm_lo, lm_lo)).real();
+                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo).real();
+                    //atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
+                    //    type.gaunt_coefs().gaunt_vector(lm_lo, lm_lo)).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
