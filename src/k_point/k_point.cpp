@@ -89,10 +89,10 @@ K_point<T>::initialize()
                 }
             }
             /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
+            fv_eigen_vectors_slab_ = std::make_unique<Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
                 [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-                ctx_.preferred_memory_t()));
+                ctx_.preferred_memory_t());
 
             fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
             fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
@@ -126,8 +126,9 @@ K_point<T>::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<Wave_functions<T>>(
-                    new Wave_functions<T>(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
+                singular_components_ = std::make_unique<Wave_functions<T>>(
+                    gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+
                 singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -149,10 +150,10 @@ K_point<T>::initialize()
                 }
             }
 
-            fv_states_ = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
+            fv_states_ = std::make_unique<Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
                 [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
-                ctx_.preferred_memory_t()));
+                ctx_.preferred_memory_t());
 
             spinor_wave_functions_ = std::make_shared<Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
@@ -167,14 +168,14 @@ K_point<T>::initialize()
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
             auto r                    = unit_cell_.num_hubbard_wf();
-            hubbard_wave_functions_S_ = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins()));
-            hubbard_wave_functions_   = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_    = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins()));
-            atomic_wave_functions_S_  = std::unique_ptr<Wave_functions<T>>(new Wave_functions<T>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins()));
+            hubbard_wave_functions_S_ = std::make_unique<Wave_functions<T>>(
+                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
+            hubbard_wave_functions_   = std::make_unique<Wave_functions<T>>(
+                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
+            atomic_wave_functions_    = std::make_unique<Wave_functions<T>>(
+                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
+            atomic_wave_functions_S_  = std::make_unique<Wave_functions<T>>(
+                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
         }
     }
 
@@ -244,7 +245,7 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_)) : nullptr;
+    auto q_op = (unit_cell_.augment()) ? std::make_unique<Q_operator<T>>(ctx_) : nullptr;
 
     auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
     phi.prepare(sr, true);
@@ -458,8 +459,8 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    gkvec_partition_ = std::unique_ptr<Gvec_partition>(
-        new Gvec_partition(this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse()));
+    gkvec_partition_ = std::make_unique<Gvec_partition>(
+        this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     gkvec_offset_ = gkvec().gvec_offset(comm().rank());
 
@@ -987,7 +988,7 @@ K_point<T>::save(std::string const& name__, int id__) const
     std::unique_ptr<HDF5_tree> fout;
     /* rank 0 opens a file */
     if (comm().rank() == 0) {
-        fout = std::unique_ptr<HDF5_tree>(new HDF5_tree(name__, hdf5_access_t::read_write));
+        fout = std::make_unique<HDF5_tree>(name__, hdf5_access_t::read_write);
     }
 
     /* store wave-functions */
