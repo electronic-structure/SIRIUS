@@ -5714,10 +5714,10 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 /*
 @api begin
 sirius_add_hubbard_atom_pair:
-  doc: add a string value to the option in the json dictionary
+  doc: Add a non-local Hubbard interaction V for a pair of atoms.
   arguments:
     handler:
-      type: void*
+      type: ctx_handler
       attr: in, required
       doc: Simulation context handler.
     atom_pair:
@@ -5755,46 +5755,34 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
             auto& sim_ctx  = get_sim_ctx(handler__);
             auto conf_dict = sim_ctx.cfg().hubbard();
 
-            json elem_;
-            std::vector<int> atom_pair_(2);
+            json elem;
+            std::vector<int> atom_pair(atom_pair__, atom_pair__ + 2);
+            std::vector<int> n(n__, n__ + 2);
+            std::vector<int> l(l__, l__ + 2);
+            std::vector<int> translation(translation__, translation__ + 3);
 
-            for (int s = 0; s < 2; s++)
-                atom_pair_[s] = atom_pair__[s];
+            elem["atom_pair"] = atom_pair;
+            elem["T"]         = translation;
+            elem["n"]         = n;
+            elem["l"]         = l;
+            elem["V"]         = *coupling__;
 
-            std::vector<int> n_(2);
-            for (int s = 0; s < 2; s++)
-                n_[s] = n__[s];
-
-            std::vector<int> l_(2);
-            for (int s = 0; s < 2; s++)
-                l_[s] = l__[s];
-
-            std::vector<int> translation_(3);
-            for (int s = 0; s < 3; s++)
-                translation_[s] = translation__[s];
-
-            elem_["atom_pair"] = atom_pair_;
-            elem_["T"]         = translation_;
-            elem_["n"]         = n_;
-            elem_["l"]         = l_;
-            elem_["V"]         = *coupling__;
-
-            bool test_ = false;
+            bool test{false};
 
             auto v = conf_dict.nonlocal();
 
             for (int idx = 0; idx < v.size(); idx++) {
                 auto v     = conf_dict.nonlocal(idx);
                 auto at_pr = v.atom_pair();
-                // search if the link is already present
-                if ((at_pr[0] == atom_pair_[0]) && (at_pr[1] == atom_pair_[1])) {
+                /* search if the pair is already present */
+                if ((at_pr[0] == atom_pair[0]) && (at_pr[1] == atom_pair[1])) {
                     auto tr = v.T();
-                    if ((tr[0] = translation_[0]) && (tr[1] = translation_[1]) && (tr[2] = translation_[2])) {
-                        auto lvl_ = v.n();
-                        if ((lvl_[0] == n_[0]) && (lvl_[0] == n_[1])) {
-                            auto li_ = v.l();
-                            if ((li_[0] == l__[0]) && (li_[1] == l__[1])) {
-                                test_ = true;
+                    if ((tr[0] = translation[0]) && (tr[1] = translation[1]) && (tr[2] = translation[2])) {
+                        auto lvl = v.n();
+                        if ((lvl[0] == n[0]) && (lvl[0] == n[1])) {
+                            auto li = v.l();
+                            if ((li[0] == l[0]) && (li[1] == l[1])) {
+                                test = true;
                                 break;
                             }
                         }
@@ -5802,10 +5790,10 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
                 }
             }
 
-            if (!test_) {
-                conf_dict.nonlocal().append(elem_);
+            if (!test) {
+                conf_dict.nonlocal().append(elem);
             } else {
-                throw std::runtime_error("[Hubbard V] The atom pair is already present");
+                RTE_THROW("Atom pair for hubbard correction is already present");
             }
         }
         , error_code__);

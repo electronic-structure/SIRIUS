@@ -5651,7 +5651,7 @@ deallocate(processing_unit_c_type)
 end subroutine sirius_nlcg_params
 
 !
-!> @brief add a string value to the option in the json dictionary
+!> @brief Add a non-local Hubbard interaction V for a pair of atoms.
 !> @param [in] handler Simulation context handler.
 !> @param [in] atom_pair atom pair for the V term
 !> @param [in] translation translation vector between the two unit cells containing the atoms
@@ -5663,7 +5663,7 @@ subroutine sirius_add_hubbard_atom_pair(handler,atom_pair,translation,n,l,coupli
 &error_code)
 implicit none
 !
-type(C_PTR), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 integer, target, dimension(2), intent(in) :: atom_pair
 integer, target, dimension(3), intent(in) :: translation
 integer, target, dimension(2), intent(in) :: n
@@ -5695,7 +5695,7 @@ end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
+handler_ptr = C_LOC(handler%handler_ptr_)
 atom_pair_ptr = C_NULL_PTR
 atom_pair_ptr = C_LOC(atom_pair)
 translation_ptr = C_NULL_PTR
