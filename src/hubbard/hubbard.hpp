@@ -31,9 +31,6 @@
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
 #include "SDDK/wave_functions.hpp"
-//#include "wf_inner.hpp"
-//#include "wf_ortho.hpp"
-//#include "wf_trans.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "beta_projectors/beta_projectors_gradient.hpp"
@@ -79,8 +76,6 @@ class Hubbard
   public:
     /// Constructor.
     Hubbard(Simulation_context& ctx__);
-
-    // std::vector<int> offset_; // TODO: make this quick fix into proper solution
 
     void compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>& q_op,
                                          mdarray<std::complex<double>, 5>& dn);
