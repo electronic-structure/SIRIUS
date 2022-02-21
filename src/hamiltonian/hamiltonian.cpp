@@ -32,7 +32,7 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
-Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute__)
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
@@ -47,7 +47,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute__)
         q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
     }
     if (ctx_.full_potential()) {
-        if (precompute__) {
+        if (precompute_lapw__) {
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
             ctx_.unit_cell().generate_radial_functions();

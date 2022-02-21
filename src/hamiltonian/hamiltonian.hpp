@@ -102,7 +102,7 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Potential& potential__, bool precompute__);
+    Hamiltonian0(Potential& potential__, bool precompute_lapw__);
 
     ~Hamiltonian0();
 
