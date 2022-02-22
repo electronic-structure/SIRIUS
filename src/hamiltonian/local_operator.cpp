@@ -814,14 +814,6 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             ophi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-    // if (ctx_->control().print_checksum_) {
-    //    auto cs1 = hphi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    auto cs2 = ophi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    if (phi__.comm().rank() == 0) {
-    //        DUMP("checksum(hphi_pw): %18.10f %18.10f", cs1.real(), cs1.imag());
-    //        DUMP("checksum(ophi_pw): %18.10f %18.10f", cs2.real(), cs2.imag());
-    //    }
-    //}
 }
 
 template <typename T>
