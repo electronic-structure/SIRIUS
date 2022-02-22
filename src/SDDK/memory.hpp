@@ -1505,6 +1505,9 @@ class mdarray
     /// Copy n elements starting from idx0 from one memory type to another.
     inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, stream_id sid = stream_id(-1))
     {
+        if (n__ == 0) {
+            return;
+        }
 #ifdef SIRIUS_GPU
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
