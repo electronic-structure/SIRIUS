@@ -449,7 +449,21 @@ class Wave_functions
 
     void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__);
 
-    void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
+    template <typename OUT>
+    void print_checksum(device_t pu__, std::string label__, int N__, int n__, OUT&& out__) const
+    {
+        for (int ispn = 0; ispn < num_sc(); ispn++) {
+            auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
+            auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
+            if (this->comm().rank() == 0) {
+                out__ << "checksum (" << label__ << "_pw_" << ispn << ") : " << cs1 << std::endl;
+                if (this->has_mt_) {
+                    out__ << "checksum (" << label__ << "_mt_" << ispn << ") : " << cs2 << std::endl;
+                }
+                out__ << "checksum (" << label__ << "_" << ispn << ") : " << cs1 + cs2 << std::endl;
+            }
+        }
+    }
 
     /// Prepare wave-functions on the device.
     void prepare(spin_range spins__, bool with_copy__, memory_pool* mp__ = nullptr)

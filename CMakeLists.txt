@@ -39,7 +39,7 @@ else()
   enable_language(CXX)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # This ensures that -std=c++14 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.

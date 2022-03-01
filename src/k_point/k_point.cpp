@@ -145,7 +145,7 @@ K_point<T>::initialize()
                     }
                 }
                 if (ctx_.cfg().control().print_checksum()) {
-                    singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp);
+                    singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp, RTE_OUT(std::cout));
                 }
             }
 
@@ -219,7 +219,7 @@ K_point<T>::generate_hubbard_orbitals()
                                          ctx_.hubbard_wf_ri(), phi);
 
     if (ctx_.cfg().control().print_checksum()) {
-        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf());
+        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf(), RTE_OUT(std::cout));
     }
 
     if (ctx_.num_spins() == 2) {
@@ -263,8 +263,7 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     if (ctx_.cfg().control().print_checksum()) {
-        s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0,
-                              s_phi.num_wf());
+        s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0, s_phi.num_wf(), RTE_OUT(std::cout));
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
@@ -292,7 +291,8 @@ K_point<T>::generate_hubbard_orbitals()
 
 
     if (ctx_.cfg().control().print_checksum()) {
-        wave_functions_S_hub_->print_checksum(device_t::CPU, "phi_hub", 0, wave_functions_S_hub_->num_wf());
+        wave_functions_S_hub_->print_checksum(device_t::CPU, "phi_hub", 0, wave_functions_S_hub_->num_wf(),
+                RTE_OUT(std::cout));
     }
 }
 

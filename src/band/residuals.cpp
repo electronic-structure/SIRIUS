@@ -162,7 +162,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
                                     sddk::mdarray<real_type<T>,1>& eval__, sddk::Wave_functions<real_type<T>>& hpsi__,
                                     sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__,
                                     sddk::mdarray<real_type<T>, 2> const& h_diag__, sddk::mdarray<real_type<T>, 2> const& o_diag__,
-                                    real_type<T> norm_tolerance__, sddk::mdarray<real_type<T>, 1> &residual_norms__)
+                                    real_type<T> norm_tolerance__, sddk::mdarray<real_type<T>, 1>& residual_norms__)
 {
     PROFILE("sirius::normalized_preconditioned_residuals");
 
@@ -204,7 +204,8 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     if (std::is_same<T, real_type<T>>::value && res__.comm().rank() == 0 && num_unconverged != 0 && spins__() != 2) {
         if (is_device_memory(res__.preferred_memory_t())) {
 #if defined(SIRIUS_GPU)
-            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), num_unconverged);
+            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device),
+                    res__.pw_coeffs(spins__()).prime().ld(), num_unconverged);
 #endif
         } else {
             for (int i = 0; i < num_unconverged; i++) {
@@ -219,10 +220,11 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
 /// Compute residuals from eigen-vectors.
 template <typename T, typename F>
 residual_result
-residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__, int N__,
-          int num_bands__, int num_locked, sddk::mdarray<real_type<F>, 1>& eval__, sddk::dmatrix<F>& evec__,
-          sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__, sddk::Wave_functions<real_type<T>>& hpsi__,
-          sddk::Wave_functions<real_type<T>>& opsi__, sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<real_type<T>, 2> const& h_diag__,
+residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__,
+          int N__, int num_bands__, int num_locked, sddk::mdarray<real_type<F>, 1>& eval__, sddk::dmatrix<F>& evec__,
+          sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__,
+          sddk::Wave_functions<real_type<T>>& hpsi__, sddk::Wave_functions<real_type<T>>& opsi__,
+          sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<real_type<T>, 2> const& h_diag__,
           sddk::mdarray<real_type<T>, 2> const& o_diag__, bool estimate_eval__, real_type<T> norm_tolerance__,
           std::function<bool(int, int)> is_converged__)
 {

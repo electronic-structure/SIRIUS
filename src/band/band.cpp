@@ -73,7 +73,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
         if (ctx_.print_checksum()) {
             auto cs = mtrx__.checksum(N__ - num_locked, N__ - num_locked);
             if (ctx_.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx_old", cs);
+                utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
             }
         }
     }
@@ -104,7 +104,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked, N__ + n__ - num_locked);
         if (ctx_.comm_band().rank() == 0) {
-            utils::print_checksum("subspace_mtrx", cs);
+            utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
         }
     }
 

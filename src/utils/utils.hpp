@@ -78,6 +78,12 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define STOP() TERMINATE("terminated by request")
 
+template <typename T, typename OUT>
+inline void print_checksum(std::string label__, T cs__, OUT&& out__)
+{
+    out__ << "checksum(" << label__ << ") : " << cs__ << std::endl;
+}
+
 inline void print_checksum(std::string label__, float cs__)
 {
     std::printf("checksum(%s): %18.6f\n", label__.c_str(), cs__);
