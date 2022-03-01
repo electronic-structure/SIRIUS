@@ -108,6 +108,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     sirius::libspg
                                     sirius::hdf5
                                     costa::costa
+                                    sirius::filesystem
                                     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
                                     $<TARGET_NAME_IF_EXISTS:sirius::elpa>
                                     $<TARGET_NAME_IF_EXISTS:sirius::magma>
