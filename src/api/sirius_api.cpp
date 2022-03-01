@@ -4381,6 +4381,7 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             int ia = *ia__ - 1;
 
             auto& atom = sim_ctx.unit_cell().atom(ia);
+            int n = atom.num_mt_points();
 
             if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
                 RTE_THROW("wrong combination of radial function indices");
@@ -4399,13 +4400,15 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             }
 
             if (*deriv_order__ == 0) {
-                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + atom.num_mt_points()));
+                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + n));
             } else {
-                atom.symmetry_class().radial_function_derivative(idxrf,
-                        std::vector<double>(f__, f__ + atom.num_mt_points()));
+                std::vector<double> f(n);
+                for (int ir = 0; ir < n; ir++) {
+                    f[ir] = f__[ir] * atom.type().radial_grid()[ir];
+                }
+                atom.symmetry_class().radial_function_derivative(idxrf, f);
             }
             if (l__ != nullptr && o__ != nullptr) {
-                int n = atom.num_mt_points();
                 atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
             }
         },
