@@ -6,7 +6,6 @@
 #include <ostream>
 #include <vector>
 #include <iostream>
-#include "utils/filesystem.hpp"
 
 namespace rte {
 
@@ -86,7 +85,7 @@ class rte_ostream : public std::ostringstream
     }
 };
 
-#define RTE_OUT(_out) rte::rte_ostream(_out, std::string(__func__) + std::string(":") + std::string(fs::path(__FILE__).filename()) + ":" + std::to_string(__LINE__))
+#define RTE_OUT(_out) rte::rte_ostream(_out, std::string(__func__))
 
 }
 
