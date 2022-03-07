@@ -233,10 +233,6 @@ class Wave_functions
         return (num_sc_ == 1) ? 0 : ispn__;
     }
 
-    /// Compute the sum of squares of expansion coefficients.
-    /** The result is always returned in the host memory */
-    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
-
   public:
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the heap. */
@@ -365,6 +361,10 @@ class Wave_functions
     // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
     void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids);
+
+    /// Compute the sum of squares of expansion coefficients.
+    /** The result is always returned in the host memory */
+    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
 
 
     /// Copy values from another wave-function.
