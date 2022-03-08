@@ -80,7 +80,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
                     }
                 }
                 if (pu == device_t::GPU) {
-                    hmt_[ia].allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device, stream_id(tid));
+                    hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device, stream_id(tid));
                 }
             }
             if (pu == device_t::GPU) {
