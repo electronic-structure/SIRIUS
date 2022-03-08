@@ -872,6 +872,7 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         if (ophi__ != nullptr) {
             /* zero the local-orbital part */
             ophi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
+            ophi__->mt_coeffs(0).zero(mem, N__, n__);
         }
     }
 
@@ -1398,6 +1399,11 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         //}
         if (ophi__ != nullptr) {
             ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
+        }
+    }
+    if (pu == device_t::GPU) {
+        if (ophi__ != nullptr) {
+            ophi__->pw_coeffs(0).copy_to(memory_t::host, N__, n__);
         }
     }
     if (pp && kp().comm().rank() == 0) {
