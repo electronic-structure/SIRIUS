@@ -1,8 +1,6 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "std_evp_solver_name" : "lapack",
-        "gen_evp_solver_name" : "lapack",
         "verbosity" : 2,
         "print_forces" : false,
         "print_stress" : false,
@@ -16,9 +14,9 @@
         "valence_relativity" : "none",
         "core_relativity" : "none",
         "num_fv_states" : 10,
-        "aw_cutoff" : 8,
+        "aw_cutoff" : 5,
         "pw_cutoff" : 20.00,
-        "auto_rmt" : 0,
+        "auto_rmt" : 1,
         "use_symmetry": true,
         "ngridk" : [1,1,1],
         "density_tol" : 1e-7,
@@ -31,16 +29,17 @@
     },
 
     "settings" : {
-        "min_occupancy" : 0
+        "min_occupancy" : 0,
+        "itsol_tol_scale" : [0.1, 0.95]
     },
 
     "iterative_solver" : {
-        "energy_tolerance" : 1e-4,
-        "residual_tolerance" : 1e-5,
-        "num_steps" : 8,
-        "subspace_size" : 8,
+        "energy_tolerance" : 1e-6,
+        "num_steps" : 20,
+        "subspace_size" : 4,
         "type" : "davidson",
-        "converge_by_energy" : 0
+        "locking" : false,
+        "converge_by_energy" : 1
     },
 
     "unit_cell" : {
@@ -51,15 +50,22 @@
                             ],
         "lattice_vectors_scale" : 10,
 
-        "atom_types" : ["He"],
+        "atom_types" : ["H", "O"],
 
         "atom_files" : {
-            "He" : "He.json"
+            "H" : "H.json",
+            "O" : "O.json"
         },
 
+        "atom_coordinate_units" : "A",
+
         "atoms" : {
-            "He" : [
+            "O" : [
                 [0, 0, 0]
+            ],
+            "H" : [
+              [0.758602,  0.000000,  0.504284 ],
+              [0.758602,  0.000000,  -0.504284 ]
             ]
         }
     },

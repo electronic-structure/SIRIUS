@@ -474,22 +474,22 @@ class Unit_cell
         std::copy(equivalent_atoms__, equivalent_atoms__ + num_atoms(), equivalent_atoms_.begin());
     }
 
-    inline splindex<splindex_t::block> const& spl_num_atoms() const
+    inline auto const& spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
 
-    inline int spl_num_atoms(int i) const
+    inline auto spl_num_atoms(int i) const
     {
         return static_cast<int>(spl_num_atoms_[i]);
     }
 
-    inline splindex<splindex_t::block> const& spl_num_atom_symmetry_classes() const
+    inline auto const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
     }
 
-    inline int spl_num_atom_symmetry_classes(int i) const
+    inline auto spl_num_atom_symmetry_classes(int i) const
     {
         return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
     }

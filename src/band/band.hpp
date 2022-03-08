@@ -103,7 +103,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
     template <typename T, typename F>
-    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, bool precompute__, double itsol_tol__) const;
+    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const;
 
     /// Initialize the subspace for the entire k-point set.
     template <typename T>

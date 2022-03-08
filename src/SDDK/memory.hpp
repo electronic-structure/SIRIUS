@@ -842,17 +842,22 @@ class mdarray
     }
 
     /// Return cosnt pointer to an element at a given index.
+    template <bool check_assert = true>
     inline T const* at_idx(memory_t mem__, index_type const idx__) const
     {
         switch (mem__) {
             case memory_t::host:
             case memory_t::host_pinned: {
-                mdarray_assert(raw_ptr_ != nullptr);
+                if (check_assert) {
+                    mdarray_assert(raw_ptr_ != nullptr);
+                }
                 return &raw_ptr_[idx__];
             }
             case memory_t::device: {
 #ifdef SIRIUS_GPU
-                mdarray_assert(raw_ptr_device_ != nullptr);
+                if (check_assert) {
+                    mdarray_assert(raw_ptr_device_ != nullptr);
+                }
                 return &raw_ptr_device_[idx__];
 #else
                 std::printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
@@ -867,9 +872,10 @@ class mdarray
     }
 
     /// Return pointer to an element at a given index.
+    template <bool check_assert = true>
     inline T* at_idx(memory_t mem__, index_type const idx__)
     {
-        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
+        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx<check_assert>(mem__, idx__));
     }
 
     // Call constructor on non-trivial data. Complex numbers are treated as trivial.
@@ -1334,7 +1340,7 @@ class mdarray
     /// Return pointer to the beginning of array.
     inline T const* at(memory_t mem__) const
     {
-        return at_idx(mem__, 0);
+        return at_idx<false>(mem__, 0);
     }
 
     /// Return pointer to the beginning of array.
@@ -1499,6 +1505,9 @@ class mdarray
     /// Copy n elements starting from idx0 from one memory type to another.
     inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, stream_id sid = stream_id(-1))
     {
+        if (n__ == 0) {
+            return;
+        }
 #ifdef SIRIUS_GPU
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);

@@ -264,17 +264,13 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         int ia = spl_num_atoms[ialoc];
         auto& atom = uc.atom(ia);
         auto& type = atom.type();
+        auto& hmt = H0_.hmt(ia);
         #pragma omp parallel for
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
-            /* local orbital indices */
-            int lm_lo = type.indexb(xi_lo).lm;
-            int idxrf_lo = type.indexb(xi_lo).idxrf;
 
             if (what & 1) {
-                h_diag[kp_.num_gkvec_loc() + nlo + ilo] =
-                    atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
-                        type.gaunt_coefs().gaunt_vector(lm_lo, lm_lo)).real();
+                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
@@ -773,7 +769,8 @@ void Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_func
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
+        H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+                kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
     }
 
     t1 += omp_get_wtime();
@@ -846,15 +843,14 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
 
     auto& ctx = H0_.ctx();
 
-    /* quick hack: apply O using CPU; GPU is buggy */
-    auto pu = (hphi__) ? ctx.processing_unit() : device_t::CPU;
+    auto pu = ctx.processing_unit();
 
     auto la  = (pu == device_t::CPU) ? linalg_t::blas : linalg_t::gpublas;
     auto mem = (pu == device_t::CPU) ? memory_t::host : memory_t::device;
 
-    // if (ctx.control().print_checksum_) {
-    //     phi__.print_checksum(pu, "phi", N__, n__);
-    // }
+    if (ctx.cfg().control().print_checksum()) {
+        phi__.print_checksum(pu, "phi", N__, n__, RTE_OUT(std::cout));
+    }
 
     auto pp_raw = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
 
@@ -871,47 +867,12 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
     if (!apw_only__) {
         if (hphi__ != nullptr) {
             /* zero the local-orbital part */
-            hphi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
+            hphi__->mt_coeffs(0).zero(mem, N__, n__);
         }
         if (ophi__ != nullptr) {
             /* zero the local-orbital part */
             ophi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
-        }
-    }
-
-    if (!phi_is_lo__) {
-        /* interstitial part */
-        H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
-
-        // if (ctx.control().print_checksum_) {
-        //     if (hphi__) {
-        //         hphi__->print_checksum(pu, "hloc_phi", N__, n__);
-        //     }
-        //     if (ophi__) {
-        //         ophi__->print_checksum(pu, "oloc_phi", N__, n__);
-        //     }
-        // }
-    } else {
-        /* zero the APW part */
-        switch (pu) {
-            case device_t::CPU: {
-                if (hphi__ != nullptr) {
-                    hphi__->pw_coeffs(0).zero(memory_t::host, N__, n__);
-                }
-                if (ophi__ != nullptr) {
-                    ophi__->pw_coeffs(0).zero(memory_t::host, N__, n__);
-                }
-                break;
-            }
-            case device_t::GPU: {
-                if (hphi__ != nullptr) {
-                    hphi__->pw_coeffs(0).zero(memory_t::device, N__, n__);
-                }
-                if (ophi__ != nullptr) {
-                    ophi__->pw_coeffs(0).zero(memory_t::device, N__, n__);
-                }
-                break;
-            }
+            ophi__->mt_coeffs(0).zero(mem, N__, n__);
         }
     }
 
@@ -919,513 +880,543 @@ void Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, 
         phi__.mt_coeffs(0).copy_to(memory_t::host, N__, n__);
     }
 
+    if (!phi_is_lo__) {
+        /* interstitial part */
+        H0_.local_op().apply_h_o(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+                kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+
+        if (ctx.cfg().control().print_checksum()) {
+            if (hphi__) {
+                hphi__->print_checksum(pu, "hloc_phi", N__, n__, RTE_OUT(std::cout));
+            }
+            if (ophi__) {
+                ophi__->print_checksum(pu, "oloc_phi", N__, n__, RTE_OUT(std::cout));
+            }
+        }
+    } else {
+        /* zero the APW part */
+        if (hphi__ != nullptr) {
+            hphi__->pw_coeffs(0).zero(mem, N__, n__);
+        }
+        if (ophi__ != nullptr) {
+            ophi__->pw_coeffs(0).zero(mem, N__, n__);
+        }
+    }
+
     /* short name for local number of G+k vectors */
     int ngv = kp().num_gkvec_loc();
 
     /* split atoms in blocks */
-    int num_atoms_in_block = 2 * omp_get_max_threads();
+    auto spl = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
 
     /* number of blocks of atoms */
-    int nblk = utils::num_blocks(ctx.unit_cell().num_atoms(), num_atoms_in_block);
+    int nblk = spl.first;
+    int num_atoms_in_block = spl.second;
 
-    /* maximum number of AW radial functions in a block of atoms */
-    int max_mt_aw = num_atoms_in_block * ctx.unit_cell().max_mt_aw_basis_size();
+    auto& comm = kp().comm();
 
-    /* maximum number of LO radial functions in a block of atoms */
-    int max_mt_lo = num_atoms_in_block * ctx.unit_cell().max_mt_lo_basis_size();
-
-    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
-
-    /* matching coefficients for a block of atoms */
-    matrix<std::complex<T>> alm_block;
-    matrix<std::complex<T>> halm_block;
-
-    switch (pu) {
-        case device_t::CPU: {
-            alm_block  = matrix<std::complex<T>>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host));
-            halm_block = matrix<std::complex<T>>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host));
-            break;
-        }
-        case device_t::GPU: {
-            alm_block = matrix<std::complex<T>>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host_pinned));
-            alm_block.allocate(ctx.mem_pool(memory_t::device));
-            halm_block =
-                matrix<std::complex<T>>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host_pinned));
-            halm_block.allocate(ctx.mem_pool(memory_t::device));
-            break;
-        }
-    }
-    size_t sz = max_mt_aw * n__;
-    /* buffers for alm_phi and halm_phi */
-    mdarray<std::complex<T>, 1> alm_phi_buf;
-    if (ophi__ != nullptr) {
-        switch (pu) {
-            case device_t::CPU: {
-                alm_phi_buf = mdarray<std::complex<T>, 1>(sz, ctx.mem_pool(memory_t::host));
-                break;
-            }
-            case device_t::GPU: {
-                alm_phi_buf = mdarray<std::complex<T>, 1>(sz, ctx.mem_pool(memory_t::host_pinned));
-                alm_phi_buf.allocate(ctx.mem_pool(memory_t::device));
-                break;
-            }
-        }
-    }
-    mdarray<std::complex<T>, 1> halm_phi_buf;
-    if (hphi__ != nullptr) {
-        switch (pu) {
-            case device_t::CPU: {
-                halm_phi_buf = mdarray<std::complex<T>, 1>(sz, ctx.mem_pool(memory_t::host));
-                break;
-            }
-            case device_t::GPU: {
-                size_t sz    = max_mt_aw * n__;
-                halm_phi_buf = mdarray<std::complex<T>, 1>(sz, ctx.mem_pool(memory_t::host_pinned));
-                halm_phi_buf.allocate(ctx.mem_pool(memory_t::device));
-                break;
-            }
-        }
-    }
-    PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
-
-    /* generate matching coefficients Alm(G+k) for a block of atoms */
-    auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw) {
+    /* generate Alm coefficients for the block of atoms */
+    auto generate_alm = [&ctx, &ngv, pu, this](int atom_begin, int na, int mt_size, std::vector<int> offsets_aw)
+    {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
+
+        sddk::mdarray<std::complex<T>, 2> alm;
+        switch (pu) {
+            case device_t::CPU: {
+                alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(memory_t::host), "alm");
+                break;
+            }
+            case device_t::GPU: {
+                alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(memory_t::host_pinned), "alm");
+                alm.allocate(ctx.mem_pool(memory_t::device));
+                break;
+            }
+        }
+
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
-            for (int ia = atom_begin; ia < atom_end; ia++) {
-                if (ia % omp_get_num_threads() == tid) {
-                    int ialoc  = ia - atom_begin;
-                    auto& atom = ctx.unit_cell().atom(ia);
-                    auto& type = atom.type();
-
-                    /* wrapper for matching coefficients for a given atom */
-                    mdarray<std::complex<T>, 2> alm_tmp;
-                    mdarray<std::complex<T>, 2> halm_tmp;
-                    switch (pu) {
-                        case device_t::CPU: {
-                            alm_tmp = mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                  ngv, type.mt_aw_basis_size());
-                            if (hphi__ != nullptr) {
-                                halm_tmp = mdarray<std::complex<T>, 2>(
-                                    halm_block.at(memory_t::host, 0, offsets_aw[ialoc]), ngv, type.mt_aw_basis_size());
-                            }
-                            break;
-                        }
-                        case device_t::GPU: {
-                            alm_tmp = mdarray<std::complex<T>, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                  alm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
-                                                                  ngv, type.mt_aw_basis_size());
-                            if (hphi__ != nullptr) {
-                                halm_tmp =
-                                    mdarray<std::complex<T>, 2>(halm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
-                                                                halm_block.at(memory_t::device, 0, offsets_aw[ialoc]),
-                                                                ngv, type.mt_aw_basis_size());
-                            }
-                            break;
-                        }
+            #pragma omp for
+            for (int i = 0; i < na; i++) {
+                auto& atom = ctx.unit_cell().atom(atom_begin + i);
+                auto& type = atom.type();
+                /* wrap matching coefficients of a single atom */
+                sddk::mdarray<std::complex<T>, 2> alm_atom;
+                switch (pu) {
+                    case device_t::CPU: {
+                        alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(memory_t::host, 0, offsets_aw[i]),
+                                                                     ngv, type.mt_aw_basis_size(), "alm_atom");
+                        break;
                     }
-
-                    /* generate LAPW matching coefficients on the CPU */
-                    kp().alm_coeffs_loc().template generate<true>(atom, alm_tmp);
-                    if (pu == device_t::GPU) {
-                        alm_tmp.copy_to(memory_t::device, stream_id(tid));
-                    }
-                    if (hphi__ != nullptr) {
-                        H0_.template apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
-                        if (pu == device_t::GPU) {
-                            halm_tmp.copy_to(memory_t::device, stream_id(tid));
-                        }
+                    case device_t::GPU: {
+                        alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(memory_t::host, 0, offsets_aw[i]),
+                                                                     alm.at(memory_t::device, 0, offsets_aw[i]),
+                                                                     ngv, type.mt_aw_basis_size(), "alm_atom");
+                        break;
                     }
                 }
+                /* generate conjugated LAPW matching coefficients on the CPU */
+                kp().alm_coeffs_loc().template generate<true>(atom, alm_atom);
+                if (pu == device_t::GPU) {
+                    alm_atom.copy_to(memory_t::device, stream_id(tid));
+                }
+
             }
             if (pu == device_t::GPU) {
                 acc::sync_stream(stream_id(tid));
             }
         }
+        return alm;
     };
 
-    auto compute_alm_phi = [&](matrix<std::complex<T>>& alm_phi, matrix<std::complex<T>>& halm_phi, int num_mt_aw) {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi");
+    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
-        /* first zgemm: A(G, lm)^{T} * C(G, i) and  hA(G, lm)^{T} * C(G, i) */
-        switch (pu) {
-            case device_t::CPU: {
-                if (ophi__ != nullptr) {
-                    /* create resulting array with proper dimensions from the already allocated chunk of memory */
-                    alm_phi = matrix<std::complex<T>>(alm_phi_buf.at(memory_t::host), num_mt_aw, n__);
-                    /* alm_phi(lm, i) = A(G, lm)^{T} * C(G, i), remember that Alm was conjugated */
-                    linalg(linalg_t::blas)
-                        .gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<std::complex<T>>::one(),
-                              alm_block.at(memory_t::host), alm_block.ld(),
-                              phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
-                              &linalg_const<std::complex<T>>::zero(), alm_phi.at(memory_t::host), alm_phi.ld());
-                }
-                if (hphi__ != nullptr) {
-                    /* create resulting array with proper dimensions from the already allocated chunk of memory */
-                    halm_phi = matrix<std::complex<T>>(halm_phi_buf.at(memory_t::host), num_mt_aw, n__);
-                    /* halm_phi(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-                    linalg(linalg_t::blas)
-                        .gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<std::complex<T>>::one(),
-                              halm_block.at(memory_t::host), halm_block.ld(),
-                              phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
-                              &linalg_const<std::complex<T>>::zero(), halm_phi.at(memory_t::host), halm_phi.ld());
-                }
-                break;
-            }
-            case device_t::GPU: {
-                if (ophi__ != nullptr) {
-                    /* create resulting array with proper dimensions from the already allocated chunk of memory */
-                    alm_phi = matrix<std::complex<T>>(alm_phi_buf.at(memory_t::host), alm_phi_buf.at(memory_t::device),
-                                                      num_mt_aw, n__);
-                    /* alm_phi(lm, i) = A(G, lm)^{T} * C(G, i) */
-                    linalg(linalg_t::gpublas)
-                        .gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<std::complex<T>>::one(),
-                              alm_block.at(memory_t::device), alm_block.ld(),
-                              phi__.pw_coeffs(0).prime().at(memory_t::device, 0, N__), phi__.pw_coeffs(0).prime().ld(),
-                              &linalg_const<std::complex<T>>::zero(), alm_phi.at(memory_t::device), alm_phi.ld());
-                    alm_phi.copy_to(memory_t::host);
-                }
-                if (hphi__ != nullptr) {
-                    /* create resulting array with proper dimensions from the already allocated chunk of memory */
-                    halm_phi = matrix<std::complex<T>>(halm_phi_buf.at(memory_t::host),
-                                                       halm_phi_buf.at(memory_t::device), num_mt_aw, n__);
-                    /* halm_phi(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-                    linalg(linalg_t::gpublas)
-                        .gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<std::complex<T>>::one(),
-                              halm_block.at(memory_t::device), halm_block.ld(),
-                              phi__.pw_coeffs(0).prime().at(memory_t::device, 0, N__), phi__.pw_coeffs(0).prime().ld(),
-                              &linalg_const<std::complex<T>>::zero(), halm_phi.at(memory_t::device), halm_phi.ld());
+    /* block size of scalapack distribution */
+    int bs = ctx.cyclic_block_size();
 
-                    halm_phi.copy_to(memory_t::host);
-                }
-                break;
+    /*
+     * Application of LAPW Hamiltonian splits into four parts:
+     *                                                            n                  n
+     *                               n     +----------------+   +---+   +------+   +---+
+     * +----------------+------+   +---+   |                |   |   |   |      |   |   |
+     * |                |      |   |   |   |                |   |   |   |      | x |lo |
+     * |                |      |   |   |   |                |   |   |   |      |   |   |
+     * |                |      |   |   |   |                |   |   |   |      |   +---+
+     * |                |      |   |   |   |    APW-APW     | x |APW| + |APW-lo|
+     * |     APW-APW    |APW-lo|   |APW|   |                |   |   |   |      |
+     * |                |      |   |   |   |                |   |   |   |      |
+     * |                |      | x |   |   |                |   |   |   |      |
+     * |                |      |   |   |   +----------------+   +---+   +------+
+     * +----------------+------+   +---+ =
+     * |                |      |   |   |   +----------------+   +---+   +------+   +---+
+     * |    lo-APW      |lo-lo |   |lo |   |                |   |   |   |      |   |   |
+     * |                |      |   |   |   |     lo-APW     | x |   | + |lo-lo | x |lo |
+     * +----------------+------+   +---+   |                |   |   |   |      |   |   |
+     *                                     +----------------+   |   |   +------+   +---+
+     *                                                          |APW|
+     *                                                          |   |
+     *                                                          |   |
+     *                                                          |   |
+     *                                                          |   |
+     *                                                          +---+
+     */
+
+    /* Prepare APW-lo contribution for the entire index of APW basis functions. Here we compute the action
+     * of the APW-lo Hamiltonian and overlap on the local-orbital part of wave-functions.
+     *
+     *            n
+     * +------+ +---+
+     * |      | |   |
+     * |      |x|lo |
+     * |      | |   |
+     * |      | +---+
+     * |APW-lo|
+     * |      |
+     * |      |
+     * |      |
+     * +------+
+     */
+    sddk::dmatrix<std::complex<T>> h_apw_lo_phi_lo;
+    sddk::dmatrix<std::complex<T>> o_apw_lo_phi_lo;
+
+    std::vector<int> mt_aw_counts(comm.size(), 0);
+    std::vector<int> mt_lo_counts(comm.size(), 0);
+    std::vector<int> mt_aw_offsets;
+    std::vector<int> mt_lo_offsets;
+
+    if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo-prep");
+
+        mt_aw_offsets = std::vector<int>(phi__.spl_num_atoms().local_size(), 0);
+        mt_lo_offsets = std::vector<int>(phi__.spl_num_atoms().local_size(), 0);
+
+        for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
+            auto& type = ctx.unit_cell().atom(ia).type();
+            auto loc = phi__.spl_num_atoms().location(ia);
+            if (loc.rank == phi__.comm().rank()) {
+                mt_aw_offsets[loc.local_index] = mt_aw_counts[loc.rank];
+                mt_lo_offsets[loc.local_index] = mt_lo_counts[loc.rank];
             }
+            mt_aw_counts[loc.rank] += type.mt_aw_basis_size();
+            mt_lo_counts[loc.rank] += type.mt_lo_basis_size();
         }
 
-        PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
-        if (hphi__ != nullptr) {
-            kp().comm().allreduce(halm_phi.at(memory_t::host), num_mt_aw * n__);
-            if (pu == device_t::GPU) {
-                halm_phi.copy_to(memory_t::device);
-            }
-        }
-
-        if (ophi__ != nullptr) {
-            kp().comm().allreduce(alm_phi.at(memory_t::host), num_mt_aw * n__);
-            if (pu == device_t::GPU) {
-                alm_phi.copy_to(memory_t::device);
-            }
-        }
-        PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi_mpi");
-    };
-
-    auto compute_apw_apw = [&](matrix<std::complex<T>>& alm_phi, matrix<std::complex<T>>& halm_phi, int num_mt_aw) {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
-        auto la = linalg_t::none;
-        auto mt = memory_t::none;
-        switch (pu) {
-            case device_t::CPU: {
-                la = linalg_t::blas;
-                mt = memory_t::host;
-                break;
-            }
-            case device_t::GPU: {
-                la = linalg_t::gpublas;
-                mt = memory_t::device;
-                break;
-            }
-        }
-        /* second zgemm: Alm^{*} (Alm * C) */
-        if (ophi__ != nullptr) {
-            /* APW-APW contribution to overlap */
-            linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<std::complex<T>>::one(), alm_block.at(mt),
-                            alm_block.ld(), alm_phi.at(mt), alm_phi.ld(), &linalg_const<std::complex<T>>::one(),
-                            ophi__->pw_coeffs(0).prime().at(mt, 0, N__), ophi__->pw_coeffs(0).prime().ld());
-        }
-        if (hphi__ != nullptr) {
-            /* APW-APW contribution to Hamiltonian */
-            linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<std::complex<T>>::one(), alm_block.at(mt),
-                            alm_block.ld(), halm_phi.at(mt), halm_phi.ld(), &linalg_const<std::complex<T>>::one(),
-                            hphi__->pw_coeffs(0).prime().at(mt, 0, N__), hphi__->pw_coeffs(0).prime().ld());
-        }
-    };
-
-    auto collect_lo = [&](int atom_begin, int atom_end, std::vector<int>& offsets_lo,
-                          matrix<std::complex<T>>& phi_lo_block) {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|phi_lo");
-        /* broadcast local orbital coefficients */
-        for (int ia = atom_begin; ia < atom_end; ia++) {
-            int ialoc        = ia - atom_begin;
-            auto& atom       = ctx.unit_cell().atom(ia);
-            auto& type       = atom.type();
-            auto ia_location = phi__.spl_num_atoms().location(ia);
-
-            /* lo coefficients for a given atom and all bands */
-            matrix<std::complex<T>> phi_lo_ia(type.mt_lo_basis_size(), n__);
-
-            if (ia_location.rank == kp().comm().rank()) {
-                #pragma omp parallel for schedule(static)
-                for (int i = 0; i < n__; i++) {
-                    std::memcpy(&phi_lo_ia(0, i),
-                                phi__.mt_coeffs(0).prime().at(memory_t::host,
-                                                              phi__.offset_mt_coeffs(ia_location.local_index), N__ + i),
-                                type.mt_lo_basis_size() * sizeof(std::complex<T>));
-                }
-            }
-            /* broadcast from a rank */
-            kp().comm().bcast(phi_lo_ia.at(memory_t::host), static_cast<int>(phi_lo_ia.size()), ia_location.rank);
-            /* wrtite into a proper position in a block */
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < n__; i++) {
-                std::memcpy(&phi_lo_block(offsets_lo[ialoc], i), &phi_lo_ia(0, i),
-                            type.mt_lo_basis_size() * sizeof(std::complex<T>));
-            }
-        } // ia
-
+        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
+            apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
         if (pu == device_t::GPU) {
-            phi_lo_block.copy_to(memory_t::device);
+            apw_lo_phi_lo_slab.allocate(ctx.mem_pool(memory_t::device));
         }
-    };
 
-    auto compute_apw_lo = [&](int atom_begin, int atom_end, int num_mt_lo, std::vector<int>& offsets_aw,
-                              std::vector<int> offsets_lo, matrix<std::complex<T>>& phi_lo_block) {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
-        /* apw-lo block for hphi */
-        if (hphi__ != nullptr) {
-            for (int ia = atom_begin; ia < atom_end; ia++) {
-                int ialoc  = ia - atom_begin;
+        if (hphi__) {
+            h_apw_lo_phi_lo = sddk::dmatrix<std::complex<T>>(ctx.unit_cell().mt_aw_basis_size(), n__,
+                                                             ctx.blacs_grid(), bs, bs);
+            #pragma omp parallel for
+            for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
+                int tid    = omp_get_thread_num();
+                int ia     = phi__.spl_num_atoms()[ialoc];
                 auto& atom = ctx.unit_cell().atom(ia);
                 auto& type = atom.type();
                 int naw    = type.mt_aw_basis_size();
                 int nlo    = type.mt_lo_basis_size();
 
-                matrix<std::complex<T>> hmt(naw, nlo);
-                #pragma omp parallel for schedule(static)
-                for (int ilo = 0; ilo < nlo; ilo++) {
-                    int xi_lo = naw + ilo;
-                    /* local orbital indices */
-                    int lm_lo    = type.indexb(xi_lo).lm;
-                    int idxrf_lo = type.indexb(xi_lo).idxrf;
-                    for (int xi = 0; xi < naw; xi++) {
-                        int lm_aw    = type.indexb(xi).lm;
-                        int idxrf_aw = type.indexb(xi).idxrf;
-                        auto& gc     = atom.type().gaunt_coefs().gaunt_vector(lm_aw, lm_lo);
-                        hmt(xi, ilo) = atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
+                auto& hmt = H0_.hmt(ia);
+
+                linalg(la).gemm('N', 'N', naw, n__, nlo, &linalg_const<std::complex<T>>::one(), hmt.at(mem, 0, naw), hmt.ld(),
+                                phi__.mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
+                                phi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
+                                apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), apw_lo_phi_lo_slab.ld(), stream_id(tid));
+            }
+
+            if (pu == device_t::GPU) {
+                apw_lo_phi_lo_slab.copy_to(memory_t::host);
+            }
+
+            costa::transform(apw_lo_phi_lo_slab.grid_layout(), h_apw_lo_phi_lo.grid_layout(), 'N',
+                    linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+        }
+        if (ophi__) {
+            o_apw_lo_phi_lo = sddk::dmatrix<std::complex<T>>(ctx.unit_cell().mt_aw_basis_size(), n__,
+                                                             ctx.blacs_grid(), bs, bs);
+            apw_lo_phi_lo_slab.zero();
+
+            #pragma omp parallel for
+            for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
+                int ia     = phi__.spl_num_atoms()[ialoc];
+                auto& atom = ctx.unit_cell().atom(ia);
+                auto& type = atom.type();
+                int naw    = type.mt_aw_basis_size();
+                int nlo    = type.mt_lo_basis_size();
+
+                for (int j = 0; j < n__; j++) {
+                    for (int ilo = 0; ilo < nlo; ilo++) {
+                        int xi_lo = naw + ilo;
+                        /* local orbital indices */
+                        int l_lo     = type.indexb(xi_lo).l;
+                        int lm_lo    = type.indexb(xi_lo).lm;
+                        int order_lo = type.indexb(xi_lo).order;
+                        for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+                            apw_lo_phi_lo_slab(mt_aw_offsets[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw), j) +=
+                                phi__.mt_coeffs(0).prime(mt_lo_offsets[ialoc] + ilo, N__ + j) *
+                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
+                        }
                     }
                 }
-                if (pu == device_t::GPU) {
-                    hmt.allocate(memory_t::device).copy_to(memory_t::device);
+            }
+
+            costa::transform(apw_lo_phi_lo_slab.grid_layout(), o_apw_lo_phi_lo.grid_layout(), 'N',
+                    linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+        }
+    }
+
+    /* lo-lo contribution (lo-lo Hamiltonian and overlap are block-diagonal in atom index and the whole application is
+     * local to MPI rank)
+     *
+     *            n
+     * +------+ +---+
+     * |      | |   |
+     * |lo-lo |x|lo |
+     * |      | |   |
+     * +------+ +---+
+     */
+    if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-lo");
+        /* lo-lo contribution */
+        #pragma omp parallel for
+        for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
+            int tid = omp_get_thread_num();
+            int ia =  phi__.spl_num_atoms()[ialoc];
+            auto& atom = ctx.unit_cell().atom(ia);
+            auto& type = atom.type();
+            int naw    = type.mt_aw_basis_size();
+            int nlo    = type.mt_lo_basis_size();
+
+            int offset_mt_coeffs = phi__.offset_mt_coeffs(ialoc);
+
+            if (hphi__ != nullptr) {
+                auto& hmt = H0_.hmt(ia);
+                linalg(la).gemm('N', 'N', nlo, n__, nlo, &linalg_const<std::complex<T>>::one(),
+                                hmt.at(mem, naw, naw), hmt.ld(),
+                                phi__.mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
+                                phi__.mt_coeffs(0).prime().ld(),
+                                &linalg_const<std::complex<T>>::one(),
+                                hphi__->mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
+                                hphi__->mt_coeffs(0).prime().ld(), stream_id(tid));
+            }
+
+            if (ophi__ != nullptr) {
+                for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+                    int xi_lo = type.mt_aw_basis_size() + ilo;
+                    /* local orbital indices */
+                    int l_lo     = type.indexb(xi_lo).l;
+                    int lm_lo    = type.indexb(xi_lo).lm;
+                    int order_lo = type.indexb(xi_lo).order;
+
+                    /* lo-lo contribution */
+                    for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
+                        int xi_lo1 = type.mt_aw_basis_size() + jlo;
+                        int lm1    = type.indexb(xi_lo1).lm;
+                        int order1 = type.indexb(xi_lo1).order;
+                        if (lm_lo == lm1) {
+                            for (int i = 0; i < n__; i++) {
+                                ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
+                                    phi__.mt_coeffs(0).prime(offset_mt_coeffs + jlo, N__ + i) *
+                                    static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
+                            }
+                        }
+                    }
                 }
-                linalg(la).gemm('N', 'N', ngv, nlo, naw, &linalg_const<std::complex<T>>::one(),
-                                alm_block.at(mem, 0, offsets_aw[ialoc]), alm_block.ld(), hmt.at(mem), hmt.ld(),
-                                &linalg_const<std::complex<T>>::zero(), halm_block.at(mem, 0, offsets_lo[ialoc]),
-                                halm_block.ld());
-            } // ia
-            linalg(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<std::complex<T>>::one(), halm_block.at(mem),
-                            halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
-                            &linalg_const<std::complex<T>>::one(), hphi__->pw_coeffs(0).prime().at(mem, 0, N__),
-                            hphi__->pw_coeffs(0).prime().ld());
+            }
+        }
+    }
+
+    /* <A_{lm}^{\alpha}(G) | C_j(G) > for a block of Alm */
+    sddk::dmatrix<std::complex<T>> alm_phi(ctx.unit_cell().mt_aw_basis_size(), n__, ctx.blacs_grid(), bs, bs);
+
+    /*  compute APW-APW contribution
+     *                         n
+     *  +----------------+   +---+
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |    APW-APW     | x |APW|
+     *  |                |   |   |
+     *  |                |   |   |
+     *  |                |   |   |
+     *  +----------------+   +---+
+     *
+     *  we are going to split the Alm coefficients into blocks of atoms
+     */
+    int offset_aw_global{0};
+    /* loop over blocks of atoms */
+    for (int ib = 0; ib < nblk; ib++) {
+        /* number of atoms in this block */
+        int na = std::min(ctx.unit_cell().num_atoms(), (ib + 1) * num_atoms_in_block) - ib * num_atoms_in_block;
+
+        int atom_begin = ib * num_atoms_in_block;
+
+        splindex<splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
+
+        /* actual number of AW radial functions in a block of atoms */
+        int num_mt_aw{0};
+        /* actual number of local orbitals in a block of atoms */
+        int num_mt_lo{0};
+        std::vector<int> offsets_aw(na);
+        std::vector<int> offsets_lo(na);
+        std::vector<int> counts_aw(comm.size(), 0);
+        for (int i = 0; i < na; i++) {
+            int ia = atom_begin + i;
+            auto& atom    = ctx.unit_cell().atom(ia);
+            auto& type    = atom.type();
+            offsets_aw[i] = num_mt_aw;
+            offsets_lo[i] = num_mt_lo;
+            num_mt_aw += type.mt_aw_basis_size();
+            num_mt_lo += type.mt_lo_basis_size();
+
+            counts_aw[spl_atoms.location(i).rank] += type.mt_aw_basis_size();
         }
 
-        /* apw-lo block for ophi */
-        if (ophi__ != nullptr) {
-            halm_block.zero();
-            for (int ia = atom_begin; ia < atom_end; ia++) {
-                int ialoc  = ia - atom_begin;
-                auto& atom = ctx.unit_cell().atom(ia);
-                auto& type = atom.type();
-                int naw    = type.mt_aw_basis_size();
-                int nlo    = type.mt_lo_basis_size();
+        /* generate complex conjugated Alm coefficients for a block of atoms */
+        auto alm = generate_alm(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
 
-                #pragma omp parallel for schedule(static)
+
+        if (!phi_is_lo__) {
+            auto t0 = utils::time_now();
+
+            PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
+
+            /* compute B(lm, n) = < Alm | C > */
+            spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_CONJ_TRANSPOSE, 1.0,
+                    alm.at(mem), alm.ld(),
+                    phi__.pw_coeffs(0).prime().at(mem, 0, N__), phi__.pw_coeffs(0).prime().ld(),
+                    0.0, alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
+                    ctx.spla_context());
+            gflops += ngop * num_mt_aw * n__ * ngv;
+
+            if (ophi__) {
+                /* APW-APW contribution to ophi */
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0,
+                        alm_phi.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                        ophi__->pw_coeffs(0).prime().at(mem, 0, N__), ophi__->pw_coeffs(0).prime().ld(),
+                        ctx.spla_context());
+                gflops += ngop * ngv * n__ * num_mt_aw;
+            }
+
+            if (hphi__) {
+                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> alm_phi_slab(num_mt_aw, n__, counts_aw, comm);
+                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> halm_phi_slab(num_mt_aw, n__, counts_aw, comm);
+                sddk::dmatrix<std::complex<T>> halm_phi(num_mt_aw, n__, ctx.blacs_grid(), bs, bs);
+                if (pu == device_t::GPU) {
+                    alm_phi_slab.allocate(ctx.mem_pool(memory_t::device));
+                    halm_phi_slab.allocate(ctx.mem_pool(memory_t::device));
+                }
+
+                auto layout = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, n__);
+
+                costa::transform(layout, alm_phi_slab.grid_layout(), 'N', linalg_const<std::complex<T>>::one(),
+                        linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+
+                if (pu == device_t::GPU) {
+                    alm_phi_slab.copy_to(memory_t::device);
+                }
+                /* apply muffin-tin Hamiltonian */
+                /* each rank works on the local fraction of atoms in the current block */
+                std::vector<int> offset_aw(spl_atoms.local_size(), 0);
+                for (int ialoc = 1; ialoc < spl_atoms.local_size(); ialoc++) {
+                    int ia = atom_begin + spl_atoms[ialoc - 1];
+                    auto& atom = ctx.unit_cell().atom(ia);
+                    auto& type = atom.type();
+                    offset_aw[ialoc] = offset_aw[ialoc - 1] + type.mt_aw_basis_size();
+                }
+                #pragma omp parallel for
+                for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+                    int tid = omp_get_thread_num();
+                    int ia = atom_begin + spl_atoms[ialoc];
+                    auto& atom = ctx.unit_cell().atom(ia);
+                    auto& type = atom.type();
+
+                    auto& hmt = H0_.hmt(ia);
+
+                    // TODO: use in-place trmm
+                    linalg(la).gemm('N', 'N', type.mt_aw_basis_size(), n__, type.mt_aw_basis_size(),
+                            &linalg_const<std::complex<T>>::one(), hmt.at(mem), hmt.ld(),
+                            alm_phi_slab.at(mem, offset_aw[ialoc], 0), alm_phi_slab.ld(),
+                            &linalg_const<std::complex<T>>::zero(), halm_phi_slab.at(mem, offset_aw[ialoc], 0),
+                            halm_phi_slab.ld(), stream_id(tid));
+                }
+                if (pu == device_t::GPU) {
+                    halm_phi_slab.copy_to(memory_t::host);
+                }
+
+                costa::transform(halm_phi_slab.grid_layout(), halm_phi.grid_layout(), 'N',
+                        linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+
+                /* APW-APW contribution to hphi */
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), halm_phi.at(memory_t::host), halm_phi.ld(), 0, 0,
+                        halm_phi.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                        hphi__->pw_coeffs(0).prime().at(mem, 0, N__), hphi__->pw_coeffs(0).prime().ld(),
+                        ctx.spla_context());
+                gflops += ngop * ngv * n__ * num_mt_aw;
+            }
+            time += utils::time_interval(t0);
+        }
+
+        if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+            PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
+            auto t0 = utils::time_now();
+            if (hphi__) {
+                /* APW-lo contribution to hphi */
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), h_apw_lo_phi_lo.at(memory_t::host), h_apw_lo_phi_lo.ld(),
+                        offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                        hphi__->pw_coeffs(0).prime().at(mem, 0, N__), hphi__->pw_coeffs(0).prime().ld(),
+                        ctx.spla_context());
+                gflops += ngop * ngv * n__ * num_mt_aw;
+            }
+            if (ophi__) {
+                /* APW-lo contribution to ophi */
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), o_apw_lo_phi_lo.at(memory_t::host), o_apw_lo_phi_lo.ld(),
+                        offset_aw_global, 0, o_apw_lo_phi_lo.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                        ophi__->pw_coeffs(0).prime().at(mem, 0, N__), ophi__->pw_coeffs(0).prime().ld(),
+                        ctx.spla_context());
+                gflops += ngop * ngv * n__ * num_mt_aw;
+            }
+            time += utils::time_interval(t0);
+        }
+        offset_aw_global += num_mt_aw;
+    }
+
+    /* compute lo-APW contribution
+     *
+     *                         n
+     *  +----------------+   +---+
+     *  |                |   |   |
+     *  |     lo-APW     | x |   |
+     *  |                |   |   |
+     *  +----------------+   |   |
+     *                       |APW|
+     *                       |   |
+     *                       |   |
+     *                       |   |
+     *                       |   |
+     *                       +---+
+     */
+    if (!apw_only__ && !phi_is_lo__ && ctx.unit_cell().mt_lo_basis_size()) {
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-apw");
+
+        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
+            alm_phi_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
+
+        costa::transform(alm_phi.grid_layout(), alm_phi_slab.grid_layout(), 'N',
+            linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+        if (pu == device_t::GPU) {
+             alm_phi_slab.allocate(ctx.mem_pool(memory_t::device)).copy_to(memory_t::device);
+        }
+
+        #pragma omp parallel for
+        for (int ialoc = 0; ialoc < phi__.spl_num_atoms().local_size(); ialoc++) {
+            int ia =  phi__.spl_num_atoms()[ialoc];
+            auto& atom = ctx.unit_cell().atom(ia);
+            auto& type = atom.type();
+            int naw    = type.mt_aw_basis_size();
+            int nlo    = type.mt_lo_basis_size();
+
+            if (ophi__ != nullptr) {
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
                     /* local orbital indices */
                     int l_lo     = type.indexb(xi_lo).l;
                     int lm_lo    = type.indexb(xi_lo).lm;
                     int order_lo = type.indexb(xi_lo).order;
-                    /* use halm as temporary buffer to compute alm*o */
-                    for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
-                        for (int igloc = 0; igloc < ngv; igloc++) {
-                            halm_block(igloc, offsets_lo[ialoc] + ilo) +=
-                                alm_block(igloc, offsets_aw[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw)) *
-                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
-                        } // TODO: block copy to GPU
-                    }
-                }
-            } // ia
-            if (pu == device_t::GPU) {
-                halm_block.copy_to(memory_t::device, 0, ngv * num_mt_lo);
-            }
-            linalg(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<std::complex<T>>::one(), halm_block.at(mem),
-                            halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
-                            &linalg_const<std::complex<T>>::one(), ophi__->pw_coeffs(0).prime().at(mem, 0, N__),
-                            ophi__->pw_coeffs(0).prime().ld());
-        }
-    };
-
-    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
-    /* loop over blocks of atoms */
-    for (int iblk = 0; iblk < nblk; iblk++) {
-        int atom_begin = iblk * num_atoms_in_block;
-        int atom_end   = std::min(ctx.unit_cell().num_atoms(), (iblk + 1) * num_atoms_in_block);
-        /* actual number of AW radial functions in a block of atoms */
-        int num_mt_aw{0};
-        /* actual number of local orbitals in a block of atoms */
-        int num_mt_lo{0};
-        std::vector<int> offsets_aw(num_atoms_in_block);
-        std::vector<int> offsets_lo(num_atoms_in_block);
-        for (int ia = atom_begin; ia < atom_end; ia++) {
-            int ialoc         = ia - atom_begin;
-            auto& atom        = ctx.unit_cell().atom(ia);
-            auto& type        = atom.type();
-            offsets_aw[ialoc] = num_mt_aw;
-            offsets_lo[ialoc] = num_mt_lo;
-            num_mt_aw += type.mt_aw_basis_size();
-            num_mt_lo += type.mt_lo_basis_size();
-        }
-
-        /* created alm and halm for a block of atoms */
-        generate_alm(atom_begin, atom_end, offsets_aw);
-
-        matrix<std::complex<T>> alm_phi;
-        matrix<std::complex<T>> halm_phi;
-
-        utils::time_point_t t0;
-        if (pp) {
-            t0 = utils::time_now();
-        }
-        compute_alm_phi(alm_phi, halm_phi, num_mt_aw);
-        if (pp) {
-            if (hphi__) {
-                gflops += ngop * num_mt_aw * n__ * ngv;
-            }
-            if (ophi__) {
-                gflops += ngop * num_mt_aw * n__ * ngv;
-            }
-            time += utils::time_interval(t0);
-        }
-        //if (pp && kp().comm().rank() == 0) {
-        //    RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time
-        //                       << ", GFlop/s [m,n,k]=[" << num_mt_aw << ", " << n__ << ", " << ngv << "]" << std::endl;
-        //}
-
-        if (!phi_is_lo__) {
-            compute_apw_apw(alm_phi, halm_phi, num_mt_aw);
-        }
-
-        if (!apw_only__ && num_mt_lo) {
-            /* local orbital coefficients for a block of atoms and all states */
-            matrix<std::complex<T>> phi_lo_block(num_mt_lo, n__);
-            if (pu == device_t::GPU) {
-                phi_lo_block.allocate(memory_t::device);
-            }
-            collect_lo(atom_begin, atom_end, offsets_lo, phi_lo_block);
-
-            compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);
-
-            PROFILE_START("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
-            /* lo-APW contribution */
-            for (int ia = atom_begin; ia < atom_end; ia++) {
-                int ialoc  = ia - atom_begin;
-                auto& atom = ctx.unit_cell().atom(ia);
-                auto& type = atom.type();
-
-                auto ia_location = phi__.spl_num_atoms().location(ia);
-
-                if (ia_location.rank == kp().comm().rank()) {
-                    int offset_mt_coeffs = phi__.offset_mt_coeffs(ia_location.local_index);
-
-                    #pragma omp parallel for schedule(static)
-                    for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
-                        int xi_lo = type.mt_aw_basis_size() + ilo;
-                        /* local orbital indices */
-                        int l_lo     = type.indexb(xi_lo).l;
-                        int lm_lo    = type.indexb(xi_lo).lm;
-                        int order_lo = type.indexb(xi_lo).order;
-                        int idxrf_lo = type.indexb(xi_lo).idxrf;
-
-                        /* lo-lo contribution */
-                        for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
-                            int xi_lo1 = type.mt_aw_basis_size() + jlo;
-                            int lm1    = type.indexb(xi_lo1).lm;
-                            int order1 = type.indexb(xi_lo1).order;
-                            int idxrf1 = type.indexb(xi_lo1).idxrf;
-                            if (lm_lo == lm1 && ophi__ != nullptr) {
-                                for (int i = 0; i < n__; i++) {
-                                    ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                        phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
-                                }
-                            }
-                            if (hphi__ != nullptr) {
-                                auto& gc = type.gaunt_coefs().gaunt_vector(lm_lo, lm1);
-                                for (int i = 0; i < n__; i++) {
-                                    hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                        phi_lo_block(offsets_lo[ialoc] + jlo, i) *
-                                        static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf1, gc));
-                                }
-                            }
-                        }
-
-                        /* lo-APW contribution */
-                        if (!phi_is_lo__) {
-                            if (ophi__ != nullptr) {
-                                for (int i = 0; i < n__; i++) {
-                                    /* lo-APW contribution to ophi */
-                                    for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size();
-                                         order_aw++) {
-                                        ophi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) +=
-                                            static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw)) *
-                                            alm_phi(offsets_aw[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw), i);
-                                    }
-                                }
-                            }
-
-                            if (hphi__ != nullptr) {
-                                for (int i = 0; i < n__; i++) {
-                                    std::complex<T> z(0, 0);
-                                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                                        int lm_aw    = type.indexb(xi).lm;
-                                        int idxrf_aw = type.indexb(xi).idxrf;
-                                        auto& gc     = type.gaunt_coefs().gaunt_vector(lm_lo, lm_aw);
-                                        z += static_cast<std::complex<T>>(atom.template radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_aw, gc)) *
-                                             alm_phi(offsets_aw[ialoc] + xi, i);
-                                    }
-                                    /* lo-APW contribution to hphi */
-                                    hphi__->mt_coeffs(0).prime(offset_mt_coeffs + ilo, N__ + i) += z;
-                                }
-                            }
+                    for (int i = 0; i < n__; i++) {
+                        /* lo-APW contribution to ophi */
+                        for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
+                            ophi__->mt_coeffs(0).prime(mt_lo_offsets[ialoc] + ilo, N__ + i) +=
+                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw)) *
+                                alm_phi_slab(mt_aw_offsets[ialoc] + type.indexb_by_lm_order(lm_lo, order_aw), i);
                         }
                     }
                 }
             }
-            PROFILE_STOP("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
+            if (hphi__ != nullptr) {
+                auto& hmt = H0_.hmt(ia);
+                linalg(la).gemm('N', 'N', nlo, n__, naw, &linalg_const<std::complex<T>>::one(), hmt.at(mem, naw, 0), hmt.ld(),
+                                alm_phi_slab.at(mem, mt_aw_offsets[ialoc], 0), alm_phi_slab.ld(),
+                                &linalg_const<std::complex<T>>::one(),
+                                hphi__->mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
+                                hphi__->mt_coeffs(0).prime().ld());
+            }
         }
     }
-
     PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|mt");
+
     if (pu == device_t::GPU && !apw_only__) {
-        if (hphi__ != nullptr) {
-            hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
-        }
+        //if (hphi__ != nullptr) {
+        //    hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
+        //}
         if (ophi__ != nullptr) {
             ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
+        }
+    }
+    if (pu == device_t::GPU) {
+        if (ophi__ != nullptr) {
+            ophi__->pw_coeffs(0).copy_to(memory_t::host, N__, n__);
         }
     }
     if (pp && kp().comm().rank() == 0) {
         RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
     }
-    // if (ctx.control().print_checksum_) {
-    //     if (hphi__) {
-    //         hphi__->print_checksum(pu, "hphi", N__, n__);
-    //     }
-    //     if (ophi__) {
-    //         ophi__->print_checksum(pu, "ophi", N__, n__);
-    //     }
-    // }
+    if (ctx.cfg().control().print_checksum()) {
+        if (hphi__) {
+            hphi__->print_checksum(pu, "hphi", N__, n__, RTE_OUT(std::cout));
+        }
+        if (ophi__) {
+            ophi__->print_checksum(pu, "ophi", N__, n__, RTE_OUT(std::cout));
+        }
+    }
 }
 
 template <typename T>

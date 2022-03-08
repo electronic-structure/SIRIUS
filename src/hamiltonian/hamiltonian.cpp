@@ -32,7 +32,7 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
-Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
@@ -45,6 +45,48 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
         q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
+    }
+    if (ctx_.full_potential()) {
+        if (precompute_lapw__) {
+            potential_->generate_pw_coefs();
+            potential_->update_atomic_potential();
+            ctx_.unit_cell().generate_radial_functions();
+            ctx_.unit_cell().generate_radial_integrals();
+        }
+        hmt_ = std::vector<sddk::mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());
+        auto pu = ctx_.processing_unit();
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                auto& atom = ctx_.unit_cell().atom(ia);
+                auto& type = atom.type();
+
+                int nmt = type.mt_basis_size();
+
+                hmt_[ia] = sddk::mdarray<std::complex<T>, 2>(nmt, nmt, memory_t::host, "hmt");
+
+                /* compute muffin-tin Hamiltonian */
+                for (int j2 = 0; j2 < nmt; j2++) {
+                    int lm2    = type.indexb(j2).lm;
+                    int idxrf2 = type.indexb(j2).idxrf;
+                    for (int j1 = 0; j1 <= j2; j1++) {
+                        int lm1    = type.indexb(j1).lm;
+                        int idxrf1 = type.indexb(j1).idxrf;
+                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
+                                                                                type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                        hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
+                    }
+                }
+                if (pu == device_t::GPU) {
+                    hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device, stream_id(tid));
+                }
+            }
+            if (pu == device_t::GPU) {
+                acc::sync_stream(stream_id(tid));
+            }
+        }
     }
 }
 
@@ -63,7 +105,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
     // available
     // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    sddk::mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
     /* compute the muffin-tin Hamiltonian */
     for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
         int lm2    = type.indexb(j2).lm;
@@ -72,7 +114,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
-                                                                 atom__.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                                                                 type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     linalg(linalg_t::blas)

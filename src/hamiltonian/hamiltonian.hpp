@@ -35,8 +35,6 @@ namespace sddk {
 /* forward declaration */
 template <typename T>
 class Wave_functions;
-template <typename T>
-class dmatrix;
 class spin_range;
 }
 
@@ -95,6 +93,8 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator<T>> q_op_;
 
+    std::vector<sddk::mdarray<std::complex<T>, 2>> hmt_;
+
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
     /* copy assignment operator is forbidden */
@@ -102,7 +102,7 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Potential& potential__);
+    Hamiltonian0(Potential& potential__, bool precompute_lapw__);
 
     ~Hamiltonian0();
 
@@ -135,6 +135,11 @@ class Hamiltonian0
     inline D_operator<T>& D() const
     {
         return *d_op_;
+    }
+
+    auto const& hmt(int ia__) const
+    {
+        return hmt_[ia__];
     }
 
     /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.

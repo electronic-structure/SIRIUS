@@ -132,7 +132,7 @@ void Energy::compute()
     potential.generate(density, ctx.use_symmetry(), true);
 
     /* compute H@X and new band energies */
-    auto H0 = Hamiltonian0<double>(potential);
+    auto H0 = Hamiltonian0<double>(potential, true);
     // apply Hamiltonian
     for (int i = 0; i < nk; ++i) {
         auto& kp = *kset.get<double>(kset.spl_num_kpoints(i));
