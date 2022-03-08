@@ -202,6 +202,8 @@ if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
 endif(USE_VDWXC)
 
+find_package(costa CONFIG REQUIRED)
+
 if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
@@ -273,8 +275,10 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
-# Python module
-add_subdirectory(python_module)
+if(CREATE_PYTHON_MODULE)
+  # Python module
+  add_subdirectory(python_module)
+endif(CREATE_PYTHON_MODULE)
 
 # applications
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)

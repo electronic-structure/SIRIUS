@@ -263,7 +263,7 @@ Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0<double> H0(potential_);
+    Hamiltonian0<double> H0(potential_, true);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_.get<double>(ik));

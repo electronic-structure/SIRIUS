@@ -146,7 +146,7 @@ K_point<T>::initialize()
                     }
                 }
                 if (ctx_.cfg().control().print_checksum()) {
-                    singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp);
+                    singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp, RTE_OUT(std::cout));
                 }
             }
 
@@ -222,7 +222,7 @@ K_point<T>::generate_hubbard_orbitals()
     //                                        ctx_.hubbard_wf_ri(), *hubbard_wave_functions_);
     // }
     if (ctx_.cfg().control().print_checksum()) {
-        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf());
+        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf(), RTE_OUT(std::cout));
     }
 
     if (ctx_.num_spins() == 2) {
@@ -266,8 +266,8 @@ K_point<T>::generate_hubbard_orbitals()
     }
 
     if (ctx_.cfg().control().print_checksum()) {
-        s_phi.print_checksum(device_t::CPU, "hubbard_atomic_wfc_S", 0, s_phi.num_wf());
-        phi.print_checksum(device_t::CPU, "hubbard_atomic_wfc", 0, s_phi.num_wf());
+        s_phi.print_checksum(device_t::CPU, "hubbard_atomic_wfc_S", 0, s_phi.num_wf(), RTE_OUT(std::cout));
+        phi.print_checksum(device_t::CPU, "hubbard_atomic_wfc", 0, s_phi.num_wf(), RTE_OUT(std::cout));
     }
 
     /* now compute the hubbard wfc from the atomic orbitals */
@@ -293,8 +293,9 @@ K_point<T>::generate_hubbard_orbitals()
 
     if (ctx_.cfg().control().print_checksum()) {
         hubbard_wave_functions_S_->print_checksum(device_t::CPU, "hubbard_phi_S", 0,
-                                                  hubbard_wave_functions_S_->num_wf());
-        hubbard_wave_functions_->print_checksum(device_t::CPU, "hubbard_phi", 0, hubbard_wave_functions_->num_wf());
+                                                  hubbard_wave_functions_S_->num_wf(), RTE_OUT(std::cout));
+        hubbard_wave_functions_->print_checksum(device_t::CPU, "hubbard_phi", 0, hubbard_wave_functions_->num_wf(),
+            RTE_OUT(std::cout));
     }
 }
 

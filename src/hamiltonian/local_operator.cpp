@@ -676,7 +676,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
 
     ctx_.num_loc_op_applied(n__);
 
-    mdarray<std::complex<T>, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(memory_t::host));
+    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(memory_t::host));
 
     if (ctx_.processing_unit() == device_t::GPU) {
         phi__.pw_coeffs(0).copy_to(memory_t::host, N__, n__);
@@ -750,7 +750,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             }
         }
         if (hphi__ != nullptr) {
-            /* multiply be effective potential, which itself was multiplied by the step function */
+            /* multiply by effective potential, which itself was multiplied by the step function */
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, 0);
             /* phi(r) * Theta(r) * V(r) -> hphi(G) */
             spfftk__.forward(spfft_mem, reinterpret_cast<T*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
@@ -814,14 +814,6 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             ophi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-    // if (ctx_->control().print_checksum_) {
-    //    auto cs1 = hphi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    auto cs2 = ophi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    if (phi__.comm().rank() == 0) {
-    //        DUMP("checksum(hphi_pw): %18.10f %18.10f", cs1.real(), cs1.imag());
-    //        DUMP("checksum(ophi_pw): %18.10f %18.10f", cs2.real(), cs2.imag());
-    //    }
-    //}
 }
 
 template <typename T>

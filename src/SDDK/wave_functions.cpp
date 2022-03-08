@@ -229,8 +229,10 @@ void Wave_functions<T>::copy_from(const Wave_functions<T>& src__, int n__, int i
 template <typename T>
 std::complex<T> Wave_functions<T>::checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const
 {
-    assert(n__ != 0);
     std::complex<T> cs(0, 0);
+    if (n__ == 0) {
+        return cs;
+    }
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         cs += pw_coeffs(s).checksum(pu__, i0__, n__);
     }
@@ -241,9 +243,8 @@ std::complex<T> Wave_functions<T>::checksum_pw(device_t pu__, int ispn__, int i0
 template <typename T>
 std::complex<T> Wave_functions<T>::checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const
 {
-    assert(n__ != 0);
     std::complex<T> cs(0, 0);
-    if (!this->has_mt_) {
+    if (!this->has_mt_ || n__ == 0) {
         return cs;
     }
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
@@ -253,24 +254,6 @@ std::complex<T> Wave_functions<T>::checksum_mt(device_t pu__, int ispn__, int i0
     }
     comm_.allreduce(&cs, 1);
     return cs;
-}
-
-template <typename T>
-void Wave_functions<T>::print_checksum(device_t pu__, std::string label__, int N__, int n__) const
-{
-    for (int ispn = 0; ispn < num_sc(); ispn++) {
-        auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
-        auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
-        if (this->comm().rank() == 0) {
-            std::stringstream s;
-            s << ispn;
-            utils::print_checksum(label__ + "_pw_" + s.str(), cs1);
-            if (this->has_mt_) {
-                utils::print_checksum(label__ + "_mt_" + s.str(), cs2);
-            }
-            utils::print_checksum(label__ + "_" + s.str(), cs1 + cs2);
-        }
-    }
 }
 
 template <typename T>

@@ -281,6 +281,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     (*o_diag)(j, ispn) = 1.0;
                 }
             }
+            if (ctx.processing_unit() == device_t::GPU) {
+                o_diag->copy_to(memory_t::device);
+            }
             break;
         }
     }
@@ -291,22 +294,16 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         kp.comm().allreduce(&cs1, 1);
         kp.comm().allreduce(&cs2, 1);
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("h_diag", cs1);
-            utils::print_checksum("o_diag", cs2);
+            utils::print_checksum("h_diag", cs1, RTE_OUT(std::cout));
+            utils::print_checksum("o_diag", cs2, RTE_OUT(std::cout));
         }
     }
 
     auto& std_solver = ctx.std_evp_solver();
 
     if (ctx.print_checksum()) {
-        for (int ispn = 0; ispn < num_spins; ispn++) {
-            auto cs = psi__.checksum_pw(get_device_t(psi__.preferred_memory_t()), ispn, 0, num_bands__);
-            std::stringstream s;
-            s << "input spinor_wave_functions_" << ispn;
-            if (kp.comm().rank() == 0) {
-                utils::print_checksum(s.str(), cs);
-            }
-        }
+        psi__.print_checksum(get_device_t(psi__.preferred_memory_t()), "input spinor_wave_functions", 0,
+                num_bands__, RTE_OUT(std::cout));
     }
 
     davidson_result_t result{0, sddk::mdarray<double, 2>(num_bands__, num_spinors)};
@@ -319,7 +316,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                << "  number of spins     : " << num_spins << std::endl
                << "  non-collinear       : " << nc_mag << std::endl
                << "  number of extra phi : " << num_extra_phi << std::endl;
-     }
+    }
 
     PROFILE_START("sirius::davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spinors; ispin_step++) {
@@ -360,14 +357,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
 
         if (ctx.print_checksum()) {
-            for (int ispn = 0; ispn < num_sc; ispn++) {
-                auto cs = phi->checksum_pw(get_device_t(phi->preferred_memory_t()), ispn, 0, num_bands__ + num_extra_phi);
-                std::stringstream s;
-                s << "input phi" << ispn;
-                if (kp.comm().rank() == 0) {
-                    utils::print_checksum(s.str(), cs);
-                }
+            if (phi_extra__) {
+                phi_extra__->print_checksum(get_device_t(phi_extra__->preferred_memory_t()), "extra phi", 0,
+                        num_extra_phi, RTE_OUT(std::cout));
             }
+            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "input phi", 0, num_bands__, RTE_OUT(std::cout));
         }
 
         /* current subspace size */
@@ -449,11 +443,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* END DEBUG */
 
         if (ctx.print_checksum()) {
-            phi->print_checksum(device_t::CPU, "phi", 0, N);
+            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(std::cout));
             if (hphi) {
-                hphi->print_checksum(device_t::CPU, "hphi", 0, N);
+                hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(std::cout));
             }
-            sphi->print_checksum(device_t::CPU, "sphi", 0, N);
+            sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(std::cout));
         }
 
         if (verbosity__ >= 1) {
@@ -466,11 +460,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                         spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, 0, N, H, *res);
                 if (ctx.print_checksum()) {
-                    phi->print_checksum(device_t::CPU, "phi", 0, N);
+                    phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(std::cout));
                     if (hphi) {
-                        hphi->print_checksum(device_t::CPU, "hphi", 0, N);
+                        hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(std::cout));
                     }
-                    sphi->print_checksum(device_t::CPU, "sphi", 0, N);
+                    sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(std::cout));
                 }
                 /* setup eigen-value problem */
                 Band(ctx).set_subspace_mtrx<T>(0, N, 0, *phi, *hphi, H, &H_old);
@@ -584,6 +578,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
                 if (verbosity__ >= 1) {
                     RTE_OUT(out__) << "number of unconverged residuals : " << num_unconverged << std::endl;
+                    RTE_OUT(out__) << "current_frobenius_norm : " << current_frobenius_norm << std::endl;
+                }
+                if (ctx.cfg().control().print_checksum()) {
+                    res->print_checksum(get_device_t(res->preferred_memory_t()), "res", 0, num_unconverged,
+                            RTE_OUT(std::cout));
                 }
             }
 

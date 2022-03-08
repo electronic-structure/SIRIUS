@@ -85,7 +85,7 @@ class rte_ostream : public std::ostringstream
     }
 };
 
-#define RTE_OUT(_out) rte::rte_ostream(_out, __func__)
+#define RTE_OUT(_out) rte::rte_ostream(_out, std::string(__func__))
 
 }
 

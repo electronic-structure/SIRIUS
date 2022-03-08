@@ -2730,7 +2730,7 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
         [&]() {
             auto& gs = get_gs(gs_handler__);
             auto& ks = get_ks(ks_handler__);
-            sirius::Hamiltonian0<double> H0(gs.potential());
+            sirius::Hamiltonian0<double> H0(gs.potential(), true);
             sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
         },
         error_code__);
@@ -2782,12 +2782,11 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
             auto& ks   = get_ks(ks_handler__);
             double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance()
                                                         : *iter_solver_tol__;
-            sirius::Hamiltonian0<double> H0(gs.potential());
             if (precompute_pw__ && *precompute_pw__) {
-                H0.potential().generate_pw_coefs();
+                gs.potential().generate_pw_coefs();
             }
             if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
-                H0.potential().update_atomic_potential();
+                gs.potential().update_atomic_potential();
             }
             if (precompute_rf__ && *precompute_rf__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
@@ -2795,7 +2794,8 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
             if (precompute_ri__ && *precompute_ri__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
             }
-            sirius::Band(ks.ctx()).solve<double, double>(ks, H0, false, tol);
+            sirius::Hamiltonian0<double> H0(gs.potential(), false);
+            sirius::Band(ks.ctx()).solve<double, double>(ks, H0, tol);
         },
         error_code__);
 }
@@ -4427,6 +4427,7 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             int ia = *ia__ - 1;
 
             auto& atom = sim_ctx.unit_cell().atom(ia);
+            int n = atom.num_mt_points();
 
             if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
                 RTE_THROW("wrong combination of radial function indices");
@@ -4445,13 +4446,15 @@ sirius_set_radial_function(void* const* handler__, int const* ia__, int const* d
             }
 
             if (*deriv_order__ == 0) {
-                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + atom.num_mt_points()));
+                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + n));
             } else {
-                atom.symmetry_class().radial_function_derivative(idxrf,
-                        std::vector<double>(f__, f__ + atom.num_mt_points()));
+                std::vector<double> f(n);
+                for (int ir = 0; ir < n; ir++) {
+                    f[ir] = f__[ir] * atom.type().radial_grid()[ir];
+                }
+                atom.symmetry_class().radial_function_derivative(idxrf, f);
             }
             if (l__ != nullptr && o__ != nullptr) {
-                int n = atom.num_mt_points();
                 atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
             }
         },
@@ -5906,7 +5909,7 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 }
             }
 
-            sirius::Hamiltonian0<double> H0(gs.potential());
+            sirius::Hamiltonian0<double> H0(gs.potential(), true);
 
             sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), vk__, 1.0, 0);
             kp.initialize();

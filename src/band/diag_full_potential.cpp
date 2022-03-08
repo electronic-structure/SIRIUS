@@ -324,6 +324,10 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (is_device_memory(ctx_.preferred_memory_t())) {
         phi_extra->copy_to(spin_range(0), memory_t::device, 0, nlo + ncomp);
     }
+    if (ctx_.cfg().control().print_checksum()) {
+        phi_extra->print_checksum(get_device_t(phi_extra->preferred_memory_t()), "extra phi", 0, nlo + ncomp,
+                RTE_OUT(std::cout));
+    }
 
     /* short notation for target wave-functions */
     auto& psi = kp.fv_eigen_vectors_slab();

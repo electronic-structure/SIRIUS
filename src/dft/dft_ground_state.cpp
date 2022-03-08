@@ -43,7 +43,7 @@ DFT_ground_state::initial_state()
 #endif
 
         } else {
-            Hamiltonian0<double> H0(potential_);
+            Hamiltonian0<double> H0(potential_, true);
             Band(ctx_).initialize_subspace(kset_, H0);
         }
     }
@@ -149,11 +149,11 @@ DFT_ground_state::check_scf_density()
     /* generate potential from existing density */
     pot.generate(density_, ctx_.use_symmetry(), true);
     /* create new Hamiltonian */
-    Hamiltonian0<double> H0(pot);
+    Hamiltonian0<double> H0(pot, true);
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve<double, double>(kset_, H0, true, ctx_.cfg().settings().itsol_tol_min());
+    Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
@@ -211,12 +211,12 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
 
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
-            Hamiltonian0<float> H0(potential_);
+            Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
-                Band(ctx_).solve<float, float>(kset_, H0, true, itsol_tol);
+                Band(ctx_).solve<float, float>(kset_, H0, itsol_tol);
             } else {
-                Band(ctx_).solve<float, double>(kset_, H0, true, itsol_tol);
+                Band(ctx_).solve<float, double>(kset_, H0, itsol_tol);
             }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
@@ -226,9 +226,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            Hamiltonian0<double> H0(potential_);
+            Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
-            Band(ctx_).solve<double, double>(kset_, H0, true, itsol_tol);
+            Band(ctx_).solve<double, double>(kset_, H0, itsol_tol);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
