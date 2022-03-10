@@ -2122,10 +2122,6 @@ sirius_add_atom_type_radial_function:
       type: int
       attr: in, optional
       doc: angular momentum.
-    orbital_label:
-      type: string
-      attr: in, optional
-      doc: Label of the radial function (atomic levels 1s, 2s, etc...).
     idxrf1:
       type: int
       attr: in, optional
