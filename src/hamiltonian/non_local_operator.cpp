@@ -461,7 +461,7 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
             const int ia     = um__.atomic_orbitals(at_lvl).first;
             auto const& atom = ctx__.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
-                const int lmax_at = 2 * atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).l + 1;
+                const int lmax_at = 2 * atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).l() + 1;
                 // we apply the hubbard correction. For now I have no papers
                 // giving me the formula for the SO case so I rely on QE for it
                 // but I do not like it at all

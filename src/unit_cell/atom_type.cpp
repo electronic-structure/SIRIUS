@@ -257,91 +257,103 @@ Atom_type::init_free_atom_density(bool smooth)
 }
 
 void
-Atom_type::print_info() const
+Atom_type::print_info(std::ostream& out__) const
 {
-    std::printf("\n");
-    std::printf("label          : %s\n", label().c_str());
-    for (int i = 0; i < 80; i++) {
-        std::printf("-");
-    }
-    std::printf("\n");
-    std::printf("symbol         : %s\n", symbol_.c_str());
-    std::printf("name           : %s\n", name_.c_str());
-    std::printf("zn             : %i\n", zn_);
-    std::printf("mass           : %f\n", mass_);
-    std::printf("mt_radius      : %f\n", mt_radius());
-    std::printf("num_mt_points  : %i\n", num_mt_points());
-    std::printf("grid_origin    : %f\n", radial_grid_.first());
-    std::printf("grid_name      : %s\n", radial_grid_.name().c_str());
-    std::printf("\n");
-    std::printf("number of core electrons    : %f\n", num_core_electrons_);
-    std::printf("number of valence electrons : %f\n", num_valence_electrons_);
+    auto draw_bar = [&](char c, int w)
+    {
+        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
+    };
+
+    out__ << "label          : " << label() << std::endl;
+    draw_bar('-', 80);
+    out__ << "symbol         : " << symbol_ << std::endl
+          << "name           : " << name_ << std::endl
+          << "zn             : " << zn_ << std::endl
+          << "mass           : " << mass_ << std::endl
+          << "mt_radius      : " << mt_radius() << std::endl
+          << "num_mt_points  : " << num_mt_points() << std::endl
+          << "grid_origin    : " << radial_grid_.first() << std::endl
+          << "grid_name      : " << radial_grid_.name() << std::endl;
+    out__ << std::endl;
+    out__ << "number of core electrons    : " << num_core_electrons_ << std::endl
+          << "number of valence electrons : " << num_valence_electrons_ << std::endl;
 
     if (parameters_.full_potential()) {
-        std::printf("\n");
-        std::printf("atomic levels (n, l, k, occupancy, core)\n");
-        for (int i = 0; i < (int)atomic_levels_.size(); i++) {
-            std::printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                        atomic_levels_[i].occupancy, atomic_levels_[i].core);
+        out__ << std::endl;
+        out__ << "atomic levels" << std::endl;
+        for (auto& e: atomic_levels_) {
+            out__ << "n: " << e.n << ", l: " << e.l << ", k: " << e.k << ", occ: " << e.occupancy
+                  << ", core: " << e.core << std::endl;
         }
-        std::printf("\n");
-        std::printf("local orbitals\n");
-        for (int j = 0; j < (int)lo_descriptors_.size(); j++) {
-            std::printf("[");
-            for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++) {
-                if (order)
-                    std::printf(", ");
-                std::printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                            lo_descriptors_[j].rsd_set[order].n, lo_descriptors_[j].rsd_set[order].enu,
-                            lo_descriptors_[j].rsd_set[order].dme, lo_descriptors_[j].rsd_set[order].auto_enu);
+        out__ << std::endl;
+        out__ << "local orbitals" << std::endl;
+        for (auto e : lo_descriptors_) {
+            out__ << "[";
+            for (int order = 0; order < (int)e.rsd_set.size(); order++) {
+                if (order) {
+                    out__ << ", ";
+                }
+                out__ << e.rsd_set[order];
             }
-            std::printf("]\n");
+            out__ << "]" << std::endl;
         }
 
-        std::printf("\n");
-        std::printf("augmented wave basis\n");
+        out__ << std::endl;
+        out__ << "augmented wave basis" << std::endl;
         for (int j = 0; j < (int)aw_descriptors_.size(); j++) {
-            std::printf("[");
+            out__ << "[";
             for (int order = 0; order < (int)aw_descriptors_[j].size(); order++) {
-                if (order)
-                    std::printf(", ");
-                std::printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
-                            aw_descriptors_[j][order].n, aw_descriptors_[j][order].enu, aw_descriptors_[j][order].dme,
-                            aw_descriptors_[j][order].auto_enu);
+                if (order) {
+                    out__ << ", ";
+                }
+                out__ << aw_descriptors_[j][order];
             }
-            std::printf("]\n");
+            out__ << "]" << std::endl;
         }
-        std::printf("maximum order of aw : %i\n", max_aw_order_);
+        out__ << "maximum order of aw : " << max_aw_order_ << std::endl;
     }
 
-    std::printf("\n");
-    std::printf("total number of radial functions : %i\n", indexr().size());
-    std::printf("lmax of radial functions         : %i\n", indexr().lmax());
-    std::printf("max. number of radial functions  : %i\n", indexr().max_num_rf());
-    std::printf("total number of basis functions  : %i\n", indexb().size());
-    std::printf("number of aw basis functions     : %i\n", indexb().size_aw());
-    std::printf("number of lo basis functions     : %i\n", indexb().size_lo());
-    std::printf("lmax_apw                         : %i\n", this->lmax_apw());
+    out__ << std::endl;
+    out__ << "total number of radial functions : " << indexr().size() << std::endl
+          << "lmax of radial functions         : " << indexr().lmax() << std::endl
+          << "max. number of radial functions  : " << indexr().max_num_rf() << std::endl
+          << "total number of basis functions  : " << indexb().size() << std::endl
+          << "number of aw basis functions     : " << indexb().size_aw() << std::endl
+          << "number of lo basis functions     : " << indexb().size_lo() << std::endl
+          << "lmax_apw                         : " << this->lmax_apw() << std::endl;
     if (!parameters_.full_potential()) {
-        std::printf("lmax of beta-projectors          : %i\n", this->lmax_beta());
-        std::printf("number of ps wavefunctions       : %i\n", static_cast<int>(this->indexr_wfs().size()));
-        std::printf("charge augmentation              : %s\n", utils::boolstr(this->augment()).c_str());
-        std::printf("vloc is set                      : %s\n",
-                    utils::boolstr(!this->local_potential().empty()).c_str());
-        std::printf("ps_rho_core is set               : %s\n",
-                    utils::boolstr(!this->ps_core_charge_density().empty()).c_str());
-        std::printf("ps_rho_total is set              : %s\n",
-                    utils::boolstr(!this->ps_total_charge_density().empty()).c_str());
+        out__ << "lmax of beta-projectors          : " << this->lmax_beta() << std::endl
+              << "number of ps wavefunctions       : " << this->indexr_wfs().size() << std::endl
+              << "charge augmentation              : " << utils::boolstr(this->augment()) << std::endl
+              << "vloc is set                      : " << utils::boolstr(!this->local_potential().empty()) << std::endl
+              << "ps_rho_core is set               : " << utils::boolstr(!this->ps_core_charge_density().empty()) << std::endl
+              << "ps_rho_total is set              : " << utils::boolstr(!this->ps_total_charge_density().empty()) << std::endl;
     }
-    std::printf("Hubbard correction               : %s\n", utils::boolstr(this->hubbard_correction()).c_str());
+    out__ << "Hubbard correction               : " << utils::boolstr(this->hubbard_correction()) << std::endl;
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {
-        std::printf("  angular momentum                   : %i\n", lo_descriptors_hub_[0].l);
-        std::printf("  principal quantum number           : %i\n", lo_descriptors_hub_[0].n());
-        std::printf("  occupancy                          : %f\n", lo_descriptors_hub_[0].occupancy());
-        std::printf("  number of hubbard radial functions : %i\n", static_cast<int>(indexr_hub_.size()));
-        std::printf("  number of hubbard basis functions  : %i\n", static_cast<int>(indexb_hub_.size()));
+        out__ << "  angular momentum                   : " << lo_descriptors_hub_[0].l() << std::endl
+              << "  principal quantum number           : " << lo_descriptors_hub_[0].n() << std::endl
+              << "  occupancy                          : " << lo_descriptors_hub_[0].occupancy() << std::endl
+              << "  number of hubbard radial functions : " << indexr_hub_.size() << std::endl
+              << "  number of hubbard basis functions  : " << indexb_hub_.size() << std::endl
+              << "  Hubbard wave-functions             : ";
+        for (int i = 0; i < indexr_hub_.size(); i++) {
+            if (i) {
+                out__ << ", ";
+            }
+            out__ << lo_descriptors_hub_[i];
+        }
+        out__ << std::endl;
     }
-    std::printf("spin-orbit coupling              : %s\n", utils::boolstr(this->spin_orbit_coupling()).c_str());
+    out__ << "spin-orbit coupling              : " << utils::boolstr(this->spin_orbit_coupling()) << std::endl;
+    out__ << "atomic wave-functions            : ";
+    for (int i = 0; i < indexr_wfs_.size(); i++) {
+        if (i) {
+            out__ << ", ";
+        }
+        out__ << indexr_wfs_.am(i);
+    }
+    out__ << std::endl;
 }
 
 void
@@ -566,7 +578,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
                   << std::endl
                   << "size of atomic radial functions in the file: " << v.size() << std::endl
                   << "radial grid size: " << num_mt_points();
-                TERMINATE(s);
+                RTE_THROW(s);
             }
 
             int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"].get<int>();
@@ -586,7 +598,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
             if (spin_orbit_coupling() &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
-                // check if j = l +- 1/2
+                /* check if j = l +- 1/2 */
                 if (parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"].get<int>() < l) {
                     s = -1;
                 } else {
@@ -817,7 +829,7 @@ Atom_type::read_hubbard_input()
                 auto& e  = ps_atomic_wfs_[s];
                 int n    = e.n;
                 auto aqn = e.am;
-                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, NULL, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
+                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, nullptr, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
                                     false);
             }
         } else {
@@ -831,7 +843,7 @@ Atom_type::read_hubbard_input()
                     auto ho = parameters_.cfg().hubbard().local(i);
                     if ((ho.atom_type() == this->label()) && ((ho.n() != n) || (ho.l() != aqn.l()))) {
                         // we add it to the list but we only use it for the orthogonalization procedure
-                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, NULL, 0, 0, 0.0,
+                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, nullptr, 0, 0, 0.0,
                                             std::vector<double>(2 * aqn.l() + 1, 0), false);
                         break;
                     }

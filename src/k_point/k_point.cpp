@@ -167,15 +167,15 @@ K_point<T>::initialize()
             std::make_shared<Wave_functions<T>>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
-            auto r                    = unit_cell_.num_hubbard_wf();
-            hubbard_wave_functions_S_ = std::make_unique<Wave_functions<T>>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
-            hubbard_wave_functions_   = std::make_unique<Wave_functions<T>>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
-            atomic_wave_functions_    = std::make_unique<Wave_functions<T>>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
-            atomic_wave_functions_S_  = std::make_unique<Wave_functions<T>>(
-                gkvec_partition(), r.first * ctx_.num_spinor_comp(), ctx_.preferred_memory_t(), ctx_.num_spins());
+            auto r  = unit_cell_.num_hubbard_wf();
+            int nwf = r.first * ctx_.num_spinor_comp();
+            auto mt = ctx_.preferred_memory_t();
+            int ns  = ctx_.num_spins();
+
+            hubbard_wave_functions_   = std::make_unique<Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
+            hubbard_wave_functions_S_ = std::make_unique<Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
+            atomic_wave_functions_    = std::make_unique<Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
+            atomic_wave_functions_S_  = std::make_unique<Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
         }
     }
 

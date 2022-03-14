@@ -64,7 +64,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             const int ia    = atomic_orbitals_[at_lvl].first;
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             int lo_ind      = atomic_orbitals_[at_lvl].second;
-            const int l     = atom_type.lo_descriptor_hub(lo_ind).l;
+            const int l     = atom_type.lo_descriptor_hub(lo_ind).l();
             local_[at_lvl] = sddk::mdarray<double_complex, 3>(2 * l + 1, 2 * l + 1, 4, memory_t::host, "local_hubbard");
             local_[at_lvl].zero();
             size__ += (2 * l + 1);
@@ -107,7 +107,7 @@ Hubbard_matrix::access(std::string const& what__, double_complex* occ__, int ld_
         const auto& atom = ctx_.unit_cell().atom(ia1);
         const int lo     = atomic_orbitals(at_lvl).second;
         if (atom.type().lo_descriptor_hub(lo).use_for_calculation()) {
-            const int l      = atom.type().lo_descriptor_hub(lo).l;
+            const int l      = atom.type().lo_descriptor_hub(lo).l();
             const int offset = offset_[at_lvl];
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
@@ -137,8 +137,8 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
     auto const& atom  = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl__].first);
 
     out__ << "level : " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).n();
-    out__ << " l: " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l << std::endl;
-    const int l = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l;
+    out__ << " l: " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l() << std::endl;
+    const int l = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l();
     if (ctx_.num_mag_dims() != 3) {
         int mmax = 2 * l + 1;
         for (int is = 0; is < ctx_.num_spins(); is++) {

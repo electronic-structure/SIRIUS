@@ -67,16 +67,16 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
     if (!hub_wf.use_for_calculation())
         return;
 
-    int const lmax_at = 2 * hub_wf.l + 1;
+    int const lmax_at = 2 * hub_wf.l() + 1;
 
     if (ctx__.cfg().hubbard().simplified()) {
 
-        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.Hubbard_alpha() != 0.0)) {
+        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.alpha() != 0.0)) {
 
             double U_effective = hub_wf.Hubbard_U();
 
-            if (std::abs(hub_wf.Hubbard_J0()) > 1e-8) {
-                U_effective -= hub_wf.Hubbard_J0();
+            if (std::abs(hub_wf.J0()) > 1e-8) {
+                U_effective -= hub_wf.J0();
             }
 
             for (int is = 0; is < ctx__.num_spins(); is++) {
@@ -88,7 +88,7 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
                  * actually apply the potential to the wave functions. Also
                  * note the presence of alpha  */
                 for (int m1 = 0; m1 < lmax_at; m1++) {
-                    um__(m1, m1, is) = hub_wf.Hubbard_alpha() + 0.5 * U_effective;
+                    um__(m1, m1, is) = hub_wf.alpha() + 0.5 * U_effective;
 
                     for (int m2 = 0; m2 < lmax_at; m2++) {
                         um__(m2, m1, is) -= U_effective * om__(m2, m1, is);
@@ -97,7 +97,7 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
             }
         }
 
-        if (std::abs(hub_wf.Hubbard_J0()) > 1e-8 || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
+        if (std::abs(hub_wf.J0()) > 1e-8 || std::abs(hub_wf.beta()) > 1e-8) {
             for (int is = 0; is < ctx__.num_spins(); is++) {
 
                 // s = 0 -> s_opposite = 1
@@ -108,10 +108,10 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
 
                 for (int m1 = 0; m1 < lmax_at; m1++) {
 
-                    um__(m1, m1, is) += sign * hub_wf.Hubbard_beta();
+                    um__(m1, m1, is) += sign * hub_wf.beta();
 
                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                        um__(m1, m2, is) += hub_wf.Hubbard_J0() * om__(m2, m1, s_opposite);
+                        um__(m1, m2, is) += hub_wf.J0() * om__(m2, m1, s_opposite);
                     }
                 }
             }
@@ -209,15 +209,15 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
     if (!hub_wf.use_for_calculation())
         return 0.0;
 
-    int const lmax_at = 2 * hub_wf.l + 1;
+    int const lmax_at = 2 * hub_wf.l() + 1;
 
     if (ctx__.cfg().hubbard().simplified()) {
-        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.Hubbard_alpha() != 0.0)) {
+        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.alpha() != 0.0)) {
 
             double U_effective = hub_wf.Hubbard_U();
 
-            if (std::abs(hub_wf.Hubbard_J0()) > 1e-8) {
-                U_effective -= hub_wf.Hubbard_J0();
+            if (std::abs(hub_wf.J0()) > 1e-8) {
+                U_effective -= hub_wf.J0();
             }
 
             for (int is = 0; is < ctx__.num_spins(); is++) {
@@ -226,7 +226,7 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                 // is = 1 down-down
 
                 for (int m1 = 0; m1 < lmax_at; m1++) {
-                    hubbard_energy += (hub_wf.Hubbard_alpha() + 0.5 * U_effective) * om__(m1, m1, is).real();
+                    hubbard_energy += (hub_wf.alpha() + 0.5 * U_effective) * om__(m1, m1, is).real();
 
                     for (int m2 = 0; m2 < lmax_at; m2++) {
                         hubbard_energy -= 0.5 * U_effective * (om__(m1, m2, is) * om__(m2, m1, is)).real();
@@ -234,7 +234,7 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                 }
             }
         }
-        if (std::abs(hub_wf.Hubbard_J0()) > 1e-8 || std::abs(hub_wf.Hubbard_beta()) > 1e-8) {
+        if (std::abs(hub_wf.J0()) > 1e-8 || std::abs(hub_wf.beta()) > 1e-8) {
             for (int is = 0; is < ctx__.num_spins(); is++) {
                 // s = 0 -> s_opposite = 1
                 // s= 1 -> s_opposite = 0
@@ -244,11 +244,11 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
 
                 for (int m1 = 0; m1 < lmax_at; m1++) {
 
-                    hubbard_energy += sign * hub_wf.Hubbard_beta() * om__(m1, m1, is).real();
+                    hubbard_energy += sign * hub_wf.beta() * om__(m1, m1, is).real();
 
                     for (int m2 = 0; m2 < lmax_at; m2++) {
                         hubbard_energy +=
-                            0.5 * hub_wf.Hubbard_J0() * (om__(m2, m1, is) * om__(m1, m2, s_opposite)).real();
+                            0.5 * hub_wf.J0() * (om__(m2, m1, is) * om__(m1, m2, s_opposite)).real();
                     }
                 }
             }
@@ -344,7 +344,7 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
     if (!hub_wf.use_for_calculation())
         return;
 
-    int const lmax_at = 2 * hub_wf.l + 1;
+    int const lmax_at = 2 * hub_wf.l() + 1;
 
     // compute the charge and magnetization of the hubbard bands for
     // calculation of the double counting term in the hubbard correction
@@ -431,7 +431,7 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
     if (!hub_wf.use_for_calculation())
         return 0.0;
 
-    int const lmax_at = 2 * hub_wf.l + 1;
+    int const lmax_at = 2 * hub_wf.l() + 1;
 
     double hubbard_energy_dc_contribution{0};
     double hubbard_energy_noflip{0};

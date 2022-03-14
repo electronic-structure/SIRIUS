@@ -137,7 +137,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                    momentum for the same n
                 */
                 int s_idx[2][2] = {{0, 3}, {2, 1}};
-                const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l + 1;
+                const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l() + 1;
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         for (int mp = 0; mp < lmmax_at; mp++) {
@@ -202,7 +202,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 // correction (or U = 0)
                 if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
 
-                    const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l + 1;
+                    const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l() + 1;
                     for (int mp = 0; mp < lmmax_at; mp++) {
                         const int mmp = offset_[at_lvl] + mp;
                         for (int m = 0; m < lmmax_at; m++) {
@@ -268,7 +268,7 @@ Occupation_matrix::symmetrize()
         // we can skip the symmetrization for this atomic level since it does not contribute to the Hubbard correction
         // (or U = 0)
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-            int il             = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            int il             = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
             const int lmmax_at = 2 * il + 1;
             // local_[at_lvl].zero();
             sddk::mdarray<double_complex, 3> dm_ia(lmmax_at, lmmax_at, 4);
@@ -283,7 +283,7 @@ Occupation_matrix::symmetrize()
 
                 int at_lvl1 =
                     find_orbital_index(iap, atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).n(),
-                                       atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l);
+                                       atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l());
 
                 for (int ispn = 0; ispn < ((ctx_.num_mag_dims() == 3) ? (4) : ctx_.num_spins()); ispn++) {
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
@@ -464,15 +464,15 @@ Occupation_matrix::init()
 
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
 
-            int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
             const int lmax_at = 2 * il + 1;
-            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy.size()) {
+            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy().size()) {
               /* if we specify the occcupancy in the input file */
               for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
                         this->local_[at_lvl](m, m, ispn) = atom.type()
                                                                .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
-                                                               .initial_occupancy[m + ispn * lmax_at];
+                                                               .initial_occupancy()[m + ispn * lmax_at];
                     }
                 }
             } else {
@@ -564,7 +564,7 @@ Occupation_matrix::print_occupancies(int verbosity__) const
         std::stringstream s;
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
             auto const& atom = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl].first);
-            int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l;
+            int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
                 Hubbard_matrix::print_local(at_lvl, s);
                 double occ[2] = {0, 0};

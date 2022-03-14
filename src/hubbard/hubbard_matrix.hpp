@@ -130,7 +130,7 @@ class Hubbard_matrix
 
             if ((atomic_orbitals_[at_lvl].first == ia__) &&
                 (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
-                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l == l__))
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l() == l__))
                 break;
         }
 

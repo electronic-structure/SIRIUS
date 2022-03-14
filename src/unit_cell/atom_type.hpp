@@ -38,6 +38,33 @@
 
 namespace sirius {
 
+/// Store basic information about radial pseudo wave-functions.
+struct ps_atomic_wf_descriptor
+{
+    ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__, Spline<double> f__)
+        : n(n__)
+        , am(am__)
+        , occ(occ__)
+        , f(std::move(f__))
+    {
+    }
+    int n;
+    sirius::experimental::angular_momentum am;
+    double occ;
+    Spline<double> f;
+};
+
+
+inline std::ostream& operator<<(std::ostream& out, ps_atomic_wf_descriptor const& wfd)
+{
+    if (wfd.am.s() == 0) {
+        out << "{n: " << wfd.n << ", l: " << wfd.am.l() << "}";
+    } else {
+        out << "{n: " << wfd.n << ", l: " << wfd.am.l() << ", j: " << wfd.am.j() << "}";
+    }
+    return out;
+}
+
 /// Defines the properties of atom type.
 /** Atoms wth the same properties are grouped by type. */
 class Atom_type
@@ -110,7 +137,7 @@ class Atom_type
     sirius::experimental::basis_functions_index indexb_wfs_;
 
     /// List of Hubbard orbital descriptors.
-    /** List of sirius::hubbard_orbital_descriptor for each orbital. Each elemeent of the list contains
+    /** List of sirius::hubbard_orbital_descriptor for each orbital. Each element of the list contains
      *  information about radial function and U and J parameters for the Hubbard correction. The list is
      *  compatible with the indexr_hub_ radial index. */
     std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
@@ -133,22 +160,6 @@ class Atom_type
         \f]
      */
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
-
-    /// Store basic information about radial pseudo wave-functions.
-    struct ps_atomic_wf_descriptor
-    {
-        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__, Spline<double> f__)
-            : n(n__)
-            , am(am__)
-            , occ(occ__)
-            , f(std::move(f__))
-        {
-        }
-        int n;
-        sirius::experimental::angular_momentum am;
-        double occ;
-        Spline<double> f;
-    };
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Lists of [n, j, occ, chi_l(r)] are stored. In case of
@@ -459,7 +470,7 @@ class Atom_type
     }
 
     /// Return a tuple describing a given atomic radial function
-    ps_atomic_wf_descriptor const& ps_atomic_wf(int idx__) const
+    auto const& ps_atomic_wf(int idx__) const
     {
         return ps_atomic_wfs_[idx__];
     }
@@ -654,7 +665,7 @@ class Atom_type
                              const bool use_for_calculations__);
 
     /// Print basic info to standard output.
-    void print_info() const;
+    void print_info(std::ostream& out__) const;
 
     /// Return atom type id.
     inline int id() const

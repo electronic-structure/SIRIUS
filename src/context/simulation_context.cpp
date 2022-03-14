@@ -692,6 +692,11 @@ Simulation_context::initialize()
         print_info();
     }
 
+    auto pcs = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
+    if (pcs && *pcs) {
+        this->cfg().control().print_checksum(true);
+    }
+
     initialized_ = true;
     cfg().lock();
 }
@@ -750,7 +755,7 @@ Simulation_context::print_info() const
 
     unit_cell().print_info(verbosity());
     for (int i = 0; i < unit_cell().num_atom_types(); i++) {
-        unit_cell().atom_type(i).print_info();
+        unit_cell().atom_type(i).print_info(std::cout);
     }
     if (this->cfg().control().print_neighbors()) {
         std::stringstream s;

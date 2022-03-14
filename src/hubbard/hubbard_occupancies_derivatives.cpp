@@ -238,10 +238,10 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>
 
                 auto& lo_desc = ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub();
                 int offset__{0};
-                for (int lo = 0; lo < lo_desc.size(); lo++) {
+                for (int lo = 0; lo < static_cast<int>(lo_desc.size()); lo++) {
                     // compute the derivative of |phi> corresponding to the
                     // atom atom_id
-                    const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo).l + 1;
+                    const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo).l() + 1;
 
                     // compute the derivatives of the atomic wave functions
                     // |phi_m^J> (J = atom_id) compared to a displacement of atom J.

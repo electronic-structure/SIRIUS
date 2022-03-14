@@ -388,7 +388,7 @@ class U_operator
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             int lo_ind      = um1__.atomic_orbitals(at_lvl).second;
             if (atom_type.lo_descriptor_hub(lo_ind).use_for_calculation()) {
-                int lmmax_at = 2 * atom_type.lo_descriptor_hub(lo_ind).l + 1;
+                int lmmax_at = 2 * atom_type.lo_descriptor_hub(lo_ind).l() + 1;
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int m2 = 0; m2 < lmmax_at; m2++) {
                         for (int m1 = 0; m1 < lmmax_at; m1++) {
@@ -475,7 +475,7 @@ class U_operator
             int atom_id = atomic_orbitals_[at_lvl].first;
             if ((atomic_orbitals_[at_lvl].first == ia__) &&
                 (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
-                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l == l__))
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l() == l__))
                 break;
         }
 

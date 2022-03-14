@@ -678,7 +678,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 const auto& atom = ctx_.unit_cell().atom(ia1);
                 const int lo     = potential_.hubbard_potential().atomic_orbitals(at_lvl).second;
                 if (atom.type().lo_descriptor_hub(lo).use_for_calculation()) {
-                    int const lmax_at = 2 * atom.type().lo_descriptor_hub(lo).l + 1;
+                    int const lmax_at = 2 * atom.type().lo_descriptor_hub(lo).l() + 1;
                     const int offset  = potential_.hubbard_potential().offset(at_lvl);
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
