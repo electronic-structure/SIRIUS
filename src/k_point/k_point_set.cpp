@@ -222,19 +222,26 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         //double F = (Nf - ne) * (Nf - ne);
         double dF = 2 * (Nf - ne) * dNf;
         double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
-        mu = mu - alpha * dF / std::abs(ddF);
+        double step = alpha * dF / std::abs(ddF);
+        mu = mu - step;
 
         res.ys.push_back(mu);
 
-        if (std::abs(dF) < tol) {
+        if (std::abs(step) < tol) {
+            if (std::abs(Nf - ne) > tol) {
+                std::stringstream s;
+                s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search." << "\n";
+                RTE_THROW(s);
+            }
+
             res.iter = iter;
-            res.mu = mu;
+            res.mu   = mu;
             return res;
         }
 
         if (std::abs(ddF) < 1e-10) {
             std::stringstream s;
-            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!";
+            s << "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!";
             RTE_THROW(s);
         }
 
