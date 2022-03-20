@@ -5624,6 +5624,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
     call_sirius(
         [&]() {
 #if defined(SIRIUS_NLCGLIB)
+            PROFILE("sirius::nlcglib");
             // call nlcg solver
             auto& gs        = get_gs(handler__);
             auto& potential = gs.potential();
