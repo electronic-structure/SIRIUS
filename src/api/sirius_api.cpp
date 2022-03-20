@@ -22,6 +22,7 @@
  *  \brief Fortran API.
  */
 
+#include <cfenv>
 #include <ctype.h>
 #include <iostream>
 #include "sirius.hpp"
@@ -1764,6 +1765,7 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                     *niter__ = max_niter;
                 }
             }
+            std::feclearexcept(FE_ALL_EXCEPT);
         },
         error_code__);
 }
@@ -1854,6 +1856,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
             auto& ctx = gs.ctx();
             auto& inp = ctx.cfg().parameters();
             gs.initial_state();
+
 
             double rho_tol = inp.density_tol();
             if (scf_density_tol__) {
@@ -5713,6 +5716,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
             // return exit state of nlcglib to QE
             *converged__ = info.converged;
+            std::feclearexcept(FE_ALL_EXCEPT);
 #else
             RTE_THROW("SIRIUS was not compiled with NLCG option.");
 #endif
