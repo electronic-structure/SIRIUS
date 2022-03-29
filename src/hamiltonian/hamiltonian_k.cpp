@@ -50,6 +50,9 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__,
         u_op_ = std::shared_ptr<U_operator<T>>(
             new U_operator<T>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
+    if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
+        kp_.hubbard_wave_functions().prepare(spin_range(0), true, &H0_.ctx().mem_pool(memory_t::device));
+    }
 }
 
 template <typename T>
@@ -59,6 +62,9 @@ Hamiltonian_k<T>::~Hamiltonian_k()
         if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().dismiss();
         }
+    }
+    if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
+        kp_.hubbard_wave_functions().dismiss(spin_range(0), false);
     }
 }
 

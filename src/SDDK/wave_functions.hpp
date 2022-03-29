@@ -336,8 +336,15 @@ class Wave_functions
 
     inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
-        zero_pw(pu__, ispn__, i0__, n__);
-        zero_mt(pu__, ispn__, i0__, n__);
+        this->zero_pw(pu__, ispn__, i0__, n__);
+        this->zero_mt(pu__, ispn__, i0__, n__);
+    }
+
+    inline void zero(device_t pu__)
+    {
+        for (int is = 0; is < this->num_sc(); is++) {
+            this->zero(pu__, is, 0, this->num_wf());
+        }
     }
 
     // compute a dot, i.e. diag(this' * phi).

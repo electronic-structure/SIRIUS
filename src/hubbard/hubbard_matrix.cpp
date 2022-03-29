@@ -32,22 +32,21 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 {
     if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
 
-        // first compute the number of atomic levels involved in the hubbard correction
-        int num_atomic_level_{0};
+        /* first compute the number of atomic levels involved in the hubbard correction */
+        int num_atomic_level{0};
         atomic_orbitals_.clear();
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (atom_type.hubbard_correction()) {
-                num_atomic_level_ += atom_type.lo_descriptor_hub().size();
+                num_atomic_level += atom_type.lo_descriptor_hub().size();
 
                 for (int lo = 0; lo < static_cast<int>(atom_type.lo_descriptor_hub().size()); lo++) {
-                    std::pair<int, int> id = std::make_pair(ia, lo);
-                    atomic_orbitals_.push_back(id);
+                    atomic_orbitals_.push_back(std::make_pair(ia, lo));
                 }
             }
         }
 
-        local_ = std::vector<sddk::mdarray<double_complex, 3>>(num_atomic_level_);
+        local_ = std::vector<sddk::mdarray<double_complex, 3>>(num_atomic_level);
 
         /* the offsets here match the offsets of the hubbard wave functions but
          * are more fine grained. The offsets of the hubbard wave functions are
@@ -56,18 +55,20 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
          * atomic level of a given atom has the same value than the offset
          * giving the position of the first hubbard wave function of this
          * atom. */
-        offset_ = std::vector<int>(num_atomic_level_, 0);
+        offset_ = std::vector<int>(num_atomic_level, 0);
 
-        int size__ = 0;
+        int size{0};
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
-            offset_[at_lvl] = size__;
-            const int ia    = atomic_orbitals_[at_lvl].first;
+            offset_[at_lvl] = size;
+            int ia          = atomic_orbitals_[at_lvl].first;
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             int lo_ind      = atomic_orbitals_[at_lvl].second;
-            const int l     = atom_type.lo_descriptor_hub(lo_ind).l();
-            local_[at_lvl] = sddk::mdarray<double_complex, 3>(2 * l + 1, 2 * l + 1, 4, memory_t::host, "local_hubbard");
+            int l           = atom_type.lo_descriptor_hub(lo_ind).l();
+            int mmax        = 2 * l + 1;
+
+            local_[at_lvl] = sddk::mdarray<double_complex, 3>(mmax, mmax, 4, memory_t::host, "local_hubbard");
             local_[at_lvl].zero();
-            size__ += (2 * l + 1);
+            size += mmax;
         }
 
         nonlocal_.clear();

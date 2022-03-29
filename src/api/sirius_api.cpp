@@ -830,8 +830,10 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
             }
             if (hubbard_orbitals__ != nullptr) {
                 std::string s(hubbard_orbitals__);
+                std::transform(s.begin(), s.end(), s.begin(), ::tolower);
                 if (s == "ortho-atomic") {
                     sim_ctx.cfg().hubbard().orthogonalize(true);
+                    sim_ctx.cfg().hubbard().full_orthogonalization(true);
                 }
                 if (s == "norm-atomic") {
                     sim_ctx.cfg().hubbard().normalize(true);
@@ -5504,8 +5506,10 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
                 sim_ctx.veff_callback(reinterpret_cast<void (*)(void)>(fptr__));
             } else if (label == "ps_rho_ri") {
                 sim_ctx.ps_rho_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
-            } else if (label == "ps_atomic_wf") {
-                sim_ctx.atomic_wf_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+            } else if (label == "ps_atomic_wf_ri") {
+                sim_ctx.ps_atomic_wf_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+            } else if (label == "ps_atomic_wf_ri_djl") {
+                sim_ctx.ps_atomic_wf_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
             } else {
                 RTE_THROW("Wrong label of the callback function: " + label);
             }
@@ -5912,7 +5916,7 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 
             auto Hk = H0(kp);
 
-            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf());
+            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf().first);
 
             auto& itsol = sctx.cfg().iterative_solver();
 

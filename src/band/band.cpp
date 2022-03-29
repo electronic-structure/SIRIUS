@@ -137,7 +137,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
 
     if (ctx_.cfg().iterative_solver().init_subspace() == "lcao") {
         /* get the total number of atomic-centered orbitals */
-        N = unit_cell_.num_ps_atomic_wf();
+        N = unit_cell_.num_ps_atomic_wf().first;
     }
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
@@ -205,7 +205,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
     Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_wfs();},
-                                             ctx_.atomic_wf_ri(), phi);
+                                             ctx_.ps_atomic_wf_ri(), phi);
 
     /* generate some random noise */
     std::vector<double> tmp(4096);
@@ -303,8 +303,6 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         }
     }
 
-    Hk__.kp().copy_hubbard_orbitals_on_device();
-
     for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         Hk__.template apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
@@ -399,8 +397,6 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         }
     }
 
-    Hk__.kp().release_hubbard_orbitals_on_device();
-
     if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = Hk__.kp().spinor_wave_functions().checksum_pw(device_t::CPU, ispn, 0, num_bands);
@@ -446,8 +442,6 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
-
-        kp.copy_hubbard_orbitals_on_device();
     }
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
@@ -480,8 +474,6 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
-
-    kp.release_hubbard_orbitals_on_device();
 }
 
 /// Check wave-functions for orthonormalization.
@@ -513,8 +505,6 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
             ovlp.allocate(memory_t::device);
         }
 
-        Hk__.kp().copy_hubbard_orbitals_on_device();
-
         /* compute residuals */
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
             auto sr = spin_range(nc_mag ? 2 : ispin_step);
@@ -535,8 +525,6 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
                 psi.pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
-
-        Hk__.kp().release_hubbard_orbitals_on_device();
     }
 }
 

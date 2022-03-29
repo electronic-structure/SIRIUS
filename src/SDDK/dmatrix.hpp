@@ -348,16 +348,24 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
     {
         T cs{0};
 
-        splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
-                                                   this->blacs_grid().rank_row(), this->bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
-                                                   this->blacs_grid().rank_col(), this->bs_col());
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            for (int j = 0; j < spl_row.local_size(); j++) {
-                cs += (*this)(j, i);
+        if (blacs_grid_ != nullptr) {
+            splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
+                                                       this->blacs_grid().rank_row(), this->bs_row());
+            splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
+                                                       this->blacs_grid().rank_col(), this->bs_col());
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                for (int j = 0; j < spl_row.local_size(); j++) {
+                    cs += (*this)(j, i);
+                }
+            }
+            this->blacs_grid().comm().allreduce(&cs, 1);
+        } else {
+            for (int i = 0; i < n__; i++) {
+                for (int j = 0; j < m__; j++) {
+                    cs += (*this)(j, i);
+                }
             }
         }
-        this->blacs_grid().comm().allreduce(&cs, 1);
         return cs;
     }
 

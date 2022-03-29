@@ -49,7 +49,7 @@ extern "C" void create_beta_gk_gpu_double(int                   num_atoms,
 #endif
 
 /// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
-enum class beta_desc_idx
+enum class beta_desc_idx : int
 {
     /// Number of beta-projector functions for this atom.
     nbf      = 0,

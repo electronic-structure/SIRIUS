@@ -245,7 +245,7 @@ Unit_cell::print_info(int verbosity__) const
     }
     std::printf("\nminimum bond length: %20.12f\n", min_bond_length());
     if (!parameters_.full_potential()) {
-        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
+        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf().first);
     }
 
     if (symmetry_ != nullptr) {
@@ -656,7 +656,23 @@ Unit_cell::initialize()
             atom_coord_.push_back(mdarray<double, 2>());
         }
     }
+
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of Hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            counter += atom.type().indexb_hub().size();
+        }
+    }
+    num_hubbard_wf_ = std::make_pair(counter, offs);
+
     update();
+
 
     //== write_cif();
 
@@ -917,31 +933,16 @@ Unit_cell::init_paw()
 }
 
 std::pair<int, std::vector<int>>
-Unit_cell::num_hubbard_wf() const
+Unit_cell::num_ps_atomic_wf() const
 {
     std::vector<int> offs(this->num_atoms(), -1);
     int counter{0};
-
-    /* we loop over atoms to check which atom has hubbard orbitals and then
-       compute the number of Hubbard orbitals associated to it */
     for (auto ia = 0; ia < this->num_atoms(); ia++) {
         auto& atom = this->atom(ia);
-        if (atom.type().hubbard_correction()) {
-            offs[ia] = counter;
-            counter += atom.type().indexb_hub().size();
-        }
+        offs[ia] = counter;
+        counter += atom.type().indexb_wfs().size();
     }
     return std::make_pair(counter, offs);
-}
-
-int
-Unit_cell::num_ps_atomic_wf() const
-{
-    int N{0};
-    for (int iat = 0; iat < this->num_atom_types(); iat++) {
-        N += atom_type(iat).num_atoms() * static_cast<int>(this->atom_type(iat).indexb_wfs().size());
-    }
-    return N;
 }
 
 } // namespace sirius
