@@ -192,6 +192,8 @@ Stress::calc_stress_hubbard()
     kset_.comm().allreduce(&stress_hubbard_(0, 0), 9);
     symmetrize(stress_hubbard_);
 
+    stress_hubbard_ = -1.0 * stress_hubbard_;
+
     return stress_hubbard_;
 }
 
@@ -562,6 +564,7 @@ Stress::print_info() const
         auto stress_nonloc   = stress_nonloc_ * au2kbar;
         auto stress_us       = stress_us_ * au2kbar;
         auto stress_hubbard  = stress_hubbard_ * au2kbar;
+        auto stress_core     = stress_core_ * au2kbar;
 
         std::printf("== stress tensor components [kbar] ===\n");
 
@@ -579,6 +582,9 @@ Stress::print_info() const
 
         std::printf("== stress_xc ==\n");
         print_stress(stress_xc);
+
+        std::printf("== stress_core ==\n");
+        print_stress(stress_core);
 
         std::printf("== stress_nonloc ==\n");
         print_stress(stress_nonloc);

@@ -328,7 +328,7 @@ Force::calc_forces_hf()
     if (ctx_.cfg().control().verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("H-F force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            std::printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
+            std::printf("ia : %i, Hellmann Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
                         forces_hf_(2, ia));
         }
     }
@@ -660,7 +660,7 @@ Force::calc_forces_core()
 
 void
 Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                  mdarray<double, 2>& forceh_)
+                                                  mdarray<double, 2>& forceh__)
 {
     mdarray<double_complex, 5> dn(kp__.hubbard_wave_functions_S().num_wf(), kp__.hubbard_wave_functions_S().num_wf(), 2,
                                   3, ctx_.unit_cell().num_atoms());
@@ -721,7 +721,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                     }
                 }
             }
-            forceh_(dir, ia) -= std::real(d);
+            forceh__(dir, ia) -= std::real(d);
         }
     }
 }

@@ -1315,33 +1315,16 @@ Simulation_context::update()
             return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
         };
 
-        if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(
-                unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, atomic_wf_ri_callback_));
+        if (!ps_atomic_wf_ri_ || ps_atomic_wf_ri_->qmax() < new_gk_cutoff) {
+            ps_atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(
+                unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_callback_));
         }
 
-        if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, nullptr));
+        if (!ps_atomic_wf_ri_djl_ || ps_atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
+            ps_atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_djl_callback_));
         }
 
-        auto idxr_wf_hub = [&](int iat) -> sirius::experimental::radial_functions_index const& {
-            return unit_cell().atom_type(iat).indexr_hub();
-        };
-
-        auto ps_wf_hub = [&](int iat, int i) -> Spline<double> const& {
-            return unit_cell().atom_type(iat).hubbard_radial_function(i);
-        };
-
-        if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub, nullptr));
-        }
-
-        if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub, nullptr));
-        }
         /* update augmentation operator */
         memory_pool* mp{nullptr};
         memory_pool* mpd{nullptr};

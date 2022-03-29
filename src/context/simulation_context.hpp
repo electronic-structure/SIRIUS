@@ -178,16 +178,10 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, double, double*, int, int)> aug_ri_djl_callback_{nullptr};
 
     /// Radial integrals of atomic wave-functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<false>> atomic_wf_ri_;
+    std::unique_ptr<Radial_integrals_atomic_wf<false>> ps_atomic_wf_ri_;
 
     /// Radial integrals of atomic wave-functions with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
-
-    /// Radial integrals of hubbard wave-functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<false>> hubbard_wf_ri_;
-
-    /// Radial integrals of hubbard wave-functions with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<true>> hubbard_wf_ri_djl_;
+    std::unique_ptr<Radial_integrals_atomic_wf<true>> ps_atomic_wf_ri_djl_;
 
     /// Radial integrals of pseudo-core charge density.
     std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
@@ -199,7 +193,8 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
 
     std::function<void(int, int, double*, double*)> ps_rho_ri_callback_{nullptr};
-    std::function<void(int, double, double*, int)> atomic_wf_ri_callback_{nullptr};
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_callback_{nullptr};
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_djl_callback_{nullptr};
 
     /// Radial integrals of total pseudo-charge density.
     std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
@@ -648,24 +643,14 @@ class Simulation_context : public Simulation_parameters
         return *aug_ri_djl_;
     }
 
-    inline auto const& atomic_wf_ri() const
+    inline auto const& ps_atomic_wf_ri() const
     {
-        return *atomic_wf_ri_;
+        return *ps_atomic_wf_ri_;
     }
 
-    inline auto const& atomic_wf_djl() const
+    inline auto const& ps_atomic_wf_ri_djl() const
     {
-        return *atomic_wf_ri_djl_;
-    }
-
-    inline auto const& hubbard_wf_ri() const
-    {
-        return *hubbard_wf_ri_;
-    }
-
-    inline auto const& hubbard_wf_djl() const
-    {
-        return *hubbard_wf_ri_djl_;
+        return *ps_atomic_wf_ri_djl_;
     }
 
     inline auto const& ps_core_ri() const
@@ -869,15 +854,15 @@ class Simulation_context : public Simulation_parameters
         rhoc_ri_djl_callback_ = fptr__;
     }
 
-    inline void atomic_wf_callback(void (*fptr__)(int, double, double*, int))
+    inline void ps_atomic_wf_ri_callback(void (*fptr__)(int, double, double*, int))
     {
-        atomic_wf_ri_callback_ = fptr__;
+        ps_atomic_wf_ri_callback_ = fptr__;
     }
 
-    // inline void atomic_wf_djl_callback(void (*fptr__)(int, double, double*, int))
-    // {
-    //     atomic_wf_djl_ri_callback_ = fptr__;
-    // }
+    inline void ps_atomic_wf_ri_djl_callback(void (*fptr__)(int, double, double*, int))
+    {
+        ps_atomic_wf_ri_djl_callback_ = fptr__;
+    }
 
     /// Set callback function to compute band occupations
     inline void band_occ_callback(void (*fptr__)(void))

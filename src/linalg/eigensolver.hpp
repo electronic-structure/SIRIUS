@@ -269,6 +269,7 @@ class Eigensolver
     }
 };
 
-std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__);
+std::unique_ptr<Eigensolver>
+Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__);
 
 #endif

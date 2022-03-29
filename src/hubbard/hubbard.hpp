@@ -53,8 +53,6 @@ class Hubbard
 
     Unit_cell& unit_cell_;
 
-    int number_of_hubbard_orbitals_{0};
-
     /// Hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
 
@@ -93,9 +91,9 @@ class Hubbard
         hubbard_U_plus_V_ = true;
     }
 
-    inline int number_of_hubbard_orbitals() const
+    inline int num_hubbard_wf() const
     {
-        return number_of_hubbard_orbitals_;
+        return ctx_.unit_cell().num_hubbard_wf().first;
     }
 };
 

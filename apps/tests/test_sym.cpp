@@ -87,14 +87,14 @@ void test_sym(cmd_args const& args__)
 
     for (int ik = 0; ik < kset_sym.num_kpoints(); ik++) {
         phi_sym.emplace_back(kset_sym.get<double>(ik)->gkvec_partition(), nwf, memory_t::host);
-        kset_sym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_sym.back());
+        kset_sym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_sym.back());
     }
 
     std::vector<Wave_functions<double>> phi_nosym;
 
     for (int ik = 0; ik < kset_nosym.num_kpoints(); ik++) {
         phi_nosym.emplace_back(kset_nosym.get<double>(ik)->gkvec_partition(), nwf, memory_t::host);
-        kset_nosym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.atomic_wf_ri(), phi_nosym.back());
+        kset_nosym.get<double>(ik)->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_nosym.back());
     }
 
     auto& sym = ctx.unit_cell().symmetry();

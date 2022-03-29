@@ -71,9 +71,9 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
 
     if (ctx__.cfg().hubbard().simplified()) {
 
-        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.alpha() != 0.0)) {
+        if ((hub_wf.U() != 0.0) || (hub_wf.alpha() != 0.0)) {
 
-            double U_effective = hub_wf.Hubbard_U();
+            double U_effective = hub_wf.U();
 
             if (std::abs(hub_wf.J0()) > 1e-8) {
                 U_effective -= hub_wf.J0();
@@ -141,8 +141,8 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
             for (int m1 = 0; m1 < lmax_at; m1++) {
 
                 /* dc contribution */
-                um__(m1, m1, is) += hub_wf.Hubbard_J() * n_updown[is] +
-                                    0.5 * (hub_wf.Hubbard_U() - hub_wf.Hubbard_J()) - hub_wf.Hubbard_U() * n_total;
+                um__(m1, m1, is) += hub_wf.J() * n_updown[is] +
+                                    0.5 * (hub_wf.U() - hub_wf.J()) - hub_wf.U() * n_total;
 
                 // the u contributions
                 for (int m2 = 0; m2 < lmax_at; m2++) {
@@ -212,9 +212,9 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
     int const lmax_at = 2 * hub_wf.l() + 1;
 
     if (ctx__.cfg().hubbard().simplified()) {
-        if ((hub_wf.Hubbard_U() != 0.0) || (hub_wf.alpha() != 0.0)) {
+        if ((hub_wf.U() != 0.0) || (hub_wf.alpha() != 0.0)) {
 
-            double U_effective = hub_wf.Hubbard_U();
+            double U_effective = hub_wf.U();
 
             if (std::abs(hub_wf.J0()) > 1e-8) {
                 U_effective -= hub_wf.J0();
@@ -288,8 +288,8 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
         }
 
         hubbard_energy_dc_contribution +=
-            0.5 * (hub_wf.Hubbard_U() * n_total * (n_total - 1.0) -
-                   hub_wf.Hubbard_J() * n_total * (0.5 * n_total - 1.0) - hub_wf.Hubbard_J() * magnetization * 0.5);
+            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) -
+                   hub_wf.J() * n_total * (0.5 * n_total - 1.0) - hub_wf.J() * magnetization * 0.5);
 
         /* now hubbard contribution */
 
@@ -398,10 +398,10 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
 
             // hubbard potential : dc contribution
 
-            um__(m1, m1, is) += hub_wf.Hubbard_J() * n_aux;
+            um__(m1, m1, is) += hub_wf.J() * n_aux;
 
             if (is1 == is) {
-                um__(m1, m1, is) += 0.5 * (hub_wf.Hubbard_U() - hub_wf.Hubbard_J()) - hub_wf.Hubbard_U() * n_total;
+                um__(m1, m1, is) += 0.5 * (hub_wf.U() - hub_wf.J()) - hub_wf.U() * n_total;
             }
 
             // spin flip contributions
@@ -456,8 +456,8 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
     double magnetization = mz * mz + mx * mx + my * my;
 
     hubbard_energy_dc_contribution +=
-        0.5 * (hub_wf.Hubbard_U() * n_total * (n_total - 1.0) - hub_wf.Hubbard_J() * n_total * (0.5 * n_total - 1.0) -
-               0.5 * hub_wf.Hubbard_J() * magnetization);
+        0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+               0.5 * hub_wf.J() * magnetization);
 
     for (int is = 0; is < 4; is++) {
 
