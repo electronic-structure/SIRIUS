@@ -423,8 +423,6 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
     }
 
     dmatrix<std::complex<T>> dm(hub_wf__.num_wf(), n__);
-    dm.zero();
-
     if (ctx__.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
     }
@@ -489,6 +487,9 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
         linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &linalg_const<double_complex>::one(),
                         um__.at(mt, 0, 0, spins__()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
                         &linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
+        if (ctx__.processing_unit() == device_t::GPU) {
+            Up.copy_to(memory_t::host);
+        }
     }
     transform<std::complex<T>, std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
         Up, 0, 0, 1.0, {&hphi__}, N__, n__);

@@ -247,8 +247,10 @@ class Simulation_context : public Simulation_parameters
     /// Callback function to compute effective potential.
     std::function<void(void)> veff_callback_{nullptr};
 
-    // Spla context
+    /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
+
+    std::shared_ptr<std::ostream> output_stream_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -900,6 +902,15 @@ class Simulation_context : public Simulation_parameters
         dict["chemical_formula"]    = unit_cell().chemical_formula();
         dict["num_atoms"]           = unit_cell().num_atoms();
         return dict;
+    }
+
+    std::ostream& out() const
+    {
+        if (output_stream_ == nullptr) {
+            return std::cout;
+        } else {
+            return *output_stream_;
+        }
     }
 };
 

@@ -73,7 +73,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
         if (ctx_.print_checksum()) {
             auto cs = mtrx__.checksum(N__ - num_locked, N__ - num_locked);
             if (ctx_.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
+                utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(ctx_.out()));
             }
         }
     }
@@ -104,7 +104,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked, N__ + n__ - num_locked);
         if (ctx_.comm_band().rank() == 0) {
-            utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
+            utils::print_checksum("subspace_mtrx", cs, RTE_OUT(ctx_.out()));
         }
     }
 
@@ -314,7 +314,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
                 auto s = ovlp.serialize("overlap", num_phi_tot, num_phi_tot);
                 if (Hk__.kp().comm().rank() == 0) {
-                    std::cout << s.str() << std::endl;
+                    ctx_.out() << s.str() << std::endl;
                 }
             }
 
@@ -345,7 +345,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             auto s1 = hmlt.serialize("hmlt", num_phi_tot, num_phi_tot);
             auto s2 = hmlt.serialize("ovlp", num_phi_tot, num_phi_tot);
             if (Hk__.kp().comm().rank() == 0) {
-                std::cout << s1.str() << std::endl << s2.str() << std::endl;
+                ctx_.out() << s1.str() << std::endl << s2.str() << std::endl;
             }
         }
 

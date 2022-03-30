@@ -559,6 +559,10 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     /* this is the original atomic wave functions without the operator S applied */
     auto& phi = kp__.hubbard_wave_functions();
 
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.allocate(memory_t::device);
+    }
+
     /*
       dphi contains this
 
@@ -728,6 +732,10 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             }
             compute_occupancies(kp__, phi_s_psi, dphi, dn__, 3 * nu + mu);
         }
+    }
+
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.deallocate(memory_t::device);
     }
 
     kp__.spinor_wave_functions().dismiss(sr, false);

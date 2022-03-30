@@ -432,6 +432,12 @@ class U_operator
                 }
             }
         }
+        if (ctx_.print_checksum()) {
+            utils::print_checksum("um", um_.checksum(), RTE_OUT(ctx_.out()));
+        }
+        if (ctx_.processing_unit() == device_t::GPU) {
+            um_.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+        }
     }
 
     ~U_operator()

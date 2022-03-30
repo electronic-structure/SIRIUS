@@ -51,7 +51,7 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__,
             new U_operator<T>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
     if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
-        kp_.hubbard_wave_functions().prepare(spin_range(0), true, &H0_.ctx().mem_pool(memory_t::device));
+        kp_.hubbard_wave_functions_S().prepare(spin_range(0), true, &H0_.ctx().mem_pool(memory_t::device));
     }
 }
 
@@ -64,7 +64,7 @@ Hamiltonian_k<T>::~Hamiltonian_k()
         }
     }
     if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
-        kp_.hubbard_wave_functions().dismiss(spin_range(0), false);
+        kp_.hubbard_wave_functions_S().dismiss(spin_range(0), false);
     }
 }
 
@@ -802,18 +802,10 @@ Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions
         kp().message(1, __function_name__, "hloc performance: %12.6f bands/sec", n__ / t1);
     }
 
-    if (H0().ctx().cfg().control().print_checksum() && hphi__) {
-        for (int ispn : spins__) {
-            auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
-            auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
-            if (kp().comm().rank() == 0) {
-                std::stringstream s;
-                s << "phi_" << ispn;
-                utils::print_checksum(s.str(), cs1);
-                s.str("");
-                s << "hphi_" << ispn;
-                utils::print_checksum(s.str(), cs2);
-            }
+    if (H0().ctx().print_checksum()) {
+        phi__.print_checksum(get_device_t(phi__.preferred_memory_t()), "phi", N__, n__, RTE_OUT(H0().ctx().out()));
+        if (hphi__) {
+            hphi__->print_checksum(get_device_t(hphi__->preferred_memory_t()), "hloc_phi", N__, n__, RTE_OUT(H0().ctx().out()));
         }
     }
 
@@ -831,24 +823,18 @@ Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions
 
     /* apply the hubbard potential if relevant */
     if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
-        /* apply the hubbard potential and deallocate the hubbard wave functions on GPU (if needed) */
+        /* apply the hubbard potential */
         apply_U_operator(H0().ctx(), spins__, N__, n__, kp().hubbard_wave_functions_S(), phi__, this->U(), *hphi__);
     }
 
-    // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
-    //    for (int ispn = 0; ispn < nsc; ispn++) {
-    //        auto cs1 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
-    //        auto cs2 = sphi__->checksum(get_device_t(sphi__->preferred_memory_t()), ispn, N__, n__);
-    //        if (kp__->comm().rank() == 0) {
-    //            std::stringstream s;
-    //            s << "hphi_" << ispn;
-    //            utils::print_checksum(s.str(), cs1);
-    //            s.str("");
-    //            s << "sphi_" << ispn;
-    //            utils::print_checksum(s.str(), cs2);
-    //        }
-    //    }
-    //}
+    if (H0().ctx().print_checksum()) {
+        if (hphi__) {
+            hphi__->print_checksum(get_device_t(hphi__->preferred_memory_t()), "hphi", N__, n__, RTE_OUT(H0().ctx().out()));
+        }
+        if (sphi__) {
+            sphi__->print_checksum(get_device_t(sphi__->preferred_memory_t()), "sphi", N__, n__, RTE_OUT(H0().ctx().out()));
+        }
+    }
 }
 
 template <typename T>
