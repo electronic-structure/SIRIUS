@@ -5760,6 +5760,9 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 
             json elem;
             std::vector<int> atom_pair(atom_pair__, atom_pair__ + 2);
+            /* Fortran indices start from 1 */
+            atom_pair[0] -= 1;
+            atom_pair[1] -= 1;
             std::vector<int> n(n__, n__ + 2);
             std::vector<int> l(l__, l__ + 2);
             std::vector<int> translation(translation__, translation__ + 3);
