@@ -168,7 +168,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
-    if (ctx_.cfg().control().verification() >= 1) {
+    if (ctx_.cfg().control().verification() >= 2) {
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;

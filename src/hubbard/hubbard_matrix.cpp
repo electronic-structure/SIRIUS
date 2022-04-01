@@ -206,12 +206,13 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     const int ib = 2 * il + 1;
     vector3d<int> T(nl.T());
 
-    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T << std::endl;
+    vector3d<double> r = ctx_.unit_cell().atom(ja).position() + T - ctx_.unit_cell().atom(ia).position();
+    /* convert to Cartesian coordinates */
+    auto rc = dot(ctx_.unit_cell().lattice_vectors(), r);
 
-    // auto const& atom = ctx_.unit_cell().atom(ia__);
-    // if (!atom.type().hubbard_correction()) {
-    //    return;
-    //}
+    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T
+          << ", r: " << rc << std::endl;
+
     int const prec{5};
     int const width{10};
     auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };

@@ -1805,22 +1805,22 @@ template <typename T>
 inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
     real_type<T> max_diff{0};
-#ifdef SIRIUS_SCALAPACK
-    dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
-    linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
-    for (int i = 0; i < tmp.num_cols_local(); i++) {
-        for (int j = 0; j < tmp.num_rows_local(); j++) {
-            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+    if (mtrx__.comm().size() != 1) {
+        dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+        linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+        for (int i = 0; i < tmp.num_cols_local(); i++) {
+            for (int j = 0; j < tmp.num_rows_local(); j++) {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+            }
+        }
+        mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
+    } else {
+        for (int i = 0; i < n__; i++) {
+            for (int j = 0; j < n__; j++) {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - std::conj(mtrx__(i, j))));
+            }
         }
     }
-    mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
-#else
-    for (int i = 0; i < n__; i++) {
-        for (int j = 0; j < n__; j++) {
-            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - std::conj(mtrx__(i, j))));
-        }
-    }
-#endif
     return max_diff;
 }
 

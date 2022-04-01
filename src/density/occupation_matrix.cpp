@@ -581,11 +581,11 @@ Occupation_matrix::print_occupancies(int verbosity__) const
                 }
             }
         }
-        if (ctx_.cfg().hubbard().nonlocal().size()) {
+        if (ctx_.cfg().hubbard().nonlocal().size() && (ctx_.verbosity() >= verbosity__ + 1)) {
             s << std::endl;
-        }
-        for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
-            Hubbard_matrix::print_nonlocal(i, s);
+            for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
+                Hubbard_matrix::print_nonlocal(i, s);
+            }
         }
         ctx_.message(1, "occ.mtrx", s);
     }

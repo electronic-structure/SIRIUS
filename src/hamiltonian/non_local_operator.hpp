@@ -358,7 +358,8 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
-    sddk::mdarray<std::complex<T>, 3> um_;
+    //sddk::mdarray<std::complex<T>, 3> um_;
+    std::array<sddk::dmatrix<std::complex<T>>, 4> um_;
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
@@ -367,6 +368,7 @@ class U_operator
   public:
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
         : ctx_(ctx__)
+        , vk_(vk__)
     {
         if (!ctx_.hubbard_correction()) {
             return;
@@ -374,15 +376,14 @@ class U_operator
         /* a pair of "total number, offests" for the Hubbard orbitals idexing */
         auto r                 = ctx_.unit_cell().num_hubbard_wf();
         this->nhwf_            = r.first;
-        this->vk_              = vk__;
         this->offset_          = um1__.offset();
         this->atomic_orbitals_ = um1__.atomic_orbitals();
-        um_                    = sddk::mdarray<std::complex<T>, 3>(this->nhwf_, this->nhwf_, ctx_.num_mag_dims() + 1);
-        um_.zero();
+        for (int j = 0; j <  ctx_.num_mag_dims() + 1; j++) {
+            um_[j] = sddk::dmatrix<std::complex<T>>(r.first, r.first);
+            um_[j].zero();
+        }
 
-        /* copy only local blocks */
-        // TODO: implement Fourier-transfomation of the T-dependent occupancy matrix
-        // to get the generic k-dependent matrix
+        /* copy local blocks */
         for (int at_lvl = 0; at_lvl < static_cast<int>(um1__.atomic_orbitals().size()); at_lvl++) {
             const int ia    = um1__.atomic_orbitals(at_lvl).first;
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
@@ -392,7 +393,7 @@ class U_operator
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int m2 = 0; m2 < lmmax_at; m2++) {
                         for (int m1 = 0; m1 < lmmax_at; m1++) {
-                            um_(um1__.offset(at_lvl) + m1, um1__.offset(at_lvl) + m2, j) =
+                            um_[j](um1__.offset(at_lvl) + m1, um1__.offset(at_lvl) + m2) =
                                 um1__.local(at_lvl)(m1, m2, j);
                         }
                     }
@@ -400,12 +401,8 @@ class U_operator
             }
         }
 
-        vk_[0] = vk__[0];
-        vk_[1] = vk__[1];
-        vk_[2] = vk__[2];
-
-        for (int i = 0; i < ctx__.cfg().hubbard().nonlocal().size(); i++) {
-            auto nl = ctx__.cfg().hubbard().nonlocal(i);
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+            auto nl = ctx_.cfg().hubbard().nonlocal(i);
             int ia  = nl.atom_pair()[0];
             int ja  = nl.atom_pair()[1];
             int il  = nl.l()[0];
@@ -416,27 +413,27 @@ class U_operator
             int at1_lvl = um1__.find_orbital_index(ia, nl.n()[0], il);
             int at2_lvl = um1__.find_orbital_index(ja, nl.n()[1], jl);
 
-            auto z1 = std::exp(double_complex(0, -twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
-            // QE does not explicitly make the potential hermitian (and we
-            // should have in practice since links [i,J,T] have their
-            // counterpart [j,i,-T] in the list) but for sanity sake I enforce
-            // the Hermiticity so 1/2 is need here
-            for (int is = 0; is < ctx__.num_spins(); is++) {
+            auto z1 = std::exp(double_complex(0, twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
+            for (int is = 0; is < ctx_.num_spins(); is++) {
                 for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
-                        um_(um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2, is) +=
-                            0.5 * z1 * um1__.nonlocal(i)(m1, m2, is);
-                        um_(um1__.offset(at2_lvl) + m2, um1__.offset(at1_lvl) + m1, is) +=
-                            0.5 * conj(z1 * um1__.nonlocal(i)(m1, m2, is));
+                        um_[is](um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2) +=
+                            z1 * um1__.nonlocal(i)(m1, m2, is);
                     }
                 }
             }
         }
-        if (ctx_.print_checksum()) {
-            utils::print_checksum("um", um_.checksum(), RTE_OUT(ctx_.out()));
-        }
-        if (ctx_.processing_unit() == device_t::GPU) {
-            um_.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+        for (int is = 0; is < ctx_.num_spins(); is++) {
+            auto diff = check_hermitian(um_[is], r.first);
+            if (diff > 1e-10) {
+                RTE_THROW("um is not Hermitian");
+            }
+            if (ctx_.print_checksum()) {
+                utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
+            }
+            if (ctx_.processing_unit() == device_t::GPU) {
+                um_[is].allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+            }
         }
     }
 
@@ -465,12 +462,12 @@ class U_operator
 
     std::complex<T> operator()(int m1, int m2, int j)
     {
-        return um_(m1, m2, j);
+        return um_[j](m1, m2);
     }
 
     std::complex<T>* at(memory_t mem__, const int idx1, const int idx2, const int idx3)
     {
-        return um_.at(mem__, idx1, idx2, idx3);
+        return um_[idx3].at(mem__, idx1, idx2);
     }
 
     const int find_orbital_index(const int ia__, const int n__, const int l__) const
