@@ -1473,6 +1473,8 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 {
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
+    double R = R__ * 1.2;
+
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
     vector3d<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
@@ -1480,8 +1482,8 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
     int z_off = spfft<double>().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
     vector3d<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__}, {R__, R__, -R__},
-                                             {-R__, -R__, R__},  {R__, -R__, R__},  {-R__, R__, R__},  {R__, R__, R__}};
+    std::vector<vector3d<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
+                                             {-R, -R, R},  {R, -R, R},  {-R, R, R},  {R, R, R}};
 
     auto bounds_box = [&](vector3d<double> pos) {
         std::vector<vector3d<double>> verts;
@@ -1521,7 +1523,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r = unit_cell().get_cartesian_coordinates(v).length();
-                                if (r < R__) {
+                                if (r < R) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});
                                 }

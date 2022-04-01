@@ -36,7 +36,7 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
     auto nl = ctx__.cfg().hubbard().nonlocal(index__);
     um__.zero();
 
-    double v_ij_ = nl.V() / ha2ev;
+    double v_ij = nl.V() / ha2ev;
     int il       = nl.l()[0];
     int jl       = nl.l()[1];
     um__.zero();
@@ -44,7 +44,7 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
     for (int is = 0; is < ctx__.num_spins(); is++) {
         for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                um__(m1, m2, is) = -v_ij_ * om__(m1, m2, is);
+                um__(m1, m2, is) = -v_ij * om__(m1, m2, is);
             }
         }
     }
@@ -64,8 +64,9 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
     /* single orbital implementation */
     auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf);
 
-    if (!hub_wf.use_for_calculation())
+    if (!hub_wf.use_for_calculation()) {
         return;
+    }
 
     int const lmax_at = 2 * hub_wf.l() + 1;
 

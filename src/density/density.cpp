@@ -1867,6 +1867,8 @@ Density::compute_atomic_mag_mom() const
     mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
     mmom.zero();
 
+    double R = ctx_.cfg().control().rmt_max();
+
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
 
@@ -1874,8 +1876,13 @@ Density::compute_atomic_mag_mom() const
 
         for (auto coord : atom_to_grid_map) {
             int ir = coord.first;
+            double r = coord.second;
+            double w = 1;
+            if (r >= R && r <= 1.2 * R) {
+                w -= (r - R) / (0.2 * R);
+            }
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                mmom(j, ia) += magnetization(j).f_rg(ir);
+                mmom(j, ia) += magnetization(j).f_rg(ir) * w;
             }
         }
 
