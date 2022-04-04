@@ -31,17 +31,20 @@
 #include <sstream>
 
 namespace sirius {
-  template <typename T> static std::ostringstream option_print_vector__(const std::vector<T> &vec) {
+template <typename T>
+static std::ostringstream
+option_print_vector__(const std::vector<T>& vec)
+{
     std::ostringstream out;
     if (!vec.empty()) {
-      out << "[" << vec[0];
-      for (auto i = 0u; i < vec.size(); i++) {
-        out << ", " << vec[i];
-      }
-      out << "]";
+        out << "[" << vec[0];
+        for (auto i = 0u; i < vec.size(); i++) {
+            out << ", " << vec[i];
+        }
+        out << "]";
     }
     return out;
-  }
+}
 /// Compose JSON dictionary with default parameters based on input schema.
 /** Traverse the JSON schema and add nodes with default parameters to the output dictionary. The nodes without
  *  default parameters are ignored. Still, user has a possibility to add the missing nodes later by providing a

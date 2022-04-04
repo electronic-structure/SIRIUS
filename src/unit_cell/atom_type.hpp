@@ -38,6 +38,37 @@
 
 namespace sirius {
 
+/// Store basic information about radial pseudo wave-functions.
+struct ps_atomic_wf_descriptor
+{
+    /// Constructor.
+    ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__, Spline<double> f__)
+        : n(n__)
+        , am(am__)
+        , occ(occ__)
+        , f(std::move(f__))
+    {
+    }
+    /// Principal quantum number.
+    int n;
+    /// Angular momentum quantum number.
+    sirius::experimental::angular_momentum am;
+    /// Shell occupancy
+    double occ;
+    /// Radial wave-function.
+    Spline<double> f;
+};
+
+inline std::ostream& operator<<(std::ostream& out, ps_atomic_wf_descriptor const& wfd)
+{
+    if (wfd.am.s() == 0) {
+        out << "{n: " << wfd.n << ", l: " << wfd.am.l() << "}";
+    } else {
+        out << "{n: " << wfd.n << ", l: " << wfd.am.l() << ", j: " << wfd.am.j() << "}";
+    }
+    return out;
+}
+
 /// Defines the properties of atom type.
 /** Atoms wth the same properties are grouped by type. */
 class Atom_type
@@ -110,7 +141,7 @@ class Atom_type
     sirius::experimental::basis_functions_index indexb_wfs_;
 
     /// List of Hubbard orbital descriptors.
-    /** List of sirius::hubbard_orbital_descriptor for each orbital. Each elemeent of the list contains
+    /** List of sirius::hubbard_orbital_descriptor for each orbital. Each element of the list contains
      *  information about radial function and U and J parameters for the Hubbard correction. The list is
      *  compatible with the indexr_hub_ radial index. */
     std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
@@ -133,23 +164,6 @@ class Atom_type
         \f]
      */
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
-
-    /// Store basic information about radial pseudo wave-functions.
-    struct ps_atomic_wf_descriptor
-    {
-        ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__,
-                Spline<double> f__)
-            : n(n__)
-            , am(am__)
-            , occ(occ__)
-            , f(std::move(f__))
-        {
-        }
-        int n;
-        sirius::experimental::angular_momentum am;
-        double occ;
-        Spline<double> f;
-    };
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Lists of [n, j, occ, chi_l(r)] are stored. In case of
@@ -307,12 +321,8 @@ class Atom_type
   public:
     /// Constructor.
     /** Basic parameters of atom type are passed as constructor arguments. */
-    Atom_type(Simulation_parameters const&                parameters__,
-              std::string                                 symbol__,
-              std::string                                 name__,
-              int                                         zn__,
-              double                                      mass__,
-              std::vector<atomic_level_descriptor> const& levels__)
+    Atom_type(Simulation_parameters const& parameters__, std::string symbol__, std::string name__, int zn__,
+              double mass__, std::vector<atomic_level_descriptor> const& levels__)
         : parameters_(parameters__)
         , symbol_(symbol__)
         , name_(name__)
@@ -339,6 +349,21 @@ class Atom_type
     /// Initialize the atom type.
     /** Once the unit cell is populated with all atom types and atoms, each atom type can be initialized. */
     void init(int offset_lo__);
+
+    /// Initialize the free atom density (smooth or true).
+    void init_free_atom_density(bool smooth);
+
+    /// Add a hubbard orbital to a list.
+    /** All atomic functions must already be loaded prior to callinig this function. Atomic wave-functions
+        (chi in the uspp file) are used as a definition of "localized orbitals" to which U-correction is applied.
+        Full treatment of spin is not considered. In case of spinor wave-functions the are averaged between
+        l+1/2 and l-1/2 states. */
+    void add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double* hub_coef__,
+                             double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
+                             const bool use_for_calculations__);
+
+    /// Print basic info to standard output.
+    void print_info(std::ostream& out__) const;
 
     /// Set the radial grid of the given type.
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
@@ -448,8 +473,8 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__,
-            std::vector<double> f__, double occ__ = 0.0)
+    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__, std::vector<double> f__,
+                                 double occ__ = 0.0)
     {
         Spline<double> rwf(radial_grid_, f__);
         auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
@@ -464,7 +489,7 @@ class Atom_type
     }
 
     /// Return a tuple describing a given atomic radial function
-    ps_atomic_wf_descriptor const& ps_atomic_wf(int idx__) const
+    auto const& ps_atomic_wf(int idx__) const
     {
         return ps_atomic_wfs_[idx__];
     }
@@ -526,7 +551,7 @@ class Atom_type
             /* once we add a Q-radial function, we need to augment the charge */
             augment_ = true;
             /* number of radial beta-functions */
-            int nbrf = num_beta_radial_functions();
+            int nbrf              = num_beta_radial_functions();
             q_radial_functions_l_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
 
             for (int l = 0; l <= 2 * lmax_beta(); l++) {
@@ -536,7 +561,7 @@ class Atom_type
             }
         }
 
-        int ijv = utils::packed_index(idxrf1__, idxrf2__);
+        int ijv                         = utils::packed_index(idxrf1__, idxrf2__);
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 
@@ -645,20 +670,6 @@ class Atom_type
         paw_wf_occ_ = inp__;
         return paw_wf_occ_;
     }
-
-    /// Initialize the free atom density (smooth or true).
-    void init_free_atom_density(bool smooth);
-
-    /// Add a hubbard orbital to a list.
-    /** All atomic functions must already be loaded prior to callinig this function. Atomic wave-functions
-        (chi in the uspp file) are used as a definition of "localized orbitals" to which U-correction is applied.
-        Full treatment of spin is not considered. In case of spinor wave-functions the are averaged between
-        l+1/2 and l-1/2 states. */
-    void add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double *hub_coef__,
-                             double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__);
-
-    /// Print basic info to standard output.
-    void print_info() const;
 
     /// Return atom type id.
     inline int id() const
@@ -818,11 +829,6 @@ class Atom_type
         return indexr_hub_;
     }
 
-    inline auto const& lo_descriptor_hub(int idx__) const
-    {
-        return lo_descriptors_hub_[idx__];
-    }
-
     inline auto const& indexr(int i) const
     {
         assert(i >= 0 && i < (int)indexr_.size());
@@ -965,8 +971,8 @@ class Atom_type
 
     inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
     {
-        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
-                                     memory_t::host, "Atom_type::d_mtrx_ion_");
+        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(), memory_t::host,
+                                     "Atom_type::d_mtrx_ion_");
         d_mtrx_ion__ >> d_mtrx_ion_;
     }
 
@@ -1066,6 +1072,18 @@ class Atom_type
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
+    /// Return a vector containing all information about the localized atomic
+    /// orbitals used to generate the Hubbard subspace.
+    inline const auto& lo_descriptor_hub() const
+    {
+        return lo_descriptors_hub_;
+    }
+
+    inline auto const& lo_descriptor_hub(int idx__) const
+    {
+        return lo_descriptors_hub_[idx__];
+    }
+
     inline int lmax_apw() const
     {
         if (this->lmax_apw_ == -1) {
@@ -1116,8 +1134,14 @@ class Atom_type
     {
         return *gaunt_coefs_;
     }
+
+    /// Update internal information.
+    inline void update()
+    {
+        read_hubbard_input();
+    }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif // __ATOM_TYPE_HPP__

@@ -712,6 +712,11 @@
                     "default" : false,
                     "title" : "If true, orthogonalization is applied to Hubbard orbitals."
                 },
+                "full_orthogonalization" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace"
+                },
                 "normalize" : {
                     "type" : "boolean",
                     "default" : false,
@@ -797,6 +802,14 @@
                                 },
                                 "minItems" : 3,
                                 "maxItems" : 3
+                            },
+                            "n" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "integer"
+                                },
+                                "minItems" : 2,
+                                "maxItems" : 2
                             },
                             "l" : {
                                 "type" : "array",

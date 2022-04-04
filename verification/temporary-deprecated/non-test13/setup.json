@@ -1,0 +1,207 @@
+{
+    "chemical_formula": "Au",
+    "config": {
+        "control": {
+            "beta_chunk_size": 256,
+            "cyclic_block_size": 32,
+            "fft_mode": "serial",
+            "gen_evp_solver_name": "lapack",
+            "memory_usage": "high",
+            "mpi_grid_dims": [
+                1,
+                1
+            ],
+            "num_bands_to_print": 10,
+            "ortho_rf": false,
+            "print_checksum": false,
+            "print_forces": false,
+            "print_hash": false,
+            "print_memory_usage": false,
+            "print_neighbors": false,
+            "print_performance": false,
+            "print_stress": false,
+            "print_timers": true,
+            "processing_unit": "cpu",
+            "reduce_gvec": true,
+            "rmt_max": 2.2,
+            "spglib_tolerance": 0.0001,
+            "std_evp_solver_name": "lapack",
+            "use_second_variation": true,
+            "verbosity": 1,
+            "verification": 0
+        },
+        "hubbard": {
+            "full_orthogonalization": false,
+            "local": [
+                {
+                    "J": 0.0,
+                    "U": 4.4,
+                    "atom_type": "Au",
+                    "hubbard_orbital": "5d",
+                    "l": 2,
+                    "n": 5,
+                    "total_initial_occupancy": 10
+                }
+            ],
+            "nonlocal": [],
+            "normalize": false,
+            "orthogonalize": true,
+            "simplified": false
+        },
+        "iterative_solver": {
+            "converge_by_energy": 1,
+            "early_restart": 0.5,
+            "empty_states_tolerance": 0,
+            "energy_tolerance": 0.01,
+            "extra_ortho": false,
+            "init_eval_old": true,
+            "init_subspace": "lcao",
+            "locking": true,
+            "min_num_res": 0,
+            "num_singular": -1,
+            "num_steps": 25,
+            "relative_tolerance": 0,
+            "residual_tolerance": 1e-06,
+            "subspace_size": 4,
+            "type": "davidson"
+        },
+        "locked": true,
+        "mixer": {
+            "beta": 0.7,
+            "beta0": 0.15,
+            "beta_scaling_factor": 1.0,
+            "linear_mix_rms_tol": 1000000.0,
+            "max_history": 8,
+            "type": "anderson",
+            "use_hartree": false
+        },
+        "nlcg": {
+            "T": 300.0,
+            "kappa": 0.3,
+            "maxiter": 300,
+            "restart": 10,
+            "tau": 0.1,
+            "tol": 1e-09
+        },
+        "parameters": {
+            "auto_rmt": 1,
+            "aw_cutoff": 0.0,
+            "core_relativity": "dirac",
+            "density_tol": 1e-07,
+            "electronic_structure_method": "pseudopotential",
+            "energy_tol": 1e-10,
+            "extra_charge": 0,
+            "gamma_point": false,
+            "gk_cutoff": 8.36,
+            "hubbard_correction": true,
+            "lmax_apw": -1,
+            "lmax_pot": 4,
+            "lmax_rho": 4,
+            "molecule": false,
+            "ngridk": [
+                2,
+                2,
+                2
+            ],
+            "nn_radius": -1,
+            "num_bands": 30,
+            "num_dft_iter": 100,
+            "num_fv_states": -1,
+            "num_mag_dims": 3,
+            "precision_gs": "auto",
+            "precision_hs": "fp64",
+            "precision_wf": "fp64",
+            "pw_cutoff": 26.4575,
+            "reduce_aux_bf": 0,
+            "shiftk": [
+                0,
+                0,
+                0
+            ],
+            "smearing": "gaussian",
+            "smearing_width": 0.01,
+            "so_correction": true,
+            "use_ibz": true,
+            "use_scf_correction": true,
+            "use_symmetry": false,
+            "valence_relativity": "zora",
+            "vk": [],
+            "xc_dens_tre": -1,
+            "xc_functionals": [
+                "XC_LDA_X",
+                "XC_LDA_C_PZ"
+            ]
+        },
+        "settings": {
+            "always_update_wf": true,
+            "auto_enu_tol": 0,
+            "fft_grid_size": [
+                48,
+                48,
+                48
+            ],
+            "fp32_to_fp64_rms": 0,
+            "itsol_tol_min": 1e-13,
+            "itsol_tol_ratio": 0,
+            "itsol_tol_scale": [
+                0.1,
+                0.5
+            ],
+            "min_occupancy": 1e-14,
+            "mixer_rms_min": 1e-16,
+            "nprii_aug": 20,
+            "nprii_beta": 20,
+            "nprii_rho_core": 20,
+            "nprii_vloc": 200,
+            "radial_grid": "exponential, 1.0",
+            "sht_coverage": 0
+        },
+        "unit_cell": {
+            "atom_coordinate_units": "lattice",
+            "atom_files": {
+                "Au": "Au.rel-pbe-dn-rrkjus_psl.0.1.UPF.json"
+            },
+            "atom_types": [
+                "Au"
+            ],
+            "atoms": {
+                "Au": [
+                    [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                ]
+            },
+            "lattice_vectors": [
+                [
+                    -3.855,
+                    0.0,
+                    3.855
+                ],
+                [
+                    0.0,
+                    3.855,
+                    3.855
+                ],
+                [
+                    -3.855,
+                    3.855,
+                    0.0
+                ]
+            ],
+            "lattice_vectors_scale": 1.0
+        }
+    },
+    "fft_coarse_grid": [
+        32,
+        32,
+        32
+    ],
+    "mpi_grid": [
+        1,
+        1
+    ],
+    "num_atoms": 1,
+    "omega": 114.57850275
+}

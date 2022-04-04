@@ -230,10 +230,13 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
                     /* total phase e^{-i(G+k)r_{\alpha}} */
                     phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                 }
-                for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
+                int nbeta    = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+                int offset_a = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
+                int offset_t = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i);
+                for (int xi = 0; xi < nbeta; xi++) {
                     for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                        pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
-                            pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * static_cast<std::complex<T>>(phase_gk[igk_loc]);
+                        pw_coeffs_a_(igk_loc, offset_a + xi) = pw_coeffs_t_(igk_loc, offset_t + xi, j__) *
+                            static_cast<std::complex<T>>(phase_gk[igk_loc]);
                     }
                 }
             }

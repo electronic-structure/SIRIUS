@@ -29,19 +29,25 @@
 
 namespace sirius {
 
-/// Structure containing all informations about a specific hubbard orbital (including the radial function).
+/// Structure containing all information about a specific hubbard orbital (including the radial function).
 class hubbard_orbital_descriptor
 {
   private:
     /// Principal quantum number of atomic orbital.
     int n_{-1};
+    /// Orbital quantum number of atomic orbital.
+    int l_{-1};
+    /// Set to true if this orbital is part the Hubbard subspace.
+    bool use_for_calculation_{true};
     /// Orbital occupancy.
     double occupancy_{-1.0};
 
     Spline<double> f_;
 
-    double hubbard_J_{0.0};
-    double hubbard_U_{0.0};
+    /// Hubbard U parameter (on-site repulsion).
+    double U_{0.0};
+    /// Hubbard J parameter (exchange).
+    double J_{0.0};
 
     /// Different hubbard coefficients.
     /** s: U = hubbard_coefficients_[0]
@@ -51,51 +57,57 @@ class hubbard_orbital_descriptor
         hubbard_coefficients_[3]
         hubbard_coefficients[4] = U_alpha
         hubbard_coefficients[5] = U_beta */
-  double hubbard_coefficients_[4] = {0.0, 0.0, 0.0, 0.0};
+    std::array<double, 4> hubbard_coefficients_ = {0.0, 0.0, 0.0, 0.0};
 
     sddk::mdarray<double, 4> hubbard_matrix_;
 
-    // simplifed hubbard theory
-    double hubbard_alpha_{0.0};
-    double hubbard_beta_{0.0};
-    double hubbard_J0_{0.0};
+    /* simplifed hubbard theory */
+    double alpha_{0.0};
+
+    double beta_{0.0};
+
+    double J0_{0.0};
+
+    std::vector<double> initial_occupancy_;
+
+    /// Index of the corresponding atomic wave-function.
+    int idx_wf_{-1};
 
     inline auto hubbard_F_coefficients() const
     {
         std::vector<double> F(4);
-        F[0] = Hubbard_U();
+        F[0] = U();
 
-        switch (l) {
+        switch (this->l()) {
             case 0: {
-                F[1] = Hubbard_J();
+                F[1] = J();
                 break;
             }
             case 1: {
-                F[1] = 5.0 * Hubbard_J();
+                F[1] = 5.0 * J();
                 break;
             }
             case 2: {
-                F[1] = 5.0 * Hubbard_J() + 31.5 * Hubbard_B();
-                F[2] = 9.0 * Hubbard_J() - 31.5 * Hubbard_B();
+                F[1] = 5.0 * J() + 31.5 * B();
+                F[2] = 9.0 * J() - 31.5 * B();
                 break;
             }
             case 3: {
-                F[1] = (225.0 / 54.0) * Hubbard_J() + (32175.0 / 42.0) * Hubbard_E2() + (2475.0 / 42.0) * Hubbard_E3();
-                F[2] = 11.0 * Hubbard_J() - (141570.0 / 77.0) * Hubbard_E2() + (4356.0 / 77.0) * Hubbard_E3();
-                F[3] = (7361.640 / 594.0) * Hubbard_J() + (36808.20 / 66.0) * Hubbard_E2() - 111.54 * Hubbard_E3();
+                F[1] = (225.0 / 54.0) * J() + (32175.0 / 42.0) * E2() + (2475.0 / 42.0) * E3();
+                F[2] = 11.0 * J() - (141570.0 / 77.0) * E2() + (4356.0 / 77.0) * E3();
+                F[3] = (7361.640 / 594.0) * J() + (36808.20 / 66.0) * E2() - 111.54 * E3();
                 break;
             }
             default: {
                 std::stringstream s;
                 s << "Hubbard correction not implemented for l > 3\n"
-                  << "  current l: " << l;
+                  << "  current l: " << this->l();
                 RTE_THROW(s);
                 break;
             }
         }
         return F;
     }
-
 
     inline void calculate_ak_coefficients(sddk::mdarray<double, 5>& ak)
     {
@@ -109,6 +121,8 @@ class hubbard_orbital_descriptor
         // With a spherical one it does not really matter-
         ak.zero();
 
+        int l = this->l();
+
         for (int m1 = -l; m1 <= l; m1++) {
             for (int m2 = -l; m2 <= l; m2++) {
                 for (int m3 = -l; m3 <= l; m3++) {
@@ -121,8 +135,7 @@ class hubbard_orbital_descriptor
                             }
                             /* according to PRB 52, R5467 it is 4 \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
                                only a_{k=0} a_{k=2}, a_{k=4} are considered */
-                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) =
-                                4.0 * sum * pi / static_cast<double>(2 * k + 1);
+                            ak(k / 2, m1 + l, m2 + l, m3 + l, m4 + l) = 4.0 * sum * pi / static_cast<double>(2 * k + 1);
                         }
                     }
                 }
@@ -139,8 +152,8 @@ class hubbard_orbital_descriptor
 
     inline void compute_hubbard_matrix()
     {
-        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1,
-                                                   2 * l + 1, 2 * l + 1);
+        int l = this->l();
+        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
         sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
         auto F = hubbard_F_coefficients();
         calculate_ak_coefficients(ak);
@@ -164,6 +177,7 @@ class hubbard_orbital_descriptor
 
     void initialize_hubbard_matrix()
     {
+        int l = this->l();
         sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
         auto F = hubbard_F_coefficients();
         calculate_ak_coefficients(ak);
@@ -187,12 +201,6 @@ class hubbard_orbital_descriptor
     }
 
   public:
-    /// Orbital quantum number of atomic orbital.
-    int l{-1};
-
-    int total_angular_momentum{-1};
-
-    std::vector<double> initial_occupancy;
 
     /// Constructor.
     hubbard_orbital_descriptor()
@@ -203,17 +211,19 @@ class hubbard_orbital_descriptor
     hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
                                const double J__, const double U__, const double* hub_coef__, const double alpha__,
                                const double beta__, const double J0__, std::vector<double> initial_occupancy__,
-                               Spline<double> f__)
+                               Spline<double> f__, bool use_for_calculations__, int idx_wf__)
         : n_(n__)
+        , l_(l__)
+        , use_for_calculation_(use_for_calculations__)
         , occupancy_(occ__)
         , f_(std::move(f__))
-        , hubbard_J_(J__)
-        , hubbard_U_(U__)
-        , hubbard_alpha_(alpha__)
-        , hubbard_beta_(beta__)
-        , hubbard_J0_(J0__)
-        , l(l__)
-        , initial_occupancy(initial_occupancy__)
+        , U_(U__)
+        , J_(J__)
+        , alpha_(alpha__)
+        , beta_(beta__)
+        , J0_(J0__)
+        , initial_occupancy_(initial_occupancy__)
+        , idx_wf_(idx_wf__)
     {
         if (hub_coef__) {
             for (int s = 0; s < 4; s++) {
@@ -231,13 +241,16 @@ class hubbard_orbital_descriptor
     /// Move constructor
     hubbard_orbital_descriptor(hubbard_orbital_descriptor&& src)
         : n_(src.n_)
+        , l_(src.l_)
+        , use_for_calculation_(src.use_for_calculation_)
         , occupancy_(src.occupancy_)
-        , hubbard_J_(src.hubbard_J_)
-        , hubbard_U_(src.hubbard_U_)
-        , hubbard_alpha_(src.hubbard_alpha_)
-        , hubbard_beta_(src.hubbard_beta_)
-        , l(src.l)
-        , initial_occupancy(src.initial_occupancy)
+        , U_(src.U_)
+        , J_(src.J_)
+        , alpha_(src.alpha_)
+        , beta_(src.beta_)
+        , J0_(src.J0_)
+        , initial_occupancy_(src.initial_occupancy_)
+        , idx_wf_(src.idx_wf_)
     {
         hubbard_matrix_ = std::move(src.hubbard_matrix_);
         for (int s = 0; s < 4; s++) {
@@ -251,6 +264,11 @@ class hubbard_orbital_descriptor
         return n_;
     }
 
+    inline int l() const
+    {
+        return l_;
+    }
+
     inline double hubbard_matrix(const int m1, const int m2, const int m3, const int m4) const
     {
         return hubbard_matrix_(m1, m2, m3, m4);
@@ -261,49 +279,49 @@ class hubbard_orbital_descriptor
         return hubbard_matrix_(m1, m2, m3, m4);
     }
 
-    inline double Hubbard_J0() const
+    inline double J0() const
     {
-        return hubbard_J0_;
+        return J0_;
     }
 
-    inline double Hubbard_U() const
+    inline double U() const
     {
-        return hubbard_U_;
+        return U_;
     }
 
-    inline double Hubbard_J() const
+    inline double J() const
     {
-        return hubbard_J_;
+        return J_;
     }
 
-    inline double Hubbard_U_minus_J() const
+    inline double U_minus_J() const
     {
-        return Hubbard_U() - Hubbard_J();
+        return this->U() - this->J();
     }
 
-    inline double Hubbard_B() const
-    {
-        return hubbard_coefficients_[2];
-    }
-
-    inline double Hubbard_E2() const
+    inline double B() const
     {
         return hubbard_coefficients_[2];
     }
 
-    inline double Hubbard_E3() const
+    inline double E2() const
+    {
+        return hubbard_coefficients_[2];
+    }
+
+    inline double E3() const
     {
         return hubbard_coefficients_[3];
     }
 
-    inline double Hubbard_alpha() const
+    inline double alpha() const
     {
-        return hubbard_alpha_;
+        return alpha_;
     }
 
-    inline double Hubbard_beta() const
+    inline double beta() const
     {
-        return hubbard_beta_;
+        return beta_;
     }
 
     inline double occupancy() const
@@ -315,7 +333,28 @@ class hubbard_orbital_descriptor
     {
         return f_;
     }
+
+    bool use_for_calculation() const
+    {
+        return use_for_calculation_;
+    }
+
+    auto const& initial_occupancy() const
+    {
+        return initial_occupancy_;
+    }
+
+    auto idx_wf() const
+    {
+        return idx_wf_;
+    }
 };
+
+inline std::ostream& operator<<(std::ostream& out, hubbard_orbital_descriptor const& ho)
+{
+    out << "{n: " << ho.n() << ", l: " << ho.l() << "}";
+    return out;
+}
 
 } // namespace sirius
 

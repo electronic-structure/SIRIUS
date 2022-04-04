@@ -692,6 +692,11 @@ Simulation_context::initialize()
         print_info();
     }
 
+    auto pcs = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
+    if (pcs && *pcs) {
+        this->cfg().control().print_checksum(true);
+    }
+
     initialized_ = true;
     cfg().lock();
 }
@@ -750,7 +755,7 @@ Simulation_context::print_info() const
 
     unit_cell().print_info(verbosity());
     for (int i = 0; i < unit_cell().num_atom_types(); i++) {
-        unit_cell().atom_type(i).print_info();
+        unit_cell().atom_type(i).print_info(std::cout);
     }
     if (this->cfg().control().print_neighbors()) {
         std::stringstream s;
@@ -1049,15 +1054,13 @@ Simulation_context::update()
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
-        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-                            gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                            comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #ifdef USE_FP32
-        spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(
-            new spfft::GridFloat(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-                                 gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                                 comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+        spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(new spfft::GridFloat(
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -1093,9 +1096,8 @@ Simulation_context::update()
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
-            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2],
-                                 gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                                 comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_partition_->zcol_count_fft(),
+                                 spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
@@ -1106,8 +1108,8 @@ Simulation_context::update()
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
-            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
+            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
@@ -1313,33 +1315,16 @@ Simulation_context::update()
             return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
         };
 
-        if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
+        if (!ps_atomic_wf_ri_ || ps_atomic_wf_ri_->qmax() < new_gk_cutoff) {
+            ps_atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(
+                unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_callback_));
         }
 
-        if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
+        if (!ps_atomic_wf_ri_djl_ || ps_atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
+            ps_atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_djl_callback_));
         }
 
-        auto idxr_wf_hub = [&](int iat) -> sirius::experimental::radial_functions_index const& {
-            return unit_cell().atom_type(iat).indexr_hub();
-        };
-
-        auto ps_wf_hub = [&](int iat, int i) -> Spline<double> const& {
-            return unit_cell().atom_type(iat).hubbard_radial_function(i);
-        };
-
-        if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
-        }
-
-        if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() < new_gk_cutoff) {
-            hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
-        }
         /* update augmentation operator */
         memory_pool* mp{nullptr};
         memory_pool* mpd{nullptr};
@@ -1488,6 +1473,15 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 {
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
+    auto Rmt = unit_cell().find_mt_radii(1, true);
+
+    double R{0};
+    for (auto e : Rmt) {
+        R = std::max(e, R);
+    }
+
+    //double R = R__;
+
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
     vector3d<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
@@ -1495,9 +1489,8 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
     int z_off = spfft<double>().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
     vector3d<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
-                                             {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
-                                             {-R__, R__, R__},   {R__, R__, R__}};
+    std::vector<vector3d<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
+                                             {-R, -R, R},  {R, -R, R},  {-R, R, R},  {R, R, R}};
 
     auto bounds_box = [&](vector3d<double> pos) {
         std::vector<vector3d<double>> verts;
@@ -1537,7 +1530,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r = unit_cell().get_cartesian_coordinates(v).length();
-                                if (r < R__) {
+                                if (r < Rmt[unit_cell().atom(ia).type_id()]) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});
                                 }

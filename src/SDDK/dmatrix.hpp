@@ -33,6 +33,7 @@
 #include "splindex.hpp"
 #include "hdf5_tree.hpp"
 #include "type_definition.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
@@ -87,10 +88,12 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
                                   spl_row_.local_size());
         }
 #endif
-        grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
-                this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
-                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
-                this->blacs_grid().comm().rank());
+        if (blacs_grid_ != nullptr) {
+            grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
+                    this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
+                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                    this->blacs_grid().comm().rank());
+        }
     }
 
     /* forbid copy constructor */
@@ -267,7 +270,7 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
 
     inline BLACS_grid const& blacs_grid() const
     {
-        assert(blacs_grid_ != nullptr);
+        RTE_ASSERT(blacs_grid_ != nullptr);
         return *blacs_grid_;
     }
 
@@ -348,16 +351,24 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
     {
         T cs{0};
 
-        splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
-                                                   this->blacs_grid().rank_row(), this->bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
-                                                   this->blacs_grid().rank_col(), this->bs_col());
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            for (int j = 0; j < spl_row.local_size(); j++) {
-                cs += (*this)(j, i);
+        if (blacs_grid_ != nullptr) {
+            splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
+                                                       this->blacs_grid().rank_row(), this->bs_row());
+            splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
+                                                       this->blacs_grid().rank_col(), this->bs_col());
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                for (int j = 0; j < spl_row.local_size(); j++) {
+                    cs += (*this)(j, i);
+                }
+            }
+            this->blacs_grid().comm().allreduce(&cs, 1);
+        } else {
+            for (int i = 0; i < n__; i++) {
+                for (int j = 0; j < m__; j++) {
+                    cs += (*this)(j, i);
+                }
             }
         }
-        this->blacs_grid().comm().allreduce(&cs, 1);
         return cs;
     }
 

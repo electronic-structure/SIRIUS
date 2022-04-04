@@ -1511,6 +1511,18 @@ class config_t
             }
             dict_["/hubbard/orthogonalize"_json_pointer] = orthogonalize__;
         }
+        /// If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace
+        inline auto full_orthogonalization() const
+        {
+            return dict_.at("/hubbard/full_orthogonalization"_json_pointer).get<bool>();
+        }
+        inline void full_orthogonalization(bool full_orthogonalization__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/full_orthogonalization"_json_pointer] = full_orthogonalization__;
+        }
         /// If true, normalization is applied to Hubbard orbitals.
         inline auto normalize() const
         {
@@ -1649,6 +1661,10 @@ class config_t
             auto T() const
             {
                 return dict_.at("T").get<std::array<int, 3>>();
+            }
+            auto n() const
+            {
+                return dict_.at("n").get<std::array<int, 2>>();
             }
             auto l() const
             {

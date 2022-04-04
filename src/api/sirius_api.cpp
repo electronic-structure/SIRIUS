@@ -710,6 +710,10 @@ sirius_set_parameters:
       type: int
       attr: in, optional
       doc: Type of LDA+U implementation (simplified or full).
+    hubbard_full_orthogonalization:
+      type: bool
+      attr: in, optional
+      doc: Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
     hubbard_orbitals:
       type: string
       attr: in, optional
@@ -752,9 +756,10 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       bool const* so_correction__, char const* valence_rel__, char const* core_rel__,
                       double const* iter_solver_tol__, double const* iter_solver_tol_empty__,
                       char const* iter_solver_type__, int const* verbosity__, bool const* hubbard_correction__,
-                      int const* hubbard_correction_kind__, char const* hubbard_orbitals__, int const* sht_coverage__,
-                      double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
-                      double const* spglib_tol__, char const* electronic_structure_method__, int* error_code__)
+                      int const* hubbard_correction_kind__, bool const* hubbard_full_orthogonalization__,
+                      char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
+                      char const* smearing__, double const* smearing_width__, double const* spglib_tol__,
+                      char const* electronic_structure_method__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -818,10 +823,17 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                     sim_ctx.cfg().hubbard().simplified(true);
                 }
             }
+            if (hubbard_full_orthogonalization__ != nullptr) {
+                if (*hubbard_full_orthogonalization__) {
+                    sim_ctx.cfg().hubbard().full_orthogonalization(true);
+                }
+            }
             if (hubbard_orbitals__ != nullptr) {
                 std::string s(hubbard_orbitals__);
+                std::transform(s.begin(), s.end(), s.begin(), ::tolower);
                 if (s == "ortho-atomic") {
                     sim_ctx.cfg().hubbard().orthogonalize(true);
+                    sim_ctx.cfg().hubbard().full_orthogonalization(true);
                 }
                 if (s == "norm-atomic") {
                     sim_ctx.cfg().hubbard().normalize(true);
@@ -1339,7 +1351,6 @@ sirius_set_periodic_function:
       type: int
       attr: out, optional
       doc: Error code.
-
 @api end
 */
 void
@@ -1992,6 +2003,7 @@ sirius_add_atom_type(void* const* handler__, char const* label__, char const* fn
             if (spin_orbit__ != nullptr) {
                 type.spin_orbit_coupling(*spin_orbit__);
             }
+
             return 0;
         },
         error_code__);
@@ -2249,7 +2261,38 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
             auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
             type.hubbard_correction(true);
             type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
-                                     std::vector<double>());
+                                     std::vector<double>(), true);
+        },
+        error_code__);
+}
+
+/*
+@api begin
+sirius_atom_type_update:
+  doc: update internal structure for a given atom type. Only useful when the Hubbard correction is included
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_atom_type_update(void* const* handler__, char const* label__, int *error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
+            type.update();
         },
         error_code__);
 }
@@ -3005,33 +3048,34 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
 {
     call_sirius(
         [&]() {
-            auto& gs = get_gs(handler__);
+          auto& gs = get_gs(handler__);
 
-            auto& kset      = gs.k_point_set();
-            auto& ctx       = kset.ctx();
-            auto& unit_cell = kset.unit_cell();
-            auto& potential = gs.potential();
-            auto& density   = gs.density();
+          auto& kset      = gs.k_point_set();
+          auto& ctx       = kset.ctx();
+          auto& unit_cell = kset.unit_cell();
+          auto& potential = gs.potential();
+          auto& density   = gs.density();
 
-            std::string label(label__);
+          std::string label(label__);
 
-            std::map<std::string, std::function<double()>> func = {
-                {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
-                {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
-                {"exc", [&]() { return sirius::energy_exc(density, potential); }},
-                {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
-                {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
-                {"veff", [&]() { return sirius::energy_veff(density, potential); }},
-                {"vloc", [&]() { return sirius::energy_vloc(density, potential); }},
-                {"vha", [&]() { return sirius::energy_vha(potential); }},
-                {"enuc", [&]() { return sirius::energy_enuc(ctx, potential); }},
-                {"kin", [&]() { return sirius::energy_kin(ctx, kset, density, potential); }},
-                {"one-el", [&]() { return sirius::one_electron_energy(density, potential); }},
-                {"descf", [&]() { return gs.scf_energy(); }},
-                {"demet", [&]() { return kset.entropy_sum(); }},
-                {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
-                {"paw", [&]() { return potential.PAW_total_energy(); }},
-                {"fermi", [&]() { return kset.energy_fermi(); }}};
+          std::map<std::string, std::function<double()>> func = {
+            {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
+            {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
+            {"exc", [&]() { return sirius::energy_exc(density, potential); }},
+            {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
+            {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
+            {"veff", [&]() { return sirius::energy_veff(density, potential); }},
+            {"vloc", [&]() { return sirius::energy_vloc(density, potential); }},
+            {"vha", [&]() { return sirius::energy_vha(potential); }},
+            {"enuc", [&]() { return sirius::energy_enuc(ctx, potential); }},
+            {"kin", [&]() { return sirius::energy_kin(ctx, kset, density, potential); }},
+            {"one-el", [&]() { return sirius::one_electron_energy(density, potential); }},
+            {"descf", [&]() { return gs.scf_energy(); }},
+            {"demet", [&]() { return kset.entropy_sum(); }},
+            {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
+            {"paw", [&]() { return potential.PAW_total_energy(); }},
+            {"fermi", [&]() { return kset.energy_fermi(); }},
+            {"hubbard", [&]() { return sirius::hubbard_energy(density); }}};
 
             if (!func.count(label)) {
                 RTE_THROW("wrong label: " + label);
@@ -5462,6 +5506,10 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
                 sim_ctx.veff_callback(reinterpret_cast<void (*)(void)>(fptr__));
             } else if (label == "ps_rho_ri") {
                 sim_ctx.ps_rho_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+            } else if (label == "ps_atomic_wf_ri") {
+                sim_ctx.ps_atomic_wf_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+            } else if (label == "ps_atomic_wf_ri_djl") {
+                sim_ctx.ps_atomic_wf_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
             } else {
                 RTE_THROW("Wrong label of the callback function: " + label);
             }
@@ -5668,6 +5716,97 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
 /*
 @api begin
+sirius_add_hubbard_atom_pair:
+  doc: Add a non-local Hubbard interaction V for a pair of atoms.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    atom_pair:
+      type: int
+      attr: in, required, dimension(2)
+      doc: atom pair for the V term
+    translation:
+      type: int
+      attr: in, required, dimension(3)
+      doc: translation vector between the two unit cells containing the atoms
+    n:
+      type: int
+      attr: in, required, dimension(2)
+      doc: principal quantum number of the atomic levels involved in the V correction
+    l:
+      type: int
+      attr: in, required, dimension(2)
+      doc: angular momentum of the atomic levels
+    coupling:
+      type: double
+      attr: in, required
+      doc: value of the V constant
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int* const translation__, int* const n__,
+                             int* const l__, const double* const coupling__, int *error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& sim_ctx  = get_sim_ctx(handler__);
+            auto conf_dict = sim_ctx.cfg().hubbard();
+
+            json elem;
+            std::vector<int> atom_pair(atom_pair__, atom_pair__ + 2);
+            /* Fortran indices start from 1 */
+            atom_pair[0] -= 1;
+            atom_pair[1] -= 1;
+            std::vector<int> n(n__, n__ + 2);
+            std::vector<int> l(l__, l__ + 2);
+            std::vector<int> translation(translation__, translation__ + 3);
+
+            elem["atom_pair"] = atom_pair;
+            elem["T"]         = translation;
+            elem["n"]         = n;
+            elem["l"]         = l;
+            elem["V"]         = *coupling__;
+
+            bool test{false};
+
+            auto v = conf_dict.nonlocal();
+
+            for (int idx = 0; idx < v.size(); idx++) {
+                auto v     = conf_dict.nonlocal(idx);
+                auto at_pr = v.atom_pair();
+                /* search if the pair is already present */
+                if ((at_pr[0] == atom_pair[0]) && (at_pr[1] == atom_pair[1])) {
+                    auto tr = v.T();
+                    if ((tr[0] = translation[0]) && (tr[1] = translation[1]) && (tr[2] = translation[2])) {
+                        auto lvl = v.n();
+                        if ((lvl[0] == n[0]) && (lvl[0] == n[1])) {
+                            auto li = v.l();
+                            if ((li[0] == l[0]) && (li[1] == l[1])) {
+                                test = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!test) {
+                conf_dict.nonlocal().append(elem);
+            } else {
+                RTE_THROW("Atom pair for hubbard correction is already present");
+            }
+        }
+        , error_code__);
+}
+
+/*
+@api begin
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
@@ -5780,7 +5919,7 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 
             auto Hk = H0(kp);
 
-            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf());
+            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf().first);
 
             auto& itsol = sctx.cfg().iterative_solver();
 

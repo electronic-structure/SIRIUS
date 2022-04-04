@@ -128,6 +128,13 @@ struct radial_solution_descriptor
     bool new_enu_found{false};
 };
 
+inline std::ostream& operator<<(std::ostream& out, radial_solution_descriptor const& rsd)
+{
+    out << "{l: " << rsd.l << ", n: " << rsd.n << ", enu: " << rsd.enu
+        << ", dme: " << rsd.dme << ", auto: " << rsd.auto_enu << "}";
+    return out;
+}
+
 /// Set of radial solution descriptors, used to construct augmented waves or local orbitals.
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 

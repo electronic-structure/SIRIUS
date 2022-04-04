@@ -303,11 +303,11 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        if (ctx->comm().rank() == 0) {
-            auto dict = ctx->serialize();
-            std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
-            ofs << dict.dump(4);
-        }
+        //if (ctx->comm().rank() == 0) {
+        //    auto dict = ctx->serialize();
+        //    std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
+        //    ofs << dict.dump(4);
+        //}
         //if (ctx->full_potential()) {
         //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
         //}

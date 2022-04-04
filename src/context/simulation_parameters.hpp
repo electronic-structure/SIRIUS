@@ -420,6 +420,11 @@ class Simulation_parameters
         return cfg().control().cyclic_block_size();
     }
 
+    //inline void full_potential(const bool value)
+    //{
+    //    electronic_structure_method_ = electronic_structure_method_t::full_potential_lapwlo;
+    //}
+
     bool full_potential() const
     {
         return (electronic_structure_method_ == electronic_structure_method_t::full_potential_lapwlo);

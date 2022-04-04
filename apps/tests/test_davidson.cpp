@@ -54,7 +54,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
     Hamiltonian0<T> H0(pot__, true);
     auto Hk = H0(kp);
-    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
+    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf().first);
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
@@ -245,7 +245,7 @@ void test_davidson(cmd_args const& args__)
     /* initialize simulation context */
     ctx.initialize();
 
-    std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
+    std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf().first << "\n";
 
     Density rho(ctx);
     rho.initial_density();

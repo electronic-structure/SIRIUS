@@ -256,8 +256,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
     }
 
-    kp.copy_hubbard_orbitals_on_device();
-
     ctx.print_memory_usage(__FILE__, __LINE__);
 
     /* get diagonal elements for preconditioning */
@@ -801,7 +799,6 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         psi__.dismiss(spin_range(psi__.num_sc() == 2 ? 2 : 0), true);
     }
 
-    kp.release_hubbard_orbitals_on_device();
     ctx.print_memory_usage(__FILE__, __LINE__);
     return result;
 }
