@@ -220,7 +220,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
-                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * z1;
+                        e.second(i, j, ispn) += std::real(static_cast<std::complex<T>>(occ_mtrx(i, j)) * z1);
                     }
                 }
             }
@@ -560,27 +560,31 @@ Occupation_matrix::print_occupancies(int verbosity__) const
         return;
     }
 
-    if ((ctx_.verbosity() >= verbosity__) && (ctx_.comm().rank() == 0)) {
+    if (ctx_.comm().rank() == 0) {
         std::stringstream s;
-        for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
-            auto const& atom = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl].first);
-            int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
-            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-                Hubbard_matrix::print_local(at_lvl, s);
-                double occ[2] = {0, 0};
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    for (int m = 0; m < 2 * il + 1; m++) {
-                        occ[ispn] += this->local_[at_lvl](m, m, ispn).real();
+        /* print local part */
+        if (ctx_.verbosity() >= verbosity__) {
+            for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
+                auto const& atom = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl].first);
+                int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
+                if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+                    Hubbard_matrix::print_local(at_lvl, s);
+                    double occ[2] = {0, 0};
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        for (int m = 0; m < 2 * il + 1; m++) {
+                            occ[ispn] += this->local_[at_lvl](m, m, ispn).real();
+                        }
                     }
-                }
-                if (ctx_.num_spins() == 2) {
-                    s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) " << occ[1]
-                      << " (mz) " << occ[0] - occ[1] << std::endl;
-                } else {
-                    s << "Atom charge (total) " << 2 * occ[0] << std::endl;
+                    if (ctx_.num_spins() == 2) {
+                        s << "Atom charge (total) " << occ[0] + occ[1] << " (n_up) " << occ[0] << " (n_down) " << occ[1]
+                          << " (mz) " << occ[0] - occ[1] << std::endl;
+                    } else {
+                        s << "Atom charge (total) " << 2 * occ[0] << std::endl;
+                    }
                 }
             }
         }
+        /* print non-local part */
         if (ctx_.cfg().hubbard().nonlocal().size() && (ctx_.verbosity() >= verbosity__ + 1)) {
             s << std::endl;
             for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
