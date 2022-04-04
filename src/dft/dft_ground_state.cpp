@@ -408,81 +408,9 @@ DFT_ground_state::print_info(std::ostream& out__) const
         one_elec_en -= hub_one_elec;
     }
 
-    auto result = density_.rho().integrate();
-
-    auto total_charge = std::get<0>(result);
-    auto it_charge    = std::get<1>(result);
-    auto mt_charge    = std::get<2>(result);
-
-    auto result_mag = density_.get_magnetisation();
-    auto total_mag  = std::get<0>(result_mag);
-    auto it_mag     = std::get<1>(result_mag);
-    auto mt_mag     = std::get<2>(result_mag);
-
     auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
 
-    auto write_vector = [&](vector3d<double> v__) {
-        out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
-              << std::setprecision(5) << std::fixed << v__[1] << ", " << std::setw(9) << std::setprecision(5)
-              << std::fixed << v__[2] << "]";
-    };
-
-    out__ << "Charges and magnetic moments" << std::endl;
-    draw_bar(80);
-    if (ctx_.full_potential()) {
-        double total_core_leakage{0.0};
-        out__ << "atom      charge    core leakage";
-        if (ctx_.num_mag_dims()) {
-            out__ << "                 moment                |moment|";
-        }
-        out__ << std::endl;
-        draw_bar(80);
-
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
-            total_core_leakage += core_leakage;
-            out__ << std::setw(4) << ia << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
-                  << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v(mt_mag[ia]);
-                out__ << "  ";
-                write_vector(v);
-                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
-            }
-            out__ << std::endl;
-        }
-        out__ << std::endl;
-        out__ << "total core leakage    : " << std::setprecision(8) << std::scientific << total_core_leakage
-              << std::endl
-              << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
-        if (ctx_.num_mag_dims()) {
-            vector3d<double> v(it_mag);
-            out__ << "interstitial moment   : ";
-            write_vector(v);
-            out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
-        }
-    } else {
-        if (ctx_.num_mag_dims()) {
-            out__ << "atom                moment                |moment|" << std::endl;
-            draw_bar(80);
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                vector3d<double> v(mt_mag[ia]);
-                out__ << std::setw(4) << ia << " ";
-                write_vector(v);
-                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length() << std::endl;
-            }
-            out__ << std::endl;
-        }
-    }
-    out__ << "total charge          : " << std::setprecision(6) << std::fixed << total_charge << std::endl;
-
-    if (ctx_.num_mag_dims()) {
-        vector3d<double> v(total_mag);
-        out__ << "total moment          : ";
-        write_vector(v);
-        out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
-    }
+    density_.print_info(out__);
 
     out__ << std::endl;
     out__ << "Energy" << std::endl;

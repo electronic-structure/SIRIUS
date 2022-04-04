@@ -101,24 +101,6 @@ Density::Density(Simulation_context& ctx__)
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
 
-    // if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
-
-    //    int indexb_max = -1;
-
-    //    // TODO: move detection of indexb_max to unit_cell
-    //    // Don't forget that Hubbard class has the same code
-    //    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-    //        if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-    //            if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
-    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() /
-    //                2);
-    //            } else {
-    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
-    //            }
-    //        }
-    //    }
-    //}
-
     if (ctx_.hubbard_correction()) {
         occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
     }
@@ -178,6 +160,10 @@ Density::initial_density()
             occupation_matrix_->init();
         }
     }
+    if (ctx_.use_symmetry()) {
+        this->symmetrize();
+    }
+    this->print_info(ctx_.out());
 }
 
 void
@@ -1190,25 +1176,8 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             /* symmetrize */
             this->symmetrize_density_matrix();
 
-            //     auto f = [&](int iat) -> sirius::experimental::basis_functions_index const*
-            //     {
-            //         if (ctx_.unit_cell().atom_type(iat).hubbard_correction()) {
-            //             return &ctx_.unit_cell().atom_type(iat).indexb_hub();
-            //         } else {
-            //             return nullptr;
-            //         }
-            //     };
-
-            //     auto om = [&](int ia) -> sddk::mdarray<double_complex, 3>&
-            //     {
-            //         return occupation_matrix_->local(ia);
-            //     };
-
-            //     sirius::symmetrize(om, ctx_.num_mag_comp(), ctx_.unit_cell().symmetry(), f);
-            // }
-
             if (ctx_.hubbard_correction()) {
-                // all symmetrization is done in the occupation_matrix class.
+                /* all symmetrization is done in the occupation_matrix class */
                 occupation_matrix_->symmetrize();
             }
 
@@ -1867,8 +1836,6 @@ Density::compute_atomic_mag_mom() const
     mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
     mmom.zero();
 
-    double R = ctx_.cfg().control().rmt_max();
-
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
 
@@ -1876,13 +1843,8 @@ Density::compute_atomic_mag_mom() const
 
         for (auto coord : atom_to_grid_map) {
             int ir = coord.first;
-            double r = coord.second;
-            double w = 1;
-            if (r >= R && r <= 1.2 * R) {
-                w -= (r - R) / (0.2 * R);
-            }
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                mmom(j, ia) += magnetization(j).f_rg(ir) * w;
+                mmom(j, ia) += magnetization(j).f_rg(ir);
             }
         }
 
@@ -2071,6 +2033,103 @@ Density::mix()
     mixer_output();
 
     return rms;
+}
+
+void Density::print_info(std::ostream& out__) const
+{
+    auto result = this->rho().integrate();
+
+    auto total_charge = std::get<0>(result);
+    auto it_charge    = std::get<1>(result);
+    auto mt_charge    = std::get<2>(result);
+
+    auto result_mag = this->get_magnetisation();
+    auto total_mag  = std::get<0>(result_mag);
+    auto it_mag     = std::get<1>(result_mag);
+    auto mt_mag     = std::get<2>(result_mag);
+
+    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
+
+    auto write_vector = [&](vector3d<double> v__) {
+        out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
+              << std::setprecision(5) << std::fixed << v__[1] << ", " << std::setw(9) << std::setprecision(5)
+              << std::fixed << v__[2] << "]";
+    };
+
+    out__ << "Charges and magnetic moments" << std::endl;
+    draw_bar(80);
+    if (ctx_.full_potential()) {
+        double total_core_leakage{0.0};
+        out__ << "atom      charge    core leakage";
+        if (ctx_.num_mag_dims()) {
+            out__ << "                 moment                |moment|";
+        }
+        out__ << std::endl;
+        draw_bar(80);
+
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
+            total_core_leakage += core_leakage;
+            out__ << std::setw(4) << ia << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
+                  << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
+            if (ctx_.num_mag_dims()) {
+                vector3d<double> v(mt_mag[ia]);
+                out__ << "  ";
+                write_vector(v);
+                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
+            }
+            out__ << std::endl;
+        }
+        out__ << std::endl;
+        out__ << "total core leakage    : " << std::setprecision(8) << std::scientific << total_core_leakage
+              << std::endl
+              << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
+        if (ctx_.num_mag_dims()) {
+            vector3d<double> v(it_mag);
+            out__ << "interstitial moment   : ";
+            write_vector(v);
+            out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
+        }
+    } else {
+        if (ctx_.num_mag_dims()) {
+            out__ << "atom                moment                |moment|" << std::endl;
+            draw_bar(80);
+
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                vector3d<double> v(mt_mag[ia]);
+                out__ << std::setw(4) << ia << " ";
+                write_vector(v);
+                out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length() << std::endl;
+            }
+            out__ << std::endl;
+        }
+    }
+    out__ << "total charge          : " << std::setprecision(6) << std::fixed << total_charge << std::endl;
+
+    if (ctx_.num_mag_dims()) {
+        vector3d<double> v(total_mag);
+        out__ << "total moment          : ";
+        write_vector(v);
+        out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
+    }
+
+    /*
+     * DEBUG: compute magnetic moments analytically
+     */
+    //auto Rmt = ctx_.unit_cell().find_mt_radii(1, true);
+
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    double mom{0};
+    //    for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
+    //        auto ff = sirius::unit_step_function_form_factors(Rmt[ctx_.unit_cell().atom(ia).type_id()], ctx_.gvec().gvec_len(ig));
+    //        mom += (ctx_.gvec_phase_factor(ctx_.gvec().gvec(ig), ia) * ff * this->magnetization(0).f_pw_local(ig)).real();
+    //    }
+    //    mom *= fourpi;
+    //    if (ctx_.gvec().reduced()) {
+    //        mom *= 2;
+    //    }
+    //    out__ << "ia="<<ia<<" mom="<<mom<<std::endl;
+    //}
 }
 
 } // namespace sirius
