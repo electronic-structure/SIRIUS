@@ -1473,7 +1473,14 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 {
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
-    double R = R__ * 1.2;
+    auto Rmt = unit_cell().find_mt_radii(1, true);
+
+    double R{0};
+    for (auto e : Rmt) {
+        R = std::max(e, R);
+    }
+
+    //double R = R__;
 
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
@@ -1523,7 +1530,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r = unit_cell().get_cartesian_coordinates(v).length();
-                                if (r < R) {
+                                if (r < Rmt[unit_cell().atom(ia).type_id()]) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});
                                 }

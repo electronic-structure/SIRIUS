@@ -37,7 +37,7 @@ Unit_cell::Unit_cell(Simulation_parameters const& parameters__, Communicator con
 Unit_cell::~Unit_cell() = default;
 
 std::vector<double>
-Unit_cell::find_mt_radii()
+Unit_cell::find_mt_radii(int auto_rmt__, bool inflate__)
 {
     if (nearest_neighbours_.size() == 0) {
         RTE_THROW("array of nearest neighbours is empty");
@@ -45,7 +45,7 @@ Unit_cell::find_mt_radii()
 
     std::vector<double> Rmt(num_atom_types(), 1e10);
 
-    if (parameters_.auto_rmt() == 1) {
+    if (auto_rmt__ == 1) {
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
             if (nearest_neighbours_[ia].size() > 1) {
@@ -62,7 +62,7 @@ Unit_cell::find_mt_radii()
         }
     }
 
-    if (parameters_.auto_rmt() == 2) {
+    if (auto_rmt__ == 2) {
         std::vector<double> scale(num_atom_types(), 1e10);
 
         for (int ia = 0; ia < num_atoms(); ia++) {
@@ -89,9 +89,7 @@ Unit_cell::find_mt_radii()
      * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce
      * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if
      * it is far from the 3rd atom. */
-    bool inflate = true;
-
-    if (inflate) {
+    if (inflate__) {
         std::vector<bool> scale_Rmt(num_atom_types(), true);
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
@@ -817,7 +815,7 @@ Unit_cell::update()
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
             auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
-            auto Rmt = find_mt_radii();
+            auto Rmt = find_mt_radii(parameters_.auto_rmt(), true);
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 double r0 = atom_type(iat).radial_grid().first();
 

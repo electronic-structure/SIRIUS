@@ -77,6 +77,8 @@ D_operator<T>::initialize()
 
     auto& uc = this->ctx_.unit_cell();
 
+    const int s_idx[2][2] = {{0, 3}, {2, 1}};
+
     #pragma omp parallel for
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         auto& atom = uc.atom(ia);
@@ -120,8 +122,7 @@ D_operator<T>::initialize()
                                     }
                                 }
                             }
-                            const int ind = (sigma == sigmap) * sigma + (1 + 2 * sigma + sigmap) * (sigma != sigmap);
-                            d_mtrx_so(xi1, xi2, ind) = result;
+                            d_mtrx_so(xi1, xi2, s_idx[sigma][sigmap]) = result;
                         }
                     }
                 }
@@ -259,33 +260,7 @@ Q_operator<T>::initialize()
     PROFILE("sirius::Q_operator::initialize");
 
     auto& uc = this->ctx_.unit_cell();
-    /* check eigen-values of Q_{xi,xi'} matrix for each atom;
-       not sure if it helps, so it's commented for now */
-    // if (this->ctx_.control().verification_ >= 1) {
-    //    for (int ia = 0; ia < uc.num_atoms(); ia++) {
-    //        int iat = uc.atom(ia).type().id();
-    //        if (!uc.atom_type(iat).augment()) {
-    //            continue;
-    //        }
-    //        int nbf = uc.atom(ia).mt_basis_size();
-    //        Eigensolver_lapack evs;
-    //        dmatrix<double> A(nbf, nbf);
-    //        dmatrix<double> Z(nbf, nbf);
-    //        std::vector<double> ev(nbf);
-    //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-    //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-    //                A(xi1, xi2) = this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
-    //            }
-    //        }
-    //        evs.solve(nbf, A, ev.data(), Z);
-    //        if (this->ctx_.control().verbosity_ >= 0 && this->ctx_.comm().rank() == 0) {
-    //            printf("eigen-values of the Q-matrix for atom %i\n", ia);
-    //            for (int i = 0; i < nbf; i++) {
-    //                printf("%18.12f\n", ev[i]);
-    //            }
-    //        }
-    //    }
-    //}
+
     #pragma omp parallel for
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         int iat = uc.atom(ia).type().id();

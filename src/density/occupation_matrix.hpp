@@ -64,15 +64,6 @@ class Occupation_matrix : public Hubbard_matrix
         for (auto& T : this->occ_mtrx_T_) {
             ctx_.comm().allreduce(T.second.at(memory_t::host), static_cast<int>(T.second.size()));
         }
-
-        // std::cout  << "Before : " << this->nonlocal(0)(0, 0, 0) << std::endl;
-
-        // for (int link = 0; link < (int)ctx_.cfg().hubbard().nonlocal().size(); link++) {
-        //   ctx_.comm().allreduce(this->nonlocal_[link].at(memory_t::host),
-        //   static_cast<int>(this->nonlocal_[link].size()));
-        // }
-
-        // std::cout  << "After : " << this->nonlocal(0)(0, 0, 0) << std::endl;
     }
 
     void zero()
