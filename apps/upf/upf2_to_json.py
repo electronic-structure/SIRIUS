@@ -217,7 +217,10 @@ def parse_PAW(upf_dict, root):
         print('WARNING: PP_PAW has no core_energy set!')
 
     node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
-    size = int(node.attrib['size'])
+    if 'size' in node.attrib:
+        if upf_dict['header']['number_of_proj'] != int(node.attrib['size']):
+            print('WARNING: number_of_proj != size(PP_OCCUPATIONS)')
+    size = upf_dict['header']['number_of_proj']
 
     # ---- occupation
     for i in range(size):
@@ -226,8 +229,11 @@ def parse_PAW(upf_dict, root):
         ]
 
     # ---- Read AE core correction (density of core charge)
+    if 'size' in node.attrib:
+        if upf_dict['header']['mesh_size'] != int(node.attrib['size']):
+            print('WARNING: mesh_size != size(PP_AE_NLCC)')
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
-    size = int(node.attrib['size'])
+    size = upf_dict['header']['mesh_size']
 
     for i in range(size):
         upf_dict['paw_data']['ae_core_charge_density'] = [
@@ -236,7 +242,10 @@ def parse_PAW(upf_dict, root):
 
     # ---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
-    size = int(node.attrib['size'])
+    if 'size' in node.attrib:
+        if upf_dict['header']['mesh_size'] != int(node.attrib['size']):
+            print('WARNING: mesh_size != size(PP_AE_VLOC)')
+    size = upf_dict['header']['mesh_size']
 
     for i in range(size):
         upf_dict['paw_data']['ae_local_potential'] = [
