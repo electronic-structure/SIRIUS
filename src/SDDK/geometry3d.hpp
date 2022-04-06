@@ -507,7 +507,7 @@ inline std::ostream& operator<<(std::ostream& out, matrix3d<T> const& v)
 }
 
 /// Reduce the coordinates to the first unit cell.
-/** Split the input vector in lattice coordinates to the sum r0 + T, where T is the lattice ranslation
+/** Split the input vector in lattice coordinates to the sum r0 + T, where T is the lattice translation
  *  vector (three integers) and r0 is the vector within the first unit cell with coordinates in [0, 1) range. */
 inline std::pair<vector3d<double>, vector3d<int>>
 reduce_coordinates(vector3d<double> coord__)
