@@ -414,7 +414,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
         .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a, py::arg("precompute")=true);
+        .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
@@ -517,7 +517,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
     py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-        .def(py::init<Potential&>(), py::keep_alive<1, 2>())
+        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())
         .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
 
     py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
@@ -825,6 +825,6 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_funct
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0<double> H0(dft_gs.potential());
+    Hamiltonian0<double> H0(dft_gs.potential(), false);
     Band(ctx).initialize_subspace(kset, H0);
 }
