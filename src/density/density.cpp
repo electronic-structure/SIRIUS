@@ -1169,11 +1169,11 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             }
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
                 occupation_matrix_) {
-                om_ref = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
+                om_ref = std::make_unique<Occupation_matrix>(ctx_);
                 copy(*occupation_matrix_, *om_ref);
             }
 
-            /* symmetrize */
+            /* symmetrize density matrix (used in standard uspp case) */
             this->symmetrize_density_matrix();
 
             if (ctx_.hubbard_correction()) {
@@ -1191,19 +1191,20 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                 ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n", diff,
                              status.c_str());
             }
+            /* compare with reference occupation matrix */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
                 occupation_matrix_) {
-                double diff{0};
+                double diff1{0};
                 for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                     if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
                         for (size_t i = 0; i < occupation_matrix_->local(ia).size(); i++) {
-                            diff = std::max(diff, std::abs(om_ref->local(ia)[i] - occupation_matrix_->local(ia)[i]));
+                            diff1 = std::max(diff1, std::abs(om_ref->local(ia)[i] - occupation_matrix_->local(ia)[i]));
                         }
                     }
                 }
-                std::string status = (diff > 1e-8) ? "Fail" : "OK";
-                ctx_.message(1, __function_name__, "error of the LDA+U occupation matrix symmetrization: %12.6e %s\n",
-                             diff, status.c_str());
+                std::string status = (diff1 > 1e-8) ? "Fail" : "OK";
+                ctx_.message(1, __function_name__, "error of the LDA+U local occupation matrix symmetrization: %12.6e %s\n",
+                             diff1, status.c_str());
             }
         }
     }

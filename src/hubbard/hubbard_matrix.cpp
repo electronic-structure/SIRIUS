@@ -77,7 +77,8 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             auto nl      = ctx_.cfg().hubbard().nonlocal(i);
             int il       = nl.l()[0];
             int jl       = nl.l()[1];
-            nonlocal_[i] = sddk::mdarray<double_complex, 3>(2 * il + 1, 2 * jl + 1, 4);
+            nonlocal_[i] = sddk::mdarray<double_complex, 3>(2 * il + 1, 2 * jl + 1, 4, memory_t::host,
+                    "nonlocal_hubbard");
             nonlocal_[i].zero();
         }
     }

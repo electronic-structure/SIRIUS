@@ -39,54 +39,42 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
     std::vector<int> sym_atom(num_atoms__);
     std::vector<vector3d<int>> sym_atom_T(num_atoms__);
 
-    auto distance = [](const vector3d<double>& a, const vector3d<double>& b)
-    {
-        auto diff = a - b;
-        for (int x: {0, 1, 2}) {
-            double dl = std::abs(diff[x]);
-            diff[x] = std::min(dl, 1 - dl);
-        }
-        return diff.length();
-    };
-
     for (int ia = 0; ia < num_atoms__; ia++) {
         /* position of atom ia */
-        vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
-        /* apply crystal symmetry */
-        auto v = (inverse__) ? reduce_coordinates(dot(inverse(R__), pos - t__)) : reduce_coordinates(dot(R__, pos) + t__);
-        double d0{1e10};
-        double j0{-1};
-        vector3d<double> p0;
+        vector3d<double> r_ia(positions__(0, ia), positions__(1, ia), positions__(2, ia));
+        /* apply crystal symmetry {R|t} or it's inverse */
+        /* rp = {R|t}r or {R|t}^{-1}r */
+        auto rp_ia = (inverse__) ? dot(inverse(R__), r_ia - t__) : dot(R__, r_ia) + t__;
 
-        int ja{-1};
-        /* check for equivalent atom; remember that the atomic positions are not necessarily in [0,1) interval
-           and the reduction of coordinates is required */
-        for (int k = 0; k < num_atoms__; k++) {
-            vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-            /* find the distance between atom k and trasformed atoms ia */
-            double dist = distance(v.first, reduce_coordinates(pos1).first);
-            if (dist < tolerance__) {
-                ja = k;
+        bool found{false};
+        /* find the transformed atom */
+        for (int ja = 0; ja < num_atoms__; ja++) {
+            vector3d<double> r_ja(positions__(0, ja), positions__(1, ja), positions__(2, ja));
+
+            auto v = rp_ia - r_ja;
+
+            vector3d<int> T;
+            double diff{0};
+            for (int x : {0, 1, 2}) {
+                T[x] = std::round(v[x]);
+                diff += std::abs(T[x] - v[x]);
+            }
+            /* translation vector rp_ia = r_ja + T is found */
+            if (diff < tolerance__) {
+                found = true;
+                sym_atom[ia] = ja;
+                sym_atom_T[ia] = T;
                 break;
             }
-            if (dist < d0) {
-                d0 = dist;
-                j0 = k;
-                p0 = pos1;
-            }
         }
-
-        if (ja == -1) {
+        if (!found) {
             std::stringstream s;
-            s << "equivalent atom was not found\n"
-              << "  initial atom: " << ia << ", position : " << pos << ", reduced: " << v.first << "\n"
-              << "  nearest atom: " << j0 << ", position : " << p0 << ", reduced: " << reduce_coordinates(p0).first << "\n"
-              << "  distance between atoms: " << d0 << "\n"
+            s << "equivalent atom was not found" << std::endl
+              << "  symmetry operaton R:" << R__ << ", t: " << t__ << std::endl
+              << "  atom: " << ia << ", position: " << r_ia << ", transformed position: " << rp_ia << std::endl
               << "  tolerance: " << tolerance__;
             RTE_THROW(s);
         }
-        sym_atom[ia] = ja;
-        sym_atom_T[ia] = v.second;
     }
     return std::make_pair(sym_atom, sym_atom_T);
 }
