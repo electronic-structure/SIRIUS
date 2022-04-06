@@ -1134,12 +1134,6 @@ class Atom_type
     {
         return *gaunt_coefs_;
     }
-
-    /// Update internal information.
-    inline void update()
-    {
-        read_hubbard_input();
-    }
 };
 
 } // namespace sirius

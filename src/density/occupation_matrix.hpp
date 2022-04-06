@@ -47,8 +47,9 @@ class Occupation_matrix : public Hubbard_matrix
 
     void reduce()
     {
-        if (!ctx_.hubbard_correction())
+        if (!ctx_.hubbard_correction()) {
             return;
+        }
 
         /* global reduction over k points */
         for (int at_lvl = 0; at_lvl < (int)this->local_.size(); at_lvl++) {
@@ -60,7 +61,7 @@ class Occupation_matrix : public Hubbard_matrix
             }
         }
 
-        // we must reduce occ_mtrx_T_ not nonlocal (it non zero only after symmetrization)
+        /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
         for (auto& T : this->occ_mtrx_T_) {
             ctx_.comm().allreduce(T.second.at(memory_t::host), static_cast<int>(T.second.size()));
         }

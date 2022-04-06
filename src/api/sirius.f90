@@ -2344,47 +2344,6 @@ deallocate(label_c_type)
 end subroutine sirius_set_atom_type_hubbard
 
 !
-!> @brief update internal structure for a given atom type. Only useful when the Hubbard correction is included
-!> @param [in] handler Simulation context handler.
-!> @param [in] label Atom type label.
-!> @param [out] error_code Error code.
-subroutine sirius_atom_type_update(handler,label,error_code)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_atom_type_update_aux(handler,label,error_code)&
-&bind(C, name="sirius_atom_type_update")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_atom_type_update_aux(handler_ptr,label_ptr,error_code_ptr)
-deallocate(label_c_type)
-end subroutine sirius_atom_type_update
-
-!
 !> @brief Set ionic part of D-operator matrix.
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.

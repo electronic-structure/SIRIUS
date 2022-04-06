@@ -2268,37 +2268,6 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
 
 /*
 @api begin
-sirius_atom_type_update:
-  doc: update internal structure for a given atom type. Only useful when the Hubbard correction is included
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    label:
-      type: string
-      attr: in, required
-      doc: Atom type label.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_atom_type_update(void* const* handler__, char const* label__, int *error_code__)
-{
-    call_sirius(
-        [&]() {
-            auto& sim_ctx = get_sim_ctx(handler__);
-            auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
-            type.update();
-        },
-        error_code__);
-}
-
-/*
-@api begin
 sirius_set_atom_type_dion:
   doc: Set ionic part of D-operator matrix.
   arguments:

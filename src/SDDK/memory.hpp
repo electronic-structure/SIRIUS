@@ -1591,7 +1591,7 @@ using matrix = mdarray<T, 2>;
 
 /// Serialize to std::ostream
 template <typename T, int N>
-std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
+std::ostream& operator<<(std::ostream& out, mdarray<T, N> const& v)
 {
     if (v.size()) {
         out << v[0];

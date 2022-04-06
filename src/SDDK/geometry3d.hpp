@@ -506,13 +506,17 @@ inline std::ostream& operator<<(std::ostream& out, matrix3d<T> const& v)
     return out;
 }
 
-inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)
+/// Reduce the coordinates to the first unit cell.
+/** Split the input vector in lattice coordinates to the sum r0 + T, where T is the lattice ranslation
+ *  vector (three integers) and r0 is the vector within the first unit cell with coordinates in [0, 1) range. */
+inline std::pair<vector3d<double>, vector3d<int>>
+reduce_coordinates(vector3d<double> coord__)
 {
     const double eps{1e-9};
 
     std::pair<vector3d<double>, vector3d<int>> v;
 
-    v.first = coord;
+    v.first = coord__;
     for (int i = 0; i < 3; i++) {
         v.second[i] = (int)floor(v.first[i]);
         v.first[i] -= v.second[i];
@@ -537,10 +541,10 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
         }
     }
     for (int x : {0, 1, 2}) {
-        if (std::abs(coord[x] - (v.first[x] + v.second[x])) > eps) {
+        if (std::abs(coord__[x] - (v.first[x] + v.second[x])) > eps) {
             std::stringstream s;
             s << "wrong coordinate reduction" << std::endl
-              << "  original coord: " << coord << std::endl
+              << "  original coord: " << coord__ << std::endl
               << "  reduced coord: " << v.first << std::endl
               << "  T: " << v.second;
             throw std::runtime_error(s.str());
