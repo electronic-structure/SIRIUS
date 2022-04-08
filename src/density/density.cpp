@@ -224,36 +224,28 @@ Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        double R = ctx_.cfg().control().rmt_max();
+        auto Rmt = unit_cell_.find_mt_radii(1, true);
 
-        auto w = [R](double x) {
-            /* the constants are picked in such a way that the volume integral of the
-               weight function is equal to the volume of the atomic sphere;
-               in this case the starting magnetiation in the atomic spehre
-               integrates to the starting magnetization vector */
+        /* auxiliary weight function; the volume integral of this function is equal to 1 */
+        auto w = [](double R, double x) {
+            double norm = 3.1886583903476735 * std::pow(R, 3);
 
-            /* volume of the sphere */
-            const double norm = fourpi * std::pow(R, 3) / 3.0;
-            return (35.0 / 8) * std::pow(1 - std::pow(x / R, 2), 2) / norm;
-            // return 10 * std::pow(1 - x / R, 2) / norm;
-            // const double b = 1.1016992073677703;
-            // return b * 1.0 /  (std::exp(10 * (a - R)) + 1) / norm;
-            // const double norm = pi * std::pow(R, 3) / 3.0;
-            // return 1.0 / (std::exp(10 * (x - R)) + 1) / norm;
+            return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
         };
 
-        #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
-            vector3d<double> v     = unit_cell_.atom(ia).vector_field();
+
+            auto v = unit_cell_.atom(ia).vector_field();
 
             for (auto coord : atom_to_grid_map) {
                 int ir   = coord.first;
-                double a = coord.second;
-                magnetization(0).f_rg(ir) += v[2] * w(a);
+                double r = coord.second;
+                double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
+                magnetization(0).f_rg(ir) += v[2] * f;
                 if (ctx_.num_mag_dims() == 3) {
-                    magnetization(1).f_rg(ir) += v[0] * w(a);
-                    magnetization(2).f_rg(ir) += v[1] * w(a);
+                    magnetization(1).f_rg(ir) += v[0] * f;
+                    magnetization(2).f_rg(ir) += v[1] * f;
                 }
             }
         }
