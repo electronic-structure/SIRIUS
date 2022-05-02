@@ -26,13 +26,13 @@
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
 #include "symmetry/lattice.hpp"
+#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/check_gvec.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
-#include "symmetry/crystal_symmetry.hpp"
-#include "symmetry/check_gvec.hpp"
 
 namespace sirius {
 
@@ -329,6 +329,13 @@ Simulation_context::initialize()
     /* can't initialize twice */
     if (initialized_) {
         RTE_THROW("Simulation parameters are already initialized.");
+    }
+
+    /* setup the output stream */
+    if (this->comm().rank() == 0) {
+        output_stream_ = &std::cout;
+    } else {
+        output_stream_ = &utils::null_stream__;
     }
 
     auto verb_lvl = utils::get_env<int>("SIRIUS_VERBOSITY");
@@ -689,7 +696,7 @@ Simulation_context::initialize()
     this->print_memory_usage(__FILE__, __LINE__);
 
     if (verbosity() >= 1 && comm().rank() == 0) {
-        print_info();
+        print_info(this->out());
     }
 
     auto pcs = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
@@ -702,32 +709,32 @@ Simulation_context::initialize()
 }
 
 void
-Simulation_context::print_info() const
+Simulation_context::print_info(std::ostream& out__) const
 {
     tm const* ptm = localtime(&start_time_.tv_sec);
     char buf[100];
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
-    std::printf("\n");
-    std::printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
-    std::printf("git hash       : %s\n", sirius::git_hash().c_str());
-    std::printf("git branch     : %s\n", sirius::git_branchname().c_str());
-    std::printf("build time     : %s\n", sirius::build_date().c_str());
-    std::printf("start time     : %s\n", buf);
-    std::printf("\n");
-    std::printf("number of MPI ranks           : %i\n", comm_.size());
+    out__ << "SIRIUS version : " << sirius::major_version() << "." << sirius::minor_version()
+          << "." << sirius::revision() << std::endl
+          << "git hash       : " << sirius::git_hash() << std::endl
+          << "git branch     : " << sirius::git_branchname() << std::endl
+          << "build time     : " << sirius::build_date() << std::endl
+          << "start time     : " << std::string(buf) << std::endl
+          << std::endl
+          << "number of MPI ranks           : " << this->comm().size() << std::endl;
     if (mpi_grid_) {
-        std::printf("MPI grid                      :");
+        out__ << "MPI grid                      :";
         for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-            std::printf(" %i", mpi_grid_->communicator(1 << i).size());
+            out__ << " " << mpi_grid_->communicator(1 << i).size();
         }
-        std::printf("\n");
+        out__ << std::endl;
     }
-    std::printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    std::printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
-    std::printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
-    std::printf("number of pages               : %li\n", utils::get_num_pages());
-    std::printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
+    out__ << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
+          << "number of MPI ranks per node  : " << num_ranks_per_node() << std::endl
+          << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
+          << "number of pages               : " << utils::get_num_pages() << std::endl
+          << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
 
     std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
@@ -735,33 +742,46 @@ Simulation_context::print_info() const
     FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
     Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
-    std::printf("\n");
+    out__ << std::endl;
     for (int i = 0; i < 2; i++) {
-        std::printf("%s\n", headers[i].c_str());
-        std::printf("=====================================\n");
-        std::printf("  comm size                             : %i\n", comms[i]->size());
-        std::printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
-        std::printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
-                    fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
-        std::printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
-                    fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
-                    fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
-        std::printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
-        std::printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
-        std::printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
-        std::printf("\n");
+        out__ << headers[i] << std::endl
+              << utils::hbar(37, '=') << std::endl
+              << "  comm size                             : " << comms[i]->size() << std::endl
+              << "  plane wave cutoff                     : " << cutoffs[i] << std::endl
+              << "  grid size                             : " << fft_grids[i][0] << " "
+                                                              << fft_grids[i][1] << " "
+                                                              << fft_grids[i][2] << "   total : "
+                                                              << fft_grids[i].num_points() << std::endl
+              << "  grid limits                           : " << fft_grids[i].limits(0).first << " "
+                                                              << fft_grids[i].limits(0).second << "   "
+                                                              << fft_grids[i].limits(1).first << " "
+                                                              << fft_grids[i].limits(1).second << "   "
+                                                              << fft_grids[i].limits(2).first << " "
+                                                              << fft_grids[i].limits(2).second << std::endl
+              << "  number of G-vectors within the cutoff : " << gvecs[i]->num_gvec() << std::endl
+              << "  local number of G-vectors             : " << gvecs[i]->count() << std::endl
+              << "  number of G-shells                    : " << gvecs[i]->num_shells() << std::endl
+              << std::endl;
     }
-    std::printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
+    out__ << "number of local G-vector blocks: " << split_gvec_local().num_ranks() << std::endl;
 
-    unit_cell().print_info(verbosity());
-    for (int i = 0; i < unit_cell().num_atom_types(); i++) {
-        unit_cell().atom_type(i).print_info(std::cout);
+    {
+        rte::rte_ostream os(out__, "unit cell");
+        unit_cell().print_info(os, verbosity());
+    }
+    {
+        rte::rte_ostream os(out__, "sym");
+        unit_cell().symmetry().print_info(os, verbosity());
+    }
+    {
+        rte::rte_ostream os(out__, "atom type");
+        for (int i = 0; i < unit_cell().num_atom_types(); i++) {
+            unit_cell().atom_type(i).print_info(os);
+        }
     }
     if (this->cfg().control().print_neighbors()) {
-        std::stringstream s;
-        s << std::endl;
-        unit_cell().print_nearest_neighbours(s);
-        this->message(1, "nghbr", s);
+        rte::rte_ostream os(out__, "nghbr");
+        unit_cell().print_nearest_neighbours(os);
     }
 
     std::printf("\n");

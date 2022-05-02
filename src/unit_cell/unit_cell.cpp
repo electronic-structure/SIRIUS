@@ -166,88 +166,90 @@ Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 }
 
 void
-Unit_cell::print_info(int verbosity__) const
+Unit_cell::print_info(std::ostream& out__, int verbosity__) const
 {
-    std::printf("\n");
-    std::printf("Unit cell\n");
-    for (int i = 0; i < 80; i++) {
-        std::printf("-");
-    }
-    std::printf("\n");
-
-    std::printf("lattice vectors\n");
+    out__ << "lattice vectors" << std::endl;
     for (int i = 0; i < 3; i++) {
-        std::printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), lattice_vectors_(1, i),
-               lattice_vectors_(2, i));
+        out__ << "  a" << i + 1 << " : ";
+        for (int x: {0, 1, 2}) {
+            out__ << utils::ffmt(18, 10) << lattice_vectors_(x, i);
+        }
+        out__ << std::endl;
     }
-    std::printf("reciprocal lattice vectors\n");
+    out__ << "reciprocal lattice vectors" << std::endl;
     for (int i = 0; i < 3; i++) {
-        std::printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i),
-               reciprocal_lattice_vectors_(1, i), reciprocal_lattice_vectors_(2, i));
+        out__ << "  b" << i + 1 << " : ";
+        for (int x: {0, 1, 2}) {
+            out__ << utils::ffmt(18, 10) << reciprocal_lattice_vectors_(x, i);
+        }
+        out__ << std::endl;
     }
-    std::printf("\n");
-    std::printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
-    std::printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
-    std::printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
-    std::printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
-
-    std::printf("\n");
-    std::printf("number of atom types : %i\n", num_atom_types());
+    out__ << std::endl
+          << "unit cell volume : " << utils::ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl
+          << "1/sqrt(omega)    : " << utils::ffmt(18, 8) << 1.0 / sqrt(omega()) << std::endl
+          << "MT volume        : " << utils::ffmt(18, 8) << volume_mt() 
+                                   << " (" << utils::ffmt(5, 2) << volume_mt() * 100 / omega() << "%)" << std::endl
+          << "IT volume        : " << utils::ffmt(18, 8) << volume_it()
+                                   << " (" << utils::ffmt(5, 2) << volume_it() * 100 / omega() << "%)" << std::endl
+          << std::endl
+          << "number of atom types : " << num_atom_types() << std::endl;
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
-        std::printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
-               atom_type(i).mt_radius(), atom_type(i).num_atoms());
+        out__ << "type id : " << id << " symbol : " << std::setw(2) << atom_type(i).symbol() << " mt_radius : "
+              << utils::ffmt(10, 6) << atom_type(i).mt_radius() << " num_atoms : " << atom_type(i).num_atoms() << std::endl;
     }
 
-    std::printf("total number of atoms : %i\n", num_atoms());
-    std::printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
+    out__ << "total number of atoms : " << num_atoms() << std::endl
+          << "number of symmetry classes : " << num_atom_symmetry_classes() << std::endl;
     if (!parameters_.full_potential()) {
-        std::printf("number of PAW atoms : %i\n", num_paw_atoms());
+        out__ << "number of PAW atoms : " << num_paw_atoms() << std::endl;
     }
     if (verbosity__ >= 2) {
-        std::printf("\n");
-        std::printf("atom id              position                    vector_field        type id    class id\n");
-        std::printf("----------------------------------------------------------------------------------------\n");
+        out__ << std::endl
+              << "atom id  type id  class id             position                      vector_field" << std::endl
+              << utils::hbar(90, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
-            std::printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2],
-                   atom(i).type_id(), atom(i).symmetry_class_id());
-        }
-
-        std::printf("\n");
-        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            std::printf("class id : %i   atom id : ", ic);
-            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
+            out__ << std::setw(6) << i
+                  << std::setw(9) << atom(i).type_id()
+                  << std::setw(9) << atom(i).symmetry_class_id()
+                  << "   ";
+            for (int x: {0, 1, 2}) {
+                out__ << utils::ffmt(10, 5) << pos[x];
             }
-            std::printf("\n");
+            out__ << "   ";
+            for (int x: {0, 1, 2}) {
+                out__<< utils::ffmt(10, 5) << vf[x];
+            }
+            out__ << std::endl;
         }
-        std::printf("\n");
-        std::printf("atom id              position (Cartesian, a.u.)\n");
-        std::printf("----------------------------------------------------------------------------------------\n");
+        out__ << std::endl
+              << "atom id         position (Cartesian, a.u.)" << std::endl
+              << utils::hbar(45, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
-            std::printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
-        }
-
-        std::printf("\n");
-        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            std::printf("class id : %i   atom id : ", ic);
-            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
+            out__ << std::setw(6) << i << "   ";
+            for (int x: {0, 1 ,2}) {
+                out__ << utils::ffmt(12, 6) << vc[x];
             }
-            std::printf("\n");
+            out__ << std::endl;
+        }
+        out__ << std::endl;
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            out__ << "class id : " << ic << " atom id : ";
+            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
+                out__ << atom_symmetry_class(ic).atom_id(i) << " ";
+            }
+            out__ << std::endl;
         }
     }
-    std::printf("\nminimum bond length: %20.12f\n", min_bond_length());
+    out__ << std::endl
+          << "minimum bond length: " << utils::ffmt(12, 6) << min_bond_length() << std::endl;
     if (!parameters_.full_potential()) {
-        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf().first);
-    }
-
-    if (symmetry_ != nullptr) {
-        symmetry_->print_info(verbosity__);
+        out__ << std::endl
+              << "nnumber of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
     }
 }
 
@@ -395,16 +397,11 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
 void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
-    auto draw_bar = [&](char c, int w)
-    {
-        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
-    };
-
-    out__ << "Nearest neighbors" << std::endl;
-    draw_bar('=', 17);
+    out__ << "Nearest neighbors" << std::endl
+          << utils::hbar(17, '-') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
-        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl;
-        draw_bar('-', 80);
+        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl
+              << utils::hbar(80, '-') << std::endl;
         out__ << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
             int ja = nearest_neighbours_[ia][i].atom_id;

@@ -134,7 +134,6 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
     int const prec{5};
     int const width{10};
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
     auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
     auto const& atom  = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl__].first);
 
@@ -144,7 +143,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
     if (ctx_.num_mag_dims() != 3) {
         int mmax = 2 * l + 1;
         for (int is = 0; is < ctx_.num_spins(); is++) {
-            draw_bar(width * mmax);
+            out__ << utils::hbar(width * mmax, '-') << std::endl;
             bool has_imag{false};
             for (int m = 0; m < mmax; m++) {
                 for (int mp = 0; mp < mmax; mp++) {
@@ -165,10 +164,10 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
                 }
             }
         }
-        draw_bar(width * mmax);
+        out__ << utils::hbar(width * mmax, '-') << std::endl;
     } else {
         int mmax = 2 * l + 1;
-        draw_bar(2 * width * mmax + 3);
+        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
                 print_number(std::real(this->local(at_lvl__)(m, mp, 0)));
@@ -179,7 +178,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
             }
             out__ << std::endl;
         }
-        draw_bar(2 * width * mmax + 3);
+        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
                 print_number(std::real(this->local(at_lvl__)(m, mp, 3)));
@@ -190,7 +189,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
             }
             out__ << std::endl;
         }
-        draw_bar(2 * width * mmax + 3);
+        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
     }
 }
 
@@ -216,12 +215,11 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
 
     int const prec{5};
     int const width{10};
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
     auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
 
     if (ctx_.num_mag_dims() != 3) {
         for (int is = 0; is < ctx_.num_spins(); is++) {
-            draw_bar(width * jb);
+            out__ << utils::hbar(width * jb, '-') << std::endl;
             bool has_imag{false};
             for (int m = 0; m < ib; m++) {
                 for (int mp = 0; mp < jb; mp++) {
@@ -242,7 +240,7 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
                 }
             }
         }
-        draw_bar(width * jb);
+        out__ << utils::hbar(width * jb, '-') << std::endl;
     }
     //} else {
     //    int l = atom.type().indexr_hub().am(0).l();

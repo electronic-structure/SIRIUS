@@ -2041,24 +2041,21 @@ void Density::print_info(std::ostream& out__) const
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
-
     auto write_vector = [&](vector3d<double> v__) {
         out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
               << std::setprecision(5) << std::fixed << v__[1] << ", " << std::setw(9) << std::setprecision(5)
               << std::fixed << v__[2] << "]";
     };
 
-    out__ << "Charges and magnetic moments" << std::endl;
-    draw_bar(80);
+    out__ << "Charges and magnetic moments" << std::endl
+          << utils::hbar(80, '-') << std::endl;
     if (ctx_.full_potential()) {
         double total_core_leakage{0.0};
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
             out__ << "                 moment                |moment|";
         }
-        out__ << std::endl;
-        draw_bar(80);
+        out__ << std::endl << utils::hbar(80, '-') << std::endl;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
@@ -2085,8 +2082,8 @@ void Density::print_info(std::ostream& out__) const
         }
     } else {
         if (ctx_.num_mag_dims()) {
-            out__ << "atom                moment                |moment|" << std::endl;
-            draw_bar(80);
+            out__ << "atom                moment                |moment|" << std::endl
+                  << utils::hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 vector3d<double> v(mt_mag[ia]);

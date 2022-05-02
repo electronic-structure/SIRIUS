@@ -408,13 +408,11 @@ DFT_ground_state::print_info(std::ostream& out__) const
         one_elec_en -= hub_one_elec;
     }
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
-
     density_.print_info(out__);
 
     out__ << std::endl;
-    out__ << "Energy" << std::endl;
-    draw_bar(80);
+    out__ << "Energy" << std::endl
+          << utils::hbar(80, '-') << std::endl;
 
     auto write_energy = [&](std::string label__, double value__) {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
