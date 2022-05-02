@@ -251,23 +251,18 @@ Atom_type::init_free_atom_density(bool smooth)
 void
 Atom_type::print_info(std::ostream& out__) const
 {
-    auto draw_bar = [&](char c, int w)
-    {
-        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
-    };
-
-    out__ << "label          : " << label() << std::endl;
-    draw_bar('-', 80);
-    out__ << "symbol         : " << symbol_ << std::endl
+    out__ << "label          : " << label() << std::endl
+          << utils::hbar(80, '-') << std::endl
+          << "symbol         : " << symbol_ << std::endl
           << "name           : " << name_ << std::endl
           << "zn             : " << zn_ << std::endl
           << "mass           : " << mass_ << std::endl
           << "mt_radius      : " << mt_radius() << std::endl
           << "num_mt_points  : " << num_mt_points() << std::endl
           << "grid_origin    : " << radial_grid_.first() << std::endl
-          << "grid_name      : " << radial_grid_.name() << std::endl;
-    out__ << std::endl;
-    out__ << "number of core electrons    : " << num_core_electrons_ << std::endl
+          << "grid_name      : " << radial_grid_.name() << std::endl
+          << std::endl
+          << "number of core electrons    : " << num_core_electrons_ << std::endl
           << "number of valence electrons : " << num_valence_electrons_ << std::endl;
 
     if (parameters_.full_potential()) {
@@ -354,6 +349,7 @@ Atom_type::print_info(std::ostream& out__) const
         }
         out__ << indexr_wfs_.am(i);
     }
+    out__ << std::endl;
     out__ << std::endl;
 }
 

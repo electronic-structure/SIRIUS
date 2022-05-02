@@ -26,13 +26,13 @@
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
 #include "symmetry/lattice.hpp"
+#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/check_gvec.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
-#include "symmetry/crystal_symmetry.hpp"
-#include "symmetry/check_gvec.hpp"
 
 namespace sirius {
 
@@ -331,6 +331,13 @@ Simulation_context::initialize()
         RTE_THROW("Simulation parameters are already initialized.");
     }
 
+    /* setup the output stream */
+    if (this->comm().rank() == 0) {
+        output_stream_ = &std::cout;
+    } else {
+        output_stream_ = &utils::null_stream__;
+    }
+
     auto verb_lvl = utils::get_env<int>("SIRIUS_VERBOSITY");
     if (verb_lvl) {
         this->verbosity(*verb_lvl);
@@ -363,18 +370,18 @@ Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
+    //auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
 
-    if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
-        pstdout pout(comm());
-        if (comm().rank() == 0) {
-            pout.printf("MPI rank placement\n");
-            pout.printf("------------------\n");
-        }
-        auto name = sddk::Communicator::processor_name();
-        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
-                    comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
-    }
+    //if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
+    //    pstdout pout(comm());
+    //    if (comm().rank() == 0) {
+    //        pout.printf("MPI rank placement\n");
+    //        pout.printf("------------------\n");
+    //    }
+    //    auto name = sddk::Communicator::processor_name();
+    //    pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
+    //                comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
+    //}
 
     switch (processing_unit()) {
         case device_t::CPU: {
@@ -689,7 +696,7 @@ Simulation_context::initialize()
     this->print_memory_usage(__FILE__, __LINE__);
 
     if (verbosity() >= 1 && comm().rank() == 0) {
-        print_info();
+        print_info(this->out());
     }
 
     auto pcs = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
@@ -702,187 +709,150 @@ Simulation_context::initialize()
 }
 
 void
-Simulation_context::print_info() const
+Simulation_context::print_info(std::ostream& out__) const
 {
-    tm const* ptm = localtime(&start_time_.tv_sec);
-    char buf[100];
-    strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
+    {
+        rte::rte_ostream os(out__, "info");
+        tm const* ptm = localtime(&start_time_.tv_sec);
+        char buf[100];
+        strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
-    std::printf("\n");
-    std::printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
-    std::printf("git hash       : %s\n", sirius::git_hash().c_str());
-    std::printf("git branch     : %s\n", sirius::git_branchname().c_str());
-    std::printf("build time     : %s\n", sirius::build_date().c_str());
-    std::printf("start time     : %s\n", buf);
-    std::printf("\n");
-    std::printf("number of MPI ranks           : %i\n", comm_.size());
-    if (mpi_grid_) {
-        std::printf("MPI grid                      :");
-        for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-            std::printf(" %i", mpi_grid_->communicator(1 << i).size());
+        os << "SIRIUS version : " << sirius::major_version() << "." << sirius::minor_version()
+           << "." << sirius::revision() << std::endl
+           << "git hash       : " << sirius::git_hash() << std::endl
+           << "git branch     : " << sirius::git_branchname() << std::endl
+           << "build time     : " << sirius::build_date() << std::endl
+           << "start time     : " << std::string(buf) << std::endl
+           << std::endl
+           << "number of MPI ranks           : " << this->comm().size() << std::endl;
+        if (mpi_grid_) {
+            os << "MPI grid                      :";
+            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
+                os << " " << mpi_grid_->communicator(1 << i).size();
+            }
+            os << std::endl;
         }
-        std::printf("\n");
+        os << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
+           << "number of MPI ranks per node  : " << num_ranks_per_node() << std::endl
+           << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
+           << "number of pages               : " << utils::get_num_pages() << std::endl
+           << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
+        os << std::endl;
     }
-    std::printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    std::printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
-    std::printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
-    std::printf("number of pages               : %li\n", utils::get_num_pages());
-    std::printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
+    {
+        rte::rte_ostream os(out__, "fft");
+        std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
+        double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
+        Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
+        FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+        Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
-    std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
-    double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
-    Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
-    FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
-    Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
-
-    std::printf("\n");
-    for (int i = 0; i < 2; i++) {
-        std::printf("%s\n", headers[i].c_str());
-        std::printf("=====================================\n");
-        std::printf("  comm size                             : %i\n", comms[i]->size());
-        std::printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
-        std::printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
-                    fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
-        std::printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
-                    fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
-                    fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
-        std::printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
-        std::printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
-        std::printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
-        std::printf("\n");
+        for (int i = 0; i < 2; i++) {
+            os << headers[i] << std::endl
+               << utils::hbar(37, '=') << std::endl
+               << "  comm size                             : " << comms[i]->size() << std::endl
+               << "  plane wave cutoff                     : " << cutoffs[i] << std::endl
+               << "  grid size                             : " << fft_grids[i][0] << " "
+                                                               << fft_grids[i][1] << " "
+                                                               << fft_grids[i][2] << "   total : "
+                                                               << fft_grids[i].num_points() << std::endl
+               << "  grid limits                           : " << fft_grids[i].limits(0).first << " "
+                                                               << fft_grids[i].limits(0).second << "   "
+                                                               << fft_grids[i].limits(1).first << " "
+                                                               << fft_grids[i].limits(1).second << "   "
+                                                               << fft_grids[i].limits(2).first << " "
+                                                               << fft_grids[i].limits(2).second << std::endl
+               << "  number of G-vectors within the cutoff : " << gvecs[i]->num_gvec() << std::endl
+               << "  local number of G-vectors             : " << gvecs[i]->count() << std::endl
+               << "  number of G-shells                    : " << gvecs[i]->num_shells() << std::endl
+               << std::endl;
+        }
+        os << "number of local G-vector blocks: " << split_gvec_local().num_ranks() << std::endl;
+        os << std::endl;
     }
-    std::printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
-
-    unit_cell().print_info(verbosity());
-    for (int i = 0; i < unit_cell().num_atom_types(); i++) {
-        unit_cell().atom_type(i).print_info(std::cout);
+    {
+        rte::rte_ostream os(out__, "unit cell");
+        unit_cell().print_info(os, verbosity());
+    }
+    {
+        rte::rte_ostream os(out__, "sym");
+        unit_cell().symmetry().print_info(os, verbosity());
+    }
+    {
+        rte::rte_ostream os(out__, "atom type");
+        for (int i = 0; i < unit_cell().num_atom_types(); i++) {
+            unit_cell().atom_type(i).print_info(os);
+        }
     }
     if (this->cfg().control().print_neighbors()) {
-        std::stringstream s;
-        s << std::endl;
-        unit_cell().print_nearest_neighbours(s);
-        this->message(1, "nghbr", s);
+        rte::rte_ostream os(out__, "nghbr");
+        unit_cell().print_nearest_neighbours(os);
     }
 
-    std::printf("\n");
-    std::printf("Basic information\n");
-    for (int i = 0; i < 80; i++, std::printf("-"))
-        ;
-    std::printf("\n");
-    std::printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
-    std::printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
-    std::printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
-    std::printf("total number of electrons          : %f\n", unit_cell().num_electrons());
-    std::printf("extra charge                       : %f\n", cfg().parameters().extra_charge());
-    std::printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
-    std::printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
-    std::printf("number of first-variational states : %i\n", num_fv_states());
-    std::printf("number of bands                    : %i\n", num_bands());
-    std::printf("number of spins                    : %i\n", num_spins());
-    std::printf("number of magnetic dimensions      : %i\n", num_mag_dims());
-    std::printf("number of spinor components        : %i\n", num_spinor_comp());
-    std::printf("number of spinors per band index   : %i\n", num_spinors());
-    std::printf("lmax_apw                           : %i\n", unit_cell().lmax_apw());
-    std::printf("lmax_rho                           : %i\n", lmax_rho());
-    std::printf("lmax_pot                           : %i\n", lmax_pot());
-    std::printf("lmax_rf                            : %i\n", unit_cell().lmax());
-    std::printf("smearing type                      : %s\n", cfg().parameters().smearing().c_str());
-    std::printf("smearing width                     : %f\n", smearing_width());
-    std::printf("cyclic block size                  : %i\n", cyclic_block_size());
-    std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());
-    std::printf("symmetry                           : %s\n", utils::boolstr(use_symmetry()).c_str());
-    std::printf("so_correction                      : %s\n", utils::boolstr(so_correction()).c_str());
+    {
+        rte::rte_ostream os(out__, "info");
+        os << "total nuclear charge               : " << unit_cell().total_nuclear_charge() << std::endl
+           << "number of core electrons           : " << unit_cell().num_core_electrons() << std::endl
+           << "number of valence electrons        : " << unit_cell().num_valence_electrons() << std::endl
+           << "total number of electrons          : " << unit_cell().num_electrons() << std::endl
+           << "extra charge                       : " << cfg().parameters().extra_charge() << std::endl
+           << "total number of aw basis functions : " << unit_cell().mt_aw_basis_size() << std::endl
+           << "total number of lo basis functions : " << unit_cell().mt_lo_basis_size() << std::endl
+           << "number of first-variational states : " << num_fv_states() << std::endl
+           << "number of bands                    : " << num_bands() << std::endl
+           << "number of spins                    : " << num_spins() << std::endl
+           << "number of magnetic dimensions      : " << num_mag_dims() << std::endl
+           << "number of spinor components        : " << num_spinor_comp() << std::endl
+           << "number of spinors per band index   : " << num_spinors() << std::endl
+           << "lmax_apw                           : " << unit_cell().lmax_apw() << std::endl
+           << "lmax_rho                           : " << lmax_rho() << std::endl
+           << "lmax_pot                           : " << lmax_pot() << std::endl
+           << "lmax_rf                            : " << unit_cell().lmax() << std::endl
+           << "smearing type                      : " << cfg().parameters().smearing().c_str() << std::endl
+           << "smearing width                     : " << smearing_width() << std::endl
+           << "cyclic block size                  : " << cyclic_block_size() << std::endl
+           << "|G+k| cutoff                       : " << gk_cutoff() << std::endl
+           << "symmetry                           : " << std::boolalpha << use_symmetry() << std::endl
+           << "so_correction                      : " << std::boolalpha << so_correction() << std::endl;
 
-    std::string reln[] = {"valence relativity                 : ", "core relativity                    : "};
-
-    relativity_t relt[] = {valence_relativity_, core_relativity_};
-    for (int i = 0; i < 2; i++) {
-        std::printf("%s", reln[i].c_str());
-        switch (relt[i]) {
-            case relativity_t::none: {
-                std::printf("none\n");
-                break;
-            }
-            case relativity_t::koelling_harmon: {
-                std::printf("Koelling-Harmon\n");
-                break;
-            }
-            case relativity_t::zora: {
-                std::printf("zora\n");
-                break;
-            }
-            case relativity_t::iora: {
-                std::printf("iora\n");
-                break;
-            }
-            case relativity_t::dirac: {
-                std::printf("Dirac\n");
-                break;
-            }
+        std::string reln[] = {"valence relativity                 : ", "core relativity                    : "};
+        relativity_t relt[] = {valence_relativity_, core_relativity_};
+        std::map<relativity_t, std::string> const relm = {
+            {relativity_t::none, "none"},
+            {relativity_t::koelling_harmon, "Koelling-Harmon"},
+            {relativity_t::zora, "zora"},
+            {relativity_t::iora, "iora"},
+            {relativity_t::dirac, "Dirac"}
+        };
+        for (int i = 0; i < 2; i++) {
+            os << reln[i] << relm.at(relt[i]) << std::endl;
         }
-    }
 
-    std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
-
-    ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
-    for (int i = 0; i < 2; i++) {
-        std::printf("%s", evsn[i].c_str());
-        switch (evst[i]) {
-            case ev_solver_t::lapack: {
-                std::printf("LAPACK\n");
-                break;
-            }
-#if defined(SIRIUS_SCALAPACK)
-            case ev_solver_t::scalapack: {
-                std::printf("ScaLAPACK\n");
-                break;
-            }
-#endif
-#if defined(SIRIUS_ELPA)
-            case ev_solver_t::elpa: {
-                std::printf("ELPA\n");
-                break;
-            }
-#endif
-#if defined(SIRIUS_MAGMA)
-            case ev_solver_t::magma: {
-                std::printf("MAGMA\n");
-                break;
-            }
-            case ev_solver_t::magma_gpu: {
-                std::printf("MAGMA with GPU pointers\n");
-                break;
-            }
-#endif
-            case ev_solver_t::plasma: {
-                std::printf("PLASMA\n");
-                break;
-            }
-#if defined(SIRIUS_CUDA)
-            case ev_solver_t::cusolver: {
-                std::printf("cuSOLVER\n");
-                break;
-            }
-#endif
-            default: {
-                std::stringstream s;
-                s << "wrong eigen-value solver: " << evsn[i];
-                RTE_THROW(s);
-            }
+        std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
+        ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
+        std::map<ev_solver_t, std::string> const evsm = {
+            {ev_solver_t::lapack, "LAPACK"},
+            {ev_solver_t::scalapack, "ScaLAPACK"},
+            {ev_solver_t::elpa, "ELPA"},
+            {ev_solver_t::magma, "MAGMA"},
+            {ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
+            {ev_solver_t::cusolver, "cuSOLVER"}
+        };
+        for (int i = 0; i < 2; i++) {
+            os << evsn[i] << evsm.at(evst[i]) << std::endl;
         }
-    }
-
-    std::printf("processing unit                    : ");
-    switch (processing_unit()) {
-        case device_t::CPU: {
-            std::printf("CPU\n");
-            break;
-        }
-        case device_t::GPU: {
-            std::printf("GPU\n");
-            printf("number of devices                  : %i\n", acc::num_devices());
-            acc::print_device_info(0);
-            break;
+        os << "processing unit                    : ";
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                os << "CPU" << std::endl;
+                break;
+            }
+            case device_t::GPU: {
+                os << "GPU" << std::endl;
+                os << "number of devices                  : " << acc::num_devices() << std::endl;
+                acc::print_device_info(0, os);
+                break;
+            }
         }
     }
     std::printf("\n");

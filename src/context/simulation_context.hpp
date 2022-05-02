@@ -250,7 +250,7 @@ class Simulation_context : public Simulation_parameters
     /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
-    std::shared_ptr<std::ostream> output_stream_;
+    std::ostream* output_stream_{nullptr};
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -365,7 +365,7 @@ class Simulation_context : public Simulation_parameters
     /// Initialize the similation (can only be called once).
     void initialize();
 
-    void print_info() const;
+    void print_info(std::ostream& out__) const;
 
     /// Print the memory usage.
     void print_memory_usage(const char* file__, int line__);
@@ -906,11 +906,8 @@ class Simulation_context : public Simulation_parameters
 
     std::ostream& out() const
     {
-        if (output_stream_ == nullptr) {
-            return std::cout;
-        } else {
-            return *output_stream_;
-        }
+        RTE_ASSERT(output_stream_ != nullptr);
+        return *output_stream_;
     }
 };
 

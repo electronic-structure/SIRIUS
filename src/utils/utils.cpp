@@ -193,4 +193,7 @@ int get_proc_threads()
 
     return num_threads;
 }
+
+null_stream null_stream__;
+
 } // namespace utils

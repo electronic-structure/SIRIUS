@@ -225,7 +225,7 @@ class Unit_cell
     }
 
     /// Print basic info.
-    void print_info(int verbosity__) const;
+    void print_info(std::ostream& out__, int verbosity__) const;
 
     void print_nearest_neighbours(std::ostream& out__) const;
 
@@ -530,7 +530,8 @@ class Unit_cell
 
     inline Crystal_symmetry const& symmetry() const
     {
-        return (*symmetry_);
+        RTE_ASSERT(symmetry_ != nullptr);
+        return *symmetry_;
     }
 
     inline auto const& lattice_vectors() const

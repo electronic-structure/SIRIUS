@@ -1233,7 +1233,7 @@ sirius_print_info(void* const* handler__, int* error_code__)
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            sim_ctx.print_info();
+            sim_ctx.print_info(sim_ctx.out());
         },
         error_code__);
 }

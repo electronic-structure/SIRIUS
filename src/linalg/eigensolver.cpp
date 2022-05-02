@@ -36,10 +36,13 @@ Eigensolver_factory(std::string name__, memory_pool* mpd__)
             ptr = new Eigensolver_lapack();
             break;
         }
+#if defined(SIRIUS_SCALAPACK)
         case ev_solver_t::scalapack: {
             ptr = new Eigensolver_scalapack();
             break;
         }
+#endif
+#if defined(SIRIUS_ELPA)
         case ev_solver_t::elpa: {
             if (name__ == "elpa1") {
                 ptr = new Eigensolver_elpa(1);
@@ -48,6 +51,8 @@ Eigensolver_factory(std::string name__, memory_pool* mpd__)
             }
             break;
         }
+#endif
+#if defined(SIRIUS_MAGMA)
         case ev_solver_t::magma: {
             ptr = new Eigensolver_magma();
             break;
@@ -56,12 +61,15 @@ Eigensolver_factory(std::string name__, memory_pool* mpd__)
             ptr = new Eigensolver_magma_gpu();
             break;
         }
+#endif
+#if defined(SIRIUS_CUDA)
         case ev_solver_t::cusolver: {
             ptr = new Eigensolver_cuda(mpd__);
             break;
         }
+#endif
         default: {
-            TERMINATE("not implemented");
+            RTE_THROW("not compiled with the selected eigen-solver");
         }
     }
     return std::unique_ptr<Eigensolver>(ptr);
