@@ -59,7 +59,7 @@ class Hubbard
     /// Hubbard with multi channels apply to both LDA+U+V case
     bool multi_channels_{false};
 
-    void compute_occupancies(K_point<double>& kp__, dmatrix<double_complex>& phi_s_psi__,
+  void compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
                              Wave_functions<double>& dphi__, mdarray<double_complex, 4>& dn__, const int index__);
 
     void calculate_wavefunction_with_U_offset();
@@ -75,8 +75,10 @@ class Hubbard
     /// Constructor.
     Hubbard(Simulation_context& ctx__);
 
-    void compute_occupancies_derivatives(K_point<double>& kp, Q_operator<double>& q_op,
-                                         mdarray<std::complex<double>, 5>& dn);
+  void compute_occupancies_derivatives_ortho(K_point<double>& kp, Q_operator<double>& q_op,
+                                             mdarray<std::complex<double>, 5>& dn);
+  void compute_occupancies_derivatives_non_ortho(K_point<double>& kp, Q_operator<double>& q_op,
+                                                 mdarray<std::complex<double>, 5>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.

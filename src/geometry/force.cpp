@@ -665,10 +665,14 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
     mdarray<double_complex, 5> dn(kp__.hubbard_wave_functions_S().num_wf(), kp__.hubbard_wave_functions_S().num_wf(), 2,
                                   3, ctx_.unit_cell().num_atoms());
 
-    potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
+    if (ctx_.cfg().hubbard().full_orthogonalization() || ctx_.cfg().hubbard().orthogonalize()) {
+        potential_.U().compute_occupancies_derivatives_ortho(kp__, q_op__, dn);
+    } else {
+        potential_.U().compute_occupancies_derivatives_non_ortho(kp__, q_op__, dn);
+    }
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         /* compute the derivative of the occupancies numbers */
         for (int dir = 0; dir < 3; dir++) {

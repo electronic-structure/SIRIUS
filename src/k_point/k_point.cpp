@@ -343,6 +343,8 @@ K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T
     //    S.copy_to(memory_t::host);
     //}
 
+    std::vector<double> ei__(eigenvalues__.size());
+
     /* create transformation matrix */
     if (ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().full_orthogonalization()) {
 
@@ -352,7 +354,7 @@ K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T
 
         /* build the O^{-1/2} operator */
         for (int i = 0; i < static_cast<int>(eigenvalues__.size()); i++) {
-            eigenvalues__[i] = 1.0 / std::sqrt(eigenvalues__[i]);
+            ei__[i] = 1.0 / std::sqrt(eigenvalues__[i]);
         }
 
         /* first compute S_{nm} = E_m Z_{nm} */
@@ -360,7 +362,7 @@ K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T
         for (int l = 0; l < nwfu; l++) {
             for (int m = 0; m < nwfu; m++) {
                 for (int n = 0; n < nwfu; n++) {
-                    S__(n, m) += eigenvalues__[l] * Z__(n, l) * std::conj(Z__(m, l));
+                    S__(n, m) += ei__[l] * Z__(n, l) * std::conj(Z__(m, l));
                 }
             }
         }
