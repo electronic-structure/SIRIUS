@@ -854,22 +854,21 @@ Simulation_context::print_info(std::ostream& out__) const
                 break;
             }
         }
+        os << std::endl <<
+           << "iterative solver                   : " << cfg().iterative_solver().type() << std::endl
+           << "number of steps                    : " << cfg().iterative_solver().num_steps() << std::endl
+           << "subspace size                      : " << cfg().iterative_solver().subspace_size() << std::endl
+           << "early restart ratio                : " << cfg().iterative_solver().early_restart() << std::endl
+           << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
+           << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl
+           << "mixer                              : " << cfg().mixer().type() << std::endl
+           << "mixing beta                        : " << cfg().mixer().beta() << std::endl
+           << "max_history                        : " << cfg().mixer().max_history() << std::endl
+           << "use_hartree                        : " << std::boolalpha << cfg().mixer().use_hartree() << std::endl
+           << std::endl
+           << "spglib version: " << spg_get_major_version() << "." << spg_get_minor_version() << "."
+           << spg_get_micro_version() << std::endl;
     }
-    std::printf("\n");
-    std::printf("iterative solver                   : %s\n", cfg().iterative_solver().type().c_str());
-    std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
-    std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
-    std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
-    std::printf("precision_wf                       : %s\n", cfg().parameters().precision_wf().c_str());
-    std::printf("precision_hs                       : %s\n", cfg().parameters().precision_hs().c_str());
-    std::printf("mixer                              : %s\n", cfg().mixer().type().c_str());
-    std::printf("mixing beta                        : %.2f\n", cfg().mixer().beta());
-    std::printf("max_history                        : %i\n", cfg().mixer().max_history());
-    std::printf("use_hartree                        : %s\n", utils::boolstr(cfg().mixer().use_hartree()).c_str());
-
-    std::printf("\n");
-    std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(),
-                spg_get_micro_version());
     {
         unsigned int vmajor, vminor, vmicro;
         H5get_libversion(&vmajor, &vminor, &vmicro);
