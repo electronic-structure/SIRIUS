@@ -79,7 +79,7 @@ K_point<T>::initialize()
     if (ctx_.full_potential()) {
         if (ctx_.cfg().control().use_second_variation()) {
 
-            assert(ctx_.num_fv_states() > 0);
+            RTE_ASSERT(ctx_.num_fv_states() > 0);
             fv_eigen_values_ = sddk::mdarray<double, 1>(ctx_.num_fv_states(), memory_t::host, "fv_eigen_values");
 
             if (ctx_.need_sv()) {

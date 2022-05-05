@@ -582,22 +582,6 @@ void Gvec_partition::build_fft_distr()
     gvec_distr_fft_.calc_offsets();
 }
 
-void Gvec_partition::calc_offsets()
-{
-    zcol_offs_ = mdarray<int, 1>(gvec().num_zcol(), memory_t::host, "Gvec_partition.zcol_offs_");
-    for (int rank = 0; rank < fft_comm().size(); rank++) {
-        int offs{0};
-        /* loop over local number of z-columns */
-        for (int i = 0; i < zcol_count_fft(rank); i++) {
-            /* global index of z-column */
-            int icol         = idx_zcol_[zcol_distr_fft_.offsets[rank] + i];
-            zcol_offs_[icol] = offs;
-            offs += static_cast<int>(gvec().zcol(icol).z.size());
-        }
-        assert(offs == gvec_distr_fft_.counts[rank]);
-    }
-}
-
 void Gvec_partition::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped distribution;
@@ -643,18 +627,18 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 
     build_fft_distr();
 
-    idx_zcol_ = mdarray<int, 1>(gvec().num_zcol());
-    int icol{0};
-    for (int rank = 0; rank < fft_comm().size(); rank++) {
-        for (int i = 0; i < comm_ortho_fft().size(); i++) {
-            for (int k = 0; k < gvec_.zcol_count(rank_map_(rank, i)); k++) {
-                idx_zcol_(icol) = gvec_.zcol_offset(rank_map_(rank, i)) + k;
-                icol++;
-            }
-        }
-        assert(icol == zcol_distr_fft_.counts[rank] + zcol_distr_fft_.offsets[rank]);
-    }
-    assert(icol == gvec().num_zcol());
+    //idx_zcol_ = mdarray<int, 1>(gvec().num_zcol());
+    //int icol{0};
+    //for (int rank = 0; rank < fft_comm().size(); rank++) {
+    //    for (int i = 0; i < comm_ortho_fft().size(); i++) {
+    //        for (int k = 0; k < gvec_.zcol_count(rank_map_(rank, i)); k++) {
+    //            idx_zcol_(icol) = gvec_.zcol_offset(rank_map_(rank, i)) + k;
+    //            icol++;
+    //        }
+    //    }
+    //    assert(icol == zcol_distr_fft_.counts[rank] + zcol_distr_fft_.offsets[rank]);
+    //}
+    //assert(icol == gvec().num_zcol());
 
     idx_gvec_ = mdarray<int, 1>(gvec_count_fft());
     int ig{0};
@@ -665,7 +649,7 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
         }
     }
 
-    calc_offsets();
+    //calc_offsets();
     pile_gvec();
 }
 

@@ -134,7 +134,7 @@ void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__,
 void K_point_set::initialize(std::vector<int> const& counts)
 {
     if (this->initialized_) {
-        TERMINATE("K-point set is already initialized");
+        RTE_THROW("K-point set is already initialized");
     }
     PROFILE("sirius::K_point_set::initialize");
     /* distribute k-points along the 1-st dimension of the MPI grid */
@@ -153,7 +153,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
     }
 
     if (ctx_.verbosity() > 0) {
-        print_info();
+        this->print_info();
     }
     ctx_.print_memory_usage(__FILE__, __LINE__);
     this->initialized_ = true;

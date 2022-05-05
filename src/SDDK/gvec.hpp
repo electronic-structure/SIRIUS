@@ -168,7 +168,7 @@ class Gvec
     /// Radii of G-vector shells in the local index counting [0, num_gvec_shells_local)
     std::vector<double> gvec_shell_len_local_;
 
-    /// Mapping between local index of G-vector and local  G-shell index.
+    /// Mapping between local index of G-vector and local G-shell index.
     std::vector<int> gvec_shell_idx_local_;
 
     sddk::mdarray<int, 3> gvec_index_by_xy_;
@@ -313,6 +313,35 @@ class Gvec
         , reduce_gvec_(reduce_gvec__)
     {
         init(get_min_fft_grid(Gmax__, M__));
+    }
+
+    Gvec(vector3d<double> vk__, matrix3d<double> M__, int ngv_loc__, int* gv__, Communicator const& comm__, bool reduce_gvec__)
+        : vk_(vk__)
+        , lattice_vectors_(M__)
+        , comm_(comm__)
+        , reduce_gvec_(reduce_gvec__)
+        , bare_gvec_(false)
+    {
+        std::cout << "Trying external G-vector order" << std::endl;
+
+        sddk::mdarray<int, 2> G(gv__, 3, ngv_loc__);
+
+        /* do a first pass: determine boundaries of the grid */
+        int xmin{0}, xmax{0};
+        int ymin{0}, ymax{0};
+        for (int i = 0; i < ngv_loc__; i++) {
+            xmin = std::min(xmin, G(0, i));
+            xmax = std::max(xmax, G(0, i));
+            ymin = std::min(ymin, G(1, i));
+            ymax = std::max(ymax, G(1, i));
+        }
+        comm_.allreduce<int, mpi_op_t::min>(&xmin, 1);
+        comm_.allreduce<int, mpi_op_t::min>(&ymin, 1);
+        comm_.allreduce<int, mpi_op_t::max>(&xmax, 1);
+        comm_.allreduce<int, mpi_op_t::max>(&ymax, 1);
+
+        throw std::runtime_error("stop");
+
     }
 
     /// Constructor for empty set of G-vectors.
@@ -601,24 +630,13 @@ class Gvec_partition
     /// Distribution of G-vectors inside FFT-friendly "fat" slab.
     block_data_descriptor gvec_fft_slab_;
 
-    /// Offset of the z-column in the local data buffer.
-    /** Global index of z-column is expected */
-    mdarray<int, 1> zcol_offs_;
-
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
-
-    /// Global index of z-column in new (fat-slab) distribution.
-    /** This is a mapping between new and original ordering of z-columns. */
-    mdarray<int, 1> idx_zcol_;
 
     /// Global index of G-vector by local index inside fat-salb.
     mdarray<int, 1> idx_gvec_;
 
     void build_fft_distr();
-
-    /// Calculate offsets of z-columns inside each local buffer of PW coefficients.
-    void calc_offsets();
 
     /// Stack together the G-vector slabs to make a larger ("fat") slab for a FFT driver.
     void pile_gvec();
@@ -648,30 +666,9 @@ class Gvec_partition
         return gvec_count_fft(fft_comm().rank());
     }
 
-    /// Return local number of z-columns.
-    inline int zcol_count_fft(int rank__) const
-    {
-        return zcol_distr_fft_.counts[rank__];
-    }
-
     inline int zcol_count_fft() const
     {
-        return zcol_count_fft(fft_comm().rank());
-    }
-
-    template <index_domain_t index_domain>
-    inline int idx_zcol(int idx__) const
-    {
-        switch (index_domain) {
-            case index_domain_t::local: {
-                return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
-                break;
-            }
-            case index_domain_t::global: {
-                return idx_zcol_(idx__);
-                break;
-            }
-        }
+        return zcol_distr_fft_.counts[fft_comm().rank()];
     }
 
     inline int idx_gvec(int idx_local__) const
@@ -682,11 +679,6 @@ class Gvec_partition
     inline block_data_descriptor const& gvec_fft_slab() const
     {
         return gvec_fft_slab_;
-    }
-
-    inline int zcol_offs(int icol__) const
-    {
-        return zcol_offs_(icol__);
     }
 
     inline Gvec const& gvec() const
