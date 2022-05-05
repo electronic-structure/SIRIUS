@@ -603,14 +603,14 @@ class Gvec_partition
 
     /// Offset of the z-column in the local data buffer.
     /** Global index of z-column is expected */
-    mdarray<int, 1> zcol_offs_;
+    //mdarray<int, 1> zcol_offs_;
 
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
 
     /// Global index of z-column in new (fat-slab) distribution.
     /** This is a mapping between new and original ordering of z-columns. */
-    mdarray<int, 1> idx_zcol_;
+    //mdarray<int, 1> idx_zcol_;
 
     /// Global index of G-vector by local index inside fat-salb.
     mdarray<int, 1> idx_gvec_;
@@ -648,31 +648,31 @@ class Gvec_partition
         return gvec_count_fft(fft_comm().rank());
     }
 
-    /// Return local number of z-columns.
-    inline int zcol_count_fft(int rank__) const
-    {
-        return zcol_distr_fft_.counts[rank__];
-    }
+    ///// Return local number of z-columns.
+    //inline int zcol_count_fft(int rank__) const
+    //{
+    //    return zcol_distr_fft_.counts[rank__];
+    //}
 
     inline int zcol_count_fft() const
     {
-        return zcol_count_fft(fft_comm().rank());
+        return zcol_distr_fft_.counts[fft_comm().rank()];
     }
 
-    template <index_domain_t index_domain>
-    inline int idx_zcol(int idx__) const
-    {
-        switch (index_domain) {
-            case index_domain_t::local: {
-                return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
-                break;
-            }
-            case index_domain_t::global: {
-                return idx_zcol_(idx__);
-                break;
-            }
-        }
-    }
+    //template <index_domain_t index_domain>
+    //inline int idx_zcol(int idx__) const
+    //{
+    //    switch (index_domain) {
+    //        case index_domain_t::local: {
+    //            return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
+    //            break;
+    //        }
+    //        case index_domain_t::global: {
+    //            return idx_zcol_(idx__);
+    //            break;
+    //        }
+    //    }
+    //}
 
     inline int idx_gvec(int idx_local__) const
     {
@@ -684,10 +684,10 @@ class Gvec_partition
         return gvec_fft_slab_;
     }
 
-    inline int zcol_offs(int icol__) const
-    {
-        return zcol_offs_(icol__);
-    }
+    //inline int zcol_offs(int icol__) const
+    //{
+    //    return zcol_offs_(icol__);
+    //}
 
     inline Gvec const& gvec() const
     {
