@@ -5668,12 +5668,15 @@ end subroutine sirius_add_hubbard_atom_pair
 !> @param [in] num_gvec_kq_loc Local number of G-vectors for k+q-point
 !> @param [in] gvec_kq_loc Local list of G-vectors for k+q-point.
 !> @param [inout] dpsi Left-hand side of the linear equation.
-!> @param [inout] dvpsi Right-hand side of the linear equation.
-!> @param [in] ld Leading dimension of dpsi and dvpsi.
+!> @param [in] psi Unperturbed eigenvectors.
+!> @param [in] eigvals Unperturbed eigenvalues.
+!> @param [inout] dvpsi Right-hand side of the linear equation (dV * psi)
+!> @param [in] ld Leading dimension of dpsi, psi, dvpsi.
 !> @param [in] num_spin_comp Number of spin components.
+!> @param [in] alpha_pv Constant for the projector.
 !> @param [out] error_code Error code
 subroutine sirius_linear_solver(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
-&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)
+&gvec_kq_loc,dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
@@ -5683,10 +5686,13 @@ integer, target, intent(in) :: num_gvec_k_loc
 integer, target, dimension(3, num_gvec_k_loc), intent(in) :: gvec_k_loc
 integer, target, intent(in) :: num_gvec_kq_loc
 integer, target, dimension(3, num_gvec_kq_loc), intent(in) :: gvec_kq_loc
-complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dpsi
-complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dvpsi
+complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dpsi
+complex(8), target, dimension(ld, num_spin_comp), intent(in) :: psi
+real(8), target, dimension(*), intent(in) :: eigvals
+complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dvpsi
 integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_spin_comp
+real(8), target, intent(in) :: alpha_pv
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5697,14 +5703,17 @@ type(C_PTR) :: gvec_k_loc_ptr
 type(C_PTR) :: num_gvec_kq_loc_ptr
 type(C_PTR) :: gvec_kq_loc_ptr
 type(C_PTR) :: dpsi_ptr
+type(C_PTR) :: psi_ptr
+type(C_PTR) :: eigvals_ptr
 type(C_PTR) :: dvpsi_ptr
 type(C_PTR) :: ld_ptr
 type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: alpha_pv_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
-&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)&
+&gvec_kq_loc,dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5715,9 +5724,12 @@ type(C_PTR), value :: gvec_k_loc
 type(C_PTR), value :: num_gvec_kq_loc
 type(C_PTR), value :: gvec_kq_loc
 type(C_PTR), value :: dpsi
+type(C_PTR), value :: psi
+type(C_PTR), value :: eigvals
 type(C_PTR), value :: dvpsi
 type(C_PTR), value :: ld
 type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: alpha_pv
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -5738,19 +5750,25 @@ gvec_kq_loc_ptr = C_NULL_PTR
 gvec_kq_loc_ptr = C_LOC(gvec_kq_loc)
 dpsi_ptr = C_NULL_PTR
 dpsi_ptr = C_LOC(dpsi)
+psi_ptr = C_NULL_PTR
+psi_ptr = C_LOC(psi)
+eigvals_ptr = C_NULL_PTR
+eigvals_ptr = C_LOC(eigvals)
 dvpsi_ptr = C_NULL_PTR
 dvpsi_ptr = C_LOC(dvpsi)
 ld_ptr = C_NULL_PTR
 ld_ptr = C_LOC(ld)
 num_spin_comp_ptr = C_NULL_PTR
 num_spin_comp_ptr = C_LOC(num_spin_comp)
+alpha_pv_ptr = C_NULL_PTR
+alpha_pv_ptr = C_LOC(alpha_pv)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_linear_solver_aux(handler_ptr,vk_ptr,vkq_ptr,num_gvec_k_loc_ptr,gvec_k_loc_ptr,&
-&num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,dpsi_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,&
-&error_code_ptr)
+&num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,&
+&num_spin_comp_ptr,alpha_pv_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !
