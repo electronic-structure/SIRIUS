@@ -5847,6 +5847,8 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             Gvec gvk(vk, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
             Gvec gvkq(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
 
+            Gvec gvk1(vk, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_k_loc__, gvec_k_loc__, sctx.comm_k(), false);
+
             int num_gvec_k_loc = *num_gvec_k_loc__;
             int num_gvec_k = num_gvec_k_loc;
             sctx.comm_k().allreduce(&num_gvec_k, 1);
