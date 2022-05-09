@@ -34,6 +34,8 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "band/davidson.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "multi_cg/multi_cg.hpp"
 
 struct sirius_context_handler_t
 {
@@ -5775,6 +5777,171 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 }
 
 /*
+ * Linear response API.
+ * TODO: move this to some place of its own.
+ */
+
+struct Wave_functions_wrap {
+    Wave_functions<double> *x;
+
+    typedef double_complex value_type;
+
+    void fill(double_complex val) {
+        x->pw_coeffs(0).prime() = [=](){
+            return val;
+        };
+    }
+
+    int cols() const {
+        return x->num_wf();
+    }
+
+    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
+        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
+        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
+            rhos[i] = result(i);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        size_t j = 0;
+        for (auto i : ids) {
+            if (j != i) {
+                x->copy_from(*x, 1, 0, i, 0, j);
+            }
+
+            ++j;
+        }
+    }
+
+    void copy(Wave_functions_wrap const &y, size_t num) {
+        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
+    }
+
+    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
+        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
+    }
+
+    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
+        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
+    }
+
+    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
+        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
+    }
+};
+
+struct Identity_preconditioner {
+    size_t num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        x.copy(y, num_active);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+    }
+};
+
+struct Linear_response_operator {
+    sirius::Simulation_context &ctx;
+    sirius::Hamiltonian_k<double> &Hk;
+    std::vector<double> min_eigenvals;
+    Wave_functions<double> * Hphi;
+    Wave_functions<double> * Sphi;
+    Wave_functions<double> * evq;
+    Wave_functions<double> * tmp;
+    double alpha_pv;
+    sddk::dmatrix<double_complex> overlap;
+
+
+    Linear_response_operator(
+        sirius::Simulation_context &ctx,
+        sirius::Hamiltonian_k<double> & Hk,
+        std::vector<double> const &eigvals,
+        Wave_functions<double> * Hphi,
+        Wave_functions<double> * Sphi,
+        Wave_functions<double> * evq,
+        Wave_functions<double> * tmp,
+        double alpha_pv)
+    : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
+      alpha_pv(alpha_pv), overlap(ctx.num_bands(), ctx.num_bands())
+    {
+        // I think we could just compute alpha_pv here by just making it big enough
+        // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
+        // alpha_pv = 2 * min_eigenvals.back();
+        // but QE has a very specific way to compute it, so we just forward it from
+        // there.;
+
+        // flip the sign of the eigenvals so that the axpby works
+        for (auto &e : min_eigenvals) {
+            e *= -1;
+        }
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        for (size_t i = 0; i < ids.size(); ++i) {
+            min_eigenvals[i] = min_eigenvals[ids[i]];
+        }
+    }
+
+    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
+    // where SQ is S * eigenvectors.
+    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
+        // Hphi = H * x, Sphi = S * x
+        Hk.apply_h_s<double_complex>(
+            spin_range(0),
+            0,
+            num_active,
+            *x.x,
+            Hphi,
+            Sphi
+        );
+
+        // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
+        Hphi->axpy(device_t::CPU, spin_range(0), min_eigenvals, *Sphi, num_active);
+        tmp->copy_from(*Hphi, num_active, 0, 0, 0, 0);
+
+        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
+
+        // overlap := evq' * (S * x)
+        sddk::inner(
+            ctx.spla_context(),
+            spin_range(0),
+            *evq, 0, ctx.num_bands(),
+            *Sphi, 0, num_active,
+            overlap, 0, 0);
+
+        // Hphi := evq * overlap
+        sddk::transform<double_complex>(
+            ctx.spla_context(),
+            0, 1.0,
+            {evq}, 0, ctx.num_bands(),
+            overlap, 0, 0,
+            0.0, {Hphi}, 0, num_active);
+
+        // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
+        sirius::apply_S_operator<double_complex>(
+            ctx.processing_unit(),
+            spin_range(0),
+            0,
+            num_active,
+            Hk.kp().beta_projectors(),
+            *Hphi,
+            &Hk.H0().Q(),
+            *Sphi);
+
+        // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
+        {
+            // okay, the block-scalar api is a bit awkward...
+            std::vector<double_complex> alpha_pvs(num_active, alpha_pv);
+            tmp->axpy(device_t::CPU, spin_range(0), alpha_pvs, *Sphi, num_active);
+        }
+        // y[:, i] <- alpha * tmp + beta * y[:, i]
+        y.x->axpby(device_t::CPU, spin_range(0), alpha, *tmp, beta, num_active);
+    }
+};
+
+/*
 @api begin
 sirius_linear_solver:
   doc: Interface to linear solver.
@@ -5809,20 +5976,32 @@ sirius_linear_solver:
       doc: Local list of G-vectors for k+q-point.
     dpsi:
       type: complex
-      attr: inout, required, dimension(ld, num_spin_comp, *)
+      attr: inout, required, dimension(ld, num_spin_comp)
       doc: Left-hand side of the linear equation.
+    psi:
+      type: complex
+      attr: in, required, dimension(ld, num_spin_comp)
+      doc: Unperturbed eigenvectors.
+    eigvals:
+      type: double
+      attr: in, required, dimension(*)
+      doc: Unperturbed eigenvalues.
     dvpsi:
       type: complex
-      attr: inout, required, dimension(ld, num_spin_comp, *)
-      doc: Right-hand side of the linear equation.
+      attr: inout, required, dimension(ld, num_spin_comp)
+      doc: Right-hand side of the linear equation (dV * psi)
     ld:
       type: int
       attr: in, required
-      doc: Leading dimension of dpsi and dvpsi.
+      doc: Leading dimension of dpsi, psi, dvpsi.
     num_spin_comp:
       type: int
       attr: in, required
       doc: Number of spin components.
+    alpha_pv:
+      type: double
+      attr: in, required
+      doc: Constant for the projector.
     error_code:
       type: int
       attr: out, optional
@@ -5831,12 +6010,13 @@ sirius_linear_solver:
 */
 void sirius_linear_solver(void* const* handler__, double const* vk__, double const* vkq__, int const* num_gvec_k_loc__,
         int const* gvec_k_loc__, int const* num_gvec_kq_loc__, int const* gvec_kq_loc__,
-        std::complex<double>* dpsi__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
-        int* error_code__)
+        std::complex<double>* dpsi__, std::complex<double> * psi__, double * eigvals,
+        std::complex<double>* dvpsi__,
+        int const* ld__, int const* num_spin_comp__, double const * alpha_pv__, int* error_code__)
 {
     call_sirius(
         [&]() {
-            std::cout << "checking G+k and G+k+q vectors" << std::endl;
+            assert(*num_spin_comp__ == 1);
 
             vector3d<double> vk(vk__);
             vector3d<double> vkq(vkq__);
@@ -5890,26 +6070,13 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 
             auto Hk = H0(kp);
 
-            sirius::Band(const_cast<sirius::Simulation_context&>(sctx)).initialize_subspace<std::complex<double>>(Hk, sctx.unit_cell().num_ps_atomic_wf().first);
-
-            auto& itsol = sctx.cfg().iterative_solver();
-
-            auto result = sirius::davidson<std::complex<double>, std::complex<double>, sirius::davidson_evp_t::hamiltonian>(Hk, sctx.num_bands(), sctx.num_mag_dims(),
-                    kp.spinor_wave_functions(), [](int i, int ispn){ return 1e-12; },
-                    itsol.residual_tolerance(), itsol.num_steps(), itsol.locking(), itsol.subspace_size(), itsol.converge_by_energy(),
-                    itsol.extra_ortho(), std::cout, 0);
-
-            for (int i = 0; i < sctx.num_bands(); i++) {
-                std::cout << "band: " << i << ", eval: " << result.eval[i] << std::endl;
-            }
-
             /* collect local G+k vector sizes across all ranks */
             block_data_descriptor gk_in_distr(gvk.comm().size());
             gk_in_distr.counts[gvk.comm().rank()] = num_gvec_k_loc;
             gvk.comm().allgather(gk_in_distr.counts.data(), 1, gvk.comm().rank());
             gk_in_distr.calc_offsets();
 
-            /* offset in the incomming G-vector index */
+            /* offset in the incoming G-vector index */
             int offset = gk_in_distr.offsets[gvk.comm().rank()];
 
             sddk::mdarray<int, 2> gvec_k(3, gvk.num_gvec());
@@ -5929,29 +6096,98 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 igmap[i] = ig;
             }
 
-            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
-            auto dpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            // Copy eigenvalues (factor 2 for rydberg/hartree)
+            std::vector<double> eigvals_vec(eigvals, eigvals + sctx.num_bands());
+            for (auto &val : eigvals_vec)
+                val /= 2;
 
-            std::vector<std::complex<double>> tmp(num_gvec_k);
+            // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
+            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
+
+            auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+
+            std::vector<std::complex<double>> tmp_psi(num_gvec_k);
+            std::vector<std::complex<double>> tmp_dpsi(num_gvec_k);
+            std::vector<std::complex<double>> tmp_dvpsi(num_gvec_k);
 
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
                     /* gather the full wave-function in the order of QE */
                     for (int ig = 0; ig < num_gvec_k_loc; ig++) {
-                        tmp[offset + ig] = dpsi(ig, ispn, i);
+                        tmp_psi[offset + ig] = psi(ig, ispn, i);
+                        tmp_dpsi[offset + ig] = dpsi(ig, ispn, i);
+                        tmp_dvpsi[offset + ig] = dvpsi(ig, ispn, i);
                     }
-                    gvk.comm().allgather(tmp.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    gvk.comm().allgather(tmp_psi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    gvk.comm().allgather(tmp_dpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    gvk.comm().allgather(tmp_dvpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+
                     /* copy local part */
                     for (int ig = 0; ig < gvk.count(); ig++) {
-                        dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp[igmap[ig + gvk.offset()]];
+                        psi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_psi[igmap[ig + gvk.offset()]];
+                        dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dpsi[igmap[ig + gvk.offset()]];
+                        // divide by two to account for hartree / rydberg, this is
+                        // dv * psi and dv should be 2x smaller in sirius.
+                        dvpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dvpsi[igmap[ig + gvk.offset()]] / 2.0;
                     }
                 }
             }
+            // setup auxiliary state vectors for CG.
+            auto U = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto C = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
 
-            /* at this point dpsi_wf should be in the order of SIRIUS.
-             * TODO: how to check the corectness?
-             */
+            auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
 
+            Linear_response_operator linear_operator(
+                const_cast<sirius::Simulation_context&>(sctx),
+                Hk,
+                eigvals_vec,
+                Hphi_wf.get(),
+                Sphi_wf.get(),
+                psi_wf.get(),
+                tmp_wf.get(),
+                *alpha_pv__ / 2); // rydberg/hartree factor
+
+            // CG state vectors.
+            auto X_wrap = Wave_functions_wrap{dpsi_wf.get()};
+            auto B_wrap = Wave_functions_wrap{dvpsi_wf.get()};
+            auto U_wrap = Wave_functions_wrap{U.get()};
+            auto C_wrap = Wave_functions_wrap{C.get()};
+
+            // Todo, replace with block version of Diagonal(H - e * S)
+            Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
+
+            auto result = sirius::cg::multi_cg(
+                linear_operator,
+                preconditioner,
+                X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
+                250, // iters
+                1e-8 // tol
+            );
+
+            // Todo, remove debugging info.
+            for (size_t i = 0; i < result.size(); ++i) {
+                std::cout << "perturbed_psi[ " << i << "]: " << result[i].size() << " iter\n";
+            }
+
+            /* bring wave functions back in order of QE */
+            for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                for (int i = 0; i < sctx.num_bands(); i++) {
+                    for (int ig = 0; ig < gvk.count(); ++ig) {
+                        tmp_dpsi[igmap[ig + gvk.offset()]] = dpsi_wf->pw_coeffs(ispn).prime(ig, i);
+                    }
+                    gvk.comm().allgather(tmp_dpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
+                    for (int ig = 0; ig < num_gvec_k_loc; ig++) {
+                        dpsi(ig, ispn, i) = tmp_dpsi[offset + ig];
+                    }
+                }
+            }
 
         }, error_code__);
 

@@ -315,7 +315,7 @@ class Gvec
         init(get_min_fft_grid(Gmax__, M__));
     }
 
-    Gvec(vector3d<double> vk__, matrix3d<double> M__, int ngv_loc__, int* gv__, Communicator const& comm__, bool reduce_gvec__)
+    Gvec(vector3d<double> vk__, matrix3d<double> M__, int ngv_loc__, int const* gv__, Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -324,7 +324,7 @@ class Gvec
     {
         std::cout << "Trying external G-vector order" << std::endl;
 
-        sddk::mdarray<int, 2> G(gv__, 3, ngv_loc__);
+        sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
 
         /* do a first pass: determine boundaries of the grid */
         int xmin{0}, xmax{0};
@@ -339,6 +339,25 @@ class Gvec
         comm_.allreduce<int, mpi_op_t::min>(&ymin, 1);
         comm_.allreduce<int, mpi_op_t::max>(&xmax, 1);
         comm_.allreduce<int, mpi_op_t::max>(&ymax, 1);
+
+        sddk::mdarray<int, 2> zcol(mdarray_index_descriptor(xmin, xmax), mdarray_index_descriptor(ymin, ymax));
+        zcol.zero();
+        for (int ig = 0; ig < ngv_loc__; ig++) {
+            std::cout << "ig=" << ig << " gv=" << G(0, ig) << " " << G(1, ig) << " " << G(2, ig) << std::endl;
+        }
+        if (ngv_loc__) {
+            int ig{0};
+            while (ig < ngv_loc__) {
+                if (zcol(G(0, ig), G(1, ig))) {
+                    RTE_THROW("G-vectors are not consecutive for a z-column");
+                }
+                auto z = G(2, ig);
+                do {
+                    zcol(G(0, ig), G(1, ig))++;
+                    ig++; 
+                } while (ig < ngv_loc__ && G(2, ig) == z);
+            }
+        }
 
         throw std::runtime_error("stop");
 
