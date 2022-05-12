@@ -5842,6 +5842,34 @@ struct Identity_preconditioner {
     }
 };
 
+struct Smoothed_diagonal_preconditioner {
+    sddk::mdarray<double, 2> H_diag;
+    sddk::mdarray<double, 2> S_diag;
+    sddk::mdarray<double, 1> eigvals;
+    size_t num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        // Could avoid a copy here, but apply_precondition is in-place.
+        x.copy(y, num_active);
+        sirius::apply_preconditioner(
+            memory_t::host,
+            sddk::spin_range(0),
+            static_cast<int>(num_active),
+            *x.x,
+            H_diag,
+            S_diag,
+            eigvals);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+        for (size_t i = 0; i < ids.size(); ++i) {
+            eigvals[i] = eigvals[ids[i]];
+        }
+    }
+};
+
+
 struct Linear_response_operator {
     sirius::Simulation_context &ctx;
     sirius::Hamiltonian_k<double> &Hk;
@@ -6158,8 +6186,21 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             auto U_wrap = Wave_functions_wrap{U.get()};
             auto C_wrap = Wave_functions_wrap{C.get()};
 
-            // Todo, replace with block version of Diagonal(H - e * S)
-            Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
+            // Set up the diagonal preconditioner
+            auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>();
+            sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
+            eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
+                return eigvals_vec[i];
+            };
+
+            Smoothed_diagonal_preconditioner preconditioner{
+              std::move(h_o_diag.first),
+              std::move(h_o_diag.second),
+              std::move(eigvals_mdarray),
+              sctx.num_bands()
+            };
+
+            // Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
 
             auto result = sirius::cg::multi_cg(
                 linear_operator,
@@ -6171,7 +6212,9 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
 
             // Todo, remove debugging info.
             for (size_t i = 0; i < result.size(); ++i) {
-                std::cout << "perturbed_psi[ " << i << "]: " << result[i].size() << " iter\n";
+                std::cout << "residuals norms[" << i << "]: ";
+                std::copy(result[i].begin(), result[i].end(), std::ostream_iterator<double_complex>(std::cout << std::scientific << std::setprecision(16), " "));
+                std::cout << std::endl;
             }
 
             /* bring wave functions back in order of QE */

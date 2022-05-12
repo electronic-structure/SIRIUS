@@ -112,6 +112,12 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
           sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<real_type<T>, 2> const& h_diag__,
           sddk::mdarray<real_type<T>, 2> const& o_diag__, bool estimate_eval__, real_type<T> norm_tolerance__,
           std::function<bool(int, int)> is_converged__);
+
+template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
+void
+apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<T>& res__,
+                     sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
+                     sddk::mdarray<T, 1>& eval__);
 }
 
 #endif
