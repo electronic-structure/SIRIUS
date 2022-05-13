@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -35,6 +35,8 @@
 #include "SDDK/wf_inner.hpp"
 #include "SDDK/wf_trans.hpp"
 #include "symmetry/crystal_symmetry.hpp"
+#include "linalg/inverse_sqrt.hpp"
+
 namespace sirius {
 
 /* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
@@ -88,7 +90,7 @@ Hubbard::apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors
   {
 
     int num_hub_wf = ctx_.unit_cell().num_hubbard_wf().first;
-    int BS = ctx_.cyclic_block_size();
+    //int BS = ctx_.cyclic_block_size();
 
     auto la = linalg_t::none;
     auto mt = memory_t::none;
@@ -454,9 +456,11 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     }
 
     // TODO: check if we have a norm conserving pseudo potential;
+    // TODO: distrribute (MPI) all matrices in the basis of atomic orbitals
     // only derivatives of the atomic wave functions are needed.
-    auto& phi_atomic  = kp__.atomic_wave_functions();
-    auto& sphi_hub    = kp__.hubbard_wave_functions_S();
+    auto& phi_atomic    = kp__.atomic_wave_functions();
+    auto& phi_atomic_S  = kp__.atomic_wave_functions_S();
+    auto& sphi_hub      = kp__.hubbard_wave_functions_S();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();
@@ -470,7 +474,18 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
         }
     }
 
-    /* compute <phi_hub | S | psi_{ik}> */
+    /* compute overlap matrix */
+    sddk::dmatrix<std::complex<double>> ovlp(phi_atomic.num_wf(), phi_atomic.num_wf());
+    sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
+            phi_atomic_S, 0, phi_atomic_S.num_wf(), ovlp, 0, 0);
+    /* a tuple of O^{-1/2}, U, \lambda */
+    auto result = inverse_sqrt(ovlp, phi_atomic.num_wf());
+    auto& inv_sqrt_O = std::get<0>(result);
+    auto& evec_O = std::get<1>(result);
+    auto& eval_O = std::get<2>(result);
+
+    /* compute < psi_{ik} | S | phi_hub > */
+    /* this is used in the final expression for the occupation matrix derivative */
     std::array<sddk::dmatrix<double_complex>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         psi_s_phi_hub[ispn] = sddk::dmatrix<double_complex>(kp__.num_occupied_bands(ispn), sphi_hub.num_wf());
@@ -481,12 +496,14 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
               sphi_hub, 0, sphi_hub.num_wf(), psi_s_phi_hub[ispn], 0, 0);
     }
 
+    /* temporary storage */
     Wave_functions<double> phi_atomic_tmp(kp__.gkvec_partition(), phi_atomic.num_wf(), ctx_.preferred_memory_t(), 1);
 
     Wave_functions<double> s_phi_atomic_tmp(kp__.gkvec_partition(), phi_atomic.num_wf(), ctx_.preferred_memory_t(), 1);
 
-    /* compute < d phi_atomic / d r_{j} | S | psi_{ik}> */
+    /* compute < d phi_atomic / d r_{j} | S | psi_{ik} > and < d phi_atomic / d r_{j} | S | phi_atomic > */
     std::array<std::array<sddk::dmatrix<double_complex>, 2>, 3> grad_phi_atomic_s_psi;
+    std::array<sddk::dmatrix<double_complex>, 3> grad_phi_atomic_s_phi_atomic;
     for (int x = 0; x < 3; x++) {
         for (int i = 0; i < phi_atomic.num_wf(); i++) {
             for (int igloc = 0; igloc < kp__.num_gkvec_loc(); igloc++) {
@@ -504,9 +521,16 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
         apply_S_operator<std::complex<double>>(ctx_.processing_unit(), spin_range(0), 0, phi_atomic_tmp.num_wf(),
                 kp__.beta_projectors(), phi_atomic_tmp, &q_op__, s_phi_atomic_tmp);
 
+        grad_phi_atomic_s_phi_atomic[x]= sddk::dmatrix<double_complex>(s_phi_atomic_tmp.num_wf(), phi_atomic.num_wf());
+        /* compute < d phi_atomic / d r_{j} | S | phi_atomic > */
+        inner(ctx_.spla_context(), spin_range(0), s_phi_atomic_tmp, 0, s_phi_atomic_tmp.num_wf(),
+                phi_atomic, 0, phi_atomic.num_wf(), grad_phi_atomic_s_phi_atomic[x], 0, 0);
+
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* allocate space */
             grad_phi_atomic_s_psi[x][ispn] =
                 sddk::dmatrix<double_complex>(s_phi_atomic_tmp.num_wf(), kp__.num_occupied_bands(ispn));
+            /* compute < d phi_atomic / d r_{j} | S | psi_{ik} > for all atoms */
             inner(ctx_.spla_context(), spin_range(ispn), s_phi_atomic_tmp, 0, s_phi_atomic_tmp.num_wf(),
                 kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn), grad_phi_atomic_s_psi[x][ispn], 0, 0);
         }
@@ -533,11 +557,38 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
                 /* this is a displacement atom */
                 int ja = kp__.beta_projectors().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
-                phi_atomic_tmp.zero(ctx_.processing_unit());
-
                 /* build | d S / d r_{j} | phi_atomic > */
+                /* it consists of two contributions:
+                 *   | beta >        Q < d beta / dr | phi_atomic > and
+                 *   | d beta / dr > Q < beta        | phi_atomic > */
+                phi_atomic_tmp.zero(ctx_.processing_unit());
                 q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), bp_grad, beta_phi_atomic);
                 q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), kp__.beta_projectors(), grad_beta_phi_atomic);
+
+
+                /* compute O' = d O / d r_{alpha} */
+                /* from O = <phi | S | phi > we get
+                 * O' = <phi' | S | phi> + <phi | S' |phi> + <phi | S | phi'> */
+
+                /* <phi | S' | phi> */
+                sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
+                    phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), ovlp, 0, 0);
+                /* add <phi' | S | phi> and <phi | S | phi'> */
+                for (int i = 0; i < phi_atomic.num_wf(); i++) {
+                    for (int j = 0; j < phi_atomic.num_wf(); j++) {
+                        ovlp(j, i) +=
+                            (grad_phi_atomic_s_phi_atomic[x](j, i) + std::conj(grad_phi_atomic_s_phi_atomic[x](i, j)));
+                    }
+                }
+                /* compute \tilde O' = U^{H}O'U */
+                unitary_similarity_transform(1, ovlp, evec_O, phi_atomic.num_wf());
+                for (int i = 0; i < phi_atomic.num_wf(); i++) {
+                    for (int j = 0; j < phi_atomic.num_wf(); j++) {
+                        ovlp(j, i) /= -(eval_O[i] * std::sqrt(eval_O[j]) + eval_O[j] * std::sqrt(eval_O[i]));
+                    }
+                }
+                /* compute d/dr O^{-1/2} */
+                unitary_similarity_transform(0, ovlp, evec_O, phi_atomic.num_wf());
 
                 /* compute <phi_atomic | dS/dr_j | psi_{ik}> */
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -549,33 +600,37 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
                     sddk::dmatrix<double_complex> dphi_hub_s_psi(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
                     dphi_hub_s_psi.zero();
                     for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {
-                        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                            auto& atom = ctx_.unit_cell().atom(ia);
-                            auto& type = atom.type();
-                            if (type.hubbard_correction()) {
-                                /* loop over Hubbard orbitals of the atom */
-                                for (int idxrf = 0; idxrf < type.indexr_hub().size(); idxrf++) {
-                                    /* Hubbard orbital descriptor */
-                                    auto& hd = type.lo_descriptor_hub(idxrf);
-                                    int l = type.indexr_hub().am(idxrf).l();
-                                    int mmax = 2 * l + 1;
+                        if (true) {
+                            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                                auto& atom = ctx_.unit_cell().atom(ia);
+                                auto& type = atom.type();
+                                if (type.hubbard_correction()) {
+                                    /* loop over Hubbard orbitals of the atom */
+                                    for (int idxrf = 0; idxrf < type.indexr_hub().size(); idxrf++) {
+                                        /* Hubbard orbital descriptor */
+                                        auto& hd = type.lo_descriptor_hub(idxrf);
+                                        int l = type.indexr_hub().am(idxrf).l();
+                                        int mmax = 2 * l + 1;
 
-                                    int idxr_wf = hd.idx_wf();
+                                        int idxr_wf = hd.idx_wf();
 
-                                    int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(idxr_wf);
-                                    int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(idxrf);
-                                    for (int m = 0; m < mmax; m++) {
-                                        dphi_hub_s_psi(offset_in_hwf + m, ibnd) = phi_atomic_ds_psi(offset_in_wf + m, ibnd);
-                                    }
-                                    if (ja == ia) {
+                                        int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(idxr_wf);
+                                        int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(idxrf);
                                         for (int m = 0; m < mmax; m++) {
-                                            dphi_hub_s_psi(offset_in_hwf + m, ibnd) +=
-                                                grad_phi_atomic_s_psi[x][ispn](offset_in_wf + m, ibnd);
+                                            dphi_hub_s_psi(offset_in_hwf + m, ibnd) = phi_atomic_ds_psi(offset_in_wf + m, ibnd);
                                         }
-                                    }
-                                } // idxrf
-                            }
-                        } // ia
+                                        if (ja == ia) {
+                                            for (int m = 0; m < mmax; m++) {
+                                                dphi_hub_s_psi(offset_in_hwf + m, ibnd) +=
+                                                    grad_phi_atomic_s_psi[x][ispn](offset_in_wf + m, ibnd);
+                                            }
+                                        }
+                                    } // idxrf
+                                }
+                            } // ia
+                        } else {
+
+                        }
                         for (int j = 0; j < num_hubbard_wf.first; j++) {
                             dphi_hub_s_psi(j, ibnd) *= kp__.band_occupancy(ibnd, ispn);
                         }
@@ -585,6 +640,8 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
                         dphi_hub_s_psi.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
                     }
                     auto alpha = double_complex(kp__.weight(), 0.0);
+
+                    /* update the density matrix derivative */
 
                     linalg(la).gemm('N', 'N', num_hubbard_wf.first, num_hubbard_wf.first,
                                     kp__.num_occupied_bands(ispn), &alpha,

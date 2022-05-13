@@ -8,8 +8,10 @@
 
 namespace sirius {
 
+/// Compute inverse square root of the matrix.
+/** As by-product, return the eigen-vectors and the eigen-values of the matrix. */
 template <typename T>
-inline dmatrix<T>
+inline auto
 inverse_sqrt(dmatrix<T>& A__, int N__)
 {
     auto solver = (A__.blacs_grid().comm().size() == 1) ? Eigensolver_factory("lapack", nullptr) :
@@ -21,13 +23,12 @@ inverse_sqrt(dmatrix<T>& A__, int N__)
     if (solver->solve(N__, N__, A__, &eval[0], evec)) {
         RTE_THROW("error in diagonalization");
     }
-    for (int i = 0; i < N__; i++) {
-        eval[i] = 1.0 / std::sqrt(eval[i]);
-    }
     for (int i = 0; i < evec.num_cols_local(); i++) {
         int icol = evec.icol(i);
+        RTE_ASSERT(eval[icool] > 0);
+        auto f = 1.0 / std::sqrt(eval[icol]);
         for (int j = 0; j < evec.num_rows_local(); j++) {
-            A__(j, i) = evec(j, i) * eval[icol];
+            A__(j, i) = evec(j, i) * f;
         }
     }
 
@@ -41,7 +42,7 @@ inverse_sqrt(dmatrix<T>& A__, int N__)
             A__, 0, 0, evec, 0, 0, &linalg_const<T>::zero(), B, 0, 0);
     }
 
-    return B;
+    return std::make_tuple(std::move(B), std::move(evec), std::move(eval));
 }
 
 }
