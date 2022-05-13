@@ -395,11 +395,6 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
 void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
-    auto draw_bar = [&](char c, int w)
-    {
-        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
-    };
-
     out__ << "Nearest neighbors" << std::endl
           << utils::hbar(80, '=') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
