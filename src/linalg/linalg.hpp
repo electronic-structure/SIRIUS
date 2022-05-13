@@ -1824,14 +1824,6 @@ inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
     return max_diff;
 }
 
-// instantiate for the function of required types
-template double check_hermitian<double>(dmatrix<double>& mtrx__, int n__);
-template double check_hermitian<std::complex<double>>(dmatrix<std::complex<double>>& mtrx__, int n__);
-#ifdef USE_FP32
-template float  check_hermitian<float>(dmatrix<float>& mtrx__, int n__);
-template float  check_hermitian<std::complex<float>>(dmatrix<std::complex<float>>& mtrx__, int n__);
-#endif
-
 template <typename T>
 inline double check_identity(dmatrix<T>& mtrx__, int n__)
 {
@@ -1876,6 +1868,43 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 
     }
     mtrx__.comm().template allreduce<double,  mpi_op_t::max>(&max_diff, 1);
     return max_diff;
+}
+
+/** Perform one of the following operations:
+ *    A <= U A U^{H} (kind = 0)
+ *    A <= U^{H} A U (kind = 1)
+ */
+template <typename T>
+inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__, int n__)
+{
+    if (!(kind__ == 0 || kind__ == 1)) {
+        RTE_THROW("wrong 'kind' parameter");
+    }
+    char c1 = kind__ == 0 ? 'N' : 'C';
+    char c2 = kind__ == 0 ? 'C' : 'N';
+    if (A__.comm().size() != 1) {
+        dmatrix<T> tmp(n__, n__, A__.blacs_grid(), A__.bs_row(), A__.bs_col());
+
+        /* compute tmp <= U A or U^{H} A */
+        linalg(linalg_t::scalapack).gemm(c1, 'N', n__, n__, n__, &linalg_const<T>::one(),
+            U__, 0, 0, A__, 0, 0, &linalg_const<T>::zero(), tmp, 0, 0);
+
+        /* compute A <= tmp U^{H} or tmp U */
+        linalg(linalg_t::scalapack).gemm('N', c2, n__, n__, n__, &linalg_const<T>::one(),
+            tmp, 0, 0, U__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
+    } else {
+        dmatrix<T> tmp(n__, n__);
+
+        /* compute tmp <= U A or U^{H} A */
+        linalg(linalg_t::blas).gemm(c1, 'N', n__, n__, n__, &linalg_const<T>::one(),
+            U__.at(memory_t::host), U__.ld(), A__.at(memory_t::host), A__.ld(), &linalg_const<T>::zero(),
+            tmp.at(memory_t::host), tmp.ld());
+
+        /* compute A <= tmp U^{H} or tmp U */
+        linalg(linalg_t::blas).gemm('N', c2, n__, n__, n__, &linalg_const<T>::one(),
+            tmp.at(memory_t::host), tmp.ld(), U__.at(memory_t::host), U__.ld(), &linalg_const<T>::zero(),
+            A__.at(memory_t::host), A__.ld());
+    }
 }
 
 } // namespace sddk

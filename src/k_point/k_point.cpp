@@ -241,7 +241,7 @@ K_point<T>::generate_hubbard_orbitals()
         int BS = ctx_.cyclic_block_size();
         sddk::dmatrix<complex_type<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
         sddk::inner(ctx_.spla_context(), spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);
-        auto B = inverse_sqrt(ovlp, nwf);
+        auto B = std::get<0>(inverse_sqrt(ovlp, nwf));
 
         transform<complex_type<T>>(ctx_.spla_context(), 0, {&phi}, 0, nwf, B, 0, 0, {&sphi}, 0, nwf);
         phi.copy_from(sphi, nwf, 0, 0, 0, 0);
