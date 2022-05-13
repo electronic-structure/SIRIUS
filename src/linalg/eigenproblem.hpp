@@ -1325,9 +1325,9 @@ class Eigensolver_scalapack : public Eigensolver
         real_type<T> d1;
         ftn_int info{-1};
 
-        ftn_int lwork  = -1;
-        ftn_int lrwork = -1;
-        ftn_int liwork = -1;
+        ftn_int lwork{-1};
+        ftn_int lrwork{-1};
+        ftn_int liwork{-1};
 
         T work1;
         real_type<T> rwork3[3];
@@ -1336,25 +1336,31 @@ class Eigensolver_scalapack : public Eigensolver
         /* work size query */
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzhegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione,
-             &ione, desca, reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ione, &ione, descb,
+            (&ione, "V", "I", "U", &matrix_size__,
+             reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
-             &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(&work1), &lwork, reinterpret_cast<double*>(rwork3), &lrwork, &iwork1,
-             &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+             reinterpret_cast<double*>(w.get()), &ortfac_,
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
+             reinterpret_cast<std::complex<double>*>(&work1), &lwork, reinterpret_cast<double*>(rwork3),
+             &lrwork, &iwork1, &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()),
+             &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pchegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione,
-             &ione, desca, reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ione, &ione, descb,
+            (&ione, "V", "I", "U", &matrix_size__,
+             reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
-             &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(&work1), &lwork, reinterpret_cast<float*>(rwork3), &lrwork, &iwork1,
-             &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+             reinterpret_cast<float*>(w.get()), &ortfac_,
+             reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
+             reinterpret_cast<std::complex<float>*>(&work1), &lwork, reinterpret_cast<float*>(rwork3), &lrwork, &iwork1,
+             &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1,
+             (ftn_int)1, (ftn_int)1);
         }
 
-        lwork  = static_cast<int32_t>(work1.real()) + 4096;
-        lrwork = static_cast<int32_t>(rwork3[0]) + 4096;
-        liwork = iwork1 + 4096;
+        lwork  = 2 * static_cast<int32_t>(work1.real()) + 4096;
+        lrwork = 2 * static_cast<int32_t>(rwork3[0]) + 4096;
+        liwork = 2 * iwork1 + 4096;
 
         auto work  = mp_h_.get_unique_ptr<T>(lwork);
         auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork);

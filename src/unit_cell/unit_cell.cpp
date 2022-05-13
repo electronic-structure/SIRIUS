@@ -395,17 +395,12 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
 void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
-    auto draw_bar = [&](char c, int w)
-    {
-        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
-    };
-
-    out__ << "Nearest neighbors" << std::endl;
-    draw_bar('=', 17);
+    out__ << "Nearest neighbors" << std::endl
+          << utils::hbar(80, '=') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
-        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl;
-        draw_bar('-', 80);
-        out__ << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
+        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl
+              << utils::hbar(80, '-') << std::endl
+              << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
             int ja = nearest_neighbours_[ia][i].atom_id;
             auto ja_symbol = atom(ja).type().symbol();

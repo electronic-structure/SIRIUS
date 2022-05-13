@@ -32,9 +32,10 @@
 #include <cmath>
 #include <string>
 #include <iostream>
-#include <vector>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
+#include <vector>
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
@@ -43,6 +44,19 @@
 
 /// Namespace for simple utility functions.
 namespace utils {
+
+class null_stream : public std::ostream
+{
+  public:
+    null_stream() : std::ostream(nullptr)
+    {
+    }
+    null_stream(null_stream&&) : std::ostream(nullptr)
+    {
+    };
+};
+
+extern null_stream null_stream__;
 
 /// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
@@ -428,10 +442,68 @@ auto rel_diff(T a, T b)
     return std::abs(a - b) / (std::abs(a) + std::abs(b) + 1e-13);
 }
 
+class hbar {
+  private:
+    int w_;
+    char c_;
+  public:
+    hbar(int w__, char c__)
+        : w_(w__)
+        , c_(c__)
+    {
+    }
+    int w() const
+    {
+        return w_;
+    }
+    char c() const
+    {
+        return c_;
+    }
+};
+
+inline std::ostream&
+operator<<(std::ostream& out, hbar&& b)
+{
+    char prev = out.fill();
+    out << std::setfill(b.c()) << std::setw(b.w()) << b.c() << std::setfill(prev);
+    return out;
+}
+
+class ffmt {
+  private:
+    int w_;
+    int p_;
+  public:
+    ffmt(int w__, int p__)
+      : w_(w__)
+      , p_(p__)
+    {
+    }
+    int w() const
+    {
+        return w_;
+    }
+    int p() const
+    {
+        return p_;
+    }
+};
+
+inline std::ostream&
+operator<<(std::ostream& out, ffmt&& f)
+{
+    out.precision(f.p());
+    out.width(f.w());
+    out.setf(std::ios_base::fixed, std::ios_base::floatfield);
+    return out;
+}
+
 } // namespace
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
+inline std::ostream&
+operator<<(std::ostream& out, std::vector<T>& v)
 {
     if (v.size() == 0) {
         out << "{}";
