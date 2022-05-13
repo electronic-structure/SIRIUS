@@ -720,7 +720,7 @@ class Gvec_partition
 
 /// Helper class to manage G-vector shells and redistribute G-vectors for symmetrization.
 /** G-vectors are remapped from default distribution which balances both the local number
-    of z-columns and G-vectors to the distributio of G-vector shells in which each MPI rank stores
+    of z-columns and G-vectors to the distribution of G-vector shells in which each MPI rank stores
     local set of complete G-vector shells such that the "rotated" G-vector remains on the same MPI rank.
  */
 class Gvec_shells

@@ -31,6 +31,8 @@ namespace sirius {
 void
 DFT_ground_state::initial_state()
 {
+    PROFILE("sirius::DFT_ground_state::initial_state");
+
     density_.initial_density();
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
