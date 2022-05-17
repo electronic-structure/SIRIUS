@@ -25,7 +25,7 @@ inverse_sqrt(dmatrix<T>& A__, int N__)
     }
     for (int i = 0; i < evec.num_cols_local(); i++) {
         int icol = evec.icol(i);
-        RTE_ASSERT(eval[icool] > 0);
+        RTE_ASSERT(eval[icol] > 0);
         auto f = 1.0 / std::sqrt(eval[icol]);
         for (int j = 0; j < evec.num_rows_local(); j++) {
             A__(j, i) = evec(j, i) * f;
