@@ -478,6 +478,7 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     sddk::dmatrix<std::complex<double>> ovlp(phi_atomic.num_wf(), phi_atomic.num_wf());
     sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
             phi_atomic_S, 0, phi_atomic_S.num_wf(), ovlp, 0, 0);
+
     /* a tuple of O^{-1/2}, U, \lambda */
     auto result = inverse_sqrt(ovlp, phi_atomic.num_wf());
     auto& inv_sqrt_O = std::get<0>(result);
