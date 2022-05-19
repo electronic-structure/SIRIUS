@@ -75,8 +75,8 @@ class Hubbard
     /// Constructor.
     Hubbard(Simulation_context& ctx__);
 
-    void compute_occupancies_derivatives_ortho(K_point<double>& kp, Q_operator<double>& q_op,
-                                               mdarray<std::complex<double>, 5>& dn);
+    //void compute_occupancies_derivatives_ortho(K_point<double>& kp, Q_operator<double>& q_op,
+    //                                           mdarray<std::complex<double>, 5>& dn);
     void compute_occupancies_derivatives_non_ortho(K_point<double>& kp, Q_operator<double>& q_op,
                                                    mdarray<std::complex<double>, 5>& dn);
     /// Compute the occupancy derivatives with respect to atomic displacements.
