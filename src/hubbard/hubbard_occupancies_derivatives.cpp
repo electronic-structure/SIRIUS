@@ -626,7 +626,6 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
                     sddk::dmatrix<double_complex> phi_hub_s_psi_deriv(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
                     phi_hub_s_psi_deriv.zero();
 
-
                     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                         auto& type = ctx_.unit_cell().atom(ia).type();
 
@@ -643,14 +642,14 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
 
                                 if (ctx_.cfg().hubbard().full_orthogonalization()) {
                                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */
-                                    linalg(linalg_t::blas).gemm('T', 'C', mmax, kp__.num_occupied_bands(ispn), phi_atomic.num_wf(),
+                                    linalg(linalg_t::blas).gemm('C', 'N', mmax, kp__.num_occupied_bands(ispn), phi_atomic.num_wf(),
                                         &linalg_const<double_complex>::one(),
                                         ovlp.at(memory_t::host, 0, offset_in_wf), ovlp.ld(),
                                         phi_atomic_s_psi[ispn].at(memory_t::host), phi_atomic_s_psi[ispn].ld(),
                                         &linalg_const<double_complex>::one(),
                                         phi_hub_s_psi_deriv.at(memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv.ld());
 
-                                    linalg(linalg_t::blas).gemm('T', 'C', mmax, kp__.num_occupied_bands(ispn), phi_atomic.num_wf(),
+                                    linalg(linalg_t::blas).gemm('C', 'N', mmax, kp__.num_occupied_bands(ispn), phi_atomic.num_wf(),
                                         &linalg_const<double_complex>::one(),
                                         inv_sqrt_O.at(memory_t::host, 0, offset_in_wf), inv_sqrt_O.ld(),
                                         phi_atomic_ds_psi.at(memory_t::host), phi_atomic_ds_psi.ld(),
