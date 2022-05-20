@@ -499,13 +499,17 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
             phi_atomic_tmp.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
             s_phi_atomic_tmp.prepare(spin_range(0), false, &ctx_.mem_pool(memory_t::device));
         }
+        /* apply S to |d phi_atomic / d r_{alpha} > */
         apply_S_operator<std::complex<double>>(ctx_.processing_unit(), spin_range(0), 0, phi_atomic_tmp.num_wf(),
                 kp__.beta_projectors(), phi_atomic_tmp, &q_op__, s_phi_atomic_tmp);
 
-        grad_phi_atomic_s_phi_atomic[x] = sddk::dmatrix<double_complex>(s_phi_atomic_tmp.num_wf(), phi_atomic.num_wf());
-        /* compute < d phi_atomic / d r_{j} | S | phi_atomic > */
-        inner(ctx_.spla_context(), spin_range(0), s_phi_atomic_tmp, 0, s_phi_atomic_tmp.num_wf(),
-                phi_atomic, 0, phi_atomic.num_wf(), grad_phi_atomic_s_phi_atomic[x], 0, 0);
+        /* compute < d phi_atomic / d r_{alpha} | S | phi_atomic >
+         * used to compute derivative of the inverse square root of the overlap matrix */
+        if (ctx_.cfg().hubbard().full_orthogonalization()) {
+            grad_phi_atomic_s_phi_atomic[x] = sddk::dmatrix<double_complex>(s_phi_atomic_tmp.num_wf(), phi_atomic.num_wf());
+            inner(ctx_.spla_context(), spin_range(0), s_phi_atomic_tmp, 0, s_phi_atomic_tmp.num_wf(),
+                  phi_atomic, 0, phi_atomic.num_wf(), grad_phi_atomic_s_phi_atomic[x], 0, 0);
+        }
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate space */
