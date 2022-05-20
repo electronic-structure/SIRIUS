@@ -6210,13 +6210,6 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 1e-8 // tol
             );
 
-            // Todo, remove debugging info.
-            for (size_t i = 0; i < result.size(); ++i) {
-                std::cout << "residuals norms[" << i << "]: ";
-                std::copy(result[i].begin(), result[i].end(), std::ostream_iterator<double_complex>(std::cout << std::scientific << std::setprecision(16), " "));
-                std::cout << std::endl;
-            }
-
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
