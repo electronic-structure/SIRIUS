@@ -766,6 +766,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     grad_phi.pw_coeffs(0).prime().zero(memory_t::host);
 
     if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.allocate(memory_t::device);
         overlap__.allocate(memory_t::device);
         d_O_.allocate(memory_t::device);
         O__.allocate(memory_t::device);
@@ -984,6 +985,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                     int offset_in_hwf = num_hubbard_wf.second[atom_id] + type.indexb_hub().offset(idxrf);
 
                     grad_phi_hub.copy_from(device_t::CPU, mmax, grad_phi, 0, offset_in_wf, 0, offset_in_hwf);
+                    if (ctx_.processing_unit() == device_t::GPU) {
+                        grad_phi_hub.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
+                    }
                 }
             }
 
@@ -992,6 +996,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     } // nu
 
     if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.copy_to(memory_t::host);
+        dn__.deallocate(memory_t::device);
         phi_atomic.deallocate(spin_range(0), memory_t::device);
         kp__.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
         sphi_atomic.deallocate(spin_range(0), memory_t::device);
