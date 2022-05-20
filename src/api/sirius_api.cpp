@@ -6206,8 +6206,8 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
                 linear_operator,
                 preconditioner,
                 X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
-                250, // iters
-                1e-8 // tol
+                100, // iters
+                1e-13 // tol
             );
 
             /* bring wave functions back in order of QE */
