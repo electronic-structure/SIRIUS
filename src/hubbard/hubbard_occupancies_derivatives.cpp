@@ -985,12 +985,11 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                     int offset_in_hwf = num_hubbard_wf.second[atom_id] + type.indexb_hub().offset(idxrf);
 
                     grad_phi_hub.copy_from(device_t::CPU, mmax, grad_phi, 0, offset_in_wf, 0, offset_in_hwf);
-                    if (ctx_.processing_unit() == device_t::GPU) {
-                        grad_phi_hub.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
-                    }
                 }
             }
-
+            if (ctx_.processing_unit() == device_t::GPU) {
+                grad_phi_hub.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
+            }
             compute_occupancies(kp__, phi_s_psi, grad_phi_hub, dn__, 3 * nu + mu);
         } // mu
     } // nu
