@@ -360,7 +360,7 @@ class Wave_functions
 
     // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
-    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids);
+    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids, int n__);
 
     /// Compute the sum of squares of expansion coefficients.
     /** The result is always returned in the host memory */

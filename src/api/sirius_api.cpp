@@ -5821,8 +5821,8 @@ struct Wave_functions_wrap {
         x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
     }
 
-    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
-        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
+    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids, size_t num) {
+        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, static_cast<int>(num));
     }
 
     void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {

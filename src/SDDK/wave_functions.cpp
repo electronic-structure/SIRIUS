@@ -550,13 +550,13 @@ void Wave_functions<T>::axpy(device_t pu__, spin_range spins__, std::vector<Ta> 
 
 template <typename T>
 template <typename Ta>
-void Wave_functions<T>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids)
+void Wave_functions<T>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
             case device_t::CPU: {
                 #pragma omp parallel for
-                for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+                for (int i = 0; i < n__; i++) {
                     auto ii = ids[i];
                     auto alpha = alphas[i];
 
@@ -651,8 +651,8 @@ template void Wave_functions<double>::xpby(device_t pu__, spin_range spins__, Wa
 template void Wave_functions<double>::axpy(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions<double> const &phi, int n__);
 template void Wave_functions<double>::axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions<double> const &phi, int n__);
 
-template void Wave_functions<double>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions<double> const &phi, std::vector<size_t> const &ids);
-template void Wave_functions<double>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions<double> const &phi, std::vector<size_t> const &ids);
+template void Wave_functions<double>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions<double> const &phi, std::vector<size_t> const &ids, int n__);
+template void Wave_functions<double>::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions<double> const &phi, std::vector<size_t> const &ids, int n__);
 
 } // namespace sddk
 
