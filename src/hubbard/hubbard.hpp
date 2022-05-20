@@ -65,18 +65,18 @@ class Hubbard
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
-    void wavefunctions_strain_deriv(K_point<double>& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
-                                    mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
+    //void wavefunctions_strain_deriv(K_point<double>& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
+ //                                   mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
     // TODO: make a seprate function
-    void apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad,
-                  const int atom_id, const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi);
+    //void apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad,
+    //              const int atom_id, const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi);
 
   public:
     /// Constructor.
     Hubbard(Simulation_context& ctx__);
 
-    void compute_occupancies_derivatives_ortho(K_point<double>& kp, Q_operator<double>& q_op,
-                                               mdarray<std::complex<double>, 5>& dn);
+    //void compute_occupancies_derivatives_ortho(K_point<double>& kp, Q_operator<double>& q_op,
+    //                                           mdarray<std::complex<double>, 5>& dn);
     void compute_occupancies_derivatives_non_ortho(K_point<double>& kp, Q_operator<double>& q_op,
                                                    mdarray<std::complex<double>, 5>& dn);
 
@@ -189,6 +189,10 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point<double>& kp, Q_operator<double>& q_op,
                                                 sddk::mdarray<std::complex<double>, 4>& dn);
+
+  void
+  apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
+                  const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi);
 
     void set_hubbard_U_plus_V()
     {
