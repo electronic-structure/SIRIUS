@@ -65,8 +65,8 @@ class Hubbard
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
-    void wavefunctions_strain_deriv(K_point<double>& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
-                                    mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
+    //void wavefunctions_strain_deriv(K_point<double>& kp, Wave_functions<double>& dphi, mdarray<double, 2> const& rlm_g,
+ //                                   mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
     // TODO: make a seprate function
     void apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad,
                   const int atom_id, const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi);

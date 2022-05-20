@@ -36,6 +36,7 @@
 #include "SDDK/wf_trans.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "linalg/inverse_sqrt.hpp"
+#include "geometry/wavefunction_strain_deriv.hpp"
 
 namespace sirius {
 
@@ -827,7 +828,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             // compute S|d\phi>. Will be zero if the atom has no hubbard
             // correction
 
-            wavefunctions_strain_deriv(kp__, grad_phi_atomic, rlm_g, rlm_dg, nu, mu);
+            wavefunctions_strain_deriv(ctx_, kp__, grad_phi_atomic, rlm_g, rlm_dg, nu, mu);
 
             if (!ctx_.cfg().hubbard().full_orthogonalization()) {
                 apply_S_operator<std::complex<double>>(ctx_.processing_unit(), spin_range(0), 0, phi_atomic.num_wf(),
@@ -1004,72 +1005,72 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     }
 }
 
-void
-Hubbard::wavefunctions_strain_deriv(K_point<double>& kp__, Wave_functions<double>& dphi__,
-                                    sddk::mdarray<double, 2> const& rlm_g__,
-                                    sddk::mdarray<double, 3> const& rlm_dg__,
-                                    int nu__, int mu__)
-{
-    auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
-    PROFILE("sirius::Hubbard::wavefunctions_strain_deriv");
-    #pragma omp parallel for schedule(static)
-    for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
-        /* global index of G+k vector */
-        const int igk = kp__.idxgk(igkloc);
-        /* Cartesian coordinats of G-vector */
-        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
-        /* vs = {r, theta, phi} */
-        auto gvs = SHT::spherical_coordinates(gvc);
-
-        std::vector<sddk::mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            ri_values[iat] = ctx_.ps_atomic_wf_ri().values(iat, gvs[0]);
-        }
-
-        std::vector<sddk::mdarray<double, 1>> ridjl_values(unit_cell_.num_atom_types());
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            ridjl_values[iat] = ctx_.ps_atomic_wf_ri_djl().values(iat, gvs[0]);
-        }
-
-        const double p = (mu__ == nu__) ? 0.5 : 0.0;
-
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom_type = ctx_.unit_cell().atom(ia).type();
-            // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
-            auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-            auto phase_factor = std::exp(double_complex(0.0, phase));
-            for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
-                /*  orbital quantum  number of this atomic orbital */
-                int l = atom_type.indexb_wfs().l(xi);
-                /*  composite l,m index */
-                int lm = atom_type.indexb_wfs().lm(xi);
-                /* index of the radial function */
-                int idxrf = atom_type.indexb_wfs().idxrf(xi);
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + xi;
-
-                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-
-                /* case |g+k| = 0 */
-                if (gvs[0] < 1e-10) {
-                    if (l == 0) {
-                        auto d1 = ri_values[atom_type.id()][idxrf] * p * y00;
-
-                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * d1 * phase_factor;
-                    } else {
-                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = 0.0;
-                    }
-                } else {
-                    auto d1 = ri_values[atom_type.id()][idxrf] *
-                        (gvc[mu__] * rlm_dg__(lm, nu__, igkloc) + p * rlm_g__(lm, igkloc));
-                    auto d2 =
-                        ridjl_values[atom_type.id()][idxrf] * rlm_g__(lm, igkloc) * gvc[mu__] * gvc[nu__] / gvs[0];
-
-                    dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * (d1 + d2) * std::conj(phase_factor);
-                }
-            } // xi
-        }
-    }
-}
+//void
+//Hubbard::wavefunctions_strain_deriv(K_point<double>& kp__, Wave_functions<double>& dphi__,
+//                                    sddk::mdarray<double, 2> const& rlm_g__,
+//                                    sddk::mdarray<double, 3> const& rlm_dg__,
+//                                    int nu__, int mu__)
+//{
+//    auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
+//    PROFILE("sirius::Hubbard::wavefunctions_strain_deriv");
+//    #pragma omp parallel for schedule(static)
+//    for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
+//        /* global index of G+k vector */
+//        const int igk = kp__.idxgk(igkloc);
+//        /* Cartesian coordinats of G-vector */
+//        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
+//        /* vs = {r, theta, phi} */
+//        auto gvs = SHT::spherical_coordinates(gvc);
+//
+//        std::vector<sddk::mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
+//        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+//            ri_values[iat] = ctx_.ps_atomic_wf_ri().values(iat, gvs[0]);
+//        }
+//
+//        std::vector<sddk::mdarray<double, 1>> ridjl_values(unit_cell_.num_atom_types());
+//        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+//            ridjl_values[iat] = ctx_.ps_atomic_wf_ri_djl().values(iat, gvs[0]);
+//        }
+//
+//        const double p = (mu__ == nu__) ? 0.5 : 0.0;
+//
+//        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+//            auto& atom_type = ctx_.unit_cell().atom(ia).type();
+//            // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
+//            auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
+//            auto phase_factor = std::exp(double_complex(0.0, phase));
+//            for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
+//                /*  orbital quantum  number of this atomic orbital */
+//                int l = atom_type.indexb_wfs().l(xi);
+//                /*  composite l,m index */
+//                int lm = atom_type.indexb_wfs().lm(xi);
+//                /* index of the radial function */
+//                int idxrf = atom_type.indexb_wfs().idxrf(xi);
+//                int offset_in_wf = num_ps_atomic_wf.second[ia] + xi;
+//
+//                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+//
+//                /* case |g+k| = 0 */
+//                if (gvs[0] < 1e-10) {
+//                    if (l == 0) {
+//                        auto d1 = ri_values[atom_type.id()][idxrf] * p * y00;
+//
+//                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * d1 * phase_factor;
+//                    } else {
+//                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = 0.0;
+//                    }
+//                } else {
+//                    auto d1 = ri_values[atom_type.id()][idxrf] *
+//                        (gvc[mu__] * rlm_dg__(lm, nu__, igkloc) + p * rlm_g__(lm, igkloc));
+//                    auto d2 =
+//                        ridjl_values[atom_type.id()][idxrf] * rlm_g__(lm, igkloc) * gvc[mu__] * gvc[nu__] / gvs[0];
+//
+//                    dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * (d1 + d2) * std::conj(phase_factor);
+//                }
+//            } // xi
+//        }
+//    }
+//}
 
 void
 Hubbard::compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
