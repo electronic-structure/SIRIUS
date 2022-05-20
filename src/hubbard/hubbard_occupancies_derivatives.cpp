@@ -437,7 +437,7 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     // only derivatives of the atomic wave functions are needed.
     auto& phi_atomic    = kp__.atomic_wave_functions();
     auto& phi_atomic_S  = kp__.atomic_wave_functions_S();
-    auto& sphi_hub      = kp__.hubbard_wave_functions_S();
+    auto& phi_hub_S     = kp__.hubbard_wave_functions_S();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();
@@ -445,7 +445,8 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     if (ctx_.processing_unit() == device_t::GPU) {
         dn__.allocate(memory_t::device);
         phi_atomic.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
-        sphi_hub.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
+        phi_atomic_S.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
+        phi_hub_S.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__.spinor_wave_functions().prepare(spin_range(ispn), true, &ctx_.mem_pool(memory_t::device));
         }
@@ -466,12 +467,12 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     /* this is used in the final expression for the occupation matrix derivative */
     std::array<sddk::dmatrix<double_complex>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        psi_s_phi_hub[ispn] = sddk::dmatrix<double_complex>(kp__.num_occupied_bands(ispn), sphi_hub.num_wf());
+        psi_s_phi_hub[ispn] = sddk::dmatrix<double_complex>(kp__.num_occupied_bands(ispn), phi_hub_S.num_wf());
         if (ctx_.processing_unit() == device_t::GPU) {
             psi_s_phi_hub[ispn].allocate(ctx_.mem_pool(memory_t::device));
         }
         inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
-              sphi_hub, 0, sphi_hub.num_wf(), psi_s_phi_hub[ispn], 0, 0);
+              phi_hub_S, 0, phi_hub_S.num_wf(), psi_s_phi_hub[ispn], 0, 0);
     }
 
     /* temporary storage */
@@ -680,7 +681,8 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
         dn__.copy_to(memory_t::host);
         dn__.deallocate(memory_t::device);
         phi_atomic.dismiss(spin_range(0), false);
-        sphi_hub.dismiss(spin_range(0), false);
+        phi_atomic_S.dismiss(spin_range(0), false);
+        phi_hub_S.dismiss(spin_range(0), false);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__.spinor_wave_functions().dismiss(spin_range(ispn), false);
         }
