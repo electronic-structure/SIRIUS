@@ -40,50 +40,50 @@
 
 namespace sirius {
 
-/* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
- * compared to atom_id displacement. we can also use lambda */
-    void
-    Hubbard::apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad,
-                      const int atom_id, const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi)
-    {
-        // compute d S/ dr^I_a |phi> and add to dphi
-        if (!ctx_.full_potential() && ctx_.unit_cell().augment()) {
-            // it is equal to
-            // \sum Q^I_ij <d \beta^I_i|phi> |\beta^I_j> + < \beta^I_i|phi> |d\beta^I_j>
-            for (int ichunk = 0; ichunk < kp.beta_projectors().num_chunks(); ichunk++) {
-
-                // check if this group of beta projector contains some beta projectors associated to atom_id
-
-                bool beta_generate_ = false;
-                for (int i = 0; i < kp.beta_projectors().chunk(ichunk).num_atoms_ && !beta_generate_; i++) {
-                    // need to find the right atom in the chunks.
-                    if (kp.beta_projectors().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
-                        beta_generate_ = true;
-                    }
-                }
-
-                if (beta_generate_) {
-                    kp.beta_projectors().generate(ichunk);
-                    bp_grad.generate(ichunk, dir);
-                    auto beta_phi = kp.beta_projectors().inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
-                    auto dbeta_phi = bp_grad.inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
-
-                    for (int i = 0; i < kp.beta_projectors().chunk(ichunk).num_atoms_; i++) {
-
-                        if (atom_id == kp.beta_projectors().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i))
-                            // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
-                            {
-                                /* <beta | phi> |d \beta> for this chunk */
-                                q_op.apply(ichunk, i, 0, dphi, 0, dphi.num_wf(), bp_grad, beta_phi);
-
-                                /* Effectively compute Q_ij <d beta_i| phi> |beta_j> and add it dphi */
-                                q_op.apply(ichunk, i, 0, dphi, 0, dphi.num_wf(), kp.beta_projectors(), dbeta_phi);
-                            }
-                    }
-                }
-            }
-        }
-    }
+///* compute this |dphi> = dS | phi> + |dphi>, where the derivative is taken
+// * compared to atom_id displacement. we can also use lambda */
+//    void
+//    Hubbard::apply_dS(K_point<double>& kp, Q_operator<double>& q_op, Beta_projectors_gradient<double>& bp_grad,
+//                      const int atom_id, const int dir, Wave_functions<double>& phi, Wave_functions<double>& dphi)
+//    {
+//        // compute d S/ dr^I_a |phi> and add to dphi
+//        if (!ctx_.full_potential() && ctx_.unit_cell().augment()) {
+//            // it is equal to
+//            // \sum Q^I_ij <d \beta^I_i|phi> |\beta^I_j> + < \beta^I_i|phi> |d\beta^I_j>
+//            for (int ichunk = 0; ichunk < kp.beta_projectors().num_chunks(); ichunk++) {
+//
+//                // check if this group of beta projector contains some beta projectors associated to atom_id
+//
+//                bool beta_generate_ = false;
+//                for (int i = 0; i < kp.beta_projectors().chunk(ichunk).num_atoms_ && !beta_generate_; i++) {
+//                    // need to find the right atom in the chunks.
+//                    if (kp.beta_projectors().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
+//                        beta_generate_ = true;
+//                    }
+//                }
+//
+//                if (beta_generate_) {
+//                    kp.beta_projectors().generate(ichunk);
+//                    bp_grad.generate(ichunk, dir);
+//                    auto beta_phi = kp.beta_projectors().inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
+//                    auto dbeta_phi = bp_grad.inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
+//
+//                    for (int i = 0; i < kp.beta_projectors().chunk(ichunk).num_atoms_; i++) {
+//
+//                        if (atom_id == kp.beta_projectors().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i))
+//                            // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
+//                            {
+//                                /* <beta | phi> |d \beta> for this chunk */
+//                                q_op.apply(ichunk, i, 0, dphi, 0, dphi.num_wf(), bp_grad, beta_phi);
+//
+//                                /* Effectively compute Q_ij <d beta_i| phi> |beta_j> and add it dphi */
+//                                q_op.apply(ichunk, i, 0, dphi, 0, dphi.num_wf(), kp.beta_projectors(), dbeta_phi);
+//                            }
+//                    }
+//                }
+//            }
+//        }
+//    }
     void
     Hubbard::apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
                              const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi)
