@@ -166,9 +166,9 @@ class Hubbard
     void compute_occupancies_stress_derivatives(K_point<double>& kp, Q_operator<double>& q_op,
                                                 sddk::mdarray<std::complex<double>, 4>& dn);
 
-  void
-  apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
-                  const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi);
+  //void
+  //apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
+  //                const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi);
 
     void set_hubbard_U_plus_V()
     {

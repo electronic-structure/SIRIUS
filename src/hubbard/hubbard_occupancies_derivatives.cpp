@@ -84,24 +84,24 @@ namespace sirius {
 //            }
 //        }
 //    }
-    void
-    Hubbard::apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
-                             const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi)
-    {
-        for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
-            /* generate beta-projectors for a block of atoms */
-            kp__.beta_projectors().generate(ichunk);
-            /* generate derived beta-projectors for a block of atoms */
-            bp_strain_deriv__.generate(ichunk, dir__);
-            auto dbeta_phi =
-                bp_strain_deriv__.inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
-            // <beta|phi> |d beta>
-            auto beta_phi = kp__.beta_projectors().inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
-            q_op__.apply(ichunk, 0, dphi, 0, phi.num_wf(), kp__.beta_projectors(),
-                         dbeta_phi);
-            q_op__.apply(ichunk, 0, dphi, 0, phi.num_wf(), bp_strain_deriv__, beta_phi);
-        }
-    }
+//    void
+//    Hubbard::apply_dS_strain(K_point<double>& kp__, Q_operator<double>& q_op__, Beta_projectors_strain_deriv<double>& bp_strain_deriv__,
+//                             const int dir__, Wave_functions<double>& phi, Wave_functions<double>& dphi)
+//    {
+//        for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
+//            /* generate beta-projectors for a block of atoms */
+//            kp__.beta_projectors().generate(ichunk);
+//            /* generate derived beta-projectors for a block of atoms */
+//            bp_strain_deriv__.generate(ichunk, dir__);
+//            auto dbeta_phi =
+//                bp_strain_deriv__.inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
+//            // <beta|phi> |d beta>
+//            auto beta_phi = kp__.beta_projectors().inner<double_complex>(ichunk, phi, 0, 0, phi.num_wf());
+//            q_op__.apply(ichunk, 0, dphi, 0, phi.num_wf(), kp__.beta_projectors(),
+//                         dbeta_phi);
+//            q_op__.apply(ichunk, 0, dphi, 0, phi.num_wf(), bp_strain_deriv__, beta_phi);
+//        }
+//    }
 
 //    void
 //    Hubbard::compute_occupancies_derivatives_ortho(K_point<double>& kp__, Q_operator<double>& q_op__,
@@ -834,7 +834,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                 apply_S_operator<std::complex<double>>(ctx_.processing_unit(), spin_range(0), 0, phi_atomic.num_wf(),
                                                        kp__.beta_projectors(), grad_phi_atomic, &q_op__, grad_phi);
                 // compute (d S/ d R_K) |phi_atomic> and add to S|dphi>. It is Eq.18 of Ref PRB 102, 235159 (2020)
-                apply_dS_strain(kp__, q_op__, bp_strain_deriv, 3 * nu + mu, phi_atomic, grad_phi);
+                apply_S_operator_strain_deriv(ctx_.processing_unit(), 3 * nu + mu, kp__.beta_projectors(),
+                        bp_strain_deriv, phi_atomic, q_op__, grad_phi);
             } else {
 
                 // we actually can avoid applying the S on d_phi
@@ -854,7 +855,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                       overlap__, 0, 0);
 
                 phi_tmp.zero(ctx_.processing_unit());
-                apply_dS_strain(kp__, q_op__, bp_strain_deriv, 3 * nu + mu, phi_atomic, phi_tmp);
+                apply_S_operator_strain_deriv(ctx_.processing_unit(), 3 * nu + mu, kp__.beta_projectors(),
+                        bp_strain_deriv, phi_atomic, q_op__, phi_tmp);
 
                 /* this section computes the derivatives of O^{-1/2} compared to
                    strain.
@@ -963,7 +965,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                 transform<std::complex<double>>(ctx_.spla_context(), 0, phi_atomic, 0, phi_atomic.num_wf(), O__,
                                                 0, 0, phi_tmp, 0, phi_tmp.num_wf());
 
-                apply_dS_strain(kp__, q_op__, bp_strain_deriv, 3 * nu + mu, phi_tmp, grad_phi);
+                apply_S_operator_strain_deriv(ctx_.processing_unit(), 3 * nu + mu, kp__.beta_projectors(),
+                        bp_strain_deriv, phi_tmp, q_op__, grad_phi);
             }
 
 
