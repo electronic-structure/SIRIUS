@@ -454,15 +454,21 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
     }
 
     /* compute overlap matrix */
-    sddk::dmatrix<std::complex<double>> ovlp(phi_atomic.num_wf(), phi_atomic.num_wf());
-    sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
-            phi_atomic_S, 0, phi_atomic_S.num_wf(), ovlp, 0, 0);
+    sddk::dmatrix<std::complex<double>> ovlp;
+    sddk::dmatrix<std::complex<double>>* inv_sqrt_O;
+    sddk::dmatrix<std::complex<double>>* evec_O;
+    std::vector<double> eval_O;
+    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+        ovlp = sddk::dmatrix<std::complex<double>>(phi_atomic.num_wf(), phi_atomic.num_wf());
+        sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
+                phi_atomic_S, 0, phi_atomic_S.num_wf(), ovlp, 0, 0);
 
-    /* a tuple of O^{-1/2}, U, \lambda */
-    auto result = inverse_sqrt(ovlp, phi_atomic.num_wf());
-    auto& inv_sqrt_O = std::get<0>(result);
-    auto& evec_O = std::get<1>(result);
-    auto& eval_O = std::get<2>(result);
+        /* a tuple of O^{-1/2}, U, \lambda */
+        auto result = inverse_sqrt(ovlp, phi_atomic.num_wf());
+        inv_sqrt_O = &std::get<0>(result);
+        evec_O = &std::get<1>(result);
+        eval_O = std::get<2>(result);
+    }
 
     /* compute < psi_{ik} | S | phi_hub > */
     /* this is used in the final expression for the occupation matrix derivative */
@@ -557,38 +563,42 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
                  *   | beta >        Q < d beta / dr | phi_atomic > and
                  *   | d beta / dr > Q < beta        | phi_atomic > */
                 phi_atomic_tmp.zero(ctx_.processing_unit());
-                q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), bp_grad, beta_phi_atomic);
-                q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), kp__.beta_projectors(),
-                        grad_beta_phi_atomic);
+                if (ctx_.unit_cell().atom(ja).type().augment()) {
+                    q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), bp_grad, beta_phi_atomic);
+                    q_op__.apply(ichunk, i, 0, phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), kp__.beta_projectors(),
+                            grad_beta_phi_atomic);
+                }
 
                 /* compute O' = d O / d r_{alpha} */
                 /* from O = <phi | S | phi > we get
                  * O' = <phi' | S | phi> + <phi | S' |phi> + <phi | S | phi'> */
 
-                /* <phi | S' | phi> */
-                sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
-                    phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), ovlp, 0, 0);
-                /* add <phi' | S | phi> and <phi | S | phi'> */
-                /* |phi' > = d|phi> / d r_{alpha} which is non-zero for a current displacement atom only */
-                auto& type = ctx_.unit_cell().atom(ja).type();
-                for (int xi = 0; xi < type.indexb_wfs().size(); xi++) {
-                    int i = num_ps_atomic_wf.second[ja] + xi;
-                    for (int j = 0; j < phi_atomic.num_wf(); j++) {
-                        ovlp(i, j) += grad_phi_atomic_s_phi_atomic[x](i, j);
-                        ovlp(j, i) += std::conj(grad_phi_atomic_s_phi_atomic[x](i, j));
+                if (ctx_.cfg().hubbard().full_orthogonalization()) {
+                    /* <phi | S' | phi> */
+                    sddk::inner(ctx_.spla_context(), spin_range(0), phi_atomic, 0, phi_atomic.num_wf(),
+                        phi_atomic_tmp, 0, phi_atomic_tmp.num_wf(), ovlp, 0, 0);
+                    /* add <phi' | S | phi> and <phi | S | phi'> */
+                    /* |phi' > = d|phi> / d r_{alpha} which is non-zero for a current displacement atom only */
+                    auto& type = ctx_.unit_cell().atom(ja).type();
+                    for (int xi = 0; xi < type.indexb_wfs().size(); xi++) {
+                        int i = num_ps_atomic_wf.second[ja] + xi;
+                        for (int j = 0; j < phi_atomic.num_wf(); j++) {
+                            ovlp(i, j) += grad_phi_atomic_s_phi_atomic[x](i, j);
+                            ovlp(j, i) += std::conj(grad_phi_atomic_s_phi_atomic[x](i, j));
+                        }
                     }
-                }
 
-                /* compute \tilde O' = U^{H}O'U */
-                unitary_similarity_transform(1, ovlp, evec_O, phi_atomic.num_wf());
+                    /* compute \tilde O' = U^{H}O'U */
+                    unitary_similarity_transform(1, ovlp, *evec_O, phi_atomic.num_wf());
 
-                for (int i = 0; i < phi_atomic.num_wf(); i++) {
-                    for (int j = 0; j < phi_atomic.num_wf(); j++) {
-                        ovlp(j, i) /= -(eval_O[i] * std::sqrt(eval_O[j]) + eval_O[j] * std::sqrt(eval_O[i]));
+                    for (int i = 0; i < phi_atomic.num_wf(); i++) {
+                        for (int j = 0; j < phi_atomic.num_wf(); j++) {
+                            ovlp(j, i) /= -(eval_O[i] * std::sqrt(eval_O[j]) + eval_O[j] * std::sqrt(eval_O[i]));
+                        }
                     }
+                    /* compute d/dr O^{-1/2} */
+                    unitary_similarity_transform(0, ovlp, *evec_O, phi_atomic.num_wf());
                 }
-                /* compute d/dr O^{-1/2} */
-                unitary_similarity_transform(0, ovlp, evec_O, phi_atomic.num_wf());
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* compute <phi_atomic | dS/dr_j | psi_{ik}> */
@@ -633,7 +643,7 @@ Hubbard::compute_occupancies_derivatives_non_ortho(K_point<double>& kp__, Q_oper
 
                                     linalg(linalg_t::blas).gemm('C', 'N', mmax, kp__.num_occupied_bands(ispn), phi_atomic.num_wf(),
                                         &linalg_const<double_complex>::one(),
-                                        inv_sqrt_O.at(memory_t::host, 0, offset_in_wf), inv_sqrt_O.ld(),
+                                        inv_sqrt_O->at(memory_t::host, 0, offset_in_wf), inv_sqrt_O->ld(),
                                         phi_atomic_ds_psi.at(memory_t::host), phi_atomic_ds_psi.ld(),
                                         &linalg_const<double_complex>::one(),
                                         phi_hub_s_psi_deriv.at(memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv.ld());
