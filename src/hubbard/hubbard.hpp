@@ -59,8 +59,8 @@ class Hubbard
     /// Hubbard with multi channels apply to both LDA+U+V case
     bool multi_channels_{false};
 
-  void compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
-                             Wave_functions<double>& dphi__, mdarray<double_complex, 4>& dn__, const int index__);
+  //void compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
+  //                           Wave_functions<double>& dphi__, mdarray<double_complex, 4>& dn__, const int index__);
 
     void calculate_wavefunction_with_U_offset();
 

@@ -754,7 +754,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
       non zero contribution)
     */
 
-    dn__.zero();
+    //dn__.zero();
 
     /* atomic wave functions  */
     auto& phi_atomic    = kp__.atomic_wave_functions();
@@ -770,12 +770,15 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
 
     if (ctx_.processing_unit() == device_t::GPU) {
         dn__.allocate(memory_t::device);
+        dn__.copy_to(memory_t::device);
         phi_atomic.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
         //phi_atomic_S.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
         phi_hub_S.prepare(spin_range(0), true, &ctx_.mem_pool(memory_t::device));
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__.spinor_wave_functions().prepare(spin_range(ispn), true, &ctx_.mem_pool(memory_t::device));
         }
+        s_dphi_atomic.prepare(spin_range(0), false, &ctx_.mem_pool(memory_t::device));
+        ds_phi_atomic.prepare(spin_range(0), false, &ctx_.mem_pool(memory_t::device));
     }
 
     /* compute < psi_{ik} | S | phi_hub > */
@@ -1256,75 +1259,75 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
 //    }
 //}
 
-void
-Hubbard::compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
-                             Wave_functions<double>& dphi__, sddk::mdarray<double_complex, 4>& dn__, const int index__)
-{
-    PROFILE("sirius::Hubbard::compute_occupancies");
-
-    /* overlap between psi_{nk} and dphi */
-    auto la = linalg_t::none;
-    auto mt = memory_t::none;
-    switch (ctx_.processing_unit()) {
-        case device_t::CPU: {
-            la = linalg_t::blas;
-            mt = memory_t::host;
-            break;
-        }
-        case device_t::GPU: {
-            la = linalg_t::gpublas;
-            mt = memory_t::device;
-            break;
-        }
-    }
-
-
-    auto alpha = double_complex(kp__.weight(), 0.0);
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        dmatrix<double_complex> psi_s_dphi(kp__.num_occupied_bands(ispn), dphi__.num_wf(), ctx_.mem_pool(memory_t::host));
-
-        if (ctx_.processing_unit() == device_t::GPU) {
-          psi_s_dphi.allocate(ctx_.mem_pool(memory_t::device));
-           psi_s_dphi.zero(memory_t::device);
-        } else {
-          psi_s_dphi.zero(memory_t::host);
-        }
-
-        /* compute <psi_{ik}^{sigma}|S|dphi> */
-        /* dphi don't have a spin index; they are derived from scalar atomic orbitals */
-        inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
-              dphi__, 0, dphi__.num_wf(), psi_s_dphi, 0, 0);
-
-        if (ctx_.processing_unit() == device_t::GPU) {
-            psi_s_dphi.copy_to(memory_t::host);
-        }
-
-        for (int i = 0; i < this->num_hubbard_wf(); i++) {
-            for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {
-                psi_s_dphi(ibnd, i) *= kp__.band_occupancy(ibnd, ispn);
-            }
-        }
-
-        if (ctx_.processing_unit() == device_t::GPU) {
-            psi_s_dphi.copy_to(memory_t::device);
-        }
-
-        linalg(la).gemm('C', 'C', dphi__.num_wf(), dphi__.num_wf(),
-                        kp__.num_occupied_bands(ispn), &alpha,
-                        psi_s_dphi.at(mt), psi_s_dphi.ld(),
-                        phi_s_psi__[ispn].at(mt, 0, 0), phi_s_psi__[ispn].ld(),
-                        &linalg_const<double_complex>::zero(), dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
-
-        linalg(la).gemm('N', 'N', dphi__.num_wf(), dphi__.num_wf(),
-                        kp__.num_occupied_bands(ispn), &alpha,
-                        phi_s_psi__[ispn].at(mt, 0, 0), phi_s_psi__[ispn].ld(),
-                        psi_s_dphi.at(mt), psi_s_dphi.ld(), &linalg_const<double_complex>::one(),
-                        dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
-
-        if (ctx_.processing_unit() == device_t::GPU) {
-            dn__.copy_to(memory_t::host);
-        }
-    }
-}
+//void
+//Hubbard::compute_occupancies(K_point<double>& kp__, std::array<dmatrix<double_complex>, 2>& phi_s_psi__,
+//                             Wave_functions<double>& dphi__, sddk::mdarray<double_complex, 4>& dn__, const int index__)
+//{
+//    PROFILE("sirius::Hubbard::compute_occupancies");
+//
+//    /* overlap between psi_{nk} and dphi */
+//    auto la = linalg_t::none;
+//    auto mt = memory_t::none;
+//    switch (ctx_.processing_unit()) {
+//        case device_t::CPU: {
+//            la = linalg_t::blas;
+//            mt = memory_t::host;
+//            break;
+//        }
+//        case device_t::GPU: {
+//            la = linalg_t::gpublas;
+//            mt = memory_t::device;
+//            break;
+//        }
+//    }
+//
+//
+//    auto alpha = double_complex(kp__.weight(), 0.0);
+//    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+//        dmatrix<double_complex> psi_s_dphi(kp__.num_occupied_bands(ispn), dphi__.num_wf(), ctx_.mem_pool(memory_t::host));
+//
+//        if (ctx_.processing_unit() == device_t::GPU) {
+//          psi_s_dphi.allocate(ctx_.mem_pool(memory_t::device));
+//           psi_s_dphi.zero(memory_t::device);
+//        } else {
+//          psi_s_dphi.zero(memory_t::host);
+//        }
+//
+//        /* compute <psi_{ik}^{sigma}|S|dphi> */
+//        /* dphi don't have a spin index; they are derived from scalar atomic orbitals */
+//        inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
+//              dphi__, 0, dphi__.num_wf(), psi_s_dphi, 0, 0);
+//
+//        if (ctx_.processing_unit() == device_t::GPU) {
+//            psi_s_dphi.copy_to(memory_t::host);
+//        }
+//
+//        for (int i = 0; i < this->num_hubbard_wf(); i++) {
+//            for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {
+//                psi_s_dphi(ibnd, i) *= kp__.band_occupancy(ibnd, ispn);
+//            }
+//        }
+//
+//        if (ctx_.processing_unit() == device_t::GPU) {
+//            psi_s_dphi.copy_to(memory_t::device);
+//        }
+//
+//        linalg(la).gemm('C', 'C', dphi__.num_wf(), dphi__.num_wf(),
+//                        kp__.num_occupied_bands(ispn), &alpha,
+//                        psi_s_dphi.at(mt), psi_s_dphi.ld(),
+//                        phi_s_psi__[ispn].at(mt, 0, 0), phi_s_psi__[ispn].ld(),
+//                        &linalg_const<double_complex>::zero(), dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
+//
+//        linalg(la).gemm('N', 'N', dphi__.num_wf(), dphi__.num_wf(),
+//                        kp__.num_occupied_bands(ispn), &alpha,
+//                        phi_s_psi__[ispn].at(mt, 0, 0), phi_s_psi__[ispn].ld(),
+//                        psi_s_dphi.at(mt), psi_s_dphi.ld(), &linalg_const<double_complex>::one(),
+//                        dn__.at(mt, 0, 0, ispn, index__), dn__.ld());
+//
+//        if (ctx_.processing_unit() == device_t::GPU) {
+//            dn__.copy_to(memory_t::host);
+//        }
+//    }
+//}
 
 } // namespace sirius
