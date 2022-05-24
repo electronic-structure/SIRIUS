@@ -243,7 +243,7 @@ K_point<T>::generate_hubbard_orbitals()
         sddk::inner(ctx_.spla_context(), spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);
         auto B = std::get<0>(inverse_sqrt(ovlp, nwf));
 
-        transform<complex_type<T>>(ctx_.spla_context(), 0, {&phi}, 0, nwf, B, 0, 0, {&sphi}, 0, nwf);
+        transform<complex_type<T>>(ctx_.spla_context(), 0, {&phi}, 0, nwf, *B, 0, 0, {&sphi}, 0, nwf);
         phi.copy_from(sphi, nwf, 0, 0, 0, 0);
 
         sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), spin_range(0), 0, nwf, beta_projectors(),
@@ -324,55 +324,55 @@ K_point<T>::generate_hubbard_orbitals()
     }
 }
 
-template <typename T>
-void
-K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
-                                               dmatrix<std::complex<T>>& S__, dmatrix<std::complex<T>>& Z__,
-                                               std::vector<double>& eigenvalues__)
-{
-    auto sr        = spin_range(ctx_.num_mag_dims() == 3 ? 2 : istep);
-    const int nwfu = phi__.num_wf();
-
-    S__.zero();
-    Z__.zero();
-    /* compute inner product between full spinors or between indpendent components */
-    inner<std::complex<T>>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S__, 0, 0);
-
-    // SPLA should return on CPU as well
-    // if (ctx_.processing_unit() == device_t::GPU) {
-    //    S.copy_to(memory_t::host);
-    //}
-
-    std::vector<double> ei__(eigenvalues__.size());
-
-    /* create transformation matrix */
-    if (ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().full_orthogonalization()) {
-
-        auto ev_solver = Eigensolver_factory("lapack", nullptr);
-
-        ev_solver->solve(nwfu, S__, eigenvalues__.data(), Z__);
-
-        /* build the O^{-1/2} operator */
-        for (int i = 0; i < static_cast<int>(eigenvalues__.size()); i++) {
-            ei__[i] = 1.0 / std::sqrt(eigenvalues__[i]);
-        }
-
-        /* first compute S_{nm} = E_m Z_{nm} */
-        S__.zero();
-        for (int l = 0; l < nwfu; l++) {
-            for (int m = 0; m < nwfu; m++) {
-                for (int n = 0; n < nwfu; n++) {
-                    S__(n, m) += ei__[l] * Z__(n, l) * std::conj(Z__(m, l));
-                }
-            }
-        }
-    } else {
-        S__.zero();
-        for (int l = 0; l < nwfu; l++) {
-            S__(l, l) = 1.0 / std::sqrt(S__(l, l).real());
-        }
-    }
-}
+//template <typename T>
+//void
+//K_point<T>::compute_orthogonalization_operator(const int istep, Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
+//                                               dmatrix<std::complex<T>>& S__, dmatrix<std::complex<T>>& Z__,
+//                                               std::vector<double>& eigenvalues__)
+//{
+//    auto sr        = spin_range(ctx_.num_mag_dims() == 3 ? 2 : istep);
+//    const int nwfu = phi__.num_wf();
+//
+//    S__.zero();
+//    Z__.zero();
+//    /* compute inner product between full spinors or between indpendent components */
+//    inner<std::complex<T>>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S__, 0, 0);
+//
+//    // SPLA should return on CPU as well
+//    // if (ctx_.processing_unit() == device_t::GPU) {
+//    //    S.copy_to(memory_t::host);
+//    //}
+//
+//    std::vector<double> ei__(eigenvalues__.size());
+//
+//    /* create transformation matrix */
+//    if (ctx_.cfg().hubbard().orthogonalize() || ctx_.cfg().hubbard().full_orthogonalization()) {
+//
+//        auto ev_solver = Eigensolver_factory("lapack", nullptr);
+//
+//        ev_solver->solve(nwfu, S__, eigenvalues__.data(), Z__);
+//
+//        /* build the O^{-1/2} operator */
+//        for (int i = 0; i < static_cast<int>(eigenvalues__.size()); i++) {
+//            ei__[i] = 1.0 / std::sqrt(eigenvalues__[i]);
+//        }
+//
+//        /* first compute S_{nm} = E_m Z_{nm} */
+//        S__.zero();
+//        for (int l = 0; l < nwfu; l++) {
+//            for (int m = 0; m < nwfu; m++) {
+//                for (int n = 0; n < nwfu; n++) {
+//                    S__(n, m) += ei__[l] * Z__(n, l) * std::conj(Z__(m, l));
+//                }
+//            }
+//        }
+//    } else {
+//        S__.zero();
+//        for (int l = 0; l < nwfu; l++) {
+//            S__(l, l) = 1.0 / std::sqrt(S__(l, l).real());
+//        }
+//    }
+//}
 
 template <typename T>
 void
