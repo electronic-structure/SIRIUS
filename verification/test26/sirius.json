@@ -1,0 +1,82 @@
+{
+  "control" : {
+      "verbosity" : 2,
+      "print_forces" : true,
+      "print_stress" : true
+  },
+
+  "parameters" : {
+      "electronic_structure_method" : "pseudopotential",
+
+      "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+
+      "smearing_width" : 0.01,
+
+      "use_symmetry" : true,
+
+      "num_mag_dims" : 1,
+
+      "gk_cutoff" : 6.325,
+      "pw_cutoff" : 24.495,
+
+      "energy_tol" : 1e-8,
+      "density_tol" : 1e-5,
+
+      "num_dft_iter" : 100,
+
+      "ngridk" : [4,4,4],
+
+      "hubbard_correction" : true
+  },
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 20,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+    "mixer" : {
+        "beta" : 0.75,
+        "type" : "anderson",
+        "max_history" : 8
+    },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1.0, 0.5, 0.5], 
+                              [0.5, 1.0, 0.5], 
+                              [0.5, 0.5, 1.0]
+                            ],
+
+        "lattice_vectors_scale" : 7.93,
+
+        "atom_types" : ["Ni", "O"],
+
+        "atom_files" : {"Ni" : "Ni.json", "O" : "O.json"},
+
+        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  2],
+                             [0.5, 0.5, 0.5,    0,  0, -2]
+                           ],
+
+                    "O" :  [ [0.251, 0.251, 0.251],
+                             [0.749, 0.749, 0.749]
+                           ]
+                  }
+    },
+    "hubbard" : {
+        "full_orthogonalization": true,
+        "local" : [
+            {
+                "atom_type" : "Ni",
+                "U": 8.0,
+                "J": 0.0,
+                "l": 2,
+                "n" : 3,
+                "hubbard_orbital": "3d",
+                "total_initial_occupancy" : 8
+            }
+        ]
+    }
+}

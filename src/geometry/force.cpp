@@ -662,11 +662,11 @@ void
 Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
                                                   mdarray<double, 2>& forceh__)
 {
-    mdarray<double_complex, 5> dn(kp__.hubbard_wave_functions_S().num_wf(), kp__.hubbard_wave_functions_S().num_wf(), 2,
-                                  3, ctx_.unit_cell().num_atoms());
+    auto r = ctx_.unit_cell().num_hubbard_wf();
+
+    sddk::mdarray<double_complex, 5> dn(r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms());
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
-    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     #pragma omp parallel for
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -986,7 +986,7 @@ Force::print_info()
         print_forces(forces_ewald());
 
         if (ctx_.hubbard_correction()) {
-            std::printf("===== Ewald forces from hubbard correction =====\n");
+            std::printf("===== contribution from Hubbard correction =====\n");
             print_forces(forces_hubbard());
         }
     }

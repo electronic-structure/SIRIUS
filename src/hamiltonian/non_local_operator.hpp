@@ -29,6 +29,7 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
 #include "beta_projectors/beta_projectors.hpp"
+#include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
@@ -549,6 +550,26 @@ void apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, in
 template <typename T>
 void apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
                       Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__);
+
+/// Apply strain derivative of S-operator to all scalar functions.
+inline void
+apply_S_operator_strain_deriv(sddk::device_t pu__, int comp__, Beta_projectors<double>& bp__,
+                              Beta_projectors_strain_deriv<double>& bp_strain_deriv__, Wave_functions<double>& phi__,
+                              Q_operator<double>& q_op__, Wave_functions<double>& ds_phi__)
+{
+    RTE_ASSERT(ds_phi__.num_wf() == phi__.num_wf());
+    //ds_phi__.zero(pu__);
+    for (int ichunk = 0; ichunk < bp__.num_chunks(); ichunk++) {
+        /* generate beta-projectors for a block of atoms */
+        bp__.generate(ichunk);
+        /* generate derived beta-projectors for a block of atoms */
+        bp_strain_deriv__.generate(ichunk, comp__);
+        auto dbeta_phi = bp_strain_deriv__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
+        auto beta_phi = bp__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
+        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp__, dbeta_phi);
+        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp_strain_deriv__, beta_phi);
+    }
+}
 
 } // namespace sirius
 

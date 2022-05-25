@@ -176,13 +176,45 @@ Stress::calc_stress_hubbard()
                                     stress_hubbard_(dir1, dir2) -=
                                         (potential_.hubbard_potential().local(at_lvl)(m2, m1, ispn) *
                                          dn(offset + m1, offset + m2, ispn, dir1 + 3 * dir2))
-                                            .real() /
+                                        .real() /
                                         ctx_.unit_cell().omega();
                                 }
                             }
                         }
                     }
                 }
+
+                /* We search all links involving the atom ia and then sum over them.
+                 * Note that we do not consider the links [i, j] but only the links
+                 * [i, j] */
+                double d = 0;
+                for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+                    auto nl = ctx_.cfg().hubbard().nonlocal(i);
+                    int ia = nl.atom_pair()[0];
+                    int ja  = nl.atom_pair()[1];
+                    int il  = nl.l()[0];
+                    int jl  = nl.l()[1];
+                    int in  = nl.n()[0];
+                    int jn  = nl.n()[1];
+                    auto Tr = nl.T();
+
+                    auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp->vk())));
+                    const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia, in, il);
+                    const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
+                    const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
+                    const int offset2 = potential_.hubbard_potential().offset(at_lvl2);
+
+                    for (int is = 0; is < ctx_.num_spins(); is++) {
+                        for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                            for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                                auto result1_ = z1 * dn(offset2 + m2, offset1 + m1, is, dir1 + 3 * dir2) *
+                                    potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
+                                d += std::real(result1_);
+                            }
+                        }
+                    }
+                }
+                stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
         kp->beta_projectors().dismiss();
