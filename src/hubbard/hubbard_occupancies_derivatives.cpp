@@ -307,17 +307,6 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                         }
                     }
                     compute_inv_sqrt_O_deriv(ovlp, *evec_O, eval_O, nawf);
-
-                    ///* compute \tilde O' = U^{H}O'U */
-                    //unitary_similarity_transform(1, ovlp, *evec_O, phi_atomic.num_wf());
-
-                    //for (int i = 0; i < phi_atomic.num_wf(); i++) {
-                    //    for (int j = 0; j < phi_atomic.num_wf(); j++) {
-                    //        ovlp(j, i) /= -(eval_O[i] * std::sqrt(eval_O[j]) + eval_O[j] * std::sqrt(eval_O[i]));
-                    //    }
-                    //}
-                    ///* compute d/dr O^{-1/2} */
-                    //unitary_similarity_transform(0, ovlp, *evec_O, phi_atomic.num_wf());
                 }
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -516,16 +505,6 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                     }
                 }
                 compute_inv_sqrt_O_deriv(ovlp, *evec_O, eval_O, nawf);
-                ///* compute \tilde O' = U^{H}O'U */
-                //unitary_similarity_transform(1, ovlp, *evec_O, nawf);
-
-                //for (int i = 0; i < nawf; i++) {
-                //    for (int j = 0; j < nawf; j++) {
-                //        ovlp(j, i) /= -(eval_O[i] * std::sqrt(eval_O[j]) + eval_O[j] * std::sqrt(eval_O[i]));
-                //    }
-                //}
-                ///* compute d/dr O^{-1/2} */
-                //unitary_similarity_transform(0, ovlp, *evec_O, nawf);
             }
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
