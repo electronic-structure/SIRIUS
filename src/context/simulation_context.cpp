@@ -474,7 +474,7 @@ Simulation_context::initialize()
     if (use_symmetry()) {
         auto lv = matrix3d<double>(unit_cell().lattice_vectors());
 
-        auto lat_sym = find_lat_sym(lv, 1e-6);
+        auto lat_sym = find_lat_sym(lv, cfg().control().spglib_tolerance());
 
         #pragma omp parallel for
         for (int i = 0; i < unit_cell().symmetry().size(); i++) {
