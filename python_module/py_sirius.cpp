@@ -29,6 +29,7 @@ using json = nlohmann::json;
 using nlohmann::basic_json;
 
 void init_operators(py::module&);
+void init_symmetry(py::module&);
 
 // inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object pj_convert(json& node)
@@ -155,6 +156,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
     init_operators(m);
+    init_symmetry(m);
 
     m.def("num_devices", &acc::num_devices);
 
@@ -547,13 +549,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_kpoint",
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
-
-    // py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-    //     .def(py::init<Potential&>(), py::keep_alive<1, 2>())
-    //     .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
-
-    // py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
-    //     .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())

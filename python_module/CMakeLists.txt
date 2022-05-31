@@ -25,6 +25,7 @@ pybind11_add_module(${libname}
   py_sirius.cpp
   py_sirius_util.cpp
   py_sirius_operators.cpp
+  py_sirius_symmetry.cpp
 )
 
 add_dependencies(${libname} sirius)
