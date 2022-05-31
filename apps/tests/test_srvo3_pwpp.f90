@@ -76,29 +76,26 @@ call sirius_find_ground_state(dft)
 if (rank.eq.0) then
   write(*,*)'running new DFT with updated lattice vectors'
 endif
-call sirius_set_parameters(handler, iter_solver_tol=1d-2)
 lat_vec = lat_vec * 0.9d0
 call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
 call sirius_update_context(handler)
-call sirius_find_ground_state(dft)
+call sirius_find_ground_state(dft, iter_solver_tol=1d-3)
 
 if (rank.eq.0) then
   write(*,*)'running new DFT with updated lattice vectors'
 endif
-call sirius_set_parameters(handler, iter_solver_tol=1d-2)
 lat_vec = lat_vec * 0.9d0
 call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
 call sirius_update_context(handler)
-call sirius_find_ground_state(dft)
+call sirius_find_ground_state(dft, iter_solver_tol=1d-2)
 
 if (rank.eq.0) then
   write(*,*)'running new DFT with updated lattice vectors'
 endif
-call sirius_set_parameters(handler, iter_solver_tol=1d-2)
 lat_vec = lat_vec * 0.8d0
 call sirius_set_lattice_vectors(handler, lat_vec(:, 1), lat_vec(:, 2), lat_vec(:, 3))
 call sirius_update_context(handler)
-call sirius_find_ground_state(dft)
+call sirius_find_ground_state(dft, iter_solver_tol=1d-2)
 
 
 
