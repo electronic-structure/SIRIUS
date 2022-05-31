@@ -688,10 +688,6 @@ sirius_set_parameters:
       type: string
       attr: in, optional
       doc: Core relativity treatment.
-    iter_solver_tol:
-      type: double
-      attr: in, optional
-      doc: Tolerance of the iterative solver (deprecated).
     iter_solver_tol_empty:
       type: double
       attr: in, optional
@@ -756,7 +752,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       double const* pw_cutoff__, double const* gk_cutoff__, int const* fft_grid_size__,
                       int const* auto_rmt__, bool const* gamma_point__, bool const* use_symmetry__,
                       bool const* so_correction__, char const* valence_rel__, char const* core_rel__,
-                      double const* iter_solver_tol__, double const* iter_solver_tol_empty__,
+                      double const* iter_solver_tol_empty__,
                       char const* iter_solver_type__, int const* verbosity__, bool const* hubbard_correction__,
                       int const* hubbard_correction_kind__, bool const* hubbard_full_orthogonalization__,
                       char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
@@ -1683,6 +1679,14 @@ sirius_find_ground_state:
       type: double
       attr: in, optional
       doc: Tolerance in total energy difference.
+    iter_solver_tol:
+      type: double
+      attr: in, optional
+      doc: Initial tolerance of the iterative solver.
+    initial_guess:
+      type: bool
+      attr: in, optional
+      doc: Boolean variable indicating if we want to start from the initial guess or from previous state.
     max_niter:
       type: int
       attr: in, optional
@@ -1707,37 +1711,32 @@ sirius_find_ground_state:
 */
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
-                         int const* max_niter__, bool const* save_state__, bool* converged__, int* niter__,
-                         int* error_code__)
+                         double const* iter_solver_tol__, bool const* initial_guess__, int const* max_niter__,
+                         bool const* save_state__, bool* converged__, int* niter__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& gs  = get_gs(gs_handler__);
             auto& ctx = gs.ctx();
             auto& inp = ctx.cfg().parameters();
-            gs.initial_state();
 
-            double rho_tol = inp.density_tol();
-            if (density_tol__) {
-                rho_tol = *density_tol__;
+            bool initial_guess = (initial_guess__) ? *initial_guess__ : true;
+            if (initial_guess) {
+                gs.initial_state();
             }
 
-            double etol = inp.energy_tol();
-            if (energy_tol__) {
-                etol = *energy_tol__;
-            }
+            double rho_tol = (density_tol__) ? *density_tol__ : inp.density_tol();
 
-            int max_niter = inp.num_dft_iter();
-            if (max_niter__) {
-                max_niter = *max_niter__;
-            }
+            double etol = (energy_tol__) ? *energy_tol__ : inp.energy_tol();
 
-            bool save{false};
-            if (save_state__ != nullptr) {
-                save = *save_state__;
-            }
+            double iter_solver_tol = (iter_solver_tol__) ? *iter_solver_tol__
+                                                         : ctx.cfg().iterative_solver().energy_tolerance();
 
-            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), max_niter, save);
+            int max_niter = (max_niter__) ? * max_niter__ : inp.num_dft_iter();
+
+            bool save = (save_state__) ? *save_state__ : false;
+
+            auto result = gs.find(rho_tol, etol, iter_solver_tol, max_niter, save);
 
             if (result["converged"].get<bool>()) {
                 if (converged__) {
@@ -2749,8 +2748,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
         [&]() {
             auto& gs   = get_gs(gs_handler__);
             auto& ks   = get_ks(ks_handler__);
-            double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance()
-                                                        : *iter_solver_tol__;
+            double tol = (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
             if (precompute_pw__ && *precompute_pw__) {
                 gs.potential().generate_pw_coefs();
             }
@@ -5949,7 +5947,7 @@ sirius_linear_solver:
     handler:
       type: gs_handler
       attr: in, required
-      doc: DFT ground staate handler.
+      doc: DFT ground state handler.
     vk:
       type: double
       attr: in, required, dimension(3)

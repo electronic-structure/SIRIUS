@@ -178,7 +178,9 @@ DFT_ground_state::check_scf_density()
     return dict;
 }
 
-json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_tol, int num_dft_iter, bool write_state)
+json
+DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_solver_tol__, int num_dft_iter__,
+                       bool write_state__)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -195,19 +197,19 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
     Density rho1(ctx_);
 
     std::stringstream s;
-    s << "density_tol            : " << density_tol << std::endl
-      << "energy_tol             : " << energy_tol << std::endl
-      << "itsol_tol (initial)    : " << itsol_tol << std::endl
-      << "itsol_tol_min          : " << ctx_.cfg().settings().itsol_tol_min() << std::endl
-      << "num_dft_iter           : " << num_dft_iter;
+    s << "density_tol               : " << density_tol__ << std::endl
+      << "energy_tol                : " << energy_tol__ << std::endl
+      << "iter_solver_tol (initial) : " << iter_solver_tol__ << std::endl
+      << "iter_solver_tol (target)  : " << ctx_.cfg().settings().itsol_tol_min() << std::endl
+      << "num_dft_iter              : " << num_dft_iter__;
     ctx_.message(1, __func__, s);
 
-    for (int iter = 0; iter < num_dft_iter; iter++) {
+    for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
         std::stringstream s;
         s << std::endl;
         s << "+------------------------------+" << std::endl
-          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter << '|' << std::endl
+          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter__ << '|' << std::endl
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
@@ -216,9 +218,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
-                Band(ctx_).solve<float, float>(kset_, H0, itsol_tol);
+                Band(ctx_).solve<float, float>(kset_, H0, iter_solver_tol__);
             } else {
-                Band(ctx_).solve<float, double>(kset_, H0, itsol_tol);
+                Band(ctx_).solve<float, double>(kset_, H0, iter_solver_tol__);
             }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
@@ -230,7 +232,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         } else {
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
-            Band(ctx_).solve<double, double>(kset_, H0, itsol_tol);
+            Band(ctx_).solve<double, double>(kset_, H0, iter_solver_tol__);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -252,9 +254,9 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
             tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
         }
         tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol,
-                       ctx_.cfg().settings().itsol_tol_scale()[1] * itsol_tol);
+                       ctx_.cfg().settings().itsol_tol_scale()[1] * iter_solver_tol__);
         /* tolerance can't be too small */
-        itsol_tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
+        iter_solver_tol__ = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
 
 #if defined(USE_FP32)
         if (ctx_.cfg().parameters().precision_gs() != "auto") {
@@ -325,11 +327,11 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
         ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
         bool converged{true};
-        converged = converged && (std::abs(eold - etot) < energy_tol);
+        converged = converged && (std::abs(eold - etot) < energy_tol__);
         if (ctx_.cfg().mixer().use_hartree()) {
-            converged = converged && (eha_res < density_tol);
+            converged = converged && (eha_res < density_tol__);
         } else {
-            converged = converged && (rms < density_tol);
+            converged = converged && (rms < density_tol__);
         }
         if (converged) {
             std::stringstream out;
@@ -348,7 +350,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double itsol_
     print_info(out);
     ctx_.message(1, __func__, out);
 
-    if (write_state) {
+    if (write_state__) {
         ctx_.create_storage_file();
         if (ctx_.full_potential()) { // TODO: why this is necessary?
             density_.rho().fft_transform(-1);
