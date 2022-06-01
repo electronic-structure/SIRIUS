@@ -688,10 +688,6 @@ sirius_set_parameters:
       type: string
       attr: in, optional
       doc: Core relativity treatment.
-    iter_solver_tol:
-      type: double
-      attr: in, optional
-      doc: Tolerance of the iterative solver (deprecated).
     iter_solver_tol_empty:
       type: double
       attr: in, optional
@@ -756,7 +752,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       double const* pw_cutoff__, double const* gk_cutoff__, int const* fft_grid_size__,
                       int const* auto_rmt__, bool const* gamma_point__, bool const* use_symmetry__,
                       bool const* so_correction__, char const* valence_rel__, char const* core_rel__,
-                      double const* iter_solver_tol__, double const* iter_solver_tol_empty__,
+                      double const* iter_solver_tol_empty__,
                       char const* iter_solver_type__, int const* verbosity__, bool const* hubbard_correction__,
                       int const* hubbard_correction_kind__, bool const* hubbard_full_orthogonalization__,
                       char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
@@ -1683,6 +1679,14 @@ sirius_find_ground_state:
       type: double
       attr: in, optional
       doc: Tolerance in total energy difference.
+    iter_solver_tol:
+      type: double
+      attr: in, optional
+      doc: Initial tolerance of the iterative solver.
+    initial_guess:
+      type: bool
+      attr: in, optional
+      doc: Boolean variable indicating if we want to start from the initial guess or from previous state.
     max_niter:
       type: int
       attr: in, optional
@@ -1707,37 +1711,32 @@ sirius_find_ground_state:
 */
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
-                         int const* max_niter__, bool const* save_state__, bool* converged__, int* niter__,
-                         int* error_code__)
+                         double const* iter_solver_tol__, bool const* initial_guess__, int const* max_niter__,
+                         bool const* save_state__, bool* converged__, int* niter__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& gs  = get_gs(gs_handler__);
             auto& ctx = gs.ctx();
             auto& inp = ctx.cfg().parameters();
-            gs.initial_state();
 
-            double rho_tol = inp.density_tol();
-            if (density_tol__) {
-                rho_tol = *density_tol__;
+            bool initial_guess = (initial_guess__) ? *initial_guess__ : true;
+            if (initial_guess) {
+                gs.initial_state();
             }
 
-            double etol = inp.energy_tol();
-            if (energy_tol__) {
-                etol = *energy_tol__;
-            }
+            double rho_tol = (density_tol__) ? *density_tol__ : inp.density_tol();
 
-            int max_niter = inp.num_dft_iter();
-            if (max_niter__) {
-                max_niter = *max_niter__;
-            }
+            double etol = (energy_tol__) ? *energy_tol__ : inp.energy_tol();
 
-            bool save{false};
-            if (save_state__ != nullptr) {
-                save = *save_state__;
-            }
+            double iter_solver_tol = (iter_solver_tol__) ? *iter_solver_tol__
+                                                         : ctx.cfg().iterative_solver().energy_tolerance();
 
-            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), max_niter, save);
+            int max_niter = (max_niter__) ? * max_niter__ : inp.num_dft_iter();
+
+            bool save = (save_state__) ? *save_state__ : false;
+
+            auto result = gs.find(rho_tol, etol, iter_solver_tol, max_niter, save);
 
             if (result["converged"].get<bool>()) {
                 if (converged__) {
@@ -2749,8 +2748,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
         [&]() {
             auto& gs   = get_gs(gs_handler__);
             auto& ks   = get_ks(ks_handler__);
-            double tol = (iter_solver_tol__ == nullptr) ? ks.ctx().cfg().iterative_solver().energy_tolerance()
-                                                        : *iter_solver_tol__;
+            double tol = (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
             if (precompute_pw__ && *precompute_pw__) {
                 gs.potential().generate_pw_coefs();
             }
@@ -5821,8 +5819,8 @@ struct Wave_functions_wrap {
         x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
     }
 
-    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
-        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
+    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids, size_t num) {
+        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, static_cast<int>(num));
     }
 
     void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
@@ -5841,6 +5839,34 @@ struct Identity_preconditioner {
         num_active = ids.size();
     }
 };
+
+struct Smoothed_diagonal_preconditioner {
+    sddk::mdarray<double, 2> H_diag;
+    sddk::mdarray<double, 2> S_diag;
+    sddk::mdarray<double, 1> eigvals;
+    size_t num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        // Could avoid a copy here, but apply_precondition is in-place.
+        x.copy(y, num_active);
+        sirius::apply_preconditioner(
+            memory_t::host,
+            sddk::spin_range(0),
+            static_cast<int>(num_active),
+            *x.x,
+            H_diag,
+            S_diag,
+            eigvals);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+        for (size_t i = 0; i < ids.size(); ++i) {
+            eigvals[i] = eigvals[ids[i]];
+        }
+    }
+};
+
 
 struct Linear_response_operator {
     sirius::Simulation_context &ctx;
@@ -5949,7 +5975,7 @@ sirius_linear_solver:
     handler:
       type: gs_handler
       attr: in, required
-      doc: DFT ground staate handler.
+      doc: DFT ground state handler.
     vk:
       type: double
       attr: in, required, dimension(3)
@@ -6160,21 +6186,29 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             auto U_wrap = Wave_functions_wrap{U.get()};
             auto C_wrap = Wave_functions_wrap{C.get()};
 
-            // Todo, replace with block version of Diagonal(H - e * S)
-            Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
+            // Set up the diagonal preconditioner
+            auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>();
+            sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
+            eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
+                return eigvals_vec[i];
+            };
+
+            Smoothed_diagonal_preconditioner preconditioner{
+              std::move(h_o_diag.first),
+              std::move(h_o_diag.second),
+              std::move(eigvals_mdarray),
+              sctx.num_bands()
+            };
+
+            // Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
 
             auto result = sirius::cg::multi_cg(
                 linear_operator,
                 preconditioner,
                 X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
-                250, // iters
-                1e-8 // tol
+                100, // iters
+                1e-13 // tol
             );
-
-            // Todo, remove debugging info.
-            for (size_t i = 0; i < result.size(); ++i) {
-                std::cout << "perturbed_psi[ " << i << "]: " << result[i].size() << " iter\n";
-            }
 
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {

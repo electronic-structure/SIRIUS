@@ -527,7 +527,7 @@ class Atom_type
     /// Number of beta-radial functions.
     inline int num_beta_radial_functions() const
     {
-        assert(lo_descriptors_.size() == beta_radial_functions_.size());
+        RTE_ASSERT(lo_descriptors_.size() == beta_radial_functions_.size());
         return lo_descriptors_.size();
     }
 
@@ -680,7 +680,7 @@ class Atom_type
     /// Return ionic charge (as positive integer).
     inline int zn() const
     {
-        assert(zn_ > 0);
+        RTE_ASSERT(zn_ > 0);
         return zn_;
     }
 
@@ -717,13 +717,13 @@ class Atom_type
     /// Return number of muffin-tin radial grid points.
     inline int num_mt_points() const
     {
-        assert(radial_grid_.num_points() > 0);
+        RTE_ASSERT(radial_grid_.num_points() > 0);
         return radial_grid_.num_points();
     }
 
     inline Radial_grid<double> const& radial_grid() const
     {
-        assert(radial_grid_.num_points() > 0);
+        RTE_ASSERT(radial_grid_.num_points() > 0);
         return radial_grid_;
     }
 
@@ -787,7 +787,7 @@ class Atom_type
 
     inline auto const& aw_descriptor(int l) const
     {
-        assert(l < (int)aw_descriptors_.size());
+        RTE_ASSERT(l < (int)aw_descriptors_.size());
         return aw_descriptors_[l];
     }
 
@@ -831,7 +831,7 @@ class Atom_type
 
     inline auto const& indexr(int i) const
     {
-        assert(i >= 0 && i < (int)indexr_.size());
+        RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
         return indexr_[i];
     }
 
@@ -852,7 +852,7 @@ class Atom_type
 
     inline basis_function_index_descriptor const& indexb(int i) const
     {
-        assert(i >= 0 && i < (int)indexb_.size());
+        RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
         return indexb_[i];
     }
 
@@ -965,7 +965,7 @@ class Atom_type
 
     inline int offset_lo() const
     {
-        assert(offset_lo_ >= 0);
+        RTE_ASSERT(offset_lo_ >= 0);
         return offset_lo_;
     }
 

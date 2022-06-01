@@ -379,13 +379,6 @@ class K_point : public K_point_base
                                         Radial_integrals_atomic_wf<false> const& ri__,
                                         sddk::Wave_functions<T>& wf__);
 
-    void compute_gradient_wave_functions(Wave_functions<T>& phi, const int starting_position_i, const int num_wf,
-                                         Wave_functions<T>& dphi, const int starting_position_j, const int direction);
-
-    void compute_orthogonalization_operator(const int istep, Wave_functions<T>& phi__, Wave_functions<T>& sphi__,
-                                            dmatrix<std::complex<T>>& S__, dmatrix<std::complex<T>>& Z__,
-                                            std::vector<double>& eigenvalues__);
-
     void generate_hubbard_orbitals();
 
     /// Save data to HDF5 file.
