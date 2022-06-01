@@ -685,10 +685,27 @@ class Gvec_partition
         return gvec_count_fft(fft_comm().rank());
     }
 
+    /// Return local number of z-columns.
     inline int zcol_count_fft() const
     {
         return zcol_distr_fft_.counts[fft_comm().rank()];
     }
+
+
+    //template <index_domain_t index_domain>
+    //inline int idx_zcol(int idx__) const
+    //{
+    //    switch (index_domain) {
+    //        case index_domain_t::local: {
+    //            return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
+    //            break;
+    //        }
+    //        case index_domain_t::global: {
+    //            return idx_zcol_(idx__);
+    //            break;
+    //        }
+    //    }
+    //}
 
     inline int idx_gvec(int idx_local__) const
     {
@@ -699,6 +716,11 @@ class Gvec_partition
     {
         return gvec_fft_slab_;
     }
+
+    //inline int zcol_offs(int icol__) const
+    //{
+    //    return zcol_offs_(icol__);
+    //}
 
     inline Gvec const& gvec() const
     {
