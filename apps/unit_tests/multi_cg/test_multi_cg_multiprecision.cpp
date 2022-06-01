@@ -30,8 +30,8 @@ struct BlockVector {
         vec.leftCols(num) += X.vec.leftCols(num) * D;
     }
 
-    void block_axpy_scatter(std::vector<T> alphas, BlockVector const &X, std::vector<size_t> ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
+    void block_axpy_scatter(std::vector<T> alphas, BlockVector const &X, std::vector<size_t> ids, size_t num) {
+        for (size_t i = 0; i < num; ++i) {
             vec.col(ids[i]) += alphas[i] * X.vec.col(i);
         }
     }
