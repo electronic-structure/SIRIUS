@@ -123,7 +123,7 @@ Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec co
         gkvec_coord_.allocate(memory_t::device);
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto vgk = gkvec_.gkvec(igk_[igk_loc]);
+            auto vgk = gkvec_.gkvec<index_domain_t::global>(igk_[igk_loc]);
             for (auto x: {0, 1, 2}) {
                 gkvec_coord_(x, igk_loc) = vgk[x];
             }
@@ -226,7 +226,7 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
 
                 std::vector<std::complex<double>> phase_gk(num_gkvec_loc());
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                    auto G = gkvec_.gvec(igk_[igk_loc]);
+                    auto G = gkvec_.gvec<index_domain_t::global>(igk_[igk_loc]);
                     /* total phase e^{-i(G+k)r_{\alpha}} */
                     phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                 }

@@ -1122,8 +1122,7 @@ Simulation_context::update()
                 gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                    int ig = gvec().offset() + igloc;
-                    auto G = gvec().gvec(ig);
+                    auto G = gvec().gvec<index_domain_t::local>(igloc);
                     for (int x : {0, 1, 2}) {
                         gvec_coord_(igloc, x) = G[x];
                     }
@@ -1156,7 +1155,7 @@ Simulation_context::update()
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
 
-            auto gv = gvec().gvec(ig);
+            auto gv = gvec().gvec<index_domain_t::local>(igloc);
             /* check limits */
             for (int x : {0, 1, 2}) {
                 auto limits = fft_grid().limits(x);
@@ -1248,8 +1247,7 @@ Simulation_context::update()
         /* find the new maximum length of G-vectors */
         double new_pw_cutoff{this->pw_cutoff()};
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig        = gvec().offset() + igloc;
-            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len(ig));
+            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len<index_domain_t::local>(igloc));
         }
         gvec().comm().allreduce<double, mpi_op_t::max>(&new_pw_cutoff, 1);
         /* estimate new G+k-vectors cutoff */
@@ -1395,7 +1393,7 @@ Simulation_context::create_storage_file() const
 
         mdarray<int, 2> gv(3, gvec().num_gvec());
         for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            auto G = gvec().gvec(ig);
+            auto G = gvec().gvec<index_domain_t::global>(ig);
             for (int x : {0, 1, 2}) {
                 gv(x, ig) = G[x];
             }

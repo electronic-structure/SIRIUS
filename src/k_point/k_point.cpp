@@ -853,7 +853,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         mdarray<int, 2> gv(3, num_gkvec());
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().gvec(i);
+            auto v = gkvec().gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
@@ -1049,7 +1049,7 @@ K_point<T>::generate_atomic_wave_functions(
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
             /* global index of G+k-vector */
             int igk = this->idxgk(igk_loc);
-            auto G  = gkvec().gvec(igk);
+            auto G  = gkvec().gvec<index_domain_t::global>(igk);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }

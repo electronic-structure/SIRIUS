@@ -14,8 +14,6 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
     PROFILE("sirius::wavefunctions_strain_deriv");
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
-        /* global index of G+k vector */
-        const int igk = kp__.idxgk(igkloc);
         /* Cartesian coordinats of G-vector */
         auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         /* vs = {r, theta, phi} */
@@ -36,7 +34,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx__.unit_cell().atom(ia).type();
             // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
-            auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), ctx__.unit_cell().atom(ia).position());
+            auto phase        = twopi * dot(kp__.gkvec().gkvec<index_domain_t::local>(igkloc), ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(double_complex(0.0, phase));
             for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
                 /*  orbital quantum  number of this atomic orbital */

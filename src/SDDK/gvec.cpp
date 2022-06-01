@@ -242,8 +242,9 @@ void Gvec::distribute_z_columns()
     if (ng != num_gvec_) {
         RTE_THROW("wrong number of G-vectors");
     }
-    this->offset_ = this->gvec_offset(this->comm().rank());
-    this->count_ = this->gvec_count(this->comm().rank());
+    this->offset_         = this->gvec_offset(this->comm().rank());
+    this->count_          = this->gvec_count(this->comm().rank());
+    this->num_zcol_local_ = this->zcol_distr_.counts[this->comm().rank()];
 }
 
 void Gvec::find_gvec_shells()
@@ -264,7 +265,7 @@ void Gvec::find_gvec_shells()
     /* find G-vector shells using symmetry consideration */
     for (int ig = 0; ig < num_gvec_; ig++) {
         if (gvec_shell_[ig] == -1) {
-            auto G = gvec(ig);
+            auto G = gvec<index_domain_t::global>(ig);
             for (auto& R: lat_sym) {
                 auto G1 = dot(R, G);
                 auto ig1 = index_by_gvec(G1);
@@ -367,24 +368,46 @@ void Gvec::find_gvec_shells()
     }
 }
 
-void Gvec::init_gvec_cart()
+void
+Gvec::init_gvec_local()
 {
-    gvec_cart_  = mdarray<double, 2>(3, count(), memory_t::host, "gvec_cart_");
-    gkvec_cart_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_cart_");
+    gvec_  = mdarray<int, 2>(3, count(), memory_t::host, "gvec_");
+    gkvec_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_");
 
     for (int igloc = 0; igloc < count(); igloc++) {
         int ig   = offset() + igloc;
         auto G   = gvec_by_full_index(gvec_full_index_(ig));
-        auto gc  = dot(lattice_vectors_, G);
-        auto gkc = dot(lattice_vectors_, G + vk_);
         for (int x : {0, 1, 2}) {
-            gvec_cart_(x, igloc)  = gc[x];
-            gkvec_cart_(x, igloc) = gkc[x];
+            gvec_(x, igloc)  = G[x];
+            gkvec_(x, igloc) = G[x] + vk_[x];
         }
     }
 }
 
-void Gvec::init(FFT3D_grid const& fft_grid)
+void
+Gvec::init_gvec_cart_local()
+{
+    gvec_cart_  = mdarray<double, 2>(3, count(), memory_t::host, "gvec_cart_");
+    gkvec_cart_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_cart_");
+    if (bare_gvec_) {
+        gvec_len_   = mdarray<double, 1>(count(), memory_t::host, "gvec_len_");
+    }
+
+    for (int igloc = 0; igloc < count(); igloc++) {
+        auto gc  = dot(lattice_vectors_, vector3d<int>(&gvec_(0, igloc)));
+        auto gkc = dot(lattice_vectors_, vector3d<double>(&gkvec_(0, igloc)));
+        for (int x : {0, 1, 2}) {
+            gvec_cart_(x, igloc)  = gc[x];
+            gkvec_cart_(x, igloc) = gkc[x];
+        }
+        if (bare_gvec_) {
+            gvec_len_(igloc) = gvec_shell_len_(gvec_shell_(this->offset() + igloc));
+        }
+    }
+}
+
+void
+Gvec::init(FFT3D_grid const& fft_grid)
 {
     PROFILE("sddk::Gvec::init");
 
@@ -414,7 +437,7 @@ void Gvec::init(FFT3D_grid const& fft_grid)
     }
 
     for (int ig = 0; ig < num_gvec_; ig++) {
-        auto gv = gvec(ig);
+        auto gv = gvec<index_domain_t::global>(ig);
         if (index_by_gvec(gv) != ig) {
             std::stringstream s;
             s << "wrong G-vector index: ig=" << ig << " gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
@@ -428,8 +451,6 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         RTE_THROW("first G-vector is not zero");
     }
 
-    init_gvec_cart();
-
     find_gvec_shells();
 
     if (gvec_base_) {
@@ -438,7 +459,7 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         /* loop over local G-vectors of a base set */
         for (int igloc = 0; igloc < gvec_base_->count(); igloc++) {
             /* G-vector in lattice coordinates */
-            auto G = gvec_base_->gvec(gvec_base_->offset() + igloc);
+            auto G = gvec_base_->gvec<index_domain_t::local>(igloc);
             /* global index of G-vector in the current set */
             int ig = index_by_gvec(G);
             /* the same MPI rank must store this G-vector */
@@ -459,6 +480,8 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         }
     }
     // TODO: add a check for gvec_base (there is already a test for this).
+    init_gvec_local();
+    init_gvec_cart_local();
 }
 
 Gvec& Gvec::operator=(Gvec&& src__)
@@ -655,10 +678,11 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 
 mdarray<int, 2> Gvec_partition::get_gvec() const
 {
+    // TODO: adapt to external G-vectors; probalby change of logic is required
     mdarray<int, 2> gv(3, gvec_count_fft());
     for (int i = 0; i < gvec_count_fft(); i++) {
         int ig = idx_gvec_[i];
-        auto G = gvec_.gvec(ig);
+        auto G = gvec_.gvec<index_domain_t::global>(ig);
         for (int x: {0, 1, 2}) {
             gv(x, i) = G[x];
         }
@@ -718,7 +742,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
             int ig   = gvec_.gvec_offset(r) + igloc;
             int igsh = gvec_.shell(ig);
-            auto G   = gvec_.gvec(ig);
+            auto G   = gvec_.gvec<index_domain_t::global>(ig);
             if (spl_num_gsh_.local_rank(igsh) == comm_.rank()) {
                 for (int x : {0, 1, 2}) {
                     gvec_remapped_(x, a2a_recv_.offsets[r] + counts[r]) = G[x];

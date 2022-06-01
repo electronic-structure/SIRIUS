@@ -200,11 +200,21 @@ class Gvec
     */
     mdarray<int, 1> gvec_base_mapping_;
 
-    /// Cartiesian coordinaes for a local set of G-vectors.
+    /// Lattice coordinates of a local set of G-vectors.
+    /** This are also known as Miller indices */
+    mdarray<int, 2> gvec_;
+
+    /// Lattice coordinates of a local set of G+k-vectors.
+    mdarray<double, 2> gkvec_;
+
+    /// Cartiesian coordinaes of a local set of G-vectors.
     mdarray<double, 2> gvec_cart_;
 
-    /// Cartesian coordinaes for a local set of G+k-vectors.
+    /// Cartesian coordinaes of a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_;
+
+    /// Length of the local fraction of G-vectors.
+    mdarray<double, 1> gvec_len_;
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     vector3d<int> gvec_by_full_index(uint32_t idx__) const;
@@ -214,6 +224,9 @@ class Gvec
 
     /// Local number of G-vectors.
     int count_{-1};
+
+    /// Local number of z-columns.
+    int num_zcol_local_{-1};
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
@@ -227,8 +240,11 @@ class Gvec
         under a lattice symmetry operation. */
     void find_gvec_shells();
 
-    /// Compute the Cartesian coordinates.
-    void init_gvec_cart();
+    /// Initialize lattice coordinates of the local fraction of G-vectors.
+    void init_gvec_local();
+
+    /// Initialize Cartesian coordinates of the local fraction of G-vectors.
+    void init_gvec_cart_local();
 
     /// Initialize everything.
     void init(FFT3D_grid const& fft_grid);
@@ -321,10 +337,14 @@ class Gvec
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
         , bare_gvec_(false)
+        , count_(ngv_loc__)
     {
         std::cout << "Trying external G-vector order" << std::endl;
 
         sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
+
+        gvec_  = mdarray<int, 2>(3, count(), memory_t::host, "gvec_");
+        gkvec_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_");
 
         /* do a first pass: determine boundaries of the grid */
         int xmin{0}, xmax{0};
@@ -343,21 +363,21 @@ class Gvec
         sddk::mdarray<int, 2> zcol(mdarray_index_descriptor(xmin, xmax), mdarray_index_descriptor(ymin, ymax));
         zcol.zero();
         for (int ig = 0; ig < ngv_loc__; ig++) {
-            std::cout << "ig=" << ig << " gv=" << G(0, ig) << " " << G(1, ig) << " " << G(2, ig) << std::endl;
-        }
-        if (ngv_loc__) {
-            int ig{0};
-            while (ig < ngv_loc__) {
-                if (zcol(G(0, ig), G(1, ig))) {
-                    RTE_THROW("G-vectors are not consecutive for a z-column");
-                }
-                auto z = G(2, ig);
-                do {
-                    zcol(G(0, ig), G(1, ig))++;
-                    ig++; 
-                } while (ig < ngv_loc__ && G(2, ig) == z);
+            zcol(G(0, ig), G(1, ig))++;
+            for (int x : {0, 1, 2}) {
+                gvec_(x, ig) = G(x, ig);
+                gkvec_(x, ig) = G(x, ig) + vk_[x];
             }
         }
+        num_zcol_local_ = 0;
+        for (size_t i = 0; i < zcol.size(); i++) {
+            if (zcol[i]) {
+                num_zcol_local_++;
+            }
+        }
+        std::cout << "num_zcol_local=" << num_zcol_local_ << std::endl;
+
+        init_gvec_cart_local();
 
         throw std::runtime_error("stop");
 
@@ -395,7 +415,7 @@ class Gvec
     inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
-        init_gvec_cart();
+        init_gvec_cart_local();
         find_gvec_shells();
         return lattice_vectors_;
     }
@@ -474,53 +494,73 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    inline auto gvec(int ig__) const
+    template <index_domain_t idx_t>
+    inline vector3d<int>
+    gvec(int ig__) const
     {
-        return gvec_by_full_index(gvec_full_index_(ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                return gvec_by_full_index(gvec_full_index_(ig__));
+                break;
+            }
+        }
     }
 
     /// Return G+k vector in fractional coordinates.
-    inline auto gkvec(int ig__) const
-    {
-        return gvec(ig__) + vk_;
-    }
-
-    /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
-    gvec_cart(int ig__) const
+    inline vector3d<double>
+    gkvec(int ig__) const
     {
-        return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
-    }
-
-    /// Return G vector in Cartesian coordinates.
-    template <index_domain_t idx_t, bool print_info = false>
-    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>>
-    gvec_cart(int ig__) const
-    {
-        auto G = gvec(ig__);
-        if (print_info) {
-            auto gc = dot(lattice_vectors_, G);
-            RTE_OUT(std::cout) << "ig="<<ig__<<", G="<<G<<", gc="<<gc<<", len="<<gc.length() << std::endl;
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                return this->gvec<idx_t>(ig__) + vk_;
+                break;
+            }
         }
-        return dot(lattice_vectors_, G);
     }
 
-    /// Return G+k vector in Cartesian coordinates.
+    /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
-    gkvec_cart(int ig__) const
+    inline vector3d<double>
+    gvec_cart(int ig__) const
     {
-        return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                auto G = this->gvec<idx_t>(ig__);
+                return dot(lattice_vectors_, G);
+                break;
+            }
+        }
     }
 
-    /// Return G+k vector in Cartesian coordinates.
+    /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>>
+    inline vector3d<double>
     gkvec_cart(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]) + vk_);
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                auto Gk = this->gvec<idx_t>(ig__) + vk_;
+                return dot(lattice_vectors_, Gk);
+                break;
+            }
+        }
     }
 
     /// Return index of the G-vector shell by the G-vector index.
@@ -551,9 +591,20 @@ class Gvec
     }
 
     /// Return length of the G-vector.
-    inline double gvec_len(int ig__) const
+    template <index_domain_t idx_t>
+    inline double
+    gvec_len(int ig__) const
     {
-        return gvec_shell_len_(gvec_shell_(ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return gvec_len_(ig__);
+                break;
+            }
+            case index_domain_t::global: {
+                return gvec_shell_len_(gvec_shell_(ig__));
+                break;
+            }
+        }
     }
 
     inline int index_g12(vector3d<int> const& g1__, vector3d<int> const& g2__) const
@@ -592,9 +643,16 @@ class Gvec
         return bare_gvec_;
     }
 
+    /// Return global number of z-columns.
     inline int num_zcol() const
     {
         return static_cast<int>(z_columns_.size());
+    }
+
+    /// Return local number of z-columns.
+    inline int num_zcol_local() const
+    {
+        return num_zcol_local_;
     }
 
     inline z_column_descriptor const& zcol(size_t idx__) const

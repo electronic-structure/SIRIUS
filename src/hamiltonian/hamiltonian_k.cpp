@@ -679,12 +679,12 @@ Hamiltonian_k<T>::set_fv_h_o_it(dmatrix<std::complex<T>>& h__, dmatrix<std::comp
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
         int ig_col = kp.igk_col(igk_col);
         /* fractional coordinates of G vectors */
-        auto gvec_col = kp.gkvec().gvec(ig_col);
+        auto gvec_col = kp.gkvec().template gvec<index_domain_t::global>(ig_col);
         /* Cartesian coordinates of G+k vectors */
         auto gkvec_col_cart = kp.gkvec().template gkvec_cart<index_domain_t::global>(ig_col);
         for (int igk_row = 0; igk_row < kp.num_gkvec_row(); igk_row++) {
             int ig_row          = kp.igk_row(igk_row);
-            auto gvec_row       = kp.gkvec().gvec(ig_row);
+            auto gvec_row       = kp.gkvec().template gvec<index_domain_t::global>(ig_row);
             auto gkvec_row_cart = kp.gkvec().template gkvec_cart<index_domain_t::global>(ig_row);
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */

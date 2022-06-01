@@ -51,7 +51,7 @@ int test_fft(cmd_args& args, device_t pu__)
     }
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
-        auto v = gvec.gvec(ig);
+        auto v = gvec.gvec<index_domain_t::global>(ig);
         if (Communicator::world().rank() == 0 && verbose) {
             printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
         }

@@ -210,7 +210,7 @@ class Matching_coefficients // TODO: compute on GPU
 
         std::vector<double_complex> phase_factors(num_gkvec_);
         for (int i = 0; i < num_gkvec_; i++) {
-            double phase     = twopi * dot(gkvec_.gkvec(igk_[i]), atom__.position());
+            double phase     = twopi * dot(gkvec_.gkvec<index_domain_t::global>(igk_[i]), atom__.position());
             phase_factors[i] = std::exp(double_complex(0, phase));
         }
 
