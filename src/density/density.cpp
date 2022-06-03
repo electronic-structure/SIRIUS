@@ -228,7 +228,10 @@ Density::initial_density_pseudo()
         auto Rmt = unit_cell_.find_mt_radii(1, true);
 
         /* auxiliary weight function; the volume integral of this function is equal to 1 */
-        auto w = [](double R, double x) {
+        auto w = [](double R, double x) -> double {
+
+            if (x > R) return 0;
+
             double norm = 3.1886583903476735 * std::pow(R, 3);
 
             return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
