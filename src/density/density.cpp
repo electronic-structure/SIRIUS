@@ -223,33 +223,64 @@ Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        auto Rmt = unit_cell_.find_mt_radii(1, true);
 
-        /* auxiliary weight function; the volume integral of this function is equal to 1 */
-        auto w = [](double R, double x) {
-            double norm = 3.1886583903476735 * std::pow(R, 3);
-
-            return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
+        /* weight function in the form exp(-alpha * r^2) for each atom;
+         * Fourier components are computed here */
+        auto gw = [&](double g) {
+            const double alpha{4.0};
+            if (g < 1e-10) {
+                return 1.0;
+            } else {
+                return std::exp(-std::pow(g, 2) / 4.0 / alpha);
+            }
         };
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
-
-            auto v = unit_cell_.atom(ia).vector_field();
-
-            for (auto coord : atom_to_grid_map) {
-                int ir   = coord.first;
-                double r = coord.second;
-                double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
-                magnetization(0).f_rg(ir) += v[2] * f;
+        double oi = 1.0 / unit_cell_.omega();
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig   = ctx_.gvec().offset() + igloc;
+            double g = ctx_.gvec().gvec_len(ig);
+            double f = gw(g) * oi;
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto ff = std::conj(ctx_.gvec_phase_factor(ig, ia)) * f;
+                auto v = unit_cell_.atom(ia).vector_field();
+                magnetization(0).f_pw_local(igloc) += v[2] * ff;
                 if (ctx_.num_mag_dims() == 3) {
-                    magnetization(1).f_rg(ir) += v[0] * f;
-                    magnetization(2).f_rg(ir) += v[1] * f;
+                    magnetization(1).f_pw_local(igloc) += v[0] * ff;
+                    magnetization(2).f_pw_local(igloc) += v[1] * ff;
                 }
             }
         }
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            magnetization(j).fft_transform(1);
+        }
+
+        //auto Rmt = unit_cell_.find_mt_radii(1, true);
+
+        ///* auxiliary weight function; the volume integral of this function is equal to 1 */
+        //auto w = [](double R, double x) {
+        //    double norm = 3.1886583903476735 * std::pow(R, 3);
+
+        //    return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
+        //};
+
+        //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //    auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
+
+        //    auto v = unit_cell_.atom(ia).vector_field();
+
+        //    for (auto coord : atom_to_grid_map) {
+        //        int ir   = coord.first;
+        //        double r = coord.second;
+        //        double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
+        //        magnetization(0).f_rg(ir) += v[2] * f;
+        //        if (ctx_.num_mag_dims() == 3) {
+        //            magnetization(1).f_rg(ir) += v[0] * f;
+        //            magnetization(2).f_rg(ir) += v[1] * f;
+        //        }
+        //    }
+        //}
     }
-    this->fft_transform(-1);
+    //this->fft_transform(-1);
 
     if (ctx_.cfg().control().print_checksum()) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
