@@ -139,39 +139,63 @@ DFT_ground_state::check_scf_density()
     if (ctx_.full_potential()) {
         return json();
     }
-    std::vector<double_complex> rho_pw(ctx_.gvec().count());
-    for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rho_pw[ig] = density_.rho().f_pw_local(ig);
+    /* save reference density and magnetisation */
+    sddk::mdarray<double_complex, 2> rho_pw(ctx_.gvec().count(), ctx_.num_mag_dims() + 1);
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rho_pw(ig, j) = density_.component(j).f_pw_local(ig);
+        }
     }
 
     double etot = total_energy();
 
+    bool const transform_to_rg{true};
+    bool const precompute_lapw{true};
+    bool const add_core{true};
+
     /* create new potential */
     Potential pot(ctx_);
     /* generate potential from existing density */
-    pot.generate(density_, ctx_.use_symmetry(), true);
+    pot.generate(density_, ctx_.use_symmetry(), transform_to_rg);
     /* create new Hamiltonian */
-    Hamiltonian0<double> H0(pot, true);
+    Hamiltonian0<double> H0(pot, precompute_lapw);
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
+    int num_unconverged = Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
+    if (num_unconverged) {
+        std::cout << "number of unconverrged wave-functions : " << num_unconverged << std::endl;
+        num_unconverged = Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
+        std::cout << "final number of unconverrged wave-functions : " << num_unconverged << std::endl;
+    }
+
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    density_.generate<double>(kset_, true, true, false);
-    double rms{0};
+    density_.generate<double>(kset_, ctx_.use_symmetry(), add_core, transform_to_rg);
+    double rms_rho{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
+        rms_rho += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw(ig, 0)), 2);
     }
-    ctx_.comm().allreduce(&rms, 1);
+    double rms_mag{0};
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rms_mag += std::pow(std::abs(density_.component(1 + j).f_pw_local(ig) - rho_pw(ig, 1 + j)), 2);
+        }
+    }
+    ctx_.comm().allreduce(&rms_rho, 1);
+    ctx_.comm().allreduce(&rms_mag, 1);
     json dict;
-    dict["rss"]   = rms;
-    dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
+    dict["rss_rho"]   = rms_rho;
+    dict["rms_rho"]   = std::sqrt(rms_rho / ctx_.gvec().num_gvec());
+    dict["rss_mag"]   = rms_mag;
+    dict["rms_mag"]   = std::sqrt(rms_mag / ctx_.gvec().num_gvec());
     dict["detot"] = total_energy() - etot;
 
-    ctx_.message(1, __function_name__, "RSS: %18.12E\n", dict["rss"].get<double>());
-    ctx_.message(1, __function_name__, "RMS: %18.12E\n", dict["rms"].get<double>());
+    ctx_.message(1, __function_name__, "RSS_rho: %18.12E\n", dict["rss_rho"].get<double>());
+    ctx_.message(1, __function_name__, "RMS_rho: %18.12E\n", dict["rms_rho"].get<double>());
+    ctx_.message(1, __function_name__, "RSS_mag: %18.12E\n", dict["rss_mag"].get<double>());
+    ctx_.message(1, __function_name__, "RMS_mag: %18.12E\n", dict["rms_mag"].get<double>());
     ctx_.message(1, __function_name__, "dEtot: %18.12E\n", dict["detot"].get<double>());
     ctx_.message(1, __function_name__, "Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
 

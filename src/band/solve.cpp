@@ -67,12 +67,13 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__
 #endif
 
 template <typename T, typename F>
-int
+std::pair<int, int>
 Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     int niter{0};
+    int num_unconverged{0};
 
     auto& itso = ctx_.cfg().iterative_solver();
     if (itso.type() == "exact") {
@@ -105,6 +106,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
                 std::cout, 0);
 
         niter = result.niter;
+        num_unconverged = result.num_unconverged;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 kp.band_energy(j, ispn, result.eval(j, ispn));
@@ -122,11 +124,11 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
-    return niter;
+    return std::make_pair(niter, num_unconverged);
 }
 
 template <typename T, typename F>
-void
+int
 Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const
 {
     PROFILE("sirius::Band::solve");
@@ -142,6 +144,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
     }
 
     int num_dav_iter{0};
+    int num_unconverged{0};
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
@@ -151,14 +154,18 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
         if (ctx_.full_potential()) {
             solve_full_potential<T>(Hk, itsol_tol__);
         } else {
+            std::pair<int, int> result;
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
+                result = solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
             } else {
-                num_dav_iter += solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__, empy_tol);
+                result = solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__, empy_tol);
             }
+            num_dav_iter += result.first;
+            num_unconverged += result.second;
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
+    kset__.comm().allreduce(&num_unconverged, 1);
     ctx_.num_itsol_steps(num_dav_iter);
     if (!ctx_.full_potential()) {
         ctx_.message(2, __function_name__, "average number of iterations: %12.6f\n",
@@ -185,19 +192,20 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
         }
     }
     ctx_.print_memory_usage(__FILE__, __LINE__);
+    return num_unconverged;
 }
 
 template
-void
+int
 Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, double itsol_tol__) const;
 
 #if defined(USE_FP32)
 template
-void
+int
 Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 
 template
-void
+int
 Band::solve<float, double>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 #endif
 

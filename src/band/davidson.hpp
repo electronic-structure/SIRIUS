@@ -35,7 +35,11 @@ namespace sirius {
 
 /// Result of Davidson solver.
 struct davidson_result_t {
+    /// Numbef of iterations for subspace diagonalziation.
     int niter;
+    /// Number of unconverge eigen-pairs.
+    int num_unconverged;
+    /// Eigen-values.
     sddk::mdarray<double, 2> eval;
 };
 
@@ -292,8 +296,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         kp.comm().allreduce(&cs1, 1);
         kp.comm().allreduce(&cs2, 1);
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("h_diag", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("o_diag", cs2, RTE_OUT(std::cout));
+            utils::print_checksum("h_diag", cs1, RTE_OUT(out__));
+            utils::print_checksum("o_diag", cs2, RTE_OUT(out__));
         }
     }
 
@@ -301,10 +305,10 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     if (ctx.print_checksum()) {
         psi__.print_checksum(get_device_t(psi__.preferred_memory_t()), "input spinor_wave_functions", 0,
-                num_bands__, RTE_OUT(std::cout));
+                num_bands__, RTE_OUT(out__));
     }
 
-    davidson_result_t result{0, sddk::mdarray<double, 2>(num_bands__, num_spinors)};
+    davidson_result_t result{0, 0, sddk::mdarray<double, 2>(num_bands__, num_spinors)};
 
     if (verbosity__ >= 1) {
          RTE_OUT(out__) << "starting Davidson iterative solver" << std::endl
@@ -357,9 +361,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         if (ctx.print_checksum()) {
             if (phi_extra__) {
                 phi_extra__->print_checksum(get_device_t(phi_extra__->preferred_memory_t()), "extra phi", 0,
-                        num_extra_phi, RTE_OUT(std::cout));
+                        num_extra_phi, RTE_OUT(out__));
             }
-            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "input phi", 0, num_bands__, RTE_OUT(std::cout));
+            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "input phi", 0, num_bands__, RTE_OUT(out__));
         }
 
         /* current subspace size */
@@ -441,11 +445,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* END DEBUG */
 
         if (ctx.print_checksum()) {
-            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(std::cout));
+            phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(out__));
             if (hphi) {
-                hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(std::cout));
+                hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(out__));
             }
-            sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(std::cout));
+            sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(out__));
         }
 
         if (verbosity__ >= 1) {
@@ -458,11 +462,11 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
                         spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, 0, N, H, *res);
                 if (ctx.print_checksum()) {
-                    phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(std::cout));
+                    phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(out__));
                     if (hphi) {
-                        hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(std::cout));
+                        hphi->print_checksum(get_device_t(hphi->preferred_memory_t()), "hphi", 0, N, RTE_OUT(out__));
                     }
-                    sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(std::cout));
+                    sphi->print_checksum(get_device_t(sphi->preferred_memory_t()), "sphi", 0, N, RTE_OUT(out__));
                 }
                 /* setup eigen-value problem */
                 Band(ctx).set_subspace_mtrx<T>(0, N, 0, *phi, *hphi, H, &H_old);
@@ -520,7 +524,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         }
 
         /* number of newly added basis functions */
-        int num_unconverged{0};
+        //int num_unconverged{0};
 
         /* tolerance for the norm of L2-norms of the residuals, used for
          * relative convergence criterion. We can only compute this after
@@ -546,28 +550,28 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     RTE_OUT(out__) << "compute " << num_bands__ - num_locked
                           << " residuals from phi(" << num_locked << ":" << N - 1 << ")" << std::endl;
                 }
-                residual_result result;
+                residual_result rres;
                 /* get new preconditionined residuals, and also hpsi and spsi as a by-product */
                 switch (what) {
                     case davidson_evp_t::hamiltonian: {
-                        result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
-                                              eval, evec, *hphi, *sphi, *hpsi, *spsi, *res, *h_diag, *o_diag,
-                                              estimate_eval__, res_tol__, is_converged);
+                        rres = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                            spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                            eval, evec, *hphi, *sphi, *hpsi, *spsi, *res, *h_diag, *o_diag,
+                                            estimate_eval__, res_tol__, is_converged);
 
                         break;
                     }
                     case davidson_evp_t::overlap: {
-                        result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
-                                              eval, evec, *sphi, *phi, *spsi, psi__, *res, *h_diag, *o_diag,
-                                              estimate_eval__, res_tol__, is_converged);
+                        rres = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                            spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                            eval, evec, *sphi, *phi, *spsi, psi__, *res, *h_diag, *o_diag,
+                                            estimate_eval__, res_tol__, is_converged);
                         break;
                     }
                 }
-                num_unconverged        = result.unconverged_residuals;
-                num_lockable           = result.num_consecutive_smallest_converged;
-                current_frobenius_norm = result.frobenius_norm;
+                result.num_unconverged = rres.unconverged_residuals;
+                num_lockable           = rres.num_consecutive_smallest_converged;
+                current_frobenius_norm = rres.frobenius_norm;
 
                 /* set the relative tolerance convergence criterion */
                 if (iter_step == 0) {
@@ -575,17 +579,17 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 }
 
                 if (verbosity__ >= 1) {
-                    RTE_OUT(out__) << "number of unconverged residuals : " << num_unconverged << std::endl;
+                    RTE_OUT(out__) << "number of unconverged residuals : " << result.num_unconverged << std::endl;
                     RTE_OUT(out__) << "current_frobenius_norm : " << current_frobenius_norm << std::endl;
                 }
                 if (ctx.cfg().control().print_checksum()) {
-                    res->print_checksum(get_device_t(res->preferred_memory_t()), "res", 0, num_unconverged,
-                            RTE_OUT(std::cout));
+                    res->print_checksum(get_device_t(res->preferred_memory_t()), "res", 0, result.num_unconverged,
+                            RTE_OUT(out__));
                 }
             }
 
             /* verify convergence criteria */
-            int num_converged              = num_ritz - num_unconverged;
+            int num_converged              = num_ritz - result.num_unconverged;
             bool converged_by_relative_tol = (iter_step > 0) && (current_frobenius_norm < relative_frobenius_tolerance);
             bool converged_by_absolute_tol = (num_locked + num_converged + itso.min_num_res()) >= num_bands__;
 
@@ -593,9 +597,9 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
             /* TODO: num_unconverged might be very small at some point slowing down convergence
                      can we add more? */
-            int expand_with     = std::min(num_unconverged, block_size);
+            int expand_with     = std::min(result.num_unconverged, block_size);
             bool should_restart = (N + expand_with > num_phi) ||
-                                  (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
+                                  (num_lockable > 5 && result.num_unconverged < itso.early_restart() * num_lockable);
 
             kp.message(3, __function_name__,
                        "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. "
@@ -620,13 +624,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     kp.message(3, __function_name__,
                                "Warning: maximum number of iterations reached, but %i "
                                "residual(s) did not converge for k-point %f %f %f\n",
-                               num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2]);
+                               result.num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2]);
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (converged || last_iteration) {
                     kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n",
-                               num_unconverged, iter_step);
+                               result.num_unconverged, iter_step);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
