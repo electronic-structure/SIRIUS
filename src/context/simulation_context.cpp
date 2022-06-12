@@ -481,7 +481,7 @@ Simulation_context::initialize()
     if (use_symmetry()) {
         auto lv = matrix3d<double>(unit_cell().lattice_vectors());
 
-        auto lat_sym = find_lat_sym(lv, 1e-6);
+        auto lat_sym = find_lat_sym(lv, cfg().control().spglib_tolerance());
 
         #pragma omp parallel for
         for (int i = 0; i < unit_cell().symmetry().size(); i++) {
@@ -854,7 +854,7 @@ Simulation_context::print_info(std::ostream& out__) const
                 break;
             }
         }
-        os << std::endl <<
+        os << std::endl
            << "iterative solver                   : " << cfg().iterative_solver().type() << std::endl
            << "number of steps                    : " << cfg().iterative_solver().num_steps() << std::endl
            << "subspace size                      : " << cfg().iterative_solver().subspace_size() << std::endl

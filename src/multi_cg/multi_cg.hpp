@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <iostream>
+#include <complex>
 
 namespace sirius {
 namespace cg {
@@ -63,7 +65,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         C.block_dot(R, rhos, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
-            residual_history[ids[i]].push_back(std::sqrt(rhos[i]));
+            residual_history[ids[i]].push_back(std::sqrt(std::abs(rhos[i])));
         }
 
         auto not_converged = std::vector<size_t>{};
@@ -74,7 +76,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         }
 
         num_unconverged = not_converged.size();
-        
+
         if (not_converged.empty()) {
             break;
         }
@@ -117,7 +119,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
-        X.block_axpy_scatter(alphas, U, ids);
+        X.block_axpy_scatter(alphas, U, ids, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;

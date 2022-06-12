@@ -639,11 +639,11 @@ void
 Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
                                                   mdarray<double, 2>& forceh__)
 {
-    mdarray<double_complex, 5> dn(kp__.hubbard_wave_functions_S().num_wf(), kp__.hubbard_wave_functions_S().num_wf(), 2,
-                                  3, ctx_.unit_cell().num_atoms());
+    auto r = ctx_.unit_cell().num_hubbard_wf();
+
+    sddk::mdarray<double_complex, 5> dn(r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms());
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
-    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     #pragma omp parallel for
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -668,32 +668,28 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 }
             }
 
-            /* We search all links involving the atom ia and then sum over them.
-             * Note that we do not consider the links [i, j] but only the links
-             * [i, j] */
             for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                 auto nl = ctx_.cfg().hubbard().nonlocal(i);
                 int ia1 = nl.atom_pair()[0];
                 int ja  = nl.atom_pair()[1];
-                if (ia1 == ia) {
-                    int il  = nl.l()[0];
-                    int jl  = nl.l()[1];
-                    int in  = nl.n()[0];
-                    int jn  = nl.n()[1];
-                    auto Tr = nl.T();
+                // consider the links that involve atom i
+                int il  = nl.l()[0];
+                int jl  = nl.l()[1];
+                int in  = nl.n()[0];
+                int jn  = nl.n()[1];
+                auto Tr = nl.T();
 
-                    auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp__.vk())));
-                    const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia1, in, il);
-                    const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
-                    const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
-                    const int offset2 = potential_.hubbard_potential().offset(at_lvl2);
-                    for (int is = 0; is < ctx_.num_spins(); is++) {
-                        for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
-                            for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                                auto result1_ = z1 * dn(offset2 + m2, offset1 + m1, is, dir, ia) *
-                                                potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
-                                d += std::real(result1_);
-                            }
+                auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp__.vk())));
+                const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia1, in, il);
+                const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
+                const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
+                const int offset2 = potential_.hubbard_potential().offset(at_lvl2);
+                for (int is = 0; is < ctx_.num_spins(); is++) {
+                    for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                        for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                            auto result1_ = z1 * std::conj(dn(offset2 + m2, offset1 + m1, is, dir, ia)) *
+                                potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
+                            d += std::real(result1_);
                         }
                     }
                 }
@@ -963,7 +959,7 @@ Force::print_info()
         print_forces(forces_ewald());
 
         if (ctx_.hubbard_correction()) {
-            std::printf("===== Ewald forces from hubbard correction =====\n");
+            std::printf("===== contribution from Hubbard correction =====\n");
             print_forces(forces_hubbard());
         }
     }

@@ -163,7 +163,6 @@ Density::initial_density()
     if (ctx_.use_symmetry()) {
         this->symmetrize();
     }
-    this->print_info(ctx_.out());
 }
 
 void

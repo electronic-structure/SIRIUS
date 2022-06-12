@@ -71,7 +71,7 @@ class hubbard_orbital_descriptor
     std::vector<double> initial_occupancy_;
 
     /// Index of the corresponding atomic wave-function.
-    int idx_wf_{-1};
+    int idx_wf_{-1}; //TODO: better name
 
     inline auto hubbard_F_coefficients() const
     {

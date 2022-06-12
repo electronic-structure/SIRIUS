@@ -454,7 +454,6 @@ end subroutine sirius_import_parameters
 !> @param [in] so_correction True if spin-orbit correnctio is enabled.
 !> @param [in] valence_rel Valence relativity treatment.
 !> @param [in] core_rel Core relativity treatment.
-!> @param [in] iter_solver_tol Tolerance of the iterative solver (deprecated).
 !> @param [in] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [in] iter_solver_type Type of iterative solver.
 !> @param [in] verbosity Verbosity level.
@@ -471,9 +470,9 @@ end subroutine sirius_import_parameters
 !> @param [out] error_code Error code.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
-&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,&
-&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
+&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
 &error_code)
 implicit none
 !
@@ -493,7 +492,6 @@ logical, optional, target, intent(in) :: use_symmetry
 logical, optional, target, intent(in) :: so_correction
 character(*), optional, target, intent(in) :: valence_rel
 character(*), optional, target, intent(in) :: core_rel
-real(8), optional, target, intent(in) :: iter_solver_tol
 real(8), optional, target, intent(in) :: iter_solver_tol_empty
 character(*), optional, target, intent(in) :: iter_solver_type
 integer, optional, target, intent(in) :: verbosity
@@ -530,7 +528,6 @@ type(C_PTR) :: valence_rel_ptr
 character(C_CHAR), target, allocatable :: valence_rel_c_type(:)
 type(C_PTR) :: core_rel_ptr
 character(C_CHAR), target, allocatable :: core_rel_c_type(:)
-type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
 type(C_PTR) :: iter_solver_type_ptr
 character(C_CHAR), target, allocatable :: iter_solver_type_c_type(:)
@@ -555,9 +552,9 @@ type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
-&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,&
-&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
+&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
 &error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
@@ -577,7 +574,6 @@ type(C_PTR), value :: use_symmetry
 type(C_PTR), value :: so_correction
 type(C_PTR), value :: valence_rel
 type(C_PTR), value :: core_rel
-type(C_PTR), value :: iter_solver_tol
 type(C_PTR), value :: iter_solver_tol_empty
 type(C_PTR), value :: iter_solver_type
 type(C_PTR), value :: verbosity
@@ -664,10 +660,6 @@ allocate(core_rel_c_type(len(core_rel)+1))
 core_rel_c_type = string_f2c(core_rel)
 core_rel_ptr = C_LOC(core_rel_c_type)
 endif
-iter_solver_tol_ptr = C_NULL_PTR
-if (present(iter_solver_tol)) then
-iter_solver_tol_ptr = C_LOC(iter_solver_tol)
-endif
 iter_solver_tol_empty_ptr = C_NULL_PTR
 if (present(iter_solver_tol_empty)) then
 iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
@@ -737,10 +729,10 @@ endif
 call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
-&core_rel_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
-&verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,&
-&hubbard_orbitals_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,&
-&spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
+&core_rel_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,&
+&hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_orbitals_ptr,&
+&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
+&electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -1689,18 +1681,22 @@ end subroutine sirius_initialize_kset
 !> @param [in] gs_handler Handler of the ground state.
 !> @param [in] density_tol Tolerance on RMS in density.
 !> @param [in] energy_tol Tolerance in total energy difference.
+!> @param [in] iter_solver_tol Initial tolerance of the iterative solver.
+!> @param [in] initial_guess Boolean variable indicating if we want to start from the initial guess or from previous state.
 !> @param [in] max_niter Maximum number of SCF iterations.
 !> @param [in] save_state Boolean variable indicating if we want to save the ground state.
 !> @param [out] converged Boolean variable indicating if the calculation has converged
 !> @param [out] niter Actual number of SCF iterations.
 !> @param [out] error_code Error code.
-subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,max_niter,&
-&save_state,converged,niter,error_code)
+subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,iter_solver_tol,&
+&initial_guess,max_niter,save_state,converged,niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 real(8), optional, target, intent(in) :: density_tol
 real(8), optional, target, intent(in) :: energy_tol
+real(8), optional, target, intent(in) :: iter_solver_tol
+logical, optional, target, intent(in) :: initial_guess
 integer, optional, target, intent(in) :: max_niter
 logical, optional, target, intent(in) :: save_state
 logical, optional, target, intent(out) :: converged
@@ -1710,6 +1706,9 @@ integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: density_tol_ptr
 type(C_PTR) :: energy_tol_ptr
+type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: initial_guess_ptr
+logical(C_BOOL), target :: initial_guess_c_type
 type(C_PTR) :: max_niter_ptr
 type(C_PTR) :: save_state_ptr
 logical(C_BOOL), target :: save_state_c_type
@@ -1719,13 +1718,15 @@ type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,max_niter,&
-&save_state,converged,niter,error_code)&
+subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,iter_solver_tol,&
+&initial_guess,max_niter,save_state,converged,niter,error_code)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: density_tol
 type(C_PTR), value :: energy_tol
+type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: initial_guess
 type(C_PTR), value :: max_niter
 type(C_PTR), value :: save_state
 type(C_PTR), value :: converged
@@ -1743,6 +1744,15 @@ endif
 energy_tol_ptr = C_NULL_PTR
 if (present(energy_tol)) then
 energy_tol_ptr = C_LOC(energy_tol)
+endif
+iter_solver_tol_ptr = C_NULL_PTR
+if (present(iter_solver_tol)) then
+iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+endif
+initial_guess_ptr = C_NULL_PTR
+if (present(initial_guess)) then
+initial_guess_c_type = initial_guess
+initial_guess_ptr = C_LOC(initial_guess_c_type)
 endif
 max_niter_ptr = C_NULL_PTR
 if (present(max_niter)) then
@@ -1766,7 +1776,10 @@ if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
-&max_niter_ptr,save_state_ptr,converged_ptr,niter_ptr,error_code_ptr)
+&iter_solver_tol_ptr,initial_guess_ptr,max_niter_ptr,save_state_ptr,converged_ptr,&
+&niter_ptr,error_code_ptr)
+if (present(initial_guess)) then
+endif
 if (present(save_state)) then
 endif
 if (present(converged)) then
@@ -5660,7 +5673,7 @@ end subroutine sirius_add_hubbard_atom_pair
 
 !
 !> @brief Interface to linear solver.
-!> @param [in] handler DFT ground staate handler.
+!> @param [in] handler DFT ground state handler.
 !> @param [in] vk K-point in lattice coordinates
 !> @param [in] vkq K+q-point in lattice coordinates
 !> @param [in] num_gvec_k_loc Local number of G-vectors for k-point
@@ -5668,12 +5681,15 @@ end subroutine sirius_add_hubbard_atom_pair
 !> @param [in] num_gvec_kq_loc Local number of G-vectors for k+q-point
 !> @param [in] gvec_kq_loc Local list of G-vectors for k+q-point.
 !> @param [inout] dpsi Left-hand side of the linear equation.
-!> @param [inout] dvpsi Right-hand side of the linear equation.
-!> @param [in] ld Leading dimension of dpsi and dvpsi.
+!> @param [in] psi Unperturbed eigenvectors.
+!> @param [in] eigvals Unperturbed eigenvalues.
+!> @param [inout] dvpsi Right-hand side of the linear equation (dV * psi)
+!> @param [in] ld Leading dimension of dpsi, psi, dvpsi.
 !> @param [in] num_spin_comp Number of spin components.
+!> @param [in] alpha_pv Constant for the projector.
 !> @param [out] error_code Error code
 subroutine sirius_linear_solver(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
-&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)
+&gvec_kq_loc,dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
@@ -5683,10 +5699,13 @@ integer, target, intent(in) :: num_gvec_k_loc
 integer, target, dimension(3, num_gvec_k_loc), intent(in) :: gvec_k_loc
 integer, target, intent(in) :: num_gvec_kq_loc
 integer, target, dimension(3, num_gvec_kq_loc), intent(in) :: gvec_kq_loc
-complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dpsi
-complex(8), target, dimension(ld, num_spin_comp, *), intent(inout) :: dvpsi
+complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dpsi
+complex(8), target, dimension(ld, num_spin_comp), intent(in) :: psi
+real(8), target, dimension(*), intent(in) :: eigvals
+complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dvpsi
 integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_spin_comp
+real(8), target, intent(in) :: alpha_pv
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5697,14 +5716,17 @@ type(C_PTR) :: gvec_k_loc_ptr
 type(C_PTR) :: num_gvec_kq_loc_ptr
 type(C_PTR) :: gvec_kq_loc_ptr
 type(C_PTR) :: dpsi_ptr
+type(C_PTR) :: psi_ptr
+type(C_PTR) :: eigvals_ptr
 type(C_PTR) :: dvpsi_ptr
 type(C_PTR) :: ld_ptr
 type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: alpha_pv_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(handler,vk,vkq,num_gvec_k_loc,gvec_k_loc,num_gvec_kq_loc,&
-&gvec_kq_loc,dpsi,dvpsi,ld,num_spin_comp,error_code)&
+&gvec_kq_loc,dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5715,9 +5737,12 @@ type(C_PTR), value :: gvec_k_loc
 type(C_PTR), value :: num_gvec_kq_loc
 type(C_PTR), value :: gvec_kq_loc
 type(C_PTR), value :: dpsi
+type(C_PTR), value :: psi
+type(C_PTR), value :: eigvals
 type(C_PTR), value :: dvpsi
 type(C_PTR), value :: ld
 type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: alpha_pv
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -5738,19 +5763,25 @@ gvec_kq_loc_ptr = C_NULL_PTR
 gvec_kq_loc_ptr = C_LOC(gvec_kq_loc)
 dpsi_ptr = C_NULL_PTR
 dpsi_ptr = C_LOC(dpsi)
+psi_ptr = C_NULL_PTR
+psi_ptr = C_LOC(psi)
+eigvals_ptr = C_NULL_PTR
+eigvals_ptr = C_LOC(eigvals)
 dvpsi_ptr = C_NULL_PTR
 dvpsi_ptr = C_LOC(dvpsi)
 ld_ptr = C_NULL_PTR
 ld_ptr = C_LOC(ld)
 num_spin_comp_ptr = C_NULL_PTR
 num_spin_comp_ptr = C_LOC(num_spin_comp)
+alpha_pv_ptr = C_NULL_PTR
+alpha_pv_ptr = C_LOC(alpha_pv)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_linear_solver_aux(handler_ptr,vk_ptr,vkq_ptr,num_gvec_k_loc_ptr,gvec_k_loc_ptr,&
-&num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,dpsi_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,&
-&error_code_ptr)
+&num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,&
+&num_spin_comp_ptr,alpha_pv_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !

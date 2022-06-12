@@ -112,7 +112,7 @@ compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_b
 
 /// Apply preconditioner to the residuals.
 template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
-static void
+void
 apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<T>& res__,
                      sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
                      sddk::mdarray<T, 1>& eval__)
@@ -354,6 +354,11 @@ residuals<double_complex, double_complex>(Simulation_context& ctx__, sddk::memor
                           sddk::Wave_functions<double>& res__, sddk::mdarray<double, 2> const& h_diag__,
                           sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
                           std::function<bool(int, int)> is_converged__);
+
+template void
+apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<double>& res__,
+                     sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
+                     sddk::mdarray<double, 1>& eval__);
 
 #if defined(USE_FP32)
 template residual_result
