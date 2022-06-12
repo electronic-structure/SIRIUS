@@ -224,7 +224,7 @@ Density::initial_density_pseudo()
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
 
-        if (false) {
+        if (true) {
             /* weight function in the form exp(-alpha * r^2) for each atom;
              * Fourier components are computed here */
             auto gw = [&](double g) {
