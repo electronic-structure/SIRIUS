@@ -339,8 +339,6 @@ class Gvec
         , bare_gvec_(false)
         , count_(ngv_loc__)
     {
-        std::cout << "Trying external G-vector order" << std::endl;
-
         sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
 
         gvec_  = mdarray<int, 2>(3, count(), memory_t::host, "gvec_");
@@ -375,12 +373,19 @@ class Gvec
                 num_zcol_local_++;
             }
         }
-        std::cout << "num_zcol_local=" << num_zcol_local_ << std::endl;
 
         init_gvec_cart_local();
 
-        throw std::runtime_error("stop");
+        gvec_distr_ = block_data_descriptor(comm().size());
+        comm().allgather(&count_, gvec_distr_.counts.data(), 1, comm_.rank());
+        gvec_distr_.calc_offsets();
 
+        zcol_distr_ = block_data_descriptor(comm().size());
+        comm().allgather(&num_zcol_local_, zcol_distr_.counts.data(), 1, comm_.rank());
+        zcol_distr_.calc_offsets();
+
+        num_gvec_ = count_;
+        comm().allreduce(&num_gvec_, 1);
     }
 
     /// Constructor for empty set of G-vectors.
@@ -449,14 +454,14 @@ class Gvec
     /// Offset in the global index of z-columns for a given rank.
     inline int zcol_offset(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.offsets[rank__];
     }
 
     /// Number of G-vectors for a fine-grained distribution.
     inline int gvec_count(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.counts[rank__];
     }
 
@@ -470,7 +475,7 @@ class Gvec
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
     inline int gvec_offset(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.offsets[rank__];
     }
 
@@ -749,22 +754,6 @@ class Gvec_partition
         return zcol_distr_fft_.counts[fft_comm().rank()];
     }
 
-
-    //template <index_domain_t index_domain>
-    //inline int idx_zcol(int idx__) const
-    //{
-    //    switch (index_domain) {
-    //        case index_domain_t::local: {
-    //            return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
-    //            break;
-    //        }
-    //        case index_domain_t::global: {
-    //            return idx_zcol_(idx__);
-    //            break;
-    //        }
-    //    }
-    //}
-
     inline int idx_gvec(int idx_local__) const
     {
         return idx_gvec_(idx_local__);
@@ -774,11 +763,6 @@ class Gvec_partition
     {
         return gvec_fft_slab_;
     }
-
-    //inline int zcol_offs(int icol__) const
-    //{
-    //    return zcol_offs_(icol__);
-    //}
 
     inline Gvec const& gvec() const
     {
