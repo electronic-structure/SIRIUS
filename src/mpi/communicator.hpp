@@ -734,77 +734,6 @@ class Communicator
         CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(), recvbuf__,
                                  recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm()));
     }
-
-    //==alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const
-    //=={
-    //==    alltoall_descriptor a2a;
-    //==    a2a.sendcounts = std::vector<int>(size(), 0);
-    //==    a2a.sdispls    = std::vector<int>(size(), -1);
-    //==    a2a.recvcounts = std::vector<int>(size(), 0);
-    //==    a2a.rdispls    = std::vector<int>(size(), -1);
-
-    //==    std::vector<int> offs_in(size(), 0);
-    //==    std::vector<int> offs_out(size(), 0);
-
-    //==    for (int i = 1; i < size(); i++)
-    //==    {
-    //==        offs_in[i] = offs_in[i - 1] + local_sizes_in[i - 1];
-    //==        offs_out[i] = offs_out[i - 1] + local_sizes_out[i - 1];
-    //==    }
-
-    //==    /* loop over sending ranks */
-    //==    for (int sr = 0; sr < size(); sr++)
-    //==    {
-    //==        if (!local_sizes_in[sr]) continue;
-
-    //==        /* beginning of index */
-    //==        int i0 = offs_in[sr];
-    //==        /* end of index */
-    //==        int i1 = offs_in[sr] + local_sizes_in[sr] - 1;
-
-    //==        /* loop over receiving ranks */
-    //==        for (int rr = 0; rr < size(); rr++)
-    //==        {
-    //==            if (!local_sizes_out[rr]) continue;
-
-    //==            int j0 = offs_out[rr];
-    //==            int j1 = offs_out[rr] + local_sizes_out[rr] - 1;
-
-    //==            /* rank rr receives nothing from rank sr*/
-    //==            if (j1 < i0 || i1 < j0) continue;
-
-    //==            int s_ofs = std::max(j0 - i0, 0);
-    //==            int r_ofs = std::max(i0 - j0, 0);
-    //==            int sz = std::min(i1, j1) - std::max(i0, j0) + 1;
-    //==
-    //==            if (rank() == sr)
-    //==            {
-    //==                a2a.sendcounts[rr] = sz;
-    //==                a2a.sdispls[rr] = s_ofs;
-    //==            }
-    //==            if (rank() == rr)
-    //==            {
-    //==                a2a.recvcounts[sr] = sz;
-    //==                a2a.rdispls[sr] = r_ofs;
-    //==            }
-    //==        }
-    //==    }
-
-    //==    int n1 = 0;
-    //==    int n2 = 0;
-    //==    for (int i = 0; i < size(); i++)
-    //==    {
-    //==        n1 += a2a.sendcounts[i];
-    //==        n2 += a2a.recvcounts[i];
-    //==    }
-    //==    if (n1 != local_sizes_in[rank()] || n2 != local_sizes_out[rank()])
-    //==    {
-    //==        std::printf("wrong sizes");
-    //==        MPI_Abort(MPI_COMM_WORLD, -1);
-    //==    }
-
-    //==    return a2a;
-    //==}
 };
 
 /// Get number of ranks per node.
@@ -813,14 +742,15 @@ int num_ranks_per_node();
 int get_device_id(int num_devices__);
 
 /// Parallel standard output.
-/** Proveides an ordered standard output from multiple MPI ranks. */
-class pstdout
+/** Proveides an ordered standard output from multiple MPI ranks.
+ *  pstdout pout(comm);
+ *  pout << "Hello from rank " << comm.rank() << std::end;
+ *  // print from root rank (id=0) and flush the internal buffer
+ *  std::cout << pout.flush(0);
+ */
+class pstdout : public std::stringstream
 {
   private:
-    std::vector<char> buffer_;
-
-    int count_{0};
-
     Communicator const& comm_;
 
   public:
@@ -829,15 +759,48 @@ class pstdout
     {
     }
 
-    ~pstdout()
+    std::stringstream get() const
     {
-        flush();
+        std::stringstream s;
+
+        std::vector<int> counts(comm_.size());
+        int count = this->str().length();
+        comm_.allgather(&count, counts.data(), 1, comm_.rank());
+
+        int offset{0};
+        for (int i = 0; i < comm_.rank(); i++) {
+            offset += counts[i];
+        }
+
+        int sz = count;
+        /* total size of the output buffer */
+        comm_.allreduce(&sz, 1);
+
+        if (sz != 0) {
+            std::vector<char> outb(sz);
+            comm_.allgather(this->str().c_str(), &outb[0], count, offset);
+            s.write(outb.data(), sz);
+        }
+        return s;
     }
 
-    void printf(const char* fmt, ...);
-
-    void flush();
+    std::string flush(int root__)
+    {
+        auto s = this->get().str();
+        this->str("");
+        if (comm_.rank() == root__) {
+            return s;
+        } else {
+            return std::string("");
+        }
+    }
 };
+
+inline std::ostream& operator<<(std::ostream& out__, pstdout const& in__)
+{
+    out__ << in__.get().str();
+    return out__;
+}
 
 } // namespace sddk
 

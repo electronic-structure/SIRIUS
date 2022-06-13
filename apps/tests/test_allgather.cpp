@@ -15,33 +15,36 @@ void test_allgather()
 
     {
         sddk::pstdout pout(Communicator::world());
-        if (Communicator::world().rank() == 0) pout.printf("before\n");
-        pout.printf("rank : %i array : ", Communicator::world().rank());
-        for (int i = 0; i < N; i++) {
-            pout.printf("%f ", vec[i]);
+        if (Communicator::world().rank() == 0) {
+            pout << "before" << std::endl;
         }
-        pout.printf("\n");
-        pout.flush();
+        pout << "rank : " << Communicator::world().rank() << " array : ";
+        for (int i = 0; i < N; i++) {
+            pout << vec[i];
+        }
+        pout << std::endl;
+        std::cout << pout.flush(0);
 
         Communicator::world().allgather(&vec[0], spl.local_size(), spl.global_offset());
- 
-        if (Communicator::world().rank() == 0) pout.printf("after\n");
-        pout.printf("rank : %i array : ", Communicator::world().rank());
-        for (int i = 0; i < N; i++) {
-            pout.printf("%f ", vec[i]);
+
+        if (Communicator::world().rank() == 0) {
+            pout << "after" << std::endl;
         }
-        pout.printf("\n");
-        pout.flush();
+        pout << "rank : " << Communicator::world().rank() << " array : ";
+        for (int i = 0; i < N; i++) {
+            pout << vec[i];
+        }
+        pout << std::endl;
+        std::cout << pout.flush(0);
     }
     Communicator::world().barrier();
 }
 
 int main(int argn, char** argv)
-{   
+{
     sirius::initialize(true);
 
     test_allgather();
-    
-    sirius::finalize();
 
+    sirius::finalize();
 }

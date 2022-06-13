@@ -536,15 +536,15 @@ void K_point_set::print_info()
         pstdout pout(comm());
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
-            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1],
-                        kpoints_[ik]->vk()[2], kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
+            pout << ik << " " << kpoints_[ik]->vk()[0] << " " << kpoints_[ik]->vk()[1] << " "
+                 << kpoints_[ik]->vk()[2] << " " << kpoints_[ik]->weight() << " " << kpoints_[ik]->num_gkvec();
 
             if (ctx_.full_potential()) {
-                pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+                pout << "            " << kpoints_[ik]->gklo_basis_size();
             }
-
-            pout.printf("\n");
+            pout << std::endl;
         }
+        std::cout << pout.flush(0);
     }
 }
 

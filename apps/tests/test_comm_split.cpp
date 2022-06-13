@@ -15,8 +15,10 @@ void test_comm_split(int comm_size)
     Communicator c4(c2);
 
     pstdout pout(Communicator::world());
-    
-    pout.printf("global rank: %i, c1.rank: %i, c2.rank: %i\n", Communicator::world().rank(), c1.rank(), c2.rank());
+
+    pout << "global rank: " << Communicator::world().rank() << ", c1.rank: " << c1.rank()
+         << ", c2.rank: " << c2.rank() << std::endl;
+    std::cout << pout.flush(0);
 }
 
 int main(int argn, char** argv)

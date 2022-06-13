@@ -677,7 +677,7 @@ void generate_atom_file(Free_atom&         a,
     atom_class.generate_radial_functions(relativity_t::none);
     pstdout pout(Communicator::self());
     atom_class.write_enu(pout);
-    pout.flush();
+    std::cout << pout.flush(0);
 
     auto lo_to_str = [](local_orbital_descriptor lod) {
         std::stringstream s;
