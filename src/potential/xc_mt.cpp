@@ -274,7 +274,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
 }
 
 void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
-        int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__)
+           int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__, std::string label)
 {
     /* zero the fields */
     exc__->zero();
@@ -302,7 +302,7 @@ void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_
 
     if (rhomin < 0.0) {
         std::stringstream s;
-        s << "[xc_mt] negative charge density: " << rhomin << std::endl
+        s << "[xc_mt] negative charge density, in " << label << ": " << rhomin << std::endl
           << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax";
         WARNING(s);
     }
@@ -330,7 +330,7 @@ void Potential::xc_mt(Density const& density__)
             rho[j + 1] = &density__.magnetization(j).f_mt(ialoc);
             vxc[j + 1] = &effective_magnetic_field(j).f_mt(ialoc);
         }
-        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->f_mt(ialoc));
+        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->f_mt(ialoc), "full potential");
 
         /* z, x, y order */
         std::array<int, 3> comp_map = {2, 0, 1};
