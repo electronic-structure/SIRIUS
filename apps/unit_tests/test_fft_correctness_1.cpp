@@ -33,7 +33,7 @@ int test_fft(cmd_args& args, device_t pu__)
 
     const auto fft_type = SPFFT_TRANS_C2C;
 
-    auto gv = gvp.get_gvec();
+    auto const& gv = gvp.gvec_array();
     spfft_transform_type<T> spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
@@ -58,9 +58,7 @@ int test_fft(cmd_args& args, device_t pu__)
         f.zero();
         f[ig] = 1.0;
         /* load local set of PW coefficients */
-        for (int igloc = 0; igloc < gvp.gvec_count_fft(); igloc++) {
-            ftmp[igloc] = f[gvp.idx_gvec(igloc)];
-        }
+        gvp.scatter_pw_global(&f[0], &ftmp[0]);
         spfft.backward(reinterpret_cast<T const*>(&ftmp[0]), SPFFT_PU_HOST);
 
         auto ptr = reinterpret_cast<std::complex<T>*>(spfft.space_domain_data(SPFFT_PU_HOST));
