@@ -351,11 +351,9 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
     gkvec_partition_ = std::make_unique<Gvec_partition>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
-    gkvec_offset_ = gkvec().gvec_offset(comm().rank());
-
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
     const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
-    auto gv             = gkvec_partition_->get_gvec();
+    auto const& gv      = gkvec_partition_->gvec_array();
     /* create transformation */
     spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
@@ -969,9 +967,9 @@ K_point<T>::load(HDF5_tree h5in, int id)
 
 template <typename T>
 void
-K_point<T>::generate_atomic_wave_functions(
-    std::vector<int> atoms__, std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-    Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
+K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
+        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
+        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
@@ -1040,8 +1038,8 @@ K_point<T>::generate_atomic_wave_functions(
 
     for (int ia : atoms__) {
 
-        T phase                 = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
-        std::complex<T> phase_k = std::exp(std::complex<T>(0.0, phase));
+        T phase      = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
+        auto phase_k = std::exp(std::complex<T>(0.0, phase));
 
         /* quickly compute phase factors without calling exp() function */
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
@@ -1049,7 +1047,7 @@ K_point<T>::generate_atomic_wave_functions(
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
             /* global index of G+k-vector */
             int igk = this->idxgk(igk_loc);
-            auto G  = gkvec().gvec<index_domain_t::global>(igk);
+            auto G  = gkvec().gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }

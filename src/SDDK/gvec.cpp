@@ -390,7 +390,7 @@ Gvec::init_gvec_cart_local()
     gvec_cart_  = mdarray<double, 2>(3, count(), memory_t::host, "gvec_cart_");
     gkvec_cart_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_cart_");
     if (bare_gvec_) {
-        gvec_len_   = mdarray<double, 1>(count(), memory_t::host, "gvec_len_");
+        gvec_len_ = mdarray<double, 1>(count(), memory_t::host, "gvec_len_");
     }
 
     for (int igloc = 0; igloc < count(); igloc++) {
@@ -626,7 +626,33 @@ void Gvec_partition::pile_gvec()
     }
     gvec_fft_slab_.calc_offsets();
 
-    assert(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
+    RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
+
+    gvec_array_       = mdarray<int, 2>(3, this->gvec_count_fft());
+    //gvec_cart_array_  = mdarray<double, 2>(3, this->gvec_count_fft());
+    //gkvec_array_      = mdarray<double, 2>(3, this->gvec_count_fft());
+    gkvec_cart_array_ = mdarray<double, 2>(3, this->gvec_count_fft());
+    for (int i = 0; i < comm_ortho_fft_.size(); i++) {
+        int r = rank_map_(fft_comm_.rank(), i);
+        /* get array of G-vectors of rank r */
+        auto gv = this->gvec_.gvec_local(r);
+        for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
+            for (int x : {0, 1, 2}) {
+                gvec_array_(x, gvec_fft_slab_.offsets[i] + ig) = gv(x, ig);
+            }
+        }
+    }
+    for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
+        auto G = vector3d<int>(&gvec_array_(0, ig));
+        //auto Gk = G + this->gvec_.vk();
+        //auto Gc = dot(this->gvec_.lattice_vectors(), G);
+        auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
+        for (int x : {0, 1, 2}) {
+            //gvec_cart_array_(x, ig) = Gc[x];
+            //gkvec_array_(x, ig) = Gk[x];
+            gkvec_cart_array_(x, ig) = Gkc[x];
+        }
+    }
 }
 
 Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__)
@@ -650,44 +676,7 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 
     build_fft_distr();
 
-    //idx_zcol_ = mdarray<int, 1>(gvec().num_zcol());
-    //int icol{0};
-    //for (int rank = 0; rank < fft_comm().size(); rank++) {
-    //    for (int i = 0; i < comm_ortho_fft().size(); i++) {
-    //        for (int k = 0; k < gvec_.zcol_count(rank_map_(rank, i)); k++) {
-    //            idx_zcol_(icol) = gvec_.zcol_offset(rank_map_(rank, i)) + k;
-    //            icol++;
-    //        }
-    //    }
-    //    assert(icol == zcol_distr_fft_.counts[rank] + zcol_distr_fft_.offsets[rank]);
-    //}
-    //assert(icol == gvec().num_zcol());
-
-    idx_gvec_ = mdarray<int, 1>(gvec_count_fft());
-    int ig{0};
-    for (int i = 0; i < comm_ortho_fft_.size(); i++) {
-        for (int k = 0; k < gvec_.gvec_count(rank_map_(fft_comm_.rank(), i)); k++) {
-            idx_gvec_[ig] = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
-            ig++;
-        }
-    }
-
-    //calc_offsets();
     pile_gvec();
-}
-
-mdarray<int, 2> Gvec_partition::get_gvec() const
-{
-    // TODO: adapt to external G-vectors; probalby change of logic is required
-    mdarray<int, 2> gv(3, gvec_count_fft());
-    for (int i = 0; i < gvec_count_fft(); i++) {
-        int ig = idx_gvec_[i];
-        auto G = gvec_.gvec<index_domain_t::global>(ig);
-        for (int x: {0, 1, 2}) {
-            gv(x, i) = G[x];
-        }
-    }
-    return gv;
 }
 
 Gvec_shells::Gvec_shells(Gvec const& gvec__)

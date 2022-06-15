@@ -379,6 +379,7 @@ class Gvec
         gvec_distr_ = block_data_descriptor(comm().size());
         comm().allgather(&count_, gvec_distr_.counts.data(), 1, comm_.rank());
         gvec_distr_.calc_offsets();
+        offset_ = gvec_distr_.offsets[comm().rank()];
 
         zcol_distr_ = block_data_descriptor(comm().size());
         comm().allgather(&num_zcol_local_, zcol_distr_.counts.data(), 1, comm_.rank());
@@ -667,7 +668,7 @@ class Gvec
 
     inline int gvec_base_mapping(int igloc_base__) const
     {
-        assert(gvec_base_ != nullptr);
+        RTE_ASSERT(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
     }
 
@@ -684,6 +685,26 @@ class Gvec
     inline int gvec_shell_idx_local(int igloc__) const
     {
         return gvec_shell_idx_local_[igloc__];
+    }
+
+    /// Return local list of G-vectors.
+    inline mdarray<int, 2> const& gvec_local() const
+    {
+        return gvec_;
+    }
+
+    /// Return local list of G-vectors for a given rank.
+    /** This function must be called by all MPI ranks of the G-vector communicator. */
+    inline mdarray<int, 2> gvec_local(int rank__) const
+    {
+        int ngv = count_;
+        this->comm().bcast(&ngv, 1, rank__);
+        mdarray<int, 2> result(3, ngv);
+        if (this->comm().rank() == rank__) {
+            copy(gvec_, result);
+        }
+        this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
+        return result;
     }
 };
 
@@ -715,8 +736,18 @@ class Gvec_partition
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
 
-    /// Global index of G-vector by local index inside fat-salb.
-    mdarray<int, 1> idx_gvec_;
+    /// Lattice coordinates of a local set of G-vectors.
+    /** These are also known as Miller indices */
+    mdarray<int, 2> gvec_array_;
+
+    /// Lattice coordinates of a local set of G+k-vectors.
+    //mdarray<double, 2> gkvec_array_;
+
+    /// Cartiesian coordinaes of a local set of G-vectors.
+    //mdarray<double, 2> gvec_cart_array_;
+
+    /// Cartesian coordinaes of a local set of G+k-vectors.
+    mdarray<double, 2> gkvec_cart_array_;
 
     void build_fft_distr();
 
@@ -754,11 +785,6 @@ class Gvec_partition
         return zcol_distr_fft_.counts[fft_comm().rank()];
     }
 
-    inline int idx_gvec(int idx_local__) const
-    {
-        return idx_gvec_(idx_local__);
-    }
-
     inline block_data_descriptor const& gvec_fft_slab() const
     {
         return gvec_fft_slab_;
@@ -769,10 +795,18 @@ class Gvec_partition
         return gvec_;
     }
 
-    mdarray<int, 2> get_gvec() const;
+    inline vector3d<double> gkvec_cart(int igloc__) const
+    {
+        return vector3d<double>(&gkvec_cart_array_(0, igloc__));
+    }
 
-    template <typename T>
-    void gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const
+    inline mdarray<int, 2> const& gvec_array() const
+    {
+        return gvec_array_;
+    }
+
+    template <typename T> // TODO: document
+    void gather_pw_fft(std::complex<T> const* f_pw_local__, std::complex<T>* f_pw_fft__) const
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
@@ -781,8 +815,8 @@ class Gvec_partition
 
     }
 
-    template <typename T>
-    void gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const
+    template <typename T> // TODO: document
+    void gather_pw_global(std::complex<T> const* f_pw_fft__, std::complex<T>* f_pw_global__) const
     {
         for (int ig = 0; ig < gvec().count(); ig++) {
             /* position inside fft buffer */
@@ -790,6 +824,18 @@ class Gvec_partition
             f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
         }
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
+    }
+
+    template<typename T>
+    void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
+    {
+        for (int i = 0; i < comm_ortho_fft_.size(); i++) {
+            /* offset in global index */
+            int offset = this->gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i));
+            for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
+                f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
+            }
+        }
     }
 };
 

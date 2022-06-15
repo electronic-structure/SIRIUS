@@ -191,10 +191,8 @@ void Local_operator<T>::prepare_k(Gvec_partition const& gkvec_p__)
     }
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
-        /* global index of G-vector */
-        int ig = gkvec_p__.idx_gvec(ig_loc);
         /* get G+k in Cartesian coordinates */
-        auto gv          = gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig);
+        auto gv          = gkvec_p__.gkvec_cart(ig_loc);
         pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
     }
 
@@ -762,11 +760,9 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             for (int x : {0, 1, 2}) {
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
-                    /* global index of G-vector */
-                    int ig = gkvec_p__.idx_gvec(igloc);
+                    auto gvc = gkvec_p__.gkvec_cart(igloc);
                     /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
-                    buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) *
-                                    static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
+                    buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gvc[x];
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
                 spfftk__.backward(reinterpret_cast<T const*>(&buf_pw[0]), spfft_mem);
@@ -791,9 +787,8 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                 spfftk__.forward(spfft_mem, reinterpret_cast<T*>(&buf_pw[0]), SPFFT_FULL_SCALING);
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
-                    int ig = gkvec_p__.idx_gvec(igloc);
-                    hphi__->pw_coeffs(0).extra()(igloc, j) +=
-                        static_cast<T>(0.5) * buf_pw[igloc] * static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
+                    auto gvc = gkvec_p__.gkvec_cart(igloc);
+                    hphi__->pw_coeffs(0).extra()(igloc, j) += static_cast<T>(0.5) * buf_pw[igloc] * gvc[x];
                 }
             }
         }

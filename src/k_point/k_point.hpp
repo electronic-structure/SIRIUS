@@ -39,7 +39,7 @@ class K_point_base // TODO: good name? maybe k_point?
     std::array<double, 3> vk_;
 
     /// List of G-vectors with |G+k| < cutoff.
-    std::unique_ptr<Gvec> gkvec_;
+    std::shared_ptr<Gvec> gkvec_;
 
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
@@ -49,7 +49,7 @@ class K_point_base // TODO: good name? maybe k_point?
     {
         /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
          * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-        gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, reciprocal_lattice_vectors__, gk_cutoff__, comm_, gamma__));
+        gkvec_ = std::make_shared<Gvec>(vk_, reciprocal_lattice_vectors__, gk_cutoff__, comm_, gamma__);
     }
 
   public:
@@ -67,6 +67,13 @@ class K_point_base // TODO: good name? maybe k_point?
         , comm_(comm__)
     {
         init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
+    }
+
+    K_point_base(std::shared_ptr<Gvec> gkvec__)
+        : vk_(gkvec__->vk())
+        , gkvec_(gkvec__)
+        , comm_(gkvec__->comm())
+    {
     }
 
     inline Gvec const& gkvec() const
@@ -91,7 +98,7 @@ class K_point_base // TODO: good name? maybe k_point?
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors"
  *
- *   \tparam T  Precision of the wave-functions (float or double).
+ *  \tparam T  Precision of the wave-functions (float or double).
  */
 template <typename T>
 class K_point : public K_point_base
@@ -102,9 +109,6 @@ class K_point : public K_point_base
 
     /// Unit cell object.
     Unit_cell const& unit_cell_;
-
-    /// K-point id.
-    int id_{-1};
 
     /// Weight of k-point.
     double weight_{1.0};
@@ -188,9 +192,6 @@ class K_point : public K_point_base
     /// Number of G+k vectors distributed along columns of MPI grid
     int num_gkvec_col_{0};
 
-    /// Offset of the local fraction of G+k vectors in the global index.
-    int gkvec_offset_{0};
-
     /// Basis descriptors distributed between rows of the 2D MPI grid.
     /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
     std::vector<lo_basis_descriptor> lo_basis_descriptors_row_;
@@ -262,36 +263,14 @@ class K_point : public K_point_base
 
     friend class K_point_set;
 
-  public:
-    /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
-        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.gk_cutoff(),
-                       ctx__.unit_cell().reciprocal_lattice_vectors(), ctx__.gamma_point(), ctx__.comm_band())
-        , ctx_(ctx__)
-        , unit_cell_(ctx_.unit_cell())
-        , id_(id__)
-        , weight_(weight__)
-        , comm_row_(ctx_.blacs_grid().comm_row())
-        , comm_col_(ctx_.blacs_grid().comm_col())
+    void init0()
     {
-        PROFILE("sirius::K_point::K_point");
-
-        for (int x = 0; x < 3; x++) {
-            vk_[x] = vk__[x];
-        }
-
         band_occupancies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
                                                      memory_t::host, "band_occupancies");
         band_occupancies_.zero();
         band_energies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
                                                   memory_t::host, "band_energies");
         band_energies_.zero();
-
-        num_ranks_row_ = comm_row_.size();
-        num_ranks_col_ = comm_col_.size();
-
-        rank_row_ = comm_row_.rank();
-        rank_col_ = comm_col_.rank();
 
         ispn_map_[0] = 0;
         ispn_map_[1] = -1;
@@ -300,6 +279,40 @@ class K_point : public K_point_base
         } else if (ctx_.num_mag_dims() == 3) {
             ispn_map_[1] = 0;
         }
+    }
+
+  public:
+    /// Constructor
+    K_point(Simulation_context& ctx__, double const* vk__, double weight__)
+        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.gk_cutoff(),
+                       ctx__.unit_cell().reciprocal_lattice_vectors(), ctx__.gamma_point(), ctx__.comm_band())
+        , ctx_(ctx__)
+        , unit_cell_(ctx_.unit_cell())
+        , weight_(weight__)
+        , rank_col_(ctx_.blacs_grid().comm_col().rank())
+        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+        , rank_row_(ctx_.blacs_grid().comm_row().rank())
+        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+        , comm_row_(ctx_.blacs_grid().comm_row())
+        , comm_col_(ctx_.blacs_grid().comm_col())
+    {
+        this->init0();
+    }
+
+    /// Constructor
+    K_point(Simulation_context& ctx__, std::shared_ptr<Gvec> gkvec__, double weight__)
+        : K_point_base(gkvec__)
+        , ctx_(ctx__)
+        , unit_cell_(ctx_.unit_cell())
+        , weight_(weight__)
+        , rank_col_(ctx_.blacs_grid().comm_col().rank())
+        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+        , rank_row_(ctx_.blacs_grid().comm_row().rank())
+        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+        , comm_row_(ctx_.blacs_grid().comm_row())
+        , comm_col_(ctx_.blacs_grid().comm_col())
+    {
+        this->init0();
     }
 
     /// Initialize the k-point related arrays and data.
@@ -568,10 +581,10 @@ class K_point : public K_point_base
         return num_gkvec() + unit_cell_.mt_lo_basis_size();
     }
 
-    /// Return global index of G+k vector.
+    /// Return global index of G+k vector. // TODO: consider removal
     inline int idxgk(int igkloc__) const
     {
-        return gkvec_offset_ + igkloc__;
+        return gkvec_->offset() + igkloc__;
     }
 
     /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.

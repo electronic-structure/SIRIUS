@@ -87,7 +87,7 @@ class Beta_projectors_base
     Gvec const& gkvec_;
 
     /// Mapping between local and global G+k vector index.
-    std::vector<int> const& igk_;
+    //std::vector<int> const& igk_;
 
     /// Coordinates of G+k vectors used by GPU kernel.
     mdarray<double, 2> gkvec_coord_;
@@ -205,7 +205,8 @@ class Beta_projectors_base
 
     inline int num_gkvec_loc() const
     {
-        return static_cast<int>(igk_.size());
+        //return static_cast<int>(igk_.size());
+        return gkvec_.count();
     }
 
     inline int num_comp() const

@@ -6050,119 +6050,44 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
 
-            Gvec gvk(vk, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
-            Gvec gvkq(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
-
-            Gvec gvk1(vk, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_k_loc__, gvec_k_loc__, sctx.comm_k(), false);
-
-            int num_gvec_k_loc = *num_gvec_k_loc__;
-            int num_gvec_k = num_gvec_k_loc;
-            sctx.comm_k().allreduce(&num_gvec_k, 1);
-
-            if (num_gvec_k != gvk.num_gvec()) {
-                RTE_THROW("wrong number of G+k vectors");
-            }
-
-            sddk::mdarray<int, 2> gvec_k_loc(const_cast<int*>(gvec_k_loc__), 3, num_gvec_k_loc);
-
-            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
-                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k_loc(0, ig)));
-                if (i == -1) {
-                    RTE_THROW("index of G-vector is not found");
-                }
-            }
-
-            int num_gvec_kq_loc = *num_gvec_kq_loc__;
-            int num_gvec_kq = num_gvec_kq_loc;
-            sctx.comm_k().allreduce(&num_gvec_kq, 1);
-
-            if (num_gvec_kq != gvkq.num_gvec()) {
-                RTE_THROW("wrong number of G+k vectors for k");
-            }
-
-            sddk::mdarray<int, 2> gvec_kq_loc(const_cast<int*>(gvec_kq_loc__), 3, num_gvec_kq_loc);
-
-            for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq_loc(0, ig)));
-                if (i == -1) {
-                    RTE_THROW("index of G-vector is not found for k+q");
-                }
-            }
+            auto gvk1 = std::make_shared<Gvec>(vk, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_k_loc__,
+                    gvec_k_loc__, sctx.comm_k(), false);
+            auto gvkq1 = std::make_shared<Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__,
+                    gvec_kq_loc__, sctx.comm_k(), false);
 
             sirius::Hamiltonian0<double> H0(gs.potential(), true);
 
-            sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), vk__, 1.0, 0);
+            sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq1, 1.0);
+
             kp.initialize();
 
             auto Hk = H0(kp);
 
-            /* collect local G+k vector sizes across all ranks */
-            block_data_descriptor gk_in_distr(gvk.comm().size());
-            gk_in_distr.counts[gvk.comm().rank()] = num_gvec_k_loc;
-            gvk.comm().allgather(gk_in_distr.counts.data(), 1, gvk.comm().rank());
-            gk_in_distr.calc_offsets();
-
-            /* offset in the incoming G-vector index */
-            int offset = gk_in_distr.offsets[gvk.comm().rank()];
-
-            sddk::mdarray<int, 2> gvec_k(3, gvk.num_gvec());
-            for (int ig = 0; ig < num_gvec_k_loc; ig++) {
-                for (int x: {0, 1, 2}) {
-                    gvec_k(x, offset + ig) = gvec_k_loc(x, ig);
-                }
-            }
-            gvk.comm().allgather(&gvec_k(0, 0), 3 * num_gvec_k_loc, 3 * offset);
-
-            std::vector<int> igmap(num_gvec_k);
-            for (int ig = 0; ig < num_gvec_k; ig++) {
-                auto i = gvk.index_by_gvec(vector3d<int>(&gvec_k(0, ig)));
-                if (i == -1) {
-                    RTE_THROW("index of G-vector is not found");
-                }
-                igmap[i] = ig;
-            }
-
-            // Copy eigenvalues (factor 2 for rydberg/hartree)
+            /* copy eigenvalues (factor 2 for rydberg/hartree) */
             std::vector<double> eigvals_vec(eigvals, eigvals + sctx.num_bands());
-            for (auto &val : eigvals_vec)
+            for (auto &val : eigvals_vec) {
                 val /= 2;
+            }
 
             // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
-            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
             sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, sctx.num_bands());
+            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
             sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
 
             auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-
-            std::vector<std::complex<double>> tmp_psi(num_gvec_k);
-            std::vector<std::complex<double>> tmp_dpsi(num_gvec_k);
-            std::vector<std::complex<double>> tmp_dvpsi(num_gvec_k);
-
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
-                    /* gather the full wave-function in the order of QE */
-                    for (int ig = 0; ig < num_gvec_k_loc; ig++) {
-                        tmp_psi[offset + ig] = psi(ig, ispn, i);
-                        tmp_dpsi[offset + ig] = dpsi(ig, ispn, i);
-                        tmp_dvpsi[offset + ig] = dvpsi(ig, ispn, i);
-                    }
-                    gvk.comm().allgather(tmp_psi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
-                    gvk.comm().allgather(tmp_dpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
-                    gvk.comm().allgather(tmp_dvpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
-
-                    /* copy local part */
-                    for (int ig = 0; ig < gvk.count(); ig++) {
-                        psi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_psi[igmap[ig + gvk.offset()]];
-                        dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dpsi[igmap[ig + gvk.offset()]];
-                        // divide by two to account for hartree / rydberg, this is
-                        // dv * psi and dv should be 2x smaller in sirius.
-                        dvpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dvpsi[igmap[ig + gvk.offset()]] / 2.0;
+                    for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+                         psi_wf->pw_coeffs(ispn).prime(ig, i) = psi(ig, ispn, i);
+                         dpsi_wf->pw_coeffs(ispn).prime(ig, i) = dpsi(ig, ispn, i);
+                         dvpsi_wf->pw_coeffs(ispn).prime(ig, i) = dvpsi(ig, ispn, i);
                     }
                 }
             }
+
             // setup auxiliary state vectors for CG.
             auto U = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             auto C = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
@@ -6213,12 +6138,8 @@ void sirius_linear_solver(void* const* handler__, double const* vk__, double con
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
-                    for (int ig = 0; ig < gvk.count(); ++ig) {
-                        tmp_dpsi[igmap[ig + gvk.offset()]] = dpsi_wf->pw_coeffs(ispn).prime(ig, i);
-                    }
-                    gvk.comm().allgather(tmp_dpsi.data(), gk_in_distr.counts.data(), gk_in_distr.offsets.data());
-                    for (int ig = 0; ig < num_gvec_k_loc; ig++) {
-                        dpsi(ig, ispn, i) = tmp_dpsi[offset + ig];
+                    for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+                        dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ispn).prime(ig, i);
                     }
                 }
             }

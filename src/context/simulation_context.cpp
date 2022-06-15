@@ -1065,7 +1065,7 @@ Simulation_context::update()
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto gv = gvec_coarse_partition_->get_gvec();
+        auto const& gv = gvec_coarse_partition_->gvec_array();
 
         /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
@@ -1101,7 +1101,7 @@ Simulation_context::update()
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto gv = gvec_partition_->get_gvec();
+        auto const& gv = gvec_partition_->gvec_array();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
@@ -1561,9 +1561,7 @@ Simulation_context::init_step_function()
         theta_pw_[0] += 1.0;
 
         std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-        for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
-            ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
-        }
+        this->gvec_partition().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
         spfft_output(spfft<double>(), theta_ptr);

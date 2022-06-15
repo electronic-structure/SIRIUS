@@ -566,7 +566,7 @@ class Communicator
     /// Out-of-place MPI_Allgatherv.
     template <typename T>
     void
-    allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+    allgather(T const* sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Allgatherv");
@@ -721,12 +721,8 @@ class Communicator
     }
 
     template <typename T>
-    void alltoall(T const* sendbuf__,
-                  int const* sendcounts__,
-                  int const* sdispls__,
-                  T* recvbuf__,
-                  int const* recvcounts__,
-                  int const* rdispls__) const
+    void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, T* recvbuf__,
+                  int const* recvcounts__, int const* rdispls__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Alltoallv");
