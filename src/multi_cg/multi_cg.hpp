@@ -119,7 +119,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
-        X.block_axpy_scatter(alphas, U, ids);
+        X.block_axpy_scatter(alphas, U, ids, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;

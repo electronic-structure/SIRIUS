@@ -184,9 +184,6 @@ Stress::calc_stress_hubbard()
                     }
                 }
 
-                /* We search all links involving the atom ia and then sum over them.
-                 * Note that we do not consider the links [i, j] but only the links
-                 * [i, j] */
                 double d = 0;
                 for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                     auto nl = ctx_.cfg().hubbard().nonlocal(i);
@@ -207,7 +204,7 @@ Stress::calc_stress_hubbard()
                     for (int is = 0; is < ctx_.num_spins(); is++) {
                         for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                                auto result1_ = z1 * dn(offset2 + m2, offset1 + m1, is, dir1 + 3 * dir2) *
+                              auto result1_ = z1 * std::conj(dn(offset2 + m2, offset1 + m1, is, dir1 + 3 * dir2)) *
                                     potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
                                 d += std::real(result1_);
                             }

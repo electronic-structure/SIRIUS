@@ -3,6 +3,8 @@
 #include <Eigen/Core>
 
 #include <iostream>
+#include <iterator>
+#include <iomanip>
 
 using namespace Eigen;
 
@@ -18,8 +20,8 @@ struct BlockVector {
         vec.leftCols(num) += X.vec.leftCols(num) * D;
     }
 
-    void block_axpy_scatter(std::vector<double> alphas, BlockVector const &X, std::vector<size_t> ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
+    void block_axpy_scatter(std::vector<double> alphas, BlockVector const &X, std::vector<size_t> ids, size_t num) {
+        for (size_t i = 0; i < num; ++i) {
             vec.col(ids[i]) += alphas[i] * X.vec.col(i);
         }
     }
@@ -94,8 +96,15 @@ int main() {
     size_t m = 40;
     size_t n = 10;
 
-    auto A_shifts = VectorXd::LinSpaced(n, 1, n);
+    // A is just diagonal(1, 2, ..., m) on the diag
     auto A_diag = VectorXd::LinSpaced(m, 1, m);
+
+    // We solve systems (A + shifts[i]) = rhs[i] for i = 1 .. n.
+    // To properly test repacking, make sure both large and small shifts
+    // are somewhere in the middle.
+    VectorXd A_shifts(n);
+    for (size_t i = 0; i < n; ++i)
+        A_shifts(i) = (7 * i) % n;
 
     auto A = PosDefMatrixShifted{
         A_diag.asDiagonal(),
@@ -106,8 +115,8 @@ int main() {
 
     auto U = BlockVector{MatrixXd::Zero(m, n)};
     auto C = BlockVector{MatrixXd::Zero(m, n)};
-    auto X = BlockVector{MatrixXd::Zero(m, n)};
-    auto B = BlockVector{MatrixXd::Random(m, n)};
+    auto X = BlockVector{MatrixXd::Constant(m, n, 0.5)};
+    auto B = BlockVector{MatrixXd::Constant(m, n, 1.0)};
     auto R = B;
 
     auto tol = 1e-10;
@@ -115,7 +124,7 @@ int main() {
     auto resnorms = sirius::cg::multi_cg(
         A, P,
         X, R, U, C,
-        100, tol, true
+        100, tol, false
     );
 
     // check the residual norms according to the algorithm
@@ -135,5 +144,12 @@ int main() {
         if (true_resnorms[i] > tol * 100) {
             return 2;
         }
+    }
+
+    std::cout << "Convergence history:\n";
+    for (size_t i = 0; i < resnorms.size(); ++i) {
+        std::cout << "resnorms[" << i << "] = ";
+        std::copy(resnorms[i].begin(), resnorms[i].end(), std::ostream_iterator<double>(std::cout << std::setprecision(16) << std::scientific, " "));
+        std::cout << '\n';
     }
 }
