@@ -502,7 +502,6 @@ class Wave_functions
     }
 };
 
-
 } // namespace sddk
 
 #endif

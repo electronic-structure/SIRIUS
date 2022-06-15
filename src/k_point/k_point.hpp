@@ -32,7 +32,21 @@
 
 namespace sirius {
 
-class K_point_base // TODO: good name? maybe k_point?
+inline std::shared_ptr<Gvec>
+gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
+              bool gamma__ = false)
+{
+    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, sddk::Communicator::self(), gamma__);
+}
+
+inline std::shared_ptr<Gvec>
+gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
+              Communicator const& comm__, bool gamma__ = false)
+{
+    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
+}
+
+class K_point_base // TODO: switch to factory after implementing new wave-functions
 {
   protected:
     /// Fractional k-point coordinates.
@@ -45,6 +59,7 @@ class K_point_base // TODO: good name? maybe k_point?
     /** This communicator is used to split G+k vectors and wave-functions. */
     sddk::Communicator const& comm_;
 
+    /// Initialize the G+k set.
     void init(double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__, bool gamma__)
     {
         /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
@@ -841,6 +856,50 @@ class K_point : public K_point_base
         return *gkvec_partition_;
     }
 };
+
+namespace experimental {
+
+/* PW and LAPW wave-functions
+ *
+ * Wave_functions wf(gkvec_factory(..), 10);
+ * wf.pw_coeffs(ig, ispn, j)
+ * wf.spin(ispn).pw_coeffs(ig, j)
+ * wf.pw_coeffs(ispn)(ig, j)
+ * wf[ispn].pw_coeffs(ig, j)
+ *
+ *
+ */
+template <typename T>
+class Wave_functions
+{
+  private:
+    std::shared_ptr<Gvec> gkvec_;
+    int num_wf_;
+    int num_sc_;
+    sddk::mdarray<std::complex<T>, 3> data_;
+    std::array<sddk::mdarray<std::complex<T>, 2>, 2> pw_coeffs_view_;
+  public:
+    Wave_functions(std::shared_ptr<Gvec> gkvec__, int num_wf__, int num_sc__ = 1)
+        : gvec_(gvec__)
+        , num_wf_(num_wf__)
+        , num_sc_(num_sc__)
+    {
+        data_ = mdarray<std::complex<T>, 3>(gkvec_->count(), num_sc_, num_wf_);
+        for (int ispn = 0; ispn < num_sc_; ispn++) {
+            auto ptr_cpu = data_.at(memory_t::host, 0, ispn, 0);
+            pw_coeffs_view_[ispn] = sddk::mdarray<std::complex<T>, 2>(ptr_cpu, gkvec_->count() * num_sc_, num_wf_);
+        }
+    }
+
+    inline sddk::mdarray<std::complex<T>, 2>& pw_coeffs(int ispn__)
+    {
+        return pw_coeffs_view_[ispn__];
+    }
+
+};
+
+}
+
 
 } // namespace sirius
 
