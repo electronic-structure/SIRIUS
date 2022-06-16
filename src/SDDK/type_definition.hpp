@@ -32,15 +32,4 @@ struct Complex<std::complex<T>> {using type = std::complex<T>;};
 template <typename T>
 using complex_type = typename Complex<T>::type;
 
-namespace sddk {
-enum class matrix_distribution_t
-{
-    slab,
-    block_cyclic
-};
-
-template <typename T, matrix_distribution_t D = matrix_distribution_t::block_cyclic>
-class dmatrix;
-}
-
 #endif // __TYPE_DEFINITION_HPP__

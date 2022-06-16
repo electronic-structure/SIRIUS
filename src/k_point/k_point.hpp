@@ -880,7 +880,7 @@ class Wave_functions
     std::array<sddk::mdarray<std::complex<T>, 2>, 2> pw_coeffs_view_;
   public:
     Wave_functions(std::shared_ptr<Gvec> gkvec__, int num_wf__, int num_sc__ = 1)
-        : gvec_(gvec__)
+        : gkvec_(gkvec__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
     {

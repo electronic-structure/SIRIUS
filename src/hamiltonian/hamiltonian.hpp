@@ -29,6 +29,7 @@
 #include <complex>
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
+#include "SDDK/dmatrix.hpp"
 #include "typedefs.hpp"
 
 namespace sddk {

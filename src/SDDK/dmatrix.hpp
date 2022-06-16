@@ -37,6 +37,16 @@
 
 namespace sddk {
 
+enum class matrix_distribution_t
+{
+    slab,
+    block,
+    block_cyclic,
+};
+
+template <typename T, matrix_distribution_t D = matrix_distribution_t::block_cyclic>
+class dmatrix;
+
 namespace fmt {
 template <typename T>
 std::ostream& operator<<(std::ostream& out, std::complex<T> z)
@@ -403,7 +413,7 @@ class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
   private:
     int num_rows_;
     int num_cols_;
-    splindex<splindex_t::chunk, int> spl_row_;
+    splindex<splindex_t::chunk, int> spl_row_; // TODO: remove
     Communicator comm_;
     costa::grid_layout<T> grid_layout_;
   public:
