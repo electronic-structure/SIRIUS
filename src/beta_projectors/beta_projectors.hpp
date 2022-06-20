@@ -56,7 +56,6 @@ class Beta_projectors : public Beta_projectors_base<T>
         /* compute <G+k|beta> */
         #pragma omp parallel for
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            int igk = igk__[igkloc];
             /* vs = {r, theta, phi} */
             auto vs = SHT::spherical_coordinates(this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc));
             /* compute real spherical harmonics for G+k vector */

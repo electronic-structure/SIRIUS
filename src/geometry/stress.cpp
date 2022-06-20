@@ -185,7 +185,6 @@ Stress::calc_stress_hubbard()
                 }
 
                 double d = 0;
-
                 for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                     auto nl = ctx_.cfg().hubbard().nonlocal(i);
                     int ia = nl.atom_pair()[0];
@@ -212,7 +211,6 @@ Stress::calc_stress_hubbard()
                         }
                     }
                 }
-
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
