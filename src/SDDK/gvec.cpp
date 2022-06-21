@@ -487,23 +487,32 @@ Gvec::init(FFT3D_grid const& fft_grid)
 Gvec& Gvec::operator=(Gvec&& src__)
 {
     if (this != &src__) {
-        vk_                = src__.vk_;
-        Gmax_              = src__.Gmax_;
-        lattice_vectors_   = src__.lattice_vectors_;
-        reduce_gvec_       = src__.reduce_gvec_;
-        bare_gvec_         = src__.bare_gvec_;
-        num_gvec_          = src__.num_gvec_;
-        offset_            = src__.offset_;
-        count_             = src__.count_;
-        gvec_full_index_   = std::move(src__.gvec_full_index_);
-        gvec_shell_        = std::move(src__.gvec_shell_);
-        num_gvec_shells_   = std::move(src__.num_gvec_shells_);
-        gvec_shell_len_    = std::move(src__.gvec_shell_len_);
-        gvec_index_by_xy_  = std::move(src__.gvec_index_by_xy_);
-        z_columns_         = std::move(src__.z_columns_);
-        gvec_distr_        = std::move(src__.gvec_distr_);
-        zcol_distr_        = std::move(src__.zcol_distr_);
-        gvec_base_mapping_ = std::move(src__.gvec_base_mapping_);
+        vk_                    = src__.vk_;
+        Gmax_                  = src__.Gmax_;
+        lattice_vectors_       = src__.lattice_vectors_;
+        reduce_gvec_           = src__.reduce_gvec_;
+        bare_gvec_             = src__.bare_gvec_;
+        num_gvec_              = src__.num_gvec_;
+        offset_                = src__.offset_;
+        count_                 = src__.count_;
+        num_zcol_local_        = src__.num_zcol_local_;
+        num_gvec_shells_local_ = src__.num_gvec_shells_local_;
+        gvec_full_index_       = std::move(src__.gvec_full_index_);
+        gvec_shell_            = std::move(src__.gvec_shell_);
+        num_gvec_shells_       = std::move(src__.num_gvec_shells_);
+        gvec_shell_len_        = std::move(src__.gvec_shell_len_);
+        gvec_shell_len_local_  = std::move(src__.gvec_shell_len_local_);
+        gvec_shell_idx_local_  = std::move(src__.gvec_shell_idx_local_);
+        gvec_index_by_xy_      = std::move(src__.gvec_index_by_xy_);
+        z_columns_             = std::move(src__.z_columns_);
+        gvec_distr_            = std::move(src__.gvec_distr_);
+        zcol_distr_            = std::move(src__.zcol_distr_);
+        gvec_base_mapping_     = std::move(src__.gvec_base_mapping_);
+        gvec_                  = std::move(src__.gvec_);
+        gkvec_                 = std::move(src__.gkvec_);
+        gvec_cart_             = std::move(src__.gvec_cart_);
+        gkvec_cart_            = std::move(src__.gkvec_cart_);
+        gvec_len_              = std::move(src__.gvec_len_);
     }
     return *this;
 }
@@ -629,8 +638,6 @@ void Gvec_partition::pile_gvec()
     RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
 
     gvec_array_       = mdarray<int, 2>(3, this->gvec_count_fft());
-    //gvec_cart_array_  = mdarray<double, 2>(3, this->gvec_count_fft());
-    //gkvec_array_      = mdarray<double, 2>(3, this->gvec_count_fft());
     gkvec_cart_array_ = mdarray<double, 2>(3, this->gvec_count_fft());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         int r = rank_map_(fft_comm_.rank(), i);
@@ -644,12 +651,8 @@ void Gvec_partition::pile_gvec()
     }
     for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
         auto G = vector3d<int>(&gvec_array_(0, ig));
-        //auto Gk = G + this->gvec_.vk();
-        //auto Gc = dot(this->gvec_.lattice_vectors(), G);
         auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
         for (int x : {0, 1, 2}) {
-            //gvec_cart_array_(x, ig) = Gc[x];
-            //gkvec_array_(x, ig) = Gk[x];
             gkvec_cart_array_(x, ig) = Gkc[x];
         }
     }

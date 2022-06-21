@@ -216,9 +216,6 @@ class Gvec
     /// Length of the local fraction of G-vectors.
     mdarray<double, 1> gvec_len_;
 
-    /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
-
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
 
@@ -227,6 +224,9 @@ class Gvec
 
     /// Local number of z-columns.
     int num_zcol_local_{-1};
+
+    /// Return corresponding G-vector for an index in the range [0, num_gvec).
+    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */

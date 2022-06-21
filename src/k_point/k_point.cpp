@@ -1045,9 +1045,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for schedule(static)
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            /* global index of G+k-vector */
-            int igk = this->idxgk(igk_loc);
-            auto G  = gkvec().gvec<index_domain_t::local>(igk_loc);
+            auto G  = gkvec().template gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
