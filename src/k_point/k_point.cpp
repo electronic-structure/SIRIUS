@@ -851,7 +851,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         mdarray<int, 2> gv(3, num_gkvec());
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().gvec<index_domain_t::global>(i);
+            auto v = gkvec().template gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
