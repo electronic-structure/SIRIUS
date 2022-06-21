@@ -6076,7 +6076,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 }
             }
 
-
             /* collect local G+k+q vector sizes across all ranks */
             block_data_descriptor gkq_in_distr(gvkq.comm().size());
             gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
