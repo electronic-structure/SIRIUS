@@ -4016,7 +4016,7 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
 
                     gvec_index__[igk] = ks.ctx().gvec().index_by_gvec(G) + 1; // Fortran counts from 1
                     for (int x : {0, 1, 2}) {
-                        gkvec(x, igk)      = kp->gkvec().gkvec<index_domain_t::global>(igk)[x];
+                        gkvec(x, igk)      = kp->gkvec().template gkvec<index_domain_t::global>(igk)[x];
                         gkvec_cart(x, igk) = gkc[x];
                     }
                     auto rtp         = sirius::SHT::spherical_coordinates(gkc);
