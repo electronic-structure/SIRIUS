@@ -359,6 +359,38 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host))));
+
+    splindex<splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
+    num_gkvec_row_ = spl_ngk_row.local_size();
+    sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
+
+    splindex<splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
+    num_gkvec_col_ = spl_ngk_col.local_size();
+    sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
+
+    for (int rank = 0; rank < comm().size(); rank++) {
+        auto gv = gkvec_->gvec_local(rank);
+        for (int igloc = 0; igloc < gkvec_->gvec_count(rank); igloc++) {
+            int ig = gkvec_->gvec_offset(rank) + igloc;
+            auto loc_row = spl_ngk_row.location(ig);
+            auto loc_col = spl_ngk_col.location(ig);
+            if (loc_row.rank == comm().rank()) {
+                for (int x : {0, 1, 2}) {
+                    gkvec_row(x, loc_row.local_index) = gv(x, igloc);
+                }
+            }
+            if (loc_col.rank == comm().rank()) {
+                for (int x : {0, 1, 2}) {
+                    gkvec_col(x, loc_col.local_index) = gv(x, igloc);
+                }
+            }
+        }
+    }
+    gkvec_row_ = std::make_shared<Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
+            &gkvec_row(0, 0), comm_row(), ctx_.gamma_point());
+
+    gkvec_col_ = std::make_shared<Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
+            &gkvec_col(0, 0), comm_col(), ctx_.gamma_point());
 }
 
 template <typename T>

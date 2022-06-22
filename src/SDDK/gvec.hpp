@@ -29,7 +29,6 @@
 #include <map>
 #include <iostream>
 #include <type_traits>
-#include <assert.h>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
@@ -448,7 +447,7 @@ class Gvec
     /// Number of z-columns for a fine-grained distribution.
     inline int zcol_count(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.counts[rank__];
     }
 
@@ -617,8 +616,8 @@ class Gvec
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
-        assert(idx >= 0);
-        assert(idx < num_gvec());
+        RTE_ASSERT(idx >= 0);
+        RTE_ASSERT(idx < num_gvec());
         return idx;
     }
 
@@ -688,14 +687,14 @@ class Gvec
     }
 
     /// Return local list of G-vectors.
-    inline mdarray<int, 2> const& gvec_local() const
+    inline auto const& gvec_local() const
     {
         return gvec_;
     }
 
     /// Return local list of G-vectors for a given rank.
     /** This function must be called by all MPI ranks of the G-vector communicator. */
-    inline mdarray<int, 2> gvec_local(int rank__) const
+    inline auto gvec_local(int rank__) const
     {
         int ngv = count_;
         this->comm().bcast(&ngv, 1, rank__);
