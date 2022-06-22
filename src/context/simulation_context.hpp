@@ -522,6 +522,8 @@ class Simulation_context : public Simulation_parameters
         return *gen_evp_solver_;
     }
 
+    // TODO gvec_phase_factor: add index_domain_t
+
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
     inline double_complex gvec_phase_factor(vector3d<int> G__, int ia__) const
     {
