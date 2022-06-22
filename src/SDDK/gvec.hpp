@@ -29,7 +29,6 @@
 #include <map>
 #include <iostream>
 #include <type_traits>
-#include <assert.h>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
@@ -448,7 +447,7 @@ class Gvec
     /// Number of z-columns for a fine-grained distribution.
     inline int zcol_count(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.counts[rank__];
     }
 
@@ -617,8 +616,8 @@ class Gvec
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
-        assert(idx >= 0);
-        assert(idx < num_gvec());
+        RTE_ASSERT(idx >= 0);
+        RTE_ASSERT(idx < num_gvec());
         return idx;
     }
 
@@ -712,7 +711,7 @@ class Gvec
 /** FFT driver works with a small communicator. G-vectors are distributed over the entire communicator which is
     larger than the FFT communicator. In order to transform the functions, G-vectors must be redistributed to the
     FFT-friendly "fat" slabs based on the FFT communicator size. */
-class Gvec_partition
+class Gvec_partition // TODO: name change to Gvec_fft
 {
   private:
     /// Pointer to the G-vector instance.
@@ -739,12 +738,6 @@ class Gvec_partition
     /// Lattice coordinates of a local set of G-vectors.
     /** These are also known as Miller indices */
     mdarray<int, 2> gvec_array_;
-
-    /// Lattice coordinates of a local set of G+k-vectors.
-    //mdarray<double, 2> gkvec_array_;
-
-    /// Cartiesian coordinaes of a local set of G-vectors.
-    //mdarray<double, 2> gvec_cart_array_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_array_;
@@ -826,7 +819,7 @@ class Gvec_partition
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
     }
 
-    template<typename T>
+    template<typename T> // TODO: document
     void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
