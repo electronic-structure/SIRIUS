@@ -32,6 +32,14 @@
 
 namespace sirius {
 
+/// This is only for debug purpose.
+inline std::shared_ptr<Gvec>
+gkvec_factory(double gk_cutoff__, sddk::Communicator const& comm__)
+{
+    auto M = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    return std::make_shared<Gvec>(vector3d<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
+}
+
 inline std::shared_ptr<Gvec>
 gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
               bool gamma__ = false)
@@ -866,6 +874,27 @@ namespace experimental {
  * wf.spin(ispn).pw_coeffs(ig, j)
  * wf.pw_coeffs(ispn)(ig, j)
  * wf[ispn].pw_coeffs(ig, j)
+ *
+ *
+ * Local coefficients consit of two parts: PW and MT
+ * +-------+
+ * |       |
+ * |  G+k  |   -> swap only PW part
+ * |       |
+ * +-------+
+ * | atom1 |
+ * | atom2 |
+ * | ....  |
+ * +-------+
+ *
+ * wf_fft = remap_to_fft(gkvec_partition, wf, N, n);
+ *
+ * hpsi_fft = wf_fft_factory(gkvec_partition, n);
+ *
+ * remap_from_fft(gkvec_partition, wf_fft, wf, N, n)
+ *
+ * consider Wave_functions_fft class
+ *
  *
  *
  */
