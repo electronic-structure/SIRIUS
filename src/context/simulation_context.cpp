@@ -1082,6 +1082,8 @@ Simulation_context::update()
         gvec_coarse_->lattice_vectors(rlv);
     }
 
+    std::cout << "=== done gvec coarse ===" << std::endl;
+
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
         gvec_           = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));

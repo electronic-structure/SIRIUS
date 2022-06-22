@@ -374,12 +374,12 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
             int ig = gkvec_->gvec_offset(rank) + igloc;
             auto loc_row = spl_ngk_row.location(ig);
             auto loc_col = spl_ngk_col.location(ig);
-            if (loc_row.rank == comm().rank()) {
+            if (loc_row.rank == comm_row().rank()) {
                 for (int x : {0, 1, 2}) {
                     gkvec_row(x, loc_row.local_index) = gv(x, igloc);
                 }
             }
-            if (loc_col.rank == comm().rank()) {
+            if (loc_col.rank == comm_row().rank()) {
                 for (int x : {0, 1, 2}) {
                     gkvec_col(x, loc_col.local_index) = gv(x, igloc);
                 }
@@ -411,11 +411,11 @@ K_point<T>::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_loc_);
+        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_row_);
-            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_col_);
+            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
+            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
         }
 
         if (ctx_.hubbard_correction()) {

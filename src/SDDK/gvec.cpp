@@ -640,12 +640,17 @@ void Gvec_partition::pile_gvec()
     gvec_array_       = mdarray<int, 2>(3, this->gvec_count_fft());
     gkvec_cart_array_ = mdarray<double, 2>(3, this->gvec_count_fft());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
-        int r = rank_map_(fft_comm_.rank(), i);
-        /* get array of G-vectors of rank r */
-        auto gv = this->gvec_.gvec_local(r);
-        for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
-            for (int x : {0, 1, 2}) {
-                gvec_array_(x, gvec_fft_slab_.offsets[i] + ig) = gv(x, ig);
+        for (int j = 0; j < fft_comm_.size(); j++) {
+            int r = rank_map_(j, i);
+            /* get array of G-vectors of rank r */
+            auto gv = this->gvec_.gvec_local(r);
+
+            if (j == fft_comm_.rank()) {
+                for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
+                    for (int x : {0, 1, 2}) {
+                        gvec_array_(x, gvec_fft_slab_.offsets[i] + ig) = gv(x, ig);
+                    }
+                }
             }
         }
     }

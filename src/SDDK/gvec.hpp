@@ -696,11 +696,12 @@ class Gvec
     /** This function must be called by all MPI ranks of the G-vector communicator. */
     inline auto gvec_local(int rank__) const
     {
-        int ngv = count_;
+        int ngv = this->count();
         this->comm().bcast(&ngv, 1, rank__);
         mdarray<int, 2> result(3, ngv);
         if (this->comm().rank() == rank__) {
-            copy(gvec_, result);
+            RTE_ASSERT(ngv == this->count());
+            copy(this->gvec_, result);
         }
         this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
         return result;
@@ -738,12 +739,6 @@ class Gvec_partition
     /// Lattice coordinates of a local set of G-vectors.
     /** These are also known as Miller indices */
     mdarray<int, 2> gvec_array_;
-
-    /// Lattice coordinates of a local set of G+k-vectors.
-    //mdarray<double, 2> gkvec_array_;
-
-    /// Cartiesian coordinaes of a local set of G-vectors.
-    //mdarray<double, 2> gvec_cart_array_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_array_;
