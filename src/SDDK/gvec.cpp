@@ -629,8 +629,6 @@ void Gvec_partition::pile_gvec()
     RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
 
     gvec_array_       = mdarray<int, 2>(3, this->gvec_count_fft());
-    //gvec_cart_array_  = mdarray<double, 2>(3, this->gvec_count_fft());
-    //gkvec_array_      = mdarray<double, 2>(3, this->gvec_count_fft());
     gkvec_cart_array_ = mdarray<double, 2>(3, this->gvec_count_fft());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         int r = rank_map_(fft_comm_.rank(), i);
@@ -644,12 +642,8 @@ void Gvec_partition::pile_gvec()
     }
     for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
         auto G = vector3d<int>(&gvec_array_(0, ig));
-        //auto Gk = G + this->gvec_.vk();
-        //auto Gc = dot(this->gvec_.lattice_vectors(), G);
         auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
         for (int x : {0, 1, 2}) {
-            //gvec_cart_array_(x, ig) = Gc[x];
-            //gkvec_array_(x, ig) = Gk[x];
             gkvec_cart_array_(x, ig) = Gkc[x];
         }
     }

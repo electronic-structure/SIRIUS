@@ -751,7 +751,7 @@ class Gvec_partition // TODO: name change to Gvec_fft
     Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
 
     /// Return FFT communicator
-    inline Communicator const& fft_comm() const
+    inline Communicator const& fft_comm() const // TODO: rename to comm_fft
     {
         return fft_comm_;
     }
