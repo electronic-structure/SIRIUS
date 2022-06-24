@@ -160,7 +160,7 @@ class K_point_set
     }
 
     /// Add k-point to the set.
-    void add_kpoint(double const* vk__, double weight__)
+    void add_kpoint(vector3d<double> vk__, double weight__)
     {
         kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__)));
 #ifdef USE_FP32

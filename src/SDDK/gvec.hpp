@@ -215,9 +215,6 @@ class Gvec
     /// Length of the local fraction of G-vectors.
     mdarray<double, 1> gvec_len_;
 
-    /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
-
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
 
@@ -226,6 +223,9 @@ class Gvec
 
     /// Local number of z-columns.
     int num_zcol_local_{-1};
+
+    /// Return corresponding G-vector for an index in the range [0, num_gvec).
+    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
@@ -687,20 +687,21 @@ class Gvec
     }
 
     /// Return local list of G-vectors.
-    inline mdarray<int, 2> const& gvec_local() const
+    inline auto const& gvec_local() const
     {
         return gvec_;
     }
 
     /// Return local list of G-vectors for a given rank.
     /** This function must be called by all MPI ranks of the G-vector communicator. */
-    inline mdarray<int, 2> gvec_local(int rank__) const
+    inline auto gvec_local(int rank__) const
     {
-        int ngv = count_;
+        int ngv = this->count();
         this->comm().bcast(&ngv, 1, rank__);
         mdarray<int, 2> result(3, ngv);
         if (this->comm().rank() == rank__) {
-            copy(gvec_, result);
+            RTE_ASSERT(ngv == this->count());
+            copy(this->gvec_, result);
         }
         this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
         return result;
@@ -714,11 +715,11 @@ class Gvec
 class Gvec_partition // TODO: name change to Gvec_fft
 {
   private:
-    /// Pointer to the G-vector instance.
+    /// Reference to the G-vector instance.
     Gvec const& gvec_;
 
     /// Communicator for the FFT.
-    Communicator const& fft_comm_;
+    Communicator const& comm_fft_;
 
     /// Communicator which is orthogonal to FFT communicator.
     Communicator const& comm_ortho_fft_;
@@ -726,8 +727,8 @@ class Gvec_partition // TODO: name change to Gvec_fft
     /// Distribution of G-vectors for FFT.
     block_data_descriptor gvec_distr_fft_;
 
-    /// Distribution of z-columns for FFT.
-    block_data_descriptor zcol_distr_fft_;
+    /// Local number of z-columns.
+    int num_zcol_local_{0};
 
     /// Distribution of G-vectors inside FFT-friendly "fat" slab.
     block_data_descriptor gvec_fft_slab_;
@@ -751,9 +752,9 @@ class Gvec_partition // TODO: name change to Gvec_fft
     Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
 
     /// Return FFT communicator
-    inline Communicator const& fft_comm() const // TODO: rename to comm_fft
+    inline Communicator const& comm_fft() const
     {
-        return fft_comm_;
+        return comm_fft_;
     }
 
     inline Communicator const& comm_ortho_fft() const
@@ -769,16 +770,16 @@ class Gvec_partition // TODO: name change to Gvec_fft
     /// Local number of G-vectors for FFT-friendly distribution.
     inline int gvec_count_fft() const
     {
-        return gvec_count_fft(fft_comm().rank());
+        return gvec_count_fft(comm_fft().rank());
     }
 
     /// Return local number of z-columns.
     inline int zcol_count_fft() const
     {
-        return zcol_distr_fft_.counts[fft_comm().rank()];
+        return num_zcol_local_;
     }
 
-    inline block_data_descriptor const& gvec_fft_slab() const
+    inline auto const& gvec_fft_slab() const
     {
         return gvec_fft_slab_;
     }
@@ -788,12 +789,12 @@ class Gvec_partition // TODO: name change to Gvec_fft
         return gvec_;
     }
 
-    inline vector3d<double> gkvec_cart(int igloc__) const
+    inline auto gkvec_cart(int igloc__) const
     {
         return vector3d<double>(&gkvec_cart_array_(0, igloc__));
     }
 
-    inline mdarray<int, 2> const& gvec_array() const
+    inline auto const& gvec_array() const
     {
         return gvec_array_;
     }
@@ -824,7 +825,7 @@ class Gvec_partition // TODO: name change to Gvec_fft
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
             /* offset in global index */
-            int offset = this->gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i));
+            int offset = this->gvec_.gvec_offset(rank_map_(comm_fft_.rank(), i));
             for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                 f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
             }

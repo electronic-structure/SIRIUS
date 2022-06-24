@@ -12,6 +12,7 @@ int main(int argn, char** argv)
 
     auto blacs_handler = linalg_base::create_blacs_handler(Communicator::self().mpi_comm());
     blacs_handler = linalg_base::create_blacs_handler(Communicator::world().mpi_comm());
+    std::cout << blacs_handler << std::endl;
 
     sirius::finalize(true);
 #endif

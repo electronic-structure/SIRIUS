@@ -86,9 +86,6 @@ class Beta_projectors_base
     /// List of G+k vectors.
     Gvec const& gkvec_;
 
-    /// Mapping between local and global G+k vector index.
-    //std::vector<int> const& igk_;
-
     /// Coordinates of G+k vectors used by GPU kernel.
     mdarray<double, 2> gkvec_coord_;
 
@@ -184,7 +181,7 @@ class Beta_projectors_base
     }
 
   public:
-    Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int> const& igk__, int N__);
+    Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, int N__);
 
     /// Calculate inner product between beta-projectors and wave-functions.
     /** The following is computed: <beta|phi> */

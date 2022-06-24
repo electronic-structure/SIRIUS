@@ -63,7 +63,7 @@ Stress::calc_stress_nonloc_aux()
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }
-        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
+        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec());
 
         Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
@@ -185,7 +185,6 @@ Stress::calc_stress_hubbard()
                 }
 
                 double d = 0;
-
                 for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                     auto nl = ctx_.cfg().hubbard().nonlocal(i);
                     int ia = nl.atom_pair()[0];
@@ -212,7 +211,6 @@ Stress::calc_stress_hubbard()
                         }
                     }
                 }
-
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }

@@ -102,11 +102,9 @@ void Beta_projectors_base<T>::split_in_chunks()
 }
 
 template <typename T>
-Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__,
-                                              std::vector<int> const& igk__, int N__)
+Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, int N__)
     : ctx_(ctx__)
     , gkvec_(gkvec__)
-    //, igk_(igk__)
     , N_(N__)
 {
     split_in_chunks();
@@ -123,7 +121,7 @@ Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, Gvec co
         gkvec_coord_.allocate(memory_t::device);
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto vgk = gkvec_.gkvec<index_domain_t::local>(igk_loc);
+            auto vgk = gkvec_.template gkvec<index_domain_t::local>(igk_loc);
             for (auto x: {0, 1, 2}) {
                 gkvec_coord_(x, igk_loc) = vgk[x];
             }

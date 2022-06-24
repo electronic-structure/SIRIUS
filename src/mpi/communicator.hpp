@@ -205,14 +205,6 @@ struct mpi_type_wrapper<uint32_t>
     }
 };
 
-//struct alltoall_descriptor
-//{
-//    std::vector<int> sendcounts;
-//    std::vector<int> sdispls;
-//    std::vector<int> recvcounts;
-//    std::vector<int> rdispls;
-//};
-
 struct block_data_descriptor
 {
     int num_ranks{-1};

@@ -67,6 +67,29 @@ class Hubbard
 
     /// Compute the occupancy derivatives with respect to atomic displacements.
     /**
+     *  To compute the occupancy derivatives, we first need to compute the derivatives of the matrix elements
+     *  \f[
+     *    \frac{\partial}{\partial {\bf r}_{\alpha}} \langle \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle
+     *  \f]
+     *  Let's first derive the case of non-orthogonalized Hubbard atomic orbitals. In this case
+     *  \f[
+     *    \frac{\partial}{\partial {\bf r}_{\alpha}} \langle \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle = 
+     *      \langle \frac{\partial}{\partial {\bf r}_{\alpha}} \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle +
+     *      \langle \phi_{i}^{Hub} | \frac{\partial}{\partial {\bf r}_{\alpha}} S | \psi_{j{\bf k}} \rangle
+     *  \f]
+     *
+     *  Derivative \f$ \frac{\partial \phi_{i}}{\partial {\bf r}_{\alpha}} \f$ of the atomic functions
+     *  is simple. For the wave-function of atom \f$ \alpha \f$ this is a multiplication of the plane-wave coefficients
+     *  by \f$ {\bf G+k} \f$. For the rest of the atoms it is zero.
+     *
+     *  Derivative of the S-operator has the following expression:
+     *  \f[
+     *    \frac{\partial}{\partial {\bf r}_{\alpha}} S =
+     *      \sum_{\xi \xi'} |\frac{\partial}{\partial {\bf r}_{\alpha}} \beta_{\xi}^{\alpha} \rangle
+     *        Q_{\xi \xi'}^{\alpha} \langle \beta_{\xi'}^{\alpha} | + |\beta_{\xi}^{\alpha}\rangle Q_{\xi \xi'}^{\alpha}
+     *        \langle \frac{\partial}{\partial {\bf r}_{\alpha}} \beta_{\xi'}^{\alpha} |
+     *  \f]
+     *
      *  Derivative of the inverse square root of the overlap matrix.
      *
      *  Let's label \f$ \frac{\partial}{\partial {\bf r}_{\alpha}} {\bf O}^{-1/2} = {\bf X} \f$.
