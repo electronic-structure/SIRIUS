@@ -32,68 +32,6 @@
 
 namespace sirius {
 
-class K_point_base // TODO: good name? maybe k_point?
-{
-  protected:
-    /// Fractional k-point coordinates.
-    std::array<double, 3> vk_;
-
-    /// List of G-vectors with |G+k| < cutoff.
-    std::shared_ptr<Gvec> gkvec_;
-
-    /// Communicator for parallelization inside k-point.
-    /** This communicator is used to split G+k vectors and wave-functions. */
-    sddk::Communicator const& comm_;
-
-    void init(double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__, bool gamma__)
-    {
-        /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
-         * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-        gkvec_ = std::make_shared<Gvec>(vk_, reciprocal_lattice_vectors__, gk_cutoff__, comm_, gamma__);
-    }
-
-  public:
-    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
-                 bool gamma__)
-        : vk_(vk__)
-        , comm_(sddk::Communicator::self())
-    {
-        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
-    }
-
-    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
-                 bool gamma__, sddk::Communicator const& comm__)
-        : vk_(vk__)
-        , comm_(comm__)
-    {
-        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
-    }
-
-    K_point_base(std::shared_ptr<Gvec> gkvec__)
-        : vk_(gkvec__->vk())
-        , gkvec_(gkvec__)
-        , comm_(gkvec__->comm())
-    {
-    }
-
-    inline Gvec const& gkvec() const
-    {
-        return *gkvec_;
-    }
-
-    /// Total number of G+k vectors within the cutoff distance
-    inline int num_gkvec() const
-    {
-        return gkvec_->num_gvec();
-    }
-
-    /// Local number of G+k vectors in case of flat distribution.
-    inline int num_gkvec_loc() const
-    {
-        return gkvec().count();
-    }
-};
-
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors"
@@ -101,7 +39,7 @@ class K_point_base // TODO: good name? maybe k_point?
  *  \tparam T  Precision of the wave-functions (float or double).
  */
 template <typename T>
-class K_point : public K_point_base
+class K_point
 {
   private:
     /// Simulation context.
@@ -110,8 +48,22 @@ class K_point : public K_point_base
     /// Unit cell object.
     Unit_cell const& unit_cell_;
 
+    /// Fractional k-point coordinates.
+    vector3d<double> vk_;
+
     /// Weight of k-point.
     double weight_{1.0};
+
+    /// Communicator for parallelization inside k-point.
+    /** This communicator is used to split G+k vectors and wave-functions. */
+    sddk::Communicator const& comm_;
+
+    /// List of G-vectors with |G+k| < cutoff.
+    std::shared_ptr<Gvec> gkvec_;
+
+    std::shared_ptr<Gvec> gkvec_row_;
+
+    std::shared_ptr<Gvec> gkvec_col_;
 
     /// G-vector distribution for the FFT transformation.
     std::unique_ptr<Gvec_partition> gkvec_partition_;
@@ -283,12 +235,12 @@ class K_point : public K_point_base
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, double weight__)
-        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.gk_cutoff(),
-                       ctx__.unit_cell().reciprocal_lattice_vectors(), ctx__.gamma_point(), ctx__.comm_band())
-        , ctx_(ctx__)
+    K_point(Simulation_context& ctx__, vector3d<double> vk__, double weight__)
+        : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
+        , vk_(vk__)
         , weight_(weight__)
+        , comm_(ctx_.comm_band())
         , rank_col_(ctx_.blacs_grid().comm_col().rank())
         , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
         , rank_row_(ctx_.blacs_grid().comm_row().rank())
@@ -297,14 +249,18 @@ class K_point : public K_point_base
         , comm_col_(ctx_.blacs_grid().comm_col())
     {
         this->init0();
+        gkvec_ = std::make_shared<Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
+                                        ctx_.gamma_point());
     }
 
     /// Constructor
     K_point(Simulation_context& ctx__, std::shared_ptr<Gvec> gkvec__, double weight__)
-        : K_point_base(gkvec__)
-        , ctx_(ctx__)
+        : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
+        , vk_(gkvec__->vk())
         , weight_(weight__)
+        , comm_(ctx_.comm_band())
+        , gkvec_(gkvec__)
         , rank_col_(ctx_.blacs_grid().comm_col().rank())
         , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
         , rank_row_(ctx_.blacs_grid().comm_row().rank())
@@ -406,6 +362,9 @@ class K_point : public K_point_base
     /// Collect distributed first-variational vectors into a global array.
     void get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
 
+    /// Test orthonormalization of spinor wave-functions
+    void test_spinor_wave_functions(int use_fft);
+
     /// Collect distributed second-variational vectors into a global array.
     void get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
     {
@@ -437,8 +396,22 @@ class K_point : public K_point_base
         comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
     }
 
-    /// Test orthonormalization of spinor wave-functions
-    void test_spinor_wave_functions(int use_fft);
+    inline Gvec const& gkvec() const
+    {
+        return *gkvec_;
+    }
+
+    /// Total number of G+k vectors within the cutoff distance
+    inline int num_gkvec() const
+    {
+        return gkvec_->num_gvec();
+    }
+
+    /// Local number of G+k vectors in case of flat distribution.
+    inline int num_gkvec_loc() const
+    {
+        return gkvec().count();
+    }
 
     /// Get the number of occupied bands for each spin channel.
     inline int num_occupied_bands(int ispn__ = -1) const

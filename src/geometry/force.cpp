@@ -124,14 +124,14 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
 
 template <typename T>
 void
-Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

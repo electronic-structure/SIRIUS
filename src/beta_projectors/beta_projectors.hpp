@@ -37,7 +37,7 @@ class Beta_projectors : public Beta_projectors_base<T>
     bool prepared_{false};
     matrix<std::complex<T>> beta_pw_all_atoms_;
     /// Generate plane-wave coefficients for beta-projectors of atom types.
-    void generate_pw_coefs_t(std::vector<int>& igk__)
+    void generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
         if (!this->num_beta_t()) {
@@ -86,12 +86,12 @@ class Beta_projectors : public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int>& igk__)
-        : Beta_projectors_base<T>(ctx__, gkvec__, igk__, 1)
+    Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__)
+        : Beta_projectors_base<T>(ctx__, gkvec__, 1)
     {
         PROFILE("sirius::Beta_projectors");
         /* generate phase-factor independent projectors for atom types */
-        generate_pw_coefs_t(igk__);
+        generate_pw_coefs_t();
         if (!this->num_beta_t()) {
             return;
         }
