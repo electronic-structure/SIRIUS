@@ -25,7 +25,12 @@
 #ifndef __RADIAL_FUNCTIONS_INDEX_HPP__
 #define __RADIAL_FUNCTIONS_INDEX_HPP__
 
+#include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
+#include "utils/utils.hpp"
+#include "typedefs.hpp"
+#include <array>
+#include <vector>
 
 namespace sirius {
 
@@ -310,7 +315,7 @@ class basis_functions_index
                     idxrf_.push_back(idxrf);
                     lm_.push_back(utils::lm(am.l(), m));
                     size_++;
-    
+
 //                    basis_function_index_descriptor b;
 //                    b.idxrf = idxrf;
 //                    b.m = m;
@@ -652,6 +657,6 @@ class radial_functions_index
     }
 };
 
-}
+} // namespace sirius
 
 #endif
