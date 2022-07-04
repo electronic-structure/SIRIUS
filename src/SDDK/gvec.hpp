@@ -816,12 +816,12 @@ class Gvec_partition // TODO: name change to Gvec_fft
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
     }
 
-    template<typename T> // TODO: document
+    template<typename T>
     void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
             /* offset in global index */
-            int offset = this->gvec_.gvec_offset(rank_map_(comm_fft_.rank(), i));
+            int offset = this->gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i));
             for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                 f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
             }
