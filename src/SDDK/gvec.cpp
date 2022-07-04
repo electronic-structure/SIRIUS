@@ -484,39 +484,6 @@ Gvec::init(FFT3D_grid const& fft_grid)
     init_gvec_cart_local();
 }
 
-Gvec& Gvec::operator=(Gvec&& src__)
-{
-    if (this != &src__) {
-        vk_                    = src__.vk_;
-        Gmax_                  = src__.Gmax_;
-        lattice_vectors_       = src__.lattice_vectors_;
-        reduce_gvec_           = src__.reduce_gvec_;
-        bare_gvec_             = src__.bare_gvec_;
-        num_gvec_              = src__.num_gvec_;
-        offset_                = src__.offset_;
-        count_                 = src__.count_;
-        num_zcol_local_        = src__.num_zcol_local_;
-        num_gvec_shells_local_ = src__.num_gvec_shells_local_;
-        gvec_full_index_       = std::move(src__.gvec_full_index_);
-        gvec_shell_            = std::move(src__.gvec_shell_);
-        num_gvec_shells_       = std::move(src__.num_gvec_shells_);
-        gvec_shell_len_        = std::move(src__.gvec_shell_len_);
-        gvec_shell_len_local_  = std::move(src__.gvec_shell_len_local_);
-        gvec_shell_idx_local_  = std::move(src__.gvec_shell_idx_local_);
-        gvec_index_by_xy_      = std::move(src__.gvec_index_by_xy_);
-        z_columns_             = std::move(src__.z_columns_);
-        gvec_distr_            = std::move(src__.gvec_distr_);
-        zcol_distr_            = std::move(src__.zcol_distr_);
-        gvec_base_mapping_     = std::move(src__.gvec_base_mapping_);
-        gvec_                  = std::move(src__.gvec_);
-        gkvec_                 = std::move(src__.gkvec_);
-        gvec_cart_             = std::move(src__.gvec_cart_);
-        gkvec_cart_            = std::move(src__.gkvec_cart_);
-        gvec_len_              = std::move(src__.gvec_len_);
-    }
-    return *this;
-}
-
 std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const
 {
     auto v  = g1__ - g2__;

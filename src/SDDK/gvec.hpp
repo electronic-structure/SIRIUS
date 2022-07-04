@@ -395,14 +395,10 @@ class Gvec
     }
 
     /// Move assignment operator.
-    Gvec& operator=(Gvec&& src__);
+    Gvec& operator=(Gvec&& src__) = default;
 
     /// Move constructor.
-    Gvec(Gvec&& src__)
-        : comm_(src__.comm_)
-    {
-        *this = std::move(src__);
-    }
+    Gvec(Gvec&& src__) = default;
 
     inline auto const& vk() const
     {
