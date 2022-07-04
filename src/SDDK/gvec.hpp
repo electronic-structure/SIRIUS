@@ -128,7 +128,7 @@ class Gvec
     matrix3d<double> lattice_vectors_;
 
     /// Total communicator which is used to distribute G or G+k vectors.
-    Communicator const& comm_;
+    Communicator comm_;
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_{false};
