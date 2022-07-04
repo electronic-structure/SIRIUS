@@ -411,24 +411,21 @@ template <typename T>
 class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
 {
   private:
-    int num_rows_;
     int num_cols_;
-    splindex<splindex_t::chunk, int> spl_row_; // TODO: remove
     Communicator comm_;
     costa::grid_layout<T> grid_layout_;
   public:
-    dmatrix(int num_rows__, int num_cols__, std::vector<int> counts__, Communicator const& comm__)
-        : matrix<T>(counts__[comm__.rank()], num_cols__)
-        , num_rows_(num_rows__)
+    dmatrix(std::vector<int> num_rows_local__, int num_cols__, Communicator const& comm__)
+        : matrix<T>(num_rows_local__[comm__.rank()], num_cols__)
         , num_cols_(num_cols__)
         , comm_(comm__)
     {
-        spl_row_ = splindex<splindex_t::chunk, int>(num_rows__, comm_.size(), comm_.rank(), counts__);
+        RTE_ASSERT(static_cast<int>(num_rows_local__.size()) == comm_.size());
 
         std::vector<int> rowsplit(comm_.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < comm_.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + spl_row_.local_size(i);
+            rowsplit[i + 1] = rowsplit[i] + num_rows_local__[i];
         }
         std::vector<int> colsplit({0, num_cols_});
         std::vector<int> owners(comm_.size());

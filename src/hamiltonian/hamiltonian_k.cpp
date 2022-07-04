@@ -1049,8 +1049,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             mt_lo_counts[loc.rank] += type.mt_lo_basis_size();
         }
 
-        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
-            apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
+        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> apw_lo_phi_lo_slab(mt_aw_counts, n__, comm);
         if (pu == device_t::GPU) {
             apw_lo_phi_lo_slab.allocate(ctx.mem_pool(memory_t::device));
         }
@@ -1252,8 +1251,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             }
 
             if (hphi__) {
-                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> alm_phi_slab(num_mt_aw, n__, counts_aw, comm);
-                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> halm_phi_slab(num_mt_aw, n__, counts_aw, comm);
+                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> alm_phi_slab(counts_aw, n__, comm);
+                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> halm_phi_slab(counts_aw, n__, comm);
                 sddk::dmatrix<std::complex<T>> halm_phi(num_mt_aw, n__, ctx.blacs_grid(), bs, bs);
                 if (pu == device_t::GPU) {
                     alm_phi_slab.allocate(ctx.mem_pool(memory_t::device));
@@ -1355,8 +1354,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     if (!apw_only__ && !phi_is_lo__ && ctx.unit_cell().mt_lo_basis_size()) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-apw");
 
-        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
-            alm_phi_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
+        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> alm_phi_slab(mt_aw_counts, n__, comm);
 
         costa::transform(alm_phi.grid_layout(), alm_phi_slab.grid_layout(), 'N',
             linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());

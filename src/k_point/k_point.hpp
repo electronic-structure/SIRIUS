@@ -40,16 +40,16 @@ gkvec_factory(double gk_cutoff__, sddk::Communicator const& comm__)
     return std::make_shared<Gvec>(vector3d<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
 }
 
-inline std::shared_ptr<Gvec>
-gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
-              bool gamma__ = false)
-{
-    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, sddk::Communicator::self(), gamma__);
-}
+//inline std::shared_ptr<Gvec>
+//gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
+//              bool gamma__ = false)
+//{
+//    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, sddk::Communicator::self(), gamma__);
+//}
 
 inline std::shared_ptr<Gvec>
 gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
-              Communicator const& comm__, bool gamma__ = false)
+              Communicator const& comm__ = sddk::Communicator::self(), bool gamma__ = false)
 {
     return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
 }
@@ -108,10 +108,10 @@ class K_point
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
      *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
      *  matrix in case of general non-collinear magnetism. */
-    dmatrix<std::complex<T>> sv_eigen_vectors_[2];
+    std::array<dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
 
     /// Full-diagonalization eigen vectors.
-    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
+    sddk::mdarray<std::complex<T>, 2> fd_eigen_vectors_;
 
     /// First-variational states.
     std::unique_ptr<Wave_functions<T>> fv_states_{nullptr};
@@ -715,22 +715,22 @@ class K_point
         return atom_lo_rows_[ia][i];
     }
 
-    inline dmatrix<std::complex<T>>& fv_eigen_vectors()
+    inline auto& fv_eigen_vectors()
     {
         return fv_eigen_vectors_;
     }
 
-    inline Wave_functions<T>& fv_eigen_vectors_slab()
+    inline auto& fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
     }
 
-    inline dmatrix<std::complex<T>>& sv_eigen_vectors(int ispn)
+    inline auto& sv_eigen_vectors(int ispn)
     {
         return sv_eigen_vectors_[ispn];
     }
 
-    inline mdarray<std::complex<T>, 2>& fd_eigen_vectors()
+    inline auto& fd_eigen_vectors()
     {
         return fd_eigen_vectors_;
     }
