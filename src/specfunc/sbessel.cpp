@@ -45,8 +45,7 @@ static void custom_bessel(int lmax, double x, double* result) {
 Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__,
                                                        Radial_grid<double> const& rgrid__,
                                                        double q__)
-    : lmax_(lmax__)
-    , q_(q__)
+    : q_(q__)
     , rgrid_(&rgrid__)
 {
     assert(q_ >= 0);

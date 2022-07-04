@@ -35,8 +35,6 @@ namespace sirius {
 class Spherical_Bessel_functions
 {
   private:
-    int lmax_{-1};
-
     double q_{0};
 
     Radial_grid<double> const* rgrid_{nullptr};
