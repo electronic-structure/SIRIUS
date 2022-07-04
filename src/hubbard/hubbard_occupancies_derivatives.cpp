@@ -256,7 +256,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         }
     }
 
-    Beta_projectors_gradient<double> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
+    Beta_projectors_gradient<double> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
     bp_grad.prepare();
 
     dn__.zero(mt);
@@ -384,7 +384,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     }
     auto alpha = double_complex(kp__.weight(), 0.0);
 
-    Beta_projectors_strain_deriv<double> bp_strain_deriv(ctx_, kp__.gkvec(), kp__.igk_loc());
+    Beta_projectors_strain_deriv<double> bp_strain_deriv(ctx_, kp__.gkvec());
     /* initialize the beta projectors and derivatives */
     bp_strain_deriv.prepare();
 

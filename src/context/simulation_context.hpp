@@ -531,7 +531,7 @@ class Simulation_context : public Simulation_parameters
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
     inline double_complex gvec_phase_factor(int ig__, int ia__) const
     {
-        return gvec_phase_factor(gvec().gvec(ig__), ia__);
+        return gvec_phase_factor(gvec().gvec<index_domain_t::global>(ig__), ia__);
     }
 
     inline sddk::mdarray<int, 2> const& gvec_coord() const
@@ -563,7 +563,7 @@ class Simulation_context : public Simulation_parameters
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             /* global index of G-vector */
             int ig   = gvec().offset() + igloc;
-            double g = gvec().gvec_len(ig);
+            double g = gvec().gvec_len<index_domain_t::local>(igloc);
 
             int j = (index_domain == index_domain_t::local) ? igloc : ig;
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {

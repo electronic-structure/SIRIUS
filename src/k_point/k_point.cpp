@@ -79,7 +79,7 @@ K_point<T>::initialize()
     if (ctx_.full_potential()) {
         if (ctx_.cfg().control().use_second_variation()) {
 
-            assert(ctx_.num_fv_states() > 0);
+            RTE_ASSERT(ctx_.num_fv_states() > 0);
             fv_eigen_values_ = sddk::mdarray<double, 1>(ctx_.num_fv_states(), memory_t::host, "fv_eigen_values");
 
             if (ctx_.need_sv()) {
@@ -351,16 +351,46 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
     gkvec_partition_ = std::make_unique<Gvec_partition>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
-    gkvec_offset_ = gkvec().gvec_offset(comm().rank());
-
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
     const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
-    auto gv             = gkvec_partition_->get_gvec();
+    auto const& gv      = gkvec_partition_->gvec_array();
     /* create transformation */
     spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host))));
+
+    splindex<splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
+    num_gkvec_row_ = spl_ngk_row.local_size();
+    sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
+
+    splindex<splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
+    num_gkvec_col_ = spl_ngk_col.local_size();
+    sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
+
+    for (int rank = 0; rank < comm().size(); rank++) {
+        auto gv = gkvec_->gvec_local(rank);
+        for (int igloc = 0; igloc < gkvec_->gvec_count(rank); igloc++) {
+            int ig = gkvec_->gvec_offset(rank) + igloc;
+            auto loc_row = spl_ngk_row.location(ig);
+            auto loc_col = spl_ngk_col.location(ig);
+            if (loc_row.rank == comm_row().rank()) {
+                for (int x : {0, 1, 2}) {
+                    gkvec_row(x, loc_row.local_index) = gv(x, igloc);
+                }
+            }
+            if (loc_col.rank == comm_col().rank()) {
+                for (int x : {0, 1, 2}) {
+                    gkvec_col(x, loc_col.local_index) = gv(x, igloc);
+                }
+            }
+        }
+    }
+    gkvec_row_ = std::make_shared<Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
+            &gkvec_row(0, 0), comm_row(), ctx_.gamma_point());
+
+    gkvec_col_ = std::make_shared<Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
+            &gkvec_col(0, 0), comm_col(), ctx_.gamma_point());
 }
 
 template <typename T>
@@ -373,19 +403,19 @@ K_point<T>::update()
 
     if (ctx_.full_potential()) {
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            alm_coeffs_row_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_row(), igk_row_, gkvec());
-            alm_coeffs_col_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_col(), igk_col_, gkvec());
+            alm_coeffs_row_ = std::make_unique<Matching_coefficients>(unit_cell_, *gkvec_row_);
+            alm_coeffs_col_ = std::make_unique<Matching_coefficients>(unit_cell_, *gkvec_col_);
         }
-        alm_coeffs_loc_ = std::make_unique<Matching_coefficients>(unit_cell_, num_gkvec_loc(), igk_loc_, gkvec());
+        alm_coeffs_loc_ = std::make_unique<Matching_coefficients>(unit_cell_, gkvec());
     }
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_loc_);
+        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_row_);
-            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec(), igk_col_);
+            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
+            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
         }
 
         if (ctx_.hubbard_correction()) {
@@ -853,7 +883,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         mdarray<int, 2> gv(3, num_gkvec());
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().gvec(i);
+            auto v = gkvec().template gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
@@ -969,9 +999,9 @@ K_point<T>::load(HDF5_tree h5in, int id)
 
 template <typename T>
 void
-K_point<T>::generate_atomic_wave_functions(
-    std::vector<int> atoms__, std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-    Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
+K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
+        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
+        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
@@ -1040,16 +1070,14 @@ K_point<T>::generate_atomic_wave_functions(
 
     for (int ia : atoms__) {
 
-        T phase                 = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
-        std::complex<T> phase_k = std::exp(std::complex<T>(0.0, phase));
+        T phase      = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
+        auto phase_k = std::exp(std::complex<T>(0.0, phase));
 
         /* quickly compute phase factors without calling exp() function */
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for schedule(static)
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            /* global index of G+k-vector */
-            int igk = this->idxgk(igk_loc);
-            auto G  = gkvec().gvec(igk);
+            auto G  = gkvec().template gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }

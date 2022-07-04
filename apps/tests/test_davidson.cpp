@@ -45,7 +45,7 @@ void
 diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
             double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__, bool extra_ortho__)
 {
-    K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
+    K_point<T> kp(ctx__, &vk__[0], 1.0);
     kp.initialize();
     std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
     for (int i = 0; i < ctx__.num_bands(); i++) {

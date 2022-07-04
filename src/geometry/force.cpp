@@ -124,14 +124,14 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
 
 template <typename T>
 void
-Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -405,7 +405,7 @@ Force::calc_forces_ewald()
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
+            double g2 = std::pow(ctx_.gvec().gvec_len<index_domain_t::local>(igloc), 2);
 
             /* cartesian form for getting cartesian force components */
             auto gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
@@ -863,10 +863,10 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-            auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+            auto gvec_col       = kp__->gkvec().gvec<index_domain_t::global>(kp__->igk_col(igk_col));
             auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                auto gvec_row       = kp__->gkvec().gvec<index_domain_t::global>(kp__->igk_row(igk_row));
                 auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
 
                 int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
@@ -884,9 +884,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
         for (int x = 0; x < 3; x++) {
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+                auto gvec_col = kp__->gkvec().gvec<index_domain_t::global>(kp__->igk_col(igk_col));
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
-                    auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                    auto gvec_row = kp__->gkvec().gvec<index_domain_t::global>(kp__->igk_row(igk_row));
                     /* compute index of G-G' */
                     int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
                     /* get G-G' */
