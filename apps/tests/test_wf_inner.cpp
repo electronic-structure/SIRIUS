@@ -22,12 +22,12 @@ void test(int M, int N, int BS, std::vector<int> mpi_grid)
 
     dmatrix<std::complex<double>> result(M, N, blacs_grid, BS, BS);
 
-    dmatrix<std::complex<double>, matrix_distribution_t::slab> A(nr, M, counts, Communicator::world());
+    dmatrix<std::complex<double>, matrix_distribution_t::slab> A(counts, M, Communicator::world());
     A.allocate(memory_t::device);
-    dmatrix<std::complex<double>, matrix_distribution_t::slab> B(nr, N, counts, Communicator::world());
+    dmatrix<std::complex<double>, matrix_distribution_t::slab> B(counts, N, Communicator::world());
     B.allocate(memory_t::device);
 
-    std::complex<double>* result_ptr = result.size_local() ? result.at(memory_t::host, 0, 0) : nullptr;
+    auto result_ptr = result.size_local() ? result.at(memory_t::host, 0, 0) : nullptr;
     std::shared_ptr<::spla::Context> spla_ctx{new ::spla::Context{SPLA_PU_GPU}};
     spla_ctx->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB
 
