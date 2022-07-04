@@ -98,14 +98,12 @@ Spherical_Bessel_functions::sbessel_deriv_q(int lmax__, double q__, double x__, 
 Spline<double> const&
 Spherical_Bessel_functions::operator[](int l__) const
 {
-    assert(l__ <= lmax_);
     return sbessel_[l__];
 }
 
 Spline<double>
 Spherical_Bessel_functions::deriv_q(int l__)
 {
-    assert(l__ <= lmax_);
     assert(q_ >= 0);
     Spline<double> s(*rgrid_);
     if (q_ != 0) {
