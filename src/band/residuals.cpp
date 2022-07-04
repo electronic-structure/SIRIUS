@@ -111,7 +111,7 @@ compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_b
 }
 
 /// Apply preconditioner to the residuals.
-template <typename T, typename = std::enable_if_t<std::is_scalar<T>::value>>
+template <typename T, typename>
 void
 apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<T>& res__,
                      sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
