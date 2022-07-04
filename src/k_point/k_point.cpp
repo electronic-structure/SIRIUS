@@ -379,7 +379,7 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
                     gkvec_row(x, loc_row.local_index) = gv(x, igloc);
                 }
             }
-            if (loc_col.rank == comm_row().rank()) {
+            if (loc_col.rank == comm_col().rank()) {
                 for (int x : {0, 1, 2}) {
                     gkvec_col(x, loc_col.local_index) = gv(x, igloc);
                 }
