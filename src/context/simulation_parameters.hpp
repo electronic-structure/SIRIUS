@@ -111,17 +111,17 @@ class Simulation_parameters
     /// Import from command line arguments.
     void import(cmd_args const& args__);
 
-    void set_lmax_apw(int lmax_apw__)
+    void lmax_apw(int lmax_apw__)
     {
         cfg().parameters().lmax_apw(lmax_apw__);
     }
 
-    void set_lmax_rho(int lmax_rho__)
+    void lmax_rho(int lmax_rho__)
     {
         cfg().parameters().lmax_rho(lmax_rho__);
     }
 
-    void set_lmax_pot(int lmax_pot__)
+    void lmax_pot(int lmax_pot__)
     {
         cfg().parameters().lmax_pot(lmax_pot__);
     }
@@ -202,16 +202,6 @@ class Simulation_parameters
     auto print_checksum() const
     {
         return cfg().control().print_checksum();
-    }
-
-    inline int lmax_apw() const
-    {
-        return cfg().parameters().lmax_apw();
-    }
-
-    inline int lmmax_apw() const
-    {
-        return utils::lmmax(this->lmax_apw());
     }
 
     inline int lmax_rho() const
@@ -429,6 +419,11 @@ class Simulation_parameters
     {
         return cfg().control().cyclic_block_size();
     }
+
+    //inline void full_potential(const bool value)
+    //{
+    //    electronic_structure_method_ = electronic_structure_method_t::full_potential_lapwlo;
+    //}
 
     bool full_potential() const
     {

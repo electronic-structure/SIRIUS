@@ -85,7 +85,7 @@ class angular_momentum
     }
 
     /// Get twice the total angular momentum 2j = 2l +/- 1
-    inline auto j2() const
+    inline auto two_j() const
     {
         return 2 * l_ + s_;
     }
@@ -95,7 +95,7 @@ class angular_momentum
      *  m_j values in the range [-j, j] */
     inline auto subshell_size() const
     {
-        return j2() + 1;
+        return two_j() + 1;
     }
 
     /// Get spin quantum number s.
@@ -104,6 +104,16 @@ class angular_momentum
         return s_;
     }
 };
+
+inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
+{
+    if (am.s() == 0) {
+        out << "{l: " << am.l() << "}";
+    } else {
+        out << "{l: " << am.l() << ", j: " << am.j() << "}";
+    }
+    return out;
+}
 
 class radial_functions_index
 {

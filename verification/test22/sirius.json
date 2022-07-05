@@ -1,10 +1,6 @@
 {
   "control" : {
-      "cyclic_block_size" : 2,
-      "processing_unit" : "cpu",
-      "std_evp_solver_name" : "lapack",
-      "gen_evp_solver_name" : "lapack",
-      "verbosity" : 1,
+      "verbosity" : 2,
       "print_forces" : true,
       "print_stress" : true
   },
@@ -14,23 +10,23 @@
 
       "!num_fv_states" : 40,
 
-      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+      "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-      "smearing_width" : 0.025,
+      "smearing_width" : 0.01,
 
       "use_symmetry" : true,
 
       "num_mag_dims" : 1,
 
-      "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
+      "gk_cutoff" : 6.325,
+      "pw_cutoff" : 24.495,
 
       "energy_tol" : 1e-8,
       "density_tol" : 1e-5,
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [2,2,2],
+      "ngridk" : [4,4,4],
 
       "hubbard_correction" : true
   },
@@ -39,7 +35,6 @@
         "energy_tolerance" : 1e-2,
         "residual_tolerance" : 1e-6,
         "num_steps" : 20,
-        "subspace_size" : 4,
         "type" : "davidson",
         "converge_by_energy" : 1
     },
@@ -57,14 +52,14 @@
                               [0.5, 0.5, 1.0]
                             ],
 
-        "lattice_vectors_scale" : 7.89357814,
+        "lattice_vectors_scale" : 7.93,
 
         "atom_types" : ["Ni", "O"],
 
-        "atom_files" : {"Ni" : "ni_lda_v1.4.uspp.F.UPF.json", "O" : "o_lda_v1.2.uspp.F.UPF.json"},
+        "atom_files" : {"Ni" : "Ni.json", "O" : "O.json"},
 
-        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  4], 
-                             [0.5, 0.5, 0.5,    0,  0, -4] 
+        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  2],
+                             [0.5, 0.5, 0.5,    0,  0, -2]
                            ],
 
                     "O" :  [ [0.25, 0.25, 0.25],
@@ -73,11 +68,12 @@
                   }
     },
     "hubbard" : {
-        "orthogonalize": false,
+        "full_orthogonalization": false,
+        "simplified" : true,
         "local" : [
             {
                 "atom_type" : "Ni",
-                "U": 7.5,
+                "U": 8.0,
                 "J": 0.0,
                 "l": 2,
                 "n" : 3,

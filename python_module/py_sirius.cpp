@@ -354,7 +354,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Potential, Field4D>(m, "Potential")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
-        .def("generate", &Potential::generate)
+        .def("generate", &Potential::generate, "density"_a, "use_sym"_a, "transform_to_rg"_a)
         .def("symmetrize", py::overload_cast<>(&Potential::symmetrize))
         .def("fft_transform", &Potential::fft_transform)
         .def("save", &Potential::save)
@@ -414,7 +414,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
         .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a, py::arg("precompute")=true);
+        .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
@@ -429,12 +429,12 @@ PYBIND11_MODULE(py_sirius, m)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
         .def(
             "find",
-            [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter,
+            [](DFT_ground_state& dft, double density_tol, double energy_tol, double initial_tol, int num_dft_iter,
                bool write_state) {
-                json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
+                json js = dft.find(density_tol, energy_tol, initial_tol, num_dft_iter, write_state);
                 return pj_convert(js);
             },
-            "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
+            "density_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
         .def("check_scf_density",
              [](DFT_ground_state& dft) {
                  json js = dft.check_scf_density();
@@ -487,8 +487,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<std::array<double, 3>>>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::initializer_list<std::array<double, 3>>>(),
-             py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::array<double, 3>>>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
@@ -500,23 +499,25 @@ PYBIND11_MODULE(py_sirius, m)
         .def("get_band_energies", &K_point_set::get_band_energies<double>)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies<double>)
         .def("band_gap", &K_point_set::band_gap)
-        //.def("sync_band", &K_point_set::sync_band)
-        //.def("valence_eval_sum", &K_point_set::valence_eval_sum)
+        .def("sync_band_energy", &K_point_set::sync_band<double, sync_band_t::energy>)
+        .def("sync_band_occupancy", &K_point_set::sync_band<double, sync_band_t::occupancy>)
+        .def("valence_eval_sum", static_cast<double (K_point_set::*)() const>(&K_point_set::valence_eval_sum))
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
-        .def("__getitem__",
-             [](K_point_set& ks, int i) -> K_point<double>& {
-                 if (i >= ks.spl_num_kpoints().local_size())
-                     throw pybind11::index_error("out of bounds");
-                 return *ks.get<double>(ks.spl_num_kpoints(i));
-             },
-             py::return_value_policy::reference_internal)
+        .def(
+            "__getitem__",
+            [](K_point_set& ks, int i) -> K_point<double>& {
+                if (i >= ks.spl_num_kpoints().local_size())
+                    throw pybind11::index_error("out of bounds");
+                return *ks.get<double>(ks.spl_num_kpoints(i));
+            },
+            py::return_value_policy::reference_internal)
         .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
         .def("add_kpoint",
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
     py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-        .def(py::init<Potential&>(), py::keep_alive<1, 2>())
+        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())
         .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
 
     py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
@@ -731,8 +732,6 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
-
-
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
@@ -826,6 +825,6 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, Wave_funct
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0<double> H0(dft_gs.potential());
+    Hamiltonian0<double> H0(dft_gs.potential(), false);
     Band(ctx).initialize_subspace(kset, H0);
 }

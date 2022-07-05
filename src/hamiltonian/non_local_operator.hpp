@@ -29,6 +29,7 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
 #include "beta_projectors/beta_projectors.hpp"
+#include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
@@ -36,7 +37,7 @@ namespace sddk {
 template <typename T>
 class Wave_functions;
 class spin_range;
-};
+}; // namespace sddk
 
 namespace sirius {
 /* forward declaration */
@@ -109,7 +110,7 @@ class Non_local_operator
         auto work = mdarray<T, 1>(nbeta * n__, ctx_.mem_pool(mem));
 
         /* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
             int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
@@ -127,7 +128,7 @@ class Non_local_operator
         switch (pu_) {
             case device_t::GPU: {
                 /* wait for previous zgemms */
-#pragma omp parallel
+                #pragma omp parallel
                 acc::sync_stream(stream_id(omp_get_thread_num()));
                 break;
             }
@@ -189,12 +190,12 @@ class Non_local_operator
 
         auto work = mdarray<std::complex<T>, 1>(nbeta * n__, ctx_.mem_pool(mem));
 
-/* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel
+        /* compute O * <beta|phi> for atoms in a chunk */
+        #pragma omp parallel
         {
             acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
-#pragma omp for
+            #pragma omp for
             for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
                 /* number of beta functions for a given atom */
                 int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
@@ -212,8 +213,8 @@ class Non_local_operator
         }
         switch (pu_) {
             case device_t::GPU: {
-/* wait for previous zgemms */
-#pragma omp parallel
+                /* wait for previous zgemms */
+                #pragma omp parallel
                 acc::sync_stream(stream_id(omp_get_thread_num()));
                 break;
             }
@@ -283,8 +284,8 @@ class Non_local_operator
 
         linalg(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<std::complex<T>>::one(),
                         reinterpret_cast<std::complex<T>*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
-                        beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<std::complex<T>>::zero(), work.at(mem),
-                        nbf);
+                        beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<std::complex<T>>::zero(),
+                        work.at(mem), nbf);
 
         int jspn = ispn_block__ & 1;
 
@@ -331,9 +332,7 @@ class Non_local_operator
     {
         return is_diag_;
     }
-
 };
-
 
 template <typename T>
 class D_operator : public Non_local_operator<T>
@@ -360,34 +359,81 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
-    sddk::mdarray<std::complex<T>, 3> um_;
+    //sddk::mdarray<std::complex<T>, 3> um_;
+    std::array<sddk::dmatrix<std::complex<T>>, 4> um_;
     std::vector<int> offset_;
+    std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
+    vector3d<double> vk_;
 
   public:
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
         : ctx_(ctx__)
+        , vk_(vk__)
     {
+        if (!ctx_.hubbard_correction()) {
+            return;
+        }
         /* a pair of "total number, offests" for the Hubbard orbitals idexing */
-        auto r = ctx_.unit_cell().num_hubbard_wf();
-        this->nhwf_ = r.first;
-        this->offset_ = r.second;
-        um_ = sddk::mdarray<std::complex<T>, 3>(this->nhwf_, this->nhwf_, ctx_.num_mag_dims() + 1);
-        um_.zero();
+        auto r                 = ctx_.unit_cell().num_hubbard_wf();
+        this->nhwf_            = r.first;
+        this->offset_          = um1__.offset();
+        this->atomic_orbitals_ = um1__.atomic_orbitals();
+        for (int j = 0; j <  ctx_.num_mag_dims() + 1; j++) {
+            um_[j] = sddk::dmatrix<std::complex<T>>(r.first, r.first);
+            um_[j].zero();
+        }
 
-        /* copy only local blocks */
-        // TODO: implement Fourier-transfomation of the T-dependent occupancy matrix
-        // to get the generic k-dependent matrix
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
-                int nb = ctx_.unit_cell().atom(ia).type().indexb_hub().size();
+        /* copy local blocks */
+        for (int at_lvl = 0; at_lvl < static_cast<int>(um1__.atomic_orbitals().size()); at_lvl++) {
+            const int ia    = um1__.atomic_orbitals(at_lvl).first;
+            auto& atom_type = ctx_.unit_cell().atom(ia).type();
+            int lo_ind      = um1__.atomic_orbitals(at_lvl).second;
+            if (atom_type.lo_descriptor_hub(lo_ind).use_for_calculation()) {
+                int lmmax_at = 2 * atom_type.lo_descriptor_hub(lo_ind).l() + 1;
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    for (int m1 = 0; m1 < nb; m1++) {
-                        for (int m2 = 0; m2 < nb; m2++) {
-                            um_(this->offset_[ia] + m1, this->offset_[ia] + m2, j) = um1__.local(ia)(m1, m2, j);
+                    for (int m2 = 0; m2 < lmmax_at; m2++) {
+                        for (int m1 = 0; m1 < lmmax_at; m1++) {
+                            um_[j](um1__.offset(at_lvl) + m1, um1__.offset(at_lvl) + m2) =
+                                um1__.local(at_lvl)(m1, m2, j);
                         }
                     }
                 }
+            }
+        }
+
+        for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
+            auto nl = ctx_.cfg().hubbard().nonlocal(i);
+            int ia  = nl.atom_pair()[0];
+            int ja  = nl.atom_pair()[1];
+            int il  = nl.l()[0];
+            int jl  = nl.l()[1];
+            auto Tr = nl.T();
+
+            /* we need to find the index of the radial function corresponding to the atomic level of each atom.  */
+            int at1_lvl = um1__.find_orbital_index(ia, nl.n()[0], il);
+            int at2_lvl = um1__.find_orbital_index(ja, nl.n()[1], jl);
+
+            auto z1 = std::exp(double_complex(0, twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
+            for (int is = 0; is < ctx_.num_spins(); is++) {
+                for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                    for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                        um_[is](um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2) +=
+                            z1 * um1__.nonlocal(i)(m1, m2, is);
+                    }
+                }
+            }
+        }
+        for (int is = 0; is < ctx_.num_spins(); is++) {
+            auto diff = check_hermitian(um_[is], r.first);
+            if (diff > 1e-10) {
+                RTE_THROW("um is not Hermitian");
+            }
+            if (ctx_.print_checksum()) {
+                utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
+            }
+            if (ctx_.processing_unit() == device_t::GPU) {
+                um_[is].allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
             }
         }
     }
@@ -396,6 +442,15 @@ class U_operator
     {
     }
 
+    inline auto atomic_orbitals() const
+    {
+        return atomic_orbitals_;
+    }
+
+    inline auto atomic_orbitals(const int idx__) const
+    {
+        return atomic_orbitals_[idx__];
+    }
     inline auto nhwf() const
     {
         return nhwf_;
@@ -408,12 +463,36 @@ class U_operator
 
     std::complex<T> operator()(int m1, int m2, int j)
     {
-        return um_(m1, m2, j);
+        return um_[j](m1, m2);
+    }
+
+    std::complex<T>* at(memory_t mem__, const int idx1, const int idx2, const int idx3)
+    {
+        return um_[idx3].at(mem__, idx1, idx2);
+    }
+
+    const int find_orbital_index(const int ia__, const int n__, const int l__) const
+    {
+        int at_lvl = 0;
+        for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
+            int lo_ind  = atomic_orbitals_[at_lvl].second;
+            int atom_id = atomic_orbitals_[at_lvl].first;
+            if ((atomic_orbitals_[at_lvl].first == ia__) &&
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
+                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l() == l__))
+                break;
+        }
+
+        if (at_lvl == static_cast<int>(atomic_orbitals_.size())) {
+            std::cout << "atom: " << ia__ << "n: " << n__ << ", l: " << l__ << std::endl;
+            RTE_THROW("Found an arbital that is not listed\n");
+        }
+        return at_lvl;
     }
 };
 
-//template <typename T>
-//class P_operator : public Non_local_operator<T>
+// template <typename T>
+// class P_operator : public Non_local_operator<T>
 //{
 //  public:
 //    P_operator(Simulation_context const& ctx_, mdarray<double_complex, 3>& p_mtrx__)
@@ -458,20 +537,39 @@ class U_operator
  *  \param [out] sphi    Resulting |beta>Q<beta|phi>
  */
 template <typename T>
-void
-apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-                    sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__, sddk::Wave_functions<real_type<T>>* hphi__,
-                    Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>* sphi__);
+void apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                         sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
+                         sddk::Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
+                         sddk::Wave_functions<real_type<T>>* sphi__);
 
 template <typename T>
-void
-apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-                 sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
+void apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
+                      Beta_projectors<real_type<T>>& beta__, sddk::Wave_functions<real_type<T>>& phi__,
+                      Q_operator<real_type<T>>* q_op__, sddk::Wave_functions<real_type<T>>& sphi__);
 
 template <typename T>
-void
-apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
-    Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__);
+void apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
+                      Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__);
+
+/// Apply strain derivative of S-operator to all scalar functions.
+inline void
+apply_S_operator_strain_deriv(sddk::device_t pu__, int comp__, Beta_projectors<double>& bp__,
+                              Beta_projectors_strain_deriv<double>& bp_strain_deriv__, Wave_functions<double>& phi__,
+                              Q_operator<double>& q_op__, Wave_functions<double>& ds_phi__)
+{
+    RTE_ASSERT(ds_phi__.num_wf() == phi__.num_wf());
+    //ds_phi__.zero(pu__);
+    for (int ichunk = 0; ichunk < bp__.num_chunks(); ichunk++) {
+        /* generate beta-projectors for a block of atoms */
+        bp__.generate(ichunk);
+        /* generate derived beta-projectors for a block of atoms */
+        bp_strain_deriv__.generate(ichunk, comp__);
+        auto dbeta_phi = bp_strain_deriv__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
+        auto beta_phi = bp__.inner<double_complex>(ichunk, phi__, 0, 0, phi__.num_wf());
+        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp__, dbeta_phi);
+        q_op__.apply(ichunk, 0, ds_phi__, 0, ds_phi__.num_wf(), bp_strain_deriv__, beta_phi);
+    }
+}
 
 } // namespace sirius
 

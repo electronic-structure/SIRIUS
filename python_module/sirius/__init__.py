@@ -23,7 +23,7 @@ class OccupancyDescriptor(object):
             ll = list(array(v).flatten())
             f[:len(ll)] = ll
             instance[k].set_band_occupancy(ispn, f)
-        instance.sync_band_occupancies()
+        instance.sync_band_occupancy()
 
     def __get__(self, instance, owner):
 
@@ -83,7 +83,7 @@ class BandEnergiesDescriptor(object):
             k, ispn = key
             for j, v in enumerate(val):
                 instance[k].set_band_energy(j, ispn, v)
-        instance.sync_band_energies()
+        instance.sync_band_energy()
 
 
 class DensityDescriptor(object):

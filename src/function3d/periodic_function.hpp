@@ -305,8 +305,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         std::map<vector3d<int>, int> local_gvec_mapping;
 
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            int  ig               = gvec_.offset() + igloc;
-            auto G                = gvec_.gvec(ig);
+            auto G                = gvec_.gvec<index_domain_t::local>(igloc);
             local_gvec_mapping[G] = igloc;
         }
 

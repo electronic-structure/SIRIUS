@@ -49,7 +49,7 @@ extern "C" void create_beta_gk_gpu_double(int                   num_atoms,
 #endif
 
 /// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
-enum class beta_desc_idx
+enum class beta_desc_idx : int
 {
     /// Number of beta-projector functions for this atom.
     nbf      = 0,
@@ -85,9 +85,6 @@ class Beta_projectors_base
 
     /// List of G+k vectors.
     Gvec const& gkvec_;
-
-    /// Mapping between local and global G+k vector index.
-    std::vector<int> const& igk_;
 
     /// Coordinates of G+k vectors used by GPU kernel.
     mdarray<double, 2> gkvec_coord_;
@@ -184,7 +181,7 @@ class Beta_projectors_base
     }
 
   public:
-    Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int> const& igk__, int N__);
+    Beta_projectors_base(Simulation_context& ctx__, Gvec const& gkvec__, int N__);
 
     /// Calculate inner product between beta-projectors and wave-functions.
     /** The following is computed: <beta|phi> */
@@ -205,7 +202,8 @@ class Beta_projectors_base
 
     inline int num_gkvec_loc() const
     {
-        return static_cast<int>(igk_.size());
+        //return static_cast<int>(igk_.size());
+        return gkvec_.count();
     }
 
     inline int num_comp() const

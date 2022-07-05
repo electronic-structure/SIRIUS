@@ -141,22 +141,18 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
         double result{0};
-        int ig0 = x.ctx().gvec().skip_g0();
         if (use_coarse_gvec__) {
-            for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
+            for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
-                /* global index */
-                int ig = x.ctx().gvec().offset() + ig1;
 
-                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) /
+                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(ig1), 2);
             }
         } else {
-            for (int igloc = ig0; igloc < x.ctx().gvec().count(); igloc++) {
-                /* global index */
-                int ig = x.ctx().gvec().offset() + igloc;
-
-                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+            for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
+                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) /
+                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(igloc), 2);
             }
         }
         if (x.ctx().gvec().reduced()) {
@@ -364,18 +360,11 @@ FunctionProperties<paw_density> paw_density_function_property()
     {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                {
-                    auto tmp1 = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
-                    auto tmp2 = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
-                    x.ae_density(j, i) = std::move(tmp1);
-                    y.ae_density(j, i) = std::move(tmp2);
-                }
-                {
-                    auto tmp1 = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
-                    auto tmp2 = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
-                    x.ps_density(j, i) = std::move(tmp1);
-                    y.ps_density(j, i) = std::move(tmp2);
-                }
+                x.ae_density(j, i) = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
+                y.ae_density(j, i) = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+
+                x.ps_density(j, i) = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
+                y.ps_density(j, i) = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
             }
         }
     };
@@ -399,45 +388,61 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
 
     auto scale_func = [](double alpha, Hubbard_matrix& x) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    x.local(ia)[i] *= alpha;
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                x.local(at_lvl)[i] *= alpha;
+            }
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                x.nonlocal(at_lvl)[i] *= alpha;
             }
         }
     };
 
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                x.local(ia) >> y.local(ia);
-            }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            x.local(at_lvl) >> y.local(at_lvl);
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            x.nonlocal(at_lvl) >> y.nonlocal(at_lvl);
         }
     };
 
     auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    y.local(ia)[i] = alpha * x.local(ia)[i] + y.local(ia)[i];
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                y.local(at_lvl)[i] = alpha * x.local(at_lvl)[i] + y.local(at_lvl)[i];
+            }
+        }
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                y.nonlocal(at_lvl)[i] = alpha * x.nonlocal(at_lvl)[i] + y.nonlocal(at_lvl)[i];
             }
         }
     };
 
     auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void
     {
-        for (int ia = 0; ia < x.ctx().unit_cell().num_atoms(); ia++) {
-            if (x.ctx().unit_cell().atom(ia).type().hubbard_correction()) {
-                for (size_t i = 0; i < x.local(ia).size(); i++) {
-                    auto xi = x.local(ia)[i];
-                    auto yi = y.local(ia)[i];
-                    x.local(ia)[i] = xi * c + yi * s;
-                    y.local(ia)[i] = yi * c - xi * s;
-                }
+        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
+            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
+                auto xi = x.local(at_lvl)[i];
+                auto yi = y.local(at_lvl)[i];
+                x.local(at_lvl)[i] = xi * c + yi * s;
+                y.local(at_lvl)[i] = yi * c - xi * s;
+            }
+        }
+
+        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
+                auto xi = x.nonlocal(at_lvl)[i];
+                auto yi = y.nonlocal(at_lvl)[i];
+                x.nonlocal(at_lvl)[i] = xi * c + yi * s;
+                y.nonlocal(at_lvl)[i] = yi * c - xi * s;
             }
         }
     };
@@ -445,8 +450,6 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
     return FunctionProperties<Hubbard_matrix>(global_size_func, inner_prod_func, scale_func, copy_func, axpy_func,
                                               rotate_func);
 }
-
 } // namespace mixer
 
 } // namespace sirius
-

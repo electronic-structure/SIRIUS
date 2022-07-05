@@ -38,7 +38,7 @@ Band::Band(Simulation_context& ctx__)
     , blacs_grid_(ctx__.blacs_grid())
 {
     if (!ctx_.initialized()) {
-        TERMINATE("Simulation_context is not initialized");
+        RTE_THROW("Simulation_context is not initialized");
     }
 }
 
@@ -61,24 +61,19 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
         if (mtrx_old__) {
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < spl_col.local_size(); i++) {
-                std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            if (spl_row.local_size()) {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+                }
             }
         }
 
         if (ctx_.print_checksum()) {
-            double_complex cs(0, 0);
-            for (int i = 0; i < spl_col.local_size(); i++) {
-                for (int j = 0; j < spl_row.local_size(); j++) {
-                    cs += mtrx__(j, i);
-                }
-            }
-            mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+            auto cs = mtrx__.checksum(N__ - num_locked, N__ - num_locked);
             if (ctx_.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx_old", cs);
+                utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(ctx_.out()));
             }
         }
     }
@@ -107,19 +102,13 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-        double_complex cs(0, 0);
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            for (int j = 0; j < spl_row.local_size(); j++) {
-                cs += mtrx__(j, i);
-            }
-        }
-        mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+        auto cs = mtrx__.checksum(N__ + n__ - num_locked, N__ + n__ - num_locked);
         if (ctx_.comm_band().rank() == 0) {
-            utils::print_checksum("subspace_mtrx", cs);
+            utils::print_checksum("subspace_mtrx", cs, RTE_OUT(ctx_.out()));
         }
     }
 
-    /* kill any numerical noise */
+    /* remove any numerical noise */
     mtrx__.make_real_diag(N__ + n__ - num_locked);
 
     /* save new matrix */
@@ -129,9 +118,11 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+        if (spl_row.local_size()) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+            }
         }
     }
 }
@@ -146,7 +137,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
 
     if (ctx_.cfg().iterative_solver().init_subspace() == "lcao") {
         /* get the total number of atomic-centered orbitals */
-        N = unit_cell_.num_ps_atomic_wf();
+        N = unit_cell_.num_ps_atomic_wf().first;
     }
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
@@ -177,13 +168,15 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
-    if (ctx_.cfg().control().verification() >= 1) {
+    if (ctx_.cfg().control().verification() >= 2) {
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;
             s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
             WARNING(s);
+        } else {
+            ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
         }
     }
 
@@ -212,7 +205,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
     Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_wfs();},
-                                             ctx_.atomic_wf_ri(), phi);
+                                             ctx_.ps_atomic_wf_ri(), phi);
 
     /* generate some random noise */
     std::vector<double> tmp(4096);
@@ -310,8 +303,6 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         }
     }
 
-    Hk__.kp().copy_hubbard_orbitals_on_device();
-
     for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         Hk__.template apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
@@ -321,7 +312,10 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
             set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
             if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
-                ovlp.serialize("overlap", num_phi_tot);
+                auto s = ovlp.serialize("overlap", num_phi_tot, num_phi_tot);
+                if (Hk__.kp().comm().rank() == 0) {
+                    ctx_.out() << s.str() << std::endl;
+                }
             }
 
             double max_diff = check_hermitian(ovlp, num_phi_tot);
@@ -348,8 +342,11 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
 
         if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
-            hmlt.serialize("hmlt", num_phi_tot);
-            ovlp.serialize("ovlp", num_phi_tot);
+            auto s1 = hmlt.serialize("hmlt", num_phi_tot, num_phi_tot);
+            auto s2 = hmlt.serialize("ovlp", num_phi_tot, num_phi_tot);
+            if (Hk__.kp().comm().rank() == 0) {
+                ctx_.out() << s1.str() << std::endl << s2.str() << std::endl;
+            }
         }
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
@@ -358,8 +355,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
         }
 
         if (ctx_.print_checksum()) {
-            auto cs = evec.checksum();
-            evec.blacs_grid().comm().allreduce(&cs, 1);
+            auto cs = evec.checksum(num_phi_tot, num_bands);
             real_type<T> cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];
@@ -400,8 +396,6 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
             Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
-
-    Hk__.kp().release_hubbard_orbitals_on_device();
 
     if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -448,8 +442,6 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
-
-        kp.copy_hubbard_orbitals_on_device();
     }
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
@@ -482,8 +474,6 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
-
-    kp.release_hubbard_orbitals_on_device();
 }
 
 /// Check wave-functions for orthonormalization.
@@ -515,8 +505,6 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
             ovlp.allocate(memory_t::device);
         }
 
-        Hk__.kp().copy_hubbard_orbitals_on_device();
-
         /* compute residuals */
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
             auto sr = spin_range(nc_mag ? 2 : ispin_step);
@@ -537,8 +525,6 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
                 psi.pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
-
-        Hk__.kp().release_hubbard_orbitals_on_device();
     }
 }
 

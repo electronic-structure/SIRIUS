@@ -109,10 +109,12 @@ class Radial_integrals_base
 
 /// Radial integrals of the atomic centered orbitals.
 /** Used in initialize_subspace and in the hubbard correction. */
-template<bool jl_deriv>
+template <bool jl_deriv>
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
+    /// Callback function to compute radial integrals using the host code.
+    std::function<void(int, double, double*, int)> atomic_wfc_callback_{nullptr};
     /// Return radial basis index for a given atom type.
     std::function<sirius::experimental::radial_functions_index const&(int)> indexr_;
     /// Generate radial integrals.
@@ -121,19 +123,23 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
   public:
     /// Constructor.
     Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
-        std::function<Spline<double> const&(int, int)> fl__)
+                               std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
+                               std::function<Spline<double> const&(int, int)> fl__,
+                               std::function<void(int, double, double*, int)> atomic_wfc_callback__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
+        , atomic_wfc_callback_(atomic_wfc_callback__)
         , indexr_(indexr__)
     {
-        int nrf_max{0};
-        for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
-            nrf_max = std::max(nrf_max, static_cast<int>(indexr_(iat).size()));
+        if (atomic_wfc_callback_ == nullptr) {
+            int nrf_max{0};
+            for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
+                nrf_max = std::max(nrf_max, static_cast<int>(indexr_(iat).size()));
+            }
+
+            values_ = sddk::mdarray<Spline<double>, 2>(nrf_max, unit_cell_.num_atom_types());
+
+            generate(fl__);
         }
-
-        values_ = sddk::mdarray<Spline<double>, 2>(nrf_max, unit_cell_.num_atom_types());
-
-        generate(fl__);
     }
 
     /// Retrieve a value for a given orbital of an atom type.
@@ -150,8 +156,13 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         int nrf         = indexr_(atom_type.id()).size();
 
         sddk::mdarray<double, 1> val(nrf);
-        for (int i = 0; i < nrf; i++) {
-            val(i) = values_(i, iat__)(idx.first, idx.second);
+
+        if (atomic_wfc_callback_ == nullptr) {
+            for (int i = 0; i < nrf; i++) {
+                val(i) = values_(i, iat__)(idx.first, idx.second);
+            }
+        } else {
+            atomic_wfc_callback_(iat__ + 1, q__, &val[0], nrf);
         }
         return val;
     }
@@ -168,7 +179,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
 
   public:
     Radial_integrals_aug(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<void(int, double, double*, int, int)> ri_callback__)
+                         std::function<void(int, double, double*, int, int)> ri_callback__)
         : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
         , ri_callback_(ri_callback__)
     {
@@ -176,7 +187,8 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
             int nmax = unit_cell_.max_mt_radial_basis_size();
             int lmax = unit_cell_.lmax();
 
-            values_ = sddk::mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
+            values_ =
+                sddk::mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
 
             generate();
         }
@@ -205,7 +217,6 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
     }
 };
 
-
 class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 {
   private:
@@ -214,7 +225,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 
   public:
     Radial_integrals_rho_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<void(int, int, double*, double*)> ri_callback__)
+                                std::function<void(int, int, double*, double*)> ri_callback__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
         , ri_callback_(ri_callback__)
     {
@@ -259,7 +270,6 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     }
 };
 
-
 template <bool jl_deriv>
 class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 {
@@ -269,7 +279,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 
   public:
     Radial_integrals_rho_core_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<void(int, int, double*, double*)> ri_callback__)
+                                     std::function<void(int, int, double*, double*)> ri_callback__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
         , ri_callback_(ri_callback__)
     {
@@ -317,7 +327,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
 
   public:
     Radial_integrals_beta(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<void(int, double, double*, int)> ri_callback__)
+                          std::function<void(int, double, double*, int)> ri_callback__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
         , ri_callback_(ri_callback__)
     {
@@ -354,7 +364,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
   public:
     Radial_integrals_vloc(Unit_cell const& unit_cell__, double qmax__, int np__,
-        std::function<void(int, int, double*, double*)> ri_callback__)
+                          std::function<void(int, int, double*, double*)> ri_callback__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
         , ri_callback_(ri_callback__)
     {
@@ -383,7 +393,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
                 return values_(iat__)(idx.first, idx.second) / q2 / q__ -
-                    atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
+                       atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
             } else {
                 return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
             }
@@ -414,7 +424,6 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         return result;
     }
 };
-
 
 class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
 {

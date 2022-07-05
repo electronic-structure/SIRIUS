@@ -1,66 +1,267 @@
 {
-  "control" : {
-      "cyclic_block_size" : 2,
-      "processing_unit" : "cpu",
-      "std_evp_solver_name" : "lapack",
-      "gen_evp_solver_name" : "lapack",
-      "verbosity" : 1,
-      "print_forces" : true,
-      "print_stress" : true
-  },
-
-  "parameters" : {
-      "electronic_structure_method" : "pseudopotential",
-
-      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-      "smearing_width" : 0.025,
-
-      "use_symmetry" : true,
-
-      "num_mag_dims" : 0,
-
-      "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
-
-      "energy_tol" : 1e-8,
-      "density_tol" : 1e-5,
-
-      "num_dft_iter" : 100,
-
-      "ngridk" : [2,2,2]
-  },
-
-    "iterative_solver" : {
-        "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-6,
-        "num_steps" : 20,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1
+    "control": {
+        "gen_evp_solver_name": "lapack",
+        "print_checksum": false,
+        "print_forces": true,
+        "processing_unit": "cpu",
+        "verbosity": 2
     },
+    "hubbard": {
+        "full_orthogonalization": false,
+        "local": [
+            {
+                "atom_type": "Ni",
+                "J": 0.0,
+                "J0": 0.0,
+                "U": 8.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "l": 2,
+                "n": 3,
+                "total_initial_occupancy": 8.0
+            },
+            {
+                "atom_type": "O",
+                "J": 0.0,
+                "J0": 0.0,
+                "U": 0.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "l": 1,
+                "n": 2,
+                "total_initial_occupancy": 6.0
 
-    "mixer" : {
-        "beta" : 0.75,
-        "type" : "anderson",
-        "max_history" : 8
+            }
+        ],
+        "nonlocal": [
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 0, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ -1, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 0, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ -1, 0, 1 ],
+                "V": 1,
+                "atom_pair": [ 0, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ -1, 1, 0 ],
+                "V": 1,
+                "atom_pair": [ 0, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, -1, 0 ],
+                "V": 1,
+                "atom_pair": [ 0, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 0, -1 ],
+                "V": 1,
+                "atom_pair": [ 0, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 1, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 1, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ -1, 1, 0 ],
+                "V": 1,
+                "atom_pair": [ 1, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 1, -1 ],
+                "V": 1,
+                "atom_pair": [ 1, 2 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 1, -1 ],
+                "V": 1,
+                "atom_pair": [ 1, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 1, 0, -1 ],
+                "V": 1,
+                "atom_pair": [ 1, 3 ],
+                "l": [ 2, 1 ],
+                "n": [ 3, 2 ]
+            },
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 2, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 2, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, -1, 1 ],
+                "V": 1,
+                "atom_pair": [ 2, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 1, -1, 0 ],
+                "V": 1,
+                "atom_pair": [ 2, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 1, -1, 0 ],
+                "V": 1,
+                "atom_pair": [ 2, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 1, 0, -1 ],
+                "V": 1,
+                "atom_pair": [ 2, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 3, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ -1, 0, 1 ],
+                "V": 1,
+                "atom_pair": [ 3, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, -1, 1 ],
+                "V": 1,
+                "atom_pair": [ 3, 1 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, 0, 1 ],
+                "V": 1,
+                "atom_pair": [ 3, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 0, 1, 0 ],
+                "V": 1,
+                "atom_pair": [ 3, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            },
+            {
+                "T": [ 1, 0, 0 ],
+                "V": 1,
+                "atom_pair": [ 3, 0 ],
+                "l": [ 1, 2 ],
+                "n": [ 2, 3 ]
+            }
+        ],
+        "simplified": false
     },
-
-    "unit_cell" : {
-
-        "lattice_vectors" : [ [1, 0, 0], 
-                              [0, 1, 0], 
-                              [0, 0, 1]
-                            ],
-
-        "lattice_vectors_scale" : 7.0,
-
-        "atom_types" : ["H"],
-
-        "atom_files" : {"H" : "H.json"},
-
-        "atoms" : {
-            "H" : [ [0,    0,    0] ]
-        }
+    "iterative_solver": {
+        "converge_by_energy": 1,
+        "early_restart": 0.5,
+        "empty_states_tolerance": 1e-05,
+        "energy_tolerance": 0.01,
+        "min_num_res": 0,
+        "num_singular": -1,
+        "num_steps": 20,
+        "relative_tolerance": 0,
+        "residual_tolerance": 1e-06,
+        "subspace_size": 2,
+        "type": "davidson"
+    },
+    "mixer": {
+        "beta": 0.7,
+        "beta0": 0.15,
+        "beta_scaling_factor": 1.0,
+        "max_history": 8,
+        "type": "anderson",
+        "use_hartree": false
+    },
+    "parameters": {
+        "density_tol": 1e-06,
+        "electronic_structure_method": "pseudopotential",
+        "energy_tol": 1e-06,
+        "gk_cutoff": 8.0,
+        "pw_cutoff": 25.0,
+        "hubbard_correction": true,
+        "ngridk": [ 4, 4, 4 ],
+        "num_dft_iter": 100,
+        "num_mag_dims": 1,
+        "smearing": "gaussian",
+        "smearing_width": 0.01,
+        "xc_functionals": [
+            "XC_GGA_X_PBE",
+            "XC_GGA_C_PBE"
+        ]
+    },
+    "unit_cell": {
+        "atom_coordinate_units": "lattice",
+        "atom_files": { "Ni": "Ni.json", "O": "O.json" },
+        "atom_types": [ "Ni", "O" ],
+        "atoms": {
+                "Ni": [
+                [ 0.0, 0.0, 0.0,0.0,0.0, 2.0 ]
+                ,[ 0.5, 0.5, -0.5,0.0, 0.0, -2.0 ]
+            ],
+            "O": [
+                [ 0.75, -0.25, -0.25 ],
+                [ 0.25, 0.25, 0.25 ]
+            ]
+        },
+        "lattice_vectors": [
+            [ 7.88, 3.94, 3.94 ],
+            [ 3.94, 7.88, 3.94 ],
+            [ 3.94, 3.94, 7.88 ]
+        ],
+        "lattice_vectors_scale": 1.0
     }
 }

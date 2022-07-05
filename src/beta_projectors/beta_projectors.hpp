@@ -37,7 +37,7 @@ class Beta_projectors : public Beta_projectors_base<T>
     bool prepared_{false};
     matrix<std::complex<T>> beta_pw_all_atoms_;
     /// Generate plane-wave coefficients for beta-projectors of atom types.
-    void generate_pw_coefs_t(std::vector<int>& igk__)
+    void generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
         if (!this->num_beta_t()) {
@@ -56,9 +56,8 @@ class Beta_projectors : public Beta_projectors_base<T>
         /* compute <G+k|beta> */
         #pragma omp parallel for
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            int igk = igk__[igkloc];
             /* vs = {r, theta, phi} */
-            auto vs = SHT::spherical_coordinates(this->gkvec_.template gkvec_cart<index_domain_t::global>(igk));
+            auto vs = SHT::spherical_coordinates(this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc));
             /* compute real spherical harmonics for G+k vector */
             std::vector<double> gkvec_rlm(utils::lmmax(this->ctx_.unit_cell().lmax()));
             sf::spherical_harmonics(this->ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
@@ -87,12 +86,12 @@ class Beta_projectors : public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int>& igk__)
-        : Beta_projectors_base<T>(ctx__, gkvec__, igk__, 1)
+    Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__)
+        : Beta_projectors_base<T>(ctx__, gkvec__, 1)
     {
         PROFILE("sirius::Beta_projectors");
         /* generate phase-factor independent projectors for atom types */
-        generate_pw_coefs_t(igk__);
+        generate_pw_coefs_t();
         if (!this->num_beta_t()) {
             return;
         }

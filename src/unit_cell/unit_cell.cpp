@@ -37,15 +37,15 @@ Unit_cell::Unit_cell(Simulation_parameters const& parameters__, Communicator con
 Unit_cell::~Unit_cell() = default;
 
 std::vector<double>
-Unit_cell::find_mt_radii()
+Unit_cell::find_mt_radii(int auto_rmt__, bool inflate__)
 {
     if (nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
+        RTE_THROW("array of nearest neighbours is empty");
     }
 
     std::vector<double> Rmt(num_atom_types(), 1e10);
 
-    if (parameters_.auto_rmt() == 1) {
+    if (auto_rmt__ == 1) {
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
             if (nearest_neighbours_[ia].size() > 1) {
@@ -62,7 +62,7 @@ Unit_cell::find_mt_radii()
         }
     }
 
-    if (parameters_.auto_rmt() == 2) {
+    if (auto_rmt__ == 2) {
         std::vector<double> scale(num_atom_types(), 1e10);
 
         for (int ia = 0; ia < num_atoms(); ia++) {
@@ -89,9 +89,7 @@ Unit_cell::find_mt_radii()
      * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce
      * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if
      * it is far from the 3rd atom. */
-    bool inflate = true;
-
-    if (inflate) {
+    if (inflate__) {
         std::vector<bool> scale_Rmt(num_atom_types(), true);
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
@@ -108,6 +106,8 @@ Unit_cell::find_mt_radii()
             }
         }
 
+        std::vector<double> Rmt_infl(num_atom_types(), 1e10);
+
         for (int ia = 0; ia < num_atoms(); ia++) {
             int id1 = atom(ia).type_id();
             if (nearest_neighbours_[ia].size() > 1) {
@@ -116,10 +116,14 @@ Unit_cell::find_mt_radii()
                 double dist = nearest_neighbours_[ia][1].distance;
 
                 if (scale_Rmt[id1] && !scale_Rmt[id2]) {
-                    Rmt[id1]       = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
-                    scale_Rmt[id1] = false;
+                    Rmt_infl[id1] = std::min(Rmt_infl[id1], std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2])));
+                } else {
+                    Rmt_infl[id1] = Rmt[id1];
                 }
             }
+        }
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            Rmt[iat] = Rmt_infl[iat];
         }
     }
 
@@ -128,7 +132,7 @@ Unit_cell::find_mt_radii()
             std::stringstream s;
             s << "muffin-tin radius for atom type " << i << " (" << atom_type(i).label()
               << ") is too small: " << Rmt[i];
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
 
@@ -139,7 +143,7 @@ bool
 Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
     if (num_atoms() != 0 && nearest_neighbours_.size() == 0) {
-        TERMINATE("array of nearest neighbours is empty");
+        RTE_THROW("array of nearest neighbours is empty");
     }
 
     for (int ia = 0; ia < num_atoms(); ia++) {
@@ -239,7 +243,7 @@ Unit_cell::print_info(int verbosity__) const
     }
     std::printf("\nminimum bond length: %20.12f\n", min_bond_length());
     if (!parameters_.full_potential()) {
-        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
+        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf().first);
     }
 
     if (symmetry_ != nullptr) {
@@ -391,17 +395,12 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
 void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
-    auto draw_bar = [&](char c, int w)
-    {
-        out__ << std::setfill(c) << std::setw(w) << c << std::setfill(' ') << std::endl;
-    };
-
-    out__ << "Nearest neighbors" << std::endl;
-    draw_bar('=', 17);
+    out__ << "Nearest neighbors" << std::endl
+          << utils::hbar(80, '=') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
-        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl;
-        draw_bar('-', 80);
-        out__ << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
+        out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl
+              << utils::hbar(80, '-') << std::endl
+              << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
             int ja = nearest_neighbours_[ia][i].atom_id;
             auto ja_symbol = atom(ja).type().symbol();
@@ -650,7 +649,23 @@ Unit_cell::initialize()
             atom_coord_.push_back(mdarray<double, 2>());
         }
     }
+
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of Hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            counter += atom.type().indexb_hub().size();
+        }
+    }
+    num_hubbard_wf_ = std::make_pair(counter, offs);
+
     update();
+
 
     //== write_cif();
 
@@ -782,8 +797,12 @@ Unit_cell::update()
     auto v1 = lattice_vector(1);
     auto v2 = lattice_vector(2);
 
-    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                        parameters_.cfg().parameters().nn_radius());
+    double r{0};
+    if (parameters_.cfg().parameters().nn_radius() < 0) {
+        r = std::max(v0.length(), std::max(v1.length(), v2.length()));
+    } else {
+        r = parameters_.cfg().parameters().nn_radius();
+    }
 
     find_nearest_neighbours(r);
 
@@ -791,7 +810,7 @@ Unit_cell::update()
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
             auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
-            auto Rmt = find_mt_radii();
+            auto Rmt = find_mt_radii(parameters_.auto_rmt(), true);
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 double r0 = atom_type(iat).radial_grid().first();
 
@@ -807,7 +826,7 @@ Unit_cell::update()
               << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
               << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
               << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         min_mt_radius_ = 1e100;
@@ -887,7 +906,7 @@ Unit_cell::next_atom_type_id(std::string label__)
     if (atom_type_id_map_.count(label__) != 0) {
         std::stringstream s;
         s << "atom type with label " << label__ << " is already in list";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     /* take text id */
     atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
@@ -907,31 +926,16 @@ Unit_cell::init_paw()
 }
 
 std::pair<int, std::vector<int>>
-Unit_cell::num_hubbard_wf() const
+Unit_cell::num_ps_atomic_wf() const
 {
     std::vector<int> offs(this->num_atoms(), -1);
     int counter{0};
-
-    /* we loop over atoms to check which atom has hubbard orbitals and then
-       compute the number of Hubbard orbitals associated to it */
     for (auto ia = 0; ia < this->num_atoms(); ia++) {
         auto& atom = this->atom(ia);
-        if (atom.type().hubbard_correction()) {
-            offs[ia] = counter;
-            counter += atom.type().indexb_hub().size();
-        }
+        offs[ia] = counter;
+        counter += atom.type().indexb_wfs().size();
     }
     return std::make_pair(counter, offs);
-}
-
-int
-Unit_cell::num_ps_atomic_wf() const
-{
-    int N{0};
-    for (int iat = 0; iat < this->num_atom_types(); iat++) {
-        N += atom_type(iat).num_atoms() * static_cast<int>(this->atom_type(iat).indexb_wfs().size());
-    }
-    return N;
 }
 
 } // namespace sirius

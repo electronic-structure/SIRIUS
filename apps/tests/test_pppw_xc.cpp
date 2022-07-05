@@ -122,7 +122,7 @@ void test_davidson(cmd_args const& args__)
 
     Density rho(ctx);
     rho.initial_density();
-    rho.print_info();
+    rho.print_info(ctx.out());
 
     check_xc_potential(rho);
 }

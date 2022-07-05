@@ -191,10 +191,8 @@ void Local_operator<T>::prepare_k(Gvec_partition const& gkvec_p__)
     }
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
-        /* global index of G-vector */
-        int ig = gkvec_p__.idx_gvec(ig_loc);
         /* get G+k in Cartesian coordinates */
-        auto gv          = gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig);
+        auto gv          = gkvec_p__.gkvec_cart(ig_loc);
         pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
     }
 
@@ -676,7 +674,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
 
     ctx_.num_loc_op_applied(n__);
 
-    mdarray<std::complex<T>, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(memory_t::host));
+    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(memory_t::host));
 
     if (ctx_.processing_unit() == device_t::GPU) {
         phi__.pw_coeffs(0).copy_to(memory_t::host, N__, n__);
@@ -710,7 +708,6 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
     auto spfft_buf = spfftk__.space_domain_data(spfft_mem);
 
     for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
-        PROFILE_START("sirius::Local_operator::apply_h_o|pot");
         /* phi(G) -> phi(r) */
         spfftk__.backward(reinterpret_cast<T const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)), spfft_mem);
         if (ophi__ != nullptr) {
@@ -751,25 +748,21 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             }
         }
         if (hphi__ != nullptr) {
-            /* multiply be effective potential, which itself was multiplied by the step function */
+            /* multiply by effective potential, which itself was multiplied by the step function */
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, 0);
             /* phi(r) * Theta(r) * V(r) -> hphi(G) */
             spfftk__.forward(spfft_mem, reinterpret_cast<T*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
                              SPFFT_FULL_SCALING);
         }
-        PROFILE_STOP("sirius::Local_operator::apply_h_o|pot");
 
         if (hphi__ != nullptr) {
-            PROFILE("sirius::Local_operator::apply_h_o|kin");
             /* add kinetic energy */
             for (int x : {0, 1, 2}) {
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
-                    /* global index of G-vector */
-                    int ig = gkvec_p__.idx_gvec(igloc);
+                    auto gvc = gkvec_p__.gkvec_cart(igloc);
                     /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
-                    buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) *
-                                    static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
+                    buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gvc[x];
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
                 spfftk__.backward(reinterpret_cast<T const*>(&buf_pw[0]), spfft_mem);
@@ -794,9 +787,8 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
                 spfftk__.forward(spfft_mem, reinterpret_cast<T*>(&buf_pw[0]), SPFFT_FULL_SCALING);
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p__.gvec_count_fft(); igloc++) {
-                    int ig = gkvec_p__.idx_gvec(igloc);
-                    hphi__->pw_coeffs(0).extra()(igloc, j) +=
-                        static_cast<T>(0.5) * buf_pw[igloc] * static_cast<T>(gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig)[x]);
+                    auto gvc = gkvec_p__.gkvec_cart(igloc);
+                    hphi__->pw_coeffs(0).extra()(igloc, j) += static_cast<T>(0.5) * buf_pw[igloc] * gvc[x];
                 }
             }
         }
@@ -817,14 +809,6 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
             ophi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-    // if (ctx_->control().print_checksum_) {
-    //    auto cs1 = hphi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    auto cs2 = ophi__.checksum_pw(N__, n__, ctx_->processing_unit());
-    //    if (phi__.comm().rank() == 0) {
-    //        DUMP("checksum(hphi_pw): %18.10f %18.10f", cs1.real(), cs1.imag());
-    //        DUMP("checksum(ophi_pw): %18.10f %18.10f", cs2.real(), cs2.imag());
-    //    }
-    //}
 }
 
 template <typename T>

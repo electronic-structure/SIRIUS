@@ -163,10 +163,7 @@ class Unit_cell
 
     Communicator const& comm_;
 
-    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
-    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
-    std::vector<double> find_mt_radii();
+    std::pair<int, std::vector<int>> num_hubbard_wf_;
 
     /// Check if MT spheres overlap
     inline bool check_mt_overlap(int& ia__, int& ja__);
@@ -285,10 +282,13 @@ class Unit_cell
     double min_bond_length() const;
 
     /// Return number of Hubbard wave-functions.
-    std::pair<int, std::vector<int>> num_hubbard_wf() const;
+    std::pair<int, std::vector<int>> const& num_hubbard_wf() const
+    {
+        return num_hubbard_wf_;
+    }
 
     /// Get the total number of pseudo atomic wave-functions.
-    int num_ps_atomic_wf() const;
+    std::pair<int, std::vector<int>> num_ps_atomic_wf() const;
 
     /// Get Cartesian coordinates of the vector by its fractional coordinates.
     template <typename T>
@@ -474,22 +474,22 @@ class Unit_cell
         std::copy(equivalent_atoms__, equivalent_atoms__ + num_atoms(), equivalent_atoms_.begin());
     }
 
-    inline splindex<splindex_t::block> const& spl_num_atoms() const
+    inline auto const& spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
 
-    inline int spl_num_atoms(int i) const
+    inline auto spl_num_atoms(int i) const
     {
         return static_cast<int>(spl_num_atoms_[i]);
     }
 
-    inline splindex<splindex_t::block> const& spl_num_atom_symmetry_classes() const
+    inline auto const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
     }
 
-    inline int spl_num_atom_symmetry_classes(int i) const
+    inline auto spl_num_atom_symmetry_classes(int i) const
     {
         return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
     }
@@ -507,6 +507,15 @@ class Unit_cell
     inline int lmax() const
     {
         return lmax_;
+    }
+
+    inline int lmax_apw() const
+    {
+        int lmax{0};
+        for (int iat = 0; iat < this->num_atom_types(); iat++) {
+            lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
+        }
+        return lmax;
     }
 
     inline int num_nearest_neighbours(int ia) const
@@ -569,6 +578,11 @@ class Unit_cell
         }
         return a;
     }
+
+    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
+    std::vector<double> find_mt_radii(int auto_rmt__, bool inflate__);
 };
 
 } // namespace sirius
