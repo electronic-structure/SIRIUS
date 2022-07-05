@@ -360,18 +360,11 @@ FunctionProperties<paw_density> paw_density_function_property()
     {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                {
-                    auto tmp1 = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
-                    auto tmp2 = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
-                    x.ae_density(j, i) = std::move(tmp1);
-                    y.ae_density(j, i) = std::move(tmp2);
-                }
-                {
-                    auto tmp1 = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
-                    auto tmp2 = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
-                    x.ps_density(j, i) = std::move(tmp1);
-                    y.ps_density(j, i) = std::move(tmp2);
-                }
+                x.ae_density(j, i) = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
+                y.ae_density(j, i) = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+
+                x.ps_density(j, i) = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
+                y.ps_density(j, i) = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
             }
         }
     };

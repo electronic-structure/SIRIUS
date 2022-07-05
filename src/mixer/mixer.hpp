@@ -31,7 +31,7 @@
 #include <vector>
 #include <limits>
 #include <memory>
-#include <exception>
+#include <stdexcept>
 #include <cmath>
 #include <numeric>
 
