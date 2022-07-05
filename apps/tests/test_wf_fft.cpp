@@ -72,6 +72,7 @@ class device_memory_guard
             }
         }
     }
+    device_memory_guard(device_memory_guard&& src__) = default;
     ~device_memory_guard()
     {
         if (is_device_memory(mem_)) {
@@ -130,7 +131,7 @@ class Wave_functions_base
 
     auto memory_guard(memory_t mem__, experimental::copy_to copy_to__ = experimental::copy_to::none)
     {
-        return device_memory_guard(*this, mem__, copy_to__);
+        return std::move(device_memory_guard<Wave_functions_base<T>>(*this, mem__, copy_to__));
     }
 };
 
