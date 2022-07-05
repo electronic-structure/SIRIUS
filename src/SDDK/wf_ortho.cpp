@@ -309,6 +309,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             RTE_OUT(std::cout) << "orthogonalization error : " << err << std::endl;
         }
     }
+
+    // TODO: remove this?
+    (void) gflops;
+
     return 0;
 }
 
