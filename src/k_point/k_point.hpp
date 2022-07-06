@@ -32,28 +32,6 @@
 
 namespace sirius {
 
-/// This is only for debug purpose.
-inline std::shared_ptr<Gvec>
-gkvec_factory(double gk_cutoff__, sddk::Communicator const& comm__)
-{
-    auto M = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
-    return std::make_shared<Gvec>(vector3d<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
-}
-
-//inline std::shared_ptr<Gvec>
-//gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
-//              bool gamma__ = false)
-//{
-//    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, sddk::Communicator::self(), gamma__);
-//}
-
-inline std::shared_ptr<Gvec>
-gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
-              Communicator const& comm__ = sddk::Communicator::self(), bool gamma__ = false)
-{
-    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
-}
-
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors"

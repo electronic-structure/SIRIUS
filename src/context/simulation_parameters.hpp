@@ -33,8 +33,6 @@
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
 
-using namespace sddk;
-
 namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.

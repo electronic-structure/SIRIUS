@@ -41,8 +41,6 @@
 #include "gpu/cusolver.hpp"
 #endif
 
-using namespace sddk;
-
 class Eigensolver_lapack : public Eigensolver
 {
   public:
