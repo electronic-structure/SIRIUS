@@ -38,7 +38,7 @@ class Augmentation_operator
   private:
     Atom_type const& atom_type_;
 
-    Gvec const& gvec_;
+    sddk::Gvec const& gvec_;
 
     sddk::mdarray<double, 2> q_mtrx_;
 
@@ -47,39 +47,39 @@ class Augmentation_operator
     mutable sddk::mdarray<double, 1> sym_weight_;
 
   public:
-    Augmentation_operator(Atom_type const& atom_type__, Gvec const& gvec__)
+    Augmentation_operator(Atom_type const& atom_type__, sddk::Gvec const& gvec__)
         : atom_type_(atom_type__)
         , gvec_(gvec__)
     {
     }
 
     void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, sddk::mdarray<double, 2> const& tp__,
-        memory_pool& mp__, memory_pool* mpd__);
+        sddk::memory_pool& mp__, sddk::memory_pool* mpd__);
 
     void prepare(stream_id sid, sddk::memory_pool* mp__) const
     {
-        if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
+        if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU && atom_type_.augment()) {
             if (mp__) {
                 sym_weight_.allocate(*mp__);
                 q_pw_.allocate(*mp__);
             } else {
-                sym_weight_.allocate(memory_t::device);
-                q_pw_.allocate(memory_t::device);
+                sym_weight_.allocate(sddk::memory_t::device);
+                q_pw_.allocate(sddk::memory_t::device);
             }
-            sym_weight_.copy_to(memory_t::device, sid);
-            q_pw_.copy_to(memory_t::device, sid);
+            sym_weight_.copy_to(sddk::memory_t::device, sid);
+            q_pw_.copy_to(sddk::memory_t::device, sid);
         }
     }
 
     void dismiss() const
     {
-        if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
-            q_pw_.deallocate(memory_t::device);
-            sym_weight_.deallocate(memory_t::device);
+        if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU && atom_type_.augment()) {
+            q_pw_.deallocate(sddk::memory_t::device);
+            sym_weight_.deallocate(sddk::memory_t::device);
         }
     }
 
-    mdarray<double, 2> const& q_pw() const
+    auto const& q_pw() const
     {
         return q_pw_;
     }
@@ -106,7 +106,7 @@ class Augmentation_operator
         return q_mtrx_(xi1__, xi2__);
     }
 
-    inline mdarray<double, 1> const& sym_weight() const
+    inline auto const& sym_weight() const
     {
         return sym_weight_;
     }
@@ -132,7 +132,7 @@ class Augmentation_operator
 class Augmentation_operator_gvec_deriv
 {
   private:
-    Gvec const& gvec_;
+      sddk::Gvec const& gvec_;
 
     sddk::mdarray<double, 2> q_pw_;
 
@@ -155,7 +155,7 @@ class Augmentation_operator_gvec_deriv
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, Gvec const& gvec__,
+    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, sddk::Gvec const& gvec__,
         sddk::mdarray<double, 2> const& tp__);
 
     void generate_pw_coeffs(Atom_type const& atom_type__, int nu__);
@@ -186,12 +186,12 @@ class Augmentation_operator_gvec_deriv
     //    #endif
     //}
 
-    mdarray<double, 2> const& q_pw() const
+    auto const& q_pw() const
     {
         return q_pw_;
     }
 
-    mdarray<double, 2> & q_pw()
+    auto& q_pw()
     {
         return q_pw_;
     }

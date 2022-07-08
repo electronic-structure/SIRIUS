@@ -3,6 +3,7 @@
 /* test FFT: tranfrom random function to real space, transform back and compare with the original function */
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T>
 int test_fft_complex(cmd_args& args, device_t fft_pu__)

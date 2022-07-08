@@ -221,7 +221,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         double b[]    = {0, 0, 0};
         b[num_rs - 1] = 1.0;
 
-        int info = linalg(linalg_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
+        int info = sddk::linalg(sddk::linalg_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
         if (info) {
             std::stringstream s;
@@ -353,7 +353,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     int nmtp = atom_type_.num_mt_points();
 
     Spline<double>  s(atom_type_.radial_grid());
-    dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
+    sddk::dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
 
@@ -373,13 +373,13 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
         }
     }
 
-    mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
+    sddk::mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
     auto stdevp = Eigensolver_factory("lapack", nullptr);
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    dmatrix<double>     loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    sddk::dmatrix<double>     loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
     stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
@@ -415,8 +415,8 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
         }
 
         std::vector<double> eval(ilo.size());
-        dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
-        dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        sddk::dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        sddk::dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
         for (int j1 = 0; j1 < (int)ilo.size(); j1++) {
             for (int j2 = 0; j2 < (int)ilo.size(); j2++) {
                 tmp(j1, j2) = ovlp(ilo[j1], ilo[j2]);
@@ -576,28 +576,28 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
 }
 
 void
-Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_radial_functions(sddk::Communicator const& comm__, int const rank__)
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
-    comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
+    comm__.bcast(radial_functions_.at(sddk::memory_t::host), size, rank__);
+    comm__.bcast(surface_derivatives_.at(sddk::memory_t::host), (int)surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
 void
-Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_radial_integrals(sddk::Communicator const& comm__, int const rank__)
 {
-    comm__.bcast(h_spherical_integrals_.at(memory_t::host), (int)h_spherical_integrals_.size(), rank__);
-    comm__.bcast(o_radial_integrals_.at(memory_t::host), (int)o_radial_integrals_.size(), rank__);
-    comm__.bcast(so_radial_integrals_.at(memory_t::host), (int)so_radial_integrals_.size(), rank__);
+    comm__.bcast(h_spherical_integrals_.at(sddk::memory_t::host), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.at(sddk::memory_t::host), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.at(sddk::memory_t::host), (int)so_radial_integrals_.size(), rank__);
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-        comm__.bcast(o1_radial_integrals_.at(memory_t::host), (int)o1_radial_integrals_.size(), rank__);
+        comm__.bcast(o1_radial_integrals_.at(sddk::memory_t::host), (int)o1_radial_integrals_.size(), rank__);
     }
 }
 
 void
-Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_core_charge_density(sddk::Communicator const& comm__, int const rank__)
 {
     RTE_ASSERT(ae_core_charge_density_.size() != 0);
 
@@ -732,7 +732,7 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
 }
 
 void
-Atom_symmetry_class::write_enu(pstdout& pout) const
+Atom_symmetry_class::write_enu(sddk::pstdout& pout) const
 {
     pout.printf("Atom : %s, class id : %i\n", atom_type_.symbol().c_str(), id_);
     pout.printf("augmented waves\n");
@@ -837,7 +837,7 @@ Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
         level_energy[ist] = -1.0 * atom_type_.zn() / 2 / std::pow(double(atom_type_.atomic_level(ist).n), 2);
     }
 
-    mdarray<double, 2> rho_t(rgrid.num_points(), atom_type_.num_atomic_levels());
+    sddk::mdarray<double, 2> rho_t(rgrid.num_points(), atom_type_.num_atomic_levels());
     rho_t.zero();
     #pragma omp parallel for
     for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {

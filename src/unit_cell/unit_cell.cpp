@@ -28,7 +28,7 @@
 
 namespace sirius {
 
-Unit_cell::Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__)
+Unit_cell::Unit_cell(Simulation_parameters const& parameters__, sddk::Communicator const& comm__)
     : parameters_(parameters__)
     , comm_(comm__)
 {
@@ -482,7 +482,7 @@ Unit_cell::generate_radial_functions()
     }
 
     if (parameters_.verbosity() >= 1) {
-        pstdout pout(comm_);
+        sddk::pstdout pout(comm_);
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
             int ic = spl_num_atom_symmetry_classes(icloc);
@@ -525,7 +525,7 @@ Unit_cell::generate_radial_integrals()
     try {
         for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
             int ia = spl_num_atoms_[ialoc];
-            atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
+            atom(ia).generate_radial_integrals(parameters_.processing_unit(), sddk::Communicator::self());
         }
 
         for (int ia = 0; ia < num_atoms(); ia++) {
@@ -606,7 +606,7 @@ Unit_cell::initialize()
     PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = splindex<splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
+    spl_num_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
     int offs_lo{0};
@@ -641,12 +641,12 @@ Unit_cell::initialize()
     for (int iat = 0; iat < num_atom_types(); iat++) {
         int nat = atom_type(iat).num_atoms();
         if (nat > 0) {
-            atom_coord_.push_back(mdarray<double, 2>(nat, 3, memory_t::host));
-            if (parameters_.processing_unit() == device_t::GPU) {
-                atom_coord_.back().allocate(memory_t::device);
+            atom_coord_.push_back(sddk::mdarray<double, 2>(nat, 3, sddk::memory_t::host));
+            if (parameters_.processing_unit() == sddk::device_t::GPU) {
+                atom_coord_.back().allocate(sddk::memory_t::device);
             }
         } else {
-            atom_coord_.push_back(mdarray<double, 2>());
+            atom_coord_.push_back(sddk::mdarray<double, 2>());
         }
     }
 
@@ -691,8 +691,8 @@ Unit_cell::get_symmetry()
         }
     }
 
-    mdarray<double, 2> positions(3, num_atoms());
-    mdarray<double, 2> spins(3, num_atoms());
+    sddk::mdarray<double, 2> positions(3, num_atoms());
+    sddk::mdarray<double, 2> spins(3, num_atoms());
     std::vector<int> types(num_atoms());
     for (int ia = 0; ia < num_atoms(); ia++) {
         auto vp = atom(ia).position();
@@ -839,7 +839,8 @@ Unit_cell::update()
 
     get_symmetry();
 
-    spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
+    spl_num_atom_symmetry_classes_ = sddk::splindex<sddk::splindex_t::block>(num_atom_symmetry_classes(),
+            comm_.size(), comm_.rank());
 
     volume_mt_ = 0.0;
     if (parameters_.full_potential()) {
@@ -859,8 +860,8 @@ Unit_cell::update()
                     atom_coord_[iat](i, x) = atom(ia).position()[x];
                 }
             }
-            if (parameters_.processing_unit() == device_t::GPU) {
-                atom_coord_[iat].copy_to(memory_t::device);
+            if (parameters_.processing_unit() == sddk::device_t::GPU) {
+                atom_coord_[iat].copy_to(sddk::memory_t::device);
             }
         }
     }
@@ -922,7 +923,7 @@ Unit_cell::init_paw()
         }
     }
 
-    spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+    spl_num_paw_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
 }
 
 std::pair<int, std::vector<int>>

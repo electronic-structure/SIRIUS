@@ -56,14 +56,14 @@ class Occupation_matrix : public Hubbard_matrix
             const int ia     = atomic_orbitals_[at_lvl].first;
             auto const& atom = ctx_.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-                ctx_.comm().allreduce(this->local(at_lvl).at(memory_t::host),
+                ctx_.comm().allreduce(this->local(at_lvl).at(sddk::memory_t::host),
                                       static_cast<int>(this->local(at_lvl).size()));
             }
         }
 
         /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
         for (auto& T : this->occ_mtrx_T_) {
-            ctx_.comm().allreduce(T.second.at(memory_t::host), static_cast<int>(T.second.size()));
+            ctx_.comm().allreduce(T.second.at(sddk::memory_t::host), static_cast<int>(T.second.size()));
         }
     }
 

@@ -31,6 +31,8 @@
 #include "utils/rte.hpp"
 #include "constants.hpp"
 
+using namespace geometry3d;
+
 namespace sirius {
 
 /// Generate SU(2) rotation matrix from the axes and angle.

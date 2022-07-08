@@ -3,6 +3,7 @@
 #include <random>
 
 using namespace sirius;
+using namespace sddk;
 
 void test(int nGb, int gran, memory_t M__)
 {

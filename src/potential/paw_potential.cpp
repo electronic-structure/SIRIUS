@@ -70,8 +70,8 @@ void Potential::init_PAW()
     }
 
     /* initialize dij matrix */
-    paw_dij_ = mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
-                                  unit_cell_.num_paw_atoms(), memory_t::host, "paw_dij_");
+    paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
+                                  unit_cell_.num_paw_atoms(), sddk::memory_t::host, "paw_dij_");
 
     /* allocate PAW energy array */
     paw_hartree_energies_.resize(unit_cell_.num_paw_atoms());
@@ -259,7 +259,7 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& ppd,
     ppd.xc_energy_ = ae_xc_energy - ps_xc_energy;
 }
 
-void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij)
+void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
 {
     int paw_ind = pdd.ia_paw;
 
@@ -277,7 +277,7 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 
     /* store integrals here */
-    mdarray<double, 3> integrals(
+    sddk::mdarray<double, 3> integrals(
         lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
         ctx_.num_mag_dims() + 1);
 
@@ -349,8 +349,9 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
     }
 }
 
-double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd, const mdarray<double_complex, 4>& density_matrix,
-                                           const mdarray<double, 4>& paw_dij) const
+double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
+                                           sddk::mdarray<double_complex, 4> const& density_matrix,
+                                           sddk::mdarray<double, 4> const& paw_dij) const
 {
     int ia      = pdd.ia;
     int paw_ind = pdd.ia_paw;

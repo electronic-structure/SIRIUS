@@ -38,7 +38,7 @@ DFT_ground_state::initial_state()
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
-            Hamiltonian0<float> H0(potential_);
+            Hamiltonian0<float> H0(potential_, true);
             Band(ctx_).initialize_subspace(kset_, H0);
 #else
             RTE_THROW("not compiled with FP32 support");
@@ -77,7 +77,7 @@ DFT_ground_state::energy_kin_sum_pw() const
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-            auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            auto Gk = kp->gkvec().gkvec_cart<sddk::index_domain_t::local>(igloc);
 
             double d{0};
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
@@ -263,7 +263,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             /* if the final precision is not equal to the current precision */
             if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
                 /* if we reached the mimimum tolerance for fp32 */
-                if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && itsol_tol <= ctx_.cfg().settings().itsol_tol_min()) ||
+                if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && iter_solver_tol__ <= ctx_.cfg().settings().itsol_tol_min()) ||
                     (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
                     std::cout << "switching to FP64" << std::endl;
                     ctx_.cfg().unlock();
@@ -275,7 +275,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
                         int ik = kset_.spl_num_kpoints(ikloc);
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            kset_.get<double>(ik)->spinor_wave_functions().copy_from(device_t::CPU, ctx_.num_bands(),
+                            kset_.get<double>(ik)->spinor_wave_functions().copy_from(sddk::device_t::CPU, ctx_.num_bands(),
                                                                                      kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
                         }
                     }

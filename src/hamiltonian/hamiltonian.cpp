@@ -65,7 +65,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
 
                 int nmt = type.mt_basis_size();
 
-                hmt_[ia] = sddk::mdarray<std::complex<T>, 2>(nmt, nmt, memory_t::host, "hmt");
+                hmt_[ia] = sddk::mdarray<std::complex<T>, 2>(nmt, nmt, sddk::memory_t::host, "hmt");
 
                 /* compute muffin-tin Hamiltonian */
                 for (int j2 = 0; j2 < nmt; j2++) {
@@ -79,11 +79,11 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
                         hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
                     }
                 }
-                if (pu == device_t::GPU) {
-                    hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device, stream_id(tid));
+                if (pu == sddk::device_t::GPU) {
+                    hmt_[ia].allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device, stream_id(tid));
                 }
             }
-            if (pu == device_t::GPU) {
+            if (pu == sddk::device_t::GPU) {
                 acc::sync_stream(stream_id(tid));
             }
         }
@@ -117,10 +117,10 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
                                                                  type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
-    linalg(linalg_t::blas)
-        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &linalg_const<std::complex<T>>::one(),
-              alm__.at(memory_t::host), alm__.ld(), hmt.at(memory_t::host), hmt.ld(),
-              &linalg_const<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
+    sddk::linalg(sddk::linalg_t::blas)
+        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &sddk::linalg_const<std::complex<T>>::one(),
+              alm__.at(sddk::memory_t::host), alm__.ld(), hmt.at(sddk::memory_t::host), hmt.ld(),
+              &sddk::linalg_const<std::complex<T>>::zero(), halm__.at(sddk::memory_t::host), halm__.ld());
 }
 
 template <typename T>
@@ -155,7 +155,7 @@ template <typename T>
 void
 Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__) const
 {
-    mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
+    sddk::mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
         int ia            = psi__.spl_num_atoms()[ialoc];
@@ -181,11 +181,11 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        linalg(linalg_t::blas).hemm(
-            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &linalg_const<std::complex<T>>::one(),
-            zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-            psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-            bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
+        sddk::linalg(sddk::linalg_t::blas).hemm(
+            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &sddk::linalg_const<std::complex<T>>::one(),
+            zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
+            psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+            bpsi__[0].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
@@ -202,11 +202,11 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
                 }
             }
 
-            linalg(linalg_t::blas).gemm(
-               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &linalg_const<std::complex<T>>::one(),
-               zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-               psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-               bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
+            sddk::linalg(sddk::linalg_t::blas).gemm(
+               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &sddk::linalg_const<std::complex<T>>::one(),
+               zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
+               psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+               bpsi__[2].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
         }
     }
 }

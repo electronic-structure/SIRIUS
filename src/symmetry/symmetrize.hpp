@@ -94,7 +94,7 @@ namespace sirius {
     \f]
  */
 inline void
-symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_shells__,
+symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__,
            sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__, double_complex* x_pw__,
            double_complex* y_pw__, double_complex* z_pw__)
 {
@@ -333,7 +333,7 @@ symmetrize(Crystal_symmetry const& sym__, Gvec_shells const& gvec_shells__,
 }
 
 inline void
-symmetrize_function(Crystal_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& frlm__)
+symmetrize_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -343,13 +343,13 @@ symmetrize_function(Crystal_symmetry const& sym__, Communicator const& comm__, m
         TERMINATE("wrong number of atoms");
     }
 
-    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    sddk::splindex<sddk::splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     int lmax = utils::lmax(lmmax);
 
-    mdarray<double, 2> rotm(lmmax, lmmax);
+    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
 
-    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    sddk::mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
     fsym.zero();
 
     double alpha = 1.0 / double(sym__.size());
@@ -363,26 +363,26 @@ symmetrize_function(Crystal_symmetry const& sym__, Communicator const& comm__, m
         for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
             int ia = spl_atoms[ialoc];
             int ja = sym__[i].spg_op.inv_sym_atom[ia];
-            linalg(linalg_t::blas)
-                .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                      frlm__.at(memory_t::host, 0, 0, ja), frlm__.ld(), &linalg_const<double>::one(),
-                      fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
+            sddk::linalg(sddk::linalg_t::blas)
+                .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(sddk::memory_t::host), rotm.ld(),
+                      frlm__.at(sddk::memory_t::host, 0, 0, ja), frlm__.ld(), &sddk::linalg_const<double>::one(),
+                      fsym.at(sddk::memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
-    double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+    double* sbuf = spl_atoms.local_size() ? fsym.at(sddk::memory_t::host) : nullptr;
+    comm__.allgather(sbuf, frlm__.at(sddk::memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
                      lmmax * nrmax * spl_atoms.global_offset());
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& vz_rlm__)
+symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vzlm");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
 
-    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    sddk::splindex<sddk::splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     if (sym__.num_atoms() != (int)vz_rlm__.size(2)) {
         TERMINATE("wrong number of atoms");
@@ -390,9 +390,9 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& co
 
     int lmax = utils::lmax(lmmax);
 
-    mdarray<double, 2> rotm(lmmax, lmmax);
+    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
 
-    mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
+    sddk::mdarray<double, 3> fsym(lmmax, nrmax, spl_atoms.local_size());
     fsym.zero();
 
     double alpha = 1.0 / double(sym__.size());
@@ -408,41 +408,41 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& co
             int ia   = spl_atoms[ialoc];
             int ja   = sym__[i].spg_op.inv_sym_atom[ia];
             double a = alpha * S(2, 2);
-            linalg(linalg_t::blas)
-                .gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host), rotm.ld(),
-                      vz_rlm__.at(memory_t::host, 0, 0, ja), vz_rlm__.ld(), &linalg_const<double>::one(),
-                      fsym.at(memory_t::host, 0, 0, ialoc), fsym.ld());
+            sddk::linalg(sddk::linalg_t::blas)
+                .gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(sddk::memory_t::host), rotm.ld(),
+                      vz_rlm__.at(sddk::memory_t::host, 0, 0, ja), vz_rlm__.ld(), &sddk::linalg_const<double>::one(),
+                      fsym.at(sddk::memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
 
-    double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+    double* sbuf = spl_atoms.local_size() ? fsym.at(sddk::memory_t::host) : nullptr;
+    comm__.allgather(sbuf, vz_rlm__.at(sddk::memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
                      lmmax * nrmax * spl_atoms.global_offset());
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& comm__, mdarray<double, 3>& vx_rlm__,
-                           mdarray<double, 3>& vy_rlm__, mdarray<double, 3>& vz_rlm__)
+symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vx_rlm__,
+                           sddk::mdarray<double, 3>& vy_rlm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vlm");
 
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);
 
-    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    sddk::splindex<sddk::splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     int lmax = utils::lmax(lmmax);
 
-    mdarray<double, 2> rotm(lmmax, lmmax);
+    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
 
-    mdarray<double, 4> v_sym(lmmax, nrmax, spl_atoms.local_size(), 3);
+    sddk::mdarray<double, 4> v_sym(lmmax, nrmax, spl_atoms.local_size(), 3);
     v_sym.zero();
 
-    mdarray<double, 3> vtmp(lmmax, nrmax, 3);
+    sddk::mdarray<double, 3> vtmp(lmmax, nrmax, 3);
 
     double alpha = 1.0 / double(sym__.size());
 
-    std::vector<mdarray<double, 3>*> vrlm({&vx_rlm__, &vy_rlm__, &vz_rlm__});
+    std::vector<sddk::mdarray<double, 3>*> vrlm({&vx_rlm__, &vy_rlm__, &vz_rlm__});
 
     for (int i = 0; i < sym__.size(); i++) {
         /* full space-group symmetry operation is {R|t} */
@@ -455,10 +455,10 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& co
             int ia = spl_atoms[ialoc];
             int ja = sym__[i].spg_op.inv_sym_atom[ia];
             for (int k : {0, 1, 2}) {
-                linalg(linalg_t::blas)
-                    .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
-                          vrlm[k]->at(memory_t::host, 0, 0, ja), vrlm[k]->ld(), &linalg_const<double>::zero(),
-                          vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+                sddk::linalg(sddk::linalg_t::blas)
+                    .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(sddk::memory_t::host), rotm.ld(),
+                          vrlm[k]->at(sddk::memory_t::host, 0, 0, ja), vrlm[k]->ld(), &sddk::linalg_const<double>::zero(),
+                          vtmp.at(sddk::memory_t::host, 0, 0, k), vtmp.ld());
             }
             #pragma omp parallel
             for (int k : {0, 1, 2}) {
@@ -475,8 +475,8 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& co
     }
 
     for (int k : {0, 1, 2}) {
-        double* sbuf = spl_atoms.local_size() ? v_sym.at(memory_t::host, 0, 0, 0, k) : nullptr;
-        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+        double* sbuf = spl_atoms.local_size() ? v_sym.at(sddk::memory_t::host, 0, 0, 0, k) : nullptr;
+        comm__.allgather(sbuf, vrlm[k]->at(sddk::memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
                          lmmax * nrmax * spl_atoms.global_offset());
     }
 }
@@ -546,9 +546,9 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, Communicator const& co
  *  radial integrals over the total angular momentum
  */
 inline void
-symmetrize(const mdarray<double_complex, 4>& ns_, const basis_functions_index& indexb, const int ia, const int ja,
-           const int ndm, const mdarray<double, 2>& rotm, const mdarray<double_complex, 2>& spin_rot_su2,
-           mdarray<double_complex, 4>& dm_, const bool hubbard_)
+symmetrize(const sddk::mdarray<double_complex, 4>& ns_, basis_functions_index const& indexb, const int ia, const int ja,
+           const int ndm, sddk::mdarray<double, 2> const& rotm, sddk::mdarray<double_complex, 2> const& spin_rot_su2,
+           sddk::mdarray<double_complex, 4>& dm_, const bool hubbard_)
 {
     for (int xi1 = 0; xi1 < indexb.size(); xi1++) {
         int l1  = indexb[xi1].l;

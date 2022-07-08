@@ -1,30 +1,31 @@
 #include <sirius.hpp>
 
 using namespace sirius;
+using namespace sddk;
 
 void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    double cutoff__,
                    int num_bands__,
                    int bs__,
-                   linalg_t la__,
-                   memory_t mem__)
+                   sddk::linalg_t la__,
+                   sddk::memory_t mem__)
 {
     spla::Context spla_ctx(
-        la__ == linalg_t::blas || la__ == linalg_t::lapack || la__ == linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+        la__ == sddk::linalg_t::blas || la__ == sddk::linalg_t::lapack || la__ == sddk::linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
 
-    std::unique_ptr<BLACS_grid> blacs_grid;
+    std::unique_ptr<sddk::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
-        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     } else {
-        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     /* create G-vectors */
-    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    sddk::Gvec gvec(M, cutoff__, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+    sddk::Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 
     if (Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);

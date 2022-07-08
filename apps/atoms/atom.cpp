@@ -23,6 +23,8 @@
 #include "unit_cell/atomic_conf.hpp"
 #include "potential/xc_functional.hpp"
 
+using namespace sddk;
+
 double const rmin{1e-5};
 
 class Free_atom : public sirius::Atom_type

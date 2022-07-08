@@ -2,6 +2,7 @@
 #include "SDDK/wf_trans.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T, typename F>
 void test_wf_trans(BLACS_grid const& blacs_grid__,

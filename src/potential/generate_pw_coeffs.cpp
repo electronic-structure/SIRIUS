@@ -37,7 +37,7 @@ void Potential::generate_pw_coefs()
     auto& fft = ctx_.spfft<double>();
 
     /* temporaty output buffer */
-    mdarray<double_complex, 1> fpw_fft(gv_count);
+    sddk::mdarray<double_complex, 1> fpw_fft(gv_count);
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {
