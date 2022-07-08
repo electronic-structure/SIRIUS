@@ -17,16 +17,16 @@ std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave
                                     const K_point_set& kset,
                                     nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    std::map<memory_t, nlcglib::memory_type> memtype = {{memory_t::device, nlcglib::memory_type::device},
-                                                        {memory_t::host, nlcglib::memory_type::host},
-                                                        {memory_t::host_pinned, nlcglib::memory_type::host}};
-    std::map<nlcglib::memory_type, memory_t> memtype_lookup = {{nlcglib::memory_type::none, memory_t::none},
-                                                               {nlcglib::memory_type::device, memory_t::device},
-                                                               {nlcglib::memory_type::host, memory_t::host},
-                                                               {nlcglib::memory_type::host, memory_t::host_pinned}};
+    std::map<memory_t, nlcglib::memory_type> memtype = {{sddk::memory_t::device, nlcglib::memory_type::device},
+                                                        {sddk::memory_t::host, nlcglib::memory_type::host},
+                                                        {sddk::memory_t::host_pinned, nlcglib::memory_type::host}};
+    std::map<nlcglib::memory_type, sddk::memory_t> memtype_lookup = {{nlcglib::memory_type::none, sddk::memory_t::none},
+                                                               {nlcglib::memory_type::device, sddk::memory_t::device},
+                                                               {nlcglib::memory_type::host, sddk::memory_t::host},
+                                                               {nlcglib::memory_type::host, sddk::memory_t::host_pinned}};
 
-    memory_t target_memory = memtype_lookup.at(memory);
-    if (target_memory == memory_t::none) {
+    sddk::memory_t target_memory = memtype_lookup.at(memory);
+    if (target_memory == sddk::memory_t::none) {
         target_memory = ctx.preferred_memory_t();
     }
 
@@ -96,7 +96,7 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
         // allocate on device
         if (is_device_memory(ctx.preferred_memory_t())) {
             const int num_sc = (ctx.num_mag_dims() == 3) ? 2 : 1;
-            auto& mpd = ctx.mem_pool(memory_t::device);
+            auto& mpd = ctx.mem_pool(sddk::memory_t::device);
             for (int ispn = 0; ispn < num_sc; ispn++) {
                 hphis[i]->pw_coeffs(ispn).allocate(mpd);
                 sphis[i]->pw_coeffs(ispn).allocate(mpd);
@@ -139,12 +139,12 @@ void Energy::compute()
         std::vector<double> band_energies(num_bands);
 
         if (is_device_memory(ctx.preferred_memory_t())) {
-            auto& mpd        = ctx.mem_pool(memory_t::device);
+            auto& mpd        = ctx.mem_pool(sddk::memory_t::device);
             for (int ispn = 0; ispn < num_spins; ispn++) {
                 cphis[i]->pw_coeffs(ispn).allocate(mpd);
                 // copy to device
                 int num_wf = cphis[i]->num_wf();
-                cphis[i]->pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                cphis[i]->pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, num_wf);
             }
         }
 
@@ -153,8 +153,8 @@ void Energy::compute()
         // compute band energies
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
-                dmatrix<std::complex<double>> dmat(1, 1, memory_t::host);
-                dmat.allocate(memory_t::device);
+                sddk::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
+                dmat.allocate(sddk:::memory_t::device);
                 sddk::inner(ctx.spla_context(), spin_range(ispn),
                             /* bra */ kp.spinor_wave_functions(), jj, 1,
                             /* ket */ *hphis[i], jj, 1,
