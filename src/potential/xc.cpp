@@ -143,8 +143,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc.get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(memory_t::host), &vsigma.f_rg(0),
-                             exc.at(memory_t::host));
+                ixc.get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(sddk::memory_t::host), &vsigma.f_rg(0),
+                             exc.at(sddk::memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
             }
@@ -342,8 +342,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 ixc.get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
-                             &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
-                             &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(memory_t::host));
+                             &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(sddk::memory_t::host), vxc_dn.at(sddk::memory_t::host),
+                             &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(sddk::memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
