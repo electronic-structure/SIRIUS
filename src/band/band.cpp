@@ -44,9 +44,9 @@ Band::Band(Simulation_context& ctx__)
 
 template <typename T, typename F>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_type<T>>& phi__,
-                        Wave_functions<real_type<T>>& op_phi__, dmatrix<F>& mtrx__,
-                        dmatrix<F>* mtrx_old__) const
+Band::set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions<real_type<T>>& phi__,
+                        sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<F>& mtrx__,
+                        sddk::dmatrix<F>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
 
@@ -57,9 +57,9 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
 
     /* copy old N - num_locked x N - num_locked distributed matrix */
     if (N__ > 0) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         if (mtrx_old__) {
             if (spl_row.local_size()) {
@@ -79,7 +79,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked,
+    inner(ctx_.spla_context(), sddk::spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked,
           N__ + n__ - num_locked, op_phi__, N__, n__, mtrx__, 0, N__ - num_locked);
 
     /* restore lower part */
@@ -92,15 +92,15 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
                 }
             }
         } else {
-            linalg(linalg_t::scalapack)
+            sddk::linalg(sddk::linalg_t::scalapack)
                 .tranc(n__, N__ - num_locked, mtrx__, 0, N__ - num_locked, mtrx__, N__ - num_locked, 0);
         }
     }
 
     if (ctx_.print_checksum()) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked, N__ + n__ - num_locked);
         if (ctx_.comm_band().rank() == 0) {
@@ -113,9 +113,9 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions<real_ty
 
     /* save new matrix */
     if (mtrx_old__) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
         if (spl_row.local_size()) {
@@ -196,7 +196,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* initial basis functions */
-    Wave_functions<real_type<T>> phi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> phi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -246,15 +246,15 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
     if (ctx_.num_mag_dims() == 3) {
         /* make pure spinor up- and dn- wave functions */
-        phi.copy_from(device_t::CPU, num_phi, phi, 0, 0, 1, num_phi);
+        phi.copy_from(sddk::device_t::CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
     PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
-    Wave_functions<real_type<T>> hphi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
-    Wave_functions<real_type<T>> ophi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> hphi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> ophi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions<real_type<T>> wf_tmp(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> wf_tmp(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -269,11 +269,11 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
+        auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.pw_coeffs(ispn).allocate(mpd);
-            phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_phi_tot);
+            phi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, num_phi_tot);
         }
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -305,7 +305,7 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        Hk__.template apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
+        Hk__.template apply_h_s<T>(sddk::spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
         /* do some checks */
         if (ctx_.cfg().control().verification() >= 1) {
@@ -392,14 +392,14 @@ Band::initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
-            Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::host, 0, num_bands);
+            Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
         }
     }
 
     if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = Hk__.kp().spinor_wave_functions().checksum_pw(device_t::CPU, ispn, 0, num_bands);
+            auto cs = Hk__.kp().spinor_wave_functions().checksum_pw(sddk::device_t::CPU, ispn, 0, num_bands);
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (Hk__.kp().comm().rank() == 0) {
@@ -427,15 +427,15 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
     const int num_sc = nc_mag ? 2 : 1;
 
     auto& psi = kp.spinor_wave_functions();
-    Wave_functions<real_type<T>> hpsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-    Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-    Wave_functions<real_type<T>> res(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> hpsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> res(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
+        auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).allocate(mpd);
-            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+            psi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, ctx_.num_bands());
         }
         for (int i = 0; i < num_sc; i++) {
             res.pw_coeffs(i).allocate(mpd);
@@ -446,12 +446,12 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
         /* apply Hamiltonian and S operators to the wave-functions */
-        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        Hk__.template apply_h_s<T>(sddk::spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                hpsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
-                spsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
+                hpsi.copy_to(sddk::spin_range(ispn), sddk::memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(sddk::spin_range(ispn), sddk::memory_t::host, 0, ctx_.num_bands());
             }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -463,7 +463,7 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
             }
         }
         /* get the norm */
-        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? spin_range(2) : spin_range(0), ctx_.num_bands());
+        auto l2norm = res.l2norm(sddk::device_t::CPU, nc_mag ? sddk::spin_range(2) : sddk::spin_range(0), ctx_.num_bands());
 
         for (int j = 0; j < ctx_.num_bands(); j++) {
             Hk__.kp().message(1, __function_name__, "band: %3i, residual l2norm: %18.12f\n", j, l2norm[j]);
@@ -471,7 +471,7 @@ void Band::check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const
     }
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.pw_coeffs(ispn).deallocate(memory_t::device);
+            psi.pw_coeffs(ispn).deallocate(sddk::memory_t::device);
         }
     }
 }
@@ -485,29 +485,29 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 
     if (!ctx_.full_potential()) {
 
-        dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+        sddk::dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
         const bool nc_mag = (ctx_.num_mag_dims() == 3);
         const int num_sc = nc_mag ? 2 : 1;
 
         auto& psi = kp.spinor_wave_functions();
-        Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+        sddk::Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
         if (is_device_memory(ctx_.preferred_memory_t())) {
-            auto& mpd = ctx_.mem_pool(memory_t::device);
+            auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 psi.pw_coeffs(ispn).allocate(mpd);
-                psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+                psi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, ctx_.num_bands());
             }
             for (int i = 0; i < num_sc; i++) {
                 spsi.pw_coeffs(i).allocate(mpd);
             }
-            ovlp.allocate(memory_t::device);
+            ovlp.allocate(sddk::memory_t::device);
         }
 
         /* compute residuals */
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
-            auto sr = spin_range(nc_mag ? 2 : ispin_step);
+            auto sr = sddk::spin_range(nc_mag ? 2 : ispin_step);
             /* apply Hamiltonian and S operators to the wave-functions */
             Hk__.template apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
             inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
@@ -522,7 +522,7 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
         }
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                psi.pw_coeffs(ispn).deallocate(memory_t::device);
+                psi.pw_coeffs(ispn).deallocate(sddk::memory_t::device);
             }
         }
     }
@@ -530,13 +530,14 @@ void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double, double>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
-                                dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+Band::set_subspace_mtrx<double, double>(int N__, int n__, int num_locked, sddk::Wave_functions<double>& phi__,
+        sddk::Wave_functions<double>& op_phi__, sddk::dmatrix<double>& mtrx__, sddk::dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex, double_complex>(int N__, int n__, int num_locked, Wave_functions<double>& phi__, Wave_functions<double>& op_phi__,
-                                        dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
+Band::set_subspace_mtrx<double_complex, double_complex>(int N__, int n__, int num_locked,
+        sddk::Wave_functions<double>& phi__, sddk::Wave_functions<double>& op_phi__,
+        sddk::dmatrix<double_complex>& mtrx__, sddk::dmatrix<double_complex>* mtrx_old__) const;
 
 template
 void

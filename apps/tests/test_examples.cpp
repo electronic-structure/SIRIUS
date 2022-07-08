@@ -3,6 +3,7 @@
 #include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 void test1()
 {

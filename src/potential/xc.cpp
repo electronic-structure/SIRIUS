@@ -66,7 +66,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    Communicator(ctx_.spfft<double>().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce<double, sddk::mpi_op_t::min>(&rhomin, 1);
     /* even a small negative density is a sign of something bing wrong; don't remove this check */
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
@@ -132,8 +132,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         vsigma_[0]->zero();
     }
 
-    sddk::mdarray<double, 1> exc(num_points, memory_t::host, "exc_tmp");
-    sddk::mdarray<double, 1> vxc(num_points, memory_t::host, "vxc_tmp");
+    sddk::mdarray<double, 1> exc(num_points, sddk::memory_t::host, "exc_tmp");
+    sddk::mdarray<double, 1> vxc(num_points, sddk::memory_t::host, "vxc_tmp");
 
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
@@ -156,20 +156,20 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             #pragma omp parallel
             {
                 /* split local size between threads */
-                splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
+                sddk::splindex<sddk::splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
-                                vxc.at(memory_t::host, spl_t.global_offset()),
-                                exc.at(memory_t::host, spl_t.global_offset()));
+                                vxc.at(sddk::memory_t::host, spl_t.global_offset()),
+                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
                     ixc.get_gga(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
                                 &grad_rho_grad_rho.f_rg(spl_t.global_offset()),
-                                vxc.at(memory_t::host, spl_t.global_offset()),
+                                vxc.at(sddk::memory_t::host, spl_t.global_offset()),
                                 &vsigma.f_rg(spl_t.global_offset()),
-                                exc.at(memory_t::host, spl_t.global_offset()));
+                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
                         ///* this is the same expression between gga and vdw corrections.
@@ -330,9 +330,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
         }
     }
 
-    sddk::mdarray<double, 1> exc(num_points, memory_t::host, "exc_tmp");
-    sddk::mdarray<double, 1> vxc_up(num_points, memory_t::host, "vxc_up_tmp");
-    sddk::mdarray<double, 1> vxc_dn(num_points, memory_t::host, "vxc_dn_dmp");
+    sddk::mdarray<double, 1> exc(num_points, sddk::memory_t::host, "exc_tmp");
+    sddk::mdarray<double, 1> vxc_up(num_points, sddk::memory_t::host, "vxc_up_tmp");
+    sddk::mdarray<double, 1> vxc_dn(num_points, sddk::memory_t::host, "vxc_dn_dmp");
 
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
@@ -355,14 +355,14 @@ void Potential::xc_rg_magnetic(Density const& density__)
             #pragma omp parallel
             {
                 /* split local size between threads */
-                splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
+                sddk::splindex<sddk::splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
                                 &rho_dn.f_rg(spl_t.global_offset()),
-                                vxc_up.at(memory_t::host, spl_t.global_offset()),
-                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
-                                exc.at(memory_t::host, spl_t.global_offset()));
+                                vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
+                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
@@ -371,12 +371,12 @@ void Potential::xc_rg_magnetic(Density const& density__)
                                 &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
                                 &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
                                 &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                vxc_up.at(memory_t::host, spl_t.global_offset()),
-                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
                                 &vsigma_uu.f_rg(spl_t.global_offset()),
                                 &vsigma_ud.f_rg(spl_t.global_offset()),
                                 &vsigma_dd.f_rg(spl_t.global_offset()),
-                                exc.at(memory_t::host, spl_t.global_offset()));
+                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
             } // num_points != 0

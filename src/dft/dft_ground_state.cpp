@@ -77,7 +77,7 @@ DFT_ground_state::energy_kin_sum_pw() const
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-            auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            auto Gk = kp->gkvec().gkvec_cart<sddk::index_domain_t::local>(igloc);
 
             double d{0};
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {

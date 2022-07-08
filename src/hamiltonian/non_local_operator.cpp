@@ -46,11 +46,11 @@ Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
     }
 
     switch (pu_) {
-        case device_t::GPU: {
-            packed_mtrx_offset_.allocate(memory_t::device).copy_to(memory_t::device);
+        case sddk::device_t::GPU: {
+            packed_mtrx_offset_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
             break;
         }
-        case device_t::CPU: {
+        case sddk::device_t::CPU: {
             break;
         }
     }
@@ -61,9 +61,9 @@ D_operator<T>::D_operator(Simulation_context const& ctx_)
     : Non_local_operator<T>(ctx_)
 {
     if (ctx_.gamma_point()) {
-        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = sddk::mdarray<T, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
     } else {
-        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = sddk::mdarray<T, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
     }
     this->op_.zero();
     initialize();
@@ -87,7 +87,7 @@ D_operator<T>::initialize()
 
         /* in case of spin orbit coupling */
         if (uc.atom(ia).type().spin_orbit_coupling()) {
-            mdarray<std::complex<T>, 3> d_mtrx_so(nbf, nbf, 4);
+            sddk::mdarray<std::complex<T>, 3> d_mtrx_so(nbf, nbf, 4);
             d_mtrx_so.zero();
 
             /* transform the d_mtrx */
@@ -227,8 +227,8 @@ D_operator<T>::initialize()
         utils::print_checksum("D_operator", cs);
     }
 
-    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
-        this->op_.allocate(memory_t::device).copy_to(memory_t::device);
+    if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {
+        this->op_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
     }
 
     /* D-operator is not diagonal in spin in case of non-collinear magnetism
@@ -245,9 +245,9 @@ Q_operator<T>::Q_operator(Simulation_context const& ctx__)
     /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
      * method if the Q-operator has a spin index */
     if (this->ctx_.gamma_point()) {
-        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = sddk::mdarray<T, 3>(1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
     } else {
-        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = sddk::mdarray<T, 3>(2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
     }
     this->op_.zero();
     initialize();
@@ -285,7 +285,7 @@ Q_operator<T>::initialize()
                                         /* The F coefficients are already "block diagonal" so we do a full
                                            summation. We actually rotate the q_matrices only */
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
-                                            result += this->ctx_.augmentation_op(iat)->q_mtrx(xi1p, xi2p) *
+                                            result += this->ctx_.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
                                                       (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
                                                            uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                        uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
@@ -309,7 +309,7 @@ Q_operator<T>::initialize()
                 } else {
                     for (int ispn = 0; ispn < this->ctx_.num_spins(); ispn++) {
                         this->op_(0, this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) =
-                            this->ctx_.augmentation_op(iat)->q_mtrx(xi1, xi2);
+                            this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
                     }
                 }
             }
@@ -320,8 +320,8 @@ Q_operator<T>::initialize()
         utils::print_checksum("Q_operator", cs);
     }
 
-    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
-        this->op_.allocate(memory_t::device).copy_to(memory_t::device);
+    if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {
+        this->op_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
     }
 
     this->is_null_ = true;
@@ -338,10 +338,10 @@ Q_operator<T>::initialize()
 
 template <typename T>
 void
-apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-                    Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
-                    Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
-                    Wave_functions<real_type<T>>* sphi__)
+apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                    sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
+                    sddk::Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
+                    sddk::Wave_functions<real_type<T>>* sphi__)
 {
 
     for (int i = 0; i < beta__.num_chunks(); i++) {
@@ -375,9 +375,9 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors<real_t
 /// Compute |sphi> = (1 + Q)|phi>
 template <typename T>
 void
-apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-                 Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__,
-                 Wave_functions<real_type<T>>& sphi__)
+apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
+                 sddk::Wave_functions<real_type<T>>& phi__, Q_operator<real_type<T>>* q_op__,
+                 sddk::Wave_functions<real_type<T>>& sphi__)
 {
     for (auto s : spins__) {
         sphi__.copy_from(pu__, n__, phi__, s, N__, s, N__);
@@ -390,29 +390,29 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
 
 template <typename T>
 void
-apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__, Wave_functions<T>& hub_wf__,
-                 Wave_functions<T>& phi__, U_operator<T>& um__, Wave_functions<T>& hphi__)
+apply_U_operator(Simulation_context& ctx__, sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<T>& hub_wf__,
+                 sddk::Wave_functions<T>& phi__, U_operator<T>& um__, sddk::Wave_functions<T>& hphi__)
 {
     if (!ctx__.hubbard_correction()) {
         return;
     }
 
-    dmatrix<std::complex<T>> dm(hub_wf__.num_wf(), n__);
-    if (ctx__.processing_unit() == device_t::GPU) {
-        dm.allocate(memory_t::device);
+    sddk::dmatrix<std::complex<T>> dm(hub_wf__.num_wf(), n__);
+    if (ctx__.processing_unit() == sddk::device_t::GPU) {
+        dm.allocate(sddk::memory_t::device);
     }
 
-    auto la = linalg_t::none;
-    auto mt = memory_t::none;
+    auto la = sddk::linalg_t::none;
+    auto mt = sddk::memory_t::none;
     switch (ctx__.processing_unit()) {
-        case device_t::CPU: {
-            la = linalg_t::blas;
-            mt = memory_t::host;
+        case sddk::device_t::CPU: {
+            la = sddk::linalg_t::blas;
+            mt = sddk::memory_t::host;
             break;
         }
-        case device_t::GPU: {
-            la = linalg_t::gpublas;
-            mt = memory_t::device;
+        case sddk::device_t::GPU: {
+            la = sddk::linalg_t::gpublas;
+            mt = sddk::memory_t::device;
             break;
         }
         default:
@@ -422,9 +422,9 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
        dm(i, n) = <phi_i| S |psi_{nk}> */
     sddk::inner(ctx__.spla_context(), spins__, hub_wf__, 0, hub_wf__.num_wf(), phi__, N__, n__, dm, 0, 0);
 
-    dmatrix<std::complex<T>> Up(hub_wf__.num_wf(), n__);
-    if (ctx__.processing_unit() == device_t::GPU) {
-        Up.allocate(memory_t::device);
+    sddk::dmatrix<std::complex<T>> Up(hub_wf__.num_wf(), n__);
+    if (ctx__.processing_unit() == sddk::device_t::GPU) {
+        Up.allocate(sddk::memory_t::device);
     }
 
     if (ctx__.num_mag_dims() == 3) {
@@ -455,15 +455,15 @@ apply_U_operator(Simulation_context& ctx__, spin_range spins__, int N__, int n__
                 }
             }
         }
-        if (ctx__.processing_unit() == device_t::GPU) {
-            Up.copy_to(memory_t::device);
+        if (ctx__.processing_unit() == sddk::device_t::GPU) {
+            Up.copy_to(sddk::memory_t::device);
         }
     } else {
-        linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &linalg_const<double_complex>::one(),
+        sddk::linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &sddk::linalg_const<double_complex>::one(),
                         um__.at(mt, 0, 0, spins__()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
-                        &linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
-        if (ctx__.processing_unit() == device_t::GPU) {
-            Up.copy_to(memory_t::host);
+                        &sddk::linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
+        if (ctx__.processing_unit() == sddk::device_t::GPU) {
+            Up.copy_to(sddk::memory_t::host);
         }
     }
     transform<std::complex<T>, std::complex<T>>(ctx__.spla_context(), spins__(), 1.0, {&hub_wf__}, 0, hub_wf__.num_wf(),
@@ -476,27 +476,27 @@ template class D_operator<double>;
 
 template class Q_operator<double>;
 
-template void apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                                          Wave_functions<double>& phi__, D_operator<double>* d_op__,
-                                          Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
-                                          Wave_functions<double>* sphi__);
+template void apply_non_local_d_q<double>(sddk::spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
+                                          sddk::Wave_functions<double>& phi__, D_operator<double>* d_op__,
+                                          sddk::Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
+                                          sddk::Wave_functions<double>* sphi__);
 
-template void apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
-                                                  Wave_functions<double>& phi__, D_operator<double>* d_op__,
-                                                  Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
-                                                  Wave_functions<double>* sphi__);
+template void apply_non_local_d_q<double_complex>(sddk::spin_range spins__, int N__, int n__, Beta_projectors<double>& beta__,
+                                                  sddk::Wave_functions<double>& phi__, D_operator<double>* d_op__,
+                                                  sddk::Wave_functions<double>* hphi__, Q_operator<double>* q_op__,
+                                                  sddk::Wave_functions<double>* sphi__);
 
-template void apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__,
-                                       Beta_projectors<double>& beta__, Wave_functions<double>& phi__,
-                                       Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
+template void apply_S_operator<double>(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
+                                       Beta_projectors<double>& beta__, sddk::Wave_functions<double>& phi__,
+                                       Q_operator<double>* q_op__, sddk::Wave_functions<double>& sphi__);
 
-template void apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__,
-                                               Beta_projectors<double>& beta__, Wave_functions<double>& phi__,
-                                               Q_operator<double>* q_op__, Wave_functions<double>& sphi__);
+template void apply_S_operator<double_complex>(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
+                                               Beta_projectors<double>& beta__, sddk::Wave_functions<double>& phi__,
+                                               Q_operator<double>* q_op__, sddk::Wave_functions<double>& sphi__);
 
-template void apply_U_operator<double>(Simulation_context& ctx__, spin_range spins__, int N__, int n__,
-                                       Wave_functions<double>& hub_wf__, Wave_functions<double>& phi__,
-                                       U_operator<double>& um__, Wave_functions<double>& hphi__);
+template void apply_U_operator<double>(Simulation_context& ctx__, sddk::spin_range spins__, int N__, int n__,
+                                       sddk::Wave_functions<double>& hub_wf__, sddk::Wave_functions<double>& phi__,
+                                       U_operator<double>& um__, sddk::Wave_functions<double>& hphi__);
 
 #if defined(USE_FP32)
 template class Non_local_operator<float>;

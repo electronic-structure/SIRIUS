@@ -29,7 +29,7 @@
 
 namespace sirius {
 
-inline void check_gvec(Gvec const& gvec__, Crystal_symmetry const& sym__)
+inline void check_gvec(sddk::Gvec const& gvec__, Crystal_symmetry const& sym__)
 {
     PROFILE("sirius::check_gvec");
 
@@ -38,7 +38,7 @@ inline void check_gvec(Gvec const& gvec__, Crystal_symmetry const& sym__)
         auto sm = sym__[isym].spg_op.R;
 
         for (int igloc = 0; igloc < gvec__.count(); igloc++) {
-            auto gv = gvec__.gvec<index_domain_t::local>(igloc);
+            auto gv = gvec__.gvec<sddk::index_domain_t::local>(igloc);
             /* apply symmetry operation to the G-vector */
             auto gv_rot = dot(gv, sm);
 
@@ -84,7 +84,7 @@ inline void check_gvec(Gvec const& gvec__, Crystal_symmetry const& sym__)
     }
 }
 
-inline void check_gvec(Gvec_shells const& gvec_shells__, Crystal_symmetry const& sym__)
+inline void check_gvec(sddk::Gvec_shells const& gvec_shells__, Crystal_symmetry const& sym__)
 {
     /* check G-vector symmetries */
     for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {

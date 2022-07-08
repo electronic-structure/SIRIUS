@@ -52,7 +52,7 @@ class K_point_set
 #endif
 
     /// Split index of k-points.
-    splindex<splindex_t::chunk> spl_num_kpoints_;
+    sddk::splindex<sddk::splindex_t::chunk> spl_num_kpoints_;
 
     /// Fermi energy which is searched in find_band_occupancies().
     double energy_fermi_{0};
@@ -130,6 +130,16 @@ class K_point_set
     /// Return entropy contribution from smearing.
     double entropy_sum() const;
 
+    inline auto const& spl_num_kpoints() const
+    {
+        return spl_num_kpoints_;
+    }
+
+    inline auto const& comm() const
+    {
+        return ctx_.comm_k();
+    }
+
     /// Update k-points after moving atoms or changing the lattice vectors.
     void update()
     {
@@ -155,7 +165,7 @@ class K_point_set
             auto ik       = spl_num_kpoints_[ikloc];
             max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
         }
-        comm().allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
+        comm().allreduce<int, sddk::mpi_op_t::max>(&max_num_gkvec, 1);
         return max_num_gkvec;
     }
 
@@ -191,11 +201,6 @@ class K_point_set
         return static_cast<int>(kpoints_.size());
     }
 
-    inline splindex<splindex_t::chunk> const& spl_num_kpoints() const
-    {
-        return spl_num_kpoints_;
-    }
-
     inline int spl_num_kpoints(int ikloc) const
     {
         return spl_num_kpoints_[ikloc];
@@ -222,24 +227,19 @@ class K_point_set
         return -1;
     }
 
-    inline Communicator const& comm() const
-    {
-        return ctx_.comm_k();
-    }
-
-    inline Simulation_context& ctx()
+    inline auto& ctx()
     {
         return ctx_;
     }
 
-    const Unit_cell& unit_cell()
+    const auto& unit_cell()
     {
         return ctx_.unit_cell();
     }
 
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
-    inline Gvec get_gkvec(int jk__, int rank__)
+    inline sddk::Gvec get_gkvec(int jk__, int rank__)
     {
         /* rank in the k-point communicator */
         int my_rank = comm().rank();
@@ -248,9 +248,9 @@ class K_point_set
         int jrank = spl_num_kpoints().local_rank(jk__);
 
         /* need this to pass communicator */
-        Gvec gkvec(ctx_.comm_band());
+        sddk::Gvec gkvec(ctx_.comm_band());
 
-        Gvec const* gvptr{nullptr};
+        sddk::Gvec const* gvptr{nullptr};
         /* if this rank stores the k-point, then send it */
         if (my_rank == jrank) {
             gvptr = &kpoints_[jk__].get()->gkvec();

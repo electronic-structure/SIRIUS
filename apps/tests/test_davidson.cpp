@@ -2,6 +2,7 @@
 #include "band/davidson.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T>
 void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)

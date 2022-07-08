@@ -318,7 +318,7 @@ class Density : public Field4D
         /* get form-factors for all G shells */
         auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
@@ -388,7 +388,7 @@ class Density : public Field4D
     void augment();
 
     /// Generate augmentation charge density.
-    mdarray<double_complex, 2> generate_rho_aug();
+    sddk::mdarray<double_complex, 2> generate_rho_aug();
 
     /// Check density at MT boundary
     void check_density_continuity_at_mt()
@@ -440,14 +440,14 @@ class Density : public Field4D
 
     void load()
     {
-        HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+        sddk::HDF5_tree fin(storage_file_name, sddk::hdf5_access_t::read_only);
 
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);
         if (ngv != ctx_.gvec().num_gvec()) {
             TERMINATE("wrong number of G-vectors");
         }
-        mdarray<int, 2> gv(3, ngv);
+        sddk::mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
 
         rho().hdf5_read(fin["density"], gv);
@@ -927,7 +927,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         rho_dn->f_rg(ir) = rud.second;
     }
 
-    Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    sddk::Communicator(ctx.spfft<double>().communicator()).allreduce<double, sddk::mpi_op_t::min>(&rhomin, 1);
     if (rhomin< 0.0 && ctx.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl

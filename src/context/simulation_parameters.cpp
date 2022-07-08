@@ -214,7 +214,7 @@ Simulation_parameters::processing_unit(std::string name__)
         }
     }
     cfg_.control().processing_unit(name__);
-    processing_unit_ = get_device_t(name__);
+    processing_unit_ = sddk::get_device_t(name__);
 }
 
 void

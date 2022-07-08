@@ -4,6 +4,7 @@
 #include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 void test_wf_ortho(std::vector<int> mpi_grid_dims__,
                    double cutoff__,
