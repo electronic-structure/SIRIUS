@@ -1,11 +1,11 @@
+#ifndef __WAVE_FUNCTIONS_HPP__
+#define __WAVE_FUNCTIONS_HPP__
+
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "SDDK/memory.hpp"
 #include "SDDK/gvec.hpp"
 #include "linalg/linalg_base.hpp"
-
-#ifndef __WAVE_FUNCTIONS_HPP__
-#define __WAVE_FUNCTIONS_HPP__
 
 namespace sirius {
 namespace experimental {
