@@ -30,6 +30,8 @@
 #include "function3d/spheric_function.hpp"
 #include "utils/profiler.hpp"
 
+using namespace geometry3d;
+
 namespace sirius {
 
 /// Data and methods specific to the actual atom in the unit cell.
