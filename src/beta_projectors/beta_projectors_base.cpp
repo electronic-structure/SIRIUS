@@ -227,7 +227,7 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                     auto G = gkvec_.gvec<sddk::index_domain_t::local>(igk_loc);
                     /* total phase e^{-i(G+k)r_{\alpha}} */
-                    phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+                    phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
                 }
                 int nbeta    = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
                 int offset_a = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
@@ -246,11 +246,11 @@ void Beta_projectors_base<T>::generate(int ichunk__, int j__)
             auto& desc = chunk(ichunk__).desc_;
             create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                num_gkvec_loc(),
-                               desc.at(memory_t::device),
-                               pw_coeffs_t_.at(memory_t::device, 0, 0, j__),
-                               gkvec_coord_.at(memory_t::device),
-                               chunk(ichunk__).atom_pos_.at(memory_t::device),
-                               pw_coeffs_a().at(memory_t::device));
+                               desc.at(sddk::memory_t::device),
+                               pw_coeffs_t_.at(sddk::memory_t::device, 0, 0, j__),
+                               gkvec_coord_.at(sddk::memory_t::device),
+                               chunk(ichunk__).atom_pos_.at(sddk::memory_t::device),
+                               pw_coeffs_a().at(sddk::memory_t::device));
 #endif
             /* wave-functions are on CPU but the beta-projectors are on GPU */
             if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
@@ -332,7 +332,7 @@ sddk::matrix<float>
 Beta_projectors_base<float>::inner<float>(int chunk__, sddk::Wave_functions<float>& phi__, int ispn__, int idx0__, int n__);
 
 template
-matrix<std::complex<float>>
+sddk::matrix<std::complex<float>>
 Beta_projectors_base<float>::inner<std::complex<float>>(int chunk__, sddk::Wave_functions<float>& phi__, int ispn__, int idx0__, int n__);
 
 #endif

@@ -554,23 +554,25 @@ Band::initialize_subspace<std::complex<double>>(Hamiltonian_k<double>& Hk__, int
 #if defined(USE_FP32)
 template
 void
-Band::set_subspace_mtrx<float, float>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                               dmatrix<float>& mtrx__, dmatrix<float>* mtrx_old__) const;
+Band::set_subspace_mtrx<float, float>(int N__, int n__, int num_locked, sddk::Wave_functions<float>& phi__,
+        sddk::Wave_functions<float>& op_phi__, sddk::dmatrix<float>& mtrx__, sddk::dmatrix<float>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<float, double>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                               dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+Band::set_subspace_mtrx<float, double>(int N__, int n__, int num_locked, sddk::Wave_functions<float>& phi__,
+        sddk::Wave_functions<float>& op_phi__, sddk::dmatrix<double>& mtrx__, sddk::dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<std::complex<float>, std::complex<float>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                                             dmatrix<std::complex<float>>& mtrx__, dmatrix<std::complex<float>>* mtrx_old__) const;
+Band::set_subspace_mtrx<std::complex<float>, std::complex<float>>(int N__, int n__, int num_locked,
+        sddk::Wave_functions<float>& phi__, sddk::Wave_functions<float>& op_phi__,
+        sddk::dmatrix<std::complex<float>>& mtrx__, sddk::dmatrix<std::complex<float>>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<std::complex<float>, std::complex<double>>(int N__, int n__, int num_locked, Wave_functions<float>& phi__, Wave_functions<float>& op_phi__,
-                                             dmatrix<std::complex<double>>& mtrx__, dmatrix<std::complex<double>>* mtrx_old__) const;
+Band::set_subspace_mtrx<std::complex<float>, std::complex<double>>(int N__, int n__, int num_locked,
+        sddk::Wave_functions<float>& phi__, sddk::Wave_functions<float>& op_phi__,
+        sddk::dmatrix<std::complex<double>>& mtrx__, sddk::dmatrix<std::complex<double>>* mtrx_old__) const;
 
 template
 void

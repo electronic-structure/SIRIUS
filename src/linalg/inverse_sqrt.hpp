@@ -36,7 +36,7 @@ inverse_sqrt(sddk::dmatrix<T>& A__, int N__)
         RTE_ASSERT(eval[icol] > 0);
         auto f = 1.0 / std::sqrt(eval[icol]);
         for (int j = 0; j < Z->num_rows_local(); j++) {
-            A__(j, i) = (*Z)(j, i) * f;
+            A__(j, i) = (*Z)(j, i) * static_cast<T>(f);
         }
     }
 

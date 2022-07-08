@@ -300,11 +300,11 @@ Band::diag_pseudo_potential_exact<double>(int ispn__, Hamiltonian_k<double>& Hk_
 
 #if defined(USE_FP32)
 template
-mdarray<float, 1>
+sddk::mdarray<float, 1>
 Band::diag_S_davidson<float>(Hamiltonian_k<float>& Hk__) const;
 
 template
-mdarray<float, 1>
+sddk::mdarray<float, 1>
 Band::diag_S_davidson<std::complex<float>>(Hamiltonian_k<float>& Hk__) const;
 
 template

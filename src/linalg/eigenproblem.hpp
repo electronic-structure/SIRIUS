@@ -1872,7 +1872,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    Eigensolver_cuda(memory_pool* mpd__)
+    Eigensolver_cuda(sddk::memory_pool* mpd__)
         : Eigensolver(ev_solver_t::cusolver, mpd__, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }

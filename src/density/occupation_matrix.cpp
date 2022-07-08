@@ -220,7 +220,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
-                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * z1;
+                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
                     }
                 }
             }

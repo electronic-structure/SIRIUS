@@ -459,9 +459,9 @@ apply_U_operator(Simulation_context& ctx__, sddk::spin_range spins__, int N__, i
             Up.copy_to(sddk::memory_t::device);
         }
     } else {
-        sddk::linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &sddk::linalg_const<double_complex>::one(),
+        sddk::linalg(la).gemm('N', 'N', um__.nhwf(), n__, um__.nhwf(), &sddk::linalg_const<std::complex<T>>::one(),
                         um__.at(mt, 0, 0, spins__()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
-                        &sddk::linalg_const<double_complex>::zero(), Up.at(mt, 0, 0), Up.ld());
+                        &sddk::linalg_const<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
         if (ctx__.processing_unit() == sddk::device_t::GPU) {
             Up.copy_to(sddk::memory_t::host);
         }
@@ -505,26 +505,26 @@ template class D_operator<float>;
 
 template class Q_operator<float>;
 
-template void apply_non_local_d_q<float>(spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
-                                         Wave_functions<float>& phi__, D_operator<float>* d_op__,
-                                         Wave_functions<float>* hphi__, Q_operator<float>* q_op__,
-                                         Wave_functions<float>* sphi__);
+template void apply_non_local_d_q<float>(sddk::spin_range spins__, int N__, int n__, Beta_projectors<float>& beta__,
+                                         sddk::Wave_functions<float>& phi__, D_operator<float>* d_op__,
+                                         sddk::Wave_functions<float>* hphi__, Q_operator<float>* q_op__,
+                                         sddk::Wave_functions<float>* sphi__);
 
-template void apply_non_local_d_q<std::complex<float>>(spin_range spins__, int N__, int n__,
-                                                       Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
-                                                       D_operator<float>* d_op__, Wave_functions<float>* hphi__,
-                                                       Q_operator<float>* q_op__, Wave_functions<float>* sphi__);
+template void apply_non_local_d_q<std::complex<float>>(sddk::spin_range spins__, int N__, int n__,
+                                                       Beta_projectors<float>& beta__, sddk::Wave_functions<float>& phi__,
+                                                       D_operator<float>* d_op__, sddk::Wave_functions<float>* hphi__,
+                                                       Q_operator<float>* q_op__, sddk::Wave_functions<float>* sphi__);
 
-template void apply_S_operator<float>(device_t pu__, spin_range spins__, int N__, int n__,
-                                      Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
-                                      Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
+template void apply_S_operator<float>(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
+                                      Beta_projectors<float>& beta__, sddk::Wave_functions<float>& phi__,
+                                      Q_operator<float>* q_op__, sddk::Wave_functions<float>& sphi__);
 
-template void apply_S_operator<std::complex<float>>(device_t pu__, spin_range spins__, int N__, int n__,
-                                                    Beta_projectors<float>& beta__, Wave_functions<float>& phi__,
-                                                    Q_operator<float>* q_op__, Wave_functions<float>& sphi__);
+template void apply_S_operator<std::complex<float>>(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__,
+                                                    Beta_projectors<float>& beta__, sddk::Wave_functions<float>& phi__,
+                                                    Q_operator<float>* q_op__, sddk::Wave_functions<float>& sphi__);
 
-template void apply_U_operator<float>(Simulation_context& ctx__, spin_range spins__, int N__, int n__,
-                                      Wave_functions<float>& hub_wf__, Wave_functions<float>& phi__,
-                                      U_operator<float>& um__, Wave_functions<float>& hphi__);
+template void apply_U_operator<float>(Simulation_context& ctx__, sddk::spin_range spins__, int N__, int n__,
+                                      sddk::Wave_functions<float>& hub_wf__, sddk::Wave_functions<float>& phi__,
+                                      U_operator<float>& um__, sddk::Wave_functions<float>& hphi__);
 #endif
 } // namespace sirius

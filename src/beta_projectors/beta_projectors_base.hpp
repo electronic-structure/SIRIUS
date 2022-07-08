@@ -130,7 +130,7 @@ class Beta_projectors_base
 
         if (pp && gkvec_.comm().rank() == 0) {
 #ifdef SIRIUS_GPU
-            if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
+            if (ctx_.blas_linalg_t() == sddk::linalg_t::gpublas) {
                 acc::sync_stream(stream_id(-1));
             }
 #endif

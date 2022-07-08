@@ -221,9 +221,9 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
-                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
-                              rf_coef.at(memory_t::host, 0, 0, i));
+                    std::copy(rf_spline[i].coeffs().at(sddk::memory_t::host),
+                              rf_spline[i].coeffs().at(sddk::memory_t::host) + nmtp * 4,
+                              rf_coef.at(sddk::memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -232,7 +232,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.copy_to(memory_t::device, stream_id(-1));
+            rf_coef.copy_to(sddk::memory_t::device, stream_id(-1));
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -240,29 +240,29 @@ class Atom
                     for (int j = 0; j < num_mag_dims + 1; j++) {
                         int idx         = lm + lmmax * i + lmmax * nrf * j;
                         vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
+                        std::memcpy(vrf_coef.at(sddk::memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(sddk::memory_t::host),
                                     nmtp * 4 * sizeof(double));
                         // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
                         // *sizeof(double), tid);
                     }
                 }
             }
-            vrf_coef.copy_to(memory_t::device);
+            vrf_coef.copy_to(sddk::memory_t::device);
             PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
-            result.allocate(memory_t::device);
-            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
-                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
-                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
-                                        result.at(memory_t::device));
+            result.allocate(sddk::memory_t::device);
+            spline_inner_product_gpu_v3(idx_ri.at(sddk::memory_t::device), (int)idx_ri.size(1), nmtp,
+                                        rgrid.x().at(sddk::memory_t::device), rgrid.dx().at(sddk::memory_t::device),
+                                        rf_coef.at(sddk::memory_t::device), vrf_coef.at(sddk::memory_t::device),
+                                        result.at(sddk::memory_t::device));
             acc::sync();
             //if (type().parameters().control().print_performance_) {
             //    double tval = t2.stop();
             //    DUMP("spline GPU integration performance: %12.6f GFlops",
             //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             //}
-            result.copy_to(memory_t::host);
-            result.deallocate(memory_t::device);
+            result.copy_to(sddk::memory_t::host);
+            result.deallocate(sddk::memory_t::device);
 #endif
         }
         if (pu__ == sddk::device_t::CPU) {
