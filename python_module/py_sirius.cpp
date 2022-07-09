@@ -250,18 +250,52 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readwrite("z", &z_column_descriptor::z)
         .def(py::init<int, int, std::vector<int>>());
 
+    py::enum_<sddk::index_domain_t>(m, "index_domain_t")
+        .value("local", sddk::index_domain_t::local)
+        .value("global", sddk::index_domain_t::global);
+
     py::class_<Gvec>(m, "Gvec")
         .def(py::init<matrix3d<double>, double, bool>())
         .def("num_gvec", &sddk::Gvec::num_gvec)
         .def("count", &sddk::Gvec::count)
         .def("offset", &sddk::Gvec::offset)
-        .def("gvec", &sddk::Gvec::gvec)
-        .def("gkvec", &sddk::Gvec::gkvec)
+        .def("gvec",
+             [](Gvec& obj, int i, sddk::index_domain_t domain) -> vector3d<int> {
+                 switch (domain) {
+                     case sddk::index_domain_t::local: {
+                         return obj.gvec<index_domain_t::local>(i);
+                         break;
+                     }
+                     case sddk::index_domain_t::global: {
+                         return obj.gvec<index_domain_t::global>(i);
+                         break;
+                     }
+                     default:
+                         throw std::runtime_error("invalid sddk::index_domain_t");
+                         break;
+                 }
+             })
+        .def("gkvec",
+             [](Gvec& obj, int i, sddk::index_domain_t domain) -> vector3d<double> {
+                 switch (domain) {
+                     case sddk::index_domain_t::local: {
+                         return obj.gkvec<index_domain_t::local>(i);
+                         break;
+                     }
+                     case sddk::index_domain_t::global: {
+                         return obj.gkvec<index_domain_t::global>(i);
+                         break;
+                     }
+                     default:
+                         throw std::runtime_error("invalid sddk::index_domain_t");
+                         break;
+                 }
+             })
         .def("gkvec_cart", &sddk::Gvec::gkvec_cart<index_domain_t::global>)
         .def("num_zcol", &sddk::Gvec::num_zcol)
         .def("gvec_alt",
              [](Gvec& obj, int idx) {
-                 vector3d<int> vec(obj.gvec(idx));
+                 vector3d<int> vec(obj.gvec<index_domain_t::global>(idx));
                  std::vector<int> retr = {vec[0], vec[1], vec[2]};
                  return retr;
              })
@@ -280,7 +314,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Gvec_partition>(m, "Gvec_partition")
         .def_property_readonly("gvec", &Gvec_partition::gvec)
-        .def_property_readonly("gvec_array", &Gvec_partition::get_gvec);
+        .def_property_readonly("gvec_array", &Gvec_partition::gvec_array);
 
     py::class_<vector3d<int>>(m, "vector3d_int")
         .def(py::init<std::vector<int>>())
