@@ -1,9 +1,8 @@
 #include <sirius.hpp>
-#include "k_point/wave_functions.hpp"
+#include "SDDK/wave_functions.hpp"
 #include "mpi/mpi_grid.hpp"
 
-//using namespace sirius;
-//using namespace sirius::experimental;
+using namespace sirius;
 
 
 class spin
@@ -47,59 +46,58 @@ void test_wf_fft()
 
     std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
 
-    //::exper::Wave_functions<double> wf(gkvec, num_mt_coeffs, 10, 1, sddk::memory_t::host);
-    ::exper::A a;
-//    sirius::experimental::Wave_functions<double> wf_ref(gkvec, 10, 1, memory_t::host);
-//    sirius::experimental::Wave_functions_fft<double> wf_fft(gkvec_fft, 10, memory_t::host);
-//
-//    for (int i = 0; i < 10; i++) {
-//        for (int ig = 0; ig < gkvec->count(); ig++) {
-//            wf.pw_coeffs(0)(ig, i) = wf_ref.pw_coeffs(0)(ig, i) = utils::random<std::complex<double>>();
-//        }
-//    }
-//    auto mg = wf.memory_guard(memory_t::device, experimental::copy_to::device);
-//    auto mg_fft = wf_fft.memory_guard(memory_t::device);
-//
-//    auto pu = device_t::CPU;
-//
-//    auto spfft_pu = pu == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
-//    auto spl_z = split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
-//
-//        /* create spfft buffer for coarse transform */
-//    auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-//            fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count_fft(),
-//            spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
-//
-//    const auto fft_type = gkvec->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
-//
-//    /* create actual transform object */
-//    auto spfft_transform = std::make_unique<spfft::Transform>(spfft_grid->create_transform(
-//        spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
-//        spl_z.local_size(), gkvec_fft->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-//        gkvec_fft->gvec_array().at(memory_t::host)));
-//
-//    transform_to_fft_layout(wf, wf_fft, gkvec_fft, 0, 0, 10);
-//
-//    for (int i = 0; i < 10; i++) {
-//        for (int ig = 0; ig < gkvec->count(); ig++) {
-//            wf.pw_coeffs(0)(ig, i) = 0;
-//        }
-//    }
-//
-//    for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-//        spfft_transform->backward(wf_fft.pw_coeffs(memory_t::host, i), spfft_pu);
-//        spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs(memory_t::host, i), SPFFT_FULL_SCALING);
-//    }
-//
-//    transform_from_fft_layout(wf_fft, wf, 0, 0, 10);
-//
-//    for (int i = 0; i < 10; i++) {
-//        for (int ig = 0; ig < gkvec->count(); ig++) {
-//            if (std::abs(wf.pw_coeffs(0)(ig, i) - wf_ref.pw_coeffs(0)(ig, i)) > 1e-10) {
-//                std::cout << "Error!" << std::endl;
-//            }
-//        }
-//    }
+    ::sddk::experimental::Wave_functions<double> wf(gkvec, num_mt_coeffs, 10, 1, sddk::memory_t::host);
+    ::sddk::experimental::Wave_functions<double> wf_ref(gkvec, 10, 1, sddk::memory_t::host);
+    ::sddk::experimental::Wave_functions_fft<double> wf_fft(gkvec_fft, 10, sddk::memory_t::host);
+
+    for (int i = 0; i < 10; i++) {
+        for (int ig = 0; ig < gkvec->count(); ig++) {
+            wf.pw_coeffs(0)(ig, i) = wf_ref.pw_coeffs(0)(ig, i) = utils::random<std::complex<double>>();
+        }
+    }
+    auto mg = wf.memory_guard(sddk::memory_t::device, sddk::experimental::copy_to::device);
+    auto mg_fft = wf_fft.memory_guard(sddk::memory_t::device);
+
+    auto pu = sddk::device_t::CPU;
+
+    auto spfft_pu = pu == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    auto spl_z = split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
+
+        /* create spfft buffer for coarse transform */
+    auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
+            fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count_fft(),
+            spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+
+    const auto fft_type = gkvec->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+
+    /* create actual transform object */
+    auto spfft_transform = std::make_unique<spfft::Transform>(spfft_grid->create_transform(
+        spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+        spl_z.local_size(), gkvec_fft->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gkvec_fft->gvec_array().at(sddk::memory_t::host)));
+
+    transform_to_fft_layout(wf, wf_fft, gkvec_fft, 0, 0, 10);
+
+    for (int i = 0; i < 10; i++) {
+        for (int ig = 0; ig < gkvec->count(); ig++) {
+            wf.pw_coeffs(0)(ig, i) = 0;
+        }
+    }
+
+    for (int i = 0; i < wf_fft.num_wf_local(); i++) {
+        spfft_transform->backward(wf_fft.pw_coeffs(sddk::memory_t::host, i), spfft_pu);
+        spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs(sddk::memory_t::host, i), SPFFT_FULL_SCALING);
+    }
+
+    transform_from_fft_layout(wf_fft, wf, 0, 0, 10);
+
+    for (int i = 0; i < 10; i++) {
+        for (int ig = 0; ig < gkvec->count(); ig++) {
+            if (std::abs(wf.pw_coeffs(0)(ig, i) - wf_ref.pw_coeffs(0)(ig, i)) > 1e-10) {
+                std::cout << "Error!" << std::endl;
+            }
+        }
+    }
 }
 
 
