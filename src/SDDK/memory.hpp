@@ -36,6 +36,7 @@
 #include <complex>
 #include <cassert>
 #include "gpu/acc.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
@@ -1674,15 +1675,21 @@ inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
     std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
 }
 
-/// Copy all memory present on destination. TODO: remove this
+/// Copy both memory types if present.
 template <typename T, int N>
-__attribute_deprecated__
 void
-copy_new(mdarray<T, N>& dst, const mdarray<T, N>& src)
+copy_auto(mdarray<T, N>& dst, const mdarray<T, N>& src)
 {
+    if (src.size() == 0) {
+        // nothing todo
+        return;
+    }
 
-    assert(dst.size() == src.size());
-    // TODO: make sure dst and src don't overlap
+    for (int i = 0; i < N; ++i) {
+        if(dst.size(i) != src.size(i)) {
+            RTE_THROW("incompatible shapes");
+        }
+    }
 
     if (dst.on_device()) {
         acc::copy(dst.device_data(), src.device_data(), src.size());
@@ -1693,19 +1700,22 @@ copy_new(mdarray<T, N>& dst, const mdarray<T, N>& src)
     }
 }
 
-/// Copy memory specified by device from src to dst.
+/// Copy specified memory by device_t from src to dst.
 template <typename T, int N>
-__attribute_deprecated__
 void
-copy_new(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
+copy_auto(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
 {
-    // TODO add also compare shapes
     if (src.size() == 0) {
-        // nothing TODO
+        // nothing todo
         return;
     }
 
-    assert(src.size() == dst.size());
+    for (int i = 0; i < N; ++i) {
+        if (dst.size(i) != src.size(i)) {
+            RTE_THROW("incompatible shapes");
+        }
+    }
+
     if (device == device_t::GPU) {
         assert(src.on_device() && dst.on_device());
         acc::copy(dst.device_data(), src.device_data(), dst.size());

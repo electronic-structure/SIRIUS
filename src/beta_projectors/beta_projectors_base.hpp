@@ -85,8 +85,8 @@ struct beta_chunk_t
         num_atoms_ = other.num_atoms_;
         offset_    = other.offset_;
 
-        copy_new(desc_, other.desc_);
-        copy_new(atom_pos_, other.atom_pos_);
+        copy_auto(desc_, other.desc_);
+        copy_auto(atom_pos_, other.atom_pos_);
     }
 
     beta_chunk_t& operator=(const beta_chunk_t& other)
@@ -96,10 +96,10 @@ struct beta_chunk_t
         offset_    = other.offset_;
 
         desc_ = empty_like(other.desc_);
-        copy_new(desc_, other.desc_);
+        copy_auto(desc_, other.desc_);
 
         atom_pos_ = empty_like(other.atom_pos_);
-        copy_new(atom_pos_, other.atom_pos_);
+        copy_auto(atom_pos_, other.atom_pos_);
         return *this;
     }
 };

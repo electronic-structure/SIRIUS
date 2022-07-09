@@ -218,7 +218,7 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray
     // compute -Q*bphi
     q_op.rmatmul(R, bphi, this->ispn, pm, -1);
 
-    sddk::copy_new(Y, X, pu);
+    sddk::copy_auto(Y, X, pu);
 
     for (int ichunk = 0; ichunk < bp.num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
@@ -301,7 +301,7 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeri
 
     q_op.rmatmul(R, bphi, this->ispn, pm, 1, 0);
 
-    sddk::copy_new(Y, X, pu);
+    sddk::copy_auto(Y, X, pu);
 
     for (int ichunk = 0; ichunk < bp.num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
