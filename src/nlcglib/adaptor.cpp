@@ -17,7 +17,7 @@ std::shared_ptr<Matrix> make_vector(const std::vector<std::shared_ptr<sddk::Wave
                                     const K_point_set& kset,
                                     nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    std::map<memory_t, nlcglib::memory_type> memtype = {{sddk::memory_t::device, nlcglib::memory_type::device},
+    std::map<sddk::memory_t, nlcglib::memory_type> memtype = {{sddk::memory_t::device, nlcglib::memory_type::device},
                                                         {sddk::memory_t::host, nlcglib::memory_type::host},
                                                         {sddk::memory_t::host_pinned, nlcglib::memory_type::host}};
     std::map<nlcglib::memory_type, sddk::memory_t> memtype_lookup = {{nlcglib::memory_type::none, sddk::memory_t::none},
