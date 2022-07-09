@@ -469,20 +469,20 @@ class K_point
 
     inline auto& fv_states()
     {
-        assert(fv_states_ != nullptr);
+        RTE_ASSERT(fv_states_ != nullptr);
         return *fv_states_;
     }
 
     inline auto& spinor_wave_functions()
     {
-        assert(spinor_wave_functions_ != nullptr);
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    //inline auto spinor_wave_functions_ptr()
-    //{
-    //    return spinor_wave_functions_;
-    //}
+    inline auto spinor_wave_functions_ptr()
+    {
+        return spinor_wave_functions_;
+    }
 
     /// return the initial atomic orbitals used to compute the hubbard wave functions. the S operator is applied on
     /// these functions
@@ -513,7 +513,7 @@ class K_point
     /// return the actual hubbard wave functions used in the calculations. The S operator is applied when uspp are used.
     inline auto const& hubbard_wave_functions_S() const
     {
-        assert(hubbard_wave_functions_S_ != nullptr);
+        RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
         return *hubbard_wave_functions_S_;
     }
 
@@ -526,7 +526,7 @@ class K_point
     /// return the actual hubbard wave functions used in the calculations.
     inline auto const& hubbard_wave_functions() const
     {
-        assert(hubbard_wave_functions_ != nullptr);
+        RTE_ASSERT(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
     }
 
@@ -598,13 +598,13 @@ class K_point
 
     inline lo_basis_descriptor const& lo_basis_descriptor_col(int idx) const
     {
-        assert(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
+        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
         return lo_basis_descriptors_col_[idx];
     }
 
     inline lo_basis_descriptor const& lo_basis_descriptor_row(int idx) const
     {
-        assert(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
+        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
         return lo_basis_descriptors_row_[idx];
     }
 
@@ -760,25 +760,25 @@ class K_point
 
     auto& beta_projectors()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
     auto const& beta_projectors() const
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
     auto& beta_projectors_row()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_row_;
     }
 
     auto& beta_projectors_col()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_col_;
     }
 

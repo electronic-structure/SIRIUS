@@ -482,11 +482,11 @@ Force::calc_forces_us()
     for (int iat = 0; iat < unit_cell.num_atom_types(); iat++) {
         auto& atom_type = unit_cell.atom_type(iat);
 
-        auto& aug_op = ctx_.augmentation_op(iat);
-
         if (!ctx_.unit_cell().atom_type(iat).augment()) {
             continue;
         }
+
+        auto& aug_op = ctx_.augmentation_op(iat);
 
         int nbf = atom_type.mt_basis_size();
 
