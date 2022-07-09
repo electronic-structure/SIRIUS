@@ -31,8 +31,8 @@ void K_point_set::sync_band()
 {
     PROFILE("sirius::K_point_set::sync_band");
 
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), ctx_.mem_pool(memory_t::host),
-                                  "K_point_set::sync_band.data");
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
+            ctx_.mem_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
     #pragma omp parallel
@@ -51,7 +51,7 @@ void K_point_set::sync_band()
         }
     }
 
-    comm().allgather(data.at(memory_t::host), nb * spl_num_kpoints_.local_size(),
+    comm().allgather(data.at(sddk::memory_t::host), nb * spl_num_kpoints_.local_size(),
         nb * spl_num_kpoints_.global_offset());
 
     #pragma omp parallel for
@@ -93,14 +93,14 @@ void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__,
     PROFILE("sirius::K_point_set::create_k_mesh");
 
     int nk;
-    mdarray<double, 2> kp;
+    sddk::mdarray<double, 2> kp;
     std::vector<double> wk;
     if (use_symmetry__) {
         auto result = get_irreducible_reciprocal_mesh(ctx_.unit_cell().symmetry(), k_grid__, k_shift__);
         nk          = std::get<0>(result);
         wk          = std::get<1>(result);
         auto tmp    = std::get<2>(result);
-        kp          = mdarray<double, 2>(3, nk);
+        kp          = sddk::mdarray<double, 2>(3, nk);
         for (int i = 0; i < nk; i++) {
             for (int x : {0, 1, 2}) {
                 kp(x, i) = tmp[i][x];
@@ -109,7 +109,7 @@ void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__,
     } else {
         nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
         wk = std::vector<double>(nk, 1.0 / nk);
-        kp = mdarray<double, 2>(3, nk);
+        kp = sddk::mdarray<double, 2>(3, nk);
 
         int ik = 0;
         for (int i0 = 0; i0 < k_grid__[0]; i0++) {
@@ -139,10 +139,10 @@ void K_point_set::initialize(std::vector<int> const& counts)
     PROFILE("sirius::K_point_set::initialize");
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
-        splindex<splindex_t::block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
-        spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
+        sddk::splindex<sddk::splindex_t::block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
+        spl_num_kpoints_ = sddk::splindex<sddk::splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
     } else {
-        spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
+        spl_num_kpoints_ = sddk::splindex<sddk::splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
     }
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -314,7 +314,7 @@ void K_point_set::find_band_occupancies()
     comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
     comm().allreduce<double, sddk::mpi_op_t::max>(&emax, 1);
 
-    splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
@@ -430,7 +430,7 @@ double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
 
-    splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
@@ -479,7 +479,7 @@ double K_point_set::entropy_sum() const
 
     auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
-    splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         auto ik = spl_num_kpoints_[ikloc];
@@ -533,7 +533,7 @@ void K_point_set::print_info()
     }
 
     if (ctx_.comm_band().rank() == 0) {
-        pstdout pout(comm());
+        sddk::pstdout pout(comm());
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1],
@@ -552,9 +552,9 @@ void K_point_set::save(std::string const& name__) const
 {
     if (ctx_.comm().rank() == 0) {
         if (!utils::file_exists(name__)) {
-            HDF5_tree(name__, hdf5_access_t::truncate);
+            sddk::HDF5_tree(name__, sddk::hdf5_access_t::truncate);
         }
-        HDF5_tree fout(name__, hdf5_access_t::read_write);
+        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
         fout.create_node("K_point_set");
         fout["K_point_set"].write("num_kpoints", num_kpoints());
     }

@@ -33,8 +33,6 @@
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
 
-using namespace sddk;
-
 namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
@@ -77,7 +75,7 @@ class Simulation_parameters
 
   protected:
     /// Type of the processing unit.
-    device_t processing_unit_{device_t::CPU};
+    sddk::device_t processing_unit_{sddk::device_t::CPU};
 
     /// Type of relativity for valence states.
     relativity_t valence_relativity_{relativity_t::zora};
@@ -92,7 +90,7 @@ class Simulation_parameters
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
     /// Storage for various memory pools.
-    mutable std::map<memory_t, memory_pool> memory_pool_;
+    mutable std::map<sddk::memory_t, sddk::memory_pool> memory_pool_;
 
     /* copy constructor is forbidden */
     Simulation_parameters(Simulation_parameters const&) = delete;
@@ -379,7 +377,7 @@ class Simulation_parameters
         return cfg().parameters().gamma_point();
     }
 
-    device_t processing_unit() const
+    sddk::device_t processing_unit() const
     {
         return processing_unit_;
     }
@@ -520,28 +518,28 @@ class Simulation_parameters
 
     /// Return a reference to a memory pool.
     /** A memory pool is created when this function called for the first time. */
-    memory_pool& mem_pool(memory_t M__) const
+    sddk::memory_pool& mem_pool(sddk::memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, memory_pool(M__));
+            memory_pool_.emplace(M__, sddk::memory_pool(M__));
         }
         return memory_pool_.at(M__);
     }
 
     /// Get a default memory pool for a given device.
-    memory_pool& mem_pool(device_t dev__)
+    sddk::memory_pool& mem_pool(sddk::device_t dev__)
     {
         switch (dev__) {
-            case device_t::CPU: {
-                return mem_pool(memory_t::host);
+            case sddk::device_t::CPU: {
+                return mem_pool(sddk::memory_t::host);
                 break;
             }
-            case device_t::GPU: {
-                return mem_pool(memory_t::device);
+            case sddk::device_t::GPU: {
+                return mem_pool(sddk::memory_t::device);
                 break;
             }
         }
-        return mem_pool(memory_t::host); // make compiler happy
+        return mem_pool(sddk::memory_t::host); // make compiler happy
     }
 };
 

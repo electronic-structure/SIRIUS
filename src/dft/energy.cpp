@@ -27,19 +27,19 @@
 namespace sirius {
 
 double
-ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell)
+ewald_energy(const Simulation_context& ctx, const sddk::Gvec& gvec, const Unit_cell& unit_cell)
 {
     double alpha{ctx.ewald_lambda()};
     double ewald_g{0};
 
     #pragma omp parallel for reduction(+ : ewald_g)
     for (int igloc = gvec.skip_g0(); igloc < gvec.count(); igloc++) {
-        double g2 = std::pow(gvec.gvec_len<index_domain_t::local>(igloc), 2);
+        double g2 = std::pow(gvec.gvec_len<sddk::index_domain_t::local>(igloc), 2);
 
         double_complex rho(0, 0);
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            rho += ctx.gvec_phase_factor(gvec.gvec<index_domain_t::local>(igloc), ia) *
+            rho += ctx.gvec_phase_factor(gvec.gvec<sddk::index_domain_t::local>(igloc), ia) *
                 static_cast<double>(unit_cell.atom(ia).zn());
         }
 

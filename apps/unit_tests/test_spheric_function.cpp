@@ -2,6 +2,7 @@
 #include "testing.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 template<typename T>
 int test1()

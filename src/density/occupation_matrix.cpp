@@ -64,23 +64,23 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         return;
     }
 
-    memory_t mem_host{memory_t::host};
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
+    sddk::memory_t mem_host{sddk::memory_t::host};
+    sddk::memory_t mem{sddk::memory_t::host};
+    sddk::linalg_t la{sddk::linalg_t::blas};
     /* find the appropriate linear algebra provider */
-    if (ctx_.processing_unit() == device_t::GPU) {
-        mem      = memory_t::device;
-        mem_host = memory_t::host_pinned;
+    if (ctx_.processing_unit() == sddk::device_t::GPU) {
+        mem      = sddk::memory_t::device;
+        mem_host = sddk::memory_t::host_pinned;
         if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = linalg_t::gpublas;
+            la = sddk::linalg_t::gpublas;
         } else {
-            la = linalg_t::spla;
+            la = sddk::linalg_t::spla;
         }
     }
 
     int nwfu = kp__.hubbard_wave_functions_S().num_wf();
 
-    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
+    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(sddk::memory_t::host), "occ_mtrx");
     if (is_device_memory(mem)) {
         occ_mtrx.allocate(ctx_.mem_pool(mem));
     }
@@ -92,11 +92,11 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     /* full non collinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
+        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
+        sddk::inner(ctx_.spla_context(), sddk::spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
                     kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
@@ -104,7 +104,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         // if (is_device_memory(mem)) {
         //    dm.copy_to(memory_t::host);
         //}
-        dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
+        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
@@ -117,10 +117,10 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = std::complex<T>(kp__.weight(), 0.0);
-        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
-                        dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+        sddk::linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
+                        dm1.ld(), &sddk::linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
-            occ_mtrx.copy_to(memory_t::host);
+            occ_mtrx.copy_to(sddk::memory_t::host);
         }
 
         #pragma omp parallel for schedule(static)
@@ -157,17 +157,17 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|1");
-            dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
+            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
-            sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0,
+            sddk::inner(ctx_.spla_context(), sddk::spin_range(ispn), kp__.spinor_wave_functions(), 0,
                         kp__.num_occupied_bands(ispn), kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");
-            dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
+            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
@@ -185,11 +185,11 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
              * calculation of the hubbard potential */
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|3");
             auto alpha = std::complex<T>(kp__.weight() / ctx_.max_occupancy(), 0.0);
-            linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                            dm1.at(mem), dm1.ld(), &linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem),
+            sddk::linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
+                            dm1.at(mem), dm1.ld(), &sddk::linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem),
                             occ_mtrx.ld());
             if (is_device_memory(mem)) {
-                occ_mtrx.copy_to(memory_t::host);
+                occ_mtrx.copy_to(sddk::memory_t::host);
             }
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|3");
 
@@ -220,7 +220,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
-                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * z1;
+                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
                     }
                 }
             }
@@ -254,7 +254,8 @@ Occupation_matrix::symmetrize()
         // (or U = 0)
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
             local_tmp[at_lvl] = sddk::mdarray<double_complex, 3>(local_[at_lvl].size(0), local_[at_lvl].size(1), 4);
-            memcpy(local_tmp[at_lvl].at(memory_t::host), local_[at_lvl].at(memory_t::host),
+            // TODO: use std::copy
+            memcpy(local_tmp[at_lvl].at(sddk::memory_t::host), local_[at_lvl].at(sddk::memory_t::host),
                    sizeof(double_complex) * local_[at_lvl].size());
         } else {
             local_tmp[at_lvl].zero();

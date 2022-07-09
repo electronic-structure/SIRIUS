@@ -2,6 +2,7 @@
 #include "symmetry/crystal_symmetry.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 void test_sym(cmd_args const& args__)
 {

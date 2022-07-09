@@ -3,6 +3,8 @@
 #include "SDDK/dmatrix.hpp"
 #include <spla/spla.hpp>
 
+using namespace sddk;
+
 void test(int M, int N, int BS, std::vector<int> mpi_grid)
 {
     std::vector<int> counts({85, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 17, 13, 13, 13, 13, 13, 13, 13, 13,

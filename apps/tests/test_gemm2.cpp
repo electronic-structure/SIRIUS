@@ -110,7 +110,7 @@ int main(int argn, char **argv)
 
     sirius::Measurement perf;
     for (int i = 0; i < repeat; i++) {
-        perf.push_back(test_gemm(M, N, K, transa, get_linalg_t(linalg_t_str), memA, memB, memC));
+        perf.push_back(test_gemm(M, N, K, transa, sddk::get_linalg_t(linalg_t_str), memA, memB, memC));
     }
     printf("average performance: %12.6f GFlops, sigma: %12.6f\n", perf.average(), perf.sigma());
 

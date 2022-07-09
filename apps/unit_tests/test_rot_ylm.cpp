@@ -4,6 +4,7 @@
 /* test rotation of spherical harmonics */
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T>
 int run_test_impl(cmd_args& args)

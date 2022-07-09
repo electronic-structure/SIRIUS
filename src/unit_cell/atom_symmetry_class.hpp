@@ -110,11 +110,11 @@ class Atom_symmetry_class
     /// Generate APW and LO radial functions.
     void generate_radial_functions(relativity_t rel__);
 
-    void sync_radial_functions(Communicator const& comm__, int const rank__);
+    void sync_radial_functions(sddk::Communicator const& comm__, int const rank__);
 
-    void sync_radial_integrals(Communicator const& comm__, int const rank__);
+    void sync_radial_integrals(sddk::Communicator const& comm__, int const rank__);
 
-    void sync_core_charge_density(Communicator const& comm__, int const rank__);
+    void sync_core_charge_density(sddk::Communicator const& comm__, int const rank__);
 
     /// Check if local orbitals are linearly independent
     std::vector<int> check_lo_linear_independence(double etol__);
@@ -128,7 +128,7 @@ class Atom_symmetry_class
     /// Find linearization energy.
     void find_enu(relativity_t rel__);
 
-    void write_enu(pstdout& pout) const;
+    void write_enu(sddk::pstdout& pout) const;
 
     /// Generate radial overlap and SO integrals
     /** In the case of spin-orbit interaction the following integrals are computed:

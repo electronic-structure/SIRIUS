@@ -147,12 +147,12 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
 
                 result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) /
-                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(ig1), 2);
+                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(ig1), 2);
             }
         } else {
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
                 result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) /
-                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(igloc), 2);
+                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
             }
         }
         if (x.ctx().gvec().reduced()) {
@@ -268,21 +268,21 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 {
-    auto global_size_func = [](const mdarray<double_complex, 4>& x) -> double { return x.size(); };
+    auto global_size_func = [](sddk::mdarray<double_complex, 4> const& x) -> double { return x.size(); };
 
-    auto inner_prod_func = [](const mdarray<double_complex, 4>& x, const mdarray<double_complex, 4>& y) -> double {
+    auto inner_prod_func = [](sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4> const& y) -> double {
         // do not contribute to mixing
         return 0.0;
     };
 
-    auto scal_function = [](double alpha, mdarray<double_complex, 4>& x) -> void {
+    auto scal_function = [](double alpha, sddk::mdarray<double_complex, 4>& x) -> void {
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
             x[i] *= alpha;
         }
     };
 
-    auto copy_function = [](const mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto copy_function = [](sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
@@ -290,7 +290,7 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
         }
     };
 
-    auto axpy_function = [](double alpha, const mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto axpy_function = [](double alpha, sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
@@ -298,7 +298,7 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
         }
     };
 
-    auto rotate_function = [](double c, double s, mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto rotate_function = [](double c, double s, sddk::mdarray<double_complex, 4>& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {

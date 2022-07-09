@@ -66,7 +66,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             int l           = atom_type.lo_descriptor_hub(lo_ind).l();
             int mmax        = 2 * l + 1;
 
-            local_[at_lvl] = sddk::mdarray<double_complex, 3>(mmax, mmax, 4, memory_t::host, "local_hubbard");
+            local_[at_lvl] = sddk::mdarray<double_complex, 3>(mmax, mmax, 4, sddk::memory_t::host, "local_hubbard");
             local_[at_lvl].zero();
             size += mmax;
         }
@@ -77,7 +77,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             auto nl      = ctx_.cfg().hubbard().nonlocal(i);
             int il       = nl.l()[0];
             int jl       = nl.l()[1];
-            nonlocal_[i] = sddk::mdarray<double_complex, 3>(2 * il + 1, 2 * jl + 1, 4, memory_t::host,
+            nonlocal_[i] = sddk::mdarray<double_complex, 3>(2 * il + 1, 2 * jl + 1, 4, sddk::memory_t::host,
                     "nonlocal_hubbard");
             nonlocal_[i].zero();
         }

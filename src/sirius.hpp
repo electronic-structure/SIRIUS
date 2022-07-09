@@ -103,13 +103,13 @@ inline void initialize(bool call_mpi_init__ = true)
     energy_acc() = -utils::power::device_energy();
 #endif
     if (call_mpi_init__) {
-        Communicator::initialize(MPI_THREAD_MULTIPLE);
+        sddk::Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
 
-    if (Communicator::world().rank() == 0) {
+    if (sddk::Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
                sirius::revision(), sirius::git_hash().c_str());
 #if !defined(NDEBUG)
@@ -209,7 +209,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
 #endif
     if (call_mpi_fin__) {
-        Communicator::finalize();
+        sddk::Communicator::finalize();
     }
 #if defined(SIRIUS_ELPA)
     int ierr;

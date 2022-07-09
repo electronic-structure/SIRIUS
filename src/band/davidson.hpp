@@ -46,8 +46,8 @@ enum class davidson_evp_t {
 
 template <typename T, typename F>
 inline void
-project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
-                     Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<F>& o__)
+project_out_subspace(::spla::Context& spla_ctx__, sddk::spin_range spins__, sddk::Wave_functions<real_type<T>>& phi__,
+                     sddk::Wave_functions<real_type<T>>& sphi__, int N__, int n__, sddk::dmatrix<F>& o__)
 {
     PROFILE("sirius::project_out_subspace");
 
@@ -71,7 +71,7 @@ project_out_subspace(::spla::Context& spla_ctx__, spin_range spins__, Wave_funct
 
 template <typename T>
 inline int
-remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<real_type<T>>& phi__,
+remove_linearly_dependent(::spla::Context& spla_ctx__, sddk::spin_range spins__, sddk::Wave_functions<real_type<T>>& phi__,
                           int N__, int n__, sddk::dmatrix<T>& o__)
 
 {
@@ -80,8 +80,8 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
     /* compute <phi | phi> */
     inner(spla_ctx__, spins__, phi__, N__, n__, phi__, N__, n__, o__, 0, 0);
 
-    auto la = (o__.comm().size() == 1) ? linalg_t::lapack : linalg_t::scalapack;
-    linalg(la).geqrf(n__, n__, o__, 0, 0);
+    auto la = (o__.comm().size() == 1) ? sddk::linalg_t::lapack : sddk::linalg_t::scalapack;
+    sddk::linalg(la).geqrf(n__, n__, o__, 0, 0);
     auto diag = o__.get_diag(n__);
 
     auto eps = std::numeric_limits<real_type<T>>::epsilon();
@@ -102,11 +102,11 @@ remove_linearly_dependent(::spla::Context& spla_ctx__, spin_range spins__, Wave_
 }
 
 template <typename T>
-inline std::unique_ptr<Wave_functions<real_type<T>>>
+inline std::unique_ptr<sddk::Wave_functions<real_type<T>>>
 wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, int num_wf__, int num_sc__,
                       bool mt_part__)
 {
-    using wf_t = Wave_functions<real_type<T>>;
+    using wf_t = sddk::Wave_functions<real_type<T>>;
     std::unique_ptr<wf_t> wf{nullptr};
     if (mt_part__) {
         wf = std::unique_ptr<wf_t>(new wf_t(ctx__.mem_pool(ctx__.host_memory_t()), kp__.gkvec_partition(),
@@ -118,7 +118,7 @@ wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, i
     }
     if (is_device_memory(ctx__.preferred_memory_t())) {
         auto& mpd = ctx__.mem_pool(ctx__.preferred_memory_t());
-        wf->allocate(spin_range(num_sc__ == 1 ? 0 : 2), mpd);
+        wf->allocate(sddk::spin_range(num_sc__ == 1 ? 0 : 2), mpd);
     }
 
     return wf;
@@ -143,15 +143,15 @@ wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, i
 \param [in]     extra_ortho   Orthogonalize new subspace basis one extra time.
 \param [out]    out           Output stream.
 \param [in]     verbosity     Verbosity level.
-\param [in]     phi_extra     Pointer to the additional (fixed) auxiliary baasis functions (used in LAPW).
+\param [in]     phi_extra     Pointer to the additional (fixed) auxiliary basis functions (used in LAPW).
 \return                       List of eigen-values.
 */
 template <typename T, typename F, davidson_evp_t what>
 inline davidson_result_t
-davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, Wave_functions<real_type<T>>& psi__,
+davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__, sddk::Wave_functions<real_type<T>>& psi__,
          std::function<double(int, int)> tolerance__, double res_tol__,
          int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, bool extra_ortho__,
-         std::ostream& out__, int verbosity__, Wave_functions<real_type<T>>* phi_extra__ = nullptr)
+         std::ostream& out__, int verbosity__, sddk::Wave_functions<real_type<T>>* phi_extra__ = nullptr)
 {
     PROFILE("sirius::davidson");
 
@@ -199,7 +199,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     /* allocate wave-functions */
 
-    using wf_t = Wave_functions<real_type<T>>;
+    using wf_t = sddk::Wave_functions<real_type<T>>;
 
     bool mt_part{false};
     if (ctx.full_potential() && what == davidson_evp_t::hamiltonian) {
@@ -242,13 +242,13 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
 
     const int bs = ctx.cyclic_block_size();
 
-    dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx.preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(ctx.preferred_memory_t());
-        psi__.prepare(spin_range(psi__.num_sc() == 2 ? 2 : 0), true, &mpd);
+        psi__.prepare(sddk::spin_range(psi__.num_sc() == 2 ? 2 : 0), true, &mpd);
 
         if (ctx.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
@@ -279,8 +279,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     (*o_diag)(j, ispn) = 1.0;
                 }
             }
-            if (ctx.processing_unit() == device_t::GPU) {
-                o_diag->copy_to(memory_t::device);
+            if (ctx.processing_unit() == sddk::device_t::GPU) {
+                o_diag->copy_to(sddk::memory_t::device);
             }
             break;
         }
@@ -387,7 +387,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         sphi_extra->copy_from(*sphi, num_extra_phi, 0, num_bands__, 0, 0);
                     }
                 } else {
-                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__,
+                    Hk__.template apply_h_s<T>(sddk::spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__,
                             *phi, hphi.get(), sphi.get());
                 }
                 break;
@@ -396,7 +396,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 if (ctx.full_potential()) {
                     Hk__.apply_fv_h_o(true, false, 0, num_bands__, *phi, nullptr, sphi.get());
                 } else {
-                    Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__,
+                    Hk__.template apply_h_s<T>(sddk::spin_range(nc_mag ? 2 : ispin_step), 0, num_bands__,
                             *phi, nullptr, sphi.get());
                 }
                 break;
@@ -455,8 +455,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
         /* orthogonalize subspace basis functions and setup eigen-value problem */
         switch (what) {
             case davidson_evp_t::hamiltonian: {
-                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                        spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, 0, N, H, *res);
+                sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                        sddk::spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, 0, N, H, *res);
                 if (ctx.print_checksum()) {
                     phi->print_checksum(get_device_t(phi->preferred_memory_t()), "phi", 0, N, RTE_OUT(std::cout));
                     if (hphi) {
@@ -469,8 +469,8 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 break;
             }
             case davidson_evp_t::overlap: {
-                orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                        spin_range(nc_mag ? 2 : 0), *phi, *sphi, 0, num_bands__, H, *res);
+                sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                        sddk::spin_range(nc_mag ? 2 : 0), *phi, *sphi, 0, num_bands__, H, *res);
                 /* setup eigen-value problem */
                 Band(ctx).set_subspace_mtrx<T>(0, num_bands__, 0, *phi, *sphi, H, &H_old);
                 break;
@@ -551,7 +551,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                 switch (what) {
                     case davidson_evp_t::hamiltonian: {
                         result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                              sddk::spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
                                               eval, evec, *hphi, *sphi, *hpsi, *spsi, *res, *h_diag, *o_diag,
                                               estimate_eval__, res_tol__, is_converged);
 
@@ -559,7 +559,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                     }
                     case davidson_evp_t::overlap: {
                         result = residuals<T>(ctx, ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                              spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
+                                              sddk::spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked,
                                               eval, evec, *sphi, *phi, *spsi, psi__, *res, *h_diag, *o_diag,
                                               estimate_eval__, res_tol__, is_converged);
                         break;
@@ -640,14 +640,14 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         switch (what) {
                             case davidson_evp_t::hamiltonian: {
                                 transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                             std::vector<Wave_functions<real_type<T>>*>({hphi.get(), sphi.get()}),
+                                             std::vector<sddk::Wave_functions<real_type<T>>*>({hphi.get(), sphi.get()}),
                                              num_locked, N - num_locked, evec, 0, 0, 0.0, {hpsi.get(), spsi.get()},
                                              0, num_ritz);
                                 break;
                             }
                             case davidson_evp_t::overlap: {
                                 transform<T, F>(ctx.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
-                                             std::vector<Wave_functions<real_type<T>>*>({sphi.get()}), num_locked,
+                                             std::vector<sddk::Wave_functions<real_type<T>>*>({sphi.get()}), num_locked,
                                              N - num_locked, evec, 0, 0, 0.0, {spsi.get()}, 0, num_ritz);
                                 break;
                             }
@@ -720,35 +720,35 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
                         } else {
                             Hk__.apply_fv_h_o(false, false, N, expand_with, *phi, hphi.get(), sphi.get());
                         }
-                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                         spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, true);
+                        sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         sddk::spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, true);
                     } else {
                         /* for pseudopotential case we first project out the old subspace; this takes little less
                          * operations and gives a slighly more stable procedure, especially for fp32 */
-                        project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H);
-                        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, *phi, hphi.get(), sphi.get());
-                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                         spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, false);
+                        project_out_subspace<T, F>(ctx.spla_context(), sddk::spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H);
+                        Hk__.template apply_h_s<T>(sddk::spin_range(nc_mag ? 2 : ispin_step), N, expand_with, *phi, hphi.get(), sphi.get());
+                        sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         sddk::spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, false);
                         if (extra_ortho__) {
-                            orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                             spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, false);
+                            sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                             sddk::spin_range(nc_mag ? 2 : 0), *phi, *hphi, *sphi, N, expand_with, H, *res, false);
                         }
                     }
                     Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *hphi, H, &H_old);
                     break;
                 }
                 case davidson_evp_t::overlap: {
-                    project_out_subspace<T, F>(ctx.spla_context(), spin_range(nc_mag ? 2 : 0), *phi, *phi, N, expand_with, H);
+                    project_out_subspace<T, F>(ctx.spla_context(), sddk::spin_range(nc_mag ? 2 : 0), *phi, *phi, N, expand_with, H);
                     if (ctx.full_potential()) {
                         Hk__.apply_fv_h_o(true, false, N, expand_with, *phi, nullptr, sphi.get());
                     } else {
-                        Hk__.template apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, *phi, nullptr, sphi.get());
+                        Hk__.template apply_h_s<T>(sddk::spin_range(nc_mag ? 2 : ispin_step), N, expand_with, *phi, nullptr, sphi.get());
                     }
-                    orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                     spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H, *res, false);
+                    sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                     sddk::spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H, *res, false);
                     if (extra_ortho__) {
-                        orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
-                                         spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H, *res, false);
+                        sddk::orthogonalize<T>(ctx.spla_context(), ctx.preferred_memory_t(), ctx.blas_linalg_t(),
+                                         sddk::spin_range(nc_mag ? 2 : 0), *phi, *sphi, N, expand_with, H, *res, false);
                     }
                     Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *sphi, H, &H_old);
                     break;
@@ -796,7 +796,7 @@ davidson(Hamiltonian_k<real_type<T>>& Hk__, int num_bands__, int num_mag_dims__,
     PROFILE_STOP("sirius::davidson|iter");
 
     if (is_device_memory(ctx.preferred_memory_t())) {
-        psi__.dismiss(spin_range(psi__.num_sc() == 2 ? 2 : 0), true);
+        psi__.dismiss(sddk::spin_range(psi__.num_sc() == 2 ? 2 : 0), true);
     }
 
     ctx.print_memory_usage(__FILE__, __LINE__);
