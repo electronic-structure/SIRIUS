@@ -154,7 +154,7 @@ void Energy::compute()
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
                 sddk::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
-                dmat.allocate(sddk:::memory_t::device);
+                dmat.allocate(sddk::memory_t::device);
                 sddk::inner(ctx.spla_context(), spin_range(ispn),
                             /* bra */ kp.spinor_wave_functions(), jj, 1,
                             /* ket */ *hphis[i], jj, 1,
