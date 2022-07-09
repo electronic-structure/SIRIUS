@@ -31,34 +31,26 @@
 namespace sirius {
 
 #if defined(SIRIUS_GPU)
-extern "C" void create_beta_gk_gpu_float(int                        num_atoms,
-                                         int                        num_gkvec,
-                                         int const*                 beta_desc,
-                                         std::complex<float> const* beta_gk_t,
-                                         double const*              gkvec,
-                                         double const*              atom_pos,
-                                         std::complex<float>*       beta_gk);
+extern "C" void create_beta_gk_gpu_float(int num_atoms, int num_gkvec, int const* beta_desc,
+                                         std::complex<float> const* beta_gk_t, double const* gkvec,
+                                         double const* atom_pos, std::complex<float>* beta_gk);
 
-extern "C" void create_beta_gk_gpu_double(int                   num_atoms,
-                                          int                   num_gkvec,
-                                          int const*            beta_desc,
-                                          double_complex const* beta_gk_t,
-                                          double const*         gkvec,
-                                          double const*         atom_pos,
-                                          double_complex*       beta_gk);
+extern "C" void create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc,
+                                          double_complex const* beta_gk_t, double const* gkvec, double const* atom_pos,
+                                          double_complex* beta_gk);
 #endif
 
 /// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
 enum class beta_desc_idx : int
 {
     /// Number of beta-projector functions for this atom.
-    nbf      = 0,
+    nbf = 0,
     /// Offset of beta-projectors in this chunk.
-    offset   = 1,
+    offset = 1,
     /// Offset of beta-projectors in the array for atom types.
     offset_t = 2,
     /// Global index of atom.
-    ia       = 3
+    ia = 3
 };
 
 struct beta_chunk_t
@@ -130,12 +122,12 @@ void beta_projectors_generate_cpu(sddk::matrix<std::complex<T>>& pw_coeffs_a,
 
 template <class T>
 void beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
-                                  const mdarray<double_complex, 3>& pw_coeffs_t_device,
-                                  const mdarray<double_complex, 3>& pw_coeffs_t_host, const Simulation_context& ctx,
-                                  const Gvec& gkvec, const mdarray<double, 2>& gkvec_coord_,
-                                  const beta_chunk_t& beta_chunk, const std::vector<int>& igk__, int j__);
-
-}  // local
+                                  const sddk::mdarray<double_complex, 3>& pw_coeffs_t_device,
+                                  const sddk::mdarray<double_complex, 3>& pw_coeffs_t_host,
+                                  const Simulation_context& ctx, const sddk::Gvec& gkvec,
+                                  const sddk::mdarray<double, 2>& gkvec_coord_, const beta_chunk_t& beta_chunk,
+                                  int j__);
+} // namespace local
 
 /// Generates beta projector PW coefficients and holds GPU memory phase-factor
 /// independent coefficients of |> functions for atom types.
@@ -157,10 +149,19 @@ class Beta_projector_generator
 
     beta_projectors_coeffs_t<T> prepare(sddk::memory_t pm = sddk::memory_t::none) const;
 
-    Simulation_context& ctx() { return ctx_; }
-    int num_chunks() const { return beta_chunks_.size(); }
+    Simulation_context& ctx()
+    {
+        return ctx_;
+    }
+    int num_chunks() const
+    {
+        return beta_chunks_.size();
+    }
 
-    const auto& chunks() const { return beta_chunks_; }
+    const auto& chunks() const
+    {
+        return beta_chunks_;
+    }
 
   private:
     Simulation_context& ctx_;
@@ -247,7 +248,6 @@ Beta_projector_generator<T>::prepare(sddk::memory_t pm) const
     return beta_storage;
 }
 
-
 /// Base class for beta-projectors, gradient of beta-projectors and strain derivatives of beta-projectors.
 template <typename T>
 class Beta_projectors_base
@@ -290,7 +290,6 @@ class Beta_projectors_base
     /// Split beta-projectors into chunks.
     void split_in_chunks();
 
-
   public:
     Beta_projectors_base(Simulation_context& ctx__, sddk::Gvec const& gkvec__, int N__);
 
@@ -301,8 +300,8 @@ class Beta_projectors_base
 
     Beta_projector_generator<T> make_generator(sddk::device_t pu) const
     {
-        return Beta_projector_generator<T>{ctx_, pw_coeffs_t_, beta_pw_all_atoms_, pu, beta_chunks_, gkvec_,
-                                           gkvec_coord_, igk_, num_gkvec_loc()};
+        return Beta_projector_generator<T>{ctx_,         pw_coeffs_t_, beta_pw_all_atoms_, pu,
+                                           beta_chunks_, gkvec_,       gkvec_coord_,       num_gkvec_loc()};
     }
 
     Simulation_context& ctx()
@@ -329,7 +328,7 @@ class Beta_projectors_base
 
     inline int num_gkvec_loc() const
     {
-        //return static_cast<int>(igk_.size());
+        // return static_cast<int>(igk_.size());
         return gkvec_.count();
     }
 

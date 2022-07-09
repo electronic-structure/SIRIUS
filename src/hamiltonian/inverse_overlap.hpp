@@ -251,8 +251,8 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeri
 {
     assert(X.size(0) == this->size());
 
-    pm          = (pm == memory_t::none) ? ctx_.preferred_memory_t() : pm;
-    device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
+    pm                = (pm == sddk::memory_t::none) ? ctx_.preferred_memory_t() : pm;
+    sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
 
     int nbnd         = X.size(1);
     auto bp_gen      = bp.make_generator(pu);

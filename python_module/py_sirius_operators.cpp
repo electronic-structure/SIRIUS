@@ -5,7 +5,8 @@ using namespace sddk;
 
 using PT = double;
 
-void init_operators(py::module& m)
+void
+init_operators(py::module& m)
 {
     py::class_<Non_local_operator<PT>>(m, "Non_local_operator")
         .def("get_matrix", &Non_local_operator<PT>::get_matrix<std::complex<double>>);
@@ -13,7 +14,7 @@ void init_operators(py::module& m)
     py::class_<Q_operator<PT>, Non_local_operator<PT>>(m, "Q_operator");
 
     py::class_<Hamiltonian0<PT>>(m, "Hamiltonian0")
-        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>(), "Potential"_a, py::arg("precompute_lapw")=false)
+        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>(), "Potential"_a, py::arg("precompute_lapw") = false)
         .def("Q", &Hamiltonian0<PT>::Q, py::return_value_policy::reference_internal)
         .def("D", &Hamiltonian0<PT>::D, py::return_value_policy::reference_internal)
         .def("potential", &Hamiltonian0<PT>::potential, py::return_value_policy::reference_internal);
@@ -27,11 +28,12 @@ void init_operators(py::module& m)
         .def_property_readonly("size", &S_k<complex_double>::size)
         .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
             using class_t = S_k<complex_double>;
-            class_t& sk = obj.cast<class_t&>();
+            class_t& sk   = obj.cast<class_t&>();
 
             if (X.strides(0) != sizeof(complex_double)) {
                 char msg[256];
-                std::sprintf(msg, "invalid stride: [%ld, %ld] in %s:%d", X.strides(0), X.strides(1), __FILE__, __LINE__);
+                std::sprintf(msg, "invalid stride: [%ld, %ld] in %s:%d", X.strides(0), X.strides(1), __FILE__,
+                             __LINE__);
                 throw std::runtime_error(msg);
             }
             if (X.ndim() != 2) {
@@ -51,7 +53,7 @@ void init_operators(py::module& m)
              py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
         .def_property_readonly("size", &InverseS_k<complex_double>::size)
         .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
-            using class_t = InverseS_k<complex_double>;
+            using class_t       = InverseS_k<complex_double>;
             class_t& inverse_sk = obj.cast<class_t&>();
 
             if (X.strides(0) != sizeof(complex_double)) {
@@ -134,13 +136,17 @@ void init_operators(py::module& m)
         .def_readonly("chunk", &beta_projectors_coeffs_t<PT>::beta_chunk, py::return_value_policy::reference_internal);
 
     py::class_<Beta_projector_generator<PT>>(m, "Beta_projector_generator")
-        .def("prepare", &Beta_projector_generator<PT>::prepare, py::keep_alive<1, 0>(), py::arg("memory_t") = memory_t::none)
-        .def("generate", py::overload_cast<beta_projectors_coeffs_t<PT>&, int>(&Beta_projector_generator<PT>::generate, py::const_))
-        .def("generate_j", py::overload_cast<beta_projectors_coeffs_t<PT>&, int, int>(&Beta_projector_generator<PT>::generate, py::const_));
+        .def("prepare", &Beta_projector_generator<PT>::prepare, py::keep_alive<1, 0>(),
+             py::arg("memory_t") = memory_t::none)
+        .def("generate",
+             py::overload_cast<beta_projectors_coeffs_t<PT>&, int>(&Beta_projector_generator<PT>::generate, py::const_))
+        .def("generate_j", py::overload_cast<beta_projectors_coeffs_t<PT>&, int, int>(
+                               &Beta_projector_generator<PT>::generate, py::const_));
 
     py::class_<Beta_projectors_base<PT>>(m, "Beta_projectors_base")
         .def_property_readonly("num_chunks", &Beta_projectors_base<PT>::num_chunks)
-        .def("make_generator", py::overload_cast<>(&Beta_projectors_base<PT>::make_generator, py::const_), py::keep_alive<1, 0>());
+        .def("make_generator", py::overload_cast<>(&Beta_projectors_base<PT>::make_generator, py::const_),
+             py::keep_alive<1, 0>());
 
     py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>>(m, "Beta_projectors");
 }
