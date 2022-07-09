@@ -47,7 +47,8 @@ void test_wf_fft()
 
     std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
 
-    sirius::experimental::Wave_functions<double> wf(gkvec, num_mt_coeffs, 10, 1, sddk::memory_t::host);
+    //::exper::Wave_functions<double> wf(gkvec, num_mt_coeffs, 10, 1, sddk::memory_t::host);
+    ::exper::A a;
 //    sirius::experimental::Wave_functions<double> wf_ref(gkvec, 10, 1, memory_t::host);
 //    sirius::experimental::Wave_functions_fft<double> wf_fft(gkvec_fft, 10, memory_t::host);
 //

@@ -27,7 +27,7 @@
 
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
-#include "wave_functions.hpp"
+//#include "wave_functions.hpp"
 #include "SDDK/fft.hpp"
 
 namespace sirius {
