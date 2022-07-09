@@ -154,8 +154,8 @@ void Energy::compute()
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
                 sddk::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
-                dmat.allocate(sddk:::memory_t::device);
-                sddk::inner(ctx.spla_context(), spin_range(ispn),
+                dmat.allocate(sddk::memory_t::device);
+                sddk::inner(ctx.spla_context(), sddk::spin_range(ispn),
                             /* bra */ kp.spinor_wave_functions(), jj, 1,
                             /* ket */ *hphis[i], jj, 1,
                             /* out */ dmat, 0, 0);
@@ -284,7 +284,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_gkvec_ekin()
             auto& gkvec = kp.gkvec();
             std::vector<double> gkvec_local(gkvec_count);
             for (int i = 0; i < gkvec_count; ++i) {
-                gkvec_local[i] = gkvec.gkvec_cart<index_domain_t::global>(i).length();
+                gkvec_local[i] = gkvec.gkvec_cart<sddk::index_domain_t::global>(i).length();
             }
             gkvec_cart.push_back(std::move(gkvec_local));
             kindices.emplace_back(gidk, ispn);
