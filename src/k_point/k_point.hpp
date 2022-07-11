@@ -79,6 +79,8 @@ class K_point
     /// First-variational eigen vectors, distributed in slabs.
     std::unique_ptr<sddk::Wave_functions<T>> fv_eigen_vectors_slab_;
 
+    std::unique_ptr<sddk::experimental::Wave_functions<T>> fv_eigen_vectors_slab_new_;
+
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
     std::unique_ptr<sddk::Wave_functions<T>> singular_components_;
 
@@ -701,6 +703,11 @@ class K_point
     inline auto& fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
+    }
+
+    inline auto& fv_eigen_vectors_slab_new()
+    {
+        return *fv_eigen_vectors_slab_new_;
     }
 
     inline auto& sv_eigen_vectors(int ispn)

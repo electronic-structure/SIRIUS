@@ -89,6 +89,15 @@ K_point<T>::initialize()
                     sv_eigen_vectors_[is] = sddk::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
                 }
             }
+
+            std::vector<int> num_mt_coeffs(unit_cell_.num_atoms());
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
+            }
+
+            fv_eigen_vectors_slab_new_ = std::make_unique<sddk::experimental::Wave_functions<T>>(
+                    gkvec_, num_mt_coeffs, ctx_.num_fv_states(), 1, sddk::memory_t::host);
+
             /* allocate fv eien vectors */
             fv_eigen_vectors_slab_ = std::make_unique<sddk::Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),

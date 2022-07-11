@@ -586,6 +586,47 @@ class device_memory_guard
     }
 };
 
+template <typename T, typename P>
+class Index_t
+{
+  private:
+    T val_;
+  public:
+    explicit Index_t(T const& val__)
+        : val_{val__}
+    {
+    }
+
+    explicit Index_t(T&& val__) 
+        : val_{std::move(val__)}
+    {
+    }
+
+    T& get()
+    {
+        return val_;
+    }
+
+    T const& get() const
+    {
+        return val_;
+    }
+
+    bool operator!=(Index_t<T, P> const& rhs__)
+    {
+        return this->val_ != rhs__.val_;
+    }
+
+    Index_t<T, P>& operator++(int)
+    {
+        this->val_++;
+        return *this;
+    }
+};
+
+using spin_index = Index_t<int, struct __spin_index_t>;
+
+
 template <typename T>
 class Wave_functions_base
 {
@@ -692,9 +733,19 @@ class Wave_functions : public Wave_functions_base<T>
     {
     }
 
-    inline sddk::mdarray<std::complex<T>, 2>& pw_coeffs(int ispn__)
+    //inline auto& pw_coeffs(int ispn__)
+    //{
+    //    return this->data_[ispn__];
+    //}
+
+    inline auto& pw_coeffs(int ig__, int i__, spin_index ispn__)
     {
-        return this->data_[ispn__];
+        return this->data_[ispn__.get()](ig__, i__);
+    }
+
+    inline auto& mt_coeffs(int xi__, int i__, spin_index ispn__)
+    {
+        return this->data_[ispn__.get()](gkvec_->count() + xi__, i__);
     }
 
     auto grid_layout_pw(int ispn__, int N__, int n__)

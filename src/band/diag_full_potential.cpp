@@ -120,6 +120,38 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     kp.fv_eigen_vectors_slab().pw_coeffs(0).remap_from(kp.fv_eigen_vectors(), 0);
     kp.fv_eigen_vectors_slab().mt_coeffs(0).remap_from(kp.fv_eigen_vectors(), kp.num_gkvec());
 
+    {
+        auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
+        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_pw(0, 0, ctx_.num_fv_states());
+        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
+            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
+    }
+    {
+        auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
+                ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
+        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_mt(0, 0, ctx_.num_fv_states());
+        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
+            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
+    }
+
+    double diff{0};
+    for (int i = 0; i < ctx_.num_fv_states(); i++) {
+        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+            diff += std::abs(kp.fv_eigen_vectors_slab().pw_coeffs(0).prime(ig, i) -
+                    kp.fv_eigen_vectors_slab_new().pw_coeffs(ig, i, sddk::experimental::spin_index(0)));
+        }
+        for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
+            int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
+            for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
+                int j = kp.fv_eigen_vectors_slab().offset_mt_coeffs(ialoc) + xi;
+                diff += std::abs(kp.fv_eigen_vectors_slab().mt_coeffs(0).prime(j, i) -
+                    kp.fv_eigen_vectors_slab_new().mt_coeffs(j, i, sddk::experimental::spin_index(0)));
+            }
+        }
+    }
+    std::cout << "DIFF = " << diff << std::endl;
+
+
     /* renormalize wave-functions */
     if (ctx_.valence_relativity() == relativity_t::iora) {
         sddk::Wave_functions<double> ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),

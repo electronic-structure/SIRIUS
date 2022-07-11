@@ -52,11 +52,12 @@ void test_wf_fft()
 
     for (int i = 0; i < 10; i++) {
         for (int ig = 0; ig < gkvec->count(); ig++) {
-            wf.pw_coeffs(0)(ig, i) = wf_ref.pw_coeffs(0)(ig, i) = utils::random<std::complex<double>>();
+            wf.pw_coeffs(ig, i, sddk::experimental::spin_index(0)) =
+                wf_ref.pw_coeffs(ig, i, sddk::experimental::spin_index(0)) = utils::random<std::complex<double>>();
         }
     }
-    auto mg = wf.memory_guard(sddk::memory_t::device, sddk::experimental::copy_to::device);
-    auto mg_fft = wf_fft.memory_guard(sddk::memory_t::device);
+    //auto mg = wf.memory_guard(sddk::memory_t::device, sddk::experimental::copy_to::device);
+    //auto mg_fft = wf_fft.memory_guard(sddk::memory_t::device);
 
     auto pu = sddk::device_t::CPU;
 
@@ -80,7 +81,7 @@ void test_wf_fft()
 
     for (int i = 0; i < 10; i++) {
         for (int ig = 0; ig < gkvec->count(); ig++) {
-            wf.pw_coeffs(0)(ig, i) = 0;
+            wf.pw_coeffs(ig, i, sddk::experimental::spin_index(0)) = 0;
         }
     }
 
@@ -93,7 +94,7 @@ void test_wf_fft()
 
     for (int i = 0; i < 10; i++) {
         for (int ig = 0; ig < gkvec->count(); ig++) {
-            if (std::abs(wf.pw_coeffs(0)(ig, i) - wf_ref.pw_coeffs(0)(ig, i)) > 1e-10) {
+            if (std::abs(wf.pw_coeffs(ig, i, sddk::experimental::spin_index(0)) - wf_ref.pw_coeffs(ig, i, sddk::experimental::spin_index(0))) > 1e-10) {
                 std::cout << "Error!" << std::endl;
             }
         }
