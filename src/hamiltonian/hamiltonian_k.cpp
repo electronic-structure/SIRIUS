@@ -914,11 +914,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     int ngv = kp().num_gkvec_loc();
 
     /* split atoms in blocks */
-    auto spl = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
-
-    /* number of blocks of atoms */
-    int nblk = spl.first;
-    int num_atoms_in_block = spl.second;
+    auto atom_blocks = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
 
     auto& comm = kp().comm();
 
@@ -1198,12 +1194,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
      *  we are going to split the Alm coefficients into blocks of atoms
      */
     int offset_aw_global{0};
+    int atom_begin{0};
     /* loop over blocks of atoms */
-    for (int ib = 0; ib < nblk; ib++) {
-        /* number of atoms in this block */
-        int na = std::min(ctx.unit_cell().num_atoms(), (ib + 1) * num_atoms_in_block) - ib * num_atoms_in_block;
-
-        int atom_begin = ib * num_atoms_in_block;
+    for (auto na : atom_blocks) {
 
         sddk::splindex<sddk::splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
 
@@ -1338,6 +1331,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             time += utils::time_interval(t0);
         }
         offset_aw_global += num_mt_aw;
+        atom_begin += na;
     }
 
     /* compute lo-APW contribution
