@@ -27,13 +27,11 @@
 #include "function3d/smooth_periodic_function.hpp"
 #include "utils/profiler.hpp"
 
-using namespace sddk;
-
 namespace sirius {
 
 template <typename T>
 Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transform_type<T>& fft_coarse__,
-                                  Gvec_partition const& gvec_coarse_p__, Potential* potential__)
+                                  sddk::Gvec_partition const& gvec_coarse_p__, Potential* potential__)
     : ctx_(ctx__)
     , fft_coarse_(fft_coarse__)
     , gvec_coarse_p_(gvec_coarse_p__)
@@ -53,22 +51,22 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
     /* map Theta(r) to the coarse mesh */
     if (ctx_.full_potential()) {
         auto& gvec_dense_p = ctx_.gvec_partition();
-        veff_vec_[4] = std::unique_ptr<Smooth_periodic_function<T>>(
+        veff_vec_[v_local_index_t::theta] = std::unique_ptr<Smooth_periodic_function<T>>(
             new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(sddk::memory_t::host)));
         /* map unit-step function */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
             /* map from fine to coarse set of G-vectors */
-            veff_vec_[4]->f_pw_local(igloc) =
+            veff_vec_[v_local_index_t::theta]->f_pw_local(igloc) =
                 ctx_.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) + gvec_dense_p.gvec().offset());
         }
-        veff_vec_[4]->fft_transform(1);
+        veff_vec_[v_local_index_t::theta]->fft_transform(1);
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[4]->f_rg().allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            veff_vec_[v_local_index_t::theta]->f_rg().allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
         }
         if (ctx_.print_checksum()) {
-            auto cs1 = veff_vec_[4]->checksum_pw();
-            auto cs2 = veff_vec_[4]->checksum_rg();
+            auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
+            auto cs2 = veff_vec_[v_local_index_t::theta]->checksum_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("theta_pw", cs1);
                 utils::print_checksum("theta_rg", cs2);
@@ -107,17 +105,17 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
                 veff_vec_[j]->fft_transform(1);
             }
             if (ctx_.valence_relativity() == relativity_t::zora) {
-                veff_vec_[5] = std::unique_ptr<Smooth_periodic_function<T>>(
+                veff_vec_[v_local_index_t::rm_inv] = std::unique_ptr<Smooth_periodic_function<T>>(
                     new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(sddk::memory_t::host)));
                 /* loop over local set of coarse G-vectors */
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
                     /* map from fine to coarse set of G-vectors */
-                    veff_vec_[5]->f_pw_local(igloc) =
+                    veff_vec_[v_local_index_t::rm_inv]->f_pw_local(igloc) =
                         potential__->rm_inv_pw(gvec_dense_p.gvec().offset() + gvec_dense_p.gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
-                veff_vec_[5]->fft_transform(1);
+                veff_vec_[v_local_index_t::rm_inv]->fft_transform(1);
             }
 
         } else {
@@ -138,10 +136,10 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0             = veff_vec_[0]->f_rg(ir);
-                    T v1             = veff_vec_[1]->f_rg(ir);
-                    veff_vec_[0]->f_rg(ir) = v0 + v1; // v + Bz
-                    veff_vec_[1]->f_rg(ir) = v0 - v1; // v - Bz
+                    T v0             = veff_vec_[v_local_index_t::v0]->f_rg(ir);
+                    T v1             = veff_vec_[v_local_index_t::v1]->f_rg(ir);
+                    veff_vec_[v_local_index_t::v0]->f_rg(ir) = v0 + v1; // v + Bz
+                    veff_vec_[v_local_index_t::v1]->f_rg(ir) = v0 - v1; // v - Bz
                 }
             }
 
@@ -165,7 +163,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
         }
     }
 
-    buf_rg_ = mdarray<std::complex<T>, 1>(fft_coarse_.local_slice_size(), ctx_.mem_pool(sddk::memory_t::host),
+    buf_rg_ = sddk::mdarray<std::complex<T>, 1>(fft_coarse_.local_slice_size(), ctx_.mem_pool(sddk::memory_t::host),
                                          "Local_operator::buf_rg_");
     /* move functions to GPU */
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
@@ -179,7 +177,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
 }
 
 template <typename T>
-void Local_operator<T>::prepare_k(Gvec_partition const& gkvec_p__)
+void Local_operator<T>::prepare_k(sddk::Gvec_partition const& gkvec_p__)
 {
     PROFILE("sirius::Local_operator::prepare_k");
 
@@ -187,7 +185,7 @@ void Local_operator<T>::prepare_k(Gvec_partition const& gkvec_p__)
 
     /* cache kinteic energy of plane-waves */
     if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
-        pw_ekin_ = mdarray<T, 1>(ngv_fft, ctx_.mem_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
+        pw_ekin_ = sddk::mdarray<T, 1>(ngv_fft, ctx_.mem_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
     }
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
@@ -197,7 +195,7 @@ void Local_operator<T>::prepare_k(Gvec_partition const& gkvec_p__)
     }
 
     if (static_cast<int>(vphi_.size(0)) < ngv_fft) {
-        vphi_ = mdarray<std::complex<T>, 1>(ngv_fft, ctx_.mem_pool(sddk::memory_t::host), "Local_operator::vphi");
+        vphi_ = sddk::mdarray<std::complex<T>, 1>(ngv_fft, ctx_.mem_pool(sddk::memory_t::host), "Local_operator::vphi");
     }
 
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
@@ -331,8 +329,9 @@ void add_pw_ekin_gpu(int                   num_gvec__,
 #endif
 
 template <typename T>
-void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partition const& gkvec_p__, spin_range spins__,
-                                Wave_functions<T>& phi__, Wave_functions<T>& hphi__, int idx0__, int n__)
+void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__,
+                                sddk::spin_range spins__, sddk::Wave_functions<T>& phi__,
+                                sddk::Wave_functions<T>& hphi__, int idx0__, int n__)
 {
     PROFILE("sirius::Local_operator::apply_h");
 
@@ -348,18 +347,18 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
     auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(ctx_.host_memory_t());
     /* this memory pool will be used to allocate extra storage in the device memory */
 #if defined(SIRIUS_GPU)
-    memory_pool* mpd = &const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::device);
+    sddk::memory_pool* mpd = &const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::device);
 #else
-    memory_pool* mpd{nullptr};
+    sddk::memory_pool* mpd{nullptr};
 #endif
     /* alias array for all wave functions in FFT-friendly storage */
-    std::array<mdarray<std::complex<T>, 2>, 2> phi;
+    std::array<sddk::mdarray<std::complex<T>, 2>, 2> phi;
     /* alias array for all hphi in FFT-friendly storage */
-    std::array<mdarray<std::complex<T>, 2>, 2> hphi;
+    std::array<sddk::mdarray<std::complex<T>, 2>, 2> hphi;
 
     /* alias for wave-functions that are currently computed */
-    std::array<mdarray<std::complex<T>, 1>, 2> phi1;
-    std::array<mdarray<std::complex<T>, 1>, 2> hphi1;
+    std::array<sddk::mdarray<std::complex<T>, 1>, 2> phi1;
+    std::array<sddk::mdarray<std::complex<T>, 1>, 2> hphi1;
 
     /* local number of G-vectors for the FFT transformation */
     int ngv_fft = gkvec_p__.gvec_count_fft();
@@ -368,8 +367,8 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
         TERMINATE("wrong number of G-vectors");
     }
 
-    memory_t mem_phi{memory_t::none};
-    memory_t mem_hphi{memory_t::none};
+    sddk::memory_t mem_phi{sddk::memory_t::none};
+    sddk::memory_t mem_hphi{sddk::memory_t::none};
 
     /* remap wave-functions to FFT friendly distribution */
     for (int ispn : spins__) {
@@ -381,11 +380,11 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
         /* set FFT friendly distribution */
         phi__.pw_coeffs(ispn).remap_forward(n__, idx0__, &mp);
         /* memory location of phi in extra storage */
-        mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : phi__.preferred_memory_t();
+        mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? sddk::memory_t::host : phi__.preferred_memory_t();
         /* set FFT friednly distribution */
         hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
         /* memory location of hphi in extra storage */
-        mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : hphi__.preferred_memory_t();
+        mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? sddk::memory_t::host : hphi__.preferred_memory_t();
 
         /* local number of wave-functions in extra-storage distribution */
         int num_wf_loc = phi__.pw_coeffs(ispn).spl_num_col().local_size();
@@ -396,7 +395,7 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
             ptr_d = phi__.pw_coeffs(ispn).extra().at(sddk::memory_t::device);
         }
         phi[ispn] =
-            mdarray<std::complex<T>, 2>(phi__.pw_coeffs(ispn).extra().at(sddk::memory_t::host), ptr_d, ngv_fft, num_wf_loc);
+            sddk::mdarray<std::complex<T>, 2>(phi__.pw_coeffs(ispn).extra().at(sddk::memory_t::host), ptr_d, ngv_fft, num_wf_loc);
 
         /* set alias for hphi extra storage */
         ptr_d = nullptr;
@@ -404,7 +403,7 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
             ptr_d = hphi__.pw_coeffs(ispn).extra().at(sddk::memory_t::device);
         }
         hphi[ispn] =
-            mdarray<std::complex<T>, 2>(hphi__.pw_coeffs(ispn).extra().at(sddk::memory_t::host), ptr_d, ngv_fft, num_wf_loc);
+            sddk::mdarray<std::complex<T>, 2>(hphi__.pw_coeffs(ispn).extra().at(sddk::memory_t::host), ptr_d, ngv_fft, num_wf_loc);
     }
 
     /* assume the location of data on the current processing unit */
@@ -421,35 +420,35 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
             switch (spfft_mem) {
                 case SPFFT_PU_HOST: {              /* FFT is done on CPU */
                     if (is_host_memory(mem_phi)) { /* wave-functions are also on host memory */
-                        phi1[ispn] = mdarray<std::complex<T>, 1>(phi[ispn].at(sddk::memory_t::host, 0, i), ngv_fft);
+                        phi1[ispn] = sddk::mdarray<std::complex<T>, 1>(phi[ispn].at(sddk::memory_t::host, 0, i), ngv_fft);
                     } else { /* wave-functions are on the device memory */
-                        phi1[ispn] = mdarray<std::complex<T>, 1>(ngv_fft, mp);
+                        phi1[ispn] = sddk::mdarray<std::complex<T>, 1>(ngv_fft, mp);
                         /* copy wave-functions to host memory */
                         acc::copyout(phi1[ispn].at(sddk::memory_t::host), phi[ispn].at(sddk::memory_t::device, 0, i), ngv_fft);
                     }
                     if (is_host_memory(mem_hphi)) {
-                        hphi1[ispn] = mdarray<std::complex<T>, 1>(hphi[ispn].at(sddk::memory_t::host, 0, i), ngv_fft);
+                        hphi1[ispn] = sddk::mdarray<std::complex<T>, 1>(hphi[ispn].at(sddk::memory_t::host, 0, i), ngv_fft);
                     } else {
-                        hphi1[ispn] = mdarray<std::complex<T>, 1>(ngv_fft, mp);
+                        hphi1[ispn] = sddk::mdarray<std::complex<T>, 1>(ngv_fft, mp);
                     }
                     hphi1[ispn].zero(sddk::memory_t::host);
                     break;
                 }
                 case SPFFT_PU_GPU: { /* FFT is done on GPU */
                     if (is_host_memory(mem_phi)) {
-                        phi1[ispn] = mdarray<std::complex<T>, 1>(ngv_fft, *mpd);
+                        phi1[ispn] = sddk::mdarray<std::complex<T>, 1>(ngv_fft, *mpd);
                         /* copy wave-functions to device */
                         acc::copyin(phi1[ispn].at(sddk::memory_t::device), phi[ispn].at(sddk::memory_t::host, 0, i), ngv_fft);
                     } else {
                         phi1[ispn] =
-                            mdarray<std::complex<T>, 1>(nullptr, phi[ispn].at(sddk::memory_t::device, 0, i), ngv_fft);
+                            sddk::mdarray<std::complex<T>, 1>(nullptr, phi[ispn].at(sddk::memory_t::device, 0, i), ngv_fft);
                     }
                     if (is_host_memory(mem_hphi)) {
                         /* small buffers in the device memory */
-                        hphi1[ispn] = mdarray<std::complex<T>, 1>(ngv_fft, *mpd);
+                        hphi1[ispn] = sddk::mdarray<std::complex<T>, 1>(ngv_fft, *mpd);
                     } else {
                         hphi1[ispn] =
-                            mdarray<std::complex<T>, 1>(nullptr, hphi[ispn].at(sddk::memory_t::device, 0, i), ngv_fft);
+                            sddk::mdarray<std::complex<T>, 1>(nullptr, hphi[ispn].at(sddk::memory_t::device, 0, i), ngv_fft);
                     }
                     hphi1[ispn].zero(sddk::memory_t::device);
                     break;
@@ -667,8 +666,8 @@ void Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, Gvec_partitio
 }
 
 template <typename T>
-void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partition const& gkvec_p__, int N__, int n__,
-                                  Wave_functions<T>& phi__, Wave_functions<T>* hphi__, Wave_functions<T>* ophi__)
+void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__,
+        int N__, int n__, sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__)
 {
     PROFILE("sirius::Local_operator::apply_h_o");
 
@@ -676,7 +675,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
 
     sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(sddk::memory_t::host));
 
-    if (ctx_.processing_unit() == device_t::GPU) {
+    if (ctx_.processing_unit() == sddk::device_t::GPU) {
         phi__.pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
     }
     // if (ctx_->control().print_checksum_) {
@@ -801,7 +800,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
         ophi__->pw_coeffs(0).remap_backward(n__, N__);
     }
 
-    if (ctx_.processing_unit() == device_t::GPU) {
+    if (ctx_.processing_unit() == sddk::device_t::GPU) {
         if (hphi__ != nullptr) {
             hphi__->pw_coeffs(0).copy_to(sddk::memory_t::device, N__, n__);
         }
@@ -812,7 +811,8 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, Gvec_partit
 }
 
 template <typename T>
-void Local_operator<T>::apply_b(spfft_transform_type<T>& spfftk__, int N__, int n__, Wave_functions<T>& phi__, std::vector<Wave_functions<T>>& bphi__)
+void Local_operator<T>::apply_b(spfft_transform_type<T>& spfftk__, int N__, int n__, sddk::Wave_functions<T>& phi__,
+        std::vector<sddk::Wave_functions<T>>& bphi__)
 {
     PROFILE("sirius::Local_operator::apply_b");
 
@@ -893,6 +893,168 @@ void Local_operator<T>::apply_b(spfft_transform_type<T>& spfftk__, int N__, int 
     for (int i : iv) {
         bphi__[i].pw_coeffs(0).remap_backward(n__, N__);
     }
+}
+
+// This is full-potential case. Only C2C FFT transformation is considered here.
+// TODO: document the data location on input/output
+template <typename T>
+void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__,
+        wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__)
+{
+    PROFILE("sirius::Local_operator::apply_h_o");
+
+    ctx_.num_loc_op_applied(b__.size());
+
+    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->gvec_count_fft(), ctx_.mem_pool(sddk::memory_t::host));
+
+    // TODO: need to pass temporaty functions or allocate from the pool
+    wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
+    wf::Wave_functions_fft<T> hphi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
+    wf::Wave_functions_fft<T> ophi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
+
+    //if (ctx_.processing_unit() == device_t::GPU) {
+    //    phi__.pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
+    //}
+    // if (ctx_->control().print_checksum_) {
+    //    auto cs = phi__.checksum_pw(N__, n__, ctx_->processing_unit());
+    //    if (phi__.comm().rank() == 0) {
+    //        DUMP("checksum(phi_pw): %18.10f %18.10f", cs.real(), cs.imag());
+    //    }
+    //}
+
+    auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::host);
+
+    wf::transform_to_fft_layout(phi__, phi_fft, wf::spin_index(0), b__);
+
+    auto spl_num_wf = phi_fft.spl_num_wf();
+
+    //phi__.pw_coeffs(0).remap_forward(n__, N__, &mp);
+
+    //if (hphi__ != nullptr) {
+    //    hphi__->pw_coeffs(0).set_num_extra(n__, N__, &mp);
+    //}
+
+    //if (ophi__ != nullptr) {
+    //    ophi__->pw_coeffs(0).set_num_extra(n__, N__, &mp);
+    //}
+
+    /* assume the location of data on the current processing unit */
+    auto spfft_mem = spfftk__.processing_unit();
+
+    /* number of real-space points in the local part of FFT buffer */
+    int nr = spfftk__.local_slice_size();
+
+    /* pointer to memory where SpFFT stores real-space data */
+    auto spfft_buf = spfftk__.space_domain_data(spfft_mem);
+
+    for (int j = 0; j < spl_num_wf.local_size(); j++) {
+        /* phi(G) -> phi(r) */
+        spfftk__.backward(phi_fft.pw_coeffs(sddk::memory_t::host, j), spfft_mem);
+
+        if (ophi__) {
+            /* save phi(r) */
+            if (hphi__) {
+                /* reeal-space data is complex */
+                auto inp = reinterpret_cast<std::complex<T>*>(spfft_buf);
+                switch (spfft_mem) {
+                    case SPFFT_PU_HOST: {
+                        std::copy(inp, inp + nr, buf_rg_.at(sddk::memory_t::host));
+                        break;
+                    }
+                    case SPFFT_PU_GPU: {
+                        acc::copy(buf_rg_.at(sddk::memory_t::device), inp, nr);
+                        break;
+                    }
+                }
+            }
+
+            /* multiply phi(r) by step function */
+            mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::theta);
+
+            /* phi(r) * Theta(r) -> ophi(G) */
+            spfftk__.forward(spfft_mem, ophi_fft.pw_coeffs(sddk::memory_t::host, j), SPFFT_FULL_SCALING);
+            /* load phi(r) back */
+            if (hphi__) {
+                auto outp = reinterpret_cast<std::complex<T>*>(spfft_buf);
+                switch (spfft_mem) {
+                    case SPFFT_PU_HOST: {
+                        std::copy(buf_rg_.at(sddk::memory_t::host), buf_rg_.at(sddk::memory_t::host) + nr, outp);
+                        break;
+                    }
+                    case SPFFT_PU_GPU: {
+                        acc::copy(outp, buf_rg_.at(sddk::memory_t::device), nr);
+                        break;
+                    }
+                }
+            }
+        }
+        if (hphi__) {
+            /* multiply by effective potential, which itself was multiplied by the step function */
+            mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::v0);
+            /* phi(r) * Theta(r) * V(r) -> hphi(G) */
+            spfftk__.forward(spfft_mem, hphi_fft.pw_coeffs(sddk::memory_t::host, j), SPFFT_FULL_SCALING);
+        }
+
+        if (hphi__) {
+            /* add kinetic energy */
+            for (int x : {0, 1, 2}) {
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    auto gvc = gkvec_fft__->gkvec_cart(igloc);
+                    /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
+                    buf_pw[igloc] = phi_fft.pw_coeffs(igloc, j) * static_cast<T>(gvc[x]);
+                }
+                /* transform Cartesian component of wave-function gradient to real space */
+                spfftk__.backward(reinterpret_cast<T const*>(&buf_pw[0]), spfft_mem);
+                /* multiply by real-space function */
+                switch (ctx_.valence_relativity()) {
+                    case relativity_t::iora:
+                    case relativity_t::zora: {
+                        /* multiply be inverse relative mass */
+                        mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::rm_inv);
+                        break;
+                    }
+                    case relativity_t::none: {
+                        /* multiply be step function */
+                        mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::theta);
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+                /* transform back to PW domain */
+                spfftk__.forward(spfft_mem, reinterpret_cast<T*>(&buf_pw[0]), SPFFT_FULL_SCALING);
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    auto gvc = gkvec_fft__->gkvec_cart(igloc);
+                    hphi_fft.pw_coeffs(igloc, j) += buf_pw[igloc] * static_cast<T>(0.5 * gvc[x]);
+                }
+            }
+        }
+    }
+    if (hphi__) {
+        wf::transform_from_fft_layout(hphi_fft, *hphi__, wf::spin_index(0), b__);
+    }
+    if (ophi__) {
+        wf::transform_from_fft_layout(ophi_fft, *ophi__, wf::spin_index(0), b__);
+    }
+
+    //if (hphi__ != nullptr) {
+    //    hphi__->pw_coeffs(0).remap_backward(n__, N__);
+    //}
+    //if (ophi__ != nullptr) {
+    //    ophi__->pw_coeffs(0).remap_backward(n__, N__);
+    //}
+
+    //if (ctx_.processing_unit() == device_t::GPU) {
+    //    if (hphi__ != nullptr) {
+    //        hphi__->pw_coeffs(0).copy_to(sddk::memory_t::device, N__, n__);
+    //    }
+    //    if (ophi__ != nullptr) {
+    //        ophi__->pw_coeffs(0).copy_to(sddk::memory_t::device, N__, n__);
+    //    }
+    //}
 }
 
 // instantiate for supported precision

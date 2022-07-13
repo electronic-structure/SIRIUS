@@ -66,7 +66,7 @@ class K_point
     std::shared_ptr<sddk::Gvec> gkvec_col_;
 
     /// G-vector distribution for the FFT transformation.
-    std::unique_ptr<sddk::Gvec_partition> gkvec_partition_;
+    std::shared_ptr<sddk::Gvec_partition> gkvec_partition_;
 
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
@@ -79,7 +79,7 @@ class K_point
     /// First-variational eigen vectors, distributed in slabs.
     std::unique_ptr<sddk::Wave_functions<T>> fv_eigen_vectors_slab_;
 
-    std::unique_ptr<sddk::experimental::Wave_functions<T>> fv_eigen_vectors_slab_new_;
+    std::unique_ptr<wf::Wave_functions<T>> fv_eigen_vectors_slab_new_;
 
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
     std::unique_ptr<sddk::Wave_functions<T>> singular_components_;
@@ -401,6 +401,11 @@ class K_point
     inline auto const& gkvec() const
     {
         return *gkvec_;
+    }
+
+    inline auto gkvec_ptr() const
+    {
+        return gkvec_;
     }
 
     /// Total number of G+k vectors within the cutoff distance
@@ -819,6 +824,11 @@ class K_point
     inline auto const& gkvec_partition() const
     {
         return *gkvec_partition_;
+    }
+
+    inline auto gkvec_fft()
+    {
+        return gkvec_partition_;
     }
 };
 

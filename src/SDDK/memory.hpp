@@ -228,7 +228,7 @@ template <typename T>
 inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {
     if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
-        std::memcpy(to_ptr__, from_ptr__, n__ * sizeof(T));
+        std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
         return;
     }
 #if defined(SIRIUS_GPU)

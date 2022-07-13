@@ -95,7 +95,7 @@ K_point<T>::initialize()
                 num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
             }
 
-            fv_eigen_vectors_slab_new_ = std::make_unique<sddk::experimental::Wave_functions<T>>(
+            fv_eigen_vectors_slab_new_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, num_mt_coeffs, ctx_.num_fv_states(), 1, sddk::memory_t::host);
 
             /* allocate fv eien vectors */

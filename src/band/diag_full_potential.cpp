@@ -122,14 +122,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
-        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_pw(0, 0, ctx_.num_fv_states());
+        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
             sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
     }
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
                 ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
-        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_mt(0, 0, ctx_.num_fv_states());
+        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
             sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
     }
@@ -138,14 +138,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
             diff += std::abs(kp.fv_eigen_vectors_slab().pw_coeffs(0).prime(ig, i) -
-                    kp.fv_eigen_vectors_slab_new().pw_coeffs(ig, i, sddk::experimental::spin_index(0)));
+                    kp.fv_eigen_vectors_slab_new().pw_coeffs(sddk::memory_t::host, ig, i, wf::spin_index(0)));
         }
         for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
             int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
             for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
                 int j = kp.fv_eigen_vectors_slab().offset_mt_coeffs(ialoc) + xi;
                 diff += std::abs(kp.fv_eigen_vectors_slab().mt_coeffs(0).prime(j, i) -
-                    kp.fv_eigen_vectors_slab_new().mt_coeffs(j, i, sddk::experimental::spin_index(0)));
+                    kp.fv_eigen_vectors_slab_new().mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), i, wf::spin_index(0)));
             }
         }
     }
@@ -165,9 +165,35 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
         Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
 
+
+        std::vector<int> num_mt_coeffs(unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
+        }
+        wf::Wave_functions<double> ofv_new(kp.gkvec_ptr(), num_mt_coeffs, ctx_.num_fv_states(), 1, sddk::memory_t::host);
+
+        Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(), nullptr, &ofv_new);
+
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             kp.fv_eigen_vectors_slab().deallocate(sddk::spin_range(0), sddk::memory_t::device);
         }
+
+        double diff{0};
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+                diff += std::abs(ofv.pw_coeffs(0).prime(ig, i) -
+                        ofv_new.pw_coeffs(sddk::memory_t::host, ig, i, wf::spin_index(0)));
+            }
+            for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
+                int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
+                for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
+                    int j = ofv.offset_mt_coeffs(ialoc) + xi;
+                    diff += std::abs(ofv.mt_coeffs(0).prime(j, i) -
+                        ofv_new.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), i, wf::spin_index(0)));
+                }
+            }
+        }
+        std::cout << "DIFF OFV = " << diff << std::endl;
 
         //if (true) {
         //    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),

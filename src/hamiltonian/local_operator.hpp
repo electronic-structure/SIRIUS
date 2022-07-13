@@ -41,7 +41,14 @@ class FFT3D;
 class Gvec_partition;
 template <typename T>
 class Wave_functions;
+template <typename T>
+class Wave_functions;
 class spin_range;
+}
+namespace wf {
+template <typename T>
+class Wave_functions;
+class band_range;
 }
 namespace spfft {
 class Transform;
@@ -99,6 +106,19 @@ class Local_operator
 
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<T, 1> pw_ekin_;
+
+    struct v_local_index_t
+    {
+        enum
+        {
+            v0 = 0,
+            v1 = 1,
+            vx = 2,
+            vy = 3,
+            theta = 4,
+            rm_inv = 5
+        };
+    };
 
     /// Effective potential components and unit step function on a coarse FFT grid.
     /** The following elements are stored in the array:
@@ -176,6 +196,9 @@ class Local_operator
     void apply_h_o(spfft_transform_type<T>& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
                    sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
 
+    void apply_h_o(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, wf::band_range b__,
+                   wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
+                   wf::Wave_functions<T>* ophi__);
     /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
      *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third

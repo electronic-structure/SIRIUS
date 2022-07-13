@@ -39,6 +39,12 @@ class Wave_functions;
 class spin_range;
 }
 
+namespace wf {
+template <typename T>
+class Wave_functions;
+class band_range;
+}
+
 namespace sirius {
 /* forward declaration */
 class Atom;
@@ -355,6 +361,8 @@ class Hamiltonian_k
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions<T>& phi__,
                       sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
 
+    void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
+                      wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__);
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
      *  \f[
