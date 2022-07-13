@@ -1,5 +1,29 @@
-#ifndef MULTICG_
-#define MULTICG_
+// Copyright (c) 2018-2022 Harmen Stoppels, Anton Kozhevnikov
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file force.hpp
+ *
+ *  \brief Contains definition of sirius::Force class.
+ */
+
+#ifndef __MULTI_CG_HPP__
+#define __MULTI_CG_HPP__
 
 #include <vector>
 #include <algorithm>
@@ -7,6 +31,10 @@
 #include <cmath>
 #include <iostream>
 #include <complex>
+#include "SDDK/wave_functions.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "band/residuals.hpp"
+#include "hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 namespace cg {
@@ -130,6 +158,198 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
 
     return residual_history;
 }
+}
+
+namespace lr {
+
+struct Wave_functions_wrap {
+    sddk::Wave_functions<double> *x;
+
+    typedef double_complex value_type;
+
+    void fill(double_complex val) {
+        x->pw_coeffs(0).prime() = [=](){
+            return val;
+        };
+    }
+
+    int cols() const {
+        return x->num_wf();
+    }
+
+    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
+        auto result = x->dot(sddk::device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
+        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
+            rhos[i] = result(i);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        size_t j = 0;
+        for (auto i : ids) {
+            if (j != i) {
+                x->copy_from(*x, 1, 0, i, 0, j);
+            }
+
+            ++j;
+        }
+    }
+
+    void copy(Wave_functions_wrap const &y, size_t num) {
+        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
+    }
+
+    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
+        x->xpby(sddk::device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
+    }
+
+    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids, size_t num) {
+        x->axpy_scatter(sddk::device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, static_cast<int>(num));
+    }
+
+    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
+        x->axpy(sddk::device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
+    }
+};
+
+struct Identity_preconditioner {
+    size_t num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        x.copy(y, num_active);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+    }
+};
+
+struct Smoothed_diagonal_preconditioner {
+    sddk::mdarray<double, 2> H_diag;
+    sddk::mdarray<double, 2> S_diag;
+    sddk::mdarray<double, 1> eigvals;
+    int num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        // Could avoid a copy here, but apply_precondition is in-place.
+        x.copy(y, num_active);
+        sirius::apply_preconditioner(
+            sddk::memory_t::host,
+            sddk::spin_range(0),
+            static_cast<int>(num_active),
+            *x.x,
+            H_diag,
+            S_diag,
+            eigvals);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+        for (size_t i = 0; i < ids.size(); ++i) {
+            eigvals[i] = eigvals[ids[i]];
+        }
+    }
+};
+
+
+struct Linear_response_operator {
+    sirius::Simulation_context &ctx;
+    sirius::Hamiltonian_k<double> &Hk;
+    std::vector<double> min_eigenvals;
+    sddk::Wave_functions<double> * Hphi;
+    sddk::Wave_functions<double> * Sphi;
+    sddk::Wave_functions<double> * evq;
+    sddk::Wave_functions<double> * tmp;
+    double alpha_pv;
+    sddk::dmatrix<double_complex> overlap;
+
+
+    Linear_response_operator(
+        sirius::Simulation_context &ctx,
+        sirius::Hamiltonian_k<double> & Hk,
+        std::vector<double> const &eigvals,
+        sddk::Wave_functions<double> * Hphi,
+        sddk::Wave_functions<double> * Sphi,
+        sddk::Wave_functions<double> * evq,
+        sddk::Wave_functions<double> * tmp,
+        double alpha_pv)
+    : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
+      alpha_pv(alpha_pv), overlap(ctx.num_bands(), ctx.num_bands())
+    {
+        // I think we could just compute alpha_pv here by just making it big enough
+        // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
+        // alpha_pv = 2 * min_eigenvals.back();
+        // but QE has a very specific way to compute it, so we just forward it from
+        // there.;
+
+        // flip the sign of the eigenvals so that the axpby works
+        for (auto &e : min_eigenvals) {
+            e *= -1;
+        }
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        for (size_t i = 0; i < ids.size(); ++i) {
+            min_eigenvals[i] = min_eigenvals[ids[i]];
+        }
+    }
+
+    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
+    // where SQ is S * eigenvectors.
+    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
+        // Hphi = H * x, Sphi = S * x
+        Hk.apply_h_s<double_complex>(
+            sddk::spin_range(0),
+            0,
+            num_active,
+            *x.x,
+            Hphi,
+            Sphi
+        );
+
+        // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
+        Hphi->axpy(sddk::device_t::CPU, sddk::spin_range(0), min_eigenvals, *Sphi, num_active);
+        tmp->copy_from(*Hphi, num_active, 0, 0, 0, 0);
+
+        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
+
+        // overlap := evq' * (S * x)
+        sddk::inner(
+            ctx.spla_context(),
+            sddk::spin_range(0),
+            *evq, 0, ctx.num_bands(),
+            *Sphi, 0, num_active,
+            overlap, 0, 0);
+
+        // Hphi := evq * overlap
+        sddk::transform<double_complex>(
+            ctx.spla_context(),
+            0, 1.0,
+            {evq}, 0, ctx.num_bands(),
+            overlap, 0, 0,
+            0.0, {Hphi}, 0, num_active);
+
+        // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
+        sirius::apply_S_operator<double_complex>(
+            ctx.processing_unit(),
+            sddk::spin_range(0),
+            0,
+            num_active,
+            Hk.kp().beta_projectors(),
+            *Hphi,
+            &Hk.H0().Q(),
+            *Sphi);
+
+        // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
+        {
+            // okay, the block-scalar api is a bit awkward...
+            std::vector<double_complex> alpha_pvs(num_active, alpha_pv);
+            tmp->axpy(sddk::device_t::CPU, sddk::spin_range(0), alpha_pvs, *Sphi, num_active);
+        }
+        // y[:, i] <- alpha * tmp + beta * y[:, i]
+        y.x->axpby(sddk::device_t::CPU, sddk::spin_range(0), alpha, *tmp, beta, num_active);
+    }
+};
+
 }
 
 }

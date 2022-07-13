@@ -5775,199 +5775,6 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 }
 
 /*
- * Linear response API.
- * TODO: move this to some place of its own.
- */
-
-struct Wave_functions_wrap {
-    sddk::Wave_functions<double> *x;
-
-    typedef double_complex value_type;
-
-    void fill(double_complex val) {
-        x->pw_coeffs(0).prime() = [=](){
-            return val;
-        };
-    }
-
-    int cols() const {
-        return x->num_wf();
-    }
-
-    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
-        auto result = x->dot(sddk::device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
-        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
-            rhos[i] = result(i);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        size_t j = 0;
-        for (auto i : ids) {
-            if (j != i) {
-                x->copy_from(*x, 1, 0, i, 0, j);
-            }
-
-            ++j;
-        }
-    }
-
-    void copy(Wave_functions_wrap const &y, size_t num) {
-        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
-    }
-
-    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
-        x->xpby(sddk::device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
-    }
-
-    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids, size_t num) {
-        x->axpy_scatter(sddk::device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, static_cast<int>(num));
-    }
-
-    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
-        x->axpy(sddk::device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
-    }
-};
-
-struct Identity_preconditioner {
-    size_t num_active;
-
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
-        x.copy(y, num_active);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        num_active = ids.size();
-    }
-};
-
-struct Smoothed_diagonal_preconditioner {
-    sddk::mdarray<double, 2> H_diag;
-    sddk::mdarray<double, 2> S_diag;
-    sddk::mdarray<double, 1> eigvals;
-    int num_active;
-
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
-        // Could avoid a copy here, but apply_precondition is in-place.
-        x.copy(y, num_active);
-        sirius::apply_preconditioner(
-            sddk::memory_t::host,
-            sddk::spin_range(0),
-            static_cast<int>(num_active),
-            *x.x,
-            H_diag,
-            S_diag,
-            eigvals);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        num_active = ids.size();
-        for (size_t i = 0; i < ids.size(); ++i) {
-            eigvals[i] = eigvals[ids[i]];
-        }
-    }
-};
-
-
-struct Linear_response_operator {
-    sirius::Simulation_context &ctx;
-    sirius::Hamiltonian_k<double> &Hk;
-    std::vector<double> min_eigenvals;
-    sddk::Wave_functions<double> * Hphi;
-    sddk::Wave_functions<double> * Sphi;
-    sddk::Wave_functions<double> * evq;
-    sddk::Wave_functions<double> * tmp;
-    double alpha_pv;
-    sddk::dmatrix<double_complex> overlap;
-
-
-    Linear_response_operator(
-        sirius::Simulation_context &ctx,
-        sirius::Hamiltonian_k<double> & Hk,
-        std::vector<double> const &eigvals,
-        sddk::Wave_functions<double> * Hphi,
-        sddk::Wave_functions<double> * Sphi,
-        sddk::Wave_functions<double> * evq,
-        sddk::Wave_functions<double> * tmp,
-        double alpha_pv)
-    : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), overlap(ctx.num_bands(), ctx.num_bands())
-    {
-        // I think we could just compute alpha_pv here by just making it big enough
-        // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
-        // alpha_pv = 2 * min_eigenvals.back();
-        // but QE has a very specific way to compute it, so we just forward it from
-        // there.;
-
-        // flip the sign of the eigenvals so that the axpby works
-        for (auto &e : min_eigenvals) {
-            e *= -1;
-        }
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
-            min_eigenvals[i] = min_eigenvals[ids[i]];
-        }
-    }
-
-    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
-    // where SQ is S * eigenvectors.
-    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
-        // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<double_complex>(
-            sddk::spin_range(0),
-            0,
-            num_active,
-            *x.x,
-            Hphi,
-            Sphi
-        );
-
-        // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
-        Hphi->axpy(sddk::device_t::CPU, sddk::spin_range(0), min_eigenvals, *Sphi, num_active);
-        tmp->copy_from(*Hphi, num_active, 0, 0, 0, 0);
-
-        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
-
-        // overlap := evq' * (S * x)
-        sddk::inner(
-            ctx.spla_context(),
-            sddk::spin_range(0),
-            *evq, 0, ctx.num_bands(),
-            *Sphi, 0, num_active,
-            overlap, 0, 0);
-
-        // Hphi := evq * overlap
-        sddk::transform<double_complex>(
-            ctx.spla_context(),
-            0, 1.0,
-            {evq}, 0, ctx.num_bands(),
-            overlap, 0, 0,
-            0.0, {Hphi}, 0, num_active);
-
-        // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
-        sirius::apply_S_operator<double_complex>(
-            ctx.processing_unit(),
-            sddk::spin_range(0),
-            0,
-            num_active,
-            Hk.kp().beta_projectors(),
-            *Hphi,
-            &Hk.H0().Q(),
-            *Sphi);
-
-        // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
-        {
-            // okay, the block-scalar api is a bit awkward...
-            std::vector<double_complex> alpha_pvs(num_active, alpha_pv);
-            tmp->axpy(sddk::device_t::CPU, sddk::spin_range(0), alpha_pvs, *Sphi, num_active);
-        }
-        // y[:, i] <- alpha * tmp + beta * y[:, i]
-        y.x->axpby(sddk::device_t::CPU, sddk::spin_range(0), alpha, *tmp, beta, num_active);
-    }
-};
-
-/*
 @api begin
 sirius_linear_solver:
   doc: Interface to linear solver.
@@ -6175,7 +5982,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
 
-            Linear_response_operator linear_operator(
+            sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
                 Hk,
                 eigvals_vec,
@@ -6186,10 +5993,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 *alpha_pv__ / 2); // rydberg/hartree factor
 
             // CG state vectors.
-            auto X_wrap = Wave_functions_wrap{dpsi_wf.get()};
-            auto B_wrap = Wave_functions_wrap{dvpsi_wf.get()};
-            auto U_wrap = Wave_functions_wrap{U.get()};
-            auto C_wrap = Wave_functions_wrap{C.get()};
+            auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get()};
+            auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get()};
+            auto U_wrap = sirius::lr::Wave_functions_wrap{U.get()};
+            auto C_wrap = sirius::lr::Wave_functions_wrap{C.get()};
 
             // Set up the diagonal preconditioner
             auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>();
@@ -6198,7 +6005,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 return eigvals_vec[i];
             };
 
-            Smoothed_diagonal_preconditioner preconditioner{
+            sirius::lr::Smoothed_diagonal_preconditioner preconditioner{
               std::move(h_o_diag.first),
               std::move(h_o_diag.second),
               std::move(eigvals_mdarray),
