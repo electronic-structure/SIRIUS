@@ -33,8 +33,11 @@
 #include <complex>
 #include "SDDK/wave_functions.hpp"
 #include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 #include "band/residuals.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "hamiltonian/non_local_operator.hpp"
+#include "k_point/k_point.hpp"
 
 namespace sirius {
 namespace cg {
