@@ -23,6 +23,7 @@
  */
 
 #include "k_point.hpp"
+#include "lapw/generate_alm_block.hpp"
 
 namespace sirius {
 

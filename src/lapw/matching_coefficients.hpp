@@ -292,6 +292,11 @@ class Matching_coefficients // TODO: compute on GPU
             }
         }
     }
+
+    auto const& gkvec() const
+    {
+        return gkvec_;
+    }
 };
 
 } // namespace sirius
