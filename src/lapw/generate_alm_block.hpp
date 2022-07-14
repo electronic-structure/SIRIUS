@@ -57,7 +57,7 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
                     break;
                 }
             }
-            /* generate conjugated LAPW matching coefficients on the CPU */
+            /* generate LAPW matching coefficients on the CPU */
             alm__.template generate<conjugate>(atom, alm_atom);
             if (ctx__.processing_unit() == sddk::device_t::GPU) {
                 alm_atom.copy_to(sddk::memory_t::device, stream_id(tid));

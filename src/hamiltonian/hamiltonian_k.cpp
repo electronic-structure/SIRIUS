@@ -353,11 +353,6 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     o__.zero();
     switch (pu) {
         case sddk::device_t::GPU: {
-            //        alm_row = mdarray<std::complex<T>, 3>(kp.num_gkvec_row(), max_mt_aw, 2,
-            //        H0_.ctx().mem_pool(memory_t::host_pinned)); alm_col = mdarray<std::complex<T>,
-            //        3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned)); halm_col =
-            //        mdarray<std::complex<T>, 3>(kp.num_gkvec_col(), max_mt_aw, 2,
-            //        H0_.ctx().mem_pool(memory_t::host_pinned));
             alm_row.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
             alm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
             halm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
@@ -366,10 +361,6 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
             break;
         }
         case sddk::device_t::CPU: {
-            //        alm_row = mdarray<std::complex<T>, 3>(kp.num_gkvec_row(), max_mt_aw, 1,
-            //        H0_.ctx().mem_pool(memory_t::host)); alm_col = mdarray<std::complex<T>, 3>(kp.num_gkvec_col(),
-            //        max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host)); halm_col = mdarray<std::complex<T>,
-            //        3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
             break;
         }
     }
@@ -919,64 +910,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     /* short name for local number of G+k vectors */
     int ngv = kp().num_gkvec_loc();
 
-    /* split atoms in blocks */
-    //auto atom_blocks = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
-
     auto& comm = kp().comm();
-
-    /* generate Alm coefficients for the block of atoms */
-    //auto generate_alm = [&ctx, &ngv, pu, this](int atom_begin, int na, int mt_size, std::vector<int> offsets_aw)
-    //{
-    //    PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
-
-    //    sddk::mdarray<std::complex<T>, 2> alm;
-    //    switch (pu) {
-    //        case sddk::device_t::CPU: {
-    //            alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(sddk::memory_t::host), "alm");
-    //            break;
-    //        }
-    //        case sddk::device_t::GPU: {
-    //            alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(sddk::memory_t::host_pinned), "alm");
-    //            alm.allocate(ctx.mem_pool(sddk::memory_t::device));
-    //            break;
-    //        }
-    //    }
-
-    //    #pragma omp parallel
-    //    {
-    //        int tid = omp_get_thread_num();
-    //        #pragma omp for
-    //        for (int i = 0; i < na; i++) {
-    //            auto& atom = ctx.unit_cell().atom(atom_begin + i);
-    //            auto& type = atom.type();
-    //            /* wrap matching coefficients of a single atom */
-    //            sddk::mdarray<std::complex<T>, 2> alm_atom;
-    //            switch (pu) {
-    //                case sddk::device_t::CPU: {
-    //                    alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(sddk::memory_t::host, 0, offsets_aw[i]),
-    //                                                                 ngv, type.mt_aw_basis_size(), "alm_atom");
-    //                    break;
-    //                }
-    //                case sddk::device_t::GPU: {
-    //                    alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(sddk::memory_t::host, 0, offsets_aw[i]),
-    //                                                                 alm.at(sddk::memory_t::device, 0, offsets_aw[i]),
-    //                                                                 ngv, type.mt_aw_basis_size(), "alm_atom");
-    //                    break;
-    //                }
-    //            }
-    //            /* generate conjugated LAPW matching coefficients on the CPU */
-    //            kp().alm_coeffs_loc().template generate<true>(atom, alm_atom);
-    //            if (pu == sddk::device_t::GPU) {
-    //                alm_atom.copy_to(sddk::memory_t::device, stream_id(tid));
-    //            }
-
-    //        }
-    //        if (pu == sddk::device_t::GPU) {
-    //            acc::sync_stream(stream_id(tid));
-    //        }
-    //    }
-    //    return alm;
-    //};
 
     PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
