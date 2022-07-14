@@ -1159,7 +1159,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        //auto alm = generate_alm(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
         auto alm = generate_alm_block<true, T>(ctx, atom_begin, na,  kp().alm_coeffs_loc());
 
 
@@ -1448,13 +1447,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* short name for local number of G+k vectors */
     int ngv = kp().num_gkvec_loc();
 
-    /* split atoms in blocks */
-    auto spl = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
-
-    /* number of blocks of atoms */
-    int nblk = spl.first;
-    int num_atoms_in_block = spl.second;
-
     auto& comm = kp().comm();
 
     auto& spl_atoms = phi__.spl_num_atoms();
@@ -1464,60 +1456,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto& one = sddk::linalg_const<Tc>::one();
     auto& zero = sddk::linalg_const<Tc>::zero();
-
-    /* generate Alm coefficients for the block of atoms */
-    auto generate_alm = [&ctx, &ngv, pu, this](int atom_begin, int na, int mt_size, std::vector<int> offsets_aw)
-    {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
-
-        sddk::mdarray<std::complex<T>, 2> alm;
-        switch (pu) {
-            case sddk::device_t::CPU: {
-                alm = sddk::mdarray<Tc, 2>(ngv, mt_size, ctx.mem_pool(sddk::memory_t::host), "alm");
-                break;
-            }
-            case sddk::device_t::GPU: {
-                alm = sddk::mdarray<Tc, 2>(ngv, mt_size, ctx.mem_pool(sddk::memory_t::host_pinned), "alm");
-                alm.allocate(ctx.mem_pool(sddk::memory_t::device));
-                break;
-            }
-        }
-
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int i = 0; i < na; i++) {
-                auto& atom = ctx.unit_cell().atom(atom_begin + i);
-                auto& type = atom.type();
-                /* wrap matching coefficients of a single atom */
-                sddk::mdarray<std::complex<T>, 2> alm_atom;
-                switch (pu) {
-                    case sddk::device_t::CPU: {
-                        alm_atom = sddk::mdarray<Tc, 2>(alm.at(sddk::memory_t::host, 0, offsets_aw[i]),
-                                                        ngv, type.mt_aw_basis_size(), "alm_atom");
-                        break;
-                    }
-                    case sddk::device_t::GPU: {
-                        alm_atom = sddk::mdarray<Tc, 2>(alm.at(sddk::memory_t::host, 0, offsets_aw[i]),
-                                                        alm.at(sddk::memory_t::device, 0, offsets_aw[i]),
-                                                        ngv, type.mt_aw_basis_size(), "alm_atom");
-                        break;
-                    }
-                }
-                /* generate conjugated LAPW matching coefficients on the CPU */
-                kp().alm_coeffs_loc().template generate<true>(atom, alm_atom);
-                if (pu == sddk::device_t::GPU) {
-                    alm_atom.copy_to(sddk::memory_t::device, stream_id(tid));
-                }
-
-            }
-            if (pu == sddk::device_t::GPU) {
-                acc::sync_stream(stream_id(tid));
-            }
-        }
-        return alm;
-    };
 
     /* apply APW-lo part of Hamiltonian to lo- part of wave-functions */
     auto apply_hmt_apw_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions<T>& h_apw_lo__)
@@ -1837,12 +1775,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
      *  we are going to split the Alm coefficients into blocks of atoms and work on them consecutively
      */
     int offset_aw_global{0};
+    int atom_begin{0};
     /* loop over blocks of atoms */
-    for (int ib = 0; ib < nblk; ib++) {
-        /* number of atoms in this block */
-        int na = std::min(ctx.unit_cell().num_atoms(), (ib + 1) * num_atoms_in_block) - ib * num_atoms_in_block;
-
-        int atom_begin = ib * num_atoms_in_block;
+    for (auto na : utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64)) {
 
         sddk::splindex<sddk::splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
 
@@ -1857,7 +1792,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm(atom_begin, na, num_mt_aw, offsets_aw);
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na,  kp().alm_coeffs_loc());
 
         /* if there is APW part */
         if (!phi_is_lo__) {
@@ -1950,6 +1885,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             time += utils::time_interval(t0);
         }
         offset_aw_global += num_mt_aw;
+        atom_begin += na;
     } // blocks of atoms
 
     /* compute lo-APW contribution
