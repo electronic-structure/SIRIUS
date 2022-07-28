@@ -509,9 +509,9 @@ class radial_functions_index
      *  \f$ \nu \f$ is the order of radial function for a given \f$ \ell \f$. */
     std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
 
-    mdarray<int, 2> index_by_l_order_;
+    sddk::mdarray<int, 2> index_by_l_order_;
 
-    mdarray<int, 1> index_by_idxlo_;
+    sddk::mdarray<int, 1> index_by_idxlo_;
 
     /// Number of radial functions for each angular momentum quantum number.
     std::vector<int> num_rf_;
@@ -583,10 +583,10 @@ class radial_functions_index
             max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
         }
 
-        index_by_l_order_ = mdarray<int, 2>(lmax_ + 1, max_num_rf_);
+        index_by_l_order_ = sddk::mdarray<int, 2>(lmax_ + 1, max_num_rf_);
 
         if (lo_descriptors.size()) {
-            index_by_idxlo_ = mdarray<int, 1>(lo_descriptors.size());
+            index_by_idxlo_ = sddk::mdarray<int, 1>(lo_descriptors.size());
         }
 
         for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {

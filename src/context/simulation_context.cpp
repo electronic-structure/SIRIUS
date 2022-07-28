@@ -44,7 +44,7 @@ print_memory_usage(const char* file__, int line__)
 
     std::vector<char> str(2048);
 
-    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", Communicator::world().rank(), line__, file__);
+    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", sddk::Communicator::world().rank(), line__, file__);
 
     n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
                   static_cast<int>(VmRSS >> 20));
@@ -140,7 +140,7 @@ Simulation_context::init_fft_grid()
     /* create FFT driver for dense mesh (density and potential) */
     auto fft_grid = cfg().settings().fft_grid_size();
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
-        fft_grid_ = get_min_fft_grid(pw_cutoff(), rlv);
+        fft_grid_ = sddk::get_min_fft_grid(pw_cutoff(), rlv);
         cfg().settings().fft_grid_size(fft_grid_);
     } else {
         /* else create a grid with user-specified dimensions */
@@ -148,19 +148,19 @@ Simulation_context::init_fft_grid()
     }
 
     /* create FFT grid for coarse mesh */
-    fft_coarse_grid_ = get_min_fft_grid(2 * gk_cutoff(), rlv);
+    fft_coarse_grid_ = sddk::get_min_fft_grid(2 * gk_cutoff(), rlv);
 }
 
-mdarray<double, 3>
+sddk::mdarray<double, 3>
 Simulation_context::generate_sbessel_mt(int lmax__) const
 {
     PROFILE("sirius::Simulation_context::generate_sbessel_mt");
 
-    mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
+    sddk::mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
     for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            auto gv = gvec().gvec_cart<index_domain_t::local>(igloc);
+            auto gv = gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
             gsl_sf_bessel_jl_array(lmax__, gv.length() * unit_cell().atom_type(iat).mt_radius(),
                                    &sbessel_mt(0, igloc, iat));
         }
@@ -168,23 +168,23 @@ Simulation_context::generate_sbessel_mt(int lmax__) const
     return sbessel_mt;
 }
 
-matrix<double_complex>
+sddk::matrix<double_complex>
 Simulation_context::generate_gvec_ylm(int lmax__)
 {
     PROFILE("sirius::Simulation_context::generate_gvec_ylm");
 
-    matrix<double_complex> gvec_ylm(utils::lmmax(lmax__), gvec().count(), memory_t::host, "gvec_ylm");
+    sddk::matrix<double_complex> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
+        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
         sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
 }
 
-mdarray<double_complex, 2>
-Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarray<double, 3>& fl__,
-                                 matrix<double_complex>& gvec_ylm__)
+sddk::mdarray<double_complex, 2>
+Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::mdarray<double, 3>& fl__,
+                                 sddk::matrix<double_complex>& gvec_ylm__)
 {
     PROFILE("sirius::Simulation_context::sum_fg_fl_yg");
 
@@ -197,28 +197,28 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
 
     int lmmax = utils::lmmax(lmax__);
     /* resuling matrix */
-    mdarray<double_complex, 2> flm(lmmax, unit_cell().num_atoms());
+    sddk::mdarray<double_complex, 2> flm(lmmax, unit_cell().num_atoms());
 
-    matrix<double_complex> phase_factors;
-    matrix<double_complex> zm;
-    matrix<double_complex> tmp;
+    sddk::matrix<double_complex> phase_factors;
+    sddk::matrix<double_complex> zm;
+    sddk::matrix<double_complex> tmp;
 
     switch (processing_unit()) {
-        case device_t::CPU: {
-            auto& mp      = mem_pool(memory_t::host);
-            phase_factors = matrix<double_complex>(ngv_loc, na_max, mp);
-            zm            = matrix<double_complex>(lmmax, ngv_loc, mp);
-            tmp           = matrix<double_complex>(lmmax, na_max, mp);
+        case sddk::device_t::CPU: {
+            auto& mp      = this->mem_pool(sddk::memory_t::host);
+            phase_factors = sddk::matrix<double_complex>(ngv_loc, na_max, mp);
+            zm            = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
+            tmp           = sddk::matrix<double_complex>(lmmax, na_max, mp);
             break;
         }
-        case device_t::GPU: {
-            auto& mp      = mem_pool(memory_t::host);
-            auto& mpd     = mem_pool(memory_t::device);
-            phase_factors = matrix<double_complex>(nullptr, ngv_loc, na_max);
+        case sddk::device_t::GPU: {
+            auto& mp      = this->mem_pool(sddk::memory_t::host);
+            auto& mpd     = this->mem_pool(sddk::memory_t::device);
+            phase_factors = sddk::matrix<double_complex>(nullptr, ngv_loc, na_max);
             phase_factors.allocate(mpd);
-            zm = matrix<double_complex>(lmmax, ngv_loc, mp);
+            zm = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
             zm.allocate(mpd);
-            tmp = matrix<double_complex>(lmmax, na_max, mp);
+            tmp = sddk::matrix<double_complex>(lmmax, na_max, mp);
             tmp.allocate(mpd);
             break;
         }
@@ -245,20 +245,20 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|zm");
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
-            case device_t::CPU: {
-                linalg(linalg_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &linalg_const<double_complex>::one(), zm.at(memory_t::host),
-                          zm.ld(), phase_factors.at(memory_t::host), phase_factors.ld(),
-                          &linalg_const<double_complex>::zero(), tmp.at(memory_t::host), tmp.ld());
+            case sddk::device_t::CPU: {
+                sddk::linalg(sddk::linalg_t::blas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<double_complex>::one(), zm.at(sddk::memory_t::host),
+                          zm.ld(), phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
+                          &sddk::linalg_const<double_complex>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
                 break;
             }
-            case device_t::GPU: {
-                zm.copy_to(memory_t::device);
-                linalg(linalg_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &linalg_const<double_complex>::one(), zm.at(memory_t::device),
-                          zm.ld(), phase_factors.at(memory_t::device), phase_factors.ld(),
-                          &linalg_const<double_complex>::zero(), tmp.at(memory_t::device), tmp.ld());
-                tmp.copy_to(memory_t::host);
+            case sddk::device_t::GPU: {
+                zm.copy_to(sddk::memory_t::device);
+                sddk::linalg(sddk::linalg_t::gpublas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<double_complex>::one(), zm.at(sddk::memory_t::device),
+                          zm.ld(), phase_factors.at(sddk::memory_t::device), phase_factors.ld(),
+                          &sddk::linalg_const<double_complex>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
+                tmp.copy_to(sddk::memory_t::host);
                 break;
             }
         }
@@ -299,7 +299,7 @@ Simulation_context::ewald_lambda() const
     return lambda;
 }
 
-splindex<splindex_t::block>
+sddk::splindex<sddk::splindex_t::block>
 Simulation_context::split_gvec_local() const
 {
     /* local number of G-vectors for this MPI rank */
@@ -318,7 +318,7 @@ Simulation_context::split_gvec_local() const
     /* number of blocks of G-vectors */
     int nb = ngv_loc / ngv_b;
     /* split local number of G-vectors between blocks */
-    return splindex<splindex_t::block>(ngv_loc, nb, 0);
+    return sddk::splindex<sddk::splindex_t::block>(ngv_loc, nb, 0);
 }
 
 void
@@ -361,7 +361,7 @@ Simulation_context::initialize()
     processing_unit(cfg().control().processing_unit());
 
     /* check if we can use a GPU device */
-    if (processing_unit() == device_t::GPU) {
+    if (processing_unit() == sddk::device_t::GPU) {
 #if !defined(SIRIUS_GPU)
         RTE_THROW("not compiled with GPU support!");
 #endif
@@ -370,83 +370,86 @@ Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    //auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
+    auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
 
-    //if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
-    //    pstdout pout(comm());
-    //    if (comm().rank() == 0) {
-    //        pout.printf("MPI rank placement\n");
-    //        pout.printf("------------------\n");
-    //    }
-    //    auto name = sddk::Communicator::processor_name();
-    //    pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
-    //                comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
-    //}
+    if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
+        sddk::pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout << "MPI rank placement" << std::endl;
+            pout << "------------------" << std::endl;
+        }
+        pout << "rank: " << comm().rank()
+             << ", comm_band_rank: " << comm_band().rank()
+             << ", comm_k_rank: " << comm_k().rank()
+             << ", hostname: " << utils::hostname()
+             << ", mpi processor name: " << sddk::Communicator::processor_name() << std::endl;
+        this->out() << pout.flush(0);
+    }
 
     switch (processing_unit()) {
-        case device_t::CPU: {
-            host_memory_t_ = memory_t::host;
+        case sddk::device_t::CPU: {
+            host_memory_t_ = sddk::memory_t::host;
             break;
         }
-        case device_t::GPU: {
-            host_memory_t_ = memory_t::host_pinned;
+        case sddk::device_t::GPU: {
+            host_memory_t_ = sddk::memory_t::host_pinned;
             break;
         }
     }
 
     switch (processing_unit()) {
-        case device_t::CPU: {
-            preferred_memory_t_ = memory_t::host;
+        case sddk::device_t::CPU: {
+            preferred_memory_t_ = sddk::memory_t::host;
             break;
         }
-        case device_t::GPU: {
+        case sddk::device_t::GPU: {
             if (cfg().control().memory_usage() == "high") {
-                preferred_memory_t_ = memory_t::device;
+                preferred_memory_t_ = sddk::memory_t::device;
             }
             if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-                preferred_memory_t_ = memory_t::host_pinned;
+                preferred_memory_t_ = sddk::memory_t::host_pinned;
             }
             break;
         }
     }
 
     switch (processing_unit()) {
-        case device_t::CPU: {
-            aux_preferred_memory_t_ = memory_t::host;
+        case sddk::device_t::CPU: {
+            aux_preferred_memory_t_ = sddk::memory_t::host;
             break;
         }
-        case device_t::GPU: {
+        case sddk::device_t::GPU: {
             if (cfg().control().memory_usage() == "high" || cfg().control().memory_usage() == "medium") {
-                aux_preferred_memory_t_ = memory_t::device;
+                aux_preferred_memory_t_ = sddk::memory_t::device;
             }
             if (cfg().control().memory_usage() == "low") {
-                aux_preferred_memory_t_ = memory_t::host_pinned;
+                aux_preferred_memory_t_ = sddk::memory_t::host_pinned;
             }
             break;
         }
     }
 
     switch (processing_unit()) {
-        case device_t::CPU: {
-            blas_linalg_t_ = linalg_t::blas;
+        case sddk::device_t::CPU: {
+            blas_linalg_t_ = sddk::linalg_t::blas;
             break;
         }
-        case device_t::GPU: {
+        case sddk::device_t::GPU: {
             if (cfg().control().memory_usage() == "high") {
-                blas_linalg_t_ = linalg_t::gpublas;
+                blas_linalg_t_ = sddk::linalg_t::gpublas;
             }
             if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
 #if defined(SIRIUS_ROCM)
-                blas_linalg_t_ = linalg_t::gpublas;
+                blas_linalg_t_ = sddk::linalg_t::gpublas;
 #else
-                blas_linalg_t_ = linalg_t::cublasxt;
+                blas_linalg_t_ = sddk::linalg_t::cublasxt;
 #endif
             }
             break;
         }
     }
 
-    if (processing_unit() == device_t::GPU) {
+    if (processing_unit() == sddk::device_t::GPU) {
         spla_ctx_.reset(new spla::Context{SPLA_PU_GPU});
         spla_ctx_->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB
     }
@@ -590,7 +593,7 @@ Simulation_context::initialize()
     bool is_elpa{false};
 #endif
 
-    if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
+    if (processing_unit() == sddk::device_t::CPU || acc::num_devices() == 0) {
         is_cuda  = false;
         is_magma = false;
     }
@@ -640,8 +643,8 @@ Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name(), &mem_pool(memory_t::device));
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name(), &mem_pool(memory_t::device));
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name(), &mem_pool(sddk::memory_t::device));
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name(), &mem_pool(sddk::memory_t::device));
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -652,9 +655,9 @@ Simulation_context::initialize()
 
     /* setup BLACS grid */
     if (std_solver.is_parallel()) {
-        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
+        blacs_grid_ = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(comm_band(), npr, npc));
     } else {
-        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
+        blacs_grid_ = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::self(), 1, 1));
     }
 
     /* setup the cyclic block size */
@@ -733,7 +736,7 @@ Simulation_context::print_info(std::ostream& out__) const
             os << std::endl;
         }
         os << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
-           << "number of MPI ranks per node  : " << num_ranks_per_node() << std::endl
+           << "number of MPI ranks per node  : " << sddk::num_ranks_per_node() << std::endl
            << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
            << "number of pages               : " << utils::get_num_pages() << std::endl
            << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
@@ -743,9 +746,9 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::rte_ostream os(out__, "fft");
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
-        Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
-        FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
-        Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
+        sddk::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
+        sddk::FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+        sddk::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
         for (int i = 0; i < 2; i++) {
             os << headers[i] << std::endl
@@ -843,11 +846,11 @@ Simulation_context::print_info(std::ostream& out__) const
         }
         os << "processing unit                    : ";
         switch (processing_unit()) {
-            case device_t::CPU: {
+            case sddk::device_t::CPU: {
                 os << "CPU" << std::endl;
                 break;
             }
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 os << "GPU" << std::endl;
                 os << "number of devices                  : " << acc::num_devices() << std::endl;
                 acc::print_device_info(0, os);
@@ -1009,16 +1012,16 @@ Simulation_context::update()
     /* get new reciprocal vector */
     auto rlv = unit_cell().reciprocal_lattice_vectors();
 
-    auto spfft_pu = this->processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    auto spfft_pu = this->processing_unit() == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
     /* create a list of G-vectors for corase FFT grid; this is done only once,
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec()));
+        gvec_coarse_ = std::make_unique<sddk::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
         /* create FFT friendly partiton */
-        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-            new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+        gvec_coarse_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_coarse_, comm_fft_coarse(),
+                comm_ortho_fft_coarse());
 
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
@@ -1034,18 +1037,18 @@ Simulation_context::update()
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto gv = gvec_coarse_partition_->get_gvec();
+        auto const& gv = gvec_coarse_partition_->gvec_array();
 
         /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-            gv.at(memory_t::host))));
+            gv.at(sddk::memory_t::host))));
 #ifdef USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-            gv.at(memory_t::host))));
+            gv.at(sddk::memory_t::host))));
 #endif
     } else {
         gvec_coarse_->lattice_vectors(rlv);
@@ -1053,8 +1056,8 @@ Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_           = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
-        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+        gvec_           = std::make_unique<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
+        gvec_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_, comm_fft(), comm_ortho_fft());
 
         auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
@@ -1070,34 +1073,33 @@ Simulation_context::update()
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto gv = gvec_partition_->get_gvec();
+        auto const& gv = gvec_partition_->gvec_array();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
            do not change during the execution */
         switch (this->processing_unit()) {
-            case device_t::CPU: {
+            case sddk::device_t::CPU: {
                 break;
             }
-            case device_t::GPU: {
-                gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
+            case sddk::device_t::GPU: {
+                gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, sddk::memory_t::host, "gvec_coord_");
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                    int ig = gvec().offset() + igloc;
-                    auto G = gvec().gvec(ig);
+                    auto G = gvec().gvec<sddk::index_domain_t::local>(igloc);
                     for (int x : {0, 1, 2}) {
                         gvec_coord_(igloc, x) = G[x];
                     }
                 }
-                gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
+                gvec_coord_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
                 break;
             }
         }
@@ -1108,7 +1110,7 @@ Simulation_context::update()
     /* After each update of the lattice vectors we might get a different set of G-vector shells.
      * Always update the mapping between the canonical FFT distribution and "local G-shells"
      * distribution which is used in symmetriezation of lattice periodic functions. */
-    remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
+    remap_gvec_ = std::make_unique<sddk::Gvec_shells>(gvec());
 
     /* check symmetry of G-vectors */
     if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {
@@ -1125,7 +1127,7 @@ Simulation_context::update()
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
 
-            auto gv = gvec().gvec(ig);
+            auto gv = gvec().gvec<sddk::index_domain_t::local>(igloc);
             /* check limits */
             for (int x : {0, 1, 2}) {
                 auto limits = fft_grid().limits(x);
@@ -1133,7 +1135,7 @@ Simulation_context::update()
                 if (gv[x] < limits.first || gv[x] > limits.second) {
                     std::stringstream s;
                     s << "G-vector is outside of grid limits\n"
-                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << "\n"
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<sddk::index_domain_t::global>(ig).length() << "\n"
                       << "  FFT grid limits: " << fft_grid().limits(0).first << " " << fft_grid().limits(0).second
                       << " " << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
                       << fft_grid().limits(2).first << " " << fft_grid().limits(2).second << "\n"
@@ -1153,7 +1155,7 @@ Simulation_context::update()
     }
 
     /* recompute phase factors for atoms */
-    phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
+    phase_factors_ = sddk::mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), sddk::memory_t::host, "phase_factors_");
     #pragma omp parallel for
     for (int i = limits.first; i <= limits.second; i++) {
         for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
@@ -1165,7 +1167,7 @@ Simulation_context::update()
     }
 
     /* recompute phase factors for atom types */
-    phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+    phase_factors_t_ = sddk::mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         /* global index of G-vector */
@@ -1180,7 +1182,7 @@ Simulation_context::update()
     }
 
     if (use_symmetry()) {
-        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().size());
+        sym_phase_factors_ = sddk::mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().size());
 
         #pragma omp parallel for
         for (int i = limits.first; i <= limits.second; i++) {
@@ -1194,20 +1196,20 @@ Simulation_context::update()
     }
 
     /* precompute some G-vector related arrays */
-    gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, memory_t::host, "gvec_tp_");
+    gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, sddk::memory_t::host, "gvec_tp_");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp           = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
+        auto rtp           = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
         gvec_tp_(igloc, 0) = rtp[1];
         gvec_tp_(igloc, 1) = rtp[2];
     }
 
     switch (this->processing_unit()) {
-        case device_t::CPU: {
+        case sddk::device_t::CPU: {
             break;
         }
-        case device_t::GPU: {
-            gvec_tp_.allocate(memory_t::device).copy_to(memory_t::device);
+        case sddk::device_t::GPU: {
+            gvec_tp_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
             break;
         }
     }
@@ -1217,10 +1219,9 @@ Simulation_context::update()
         /* find the new maximum length of G-vectors */
         double new_pw_cutoff{this->pw_cutoff()};
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig        = gvec().offset() + igloc;
-            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len(ig));
+            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len<sddk::index_domain_t::local>(igloc));
         }
-        gvec().comm().allreduce<double, mpi_op_t::max>(&new_pw_cutoff, 1);
+        gvec().comm().allreduce<double, sddk::mpi_op_t::max>(&new_pw_cutoff, 1);
         /* estimate new G+k-vectors cutoff */
         double new_gk_cutoff = this->gk_cutoff();
         if (new_pw_cutoff > this->pw_cutoff()) {
@@ -1295,16 +1296,16 @@ Simulation_context::update()
         }
 
         /* update augmentation operator */
-        memory_pool* mp{nullptr};
-        memory_pool* mpd{nullptr};
+        sddk::memory_pool* mp{nullptr};
+        sddk::memory_pool* mpd{nullptr};
         switch (this->processing_unit()) {
-            case device_t::CPU: {
-                mp = &mem_pool(memory_t::host);
+            case sddk::device_t::CPU: {
+                mp = &mem_pool(sddk::memory_t::host);
                 break;
             }
-            case device_t::GPU: {
-                mp  = &mem_pool(memory_t::host_pinned);
-                mpd = &mem_pool(memory_t::device);
+            case sddk::device_t::GPU: {
+                mp  = &mem_pool(sddk::memory_t::host_pinned);
+                mpd = &mem_pool(sddk::memory_t::device);
                 break;
             }
         }
@@ -1346,7 +1347,7 @@ Simulation_context::create_storage_file() const
 {
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
-        HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
+        sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::truncate);
         fout.create_node("parameters");
         fout.create_node("effective_potential");
         fout.create_node("effective_magnetic_field");
@@ -1362,9 +1363,9 @@ Simulation_context::create_storage_file() const
         fout["parameters"].write("num_mag_dims", num_mag_dims());
         fout["parameters"].write("num_bands", num_bands());
 
-        mdarray<int, 2> gv(3, gvec().num_gvec());
+        sddk::mdarray<int, 2> gv(3, gvec().num_gvec());
         for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            auto G = gvec().gvec(ig);
+            auto G = gvec().gvec<sddk::index_domain_t::global>(ig);
             for (int x : {0, 1, 2}) {
                 gv(x, ig) = G[x];
             }
@@ -1383,12 +1384,12 @@ Simulation_context::create_storage_file() const
 }
 
 void
-Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
+Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<double_complex, 2>& phase_factors__) const
 {
     PROFILE("sirius::Simulation_context::generate_phase_factors");
     int na = unit_cell().atom_type(iat__).num_atoms();
     switch (processing_unit_) {
-        case device_t::CPU: {
+        case sddk::device_t::CPU: {
             #pragma omp parallel for
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
                 int ig = gvec().offset() + igloc;
@@ -1399,11 +1400,11 @@ Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2>
             }
             break;
         }
-        case device_t::GPU: {
+        case sddk::device_t::GPU: {
 #if defined(SIRIUS_GPU)
-            generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
-                                       unit_cell().atom_coord(iat__).at(memory_t::device),
-                                       phase_factors__.at(memory_t::device));
+            generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(sddk::memory_t::device),
+                                       unit_cell().atom_coord(iat__).at(sddk::memory_t::device),
+                                       phase_factors__.at(sddk::memory_t::device));
 #endif
             break;
         }
@@ -1418,13 +1419,13 @@ Simulation_context::print_memory_usage(const char* file__, int line__)
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};
-        std::vector<memory_pool*> mp    = {&this->mem_pool(memory_t::host)};
+        std::vector<sddk::memory_pool*> mp    = {&this->mem_pool(sddk::memory_t::host)};
         int np{1};
-        if (processing_unit() == device_t::GPU) {
+        if (processing_unit() == sddk::device_t::GPU) {
             labels.push_back("host pinned");
             labels.push_back("device");
-            mp.push_back(&this->mem_pool(memory_t::host_pinned));
-            mp.push_back(&this->mem_pool(memory_t::device));
+            mp.push_back(&this->mem_pool(sddk::memory_t::host_pinned));
+            mp.push_back(&this->mem_pool(sddk::memory_t::device));
             np = 3;
         }
         std::printf("memory pools\n");
@@ -1517,7 +1518,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 void
 Simulation_context::init_step_function()
 {
-    auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
+    auto v = make_periodic_function<sddk::index_domain_t::global>([&](int iat, double g) {
         auto R = unit_cell().atom_type(iat).mt_radius();
         return unit_step_function_form_factors(R, g);
     });
@@ -1532,9 +1533,7 @@ Simulation_context::init_step_function()
         theta_pw_[0] += 1.0;
 
         std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-        for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
-            ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
-        }
+        this->gvec_partition().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
         spfft_output(spfft<double>(), theta_ptr);
@@ -1551,7 +1550,7 @@ Simulation_context::init_step_function()
         vit += theta_[i];
     }
     vit *= (unit_cell().omega() / fft_grid().num_points());
-    Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
+    sddk::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
 
     if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
         std::stringstream s;
@@ -1564,7 +1563,7 @@ Simulation_context::init_step_function()
     if (cfg().control().print_checksum()) {
         double_complex z1 = theta_pw_.checksum();
         double d1         = theta_.checksum();
-        Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
+        sddk::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
         if (comm().rank() == 0) {
             utils::print_checksum("theta", d1);
             utils::print_checksum("theta_pw", z1);
@@ -1607,12 +1606,12 @@ Simulation_context::init_comm()
     }
 
     /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npc, npr}, comm_band_));
+    mpi_grid_ = std::make_unique<sddk::MPI_grid>(std::vector<int>({npc, npr}), comm_band_);
 
     /* here we know the number of ranks for band parallelization */
 
     /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
-    if (num_ranks_per_node() > 1 && comm_band().size() > 1) {
+    if (sddk::num_ranks_per_node() > 1 && comm_band().size() > 1) {
         cfg().control().fft_mode("parallel");
     }
 

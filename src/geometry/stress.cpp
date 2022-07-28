@@ -40,7 +40,7 @@ Stress::calc_stress_nonloc_aux()
 {
     PROFILE("sirius::Stress|nonloc");
 
-    mdarray<real_type<T>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
+    sddk::mdarray<real_type<T>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
     collect_result.zero();
 
     stress_nonloc_.zero();
@@ -59,11 +59,11 @@ Stress::calc_stress_nonloc_aux()
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
             }
         }
-        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
+        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec());
 
         Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
@@ -72,7 +72,7 @@ Stress::calc_stress_nonloc_aux()
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
             }
         }
     }
@@ -149,8 +149,8 @@ Stress::calc_stress_hubbard()
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<double>(ik);
-        mdarray<double_complex, 4> dn(kp->hubbard_wave_functions_S().num_wf(), kp->hubbard_wave_functions_S().num_wf(),
-                                      2, 9);
+        sddk::mdarray<double_complex, 4> dn(kp->hubbard_wave_functions_S().num_wf(),
+                                            kp->hubbard_wave_functions_S().num_wf(), 2, 9);
         dn.zero();
         kp->beta_projectors().prepare();
 
@@ -185,7 +185,6 @@ Stress::calc_stress_hubbard()
                 }
 
                 double d = 0;
-
                 for (int i = 0; i < ctx_.cfg().hubbard().nonlocal().size(); i++) {
                     auto nl = ctx_.cfg().hubbard().nonlocal(i);
                     int ia = nl.atom_pair()[0];
@@ -212,7 +211,6 @@ Stress::calc_stress_hubbard()
                         }
                     }
                 }
-
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
@@ -253,20 +251,20 @@ Stress::calc_stress_core()
 
     auto q     = ctx_.gvec().shells_len();
     auto ff    = ctx_.ps_core_ri_djl().values(q, ctx_.comm());
-    auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(ff);
+    auto drhoc = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
 
     double sdiag{0};
     int ig0 = ctx_.gvec().skip_g0();
 
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-        auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         auto g = G.length();
 
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {
                 stress_core_(mu, nu) -=
-                    std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] /
-                    g;
+                    std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) *
+                    G[mu] * G[nu] / g;
             }
         }
 
@@ -371,7 +369,7 @@ Stress::calc_stress_xc()
                 }
             }
         }
-        Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
+        sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
         t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
@@ -400,21 +398,21 @@ Stress::calc_stress_us()
 
     Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
 
-    linalg_t la{linalg_t::none};
-    memory_t qmem{memory_t::none};
+    sddk::linalg_t la{sddk::linalg_t::none};
+    sddk::memory_t qmem{sddk::memory_t::none};
 
-    memory_pool* mp{nullptr};
+    sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
-        case device_t::CPU: {
-            mp   = &ctx_.mem_pool(memory_t::host);
-            la   = linalg_t::blas;
-            qmem = memory_t::host;
+        case sddk::device_t::CPU: {
+            mp   = &ctx_.mem_pool(sddk::memory_t::host);
+            la   = sddk::linalg_t::blas;
+            qmem = sddk::memory_t::host;
             break;
         }
-        case device_t::GPU: {
-            mp   = &ctx_.mem_pool(memory_t::host_pinned);
-            la   = linalg_t::spla;
-            qmem = memory_t::device;
+        case sddk::device_t::GPU: {
+            mp   = &ctx_.mem_pool(sddk::memory_t::host_pinned);
+            la   = sddk::linalg_t::spla;
+            qmem = sddk::memory_t::device;
             break;
         }
     }
@@ -433,7 +431,7 @@ Stress::calc_stress_us()
         auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
         sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
-                                                       ctx_.mem_pool(memory_t::host));
+                                                       ctx_.mem_pool(sddk::memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)
@@ -445,8 +443,8 @@ Stress::calc_stress_us()
         }
         PROFILE_STOP("sirius::Stress|us|phase_fac");
 
-        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
-        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
+        sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
+        sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
         /* over spin components, can be from 1 to 4 */
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
@@ -463,7 +461,7 @@ Stress::calc_stress_us()
                     }
                     #pragma omp parallel for schedule(static)
                     for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                        auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+                        auto gvc = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
                         double g = gvc.length();
 
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -476,10 +474,10 @@ Stress::calc_stress_us()
                     PROFILE_STOP("sirius::Stress|us|prepare");
 
                     PROFILE_START("sirius::Stress|us|gemm");
-                    linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                    &linalg_const<double>::one(), q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
-                                    v_tmp.at(memory_t::host), v_tmp.ld(), &linalg_const<double>::zero(),
-                                    tmp.at(memory_t::host), tmp.ld());
+                    sddk::linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                    &sddk::linalg_const<double>::one(), q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
+                                    v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &sddk::linalg_const<double>::zero(),
+                                    tmp.at(sddk::memory_t::host), tmp.ld());
                     PROFILE_STOP("sirius::Stress|us|gemm");
 
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -519,7 +517,7 @@ Stress::calc_stress_ewald()
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         int ig = ctx_.gvec().offset() + igloc;
 
-        auto G          = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G          = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         double g2       = std::pow(G.length(), 2);
         double g2lambda = g2 / 4.0 / lambda;
 
@@ -647,7 +645,7 @@ Stress::calc_stress_har()
 
     int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-        auto G    = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G    = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         double g2 = std::pow(G.length(), 2);
         auto z    = density_.rho().f_pw_local(igloc);
         double d  = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
@@ -693,7 +691,7 @@ Stress::calc_stress_kin_aux()
                 #pragma omp for
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                     for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                        auto Gk = kp->gkvec().template gkvec_cart<index_domain_t::local>(igloc);
+                        auto Gk = kp->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igloc);
 
                         double f = kp->band_occupancy(i, ispin);
                         auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
@@ -765,15 +763,15 @@ Stress::calc_stress_vloc()
     auto ri_vloc    = ctx_.vloc_ri().values(q, ctx_.comm());
     auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q, ctx_.comm());
 
-    auto v  = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc);
-    auto dv = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc_dg);
+    auto v  = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc);
+    auto dv = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc_dg);
 
     double sdiag{0};
 
     int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
-        auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
 
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {

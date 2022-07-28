@@ -130,10 +130,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
     inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
-        auto cs = o__.checksum(n__, n__);
-        if (o__.comm().rank() == 0) {
-            //utils::print_checksum("n x n overlap", cs);
-        }
+        //auto cs = o__.checksum(n__, n__);
+        //if (o__.comm().rank() == 0) {
+        //    //utils::print_checksum("n x n overlap", cs);
+        //}
         if (o__.comm().rank() == 0) {
             RTE_OUT(std::cout) << "check diagonal" << std::endl;
         }
@@ -309,6 +309,10 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, spin_r
             RTE_OUT(std::cout) << "orthogonalization error : " << err << std::endl;
         }
     }
+
+    // TODO: remove this?
+    (void) gflops;
+
     return 0;
 }
 

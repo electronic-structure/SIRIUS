@@ -29,7 +29,6 @@
 #include <map>
 #include <iostream>
 #include <type_traits>
-#include <assert.h>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
@@ -129,7 +128,7 @@ class Gvec
     matrix3d<double> lattice_vectors_;
 
     /// Total communicator which is used to distribute G or G+k vectors.
-    Communicator const& comm_;
+    Communicator comm_;
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_{false};
@@ -168,7 +167,7 @@ class Gvec
     /// Radii of G-vector shells in the local index counting [0, num_gvec_shells_local)
     std::vector<double> gvec_shell_len_local_;
 
-    /// Mapping between local index of G-vector and local  G-shell index.
+    /// Mapping between local index of G-vector and local G-shell index.
     std::vector<int> gvec_shell_idx_local_;
 
     sddk::mdarray<int, 3> gvec_index_by_xy_;
@@ -200,20 +199,33 @@ class Gvec
     */
     mdarray<int, 1> gvec_base_mapping_;
 
-    /// Cartiesian coordinaes for a local set of G-vectors.
+    /// Lattice coordinates of a local set of G-vectors.
+    /** This are also known as Miller indices */
+    mdarray<int, 2> gvec_;
+
+    /// Lattice coordinates of a local set of G+k-vectors.
+    mdarray<double, 2> gkvec_;
+
+    /// Cartiesian coordinaes of a local set of G-vectors.
     mdarray<double, 2> gvec_cart_;
 
-    /// Cartesian coordinaes for a local set of G+k-vectors.
+    /// Cartesian coordinaes of a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_;
 
-    /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
+    /// Length of the local fraction of G-vectors.
+    mdarray<double, 1> gvec_len_;
 
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
 
     /// Local number of G-vectors.
     int count_{-1};
+
+    /// Local number of z-columns.
+    int num_zcol_local_{-1};
+
+    /// Return corresponding G-vector for an index in the range [0, num_gvec).
+    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
@@ -227,8 +239,11 @@ class Gvec
         under a lattice symmetry operation. */
     void find_gvec_shells();
 
-    /// Compute the Cartesian coordinates.
-    void init_gvec_cart();
+    /// Initialize lattice coordinates of the local fraction of G-vectors.
+    void init_gvec_local();
+
+    /// Initialize Cartesian coordinates of the local fraction of G-vectors.
+    void init_gvec_cart_local();
 
     /// Initialize everything.
     void init(FFT3D_grid const& fft_grid);
@@ -315,6 +330,64 @@ class Gvec
         init(get_min_fft_grid(Gmax__, M__));
     }
 
+    Gvec(vector3d<double> vk__, matrix3d<double> M__, int ngv_loc__, int const* gv__, Communicator const& comm__, bool reduce_gvec__)
+        : vk_(vk__)
+        , lattice_vectors_(M__)
+        , comm_(comm__)
+        , reduce_gvec_(reduce_gvec__)
+        , bare_gvec_(false)
+        , count_(ngv_loc__)
+    {
+        sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
+
+        gvec_  = mdarray<int, 2>(3, count(), memory_t::host, "gvec_");
+        gkvec_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_");
+
+        /* do a first pass: determine boundaries of the grid */
+        int xmin{0}, xmax{0};
+        int ymin{0}, ymax{0};
+        for (int i = 0; i < ngv_loc__; i++) {
+            xmin = std::min(xmin, G(0, i));
+            xmax = std::max(xmax, G(0, i));
+            ymin = std::min(ymin, G(1, i));
+            ymax = std::max(ymax, G(1, i));
+        }
+        comm_.allreduce<int, mpi_op_t::min>(&xmin, 1);
+        comm_.allreduce<int, mpi_op_t::min>(&ymin, 1);
+        comm_.allreduce<int, mpi_op_t::max>(&xmax, 1);
+        comm_.allreduce<int, mpi_op_t::max>(&ymax, 1);
+
+        sddk::mdarray<int, 2> zcol(mdarray_index_descriptor(xmin, xmax), mdarray_index_descriptor(ymin, ymax));
+        zcol.zero();
+        for (int ig = 0; ig < ngv_loc__; ig++) {
+            zcol(G(0, ig), G(1, ig))++;
+            for (int x : {0, 1, 2}) {
+                gvec_(x, ig) = G(x, ig);
+                gkvec_(x, ig) = G(x, ig) + vk_[x];
+            }
+        }
+        num_zcol_local_ = 0;
+        for (size_t i = 0; i < zcol.size(); i++) {
+            if (zcol[i]) {
+                num_zcol_local_++;
+            }
+        }
+
+        init_gvec_cart_local();
+
+        gvec_distr_ = block_data_descriptor(comm().size());
+        comm().allgather(&count_, gvec_distr_.counts.data(), 1, comm_.rank());
+        gvec_distr_.calc_offsets();
+        offset_ = gvec_distr_.offsets[comm().rank()];
+
+        zcol_distr_ = block_data_descriptor(comm().size());
+        comm().allgather(&num_zcol_local_, zcol_distr_.counts.data(), 1, comm_.rank());
+        zcol_distr_.calc_offsets();
+
+        num_gvec_ = count_;
+        comm().allreduce(&num_gvec_, 1);
+    }
+
     /// Constructor for empty set of G-vectors.
     Gvec(Communicator const& comm__)
         : comm_(comm__)
@@ -322,14 +395,10 @@ class Gvec
     }
 
     /// Move assignment operator.
-    Gvec& operator=(Gvec&& src__);
+    Gvec& operator=(Gvec&& src__) = default;
 
     /// Move constructor.
-    Gvec(Gvec&& src__)
-        : comm_(src__.comm_)
-    {
-        *this = std::move(src__);
-    }
+    Gvec(Gvec&& src__) = default;
 
     inline auto const& vk() const
     {
@@ -347,7 +416,7 @@ class Gvec
     inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
-        init_gvec_cart();
+        init_gvec_cart_local();
         find_gvec_shells();
         return lattice_vectors_;
     }
@@ -374,21 +443,21 @@ class Gvec
     /// Number of z-columns for a fine-grained distribution.
     inline int zcol_count(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.counts[rank__];
     }
 
     /// Offset in the global index of z-columns for a given rank.
     inline int zcol_offset(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.offsets[rank__];
     }
 
     /// Number of G-vectors for a fine-grained distribution.
     inline int gvec_count(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.counts[rank__];
     }
 
@@ -402,7 +471,7 @@ class Gvec
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
     inline int gvec_offset(int rank__) const
     {
-        assert(rank__ < comm().size());
+        RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.offsets[rank__];
     }
 
@@ -426,53 +495,73 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    inline auto gvec(int ig__) const
+    template <index_domain_t idx_t>
+    inline vector3d<int>
+    gvec(int ig__) const
     {
-        return gvec_by_full_index(gvec_full_index_(ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                return gvec_by_full_index(gvec_full_index_(ig__));
+                break;
+            }
+        }
     }
 
     /// Return G+k vector in fractional coordinates.
-    inline auto gkvec(int ig__) const
-    {
-        return gvec(ig__) + vk_;
-    }
-
-    /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
-    gvec_cart(int ig__) const
+    inline vector3d<double>
+    gkvec(int ig__) const
     {
-        return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
-    }
-
-    /// Return G vector in Cartesian coordinates.
-    template <index_domain_t idx_t, bool print_info = false>
-    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>>
-    gvec_cart(int ig__) const
-    {
-        auto G = gvec(ig__);
-        if (print_info) {
-            auto gc = dot(lattice_vectors_, G);
-            RTE_OUT(std::cout) << "ig="<<ig__<<", G="<<G<<", gc="<<gc<<", len="<<gc.length() << std::endl;
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                return this->gvec<idx_t>(ig__) + vk_;
+                break;
+            }
         }
-        return dot(lattice_vectors_, G);
     }
 
-    /// Return G+k vector in Cartesian coordinates.
+    /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
-    gkvec_cart(int ig__) const
+    inline vector3d<double>
+    gvec_cart(int ig__) const
     {
-        return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                auto G = this->gvec<idx_t>(ig__);
+                return dot(lattice_vectors_, G);
+                break;
+            }
+        }
     }
 
-    /// Return G+k vector in Cartesian coordinates.
+    /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>>
+    inline vector3d<double>
     gkvec_cart(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return dot(lattice_vectors_, vector3d<double>(G[0], G[1], G[2]) + vk_);
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+                break;
+            }
+            case index_domain_t::global: {
+                auto Gk = this->gvec<idx_t>(ig__) + vk_;
+                return dot(lattice_vectors_, Gk);
+                break;
+            }
+        }
     }
 
     /// Return index of the G-vector shell by the G-vector index.
@@ -503,17 +592,28 @@ class Gvec
     }
 
     /// Return length of the G-vector.
-    inline double gvec_len(int ig__) const
+    template <index_domain_t idx_t>
+    inline double
+    gvec_len(int ig__) const
     {
-        return gvec_shell_len_(gvec_shell_(ig__));
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return gvec_len_(ig__);
+                break;
+            }
+            case index_domain_t::global: {
+                return gvec_shell_len_(gvec_shell_(ig__));
+                break;
+            }
+        }
     }
 
     inline int index_g12(vector3d<int> const& g1__, vector3d<int> const& g2__) const
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
-        assert(idx >= 0);
-        assert(idx < num_gvec());
+        RTE_ASSERT(idx >= 0);
+        RTE_ASSERT(idx < num_gvec());
         return idx;
     }
 
@@ -544,9 +644,16 @@ class Gvec
         return bare_gvec_;
     }
 
+    /// Return global number of z-columns.
     inline int num_zcol() const
     {
         return static_cast<int>(z_columns_.size());
+    }
+
+    /// Return local number of z-columns.
+    inline int num_zcol_local() const
+    {
+        return num_zcol_local_;
     }
 
     inline z_column_descriptor const& zcol(size_t idx__) const
@@ -556,7 +663,7 @@ class Gvec
 
     inline int gvec_base_mapping(int igloc_base__) const
     {
-        assert(gvec_base_ != nullptr);
+        RTE_ASSERT(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
     }
 
@@ -573,6 +680,27 @@ class Gvec
     inline int gvec_shell_idx_local(int igloc__) const
     {
         return gvec_shell_idx_local_[igloc__];
+    }
+
+    /// Return local list of G-vectors.
+    inline auto const& gvec_local() const
+    {
+        return gvec_;
+    }
+
+    /// Return local list of G-vectors for a given rank.
+    /** This function must be called by all MPI ranks of the G-vector communicator. */
+    inline auto gvec_local(int rank__) const
+    {
+        int ngv = this->count();
+        this->comm().bcast(&ngv, 1, rank__);
+        mdarray<int, 2> result(3, ngv);
+        if (this->comm().rank() == rank__) {
+            RTE_ASSERT(ngv == this->count());
+            copy(this->gvec_, result);
+        }
+        this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
+        return result;
     }
 };
 
@@ -601,24 +729,17 @@ class Gvec_partition
     /// Distribution of G-vectors inside FFT-friendly "fat" slab.
     block_data_descriptor gvec_fft_slab_;
 
-    /// Offset of the z-column in the local data buffer.
-    /** Global index of z-column is expected */
-    mdarray<int, 1> zcol_offs_;
-
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
 
-    /// Global index of z-column in new (fat-slab) distribution.
-    /** This is a mapping between new and original ordering of z-columns. */
-    mdarray<int, 1> idx_zcol_;
+    /// Lattice coordinates of a local set of G-vectors.
+    /** These are also known as Miller indices */
+    mdarray<int, 2> gvec_array_;
 
-    /// Global index of G-vector by local index inside fat-salb.
-    mdarray<int, 1> idx_gvec_;
+    /// Cartesian coordinaes of a local set of G+k-vectors.
+    mdarray<double, 2> gkvec_cart_array_;
 
     void build_fft_distr();
-
-    /// Calculate offsets of z-columns inside each local buffer of PW coefficients.
-    void calc_offsets();
 
     /// Stack together the G-vector slabs to make a larger ("fat") slab for a FFT driver.
     void pile_gvec();
@@ -649,34 +770,9 @@ class Gvec_partition
     }
 
     /// Return local number of z-columns.
-    inline int zcol_count_fft(int rank__) const
-    {
-        return zcol_distr_fft_.counts[rank__];
-    }
-
     inline int zcol_count_fft() const
     {
-        return zcol_count_fft(fft_comm().rank());
-    }
-
-    template <index_domain_t index_domain>
-    inline int idx_zcol(int idx__) const
-    {
-        switch (index_domain) {
-            case index_domain_t::local: {
-                return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
-                break;
-            }
-            case index_domain_t::global: {
-                return idx_zcol_(idx__);
-                break;
-            }
-        }
-    }
-
-    inline int idx_gvec(int idx_local__) const
-    {
-        return idx_gvec_(idx_local__);
+        return zcol_distr_fft_.counts[fft_comm().rank()];
     }
 
     inline block_data_descriptor const& gvec_fft_slab() const
@@ -684,20 +780,23 @@ class Gvec_partition
         return gvec_fft_slab_;
     }
 
-    inline int zcol_offs(int icol__) const
-    {
-        return zcol_offs_(icol__);
-    }
-
     inline Gvec const& gvec() const
     {
         return gvec_;
     }
 
-    mdarray<int, 2> get_gvec() const;
+    inline vector3d<double> gkvec_cart(int igloc__) const
+    {
+        return vector3d<double>(&gkvec_cart_array_(0, igloc__));
+    }
 
-    template <typename T>
-    void gather_pw_fft(std::complex<T>* f_pw_local__, std::complex<T>* f_pw_fft__) const
+    inline mdarray<int, 2> const& gvec_array() const
+    {
+        return gvec_array_;
+    }
+
+    template <typename T> // TODO: document
+    void gather_pw_fft(std::complex<T> const* f_pw_local__, std::complex<T>* f_pw_fft__) const
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
@@ -706,8 +805,8 @@ class Gvec_partition
 
     }
 
-    template <typename T>
-    void gather_pw_global(std::complex<T>* f_pw_fft__, std::complex<T>* f_pw_global__) const
+    template <typename T> // TODO: document
+    void gather_pw_global(std::complex<T> const* f_pw_fft__, std::complex<T>* f_pw_global__) const
     {
         for (int ig = 0; ig < gvec().count(); ig++) {
             /* position inside fft buffer */
@@ -715,6 +814,18 @@ class Gvec_partition
             f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
         }
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
+    }
+
+    template<typename T>
+    void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
+    {
+        for (int i = 0; i < comm_ortho_fft_.size(); i++) {
+            /* offset in global index */
+            int offset = this->gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i));
+            for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
+                f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
+            }
+        }
     }
 };
 

@@ -43,7 +43,7 @@ class Radial_integrals_base
     Radial_grid<double> grid_q_;
 
     /// Split index of q-points.
-    splindex<splindex_t::block> spl_q_;
+    sddk::splindex<sddk::splindex_t::block> spl_q_;
 
     /// Array with integrals.
     sddk::mdarray<Spline<double>, N> values_;
@@ -64,7 +64,8 @@ class Radial_integrals_base
         qmax_ = qmax__ + std::max(10.0, qmax__ * 0.1);
 
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax_), 0, qmax_);
-        spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+        spl_q_  = sddk::splindex<sddk::splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(),
+                                                          unit_cell_.comm().rank());
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
@@ -230,7 +231,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
         , ri_callback_(ri_callback__)
     {
         if (ri_callback__ == nullptr) {
-            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            values_ = sddk::mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
             generate();
 
             if (unit_cell_.parameters().cfg().control().print_checksum() && unit_cell_.comm().rank() == 0) {
@@ -249,7 +250,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -284,7 +285,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
         , ri_callback_(ri_callback__)
     {
         if (ri_callback_ == nullptr) {
-            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            values_ = sddk::mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
             generate();
         }
     }
@@ -293,7 +294,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -333,7 +334,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     {
         if (ri_callback_ == nullptr) {
             /* create space for <j_l(qr)|beta> or <d j_l(qr) / dq|beta> radial integrals */
-            values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+            values_ = sddk::mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
             generate();
         }
     }
@@ -369,7 +370,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         , ri_callback_(ri_callback__)
     {
         if (ri_callback_ == nullptr) {
-            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            values_ = sddk::mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
             generate();
         }
     }
@@ -404,7 +405,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -434,7 +435,7 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
     Radial_integrals_rho_free_atom(Unit_cell const& unit_cell__, double qmax__, int np__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
     {
-        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+        values_ = sddk::mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
     }
 

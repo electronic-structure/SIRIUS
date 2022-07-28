@@ -7,6 +7,7 @@
 
 using namespace sirius;
 using json = nlohmann::json;
+using namespace sddk;
 
 const std::string aiida_output_file = "output_aiida.json";
 

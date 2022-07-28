@@ -205,14 +205,6 @@ struct mpi_type_wrapper<uint32_t>
     }
 };
 
-struct alltoall_descriptor
-{
-    std::vector<int> sendcounts;
-    std::vector<int> sdispls;
-    std::vector<int> recvcounts;
-    std::vector<int> rdispls;
-};
-
 struct block_data_descriptor
 {
     int num_ranks{-1};
@@ -566,7 +558,7 @@ class Communicator
     /// Out-of-place MPI_Allgatherv.
     template <typename T>
     void
-    allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+    allgather(T const* sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Allgatherv");
@@ -721,12 +713,8 @@ class Communicator
     }
 
     template <typename T>
-    void alltoall(T const* sendbuf__,
-                  int const* sendcounts__,
-                  int const* sdispls__,
-                  T* recvbuf__,
-                  int const* recvcounts__,
-                  int const* rdispls__) const
+    void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, T* recvbuf__,
+                  int const* recvcounts__, int const* rdispls__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Alltoallv");
@@ -796,11 +784,12 @@ class pstdout : public std::stringstream
     }
 };
 
-inline std::ostream& operator<<(std::ostream& out__, pstdout const& in__)
-{
-    out__ << in__.get().str();
-    return out__;
-}
+// TODO: document or remove
+//inline std::ostream& operator<<(std::ostream& out__, pstdout const& in__)
+//{
+//    out__ << in__.get().str();
+//    return out__;
+//}
 
 } // namespace sddk
 

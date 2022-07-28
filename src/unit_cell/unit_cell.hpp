@@ -58,16 +58,16 @@ class Unit_cell
     std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
-    splindex<splindex_t::block> spl_num_atoms_;
+    sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    splindex<splindex_t::block> spl_num_paw_atoms_;
+    sddk::splindex<sddk::splindex_t::block> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    splindex<splindex_t::block> spl_num_atom_symmetry_classes_;
+    sddk::splindex<sddk::splindex_t::block> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:
@@ -159,9 +159,9 @@ class Unit_cell
     std::unique_ptr<Crystal_symmetry> symmetry_;
 
     /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
-    std::vector<mdarray<double, 2>> atom_coord_;
+    std::vector<sddk::mdarray<double, 2>> atom_coord_;
 
-    Communicator const& comm_;
+    sddk::Communicator const& comm_;
 
     std::pair<int, std::vector<int>> num_hubbard_wf_;
 
@@ -171,7 +171,7 @@ class Unit_cell
     int next_atom_type_id(std::string label__);
 
   public:
-    Unit_cell(Simulation_parameters const& parameters__, Communicator const& comm__);
+    Unit_cell(Simulation_parameters const& parameters__, sddk::Communicator const& comm__);
 
     ~Unit_cell();
 
@@ -208,7 +208,7 @@ class Unit_cell
     }
 
     /// Get split index of PAW atoms.
-    inline splindex<splindex_t::block> spl_num_paw_atoms() const
+    inline auto const& spl_num_paw_atoms() const
     {
         return spl_num_paw_atoms_;
     }

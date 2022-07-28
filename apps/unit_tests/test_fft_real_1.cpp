@@ -4,6 +4,7 @@
 /* test transformation of real function */
 
 using namespace sirius;
+using namespace sddk;
 
 int run_test(cmd_args& args, device_t pu__)
 {

@@ -32,69 +32,14 @@
 
 namespace sirius {
 
-class K_point_base // TODO: good name? maybe k_point?
-{
-  protected:
-    /// Fractional k-point coordinates.
-    std::array<double, 3> vk_;
-
-    /// List of G-vectors with |G+k| < cutoff.
-    std::unique_ptr<Gvec> gkvec_;
-
-    /// Communicator for parallelization inside k-point.
-    /** This communicator is used to split G+k vectors and wave-functions. */
-    sddk::Communicator const& comm_;
-
-    void init(double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__, bool gamma__)
-    {
-        /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
-         * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-        gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, reciprocal_lattice_vectors__, gk_cutoff__, comm_, gamma__));
-    }
-
-  public:
-    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
-                 bool gamma__)
-        : vk_(vk__)
-        , comm_(sddk::Communicator::self())
-    {
-        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
-    }
-
-    K_point_base(std::array<double, 3> vk__, double gk_cutoff__, matrix3d<double> reciprocal_lattice_vectors__,
-                 bool gamma__, sddk::Communicator const& comm__)
-        : vk_(vk__)
-        , comm_(comm__)
-    {
-        init(gk_cutoff__, reciprocal_lattice_vectors__, gamma__);
-    }
-
-    inline Gvec const& gkvec() const
-    {
-        return *gkvec_;
-    }
-
-    /// Total number of G+k vectors within the cutoff distance
-    inline int num_gkvec() const
-    {
-        return gkvec_->num_gvec();
-    }
-
-    /// Local number of G+k vectors in case of flat distribution.
-    inline int num_gkvec_loc() const
-    {
-        return gkvec().count();
-    }
-};
-
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage"
  *  \image html fv_eigen_vectors.png "First-variational eigen vectors"
  *
- *   \tparam T  Precision of the wave-functions (float or double).
+ *  \tparam T  Precision of the wave-functions (float or double).
  */
 template <typename T>
-class K_point : public K_point_base
+class K_point
 {
   private:
     /// Simulation context.
@@ -103,14 +48,25 @@ class K_point : public K_point_base
     /// Unit cell object.
     Unit_cell const& unit_cell_;
 
-    /// K-point id.
-    int id_{-1};
+    /// Fractional k-point coordinates.
+    vector3d<double> vk_;
 
     /// Weight of k-point.
     double weight_{1.0};
 
+    /// Communicator for parallelization inside k-point.
+    /** This communicator is used to split G+k vectors and wave-functions. */
+    sddk::Communicator const& comm_;
+
+    /// List of G-vectors with |G+k| < cutoff.
+    std::shared_ptr<sddk::Gvec> gkvec_;
+
+    std::shared_ptr<sddk::Gvec> gkvec_row_;
+
+    std::shared_ptr<sddk::Gvec> gkvec_col_;
+
     /// G-vector distribution for the FFT transformation.
-    std::unique_ptr<Gvec_partition> gkvec_partition_;
+    std::unique_ptr<sddk::Gvec_partition> gkvec_partition_;
 
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
@@ -118,40 +74,40 @@ class K_point : public K_point_base
     sddk::mdarray<double, 1> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
-    dmatrix<std::complex<T>> fv_eigen_vectors_;
+    sddk::dmatrix<std::complex<T>> fv_eigen_vectors_;
 
     /// First-variational eigen vectors, distributed in slabs.
-    std::unique_ptr<Wave_functions<T>> fv_eigen_vectors_slab_;
+    std::unique_ptr<sddk::Wave_functions<T>> fv_eigen_vectors_slab_;
 
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
-    std::unique_ptr<Wave_functions<T>> singular_components_;
+    std::unique_ptr<sddk::Wave_functions<T>> singular_components_;
 
     /// Second-variational eigen vectors.
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
      *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
      *  matrix in case of general non-collinear magnetism. */
-    dmatrix<std::complex<T>> sv_eigen_vectors_[2];
+    sddk::dmatrix<std::complex<T>> sv_eigen_vectors_[2];
 
     /// Full-diagonalization eigen vectors.
-    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
+    sddk::mdarray<std::complex<T>, 2> fd_eigen_vectors_;
 
     /// First-variational states.
-    std::unique_ptr<Wave_functions<T>> fv_states_{nullptr};
+    std::unique_ptr<sddk::Wave_functions<T>> fv_states_{nullptr};
 
     /// Two-component (spinor) wave functions describing the bands.
-    std::shared_ptr<Wave_functions<T>> spinor_wave_functions_{nullptr};
+    std::shared_ptr<sddk::Wave_functions<T>> spinor_wave_functions_{nullptr};
 
     /// Pseudopotential atmoic wave-functions (not orthogonalized).
-    std::unique_ptr<Wave_functions<T>> atomic_wave_functions_{nullptr};
+    std::unique_ptr<sddk::Wave_functions<T>> atomic_wave_functions_{nullptr};
 
     /// Pseudopotential atmoic wave-functions (not orthogonalized) with S-operator applied.
-    std::unique_ptr<Wave_functions<T>> atomic_wave_functions_S_{nullptr};
+    std::unique_ptr<sddk::Wave_functions<T>> atomic_wave_functions_S_{nullptr};
 
     /// Hubbard wave functions.
-    std::unique_ptr<Wave_functions<T>> hubbard_wave_functions_{nullptr};
+    std::unique_ptr<sddk::Wave_functions<T>> hubbard_wave_functions_{nullptr};
 
     /// Hubbard wave functions with S-operator applied.
-    std::unique_ptr<Wave_functions<T>> hubbard_wave_functions_S_{nullptr};
+    std::unique_ptr<sddk::Wave_functions<T>> hubbard_wave_functions_S_{nullptr};
 
     /// Band occupation numbers.
     sddk::mdarray<double, 2> band_occupancies_;
@@ -187,9 +143,6 @@ class K_point : public K_point_base
 
     /// Number of G+k vectors distributed along columns of MPI grid
     int num_gkvec_col_{0};
-
-    /// Offset of the local fraction of G+k vectors in the global index.
-    int gkvec_offset_{0};
 
     /// Basis descriptors distributed between rows of the 2D MPI grid.
     /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
@@ -235,13 +188,13 @@ class K_point : public K_point_base
     std::unique_ptr<Beta_projectors<T>> beta_projectors_col_{nullptr};
 
     /// Preconditioner matrix for Chebyshev solver.
-    mdarray<std::complex<T>, 3> p_mtrx_;
+    sddk::mdarray<std::complex<T>, 3> p_mtrx_;
 
     /// Communicator between(!!) rows.
-    Communicator const& comm_row_;
+    sddk::Communicator const& comm_row_;
 
     /// Communicator between(!!) columns.
-    Communicator const& comm_col_;
+    sddk::Communicator const& comm_col_;
 
     std::array<int, 2> ispn_map_;
 
@@ -262,36 +215,14 @@ class K_point : public K_point_base
 
     friend class K_point_set;
 
-  public:
-    /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
-        : K_point_base(std::array<double, 3>({vk__[0], vk__[1], vk__[2]}), ctx__.gk_cutoff(),
-                       ctx__.unit_cell().reciprocal_lattice_vectors(), ctx__.gamma_point(), ctx__.comm_band())
-        , ctx_(ctx__)
-        , unit_cell_(ctx_.unit_cell())
-        , id_(id__)
-        , weight_(weight__)
-        , comm_row_(ctx_.blacs_grid().comm_row())
-        , comm_col_(ctx_.blacs_grid().comm_col())
+    void init0()
     {
-        PROFILE("sirius::K_point::K_point");
-
-        for (int x = 0; x < 3; x++) {
-            vk_[x] = vk__[x];
-        }
-
         band_occupancies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
-                                                     memory_t::host, "band_occupancies");
+                                                     sddk::memory_t::host, "band_occupancies");
         band_occupancies_.zero();
         band_energies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
-                                                  memory_t::host, "band_energies");
+                                                  sddk::memory_t::host, "band_energies");
         band_energies_.zero();
-
-        num_ranks_row_ = comm_row_.size();
-        num_ranks_col_ = comm_col_.size();
-
-        rank_row_ = comm_row_.rank();
-        rank_col_ = comm_col_.rank();
 
         ispn_map_[0] = 0;
         ispn_map_[1] = -1;
@@ -300,6 +231,44 @@ class K_point : public K_point_base
         } else if (ctx_.num_mag_dims() == 3) {
             ispn_map_[1] = 0;
         }
+    }
+
+  public:
+    /// Constructor
+    K_point(Simulation_context& ctx__, vector3d<double> vk__, double weight__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx_.unit_cell())
+        , vk_(vk__)
+        , weight_(weight__)
+        , comm_(ctx_.comm_band())
+        , rank_col_(ctx_.blacs_grid().comm_col().rank())
+        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+        , rank_row_(ctx_.blacs_grid().comm_row().rank())
+        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+        , comm_row_(ctx_.blacs_grid().comm_row())
+        , comm_col_(ctx_.blacs_grid().comm_col())
+    {
+        this->init0();
+        gkvec_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
+                                        ctx_.gamma_point());
+    }
+
+    /// Constructor
+    K_point(Simulation_context& ctx__, std::shared_ptr<sddk::Gvec> gkvec__, double weight__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx_.unit_cell())
+        , vk_(gkvec__->vk())
+        , weight_(weight__)
+        , comm_(ctx_.comm_band())
+        , gkvec_(gkvec__)
+        , rank_col_(ctx_.blacs_grid().comm_col().rank())
+        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+        , rank_row_(ctx_.blacs_grid().comm_row().rank())
+        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+        , comm_row_(ctx_.blacs_grid().comm_row())
+        , comm_col_(ctx_.blacs_grid().comm_col())
+    {
+        this->init0();
     }
 
     /// Initialize the k-point related arrays and data.
@@ -384,17 +353,20 @@ class K_point : public K_point_base
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
 
-    void load(HDF5_tree h5in, int id);
+    void load(sddk::HDF5_tree h5in, int id);
 
     //== void save_wave_functions(int id);
 
     //== void load_wave_functions(int id);
 
     /// Collect distributed first-variational vectors into a global array.
-    void get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
+    void get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) const;
+
+    /// Test orthonormalization of spinor wave-functions
+    void test_spinor_wave_functions(int use_fft);
 
     /// Collect distributed second-variational vectors into a global array.
-    void get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
+    void get_sv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& sv_evec__) const
     {
         RTE_ASSERT((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
         RTE_ASSERT((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
@@ -421,11 +393,25 @@ class K_point : public K_point_base
             }
         }
 
-        comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
+        comm().allreduce(sv_evec__.at(sddk::memory_t::host), (int)sv_evec__.size());
     }
 
-    /// Test orthonormalization of spinor wave-functions
-    void test_spinor_wave_functions(int use_fft);
+    inline auto const& gkvec() const
+    {
+        return *gkvec_;
+    }
+
+    /// Total number of G+k vectors within the cutoff distance
+    inline int num_gkvec() const
+    {
+        return gkvec_->num_gvec();
+    }
+
+    /// Local number of G+k vectors in case of flat distribution.
+    inline int num_gkvec_loc() const
+    {
+        return gkvec().count();
+    }
 
     /// Get the number of occupied bands for each spin channel.
     inline int num_occupied_bands(int ispn__ = -1) const
@@ -481,76 +467,76 @@ class K_point : public K_point_base
         return weight_;
     }
 
-    inline Wave_functions<T>& fv_states()
+    inline auto& fv_states()
     {
-        assert(fv_states_ != nullptr);
+        RTE_ASSERT(fv_states_ != nullptr);
         return *fv_states_;
     }
 
-    inline Wave_functions<T>& spinor_wave_functions()
+    inline auto& spinor_wave_functions()
     {
-        assert(spinor_wave_functions_ != nullptr);
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline std::shared_ptr<Wave_functions<T>> spinor_wave_functions_ptr()
+    inline auto spinor_wave_functions_ptr()
     {
         return spinor_wave_functions_;
     }
 
     /// return the initial atomic orbitals used to compute the hubbard wave functions. the S operator is applied on
     /// these functions
-    inline Wave_functions<T> const& atomic_wave_functions_S() const
+    inline auto const& atomic_wave_functions_S() const
     {
         /* the S operator is applied on these functions */
         RTE_ASSERT(atomic_wave_functions_S_ != nullptr);
         return *atomic_wave_functions_S_;
     }
 
-    inline Wave_functions<T>& atomic_wave_functions_S()
+    inline auto& atomic_wave_functions_S()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S());
+        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S());
     }
 
-    inline Wave_functions<T> const& atomic_wave_functions() const
+    inline auto const& atomic_wave_functions() const
     {
         RTE_ASSERT(atomic_wave_functions_ != nullptr);
         return *atomic_wave_functions_;
     }
 
     /// return the initial atomic orbitals used to compute the hubbard wave functions.
-    inline Wave_functions<T>& atomic_wave_functions()
+    inline auto& atomic_wave_functions()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions());
+        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions());
     }
 
     /// return the actual hubbard wave functions used in the calculations. The S operator is applied when uspp are used.
-    inline Wave_functions<T> const& hubbard_wave_functions_S() const
+    inline auto const& hubbard_wave_functions_S() const
     {
-        assert(hubbard_wave_functions_S_ != nullptr);
+        RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
         return *hubbard_wave_functions_S_;
     }
 
     /// return the actual hubbard wave functions used in the calculations. The S operator is applied when uspp are used.
-    inline Wave_functions<T>& hubbard_wave_functions_S()
+    inline auto& hubbard_wave_functions_S()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions_S());
+        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions_S());
     }
 
     /// return the actual hubbard wave functions used in the calculations.
-    inline Wave_functions<T> const& hubbard_wave_functions() const
+    inline auto const& hubbard_wave_functions() const
     {
-        assert(hubbard_wave_functions_ != nullptr);
+        RTE_ASSERT(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
     }
 
     /// return the actual hubbard wave functions used in the calculations.
-    inline Wave_functions<T>& hubbard_wave_functions()
+    inline auto& hubbard_wave_functions()
     {
-        return const_cast<Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions());
+        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions());
     }
 
-    inline Wave_functions<T>& singular_components()
+    inline auto& singular_components()
     {
         return *singular_components_;
     }
@@ -568,10 +554,10 @@ class K_point : public K_point_base
         return num_gkvec() + unit_cell_.mt_lo_basis_size();
     }
 
-    /// Return global index of G+k vector.
+    /// Return global index of G+k vector. // TODO: consider removal
     inline int idxgk(int igkloc__) const
     {
-        return gkvec_offset_ + igkloc__;
+        return gkvec_->offset() + igkloc__;
     }
 
     /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -612,13 +598,13 @@ class K_point : public K_point_base
 
     inline lo_basis_descriptor const& lo_basis_descriptor_col(int idx) const
     {
-        assert(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
+        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
         return lo_basis_descriptors_col_[idx];
     }
 
     inline lo_basis_descriptor const& lo_basis_descriptor_row(int idx) const
     {
-        assert(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
+        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
         return lo_basis_descriptors_row_[idx];
     }
 
@@ -707,22 +693,22 @@ class K_point : public K_point_base
         return atom_lo_rows_[ia][i];
     }
 
-    inline dmatrix<std::complex<T>>& fv_eigen_vectors()
+    inline auto& fv_eigen_vectors()
     {
         return fv_eigen_vectors_;
     }
 
-    inline Wave_functions<T>& fv_eigen_vectors_slab()
+    inline auto& fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
     }
 
-    inline dmatrix<std::complex<T>>& sv_eigen_vectors(int ispn)
+    inline auto& sv_eigen_vectors(int ispn)
     {
         return sv_eigen_vectors_[ispn];
     }
 
-    inline mdarray<std::complex<T>, 2>& fd_eigen_vectors()
+    inline auto& fd_eigen_vectors()
     {
         return fd_eigen_vectors_;
     }
@@ -732,71 +718,71 @@ class K_point : public K_point_base
         std::copy(&fv_eigen_values_[0], &fv_eigen_values_[0] + ctx_.num_fv_states(), &band_energies_[0]);
     }
 
-    inline Matching_coefficients const& alm_coeffs_row() const
+    inline auto const& alm_coeffs_row() const
     {
         return *alm_coeffs_row_;
     }
 
-    inline Matching_coefficients const& alm_coeffs_col() const
+    inline auto const& alm_coeffs_col() const
     {
         return *alm_coeffs_col_;
     }
 
-    inline Matching_coefficients const& alm_coeffs_loc() const
+    inline auto const& alm_coeffs_loc() const
     {
         return *alm_coeffs_loc_;
     }
 
-    inline Communicator const& comm() const
+    inline auto const& comm() const
     {
         return comm_;
     }
 
-    inline Communicator const& comm_row() const
+    inline auto const& comm_row() const
     {
         return comm_row_;
     }
 
-    inline Communicator const& comm_col() const
+    inline auto const& comm_col() const
     {
         return comm_col_;
     }
 
-    inline std::complex<T> p_mtrx(int xi1, int xi2, int iat) const
+    inline auto p_mtrx(int xi1, int xi2, int iat) const
     {
         return p_mtrx_(xi1, xi2, iat);
     }
 
-    inline mdarray<std::complex<T>, 3>& p_mtrx()
+    inline auto& p_mtrx()
     {
         return p_mtrx_;
     }
 
-    Beta_projectors<T>& beta_projectors()
+    auto& beta_projectors()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<T> const& beta_projectors() const
+    auto const& beta_projectors() const
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    Beta_projectors<T>& beta_projectors_row()
+    auto& beta_projectors_row()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_row_;
     }
 
-    Beta_projectors<T>& beta_projectors_col()
+    auto& beta_projectors_col()
     {
-        assert(beta_projectors_ != nullptr);
+        RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_col_;
     }
 
-    Simulation_context const& ctx() const
+    auto const& ctx() const
     {
         return ctx_;
     }
@@ -813,17 +799,17 @@ class K_point : public K_point_base
         }
     }
 
-    spfft_transform_type<T>& spfft_transform()
+    auto& spfft_transform()
     {
         return *spfft_transform_;
     }
 
-    spfft_transform_type<T> const& spfft_transform() const
+    auto const& spfft_transform() const
     {
         return *spfft_transform_;
     }
 
-    inline Gvec_partition const& gkvec_partition() const
+    inline auto const& gkvec_partition() const
     {
         return *gkvec_partition_;
     }

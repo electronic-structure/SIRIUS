@@ -56,19 +56,13 @@ class Matching_coefficients // TODO: compute on GPU
     /// Description of the unit cell.
     Unit_cell const& unit_cell_;
 
-    /// Number of the G+k vectors for which matching coefficients are constructed.
-    int num_gkvec_;
-
-    /// Index of the G+k vectors inside gkvec class, for which the matching coefficients are constructed.
-    std::vector<int>& igk_;
-
     /// Description of the G+k vectors.
-    Gvec const& gkvec_;
+    sddk::Gvec const& gkvec_;
+
+    std::vector<double> gkvec_len_;
 
     /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
     sddk::mdarray<double_complex, 2> gkvec_ylm_;
-
-    std::vector<double> gkvec_len_;
 
     /// Precomputed values for the linear equations for matching coefficients.
     sddk::mdarray<double_complex, 4> alm_b_;
@@ -115,19 +109,15 @@ class Matching_coefficients // TODO: compute on GPU
 
   public:
     /// Constructor
-    Matching_coefficients(Unit_cell const& unit_cell__, int num_gkvec__, std::vector<int>& igk__,
-                          Gvec const& gkvec__)
+    Matching_coefficients(Unit_cell const& unit_cell__, sddk::Gvec const& gkvec__)
         : unit_cell_(unit_cell__)
-        , num_gkvec_(num_gkvec__)
-        , igk_(igk__)
         , gkvec_(gkvec__)
     {
         int lmax_apw  = unit_cell__.lmax_apw();
         int lmmax_apw = utils::lmmax(lmax_apw);
 
-        gkvec_ylm_ = sddk::mdarray<double_complex, 2>(num_gkvec_, lmmax_apw);
-
-        gkvec_len_.resize(num_gkvec_);
+        gkvec_ylm_ = sddk::mdarray<double_complex, 2>(gkvec_.count(), lmmax_apw);
+        gkvec_len_.resize(gkvec_.count());
 
         /* get length and Ylm harmonics of G+k vectors */
         #pragma omp parallel
@@ -135,14 +125,14 @@ class Matching_coefficients // TODO: compute on GPU
             std::vector<double_complex> ylm(lmmax_apw);
 
             #pragma omp for
-            for (int i = 0; i < num_gkvec_; i++) {
-                auto gkvec_cart = gkvec_.gkvec_cart<index_domain_t::global>(igk_[i]);
+            for (int i = 0; i < gkvec_.count(); i++) {
+                auto gkvec_cart = gkvec_.gkvec_cart<sddk::index_domain_t::local>(i);
                 /* get r, theta, phi */
                 auto vs = SHT::spherical_coordinates(gkvec_cart);
+                gkvec_len_[i] = vs[0];
 
                 /* get spherical harmonics */
                 sf::spherical_harmonics(lmax_apw, vs[1], vs[2], &ylm[0]);
-                gkvec_len_[i] = vs[0];
 
                 for (int lm = 0; lm < lmmax_apw; lm++) {
                     gkvec_ylm_(i, lm) = ylm[lm];
@@ -150,7 +140,7 @@ class Matching_coefficients // TODO: compute on GPU
             }
         }
 
-        alm_b_ = sddk::mdarray<double_complex, 4>(3, num_gkvec_, lmax_apw + 1, unit_cell_.num_atom_types());
+        alm_b_ = sddk::mdarray<double_complex, 4>(3, gkvec_.count(), lmax_apw + 1, unit_cell_.num_atom_types());
         alm_b_.zero();
 
         #pragma omp parallel
@@ -159,7 +149,7 @@ class Matching_coefficients // TODO: compute on GPU
             sddk::mdarray<double, 2> sbessel_mt(lmax_apw + 2, 3);
 
             #pragma omp for
-            for (int igk = 0; igk < num_gkvec_; igk++) {
+            for (int igk = 0; igk < gkvec_.count(); igk++) {
                 for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                     double R = unit_cell_.atom_type(iat).mt_radius();
 
@@ -208,9 +198,9 @@ class Matching_coefficients // TODO: compute on GPU
 
         int iat = type.id();
 
-        std::vector<double_complex> phase_factors(num_gkvec_);
-        for (int i = 0; i < num_gkvec_; i++) {
-            double phase     = twopi * dot(gkvec_.gkvec(igk_[i]), atom__.position());
+        std::vector<double_complex> phase_factors(gkvec_.count());
+        for (int i = 0; i < gkvec_.count(); i++) {
+            double phase     = twopi * dot(gkvec_.template gkvec<sddk::index_domain_t::local>(i), atom__.position());
             phase_factors[i] = std::exp(double_complex(0, phase));
         }
 
@@ -283,17 +273,17 @@ class Matching_coefficients // TODO: compute on GPU
             switch (num_aw) {
                 /* APW */
                 case 1: {
-                    generate<1, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
+                    generate<1, conjugate>(gkvec_.count(), phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 /* LAPW */
                 case 2: {
-                    generate<2, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
+                    generate<2, conjugate>(gkvec_.count(), phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 /* Super LAPW */
                 case 3: {
-                    generate<3, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
+                    generate<3, conjugate>(gkvec_.count(), phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 default: {

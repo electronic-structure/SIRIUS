@@ -3,6 +3,7 @@
 #include <complex.h>
 
 using namespace sirius;
+using namespace sddk;
 
 /* Generated with the following Mathematica code
 

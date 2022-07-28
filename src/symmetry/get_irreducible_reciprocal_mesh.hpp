@@ -51,7 +51,7 @@ get_irreducible_reciprocal_mesh(Crystal_symmetry const& sym__, vector3d<int> k_m
 
     int nktot = k_mesh__[0] * k_mesh__[1] * k_mesh__[2];
 
-    mdarray<int, 2> ikgrid(3, nktot);
+    sddk::mdarray<int, 2> ikgrid(3, nktot);
     std::vector<int> ikmap(nktot, 0);
 
     double q[] = {0, 0, 0};

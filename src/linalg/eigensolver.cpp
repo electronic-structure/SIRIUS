@@ -26,7 +26,7 @@
 #include "eigenproblem.hpp"
 
 std::unique_ptr<Eigensolver>
-Eigensolver_factory(std::string name__, memory_pool* mpd__)
+Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 

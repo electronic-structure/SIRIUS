@@ -54,9 +54,9 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     }
 
     const int bs = ctx_.cyclic_block_size();
-    dmatrix<T> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<T> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<T> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
     std::vector<real_type<T>> eval(kp.num_gkvec());
 
     hmlt.zero();
@@ -65,7 +65,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     auto& gen_solver = ctx_.gen_evp_solver();
 
     for (int ig = 0; ig < kp.num_gkvec(); ig++) {
-        hmlt.set(ig, ig, 0.5 * std::pow(kp.gkvec().template gkvec_cart<index_domain_t::global>(ig).length(), 2));
+        hmlt.set(ig, ig, 0.5 * std::pow(kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(ig).length(), 2));
         ovlp.set(ig, ig, 1);
     }
 
@@ -84,10 +84,10 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     #pragma omp parallel for schedule(static)
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
         int ig_col    = kp.igk_col(igk_col);
-        auto gvec_col = kp.gkvec().gvec(ig_col);
+        auto gvec_col = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_col);
         for (int igk_row = 0; igk_row < kp.num_gkvec_row(); igk_row++) {
             int ig_row    = kp.igk_row(igk_row);
-            auto gvec_row = kp.gkvec().gvec(ig_row);
+            auto gvec_row = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_row);
             auto ig12 = ctx_.gvec().index_g12_safe(gvec_row, gvec_col);
 
             if (ispn__ == 0) {
@@ -137,21 +137,21 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
                 }
             }
             /* compute <G+k|beta> D */
-            linalg(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                &linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
-                &linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
+            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+                &sddk::linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
+                &sddk::linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
-            linalg(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                &linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                &linalg_const<T>::one(), &hmlt(0, 0), hmlt.ld());
+            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+                &sddk::linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                &sddk::linalg_const<T>::one(), &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
-                linalg(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                    &linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
-                    &linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
-                linalg(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                    &linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                    &linalg_const<T>::one(), &ovlp(0, 0), ovlp.ld());
+                sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+                    &sddk::linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
+                    &sddk::linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
+                sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+                    &sddk::linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                    &sddk::linalg_const<T>::one(), &ovlp(0, 0), ovlp.ld());
             }
         } // i (atoms in chunk)
     }
@@ -175,8 +175,8 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     if (ctx_.cfg().control().verification() >= 2) {
         ctx_.message(1, __function_name__, "%s", "checking eigen-values of S-matrix\n");
 
-        dmatrix<T> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-        dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<T> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
 
         ovlp >> ovlp1;
 
@@ -231,7 +231,7 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* eigen-vectors */
-    Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
+    sddk::Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
     for (int i = 0; i < nevec; i++) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
@@ -280,11 +280,11 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 }
 
 template
-mdarray<double, 1>
+sddk::mdarray<double, 1>
 Band::diag_S_davidson<double>(Hamiltonian_k<double>& Hk__) const;
 
 template
-mdarray<double, 1>
+sddk::mdarray<double, 1>
 Band::diag_S_davidson<std::complex<double>>(Hamiltonian_k<double>& Hk__) const;
 
 template
@@ -300,11 +300,11 @@ Band::diag_pseudo_potential_exact<double>(int ispn__, Hamiltonian_k<double>& Hk_
 
 #if defined(USE_FP32)
 template
-mdarray<float, 1>
+sddk::mdarray<float, 1>
 Band::diag_S_davidson<float>(Hamiltonian_k<float>& Hk__) const;
 
 template
-mdarray<float, 1>
+sddk::mdarray<float, 1>
 Band::diag_S_davidson<std::complex<float>>(Hamiltonian_k<float>& Hk__) const;
 
 template

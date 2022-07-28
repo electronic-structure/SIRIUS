@@ -1,6 +1,7 @@
 #include <sirius.hpp>
 
 using namespace sirius;
+using namespace sddk;
 
 void test(std::vector<int> sizes, memory_t M__)
 {

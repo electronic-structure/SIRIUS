@@ -3,6 +3,7 @@
 /* test FFT: tranfrom random function to real space, transform back and compare with the original function */
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T>
 int test_fft_complex(cmd_args& args, device_t fft_pu__)
@@ -29,7 +30,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-    auto gv = gvp.get_gvec();
+    auto const& gv = gvp.gvec_array();
      spfft_transform_type<T> spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host)));
