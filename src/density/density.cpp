@@ -230,11 +230,14 @@ Density::initial_density_pseudo()
         /* auxiliary weight function; the volume integral of this function is equal to 1 */
         auto w = [](double R, double x) -> double {
 
-            if (x > R) return 0;
+            const double norm = fourpi * std::pow(R, 3) / 3.0;
+            return (35.0 / 8) * std::pow(1 - std::pow(x / R, 2), 2) / norm;
 
-            double norm = 3.1886583903476735 * std::pow(R, 3);
+            // if (x > R) return 0;
 
-            return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
+            // double norm = 3.1886583903476735 * std::pow(R, 3);
+
+            // return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
         };
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
