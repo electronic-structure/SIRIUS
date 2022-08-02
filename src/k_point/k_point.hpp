@@ -95,6 +95,7 @@ class K_point
 
     /// First-variational states.
     std::unique_ptr<sddk::Wave_functions<T>> fv_states_{nullptr};
+    std::unique_ptr<wf::Wave_functions<T>> fv_states_new_{nullptr};
 
     /// Two-component (spinor) wave functions describing the bands.
     std::shared_ptr<sddk::Wave_functions<T>> spinor_wave_functions_{nullptr};

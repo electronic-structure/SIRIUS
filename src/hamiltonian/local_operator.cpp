@@ -908,9 +908,9 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
     sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->gvec_count_fft(), ctx_.mem_pool(sddk::memory_t::host));
 
     // TODO: need to pass temporaty functions or allocate from the pool
-    wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
-    wf::Wave_functions_fft<T> hphi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
-    wf::Wave_functions_fft<T> ophi_fft(gkvec_fft__, b__.size(), sddk::memory_t::host);
+    wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, wf::num_bands(b__.size()), sddk::memory_t::host);
+    wf::Wave_functions_fft<T> hphi_fft(gkvec_fft__, wf::num_bands(b__.size()), sddk::memory_t::host);
+    wf::Wave_functions_fft<T> ophi_fft(gkvec_fft__, wf::num_bands(b__.size()), sddk::memory_t::host);
 
     //if (ctx_.processing_unit() == device_t::GPU) {
     //    phi__.pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);

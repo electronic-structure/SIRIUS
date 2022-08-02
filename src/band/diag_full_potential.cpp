@@ -138,14 +138,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
             diff += std::abs(kp.fv_eigen_vectors_slab().pw_coeffs(0).prime(ig, i) -
-                    kp.fv_eigen_vectors_slab_new().pw_coeffs(sddk::memory_t::host, ig, i, wf::spin_index(0)));
+                    kp.fv_eigen_vectors_slab_new().pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(0), wf::band_index(i)));
         }
         for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
             int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
             for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
                 int j = kp.fv_eigen_vectors_slab().offset_mt_coeffs(ialoc) + xi;
                 diff += std::abs(kp.fv_eigen_vectors_slab().mt_coeffs(0).prime(j, i) -
-                    kp.fv_eigen_vectors_slab_new().mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), i, wf::spin_index(0)));
+                    kp.fv_eigen_vectors_slab_new().mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)));
             }
         }
     }
@@ -170,7 +170,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
         }
-        wf::Wave_functions<double> ofv_new(kp.gkvec_ptr(), num_mt_coeffs, ctx_.num_fv_states(), 1, sddk::memory_t::host);
+        wf::Wave_functions<double> ofv_new(kp.gkvec_ptr(), num_mt_coeffs, wf::num_spins(1), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
         Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(), nullptr, &ofv_new);
 
@@ -182,14 +182,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                 diff += std::abs(ofv.pw_coeffs(0).prime(ig, i) -
-                        ofv_new.pw_coeffs(sddk::memory_t::host, ig, i, wf::spin_index(0)));
+                        ofv_new.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(0), wf::band_index(i)));
             }
             for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
                 int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
                 for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
                     int j = ofv.offset_mt_coeffs(ialoc) + xi;
                     diff += std::abs(ofv.mt_coeffs(0).prime(j, i) -
-                        ofv_new.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), i, wf::spin_index(0)));
+                        ofv_new.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)));
                 }
             }
         }
