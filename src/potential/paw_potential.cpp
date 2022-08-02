@@ -142,6 +142,7 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
                  std::vector<Flm>& vxc__, const std::string label)
 {
+    PROFILE("sirius::xc_mt_paw");
     int lmmax = utils::lmmax(lmax__);
 
     /* new array to store core and valence densities */
@@ -178,6 +179,8 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
 
 double Potential::calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential)
 {
+    PROFILE("sirius::Potential::calc_PAW_hartree_potential");
+
     int lmsize_rho = static_cast<int>(full_density.size(0));
 
     auto& grid = full_density.radial_grid();
@@ -218,6 +221,8 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& ppd,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
 {
+
+    PROFILE("sirius::Potential::calc_PAW_local_potential");
     /* calculation of Hartree potential */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         ppd.ae_potential_[i].zero();
@@ -261,6 +266,8 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& ppd,
 
 void Potential::calc_PAW_local_Dij(const paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
 {
+
+    PROFILE("sirius::Potential::calc_PAW_local_Dij");
     int paw_ind = pdd.ia_paw;
 
     auto& atom_type = pdd.atom_->type();
@@ -353,6 +360,7 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
                                            sddk::mdarray<double_complex, 4> const& density_matrix,
                                            sddk::mdarray<double, 4> const& paw_dij) const
 {
+    PROFILE("sirius::Potential::calc_PAW_one_elec_energy");
     int ia      = pdd.ia;
     int paw_ind = pdd.ia_paw;
 
