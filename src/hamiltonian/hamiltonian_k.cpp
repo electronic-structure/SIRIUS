@@ -1161,7 +1161,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         /* generate complex conjugated Alm coefficients for a block of atoms */
         auto alm = generate_alm_block<true, T>(ctx, atom_begin, na,  kp().alm_coeffs_loc());
 
-
         if (!phi_is_lo__) {
             auto t0 = utils::time_now();
 
