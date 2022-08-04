@@ -31,6 +31,7 @@ using nlohmann::basic_json;
 
 void init_operators(py::module&);
 void init_symmetry(py::module&);
+void init_atom(py::module&);
 
 // inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object
@@ -161,6 +162,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     init_operators(m);
     init_symmetry(m);
+    init_atom(m);
 
     m.def("num_devices", &acc::num_devices);
 
@@ -206,22 +208,6 @@ PYBIND11_MODULE(py_sirius, m)
             "comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
             py::return_value_policy::reference_internal);
 
-    py::class_<Atom>(m, "Atom")
-        .def("position", &Atom::position)
-        .def("type_id", &Atom::type_id)
-        .def("type", &Atom::type, py::return_value_policy::reference)
-        .def_property_readonly("label", [](const Atom& obj) { return obj.type().label(); })
-        .def_property_readonly("mass", [](const Atom& obj) { return obj.type().mass(); })
-        .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
-            if (pos.size() != 3)
-                throw std::runtime_error("wrong input");
-            obj.set_position({pos[0], pos[1], pos[2]});
-        });
-
-    py::class_<Atom_type>(m, "Atom_type")
-        .def_property_readonly("augment", [](const Atom_type& atype) { return atype.augment(); })
-        .def_property_readonly("mass", &Atom_type::mass)
-        .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
 
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom_type", &Unit_cell::add_atom_type, py::return_value_policy::reference)

@@ -1,5 +1,5 @@
 find_package(Python3 COMPONENTS Development REQUIRED)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 find_package(mpi4py REQUIRED)
 
 # TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP14 is needed for Intel compiler
@@ -24,6 +24,8 @@ set(libname py_sirius)
 pybind11_add_module(${libname}
   py_sirius.cpp
   py_sirius_util.cpp
+  py_sirius_atom.cpp
+  py_sirius_paw.cpp
   py_sirius_operators.cpp
   py_sirius_symmetry.cpp
 )
