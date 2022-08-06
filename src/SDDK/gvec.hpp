@@ -411,8 +411,8 @@ class Gvec
     inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
-        init_gvec_cart_local();
         find_gvec_shells();
+        init_gvec_cart_local();
         return lattice_vectors_;
     }
 
@@ -819,6 +819,17 @@ class Gvec_partition // TODO: name change to Gvec_fft
             int offset = this->gvec_.gvec_offset(rank_map_(comm_fft_.rank(), i));
             for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                 f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
+            }
+        }
+    }
+
+    void update_gkvec_cart()
+    {
+        for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
+            auto G = vector3d<int>(&gvec_array_(0, ig));
+            auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
+            for (int x : {0, 1, 2}) {
+                gkvec_cart_array_(x, ig) = Gkc[x];
             }
         }
     }
