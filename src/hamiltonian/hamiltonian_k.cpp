@@ -1791,7 +1791,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na,  kp().alm_coeffs_loc());
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp().alm_coeffs_loc());
 
         /* if there is APW part */
         if (!phi_is_lo__) {

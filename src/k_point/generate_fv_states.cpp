@@ -127,6 +127,56 @@ void K_point<T>::generate_fv_states()
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         fv_eigen_vectors_slab().pw_coeffs(0).deallocate(sddk::memory_t::device);
     }
+
+    auto const& uc = ctx_.unit_cell();
+
+    auto bs = ctx_.cyclic_block_size();
+    sddk::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(),
+            ctx_.blacs_grid(), bs, bs);
+
+
+    int atom_begin{0};
+    int mt_aw_offset{0};
+
+    /* loop over blocks of atoms */
+    for (auto na : utils::split_in_blocks(uc.num_atoms(), 64)) {
+        /* actual number of AW radial functions in a block of atoms */
+        int num_mt_aw{0};
+        //std::vector<int> offsets_aw(na);
+        for (int i = 0; i < na; i++) {
+            int ia     = atom_begin + i;
+            auto& type = uc.atom(ia).type();
+            num_mt_aw += type.mt_aw_basis_size();
+        }
+
+        /* generate complex conjugated Alm coefficients for a block of atoms */
+        auto alm = generate_alm_block<false, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
+
+        /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
+        spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
+                alm.at(sddk::memory_t::host), alm.ld(),
+                &fv_eigen_vectors_slab_new().pw_coeffs(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+                fv_eigen_vectors_slab_new().ld(),
+                0.0, alm_fv.at(sddk::memory_t::host), alm_fv.ld(), mt_aw_offset, 0, alm_fv.spla_distribution(),
+                ctx_.spla_context());
+
+        atom_begin += na;
+        mt_aw_offset += num_mt_aw;
+    }
+
+    std::vector<int> num_mt_apw_coeffs(uc.num_atoms());
+    for (int ia = 0; ia < uc.num_atoms(); ia++) {
+        num_mt_apw_coeffs[ia] = uc.atom(ia).mt_aw_basis_size();
+    }
+    wf::Wave_functions_mt<T> alm_fv_slab(this->comm(), num_mt_apw_coeffs, wf::num_spins(1),
+            wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
+
+    auto& one = sddk::linalg_const<std::complex<T>>::one();
+    auto& zero = sddk::linalg_const<std::complex<T>>::zero();
+
+    auto layout_in = alm_fv.grid_layout(0, 0, uc.mt_aw_basis_size(), ctx_.num_fv_states());
+    auto layout_out = alm_fv_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+    costa::transform(layout_in, layout_out, 'N', one, zero, this->comm().mpi_comm());
 }
 
 template void K_point<double>::generate_fv_states();
