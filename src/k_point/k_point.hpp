@@ -97,6 +97,8 @@ class K_point
     std::unique_ptr<sddk::Wave_functions<T>> fv_states_{nullptr};
     std::unique_ptr<wf::Wave_functions<T>> fv_states_new_{nullptr};
 
+    std::unique_ptr<wf::Wave_functions<T>> spinor_wave_functions_new_{nullptr};
+
     /// Two-component (spinor) wave functions describing the bands.
     std::shared_ptr<sddk::Wave_functions<T>> spinor_wave_functions_{nullptr};
 
@@ -490,6 +492,12 @@ class K_point
     inline auto spinor_wave_functions_ptr()
     {
         return spinor_wave_functions_;
+    }
+
+    inline auto& spinor_wave_functions_new()
+    {
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        return *spinor_wave_functions_new_;
     }
 
     /// return the initial atomic orbitals used to compute the hubbard wave functions. the S operator is applied on

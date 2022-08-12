@@ -134,23 +134,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
             sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
     }
 
-    double diff{0};
-    for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-            diff += std::abs(kp.fv_eigen_vectors_slab().pw_coeffs(0).prime(ig, i) -
-                    kp.fv_eigen_vectors_slab_new().pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(0), wf::band_index(i)));
-        }
-        for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
-            int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
-            for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
-                int j = kp.fv_eigen_vectors_slab().offset_mt_coeffs(ialoc) + xi;
-                diff += std::abs(kp.fv_eigen_vectors_slab().mt_coeffs(0).prime(j, i) -
-                    kp.fv_eigen_vectors_slab_new().mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)));
-            }
-        }
-    }
-    std::cout << "DIFF = " << diff << std::endl;
-
+    check_wf_diff("fv_eigen_vectors_slab", kp.fv_eigen_vectors_slab(), kp.fv_eigen_vectors_slab_new());
 
     /* renormalize wave-functions */
     if (ctx_.valence_relativity() == relativity_t::iora) {
@@ -178,22 +162,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
             kp.fv_eigen_vectors_slab().deallocate(sddk::spin_range(0), sddk::memory_t::device);
         }
 
-        double diff{0};
-        for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                diff += std::abs(ofv.pw_coeffs(0).prime(ig, i) -
-                        ofv_new.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(0), wf::band_index(i)));
-            }
-            for (int ialoc = 0; ialoc < kp.fv_eigen_vectors_slab().spl_num_atoms().local_size(); ialoc++) {
-                int ia = kp.fv_eigen_vectors_slab().spl_num_atoms()[ialoc];
-                for (int xi = 0; xi < ctx_.unit_cell().atom(ia).type().mt_lo_basis_size(); xi++) {
-                    int j = ofv.offset_mt_coeffs(ialoc) + xi;
-                    diff += std::abs(ofv.mt_coeffs(0).prime(j, i) -
-                        ofv_new.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)));
-                }
-            }
-        }
-        std::cout << "DIFF OFV = " << diff << std::endl;
+        check_wf_diff("ofv", ofv, ofv_new);
 
         //if (true) {
         //    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -250,6 +219,12 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
                 kp.fv_eigen_vectors_slab().mt_coeffs(0).prime(j, i) *= norm[i];
             }
         }
+
+        auto norm1 = wf::inner_diag(kp.fv_eigen_vectors_slab_new(), ofv_new, ctx_.num_fv_states());
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            norm1[i] = 1 / std::sqrt(norm1[i]);
+        }
+        wf::scale(kp.fv_eigen_vectors_slab_new(), ctx_.num_fv_states(), norm1);
     }
 
     if (ctx_.cfg().control().verification() >= 2) {

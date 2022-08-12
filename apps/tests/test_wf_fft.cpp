@@ -91,8 +91,8 @@ void test_wf_fft()
         }
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-            spfft_transform->backward(wf_fft.pw_coeffs(sddk::memory_t::host, i), spfft_pu);
-            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs(sddk::memory_t::host, i), SPFFT_FULL_SCALING);
+            spfft_transform->backward(wf_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
+            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
 
         transform_from_fft_layout(wf_fft, wf, wf::spin_index(ispn), wf::band_range(0, 10));

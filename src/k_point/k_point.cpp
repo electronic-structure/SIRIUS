@@ -176,6 +176,9 @@ K_point<T>::initialize()
                 gkvec_partition(), unit_cell_.num_atoms(),
                 [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
                 ctx_.num_spins());
+
+            spinor_wave_functions_new_ = std::make_unique<wf::Wave_functions<T>>(
+                gkvec_, num_mt_coeffs, wf::num_spins(ctx_.num_spins()), wf::num_bands(nst), sddk::memory_t::host);
         } else {
             throw std::runtime_error("not implemented");
         }

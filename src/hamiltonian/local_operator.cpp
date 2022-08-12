@@ -922,7 +922,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
     //    }
     //}
 
-    auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::host);
+    //auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::host);
 
     wf::transform_to_fft_layout(phi__, phi_fft, wf::spin_index(0), b__);
 
@@ -949,7 +949,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
 
     for (int j = 0; j < spl_num_wf.local_size(); j++) {
         /* phi(G) -> phi(r) */
-        spfftk__.backward(phi_fft.pw_coeffs(sddk::memory_t::host, j), spfft_mem);
+        spfftk__.backward(phi_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(j)), spfft_mem);
 
         if (ophi__) {
             /* save phi(r) */
@@ -972,7 +972,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::theta);
 
             /* phi(r) * Theta(r) -> ophi(G) */
-            spfftk__.forward(spfft_mem, ophi_fft.pw_coeffs(sddk::memory_t::host, j), SPFFT_FULL_SCALING);
+            spfftk__.forward(spfft_mem, ophi_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(j)), SPFFT_FULL_SCALING);
             /* load phi(r) back */
             if (hphi__) {
                 auto outp = reinterpret_cast<std::complex<T>*>(spfft_buf);
@@ -992,7 +992,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
             /* multiply by effective potential, which itself was multiplied by the step function */
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::v0);
             /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-            spfftk__.forward(spfft_mem, hphi_fft.pw_coeffs(sddk::memory_t::host, j), SPFFT_FULL_SCALING);
+            spfftk__.forward(spfft_mem, hphi_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(j)), SPFFT_FULL_SCALING);
         }
 
         if (hphi__) {
@@ -1002,7 +1002,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
                 for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
                     auto gvc = gkvec_fft__->gkvec_cart(igloc);
                     /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
-                    buf_pw[igloc] = phi_fft.pw_coeffs(igloc, j) * static_cast<T>(gvc[x]);
+                    buf_pw[igloc] = phi_fft.pw_coeffs(igloc, wf::band_index(j)) * static_cast<T>(gvc[x]);
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
                 spfftk__.backward(reinterpret_cast<T const*>(&buf_pw[0]), spfft_mem);
@@ -1028,7 +1028,7 @@ void Local_operator<T>::apply_h_o(spfft_transform_type<T>& spfftk__, std::shared
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
                     auto gvc = gkvec_fft__->gkvec_cart(igloc);
-                    hphi_fft.pw_coeffs(igloc, j) += buf_pw[igloc] * static_cast<T>(0.5 * gvc[x]);
+                    hphi_fft.pw_coeffs(igloc, wf::band_index(j)) += buf_pw[igloc] * static_cast<T>(0.5 * gvc[x]);
                 }
             }
         }

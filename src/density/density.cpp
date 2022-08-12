@@ -774,17 +774,39 @@ Density::add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<
                     sddk::mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
                     sddk::mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
 
-                    for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
-                        int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
+                    //for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
+                    //    int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
+                    //    int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                    //    int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
+                    //    if (mt_basis_size != 0) {
+                    //        for (int i = 0; i < nbnd; i++) {
+                    //            for (int xi = 0; xi < mt_basis_size; xi++) {
+                    //                auto c     = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
+                    //                wf1(xi, i) = std::conj(c);
+                    //                wf2(xi, i) =
+                    //                    static_cast<double_complex>(c) * kp__->band_occupancy(i, ispn) * kp__->weight();
+                    //            }
+                    //        }
+                    //        /* add |psi_j> n_j <psi_j| to density matrix */
+                    //        sddk::linalg(sddk::linalg_t::blas)
+                    //            .gemm('N', 'T', mt_basis_size, mt_basis_size, nbnd,
+                    //                  &sddk::linalg_const<double_complex>::one(), &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(),
+                    //                  &sddk::linalg_const<double_complex>::one(),
+                    //                  density_matrix__.at(sddk::memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
+                    //    }
+                    //}
+
+                    for (int ialoc = 0; ialoc < kp__->spinor_wave_functions_new().spl_num_atoms().local_size(); ialoc++) {
+                        int ia            = kp__->spinor_wave_functions_new().spl_num_atoms()[ialoc];
                         int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
-                        int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
+                        //int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
                         if (mt_basis_size != 0) {
                             for (int i = 0; i < nbnd; i++) {
                                 for (int xi = 0; xi < mt_basis_size; xi++) {
-                                    auto c     = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
-                                    wf1(xi, i) = std::conj(c);
-                                    wf2(xi, i) =
-                                        static_cast<double_complex>(c) * kp__->band_occupancy(i, ispn) * kp__->weight();
+                                    auto z = kp__->spinor_wave_functions_new().mt_coeffs(sddk::memory_t::host, xi,
+                                        wf::atom_index(ialoc), wf::spin_index(ispn), wf::band_index(i));
+                                    wf1(xi, i) = std::conj(z);
+                                    wf2(xi, i) = static_cast<double_complex>(z) * kp__->band_occupancy(i, ispn) * kp__->weight();
                                 }
                             }
                             /* add |psi_j> n_j <psi_j| to density matrix */

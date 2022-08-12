@@ -38,6 +38,8 @@ void K_point<T>::generate_spinor_wave_functions()
         if (!ctx_.need_sv()) {
             /* copy eigen-states and exit */
             spinor_wave_functions().copy_from(sddk::device_t::CPU, ctx_.num_fv_states(), fv_states(), 0, 0, 0, 0);
+            wf::copy(*fv_states_new_, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()),
+                     *spinor_wave_functions_new_ , wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
             return;
         }
 
@@ -73,6 +75,9 @@ void K_point<T>::generate_spinor_wave_functions()
             /* multiply consecutively up and dn blocks */
             sddk::transform<complex_type<T>, complex_type<T>>(ctx_.spla_context(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0,
                       spinor_wave_functions(), 0, nbnd);
+
+            wf::transform(ctx_.spla_context(), sv_eigen_vectors_[s], o, 0, *fv_states_new_, wf::band_range(0, nfv),
+                    *spinor_wave_functions_new_, wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
@@ -88,6 +93,8 @@ void K_point<T>::generate_spinor_wave_functions()
     } else {
         throw std::runtime_error("not implemented");
     }
+
+    check_wf_diff("spinor_wave_functions",spinor_wave_functions(), *spinor_wave_functions_new_);
 }
 
 template void K_point<double>::generate_spinor_wave_functions();
