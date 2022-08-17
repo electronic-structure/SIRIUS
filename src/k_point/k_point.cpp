@@ -96,7 +96,7 @@ K_point<T>::initialize()
             }
 
             fv_eigen_vectors_slab_new_ = std::make_unique<wf::Wave_functions<T>>(
-                    gkvec_, num_mt_coeffs, wf::num_spins(1), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
+                    gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
             /* allocate fv eien vectors */
             fv_eigen_vectors_slab_ = std::make_unique<sddk::Wave_functions<T>>(
@@ -170,7 +170,7 @@ K_point<T>::initialize()
                 num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_basis_size();
             }
             fv_states_new_ = std::make_unique<wf::Wave_functions<T>>(
-                gkvec_, num_mt_coeffs, wf::num_spins(1), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
+                gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
             spinor_wave_functions_ = std::make_shared<sddk::Wave_functions<T>>(
                 gkvec_partition(), unit_cell_.num_atoms(),
@@ -178,7 +178,7 @@ K_point<T>::initialize()
                 ctx_.num_spins());
 
             spinor_wave_functions_new_ = std::make_unique<wf::Wave_functions<T>>(
-                gkvec_, num_mt_coeffs, wf::num_spins(ctx_.num_spins()), wf::num_bands(nst), sddk::memory_t::host);
+                gkvec_, num_mt_coeffs, wf::num_mag_dims(ctx_.num_mag_dims()), wf::num_bands(nst), sddk::memory_t::host);
         } else {
             throw std::runtime_error("not implemented");
         }

@@ -46,8 +46,8 @@ void test_wf_fft()
 
     std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
 
-    wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_spins(2), wf::num_bands(10), sddk::memory_t::host);
-    wf::Wave_functions<double> wf_ref(gkvec, wf::num_spins(2), wf::num_bands(10), sddk::memory_t::host);
+    wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
+    wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
     wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf::num_bands(10), sddk::memory_t::host);
 
     for (int ispn = 0; ispn < 2; ispn++) {
