@@ -154,7 +154,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
         }
-        wf::Wave_functions<double> ofv_new(kp.gkvec_ptr(), num_mt_coeffs, wf::num_spins(1), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
+        wf::Wave_functions<double> ofv_new(kp.gkvec_ptr(), num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
         Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(), nullptr, &ofv_new);
 
@@ -220,11 +220,12 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
             }
         }
 
-        auto norm1 = wf::inner_diag(kp.fv_eigen_vectors_slab_new(), ofv_new, ctx_.num_fv_states());
-        for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            norm1[i] = 1 / std::sqrt(norm1[i]);
+        auto norm1 = wf::inner_diag(sddk::memory_t::host, kp.fv_eigen_vectors_slab_new(), ofv_new, wf::spin_range(0),
+                wf::num_bands(ctx_.num_fv_states()));
+        for (auto& e : norm1) {
+            e = 1 / std::sqrt(e);
         }
-        wf::scale(kp.fv_eigen_vectors_slab_new(), ctx_.num_fv_states(), norm1);
+        wf::scale(sddk::memory_t::host, kp.fv_eigen_vectors_slab_new(), wf::spin_range(0), wf::num_bands(ctx_.num_fv_states()), norm1);
     }
 
     if (ctx_.cfg().control().verification() >= 2) {

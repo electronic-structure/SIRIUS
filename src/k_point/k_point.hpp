@@ -201,7 +201,7 @@ class K_point
     /// Communicator between(!!) columns.
     sddk::Communicator const& comm_col_;
 
-    std::array<int, 2> ispn_map_;
+    std::array<int, 2> ispn_map_{0, -1};
 
     /// Generate G+k and local orbital basis sets.
     void generate_gklo_basis();
@@ -229,8 +229,6 @@ class K_point
                                                   sddk::memory_t::host, "band_energies");
         band_energies_.zero();
 
-        ispn_map_[0] = 0;
-        ispn_map_[1] = -1;
         if (ctx_.num_mag_dims() == 1) {
             ispn_map_[1] = 1;
         } else if (ctx_.num_mag_dims() == 3) {
@@ -495,6 +493,12 @@ class K_point
     }
 
     inline auto& spinor_wave_functions_new()
+    {
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        return *spinor_wave_functions_new_;
+    }
+
+    inline auto const& spinor_wave_functions_new() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_new_;

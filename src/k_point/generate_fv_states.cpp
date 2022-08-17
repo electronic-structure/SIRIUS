@@ -168,7 +168,7 @@ void K_point<T>::generate_fv_states()
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         num_mt_apw_coeffs[ia] = uc.atom(ia).mt_aw_basis_size();
     }
-    wf::Wave_functions_mt<T> alm_fv_slab(this->comm(), num_mt_apw_coeffs, wf::num_spins(1),
+    wf::Wave_functions_mt<T> alm_fv_slab(this->comm(), num_mt_apw_coeffs, wf::num_mag_dims(0),
             wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
     auto& one = sddk::linalg_const<std::complex<T>>::one();

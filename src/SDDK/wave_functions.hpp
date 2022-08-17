@@ -533,6 +533,11 @@ class strong_type
         return this->val_ != rhs__.val_;
     }
 
+    bool operator==(strong_type<T, Tag> const& rhs__)
+    {
+        return this->val_ == rhs__.val_;
+    }
+
     strong_type<T, Tag>& operator++(int)
     {
         this->val_++;
@@ -540,12 +545,13 @@ class strong_type
     }
 };
 
-using spin_index = strong_type<int, struct __spin_index_t>;
-using atom_index = strong_type<int, struct __atom_index_t>;
-using band_index = strong_type<int, struct __band_index_t>;
+using spin_index = strong_type<int, struct __spin_index_tag>;
+using atom_index = strong_type<int, struct __atom_index_tag>;
+using band_index = strong_type<int, struct __band_index_tag>;
 
-using num_bands = strong_type<int, struct __band_size_t>;
-using num_spins = strong_type<int, struct __spin_size_t>;
+using num_bands = strong_type<int, struct __num_bands_tag>;
+using num_spins = strong_type<int, struct __num_spins_tag>;
+using num_mag_dims = strong_type<int, struct __num_mag_dims_tag>;
 
 class band_range
 {
@@ -561,25 +567,36 @@ class band_range
         RTE_ASSERT(end_ >= 0);
         RTE_ASSERT(begin_ <= end_);
     }
-    auto begin() const
+    band_range(int size__)
+        : begin_{0}
+        , end_{size__}
+    {
+        RTE_ASSERT(size__ > 0);
+    }
+    inline auto begin() const
     {
         return begin_;
     }
-    auto end() const
+    inline auto end() const
     {
         return end_;
     }
-    auto size() const
+    inline auto size() const
     {
         return end_ - begin_;
     }
 };
 
+// Only 3 combinations of spin range are allowed:
+// [0, 1)
+// [1, 2)
+// [0, 2)
 class spin_range
 {
   private:
     int begin_;
     int end_;
+    int spinor_index_;
   public:
     spin_range(int begin__, int end__)
         : begin_{begin__}
@@ -589,25 +606,39 @@ class spin_range
         RTE_ASSERT(end_ >= 0);
         RTE_ASSERT(begin_ <= end_);
         RTE_ASSERT(end_ <= 2);
+        /* if size of the spin range is 2, this is a full-spinor case */
+        if (this->size() == 2) {
+            spinor_index_ = 0;
+        } else {
+            spinor_index_ = begin_;
+        }
     }
     spin_range(int ispn__)
         : begin_{ispn__}
         , end_{ispn__ + 1}
+        , spinor_index_{ispn__}
     {
         RTE_ASSERT(begin_ >= 0);
         RTE_ASSERT(end_ >= 0);
         RTE_ASSERT(begin_ <= end_);
         RTE_ASSERT(end_ <= 2);
     }
-    auto begin() const
+    inline auto begin() const
     {
         return spin_index(begin_);
     }
-    auto end() const
+    inline auto end() const
     {
         return spin_index(end_);
     }
-
+    inline int size() const
+    {
+        return end_ - begin_;
+    }
+    inline int spinor_index() const
+    {
+        return spinor_index_;
+    }
 };
 
 /* PW and LAPW wave-functions
@@ -695,8 +726,9 @@ class Wave_functions_base
   protected:
     int num_pw_{0};
     int num_mt_{0};
-    num_spins num_sc_{0};
+    num_mag_dims num_md_{0};
     num_bands num_wf_{0};
+    num_spins num_sc_{0};
 
     inline void allocate(sddk::memory_t mem__)
     {
@@ -715,19 +747,30 @@ class Wave_functions_base
 
     friend class device_memory_guard<Wave_functions_base<T>>;
 
-    sddk::mdarray<std::complex<T>, 3> data_;
+    std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
   public:
     Wave_functions_base()
     {
     }
-    Wave_functions_base(int num_pw__, int num_mt__, num_spins num_sc__, num_bands num_wf__, sddk::memory_t default_mem__)
+    Wave_functions_base(int num_pw__, int num_mt__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
         : num_pw_{num_pw__}
         , num_mt_{num_mt__}
-        , num_sc_{num_sc__}
+        , num_md_{num_md__}
         , num_wf_{num_wf__}
     {
-        data_ = sddk::mdarray<std::complex<T>, 3>(num_pw_ + num_mt_, num_sc_.get(), num_wf_.get(), default_mem__,
+        if (!(num_md_.get() == 0 || num_md_.get() == 1 || num_md_.get() == 3)) {
+            RTE_THROW("wrong number of magnetic dimensions");
+        }
+
+        if (num_md_.get() == 0) {
+            num_sc_ = num_spins(1);
+        } else {
+            num_sc_ = num_spins(2);
+        }
+        for (int is = 0; is < num_sc_.get(); is++) {
+            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(), default_mem__,
                 "Wave_functions_base::data_");
+        }
     }
 
     auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none)
@@ -742,30 +785,30 @@ class Wave_functions_base
 
     inline auto ld() const
     {
-        return data_.ld();
+        return num_pw_ + num_mt_;
     }
 
     inline void zero(sddk::memory_t mem__, spin_index s__, band_range br__)
     {
         if (is_host_memory(mem__)) {
             for (int ib = br__.begin(); ib < br__.end(); ib++) {
-                auto ptr = data_.at(mem__, 0, s__.get(), ib);
-                std::fill(ptr, ptr + data_.ld(), 0);
+                auto ptr = data_[s__.get()].at(mem__, 0, ib);
+                std::fill(ptr, ptr + this->ld(), 0);
             }
         }
         if (is_device_memory(mem__)) {
-            acc::zero(data_.at(mem__, 0, s__.get(), br__.begin()), data_.ld(), data_.ld(), br__.size());
+            acc::zero(data_[s__.get()].at(mem__, 0, br__.begin()), this->ld(), this->ld(), br__.size());
         }
     }
 
     auto const data_ptr(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
-        return data_.at(mem__, i__, s__.get(), b__.get());
+        return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
     auto data_ptr(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) 
     {
-        return data_.at(mem__, i__, s__.get(), b__.get());
+        return data_[s__.get()].at(mem__, i__, b__.get());
     }
 };
 
@@ -779,7 +822,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
   public:
     Wave_functions_fft(std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, num_bands num_wf_max__, sddk::memory_t default_mem__)
         : Wave_functions_base<T>(gkvec_fft__->gvec_count_fft(), 0,
-                num_spins(1), num_bands(sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), gkvec_fft__->comm_ortho_fft().size(),
+                num_mag_dims(0), num_bands(sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), gkvec_fft__->comm_ortho_fft().size(),
                     gkvec_fft__->comm_ortho_fft().rank()).local_size()), default_mem__)
         , gkvec_fft_(gkvec_fft__)
     {
@@ -809,8 +852,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = this->data_.at(sddk::memory_t::host, 0, 0, 0);
-        localblock.ld = this->data_.ld() * this->num_sc().get();
+        localblock.data = this->data_[0].at(sddk::memory_t::host);
+        localblock.ld = this->ld();
         localblock.row = gkvec_fft_->comm_fft().rank();
         localblock.col = comm_col.rank();
 
@@ -830,12 +873,12 @@ class Wave_functions_fft : public Wave_functions_base<T>
 
     inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
     {
-        return this->data_(ig__, 0, b__.get());
+        return this->data_[0](ig__, b__.get());
     }
 
     inline T* pw_coeffs(sddk::memory_t mem__, band_index b__)
     {
-        return reinterpret_cast<T*>(this->data_.at(mem__, 0, 0, b__.get()));
+        return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
     }
 };
 
@@ -876,9 +919,9 @@ class Wave_functions_mt : public Wave_functions_base<T>
     {
     }
 
-    Wave_functions_mt(sddk::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_spins num_sc__,
+    Wave_functions_mt(sddk::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__, int num_pw__ = 0)
-        : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_sc__, num_wf__,
+        : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_md__, num_wf__,
                                  default_mem__)
         , comm_{comm__}
         , num_atoms_{static_cast<int>(num_mt_coeffs__.size())}
@@ -901,14 +944,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
     inline auto&
     mt_coeffs(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index ispn__, band_index i__)
     {
-        return *this->data_.at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], ispn__.get(),
+        return *this->data_[ispn__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()],
                                i__.get());
     }
 
     inline auto const&
     mt_coeffs(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index ispn__, band_index i__) const
     {
-        return *this->data_.at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], ispn__.get(),
+        return *this->data_[ispn__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()],
                                i__.get());
     }
 
@@ -930,8 +973,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = this->data_.at(sddk::memory_t::host, this->num_pw_, ispn__.get(), b__.begin());
-        localblock.ld = this->data_.ld() * this->num_sc().get();
+        localblock.data = this->data_[ispn__.get()].at(sddk::memory_t::host, this->num_pw_, b__.begin());
+        localblock.ld = this->ld();
         localblock.row = comm_.rank();
         localblock.col = 0;
 
@@ -944,7 +987,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
         std::complex<T> cs{0};
         if (is_host_memory(mem__)) {
             for (int ib = br__.begin(); ib < br__.end(); ib++) {
-                auto ptr = this->data_.at(mem__, this->num_pw_, s__.get(), ib);
+                auto ptr = this->data_[s__.get()].at(mem__, this->num_pw_, ib);
                 cs = std::accumulate(ptr, ptr + this->num_mt_, cs);
             }
         }
@@ -969,22 +1012,22 @@ class Wave_functions : public Wave_functions_mt<T>
   private:
     std::shared_ptr<sddk::Gvec> gkvec_;
   public:
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, num_spins num_sc__, num_bands num_wf__, sddk::memory_t default_mem__)
-        : Wave_functions_mt<T>(gkvec__->comm(), num_sc__, num_wf__, default_mem__, gkvec__->count())
+    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
+        : Wave_functions_mt<T>(gkvec__->comm(), num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
     }
 
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_spins num_sc__,
+    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__)
-        : Wave_functions_mt<T>(gkvec__->comm(), num_mt_coeffs__, num_sc__, num_wf__, default_mem__, gkvec__->count())
+        : Wave_functions_mt<T>(gkvec__->comm(), num_mt_coeffs__, num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
     }
 
     inline auto& pw_coeffs(sddk::memory_t mem__, int ig__, spin_index ispn__, band_index i__)
     {
-        return *this->data_.at(mem__, ig__, ispn__.get(), i__.get());
+        return *this->data_[ispn__.get()].at(mem__, ig__, i__.get());
     }
 
     auto grid_layout_pw(spin_index ispn__, band_range b__)
@@ -1000,8 +1043,8 @@ class Wave_functions : public Wave_functions_mt<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = this->data_.at(sddk::memory_t::host, 0, ispn__.get(), b__.begin());
-        localblock.ld = this->data_.ld() * this->num_sc().get();
+        localblock.data = this->data_[ispn__.get()].at(sddk::memory_t::host, 0, b__.begin());
+        localblock.ld = this->ld();
         localblock.row = this->comm_.rank();
         localblock.col = 0;
 
@@ -1020,7 +1063,7 @@ class Wave_functions : public Wave_functions_mt<T>
         std::complex<T> cs{0};
         if (is_host_memory(mem__)) {
             for (int ib = b__.begin(); ib < b__.end(); ib++) {
-                auto ptr = this->data_.at(mem__, 0, s__.get(), ib);
+                auto ptr = this->data_[s__.get()].at(mem__, 0, ib);
                 cs = std::accumulate(ptr, ptr + this->num_pw_, cs);
             }
         }
@@ -1089,31 +1132,63 @@ void check_wf_diff(std::string label__, sddk::Wave_functions<T>& wf_old__, wf::W
 }
 
 template <typename T>
-std::vector<T> inner_diag(wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__, int num_wf__)
+static std::vector<T>
+inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
+        wf::spin_range spins__, wf::num_bands num_wf__)
 {
     RTE_ASSERT(lhs__.ld() == rhs__.ld());
-    std::vector<T> result(num_wf__, 0);
 
-    for (int i = 0; i < num_wf__; i++) {
-        auto ptr1 = lhs__.data_ptr(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(i));
-        auto ptr2 = rhs__.data_ptr(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(i));
-        for (unsigned int j = 0; j < lhs__.ld(); j++) {
-            result[i] += std::real(std::conj(ptr1[j]) * ptr2[j]);
+    std::vector<T> result(num_wf__.get(), 0);
+
+    if (is_host_memory(mem__)) {
+        for (auto s = spins__.begin(); s != spins__.end(); s++) {
+            for (int i = 0; i < num_wf__.get(); i++) {
+                auto ptr1 = lhs__.data_ptr(sddk::memory_t::host, 0, s, wf::band_index(i));
+                auto ptr2 = rhs__.data_ptr(sddk::memory_t::host, 0, s, wf::band_index(i));
+                for (int j = 0; j < lhs__.ld(); j++) {
+                    result[i] += std::real(std::conj(ptr1[j]) * ptr2[j]);
+                }
+            }
         }
+    } else {
+        RTE_THROW("implement inner_diag_local on GPUs");
     }
+    return result;
+}
+
+//template <typename T>
+//std::vector<T>
+//inner_diag(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__, wf::num_bands num_wf__)
+//{
+//    auto result = inner_diag_local(mem__, lhs__, rhs__, wf::spin_range(0), num_wf__);
+//    lhs__.comm().allreduce(result);
+//    return result;
+//}
+
+template <typename T>
+std::vector<T>
+inner_diag(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
+        wf::spin_range spins__, wf::num_bands num_wf__)
+{
+    auto result = inner_diag_local(mem__, lhs__, rhs__, spins__, num_wf__);
     lhs__.comm().allreduce(result);
     return result;
 }
 
 template <typename T>
-void scale(wf::Wave_functions<T>& wf__, int num_wf__, std::vector<T> scale__)
+void scale(sddk::memory_t mem__, wf::Wave_functions<T>& wf__, wf::spin_range spins__, wf::num_bands num_wf__, std::vector<T> scale__)
 {
-
-    for (int i = 0; i < num_wf__; i++) {
-        auto ptr = wf__.data_ptr(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(i));
-        for (unsigned int j = 0; j < wf__.ld(); j++) {
-            ptr[j] = ptr[j] * scale__[i];
+    if (is_host_memory(mem__)) {
+        for (auto s = spins__.begin(); s != spins__.end(); s++) {
+            for (int i = 0; i < num_wf__.get(); i++) {
+                auto ptr = wf__.data_ptr(sddk::memory_t::host, 0, s, wf::band_index(i));
+                for (int j = 0; j < wf__.ld(); j++) {
+                    ptr[j] = ptr[j] * scale__[i];
+                }
+            }
         }
+    } else {
+        RTE_THROW("implement scale on GPUs");
     }
 }
 
@@ -1135,14 +1210,13 @@ void copy(Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range b
  * transform a single spin component of spinor wave-functions using scalar wave-functions as input
  */
 template <typename T, typename F>
-inline std::enable_if_t<std::is_same<real_type<T>, real_type<F>>::value, void>
+inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
 transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
-        Wave_functions<T> const& wf_in__, band_range br_in__, Wave_functions<T>& wf_out__, spin_index s_out__,
-        band_range br_out__)
+        Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
+        Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
     PROFILE("wf::transform");
 
-    RTE_ASSERT(wf_in__.num_sc().get() == 1);
     RTE_ASSERT(wf_in__.ld() == wf_out__.ld());
 
     auto spla_mat_dist = const_cast<sddk::dmatrix<F>&>(M__).spla_distribution();
@@ -1154,16 +1228,186 @@ transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0_
 
     F const* mtrx_ptr = M__.size_local() ? M__.at(sddk::memory_t::host, 0, 0) : nullptr;
 
-    F const* in_ptr = reinterpret_cast<F const*>(wf_in__.data_ptr(sddk::memory_t::host, 0, spin_index(0), band_index(br_in__.begin())));
-    int in_ld = size_factor * wf_in__.ld() * wf_in__.num_sc().get();
+    F const* in_ptr = reinterpret_cast<F const*>(wf_in__.data_ptr(sddk::memory_t::host, 0, s_in__, band_index(br_in__.begin())));
+    int in_ld = size_factor * wf_in__.ld();
 
     F* out_ptr = reinterpret_cast<F*>(wf_out__.data_ptr(sddk::memory_t::host, 0, s_out__, band_index(br_out__.begin())));
-    int out_ld = size_factor * wf_out__.ld() * wf_out__.num_sc().get();
+    int out_ld = size_factor * wf_out__.ld();
 
     spla::pgemm_sbs(size_factor * wf_in__.ld(), br_out__.size(), br_in__.size(), one,
         in_ptr, in_ld, mtrx_ptr, M__.ld(), irow0__, jcol0__, spla_mat_dist, zero, out_ptr, out_ld, spla_ctx__);
 }
 
+
+//// If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
+//template <typename T>
+//void scale_gamma_wf(spin_range spins, int m, int i0, real_type<T> alpha, Wave_functions<real_type<T>>& bra) {
+//    for (auto s : spins) {
+//        const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
+//        if (bra.preferred_memory_t() == memory_t::device) {
+//#if defined(SIRIUS_GPU)
+//            if (std::is_same<T, double>::value) {
+//                accblas::dscal(m, reinterpret_cast<double*>(&alpha),
+//                               reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+//                               incx);
+//            } else if (std::is_same<T, float>::value) {
+//                accblas::sscal(m, reinterpret_cast<float*>(&alpha),
+//                               reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)),
+//                               incx);
+//            }
+//#else
+//            throw std::runtime_error("not compiled with GPU support!");
+//#endif
+//        } else {
+//            if (std::is_same<T, double>::value) {
+//                FORTRAN(dscal)
+//                (&m, reinterpret_cast<double*>(&alpha),
+//                 reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+//            } else if (std::is_same<T, float>::value) {
+//                FORTRAN(sscal)
+//                (&m, reinterpret_cast<float*>(&alpha),
+//                 reinterpret_cast<float*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), &incx);
+//            }
+//        }
+//    }
+//}
+//
+//// If complex type, no scaling required
+//#if defined(USE_FP32)
+//template <>
+//void scale_gamma_wf<std::complex<float>>(spin_range spins, int m, int i0, float alpha, Wave_functions<float>& bra) {}
+//#endif
+//
+//template <>
+//void scale_gamma_wf<std::complex<double>>(spin_range spins, int m, int i0, double alpha, Wave_functions<double>& bra) {}
+
+
+//// general real type
+//template <typename T>
+//void
+//inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+//      Wave_functions<real_type<T>>& bra__, int i0__, int m__, Wave_functions<real_type<T>>& ket__,
+//      int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
+//{
+//}
+//
+//// special for complex type
+//template <typename T>
+//void
+//inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+//    Wave_functions<T>& bra__, int i0__, int m__, Wave_functions<T>& ket__,
+//    int j0__, int n__, dmatrix<std::complex<T>>& result__, int irow0__, int jcol0__)
+//{
+//    bool local_has_mt  = bra__.has_mt();
+//    bool global_has_mt = false;
+//
+//    // Not all ranks may have mt, but all must call spla if at least one does
+//    MPI_Allreduce(&local_has_mt, &global_has_mt, 1, MPI_C_BOOL, MPI_LOR, bra__.comm().mpi_comm());
+//    if (global_has_mt) {
+//        std::complex<T>* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
+//        auto spins                  = spin_range(ispn__);
+//        for (auto s : spins) {
+//            PROFILE("sddk::wf_inner|mt");
+//            if (local_has_mt) {
+//                spla::pgemm_ssb(
+//                    m__, n__, bra__.mt_coeffs(s).num_rows_loc(), SPLA_OP_CONJ_TRANSPOSE, 1.0,
+//                    bra__.mt_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__), bra__.mt_coeffs(s).prime().ld(),
+//                    ket__.mt_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__), ket__.mt_coeffs(s).prime().ld(),
+//                    1.0, result_ptr, result__.ld(), irow0__, jcol0__, spla_mat_dist__, spla_ctx__);
+//            } else {
+//                spla::pgemm_ssb(m__, n__, 0, SPLA_OP_CONJ_TRANSPOSE, 1.0, nullptr, 0, nullptr, 0, 1.0,
+//                                result__.at(memory_t::host, 0, 0), result__.ld(), irow0__, jcol0__, spla_mat_dist__,
+//                                spla_ctx__);
+//            }
+//        }
+//    }
+//}
+//
+//} // namespace
+
+template <typename T, typename F>
+inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
+inner(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<T> const& wf_i__, band_range br_i__,
+      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
+{
+    PROFILE("wf::inner");
+
+    RTE_ASSERT(wf_i__.ld() == wf_j__.ld());
+
+    spla::MatrixDistribution spla_mat_dist = wf_i__.comm().size() > result__.comm().size()
+                                           ? spla::MatrixDistribution::create_mirror(wf_i__.comm().mpi_comm())
+                                           : result__.spla_distribution();
+
+    F alpha = 1.0;
+    int size_factor = 1;
+    if (std::is_same<F, real_type<F>>::value) {
+        alpha       = 2.0;
+        size_factor = 2;
+    }
+
+    auto ld = wf_i__.ld();
+
+    auto scale_gamma_wf = [&spins__, &br_i__, &wf_i__](T scale__)
+    {
+        RTE_ASSERT(spins__.size() == 1);
+        RTE_ASSERT(wf.num_sc() == wf::num_spins(1));
+
+        sddk::memory_t mem__ = sddk::memory_t::host;
+
+        auto& wf = const_cast<Wave_functions<T>&>(wf_i__);
+
+        auto ptr = wf_i__.data_ptr(mem__, 0, wf::spin_index(0), wf::band_index(br_i__.begin()));
+        int incx = wf_i__.ld() * 2; // complex matrix is read as scalar
+        auto m = br_i__.size();
+
+        if (mem__ == sddk::memory_t::device) {
+#if defined(SIRIUS_GPU)
+            if (std::is_same<T, double>::value) {
+                accblas::dscal(m, reinterpret_cast<double*>(&scale__), reinterpret_cast<double*>(ptr), incx);
+            } else if (std::is_same<T, float>::value) {
+                accblas::sscal(m, reinterpret_cast<float*>(&scale__), reinterpret_cast<float*>(ptr), incx);
+            }
+#else
+            RTE_THROW("not compiled with GPU support!");
+#endif
+        } else {
+            if (std::is_same<T, double>::value) {
+                FORTRAN(dscal)(&m, reinterpret_cast<double*>(&scale__), reinterpret_cast<double*>(ptr), incx);
+            } else if (std::is_same<T, float>::value) {
+                FORTRAN(sscal)(&m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), incx);
+            }
+        }
+    };
+
+    /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
+    if (std::is_same<F, real_type<F>>::value && wf_i__.comm().rank() == 0) {
+        scale_gamma_wf(0.5);
+    }
+
+    F beta = 0.0;
+
+    F* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
+
+    for (auto s : spins__) {
+        spla::pgemm_ssb(wf_i__.size(), wf_j__.size(), size_factor * ld, SPLA_OP_CONJ_TRANSPOSE, alpha,
+                        reinterpret_cast<F const*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
+                        size_factor * bra__.pw_coeffs(s).prime().ld(),
+                        reinterpret_cast<const T*>(ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
+                        size_factor * ket__.pw_coeffs(s).prime().ld(), beta, result_ptr, result__.ld(), irow0__,
+                        jcol0__, spla_mat_dist, spla_ctx__);
+        beta = 1.0;
+    }
+
+    /* for gamma case, G = 0 vector is rescaled back */
+    if (std::is_same<F, real_type<F>>::value && wf_i__.comm().rank() == 0) {
+        scale_gamma_wf(2.0);
+    }
+
+//    // make sure result is updated on device as well
+//    if (result__.on_device()) {
+//        result__.copy_to(memory_t::device);
+//    }
+}
 
 
 

@@ -1708,7 +1708,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
         num_mt_apw_coeffs[ia] = ctx.unit_cell().atom(ia).mt_aw_basis_size();
     }
-    wf::Wave_functions_mt<T> tmp(comm, num_mt_apw_coeffs, wf::num_spins(1), wf::num_bands(b__.size()), sddk::memory_t::host);
+    wf::Wave_functions_mt<T> tmp(comm, num_mt_apw_coeffs, wf::num_mag_dims(0), wf::num_bands(b__.size()), sddk::memory_t::host);
     // TODO: device allocation for tmp
     //if (pu == sddk::device_t::GPU) {
     //}
@@ -1823,9 +1823,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     num_mt_apw_coeffs_in_block[i] = ctx.unit_cell().atom(atom_begin + i).mt_aw_basis_size();
                 }
 
-                wf::Wave_functions_mt<T> alm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_spins(1),
+                wf::Wave_functions_mt<T> alm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_mag_dims(0),
                         wf::num_bands(b__.size()), sddk::memory_t::host);
-                wf::Wave_functions_mt<T> halm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_spins(1),
+                wf::Wave_functions_mt<T> halm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_mag_dims(0),
                         wf::num_bands(b__.size()), sddk::memory_t::host);
 
                 sddk::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), ctx.blacs_grid(), bs, bs);

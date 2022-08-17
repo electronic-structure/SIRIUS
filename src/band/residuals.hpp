@@ -37,52 +37,60 @@ class Wave_functions;
 class spin_range;
 };
 
-struct residual_result {
+struct residual_result
+{
   int num_consecutive_smallest_converged;
   int unconverged_residuals;
   double frobenius_norm;
 };
 
-#if defined(SIRIUS_GPU)
-extern "C" void residuals_aux_gpu(int num_gvec_loc__,
-                                  int num_res_local__,
-                                  int* res_idx__,
-                                  double* eval__,
-                                  double_complex const* hpsi__,
-                                  double_complex const* opsi__,
-                                  double const* h_diag__,
-                                  double const* o_diag__,
-                                  double_complex* res__,
-                                  double* res_norm__,
-                                  double* p_norm__,
-                                  int gkvec_reduced__,
-                                  int mpi_rank__);
+template <typename T>
+struct normalized_preconditioned_residuals_result
+{
+    int num_unconverged;
+    std::vector<T> norm;
+};
 
-extern "C" void compute_residuals_gpu_double(double_complex* hpsi__,
-                                              double_complex* opsi__,
+#if defined(SIRIUS_GPU)
+//extern "C" void residuals_aux_gpu(int num_gvec_loc__,
+//                                  int num_res_local__,
+//                                  int* res_idx__,
+//                                  double* eval__,
+//                                  double_complex const* hpsi__,
+//                                  double_complex const* opsi__,
+//                                  double const* h_diag__,
+//                                  double const* o_diag__,
+//                                  double_complex* res__,
+//                                  double* res_norm__,
+//                                  double* p_norm__,
+//                                  int gkvec_reduced__,
+//                                  int mpi_rank__);
+
+extern "C" void compute_residuals_gpu_double(double_complex const* hpsi__,
+                                              double_complex const* opsi__,
                                               double_complex* res__,
                                               int num_gvec_loc__,
                                               int num_bands__,
-                                              double* eval__);
+                                              double const* eval__);
 
-extern "C" void compute_residuals_gpu_float(std::complex<float>* hpsi__,
-                                             std::complex<float>* opsi__,
+extern "C" void compute_residuals_gpu_float(std::complex<float> const* hpsi__,
+                                             std::complex<float> const* opsi__,
                                              std::complex<float>* res__,
                                              int num_gvec_loc__,
                                              int num_bands__,
-                                             float* eval__);
+                                             float const* eval__);
 
 extern "C" void apply_preconditioner_gpu_double(double_complex* res__,
                                                  int num_rows_loc__,
                                                  int num_bands__,
-                                                 double* eval__,
+                                                 double const* eval__,
                                                  const double* h_diag__,
                                                  const double* o_diag__);
 
 extern "C" void apply_preconditioner_gpu_float(std::complex<float>* res__,
                                                 int num_rows_loc__,
                                                 int num_bands__,
-                                                float* eval__,
+                                                float const* eval__,
                                                 const float* h_diag__,
                                                 const float* o_diag__);
 
