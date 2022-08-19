@@ -129,7 +129,7 @@ compute_residuals(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands nu
     RTE_ASSERT(hpsi__.num_sc() == res__.num_sc());
 
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
-        auto sp = hpsi__.num_sc() == wf::num_spins(2) ? s : wf::spin_index(0);
+        auto sp = hpsi__.actual_spin_index(s);
         if (is_host_memory(mem__)) {
             /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
             #pragma omp parallel for
@@ -207,7 +207,7 @@ apply_preconditioner(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands
         sddk::mdarray<T, 1> const& eval__)
 {
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
-        auto sp = res__.num_sc() == wf::num_spins(2) ? s : wf::spin_index(0);
+        auto sp = res__.actual_spin_index(s);
         if (is_host_memory(mem__)) {
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < num_bands__.get(); i++) {
@@ -341,7 +341,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (gamma__ && res__.comm().rank() == 0 && n != 0) {
-        RTE_ASSERT(spins__.begin().get() == spins__.end().get + 1);
+        RTE_ASSERT(spins__.begin().get() == spins__.end().get() + 1);
         if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
             make_real_g0_gpu(res__.data_ptr(mem__, 0, spins__.begin(), wf::band_index(0)), res__.ld(), n);
@@ -576,16 +576,16 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, sddk::linalg_t la_typ
     }
 
     for (auto s = sr__.begin(); s != sr__.end(); s++) {
-        auto sp = hphi__.num_sc().get() == 2 ? s : wf::spin_index(0);
+        auto sp = hphi__.actual_spin_index(s);
 
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, hphi__, sp, wf::band_range(num_locked__, N__),
-                hpsi__, sp, wf::band_range(0, num_residuals));
+        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, 1.0, hphi__, sp, wf::band_range(num_locked__, N__),
+                0.0, hpsi__, sp, wf::band_range(0, num_residuals));
 
-        sp = ophi__.num_sc().get() == 2 ? s : wf::spin_index(0);
+        sp = ophi__.actual_spin_index(s);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, ophi__, sp, wf::band_range(num_locked__, N__),
-                opsi__, sp, wf::band_range(0, num_residuals));
+        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, 1.0, ophi__, sp, wf::band_range(num_locked__, N__),
+                0.0, opsi__, sp, wf::band_range(0, num_residuals));
     }
 
     auto result = normalized_preconditioned_residuals<T>(mem__, sr__, wf::num_bands(num_residuals), eval, hpsi__, opsi__,

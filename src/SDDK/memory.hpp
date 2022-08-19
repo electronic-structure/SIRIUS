@@ -1617,7 +1617,7 @@ inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
         }
     }
     std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-    std::cout << "    Copying matrix element with different type, possible lost of data precision" << std::endl;
+    std::cout << "    Copying matrix element with different type, possible loss of data precision" << std::endl;
     std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
 }
 
