@@ -87,11 +87,10 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     }
 }
 
-void test_wf_inner_new(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, sddk::linalg_t la__,
+void test_wf_inner_new(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__,
                    sddk::memory_t mem__)
 {
-    spla::Context spla_ctx(
-        la__ == sddk::linalg_t::blas || la__ == sddk::linalg_t::lapack || la__ == sddk::linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+    spla::Context spla_ctx(sddk::is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     std::unique_ptr<sddk::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -126,22 +125,17 @@ void test_wf_inner_new(std::vector<int> mpi_grid_dims__, double cutoff__, int nu
         }
     }
 
+    auto mg1 = phi1.memory_guard(mem__, wf::copy_to::device);
+    auto mg2 = phi2.memory_guard(mem__, wf::copy_to::device);
+
     sddk::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
 
-    //if (is_device_memory(mem__)) {
-    //    for (int ispn = 0; ispn < nsp; ispn++) {
-    //        phi.allocate(spin_range(ispn), memory_t::device);
-    //        phi.copy_to(spin_range(ispn), memory_t::device, 0, num_bands__);
-    //    }
-    //    ovlp.allocate(memory_t::device);
-    //}
-
     /* warmup call */
-    wf::inner(spla_ctx, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
     sddk::Communicator::world().barrier();
 
     double t = -utils::wtime();
-    wf::inner(spla_ctx, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
     sddk::Communicator::world().barrier();
     t += utils::wtime();
 
@@ -171,26 +165,26 @@ void test_wf_inner_new(std::vector<int> mpi_grid_dims__, double cutoff__, int nu
     }
 
 
-    for (auto s = sr.begin(); s != sr.end(); s++) {
-        for (int i = 0; i < num_bands__; i++) {
-            for (int igloc = 0; igloc < gvec->count(); igloc++) {
-                phi1.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
-            }
-        }
-    }
-    orthogonalize(spla_ctx, sddk::memory_t::host, sr, wf::band_range(0, 0),
-            wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
-    wf::inner(spla_ctx, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
-    max_diff = sddk::check_identity(ovlp, num_bands__);
-    if (sddk::Communicator::world().rank() == 0) {
-        printf("checking identity\n");
-        printf("maximum difference: %18.12f\n", max_diff);
-        if (max_diff > 1e-10) {
-            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
-        } else {
-            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
-        }
-    }
+    //for (auto s = sr.begin(); s != sr.end(); s++) {
+    //    for (int i = 0; i < num_bands__; i++) {
+    //        for (int igloc = 0; igloc < gvec->count(); igloc++) {
+    //            phi1.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
+    //        }
+    //    }
+    //}
+    //orthogonalize(spla_ctx, sddk::memory_t::host, sr, wf::band_range(0, 0),
+    //        wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
+    //wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    //max_diff = sddk::check_identity(ovlp, num_bands__);
+    //if (sddk::Communicator::world().rank() == 0) {
+    //    printf("checking identity\n");
+    //    printf("maximum difference: %18.12f\n", max_diff);
+    //    if (max_diff > 1e-10) {
+    //        printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+    //    } else {
+    //        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    //    }
+    //}
 }
 
 int main(int argn, char** argv)
@@ -219,7 +213,7 @@ int main(int argn, char** argv)
     sirius::initialize(1);
 
     test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_linalg_t(linalg_t_str), sddk::get_memory_t(memory_t_str));
-    test_wf_inner_new(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_linalg_t(linalg_t_str), sddk::get_memory_t(memory_t_str));
+    test_wf_inner_new(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_memory_t(memory_t_str));
 
     sddk::Communicator::world().barrier();
     int my_rank = sddk::Communicator::world().rank();

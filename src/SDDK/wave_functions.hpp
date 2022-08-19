@@ -732,17 +732,23 @@ class Wave_functions_base
 
     inline void allocate(sddk::memory_t mem__)
     {
-        data_.allocate(mem__);
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].allocate(mem__);
+        }
     }
 
     inline void deallocate(sddk::memory_t mem__)
     {
-        data_.deallocate(mem__);
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].deallocate(mem__);
+        }
     }
 
     inline void copy_to(sddk::memory_t mem__)
     {
-        data_.copy_to(mem__);
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].copy_to(mem__);
+        }
     }
 
     friend class device_memory_guard<Wave_functions_base<T>>;
@@ -1220,6 +1226,7 @@ void copy(Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range b
     }
 }
 
+/// Apply linear transformation to the wave-functions.
 /*
  * transform a single spin component of spinor wave-functions using scalar wave-functions as input
  */
@@ -1253,14 +1260,31 @@ transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0_
         in_ptr, in_ld, mtrx_ptr, M__.ld(), irow0__, jcol0__, spla_mat_dist, beta__, out_ptr, out_ld, spla_ctx__);
 }
 
+/// Compute Inner product between the two sets of wave-functions.
+/**
+ * \tparam T Precision type of the wave-functions (float or double).
+ * \tparam F Type of the subspace (float or double for Gamma-point calculation,
+ *           complex<float> or complex<double> otherwise).
+ *
+ * \param [in] spla_ctx   Context of the SPLA library.
+ * \param [in] mem        Location of the input wave-functions (host or device).
+ * \param [in] spins      Spin range of the wave-functions.
+ * \param [in] wf_i       Left hand side of <wf_i | wf_j> product.
+ * \param [in] br_i       Band range of the <wf_i| wave-functions.
+ * \param [in] wf_j       Right hand side of <wf_i | wf_j> product.
+ * \param [in] br_j       Band range of the |wf_j> wave-functions.
+ */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<T> const& wf_i__, band_range br_i__,
-      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wave_functions<T> const& wf_i__,
+        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
+        int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
     RTE_ASSERT(wf_i__.ld() == wf_j__.ld());
+    RTE_ASSERT((wf_i__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+    RTE_ASSERT((wf_j__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
 
     if (spins__.size() == 2) {
         if (wf_i__.num_md() != wf::num_mag_dims(3)) {
@@ -1283,21 +1307,18 @@ inner(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<T> const& 
         size_factor = 2;
     }
 
-    // this is temporary
-    sddk::memory_t mem__ = sddk::memory_t::host;
-
     auto ld = wf_i__.ld();
 
-    auto scale_gamma_wf = [&spins__, &br_i__, &wf_i__](T scale__)
+    auto scale_gamma_wf = [&mem__, &spins__, &br_i__, &wf_i__](T scale__)
     {
         RTE_ASSERT(spins__.size() == 1);
-
-        sddk::memory_t mem__ = sddk::memory_t::host;
 
         auto& wf = const_cast<Wave_functions<T>&>(wf_i__);
         RTE_ASSERT(wf.num_sc() == wf::num_spins(1));
 
-        auto ptr = wf.data_ptr(mem__, 0, wf::spin_index(0), wf::band_index(br_i__.begin()));
+        auto sp = wf.actual_spin_index(spins__.begin());
+
+        auto ptr = wf.data_ptr(mem__, 0, sp, wf::band_index(br_i__.begin()));
         int incx = wf.ld() * 2; // complex matrix is read as scalar
         auto m = br_i__.size();
 
@@ -1349,10 +1370,10 @@ inner(::spla::Context& spla_ctx__, spin_range spins__, Wave_functions<T> const& 
         scale_gamma_wf(2.0);
     }
 
-//    // make sure result is updated on device as well
-//    if (result__.on_device()) {
-//        result__.copy_to(memory_t::device);
-//    }
+    /* make sure result is updated on device as well */
+    if (result__.on_device()) {
+        result__.copy_to(sddk::memory_t::device);
+    }
 }
 
 template <typename T, typename F>
@@ -1401,7 +1422,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new> 
      * S|\tilda phi_new> = S|phi_new> - S|phi_old><phi_old|phi_new> */
     if (br_old__.size() > 0 && project_out__) {
-        inner(spla_ctx__, spins__, wf_i__, br_old__, wf_j__, br_new__, o__, 0, 0);
+        inner(spla_ctx__, mem__, spins__, wf_i__, br_old__, wf_j__, br_new__, o__, 0, 0);
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             for (auto wf: wfs__) {
                 auto sp = wf->actual_spin_index(s);
