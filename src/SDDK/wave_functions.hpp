@@ -1227,12 +1227,14 @@ void copy(Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range b
 }
 
 /// Apply linear transformation to the wave-functions.
-/*
- * transform a single spin component of spinor wave-functions using scalar wave-functions as input
+/**
+ * \tparam T Precision type of the wave-functions (float or double).
+ * \tparam F Type of the subspace (float or double for Gamma-point calculation,
+ *           complex<float> or complex<double> otherwise).
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1244,23 +1246,33 @@ transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0_
      * that's why the const must be removed here */
     auto& spla_mat_dist = const_cast<sddk::dmatrix<F>&>(M__).spla_distribution();
 
-    /* for Gamma point case (transformation matrix is real) we treat complex wave-function coefficients a
+    /* for Gamma point case (transformation matrix is real) we treat complex wave-function coefficients as
      * a doubled list of real values */
-    int size_factor = std::is_same<F, real_type<F>>::value ? 2 : 1;
+    int ld = wf_in__.ld();
+    if (std::is_same<F, real_type<F>>::value) {
+        ld *= 2;
+    }
 
     F const* mtrx_ptr = M__.size_local() ? M__.at(sddk::memory_t::host, 0, 0) : nullptr;
 
-    F const* in_ptr = reinterpret_cast<F const*>(wf_in__.data_ptr(sddk::memory_t::host, 0, s_in__, band_index(br_in__.begin())));
-    int in_ld = size_factor * wf_in__.ld();
+    F const* in_ptr = reinterpret_cast<F const*>(wf_in__.data_ptr(mem__, 0, s_in__, band_index(br_in__.begin())));
 
-    F* out_ptr = reinterpret_cast<F*>(wf_out__.data_ptr(sddk::memory_t::host, 0, s_out__, band_index(br_out__.begin())));
-    int out_ld = size_factor * wf_out__.ld();
+    F* out_ptr = reinterpret_cast<F*>(wf_out__.data_ptr(mem__, 0, s_out__, band_index(br_out__.begin())));
 
-    spla::pgemm_sbs(size_factor * wf_in__.ld(), br_out__.size(), br_in__.size(), alpha__,
-        in_ptr, in_ld, mtrx_ptr, M__.ld(), irow0__, jcol0__, spla_mat_dist, beta__, out_ptr, out_ld, spla_ctx__);
+    spla::pgemm_sbs(ld, br_out__.size(), br_in__.size(), alpha__, in_ptr, ld, mtrx_ptr, M__.ld(), irow0__, jcol0__,
+            spla_mat_dist, beta__, out_ptr, ld, spla_ctx__);
 }
 
-/// Compute Inner product between the two sets of wave-functions.
+template <typename T, typename F>
+inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+        real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
+        real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
+{
+    RTE_THROW("implement this");
+}
+
+/// Compute inner product between the two sets of wave-functions.
 /**
  * \tparam T Precision type of the wave-functions (float or double).
  * \tparam F Type of the subspace (float or double for Gamma-point calculation,
@@ -1273,6 +1285,9 @@ transform(::spla::Context& spla_ctx__, ::sddk::dmatrix<F> const& M__, int irow0_
  * \param [in] br_i       Band range of the <wf_i| wave-functions.
  * \param [in] wf_j       Right hand side of <wf_i | wf_j> product.
  * \param [in] br_j       Band range of the |wf_j> wave-functions.
+ * \param [out] result    Resulting inner product matrix.
+ * \param [in] irow0      Starting row of the output sub-block.
+ * \param [in] jcol0      Starting column of the output sub-block.
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
@@ -1299,17 +1314,19 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
                                            ? spla::MatrixDistribution::create_mirror(wf_i__.comm().mpi_comm())
                                            : result__.spla_distribution();
 
-    F alpha = 1.0;
-    int size_factor = 1;
-    /* inner product matrix is real */
-    if (std::is_same<F, real_type<F>>::value) {
-        alpha       = 2.0;
-        size_factor = 2;
-    }
-
     auto ld = wf_i__.ld();
 
-    auto scale_gamma_wf = [&mem__, &spins__, &br_i__, &wf_i__](T scale__)
+    F alpha = 1.0;
+    /* inner product matrix is real */
+    if (std::is_same<F, real_type<F>>::value) {
+        alpha = 2.0;
+        ld   *= 2;
+    }
+
+    T scale_half(0.5);
+    T scale_two(2.0);
+
+    auto scale_gamma_wf = [&ld, &mem__, &spins__, &br_i__, &wf_i__](T* scale__)
     {
         RTE_ASSERT(spins__.size() == 1);
 
@@ -1319,31 +1336,30 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
         auto sp = wf.actual_spin_index(spins__.begin());
 
         auto ptr = wf.data_ptr(mem__, 0, sp, wf::band_index(br_i__.begin()));
-        int incx = wf.ld() * 2; // complex matrix is read as scalar
         auto m = br_i__.size();
 
         if (mem__ == sddk::memory_t::device) {
 #if defined(SIRIUS_GPU)
             if (std::is_same<T, double>::value) {
-                accblas::dscal(m, reinterpret_cast<double*>(&scale__), reinterpret_cast<double*>(ptr), incx);
+                accblas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
             } else if (std::is_same<T, float>::value) {
-                accblas::sscal(m, reinterpret_cast<float*>(&scale__), reinterpret_cast<float*>(ptr), incx);
+                accblas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
             }
 #else
             RTE_THROW("not compiled with GPU support!");
 #endif
         } else {
             if (std::is_same<T, double>::value) {
-                FORTRAN(dscal)(&m, reinterpret_cast<double*>(&scale__), reinterpret_cast<double*>(ptr), &incx);
+                FORTRAN(dscal)(&m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), &ld);
             } else if (std::is_same<T, float>::value) {
-                FORTRAN(sscal)(&m, reinterpret_cast<float*>(&scale__), reinterpret_cast<float*>(ptr), &incx);
+                FORTRAN(sscal)(&m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), &ld);
             }
         }
     };
 
     /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
     if (std::is_same<F, real_type<F>>::value && wf_i__.comm().rank() == 0) {
-        scale_gamma_wf(0.5);
+        scale_gamma_wf(&scale_half);
     }
 
     F beta = 0.0;
@@ -1356,10 +1372,10 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
         auto wf_i_ptr = wf_i__.data_ptr(mem__, 0, s_i, wf::band_index(br_i__.begin()));
         auto wf_j_ptr = wf_j__.data_ptr(mem__, 0, s_j, wf::band_index(br_j__.begin()));
 
-        spla::pgemm_ssb(br_i__.size(), br_j__.size(), size_factor * ld, SPLA_OP_CONJ_TRANSPOSE,
+        spla::pgemm_ssb(br_i__.size(), br_j__.size(), ld, SPLA_OP_CONJ_TRANSPOSE,
                         alpha,
-                        reinterpret_cast<F const*>(wf_i_ptr), size_factor * ld,
-                        reinterpret_cast<F const*>(wf_j_ptr), size_factor * ld,
+                        reinterpret_cast<F const*>(wf_i_ptr), ld,
+                        reinterpret_cast<F const*>(wf_j_ptr), ld,
                         beta,
                         result_ptr, result__.ld(), irow0__, jcol0__, spla_mat_dist, spla_ctx__);
         beta = 1.0;
@@ -1367,7 +1383,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
 
     /* for gamma case, G = 0 vector is rescaled back */
     if (std::is_same<F, real_type<F>>::value && wf_i__.comm().rank() == 0) {
-        scale_gamma_wf(2.0);
+        scale_gamma_wf(&scale_two);
     }
 
     /* make sure result is updated on device as well */

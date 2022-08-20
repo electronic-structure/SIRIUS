@@ -76,7 +76,7 @@ void K_point<T>::generate_spinor_wave_functions()
             sddk::transform<complex_type<T>, complex_type<T>>(ctx_.spla_context(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0,
                       spinor_wave_functions(), 0, nbnd);
 
-            wf::transform(ctx_.spla_context(), sv_eigen_vectors_[s], o, 0, 1.0, *fv_states_new_, wf::spin_index(0),
+            wf::transform(ctx_.spla_context(), sddk::memory_t::host, sv_eigen_vectors_[s], o, 0, 1.0, *fv_states_new_, wf::spin_index(0),
                     wf::band_range(0, nfv), 0.0, *spinor_wave_functions_new_, wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 

@@ -579,12 +579,12 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, sddk::linalg_t la_typ
         auto sp = hphi__.actual_spin_index(s);
 
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
-        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, 1.0, hphi__, sp, wf::band_range(num_locked__, N__),
+        wf::transform<T, F>(ctx__.spla_context(), mem__, *evec_ptr, 0, 0, 1.0, hphi__, sp, wf::band_range(num_locked__, N__),
                 0.0, hpsi__, sp, wf::band_range(0, num_residuals));
 
         sp = ophi__.actual_spin_index(s);
         /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        wf::transform<T, F>(ctx__.spla_context(), *evec_ptr, 0, 0, 1.0, ophi__, sp, wf::band_range(num_locked__, N__),
+        wf::transform<T, F>(ctx__.spla_context(), mem__, *evec_ptr, 0, 0, 1.0, ophi__, sp, wf::band_range(num_locked__, N__),
                 0.0, opsi__, sp, wf::band_range(0, num_residuals));
     }
 
