@@ -701,6 +701,9 @@ class device_memory_guard
         , mem_{mem__}
         , copy_to_{copy_to__}
     {
+#ifndef NDEBUG
+        std::cout << "device_memory_guard for " << obj_.data_[0].label() << " is created" << std::endl;
+#endif
         if (is_device_memory(mem_)) {
 #ifndef NDEBUG
             std::cout << "allocate " << obj_.data_[0].label() << " on GPU" << std::endl;
@@ -717,6 +720,9 @@ class device_memory_guard
     device_memory_guard(device_memory_guard&& src__) = default;
     ~device_memory_guard()
     {
+#ifndef NDEBUG
+        std::cout << "device_memory_guard for " << obj_.data_[0].label() << " is destroyed" << std::endl;
+#endif
         if (is_device_memory(mem_)) {
             if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::host)) {
 #ifndef NDEBUG
@@ -793,7 +799,7 @@ class Wave_functions_base
 
     auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none)
     {
-        return std::move(device_memory_guard<Wave_functions_base<T>>(*this, mem__, copy_to__));
+        return device_memory_guard<Wave_functions_base<T>>(*this, mem__, copy_to__);
     }
 
     inline auto num_sc() const
