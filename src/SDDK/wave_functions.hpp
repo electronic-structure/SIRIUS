@@ -702,8 +702,14 @@ class device_memory_guard
         , copy_to_{copy_to__}
     {
         if (is_device_memory(mem_)) {
+#ifndef NDEBUG
+            std::cout << "allocate " << obj_.data_[0].label() << " on GPU" << std::endl;
+#endif
             obj_.allocate(mem_);
             if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::device)) {
+#ifndef NDEBUG
+                std::cout << "copy " << obj_.data_[0].label() << " to GPU" << std::endl;
+#endif
                 obj_.copy_to(mem_);
             }
         }
@@ -713,8 +719,14 @@ class device_memory_guard
     {
         if (is_device_memory(mem_)) {
             if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::host)) {
+#ifndef NDEBUG
+                std::cout << "copy " << obj_.data_[0].label() << " to host" << std::endl;
+#endif
                 obj_.copy_to(sddk::memory_t::host);
             }
+#ifndef NDEBUG
+            std::cout << "deallocate " << obj_.data_[0].label() << " on GPU" << std::endl;
+#endif
             obj_.deallocate(mem_);
         }
     }

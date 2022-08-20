@@ -1554,6 +1554,11 @@ class mdarray
 #endif
     }
 
+    auto label() const
+    {
+        return label_;
+    }
+
     mdarray<T, N>& operator=(std::function<T(void)> f__)
     {
         for (size_t i = 0; i < this->size(); i++) {
