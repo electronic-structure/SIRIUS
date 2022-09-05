@@ -121,12 +121,14 @@ class Teter : DiagonalPreconditioner<numeric_t>, public local::OperatorBase
     using DiagonalPreconditioner<numeric_t>::apply;
 };
 
-/** Ultrasoft preconditioner for direct minimization.
+/** Ultrasoft preconditioner by Hasnip & Pickard.
+ *  This class applies the preconditioner P to a wave-function.
  *
- *  (1+T)⁻¹ + G R G⊹
+ *  P = (Id+T)⁻¹ + G R G⊹
+ *
  *  where R = -Q (1 + C Q)⁻¹
- *  and G  are the "preconditioned" beta projectors, C = B⊹ K B
- *  TODO: what is K?
+ *  and G  are the "preconditioned" beta projectors G = K B, and C = B⊹ K B,
+ *  K = (Id+T)⁻¹. T is the modified kinetic energy, see Eq. 14 in the paper below.
  *
  * Hasnip, P. J., & Pickard, C. J. (). Electronic energy minimisation with
  * ultrasoft pseudopotentials. , 174(1), 24–29.
