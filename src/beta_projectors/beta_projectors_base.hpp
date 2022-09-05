@@ -401,50 +401,49 @@ template <class T, class Op>
 sddk::matrix<double_complex>
 inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, Op&& op)
 {
-    if (beta.comm().size() == 1) {
-        auto generator        = beta.make_generator();
-        int num_beta_chunks   = beta.num_chunks();
-        auto bcoeffs_row      = generator.prepare();
-        auto bcoeffs_col      = generator.prepare();
-        auto linalg_t         = ctx.blas_linalg_t();
-        auto preferred_memory = ctx.preferred_memory_t();
+    auto generator        = beta.make_generator();
+    int num_beta_chunks   = beta.num_chunks();
+    auto bcoeffs_row      = generator.prepare();
+    auto bcoeffs_col      = generator.prepare();
+    auto linalg_t         = ctx.blas_linalg_t();
+    auto preferred_memory = ctx.preferred_memory_t();
 
-        int size{beta.num_total_beta()};
+    int size{beta.num_total_beta()};
 
-        sddk::matrix<double_complex> out(size, size, preferred_memory);
+    sddk::matrix<double_complex> out(size, size, preferred_memory);
 
-        double_complex one  = double_complex(1);
-        double_complex zero = double_complex(0);
+    double_complex one  = double_complex(1);
+    double_complex zero = double_complex(0);
 
-        for (int ichunk = 0; ichunk < num_beta_chunks; ++ichunk) {
-            generator.generate(bcoeffs_row, ichunk);
+    for (int ichunk = 0; ichunk < num_beta_chunks; ++ichunk) {
+        generator.generate(bcoeffs_row, ichunk);
 
-            for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
-                generator.generate(bcoeffs_col, jchunk);
+        for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
+            generator.generate(bcoeffs_col, jchunk);
 
-                int m                   = bcoeffs_row.beta_chunk.num_beta_;
-                int n                   = bcoeffs_col.beta_chunk.num_beta_;
-                int k                   = bcoeffs_col.pw_coeffs_a.size(0);
-                int dest_row            = bcoeffs_row.beta_chunk.offset_;
-                int dest_col            = bcoeffs_col.beta_chunk.offset_;
-                const double_complex* A = bcoeffs_row.pw_coeffs_a.at(preferred_memory);
-                // const double_complex* B = bcoeffs_col.pw_coeffs_a.at(preferred_memory);
-                // apply Op on |b>  (in-place operation)
-                auto G = op(bcoeffs_col.pw_coeffs_a);
+            int m                   = bcoeffs_row.beta_chunk.num_beta_;
+            int n                   = bcoeffs_col.beta_chunk.num_beta_;
+            int k                   = bcoeffs_col.pw_coeffs_a.size(0);
+            int dest_row            = bcoeffs_row.beta_chunk.offset_;
+            int dest_col            = bcoeffs_col.beta_chunk.offset_;
+            const double_complex* A = bcoeffs_row.pw_coeffs_a.at(preferred_memory);
+            // const double_complex* B = bcoeffs_col.pw_coeffs_a.at(preferred_memory);
+            // apply Op on |b>  (in-place operation)
+            auto G = op(bcoeffs_col.pw_coeffs_a);
 
-                const double_complex* B2 = G.at(preferred_memory);
-                double_complex* C        = out.at(preferred_memory, dest_row, dest_col);
-                // linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B,
-                //                       bcoeffs_col.pw_coeffs_a.ld(), &zero, C, out.ld());
-                linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B2, G.ld(), &zero, C,
-                                      out.ld());
-            }
+            const double_complex* B2 = G.at(preferred_memory);
+            double_complex* C        = out.at(preferred_memory, dest_row, dest_col);
+            // linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B,
+            //                       bcoeffs_col.pw_coeffs_a.ld(), &zero, C, out.ld());
+            sddk::linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B2, G.ld(), &zero, C,
+                                        out.ld());
         }
-        return out;
-    } else {
-        throw std::runtime_error("distributed case not yet implemented: " + std::string(__func__) + " in " +
-                                 std::string(__FILE__) + ":" + std::to_string(__LINE__));
     }
+    if (beta.comm().size() > 1) {
+        beta.comm().allreduce(out.at(sddk::memory_t::host), static_cast<int>(out.size()));
+    }
+
+    return out;
 }
 
 /// inner product <beta|beta>, result in preferred_memory
@@ -452,43 +451,43 @@ template <class T>
 sddk::matrix<std::complex<T>>
 inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
 {
-    if (beta.comm().size() == 1) {
-        auto generator        = beta.make_generator();
-        int num_beta_chunks   = beta.num_chunks();
-        auto bcoeffs_row      = generator.prepare();
-        auto bcoeffs_col      = generator.prepare();
-        auto linalg_t         = ctx.blas_linalg_t();
-        auto preferred_memory = ctx.preferred_memory_t();
+    auto generator        = beta.make_generator();
+    int num_beta_chunks   = beta.num_chunks();
+    auto bcoeffs_row      = generator.prepare();
+    auto bcoeffs_col      = generator.prepare();
+    auto linalg_t         = ctx.blas_linalg_t();
+    auto preferred_memory = ctx.preferred_memory_t();
 
-        int size{beta.num_total_beta()};
+    int size{beta.num_total_beta()};
 
-        sddk::matrix<double_complex> out(size, size, preferred_memory);
+    sddk::matrix<double_complex> out(size, size, preferred_memory);
 
-        double_complex one  = double_complex(1);
-        double_complex zero = double_complex(0);
+    double_complex one  = double_complex(1);
+    double_complex zero = double_complex(0);
 
-        for (int ichunk = 0; ichunk < num_beta_chunks; ++ichunk) {
-            generator.generate(bcoeffs_row, ichunk);
+    for (int ichunk = 0; ichunk < num_beta_chunks; ++ichunk) {
+        generator.generate(bcoeffs_row, ichunk);
 
-            for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
-                generator.generate(bcoeffs_col, jchunk);
-                int m                   = bcoeffs_row.beta_chunk.num_beta_;
-                int n                   = bcoeffs_col.beta_chunk.num_beta_;
-                int k                   = bcoeffs_col.pw_coeffs_a.size(0);
-                int dest_row            = bcoeffs_row.beta_chunk.offset_;
-                int dest_col            = bcoeffs_col.beta_chunk.offset_;
-                const double_complex* A = bcoeffs_row.pw_coeffs_a.at(preferred_memory);
-                const double_complex* B = bcoeffs_col.pw_coeffs_a.at(preferred_memory);
-                double_complex* C       = out.at(preferred_memory, dest_row, dest_col);
-                linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B,
-                                      bcoeffs_col.pw_coeffs_a.ld(), &zero, C, out.ld());
-            }
+        for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
+            generator.generate(bcoeffs_col, jchunk);
+            int m                   = bcoeffs_row.beta_chunk.num_beta_;
+            int n                   = bcoeffs_col.beta_chunk.num_beta_;
+            int k                   = bcoeffs_col.pw_coeffs_a.size(0);
+            int dest_row            = bcoeffs_row.beta_chunk.offset_;
+            int dest_col            = bcoeffs_col.beta_chunk.offset_;
+            const double_complex* A = bcoeffs_row.pw_coeffs_a.at(preferred_memory);
+            const double_complex* B = bcoeffs_col.pw_coeffs_a.at(preferred_memory);
+            double_complex* C       = out.at(preferred_memory, dest_row, dest_col);
+            sddk::linalg(linalg_t).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B,
+                                        bcoeffs_col.pw_coeffs_a.ld(), &zero, C, out.ld());
         }
-        return out;
-    } else {
-        throw std::runtime_error("distributed case not yet implemented: " + std::string(__func__) + " in " +
-                                 std::string(__FILE__) + ":" + std::to_string(__LINE__));
     }
+
+    if (beta.comm().size() > 1) {
+        beta.comm().allreduce(out.at(sddk::memory_t::host), static_cast<int>(out.size()));
+    }
+
+    return out;
 }
 
 // /// TODO: add docstring, standalone inner product, Wave_functions carry communicator
