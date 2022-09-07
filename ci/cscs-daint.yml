@@ -17,6 +17,7 @@ stages:
 
 cuda-10:
   extends: .build_common
+  script: ['true']
   variables:
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +nlcglib +scalapack +cuda cuda_arch=60 ^cuda@10.2.89 ^openblas ^mpich@:3 ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60'
     ENVIRONMENT: ci/spack/cuda-10.yaml
