@@ -20,13 +20,9 @@ jobs:
         #    spack --color always repo add ${GITHUB_WORKSPACE}/spack
         #    spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
       - name: Show the spec
-        run: |
-          ls
-          pwd
-          env
-          spack --color always -e spack-sirius-env spec -I $SPEC
+        run: /spack/bin/spack --color always -e /root/spack-sirius-env spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e spack-sirius-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: /spack/bin/spack --color always -e spack-sirius-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
           #      - name: Run unit tests
           #        run: |
           #          cd ${GITHUB_WORKSPACE}/spack-build
