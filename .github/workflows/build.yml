@@ -4,7 +4,7 @@ on:
   push:
     branches: ['master', 'develop', '!trying', '!staging']
   pull_request:
-    branches: ['master', 'develop']
+    branches: ['master', 'develop', 'new_master']
 
 jobs:
   build_and_test_cpu:
