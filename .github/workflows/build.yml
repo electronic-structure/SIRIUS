@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
         #- name: Setup Spack
