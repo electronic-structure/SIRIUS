@@ -34,14 +34,15 @@ jobs:
 
           #      - name: Build SIRIUS
         #        run: spack --color always -e sirius-build-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
-          #      - name: Run unit tests
-          #        run: |
-          #            cd ${GITHUB_WORKSPACE}/spack-build
-          #            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
-          #      - name: Run verification tests
-          #        run: |
-          #            cd ${GITHUB_WORKSPACE}/spack-build
-          #            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
+      - name: Run unit tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
+
+      - name: Run verification tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
 
           #  build_rocm:
           #    runs-on: ubuntu-latest
