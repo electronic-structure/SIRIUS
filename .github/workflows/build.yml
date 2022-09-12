@@ -26,7 +26,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env $SPEC build-env -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
           make -j
           #      - name: Build SIRIUS
         #        run: spack --color always -e sirius-build-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
