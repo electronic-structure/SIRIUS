@@ -22,15 +22,22 @@ jobs:
       - name: Show the spec
         run: spack --color always -e sirius-build-env spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e sirius-build-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
-      - name: Run unit tests
         run: |
-            cd ${GITHUB_WORKSPACE}/spack-build
-            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
-      - name: Run verification tests
-        run: |
-            cd ${GITHUB_WORKSPACE}/spack-build
-            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e sirius-build-env $SPEC build-env -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          make -j
+          #      - name: Build SIRIUS
+        #        run: spack --color always -e sirius-build-env dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+          #      - name: Run unit tests
+          #        run: |
+          #            cd ${GITHUB_WORKSPACE}/spack-build
+          #            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
+          #      - name: Run verification tests
+          #        run: |
+          #            cd ${GITHUB_WORKSPACE}/spack-build
+          #            spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
 
           #  build_rocm:
           #    runs-on: ubuntu-latest
