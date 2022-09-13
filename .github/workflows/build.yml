@@ -36,6 +36,26 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
 
+  build_elpa:
+    runs-on: ubuntu-latest
+    container: electronicstructure/sirius
+    env:
+      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +elpa +fortran build_type=RelWithDebInfo ^openblas ^mpich
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show the spec
+        run: spack --color always -e sirius-build-env spec -I $SPEC
+      - name: Configure SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_ELPA=1 -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e sirius-build-env build-env $SPEC -- make
+
   build_serial:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
