@@ -116,6 +116,26 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e sirius-build-env build-env $SPEC -- make
 
+  build_nlcglib:
+    runs-on: ubuntu-latest
+    container: electronicstructure/sirius
+    env:
+      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 +nlcglib build_type=RelWithDebInfo ^openblas ^mpich ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show the spec
+        run: spack --color always -e sirius-build-env spec -I $SPEC
+      - name: Configure SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_NLCGLIB=1 -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e sirius-build-env build-env $SPEC -- make
+
           #  build_rocm:
           #    runs-on: ubuntu-latest
           #    container: stabbles/sirius-rocm
