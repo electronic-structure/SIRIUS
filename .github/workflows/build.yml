@@ -150,7 +150,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env-clang build-env $SPEC -- cmake .. -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e sirius-build-env-clang build-env $SPEC -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
