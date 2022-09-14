@@ -36,3 +36,4 @@ output*.json
 build/
 spack-build*
 spack-configure-args.txt
+/.cache/
