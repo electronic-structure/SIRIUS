@@ -12,149 +12,149 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
       - name: Run unit tests
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure --label-exclude integration_test
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- ctest --output-on-failure --label-exclude integration_test
       - name: Run verification tests
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- ctest --output-on-failure -L cpu_serial
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- ctest --output-on-failure -L cpu_serial
 
   build_elpa:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +elpa +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +elpa +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_ELPA=1 -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_ELPA=1 -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
   build_serial:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
   build_cuda:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
   build_cuda_fp32:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 +single_precision build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 +single_precision build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_FP32=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_FP32=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
   build_nlcglib:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 +nlcglib build_type=RelWithDebInfo ^openblas ^mpich ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +cuda cuda_arch=60 +nlcglib build_type=RelWithDebInfo ^openblas ^mpich ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env spec -I $SPEC
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env build-env $SPEC -- cmake .. -DUSE_NLCGLIB=1 -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_NLCGLIB=1 -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env build-env $SPEC -- make
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
   build_clang:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
+      SPEC_CLANG: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always -e sirius-build-env-clang spec -I $SPEC
+        run: spack --color always -e clang-build-env spec -I $SPEC_CLANG
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always -e sirius-build-env-clang build-env $SPEC -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always -e clang-build-env build-env $SPEC_CLANG -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always -e sirius-build-env-clang build-env $SPEC -- make
+          spack --color always -e clang-build-env build-env $SPEC_CLANG -- make
 
 
           #  build_rocm:
@@ -209,7 +209,7 @@ jobs:
           #    runs-on: ubuntu-latest
           #    container: stabbles/sirius-cpu
           #    env:
-          #      SPEC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^mpich
+          #      SPEC_GCC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^mpich
           #    steps:
           #      - uses: actions/checkout@v2
           #      - name: Setup Spack
@@ -218,15 +218,15 @@ jobs:
           #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
           #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
           #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC
+          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
           #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
           #
           #  build_elpa_openmpi:
           #    runs-on: ubuntu-latest
           #    container: stabbles/sirius-cpu
           #    env:
-          #      SPEC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^openmpi
+          #      SPEC_GCC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^openmpi
           #    steps:
           #      - uses: actions/checkout@v2
           #      - name: Setup Spack
@@ -235,15 +235,15 @@ jobs:
           #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
           #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
           #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC
+          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
           #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
           #
           #  build_basic_clang:
           #    runs-on: ubuntu-latest
           #    container: stabbles/sirius-cpu
           #    env:
-          #      SPEC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
+          #      SPEC_GCC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
           #    steps:
           #      - uses: actions/checkout@v2
           #      - name: Setup Spack
@@ -252,6 +252,6 @@ jobs:
           #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
           #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
           #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC
+          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
           #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
