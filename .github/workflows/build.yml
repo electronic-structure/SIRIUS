@@ -156,102 +156,18 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e clang-build-env build-env $SPEC_CLANG -- make
 
-
-          #  build_rocm:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-rocm
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
-          #          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run concretize
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run install -v
-          #
-          #  build_cuda_10:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-cuda-10
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-10.yaml
-          #          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run concretize
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run install -v
-          #
-          #  build_cuda_11:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-cuda-11
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-11.yaml
-          #          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run concretize
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run install -v
-          #
-          #  build_elpa_mpich:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-cpu
-          #    env:
-          #      SPEC_GCC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^mpich
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
-          #
-          #  build_elpa_openmpi:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-cpu
-          #    env:
-          #      SPEC_GCC: sirius@develop %gcc +vdwxc +tests +apps +elpa build_type=RelWithDebInfo ^openblas ^openmpi
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
-          #
-          #  build_basic_clang:
-          #    runs-on: ubuntu-latest
-          #    container: stabbles/sirius-cpu
-          #    env:
-          #      SPEC_GCC: sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
-          #    steps:
-          #      - uses: actions/checkout@v2
-          #      - name: Setup Spack
-          #        run: |
-          #          spack --color always repo rm --scope site user
-          #          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          #          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
-          #      - name: Show the spec
-          #        run: spack --color always -e ci_run spec -I $SPEC_GCC
-          #      - name: Build SIRIUS
-          #        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC_GCC
+  build_rocm:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-rocm
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: |
+          spack --color always repo rm --scope site user
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
+          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
+      - name: Show the spec
+        run: spack --color always -e ci_run concretize
+      - name: Build SIRIUS
+        run: spack --color always -e ci_run install -v
