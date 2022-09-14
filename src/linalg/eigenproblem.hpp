@@ -28,6 +28,7 @@
 #include "utils/profiler.hpp"
 #include "linalg.hpp"
 #include "SDDK/omp.hpp"
+#include "eigensolver.hpp"
 
 #if defined(SIRIUS_ELPA)
 #include "elpa.hpp"
