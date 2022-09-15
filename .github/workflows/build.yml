@@ -158,16 +158,20 @@ jobs:
 
   build_rocm:
     runs-on: ubuntu-latest
-    container: stabbles/sirius-rocm
+    container: electronicstructure/sirius_rocm
+    env:
+      SPEC_ROCM: sirius@develop %gcc build_type=RelWithDebInfo +scalapack +fortran +tests +rocm amdgpu_target=gfx90a ^openblas ^mpich ^spfft
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Spack
-        run: |
-          spack --color always repo rm --scope site user
-          spack --color always repo add ${GITHUB_WORKSPACE}/spack
-          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
-          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
       - name: Show the spec
-        run: spack --color always -e ci_run concretize
+        run: spack --color always -e gcc-build-env spec -I $SPEC_ROCM
+      - name: Configure SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e gcc-build-env build-env $SPEC_ROCM -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DUSE_SCALAPACK=1 -DUSE_ROCM=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
-        run: spack --color always -e ci_run install -v
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e gcc-build-env build-env $SPEC_ROCM -- make
