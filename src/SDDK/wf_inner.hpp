@@ -50,66 +50,66 @@ namespace sddk {
  *  \param [in]  irow0    First row (in the global matrix) of the inner product sub-matrix.
  *  \param [in]  jcol0    First column (in the global matix) of the inner product sub-matrix.
  */
-template <typename T>
-void
-inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
-      Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__);
-
-inline void
-inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
-      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<double>>& result__, int irow0__, int jcol0__)
-{
-    for (int i = 0; i < m__; i++) {
-        for (int j = 0; j < n__; j++) {
-            result__(irow0__ + i, jcol0__ + j) = std::complex<double>(0, 0);
-        }
-    }
-
-    for (int s: ispn__) {
-        int nk = ket__.pw_coeffs(s).num_rows_loc();
-        for (int i = 0; i < m__; i++) {
-            for (int j = 0; j < n__; j++) {
-                std::complex<double> z(0, 0);
-                for (int k = 0; k < nk; k++) {
-                    assert(bra__.pw_coeffs(s).prime(k, i0__ + i) == bra__.pw_coeffs(s).prime(k, i0__ + i));
-                    assert(ket__.pw_coeffs(s).prime(k, j0__ + j) == ket__.pw_coeffs(s).prime(k, j0__ + j));
-                    z += std::conj(bra__.pw_coeffs(s).prime(k, i0__ + i)) * ket__.pw_coeffs(s).prime(k, j0__ + j);
-                }
-                assert(z == z);
-                result__(irow0__ + i, jcol0__ + j) += z;
-                assert(result__(irow0__ + i, jcol0__ + j) == result__(irow0__ + i, jcol0__ + j));
-            }
-        }
-    }
-}
-
-inline void
-inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
-      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
-{
-    for (int i = 0; i < m__; i++) {
-        for (int j = 0; j < n__; j++) {
-            result__(irow0__ + i, jcol0__ + j) = 0.0;
-        }
-    }
-
-    for (int s: ispn__) {
-        int nk = ket__.pw_coeffs(s).num_rows_loc();
-        for (int i = 0; i < m__; i++) {
-            for (int j = 0; j < n__; j++) {
-                double z{0};
-                z = std::real(std::conj(bra__.pw_coeffs(s).prime(0, i0__ + i)) * ket__.pw_coeffs(s).prime(0, j0__ + j));
-
-                for (int k = 1; k < nk; k++) {
-                    auto a = bra__.pw_coeffs(s).prime(k, i0__ + i);
-                    auto b = ket__.pw_coeffs(s).prime(k, j0__ + j);
-                    z += 2 * (std::real(a) * std::real(b) + std::imag(a) * std::imag(b));
-                }
-                result__(irow0__ + i, jcol0__ + j) += z;
-            }
-        }
-    }
-}
+//template <typename T>
+//void
+//inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<real_type<T>>& bra__, int i0__, int m__,
+//      Wave_functions<real_type<T>>& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__);
+//
+//inline void
+//inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+//      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<std::complex<double>>& result__, int irow0__, int jcol0__)
+//{
+//    for (int i = 0; i < m__; i++) {
+//        for (int j = 0; j < n__; j++) {
+//            result__(irow0__ + i, jcol0__ + j) = std::complex<double>(0, 0);
+//        }
+//    }
+//
+//    for (int s: ispn__) {
+//        int nk = ket__.pw_coeffs(s).num_rows_loc();
+//        for (int i = 0; i < m__; i++) {
+//            for (int j = 0; j < n__; j++) {
+//                std::complex<double> z(0, 0);
+//                for (int k = 0; k < nk; k++) {
+//                    assert(bra__.pw_coeffs(s).prime(k, i0__ + i) == bra__.pw_coeffs(s).prime(k, i0__ + i));
+//                    assert(ket__.pw_coeffs(s).prime(k, j0__ + j) == ket__.pw_coeffs(s).prime(k, j0__ + j));
+//                    z += std::conj(bra__.pw_coeffs(s).prime(k, i0__ + i)) * ket__.pw_coeffs(s).prime(k, j0__ + j);
+//                }
+//                assert(z == z);
+//                result__(irow0__ + i, jcol0__ + j) += z;
+//                assert(result__(irow0__ + i, jcol0__ + j) == result__(irow0__ + i, jcol0__ + j));
+//            }
+//        }
+//    }
+//}
+//
+//inline void
+//inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions<float>& bra__, int i0__, int m__,
+//      Wave_functions<float>& ket__, int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
+//{
+//    for (int i = 0; i < m__; i++) {
+//        for (int j = 0; j < n__; j++) {
+//            result__(irow0__ + i, jcol0__ + j) = 0.0;
+//        }
+//    }
+//
+//    for (int s: ispn__) {
+//        int nk = ket__.pw_coeffs(s).num_rows_loc();
+//        for (int i = 0; i < m__; i++) {
+//            for (int j = 0; j < n__; j++) {
+//                double z{0};
+//                z = std::real(std::conj(bra__.pw_coeffs(s).prime(0, i0__ + i)) * ket__.pw_coeffs(s).prime(0, j0__ + j));
+//
+//                for (int k = 1; k < nk; k++) {
+//                    auto a = bra__.pw_coeffs(s).prime(k, i0__ + i);
+//                    auto b = ket__.pw_coeffs(s).prime(k, j0__ + j);
+//                    z += 2 * (std::real(a) * std::real(b) + std::imag(a) * std::imag(b));
+//                }
+//                result__(irow0__ + i, jcol0__ + j) += z;
+//            }
+//        }
+//    }
+//}
 
 }
 #endif

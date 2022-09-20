@@ -18,7 +18,7 @@ struct BlockVector {
         vec.leftCols(num) += X.vec.leftCols(num) * D;
     }
 
-    void block_axpy_scatter(std::vector<std::complex<double>> alphas, BlockVector const &X, std::vector<size_t> ids, size_t num) {
+    void block_axpy_scatter(std::vector<std::complex<double>> alphas, BlockVector const &X, std::vector<int> ids, size_t num) {
         for (size_t i = 0; i < num; ++i) {
             vec.col(ids[i]) += alphas[i] * X.vec.col(i);
         }
@@ -40,15 +40,15 @@ struct BlockVector {
         vec.leftCols(num) = X.vec.leftCols(num);
     }
 
-    void fill(std::complex<double> val) {
-        vec.fill(val);
+    void zero() {
+        vec.fill(0);
     }
 
     auto cols() {
         return vec.cols();
     }
 
-    void repack(std::vector<size_t> const &ids) {
+    void repack(std::vector<int> const &ids) {
         for (size_t i = 0; i < ids.size(); ++i) {
             auto j = ids[i];
             if (j != i) {
@@ -71,7 +71,7 @@ struct PosDefMatrixShifted {
         v.vec.leftCols(num) = alpha * A * u.vec.leftCols(num) + alpha * u.vec.leftCols(num) * shifts.head(num).asDiagonal() + beta * v.vec.leftCols(num);
     }
 
-    void repack(std::vector<size_t> const &ids) {
+    void repack(std::vector<int> const &ids) {
         for (size_t i = 0; i < ids.size(); ++i) {
             auto j = ids[i];
             if (j != i) {
@@ -85,7 +85,7 @@ struct IdentityPreconditioner {
     void apply(BlockVector &C, BlockVector const &B) {
         C = B;
     }
-    void repack(std::vector<size_t> const &ids) {
+    void repack(std::vector<int> const &ids) {
         // nothing to do;
     }
 };

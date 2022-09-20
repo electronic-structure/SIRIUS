@@ -106,39 +106,39 @@ double Gmax = 10;
    off the reduction of G-vectors by 
    inversion symmetry */
 Gvec gvec(M, Gmax, Communicator::world(), false);
-/* create G-vector partition; second communicator 
-   is used in remappting data for FFT */
-Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
-/* number of wave-functions */
-int N = 100;
-/* create scalar wave-functions for N bands */
-Wave_functions<double> wf(gvp, N, memory_t::host);
-/* spin index for scalar wave-functions */
-int ispn = 0;
-/* fill with random numbers */
-wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
-    return utils::random<double_complex>();
-};
-/* create a 2x2 BLACS grid */
-BLACS_grid grid(Communicator::world(), 2, 2);
-/* cyclic block size */
-int bs = 16;
-/* create a distributed overlap matrix */
-dmatrix<double_complex> o(N, N, grid, bs, bs);
-/* create temporary wave-functions */
-Wave_functions<double> tmp(gvp, N, memory_t::host);
-/* orthogonalize wave-functions */
-orthogonalize<double_complex>(spla_ctx, memory_t::host, linalg_t::blas, spin_range(ispn), 0, 0, {&wf}, 0, N, o, tmp);
-/* compute overlap */
-inner(spla_ctx, spin_range(ispn), wf, 0, N, wf, 0, N, o, 0, 0);
-/* get the diagonal of the matrix */
-auto d = o.get_diag(N);
-/* check diagonal */
-for (int i = 0; i < N; i++) {
-    if (std::abs(d[i] - 1.0) > 1e-10) {
-        throw std::runtime_error("wrong overlap");
-    }
-}
+///* create G-vector partition; second communicator 
+//   is used in remappting data for FFT */
+//Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+///* number of wave-functions */
+//int N = 100;
+///* create scalar wave-functions for N bands */
+//Wave_functions<double> wf(gvp, N, memory_t::host);
+///* spin index for scalar wave-functions */
+//int ispn = 0;
+///* fill with random numbers */
+//wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
+//    return utils::random<double_complex>();
+//};
+///* create a 2x2 BLACS grid */
+//BLACS_grid grid(Communicator::world(), 2, 2);
+///* cyclic block size */
+//int bs = 16;
+///* create a distributed overlap matrix */
+//dmatrix<double_complex> o(N, N, grid, bs, bs);
+///* create temporary wave-functions */
+//Wave_functions<double> tmp(gvp, N, memory_t::host);
+///* orthogonalize wave-functions */
+//orthogonalize<double_complex>(spla_ctx, memory_t::host, linalg_t::blas, spin_range(ispn), 0, 0, {&wf}, 0, N, o, tmp);
+///* compute overlap */
+//inner(spla_ctx, spin_range(ispn), wf, 0, N, wf, 0, N, o, 0, 0);
+///* get the diagonal of the matrix */
+//auto d = o.get_diag(N);
+///* check diagonal */
+//for (int i = 0; i < N; i++) {
+//    if (std::abs(d[i] - 1.0) > 1e-10) {
+//        throw std::runtime_error("wrong overlap");
+//    }
+//}
 }
 
 void test4()

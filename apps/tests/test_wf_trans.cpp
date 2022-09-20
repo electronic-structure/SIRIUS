@@ -7,38 +7,38 @@ template <typename T, typename F>
 void test_wf_trans(sddk::BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
                    sddk::memory_t mem__, sddk::linalg_t la__)
 {
-    spla::Context spla_ctx(
-        la__ == sddk::linalg_t::blas || la__ == sddk::linalg_t::lapack || la__ == sddk::linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+    //spla::Context spla_ctx(
+    //    la__ == sddk::linalg_t::blas || la__ == sddk::linalg_t::lapack || la__ == sddk::linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
 
-    int nsp = (num_mag_dims__ == 0) ? 1 : 2;
+    //int nsp = (num_mag_dims__ == 0) ? 1 : 2;
 
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    sddk::Gvec gvec(M, cutoff__, sddk::Communicator::world(), false);
-    sddk::Gvec_partition gvp(gvec, sddk::Communicator::world(), sddk::Communicator::self());
-    if (sddk::Communicator::world().rank() == 0) {
-        printf("number of bands          : %i\n", num_bands__);
-        printf("number of spins          : %i\n", nsp);
-        printf("full spinors             : %i\n", num_mag_dims__ == 3);
-        printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.count());
-    }
+    //matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    //sddk::Gvec gvec(M, cutoff__, sddk::Communicator::world(), false);
+    //sddk::Gvec_partition gvp(gvec, sddk::Communicator::world(), sddk::Communicator::self());
+    //if (sddk::Communicator::world().rank() == 0) {
+    //    printf("number of bands          : %i\n", num_bands__);
+    //    printf("number of spins          : %i\n", nsp);
+    //    printf("full spinors             : %i\n", num_mag_dims__ == 3);
+    //    printf("total number of G-vectors: %i\n", gvec.num_gvec());
+    //    printf("local number of G-vectors: %i\n", gvec.count());
+    //}
 
-    int num_atoms = 31;
-    auto nmt = [](int i) {
-        return 123;
-    };
+    //int num_atoms = 31;
+    //auto nmt = [](int i) {
+    //    return 123;
+    //};
 
-    sddk::Wave_functions<T> phi(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
-    sddk::Wave_functions<T> tmp(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+    //sddk::Wave_functions<T> phi(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+    //sddk::Wave_functions<T> tmp(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
 
-    for (int is = 0; is < nsp; is++) {
-        phi.pw_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
-        phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
-    }
+    //for (int is = 0; is < nsp; is++) {
+    //    phi.pw_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
+    //    phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<std::complex<T>>();};
+    //}
 
-    sddk::dmatrix<F> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+    //sddk::dmatrix<F> tmtrx(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-    sddk::transform<std::complex<T>, F>(spla_ctx, 0, phi, 0, num_bands__, tmtrx, 0, 0, tmp, 0, num_bands__);
+    //sddk::transform<std::complex<T>, F>(spla_ctx, 0, phi, 0, num_bands__, tmtrx, 0, 0, tmp, 0, num_bands__);
 }
 
 template <typename T, typename F>
@@ -74,12 +74,12 @@ void test_wf_trans_new(sddk::BLACS_grid const& blacs_grid__, double cutoff__, in
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
-                phi.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                phi.pw_coeffs(igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
             }
             for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
                 int ia = phi.spl_num_atoms()[ialoc];
                 for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
-                    phi.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                    phi.mt_coeffs(xi, wf::atom_index(ialoc), s, wf::band_index(i)) = utils::random<std::complex<T>>();
                 }
             }
         }
@@ -122,15 +122,15 @@ void test_wf_trans_new(sddk::BLACS_grid const& blacs_grid__, double cutoff__, in
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
                 diff += std::abs(
-                    phi.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) -
-                    psi.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(num_bands__ - i - 1)));
+                    phi.pw_coeffs(igloc, s, wf::band_index(i)) -
+                    psi.pw_coeffs(igloc, s, wf::band_index(num_bands__ - i - 1)));
             }
             for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
                 int ia = phi.spl_num_atoms()[ialoc];
                 for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
                     diff += std::abs(
-                        phi.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), s, wf::band_index(i)) -
-                        psi.mt_coeffs(sddk::memory_t::host, xi, wf::atom_index(ialoc), s, wf::band_index(num_bands__ - i - 1)));
+                        phi.mt_coeffs(xi, wf::atom_index(ialoc), s, wf::band_index(i)) -
+                        psi.mt_coeffs(xi, wf::atom_index(ialoc), s, wf::band_index(num_bands__ - i - 1)));
                 }
             }
         }

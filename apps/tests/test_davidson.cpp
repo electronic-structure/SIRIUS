@@ -2,42 +2,42 @@
 #include "band/davidson.hpp"
 
 using namespace sirius;
-using namespace sddk;
 
 template <typename T>
-void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
+void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
         tmp[i] = utils::random<double>();
     }
 
-    phi__.pw_coeffs(0).prime().zero();
+    phi__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
 
     //#pragma omp parallel for schedule(static)
     for (int i = 0; i < num_bands__; i++) {
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
-            int igk = kp__->idxgk(igk_loc);
+            int igk = kp__->gkvec().offset() + igk_loc;
             if (igk == 0) {
-                phi__.pw_coeffs(0).prime(igk_loc, i) = 1.0;
+                phi__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) = 1.0;
             }
             if (igk == i + 1) {
-                phi__.pw_coeffs(0).prime(igk_loc, i) = 0.5;
+                phi__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) = 0.5;
             }
             if (igk == i + 2) {
-                phi__.pw_coeffs(0).prime(igk_loc, i) = 0.25;
+                phi__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) = 0.25;
             }
             if (igk == i + 3) {
-                phi__.pw_coeffs(0).prime(igk_loc, i) = 0.125;
+                phi__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) = 0.125;
             }
-            phi__.pw_coeffs(0).prime(igk_loc, i) += tmp[(igk + i) & 0xFFFF] * 1e-5;
+            phi__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) += tmp[(igk + i) & 0xFFFF] * 1e-5;
         }
     }
 
     if (num_mag_dims__ == 3) {
         /* make pure spinor up- and dn- wave functions */
-        phi__.copy_from(device_t::CPU, num_bands__, phi__, 0, 0, 1, num_bands__);
+        wf::copy(sddk::memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
+                wf::band_range(num_bands__, 2 * num_bands__));
     }
 }
 
@@ -55,11 +55,11 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
     Hamiltonian0<T> H0(pot__, true);
     auto Hk = H0(kp);
-    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf().first);
+    sirius::initialize_subspace<T, F>(Hk, ctx__.unit_cell().num_ps_atomic_wf().first);
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
-    init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
+    init_wf(&kp, kp.spinor_wave_functions_new(), ctx__.num_bands(), 0);
 
 
     ///*
@@ -88,31 +88,33 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     //
     bool locking{true};
 
-    auto result = davidson<std::complex<T>, std::complex<F>, davidson_evp_t::hamiltonian>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-            [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
-            subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
+    RTE_THROW("switch to  new wf");
 
-    if (Communicator::world().rank() == 0 && only_kin__) {
-        std::vector<double> ekin(kp.num_gkvec());
-        for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
-        }
-        std::sort(ekin.begin(), ekin.end());
-
-        double max_diff{0};
-        for (int i = 0; i < ctx__.num_bands(); i++) {
-            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
-            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
-        }
-        printf("maximum eigen-value difference: %20.16e\n", max_diff);
-    }
-
-    if (Communicator::world().rank() == 0 && !only_kin__) {
-        std::cout << "Converged eigen-values" << std::endl;
-        for (int i = 0; i < ctx__.num_bands(); i++) {
-            printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
-        }
-    }
+//    auto result = davidson<std::complex<T>, std::complex<F>, davidson_evp_t::hamiltonian>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
+//            [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
+//            subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
+//
+//    if (Communicator::world().rank() == 0 && only_kin__) {
+//        std::vector<double> ekin(kp.num_gkvec());
+//        for (int i = 0; i < kp.num_gkvec(); i++) {
+//            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
+//        }
+//        std::sort(ekin.begin(), ekin.end());
+//
+//        double max_diff{0};
+//        for (int i = 0; i < ctx__.num_bands(); i++) {
+//            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+//            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
+//        }
+//        printf("maximum eigen-value difference: %20.16e\n", max_diff);
+//    }
+//
+//    if (Communicator::world().rank() == 0 && !only_kin__) {
+//        std::cout << "Converged eigen-values" << std::endl;
+//        for (int i = 0; i < ctx__.num_bands(); i++) {
+//            printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
+//        }
+//    }
 }
 
 void test_davidson(cmd_args const& args__)
@@ -195,7 +197,7 @@ void test_davidson(cmd_args const& args__)
     atype.local_potential(vloc);
     /* set Dion matrix */
     int nbf = atype.num_beta_radial_functions();
-    matrix<double> dion(nbf, nbf);
+    sddk::matrix<double> dion(nbf, nbf);
     dion.zero();
     if (add_dion) {
         for (int i = 0; i < nbf; i++) {
@@ -305,7 +307,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test_davidson(args);
-    int rank = Communicator::world().rank();
+    int rank = sddk::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();

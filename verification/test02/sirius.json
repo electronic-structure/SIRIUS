@@ -3,7 +3,7 @@
         "processing_unit" : "cpu",
         "std_evp_solver_name" : "lapack",
         "gen_evp_solver_name" : "lapack",
-        "verbosity" : 2,
+        "verbosity" : 5,
         "print_forces" : false,
         "print_stress" : false,
         "print_checksum" : false

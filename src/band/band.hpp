@@ -28,15 +28,20 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "k_point/k_point_set.hpp"
+#include "SDDK/wave_functions.hpp"
 
-namespace sddk {
-/* forward declaration */
-class BLACS_grid;
-}
+//namespace sddk {
+///* forward declaration */
+//class BLACS_grid;
+//}
 
 namespace sirius {
+
+
+
 /* forward declaration */
-class K_point_set;
+//class K_point_set;
 
 /// Setup and solve the eigen value problem.
 class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
@@ -66,8 +71,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
 
     /// Exact (not iterative) diagonalization of the Hamiltonian.
-    template <typename T>
-    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const;
+    template <typename T, typename F>
+    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const;
 
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
@@ -81,13 +86,103 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T, typename F>
-    void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions<real_type<T>>& phi__,
+    void set_subspace_mtrx(int N__, int n__, int num_locked__, sddk::Wave_functions<real_type<T>>& phi__,
                            sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<F>& mtrx__,
                            sddk::dmatrix<F>* mtrx_old__ = nullptr) const;
 
+    template <typename T, typename F>
+    void set_subspace_mtrx(int N__, int n__, int num_locked__, wf::Wave_functions<T>& phi__,
+                           wf::Wave_functions<T>& op_phi__, sddk::dmatrix<F>& mtrx__,
+                           sddk::dmatrix<F>* mtrx_old__ = nullptr) const
+    {
+        PROFILE("sirius::Band::set_subspace_mtrx");
+
+        RTE_ASSERT(n__ != 0);
+        if (mtrx_old__ && mtrx_old__->size()) {
+            RTE_ASSERT(&mtrx__.blacs_grid() == &mtrx_old__->blacs_grid());
+        }
+
+        /* copy old N - num_locked x N - num_locked distributed matrix */
+        if (N__ > 0) {
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+            if (mtrx_old__) {
+                if (spl_row.local_size()) {
+                    #pragma omp parallel for schedule(static)
+                    for (int i = 0; i < spl_col.local_size(); i++) {
+                        std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+                    }
+                }
+            }
+
+            if (ctx_.print_checksum()) {
+                auto cs = mtrx__.checksum(N__ - num_locked__, N__ - num_locked__);
+                if (ctx_.comm_band().rank() == 0) {
+                    utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(ctx_.out()));
+                }
+            }
+        }
+
+        /*  [--- num_locked -- | ------ N - num_locked ---- | ---- n ----] */
+        /*  [ ------------------- N ------------------------| ---- n ----] */
+
+        auto mem = sddk::memory_t::host;
+        /* <{phi,phi_new}|Op|phi_new> */
+        inner(ctx_.spla_context(), mem, ctx_.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(0), phi__,
+                wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__),
+                mtrx__, 0, N__ - num_locked__);
+
+        /* restore lower part */
+        if (N__ > 0) {
+            if (mtrx__.blacs_grid().comm().size() == 1) {
+                #pragma omp parallel for
+                for (int i = 0; i < N__ - num_locked__; i++) {
+                    for (int j = N__ - num_locked__; j < N__ + n__ - num_locked__; j++) {
+                        mtrx__(j, i) = utils::conj(mtrx__(i, j));
+                    }
+                }
+            } else {
+                sddk::linalg(sddk::linalg_t::scalapack)
+                    .tranc(n__, N__ - num_locked__, mtrx__, 0, N__ - num_locked__, mtrx__, N__ - num_locked__, 0);
+            }
+        }
+
+        if (ctx_.print_checksum()) {
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
+            if (ctx_.comm_band().rank() == 0) {
+                utils::print_checksum("subspace_mtrx", cs, RTE_OUT(ctx_.out()));
+            }
+        }
+
+        /* remove any numerical noise */
+        mtrx__.make_real_diag(N__ + n__ - num_locked__);
+
+        /* save new matrix */
+        if (mtrx_old__) {
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
+                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+            if (spl_row.local_size()) {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < spl_col.local_size(); i++) {
+                    std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+                }
+            }
+        }
+    }
+
     /// Solve the band eigen-problem for pseudopotential case.
     template <typename T, typename F>
-    int solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const;
+    int solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const;
 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>
@@ -112,9 +207,282 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /// Initialize the wave-functions subspace at a given k-point.
     /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
      *  are created from the random numbers. */
-    template <typename T>
-    void initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const;
+    //template <typename T>
+    //void initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const;
 };
+
+template <typename T, typename F>
+inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
+{
+    PROFILE("sirius::Band::initialize_subspace|kp");
+
+    //if (ctx_.cfg().control().verification() >= 2) {
+    //    auto eval = diag_S_davidson<T>(Hk__);
+    //    if (eval[0] <= 0) {
+    //        std::stringstream s;
+    //        s << "S-operator matrix is not positive definite\n"
+    //          << "  lowest eigen-value: " << eval[0];
+    //        WARNING(s);
+    //    } else {
+    //        ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
+    //    }
+    //}
+    //
+    auto& ctx = Hk__.H0().ctx();
+
+    auto pcs = ::sirius::should_print_checksum();
+
+    /* number of non-zero spin components */
+    const int num_sc = (ctx.num_mag_dims() == 3) ? 2 : 1;
+
+    /* short notation for number of target wave-functions */
+    int num_bands = ctx.num_bands();
+
+    /* number of basis functions */
+    int num_phi = std::max(num_ao__, num_bands / num_sc);
+
+    int num_phi_tot = num_phi * num_sc;
+
+    auto& mp = ctx.mem_pool(ctx.host_memory_t());
+
+    auto mem = sddk::memory_t::host;
+
+    ctx.print_memory_usage(__FILE__, __LINE__);
+
+    /* initial basis functions */
+    wf::Wave_functions<T> phi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
+            wf::num_bands(num_phi_tot), sddk::memory_t::host);
+
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        phi.zero(mem, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
+    }
+
+    /* generate the initial atomic wavefunctions */
+    std::vector<int> atoms(ctx.unit_cell().num_atoms());
+    std::iota(atoms.begin(), atoms.end(), 0);
+    Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx.unit_cell().atom_type(iat).indexb_wfs();},
+                                             ctx.ps_atomic_wf_ri(), phi);
+
+    /* generate some random noise */
+    std::vector<T> tmp(4096);
+    utils::rnd(true);
+    for (int i = 0; i < 4096; i++) {
+        tmp[i] = 1e-5 * utils::random<T>();
+    }
+    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
+    /* fill remaining wave-functions with pseudo-random guess */
+    RTE_ASSERT(Hk__.kp().num_gkvec() > num_phi + 10);
+    #pragma omp parallel
+    {
+        for (int i = 0; i < num_phi - num_ao__; i++) {
+            #pragma omp for schedule(static) nowait
+            for (int igk_loc = 0; igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                int igk = Hk__.kp().gkvec().offset() + igk_loc; //Hk__.kp().idxgk(igk_loc);
+                if (igk == i + 1) {
+                    phi.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(num_ao__ + i)) = 1.0;
+                }
+                if (igk == i + 2) {
+                    phi.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(num_ao__ + i)) = 0.5;
+                }
+                if (igk == i + 3) {
+                    phi.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(num_ao__ + i)) = 0.25;
+                }
+            }
+        }
+        /* add random noise */
+        for (int i = 0; i < num_phi; i++) {
+            #pragma omp for schedule(static) nowait
+            for (int igk_loc = Hk__.kp().gkvec().skip_g0(); igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                //int igk = Hk__.kp().idxgk(igk_loc);
+                int igk = Hk__.kp().gkvec().offset() + igk_loc;
+                phi.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) += tmp[igk & 0xFFF];
+            }
+        }
+    }
+
+    if (ctx.num_mag_dims() == 3) {
+        /* make pure spinor up- and dn- wave functions */
+        wf::copy(mem, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
+                wf::band_range(num_phi, num_phi_tot));
+    }
+    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
+
+    /* allocate wave-functions */
+    wf::Wave_functions<T> hphi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
+            wf::num_bands(num_phi_tot), sddk::memory_t::host);
+    wf::Wave_functions<T> ophi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
+            wf::num_bands(num_phi_tot), sddk::memory_t::host);
+    /* temporary wave-functions required as a storage during orthogonalization */
+    wf::Wave_functions<T> wf_tmp(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
+            wf::num_bands(num_phi_tot), sddk::memory_t::host);
+
+    int bs = ctx.cyclic_block_size();
+
+    auto& gen_solver = ctx.gen_evp_solver();
+
+    sddk::dmatrix<F> hmlt(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<F> ovlp(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<F> evec(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+
+    std::vector<real_type<F>> eval(num_bands);
+
+    ctx.print_memory_usage(__FILE__, __LINE__);
+
+    //if (is_device_memory(ctx_.preferred_memory_t())) {
+    //    auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
+
+    //    for (int ispn = 0; ispn < num_sc; ispn++) {
+    //        phi.pw_coeffs(ispn).allocate(mpd);
+    //        phi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, num_phi_tot);
+    //    }
+
+    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
+    //    }
+
+    //    for (int ispn = 0; ispn < num_sc; ispn++) {
+    //        hphi.pw_coeffs(ispn).allocate(mpd);
+    //        ophi.pw_coeffs(ispn).allocate(mpd);
+    //        wf_tmp.pw_coeffs(ispn).allocate(mpd);
+    //    }
+    //    evec.allocate(mpd);
+    //    hmlt.allocate(mpd);
+    //    ovlp.allocate(mpd);
+    //}
+
+    ctx.print_memory_usage(__FILE__, __LINE__);
+
+    if (pcs) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            auto cs = phi.checksum(mem, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
+            if (Hk__.kp().comm().rank() == 0) {
+                std::stringstream s;
+                s << "initial_phi" << ispn;
+                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+            }
+        }
+    }
+
+    for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
+        /* apply Hamiltonian and overlap operators to the new basis functions */
+        Hk__.template apply_h_s<F>(ctx.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(ispn_step),
+            wf::band_range(0, num_phi_tot), phi, &hphi, &ophi);
+
+        /* do some checks */
+    //    if (ctx_.cfg().control().verification() >= 1) {
+
+    //        set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
+    //        if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
+    //            auto s = ovlp.serialize("overlap", num_phi_tot, num_phi_tot);
+    //            if (Hk__.kp().comm().rank() == 0) {
+    //                ctx_.out() << s.str() << std::endl;
+    //            }
+    //        }
+
+    //        double max_diff = check_hermitian(ovlp, num_phi_tot);
+    //        if (max_diff > 1e-12) {
+    //            std::stringstream s;
+    //            s << "overlap matrix is not hermitian, max_err = " << max_diff;
+    //            WARNING(s);
+    //        }
+    //        std::vector<real_type<T>> eo(num_phi_tot);
+    //        auto& std_solver = ctx_.std_evp_solver();
+    //        if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
+    //            std::stringstream s;
+    //            s << "error in diagonalization";
+    //            WARNING(s);
+    //        }
+    //        Hk__.kp().message(1, __function_name__, "minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
+    //        if (eo[0] < 0) {
+    //            WARNING("overlap matrix is not positively defined");
+    //        }
+    //    }
+
+        /* setup eigen-value problem */
+        Band(ctx).set_subspace_mtrx(0, num_phi_tot, 0, phi, hphi, hmlt);
+        Band(ctx).set_subspace_mtrx(0, num_phi_tot, 0, phi, ophi, ovlp);
+
+        if (pcs) {
+            auto cs1 = hmlt.checksum(num_phi_tot, num_phi_tot);
+            auto cs2 = ovlp.checksum(num_phi_tot, num_phi_tot);
+            if (Hk__.kp().comm().rank() == 0) {
+                utils::print_checksum("hmlt", cs1, RTE_OUT(std::cout));
+                utils::print_checksum("ovlp", cs2, RTE_OUT(std::cout));
+            }
+        }
+
+    //    if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
+    //        auto s1 = hmlt.serialize("hmlt", num_phi_tot, num_phi_tot);
+    //        auto s2 = hmlt.serialize("ovlp", num_phi_tot, num_phi_tot);
+    //        if (Hk__.kp().comm().rank() == 0) {
+    //            ctx_.out() << s1.str() << std::endl << s2.str() << std::endl;
+    //        }
+    //    }
+
+        /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
+        if (gen_solver.solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
+            RTE_THROW("error in diagonalization");
+        }
+
+    //    if (ctx_.print_checksum()) {
+    //        auto cs = evec.checksum(num_phi_tot, num_bands);
+    //        real_type<T> cs1{0};
+    //        for (int i = 0; i < num_bands; i++) {
+    //            cs1 += eval[i];
+    //        }
+    //        if (Hk__.kp().comm().rank() == 0) {
+    //            utils::print_checksum("evec", cs);
+    //            utils::print_checksum("eval", cs1);
+    //        }
+    //    }
+        for (int i = 0; i < num_bands; i++) {
+            Hk__.kp().message(3, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
+        }
+
+        /* compute wave-functions */
+        /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            wf::transform(ctx.spla_context(), mem, evec, 0, 0, 1.0, phi,
+                    wf::spin_index(num_sc == 2 ? ispn : 0), wf::band_range(0, num_phi_tot), 0.0,
+                    Hk__.kp().spinor_wave_functions_new(), wf::spin_index(num_sc == 2 ? ispn : ispn_step),
+                    wf::band_range(0, num_bands));
+        }
+
+        for (int j = 0; j < num_bands; j++) {
+            Hk__.kp().band_energy(j, ispn_step, eval[j]);
+        }
+    }
+
+    if (pcs) {
+        for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
+            auto cs = Hk__.kp().spinor_wave_functions_new().checksum(mem, wf::spin_index(ispn),
+                    wf::band_range(0, num_bands));
+            std::stringstream s;
+            s << "initial_spinor_wave_functions_" << ispn;
+            if (Hk__.kp().comm().rank() == 0) {
+                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+            }
+        }
+    }
+
+    //if (is_device_memory(ctx_.preferred_memory_t())) {
+    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::host, 0, num_bands);
+    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
+    //    }
+    //}
+
+    ///* check residuals */
+    //if (ctx_.cfg().control().verification() >= 2) {
+    //    check_residuals<T>(Hk__);
+    //    check_wave_functions<T>(Hk__);
+    //}
+
+    //ctx_.print_memory_usage(__FILE__, __LINE__);
+}
+
 
 }
 

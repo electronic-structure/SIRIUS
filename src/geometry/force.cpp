@@ -97,9 +97,9 @@ void Force::calc_forces_nonloc_aux()
         auto* kp = kset_.get<T>(spl_num_kp[ikploc]);
 
         if (ctx_.gamma_point()) {
-            add_k_point_contribution<T>(*kp, forces_nonloc_);
+            add_k_point_contribution<T, T>(*kp, forces_nonloc_);
         } else {
-            add_k_point_contribution<std::complex<T>>(*kp, forces_nonloc_);
+            add_k_point_contribution<T, std::complex<T>>(*kp, forces_nonloc_);
         }
     }
 
@@ -122,42 +122,43 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
     return forces_nonloc_;
 }
 
-template <typename T>
+template <typename T, typename F>
 void
-Force::add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        int nbnd = ctx_.num_bands();
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* allocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
-            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-        }
-    }
+    Beta_projectors_gradient<T> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
+    //if (is_device_memory(ctx_.preferred_memory_t())) {
+    //    int nbnd = ctx_.num_bands();
+    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //        /* allocate GPU memory */
+    //        kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
+    //        kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
+    //    }
+    //}
 
-    Non_local_functor<T> nlf(ctx_, bp_grad);
+    //Non_local_functor<T> nlf(ctx_, bp_grad);
 
-    sddk::mdarray<real_type<T>, 2> f(3, ctx_.unit_cell().num_atoms());
+    sddk::mdarray<real_type<F>, 2> f(3, ctx_.unit_cell().num_atoms());
     f.zero();
 
-    nlf.add_k_point_contribution(kp__, f);
+    add_k_point_contribution_nonlocal<T, F>(ctx_, bp_grad, kp__, f);
+
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         for (int x : {0, 1, 2}) {
             forces__(x, ia) += f(x, ia);
         }
     }
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* deallocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-        }
-    }
+    //if (is_device_memory(ctx_.preferred_memory_t())) {
+    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //        /* deallocate GPU memory */
+    //        kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
+    //    }
+    //}
 }
 
 void

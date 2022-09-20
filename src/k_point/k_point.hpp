@@ -27,7 +27,7 @@
 
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
-//#include "wave_functions.hpp"
+#include "unit_cell/radial_functions_index.hpp"
 #include "SDDK/fft.hpp"
 
 namespace sirius {
@@ -77,12 +77,10 @@ class K_point
     sddk::dmatrix<std::complex<T>> fv_eigen_vectors_;
 
     /// First-variational eigen vectors, distributed in slabs.
-    std::unique_ptr<sddk::Wave_functions<T>> fv_eigen_vectors_slab_;
-
     std::unique_ptr<wf::Wave_functions<T>> fv_eigen_vectors_slab_new_;
 
     /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
-    std::unique_ptr<sddk::Wave_functions<T>> singular_components_;
+    std::unique_ptr<wf::Wave_functions<T>> singular_components_new_;
 
     /// Second-variational eigen vectors.
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -94,25 +92,22 @@ class K_point
     sddk::mdarray<std::complex<T>, 2> fd_eigen_vectors_;
 
     /// First-variational states.
-    std::unique_ptr<sddk::Wave_functions<T>> fv_states_{nullptr};
     std::unique_ptr<wf::Wave_functions<T>> fv_states_new_{nullptr};
 
+    /// Two-component (spinor) wave functions describing the bands.
     std::unique_ptr<wf::Wave_functions<T>> spinor_wave_functions_new_{nullptr};
 
-    /// Two-component (spinor) wave functions describing the bands.
-    std::shared_ptr<sddk::Wave_functions<T>> spinor_wave_functions_{nullptr};
-
     /// Pseudopotential atmoic wave-functions (not orthogonalized).
-    std::unique_ptr<sddk::Wave_functions<T>> atomic_wave_functions_{nullptr};
+    std::unique_ptr<wf::Wave_functions<T>> atomic_wave_functions_new_{nullptr};
 
     /// Pseudopotential atmoic wave-functions (not orthogonalized) with S-operator applied.
-    std::unique_ptr<sddk::Wave_functions<T>> atomic_wave_functions_S_{nullptr};
+    std::unique_ptr<wf::Wave_functions<T>> atomic_wave_functions_S_new_{nullptr};
 
     /// Hubbard wave functions.
-    std::unique_ptr<sddk::Wave_functions<T>> hubbard_wave_functions_{nullptr};
+    std::unique_ptr<wf::Wave_functions<T>> hubbard_wave_functions_new_{nullptr};
 
     /// Hubbard wave functions with S-operator applied.
-    std::unique_ptr<sddk::Wave_functions<T>> hubbard_wave_functions_S_{nullptr};
+    std::unique_ptr<wf::Wave_functions<T>> hubbard_wave_functions_S_new_{nullptr};
 
     /// Band occupation numbers.
     sddk::mdarray<double, 2> band_occupancies_;
@@ -347,10 +342,8 @@ class K_point
                             sufficient storage space.
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__,
-                                        sddk::Wave_functions<T>& wf__);
-
+                                        std::function<experimental::basis_functions_index const*(int)> indexb__,
+                                        Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__);
     void generate_hubbard_orbitals();
 
     /// Save data to HDF5 file.
@@ -404,7 +397,8 @@ class K_point
         return *gkvec_;
     }
 
-    inline auto gkvec_ptr() const
+    /// Return shared pointer to gkvec object.
+    inline auto gkvec_sptr() const
     {
         return gkvec_;
     }
@@ -475,90 +469,62 @@ class K_point
         return weight_;
     }
 
-    inline auto& fv_states()
+    inline auto& fv_states_new()
     {
-        RTE_ASSERT(fv_states_ != nullptr);
-        return *fv_states_;
-    }
-
-    inline auto& spinor_wave_functions()
-    {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return *spinor_wave_functions_;
-    }
-
-    inline auto spinor_wave_functions_ptr()
-    {
-        return spinor_wave_functions_;
+        RTE_ASSERT(fv_states_new_ != nullptr);
+        return *fv_states_new_;
     }
 
     inline auto& spinor_wave_functions_new()
     {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        RTE_ASSERT(spinor_wave_functions_new_ != nullptr);
         return *spinor_wave_functions_new_;
     }
 
     inline auto const& spinor_wave_functions_new() const
     {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        RTE_ASSERT(spinor_wave_functions_new_ != nullptr);
         return *spinor_wave_functions_new_;
     }
 
-    /// return the initial atomic orbitals used to compute the hubbard wave functions. the S operator is applied on
-    /// these functions
-    inline auto const& atomic_wave_functions_S() const
+    /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
+    /// these functions.
+    inline auto const& atomic_wave_functions_S_new() const
     {
         /* the S operator is applied on these functions */
-        RTE_ASSERT(atomic_wave_functions_S_ != nullptr);
-        return *atomic_wave_functions_S_;
+        RTE_ASSERT(atomic_wave_functions_S_new_ != nullptr);
+        return *atomic_wave_functions_S_new_;
     }
 
-    inline auto& atomic_wave_functions_S()
+    inline auto& atomic_wave_functions_S_new()
     {
-        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S());
+        return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S_new());
     }
 
-    inline auto const& atomic_wave_functions() const
+    /// Return the initial atomic orbitals used to compute the hubbard wave functions.
+    inline auto const& atomic_wave_functions_new() const
     {
-        RTE_ASSERT(atomic_wave_functions_ != nullptr);
-        return *atomic_wave_functions_;
+        RTE_ASSERT(atomic_wave_functions_new_ != nullptr);
+        return *atomic_wave_functions_new_;
     }
 
-    /// return the initial atomic orbitals used to compute the hubbard wave functions.
-    inline auto& atomic_wave_functions()
+    /// Return the initial atomic orbitals used to compute the hubbard wave functions.
+    inline auto& atomic_wave_functions_new()
     {
-        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions());
+        return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_new());
     }
 
-    /// return the actual hubbard wave functions used in the calculations. The S operator is applied when uspp are used.
-    inline auto const& hubbard_wave_functions_S() const
+    /// Return the actual hubbard wave functions used in the calculations.
+    /** The S operator is applied on these functions. */
+    inline auto const& hubbard_wave_functions_S_new() const
     {
-        RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
-        return *hubbard_wave_functions_S_;
+        RTE_ASSERT(hubbard_wave_functions_S_new_ != nullptr);
+        return *hubbard_wave_functions_S_new_;
     }
 
-    /// return the actual hubbard wave functions used in the calculations. The S operator is applied when uspp are used.
-    inline auto& hubbard_wave_functions_S()
+    inline auto& singular_components_new()
     {
-        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions_S());
-    }
-
-    /// return the actual hubbard wave functions used in the calculations.
-    inline auto const& hubbard_wave_functions() const
-    {
-        RTE_ASSERT(hubbard_wave_functions_ != nullptr);
-        return *hubbard_wave_functions_;
-    }
-
-    /// return the actual hubbard wave functions used in the calculations.
-    inline auto& hubbard_wave_functions()
-    {
-        return const_cast<sddk::Wave_functions<T>&>(static_cast<K_point const&>(*this).hubbard_wave_functions());
-    }
-
-    inline auto& singular_components()
-    {
-        return *singular_components_;
+        return *singular_components_new_;
     }
 
     inline vector3d<double> vk() const
@@ -572,12 +538,6 @@ class K_point
     inline int gklo_basis_size() const
     {
         return num_gkvec() + unit_cell_.mt_lo_basis_size();
-    }
-
-    /// Return global index of G+k vector. // TODO: consider removal
-    inline int idxgk(int igkloc__) const
-    {
-        return gkvec_->offset() + igkloc__;
     }
 
     /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -638,7 +598,7 @@ class K_point
         return igk_loc_;
     }
 
-    inline int igk_row(int idx__) const
+    inline int igk_row(int idx__) const // TODO: get all from gkvec_row_
     {
         return igk_row_[idx__];
     }
@@ -716,11 +676,6 @@ class K_point
     inline auto& fv_eigen_vectors()
     {
         return fv_eigen_vectors_;
-    }
-
-    inline auto& fv_eigen_vectors_slab()
-    {
-        return *fv_eigen_vectors_slab_;
     }
 
     inline auto& fv_eigen_vectors_slab_new()
@@ -844,6 +799,30 @@ class K_point
         return gkvec_partition_;
     }
 };
+
+template <typename T>
+inline auto
+wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, wf::num_bands num_wf__,
+        wf::num_mag_dims num_md__, bool mt_part__)
+{
+    using wf_t = wf::Wave_functions<T>;
+    std::unique_ptr<wf_t> wf{nullptr};
+    if (mt_part__) {
+        std::vector<int> num_mt_coeffs(ctx__.unit_cell().num_atoms());
+        for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
+            num_mt_coeffs[ia] = ctx__.unit_cell().atom(ia).mt_lo_basis_size();
+        }
+        wf = std::make_unique<wf_t>(kp__.gkvec_sptr(), num_mt_coeffs, num_md__, num_wf__, sddk::memory_t::host);
+    } else {
+        wf = std::make_unique<wf_t>(kp__.gkvec_sptr(), num_md__, num_wf__, sddk::memory_t::host);
+    }
+    //if (is_device_memory(ctx__.preferred_memory_t())) {
+    //    auto& mpd = ctx__.mem_pool(ctx__.preferred_memory_t());
+    //    wf->allocate(sddk::spin_range(num_sc__ == 1 ? 0 : 2), mpd);
+    //}
+
+    return wf;
+}
 
 } // namespace sirius
 

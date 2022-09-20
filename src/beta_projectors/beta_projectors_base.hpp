@@ -31,34 +31,30 @@
 namespace sirius {
 
 #if defined(SIRIUS_GPU)
-extern "C" void create_beta_gk_gpu_float(int                        num_atoms,
-                                         int                        num_gkvec,
-                                         int const*                 beta_desc,
-                                         std::complex<float> const* beta_gk_t,
-                                         double const*              gkvec,
-                                         double const*              atom_pos,
-                                         std::complex<float>*       beta_gk);
+extern "C" {
 
-extern "C" void create_beta_gk_gpu_double(int                   num_atoms,
-                                          int                   num_gkvec,
-                                          int const*            beta_desc,
-                                          double_complex const* beta_gk_t,
-                                          double const*         gkvec,
-                                          double const*         atom_pos,
-                                          double_complex*       beta_gk);
+void
+create_beta_gk_gpu_float(int num_atoms, int num_gkvec, int const* beta_desc, std::complex<float> const* beta_gk_t,
+    double const* gkvec, double const* atom_pos, std::complex<float>* beta_gk);
+
+void
+create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc, double_complex const* beta_gk_t,
+    double const* gkvec, double const* atom_pos, double_complex* beta_gk);
+
+}
 #endif
 
 /// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
-enum class beta_desc_idx : int
+struct beta_desc_idx
 {
     /// Number of beta-projector functions for this atom.
-    nbf      = 0,
+    static const int nbf      = 0;
     /// Offset of beta-projectors in this chunk.
-    offset   = 1,
+    static const int offset   = 1;
     /// Offset of beta-projectors in the array for atom types.
-    offset_t = 2,
+    static const int offset_t = 2;
     /// Global index of atom.
-    ia       = 3
+    static const int ia       = 3;
 };
 
 struct beta_chunk_t
@@ -76,6 +72,8 @@ struct beta_chunk_t
 };
 
 /// Base class for beta-projectors, gradient of beta-projectors and strain derivatives of beta-projectors.
+/** \tparam T  Precision of beta-projectors (float or double).
+ */
 template <typename T>
 class Beta_projectors_base
 {
@@ -112,81 +110,72 @@ class Beta_projectors_base
     /// Split beta-projectors into chunks.
     void split_in_chunks();
 
-    template<typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
-    void local_inner_aux(F* beta_pw_coeffs_a_ptr__, int nbeta__, sddk::Wave_functions<T>& phi__,
-                         int ispn__, int idx0__, int n__, sddk::matrix<F>& beta_phi__) const
-    {
-        auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-        if (pp && gkvec_.comm().rank() == 0) {
-            PROFILE_START("sirius::Beta_projectors_base::local_inner_aux");
-        }
-
-        const auto t1 = std::chrono::high_resolution_clock::now();
-        sddk::linalg(ctx_.blas_linalg_t())
-            .gemm('C', 'N', nbeta__, n__, num_gkvec_loc(), &sddk::linalg_const<F>::one(), beta_pw_coeffs_a_ptr__,
-                  num_gkvec_loc(), phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__),
-                  phi__.pw_coeffs(ispn__).prime().ld(), &sddk::linalg_const<F>::zero(),
-                  beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-
-        if (pp && gkvec_.comm().rank() == 0) {
-#ifdef SIRIUS_GPU
-            if (ctx_.blas_linalg_t() == sddk::linalg_t::gpublas) {
-                acc::sync_stream(stream_id(-1));
-            }
-#endif
-            std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - t1;
-            PROFILE_STOP("sirius::Beta_projectors_base::local_inner_aux");
-            std::printf(
-                "Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
-                8e-9 * nbeta__ * n__ * num_gkvec_loc() / t.count(), nbeta__, n__, num_gkvec_loc(), t.count());
-        }
-    }
-
-    template<typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
-    void local_inner_aux(F* beta_pw_coeffs_a_ptr__, int nbeta__, sddk::Wave_functions<T>& phi__,
-                         int ispn__, int idx0__, int n__, sddk::matrix<F>& beta_phi__) const
-    {
-        sddk::linalg(ctx_.blas_linalg_t())
-            .gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(), &sddk::linalg_const<F>::two(), beta_pw_coeffs_a_ptr__,
-                  2 * num_gkvec_loc(),
-                  reinterpret_cast<F const*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
-                  2 * phi__.pw_coeffs(ispn__).prime().ld(), &sddk::linalg_const<F>::zero(),
-                  beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-
-        /* rank 0 has to do some extra work for Gamma-point case */
-        if (gkvec_.comm().rank() == 0) {
-            int incx{2 * num_gkvec_loc()};
-            sddk::linalg_t la{sddk::linalg_t::none};
-            /* both wave-functions and beta-projectors are on GPU */
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                la = sddk::linalg_t::gpublas;
-            } else { /* wave-functions are on CPU but the beta-projectors are in the memory of main device */
-                la = sddk::linalg_t::blas;
-                switch (ctx_.processing_unit()) {
-                    case sddk::device_t::GPU: {
-                        beta_pw_coeffs_a_ptr__ =
-                            reinterpret_cast<F*>(const_cast<std::complex<T>*>(&pw_coeffs_a_g0_(0)));
-                        incx = 2;
-                        break;
-                    }
-                    case sddk::device_t::CPU:
-                        break;
-                }
-            }
-            sddk::linalg(la).ger(
-                nbeta__, n__, &sddk::linalg_const<F>::m_one(), beta_pw_coeffs_a_ptr__, incx,
-                reinterpret_cast<F*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
-                2 * phi__.pw_coeffs(ispn__).prime().ld(), beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
-        }
-    }
-
   public:
     Beta_projectors_base(Simulation_context& ctx__, sddk::Gvec const& gkvec__, int N__);
 
     /// Calculate inner product between beta-projectors and wave-functions.
-    /** The following is computed: <beta|phi> */
-    template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
-    sddk::matrix<F> inner(int chunk__, sddk::Wave_functions<T>& phi__, int ispn__, int idx0__, int n__);
+    /** The following is matrix computed: <beta|phi>
+     *
+     *  \tparam F  Type of the resulting inner product matrix (float, double, complex<float> or complex<double>).
+     */
+    template <typename F>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, sddk::matrix<F>>
+    inner(int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__, wf::band_range br__) const
+    {
+        int nbeta = chunk(chunk__).num_beta_;
+
+        sddk::matrix<F> result(nbeta, br__.size(), ctx_.mem_pool(ctx_.host_memory_t()));
+
+        auto spla_mat_dist = spla::MatrixDistribution::create_mirror(phi__.comm().mpi_comm());
+
+        RTE_ASSERT(static_cast<uint32_t>(phi__.ld()) == pw_coeffs_a_.ld());
+
+        auto ld = phi__.ld();
+
+        F alpha = 1.0;
+        /* inner product matrix is real */
+        if (std::is_same<F, real_type<F>>::value) {
+            alpha = 2.0;
+            ld   *= 2;
+        }
+        F beta = 0.0;
+
+        auto mem__ = sddk::memory_t::host;
+
+        // TODO: most of the code replicates wf::inner(); think how to reuse it
+        // or convert beta_projector to wave-functions 
+        T scale_half(0.5);
+        T scale_two(2.0);
+
+        /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
+        if (std::is_same<F, real_type<F>>::value) {
+            wf::scale_gamma_wf(mem__, phi__, wf::spin_range(ispn__.get()), br__, &scale_half);
+        }
+
+        F* result_ptr = result.at(sddk::memory_t::host, 0, 0);
+
+        auto wf_i_ptr = pw_coeffs_a_.at(mem__);
+        auto wf_j_ptr = phi__.at(mem__, 0, ispn__, wf::band_index(br__.begin()));
+
+        spla::pgemm_ssb(nbeta, br__.size(), ld, SPLA_OP_CONJ_TRANSPOSE,
+                        alpha,
+                        reinterpret_cast<F const*>(wf_i_ptr), ld,
+                        reinterpret_cast<F const*>(wf_j_ptr), ld,
+                        beta,
+                        result_ptr, result.ld(), 0, 0, spla_mat_dist, ctx_.spla_context());
+
+        /* for gamma case, G = 0 vector is rescaled back */
+        if (std::is_same<F, real_type<F>>::value && phi__.comm().rank() == 0) {
+            wf::scale_gamma_wf(mem__, phi__, wf::spin_range(ispn__.get()), br__, &scale_two);
+        }
+
+        /* make sure result is updated on device as well */
+        if (result.on_device()) {
+            result.copy_to(sddk::memory_t::device);
+        }
+
+        return result;
+    }
 
     /// Generate beta-projectors for a chunk of atoms.
     /** Beta-projectors are always generated and stored in the memory of a processing unit.
@@ -228,6 +217,11 @@ class Beta_projectors_base
 
     /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
     auto& pw_coeffs_a()
+    {
+        return pw_coeffs_a_;
+    }
+
+    auto const& pw_coeffs_a() const
     {
         return pw_coeffs_a_;
     }

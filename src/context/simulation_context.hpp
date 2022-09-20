@@ -33,6 +33,7 @@
 #include "mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
+#include "utils/env.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
@@ -52,6 +53,12 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
 #define __function_name__ __func__
 
 namespace sirius {
+
+inline bool should_print_checksum()
+{
+    auto val = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
+    return val && *val;
+}
 
 /// Utility function to print a CPU and GPU memory utilization.
 void print_memory_usage(const char* file__, int line__);

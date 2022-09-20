@@ -78,15 +78,15 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         }
     }
 
-    int nwfu = kp__.hubbard_wave_functions_S().num_wf();
+    /* a pair of "total number, offests" for the Hubbard orbitals idexing */
+    auto r = ctx_.unit_cell().num_hubbard_wf();
+
+    int nwfu = r.first;
 
     sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(sddk::memory_t::host), "occ_mtrx");
     if (is_device_memory(mem)) {
         occ_mtrx.allocate(ctx_.mem_pool(mem));
     }
-
-    /* a pair of "total number, offests" for the Hubbard orbitals idexing */
-    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
 
@@ -96,8 +96,12 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), sddk::spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
-                    kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
+        //sddk::inner(ctx_.spla_context(), sddk::spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
+        //            kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
+
+        wf::inner(ctx_.spla_context(), sddk::memory_t::host, wf::spin_range(0, 2), kp__.spinor_wave_functions_new(),
+                wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S_new(),
+                wf::band_range(0, nwfu), dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
 
@@ -162,8 +166,12 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 dm.allocate(ctx_.mem_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
-            sddk::inner(ctx_.spla_context(), sddk::spin_range(ispn), kp__.spinor_wave_functions(), 0,
-                        kp__.num_occupied_bands(ispn), kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
+            //sddk::inner(ctx_.spla_context(), sddk::spin_range(ispn), kp__.spinor_wave_functions(), 0,
+            //            kp__.num_occupied_bands(ispn), kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
+            wf::inner(ctx_.spla_context(), sddk::memory_t::host, wf::spin_range(ispn), kp__.spinor_wave_functions_new(),
+                    wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S_new(),
+                    wf::band_range(0, nwfu), dm, 0, 0);
+
             PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
 
             PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");

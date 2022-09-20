@@ -34,13 +34,13 @@ namespace sirius {
 
 using namespace geometry3d;
 
-template <typename T>
+template <typename T, typename F>
 void
 Stress::calc_stress_nonloc_aux()
 {
     PROFILE("sirius::Stress|nonloc");
 
-    sddk::mdarray<real_type<T>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
+    sddk::mdarray<real_type<F>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
     collect_result.zero();
 
     stress_nonloc_.zero();
@@ -55,26 +55,27 @@ Stress::calc_stress_nonloc_aux()
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<real_type<T>>(ik);
-        if (is_device_memory(ctx_.preferred_memory_t())) {
-            int nbnd = ctx_.num_bands();
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-            }
-        }
+        //if (is_device_memory(ctx_.preferred_memory_t())) {
+        //    int nbnd = ctx_.num_bands();
+        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        //        /* allocate GPU memory */
+        //        kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
+        //        kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
+        //    }
+        //}
         Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec());
 
-        Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
+        //Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
+        add_k_point_contribution_nonlocal<T, F>(ctx_, bp_strain_deriv, *kp, collect_result);
 
-        nlf.add_k_point_contribution(*kp, collect_result);
+        //nlf.add_k_point_contribution(*kp, collect_result);
 
-        if (is_device_memory(ctx_.preferred_memory_t())) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                /* deallocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-            }
-        }
+        //if (is_device_memory(ctx_.preferred_memory_t())) {
+        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        //        /* deallocate GPU memory */
+        //        kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
+        //    }
+        //}
     }
 
     #pragma omp parallel
@@ -101,9 +102,9 @@ Stress::calc_stress_nonloc_aux()
     symmetrize(stress_nonloc_);
 }
 
-template void Stress::calc_stress_nonloc_aux<double>();
-
-template void Stress::calc_stress_nonloc_aux<double_complex>();
+//template void Stress::calc_stress_nonloc_aux<double>();
+//
+//template void Stress::calc_stress_nonloc_aux<double_complex>();
 
 matrix3d<double>
 Stress::calc_stress_total()
@@ -146,11 +147,12 @@ Stress::calc_stress_hubbard()
 
     Q_operator<double> q_op(ctx_);
 
+    auto nhwf = ctx_.unit_cell().num_hubbard_wf().first;
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<double>(ik);
-        sddk::mdarray<double_complex, 4> dn(kp->hubbard_wave_functions_S().num_wf(),
-                                            kp->hubbard_wave_functions_S().num_wf(), 2, 9);
+        sddk::mdarray<double_complex, 4> dn(nhwf, nhwf, 2, 9);
         dn.zero();
         kp->beta_projectors().prepare();
 
@@ -694,7 +696,7 @@ Stress::calc_stress_kin_aux()
                         auto Gk = kp->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igloc);
 
                         double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                        auto z = kp->spinor_wave_functions_new().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                         double d = fact * f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                         for (int mu : {0, 1, 2}) {
                             for (int nu : {0, 1, 2}) {
@@ -808,18 +810,18 @@ Stress::calc_stress_nonloc()
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(USE_FP32)
         if (ctx_.gamma_point()) {
-            calc_stress_nonloc_aux<float>();
+            calc_stress_nonloc_aux<float, float>();
         } else {
-            calc_stress_nonloc_aux<std::complex<float>>();
+            calc_stress_nonloc_aux<float, std::complex<float>>();
         }
 #else
         RTE_THROW("Not compiled with FP32 support");
 #endif
     } else {
         if (ctx_.gamma_point()) {
-            calc_stress_nonloc_aux<double>();
+            calc_stress_nonloc_aux<double, double>();
         } else {
-            calc_stress_nonloc_aux<std::complex<double>>();
+            calc_stress_nonloc_aux<double, std::complex<double>>();
         }
     }
 

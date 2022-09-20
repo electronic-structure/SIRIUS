@@ -36,56 +36,56 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     int nsp{1};
-    Wave_functions<double> phi(gvp, 2 * num_bands__, mem_bra__, nsp);
+    //Wave_functions<double> phi(gvp, 2 * num_bands__, mem_bra__, nsp);
 
-    for (int is = 0; is < nsp; is++) {
-        for (int i = 0; i < 2 * num_bands__; i++) {
-            for (int igloc = 0; igloc < gvec.count(); igloc++) {
-                phi.pw_coeffs(is).prime(igloc, i) = utils::random<double_complex>();
-            }
-        }
-    }
+    //for (int is = 0; is < nsp; is++) {
+    //    for (int i = 0; i < 2 * num_bands__; i++) {
+    //        for (int igloc = 0; igloc < gvec.count(); igloc++) {
+    //            phi.pw_coeffs(is).prime(igloc, i) = utils::random<double_complex>();
+    //        }
+    //    }
+    //}
 
-    if (is_device_memory(mem_bra__)) {
-        for (int ispn = 0; ispn < nsp; ispn++) {
-            phi.allocate(spin_range(ispn), mem_bra__);
-            phi.copy_to(spin_range(ispn), mem_bra__, 0, 2 * num_bands__);
-        }
-    }
+    //if (is_device_memory(mem_bra__)) {
+    //    for (int ispn = 0; ispn < nsp; ispn++) {
+    //        phi.allocate(spin_range(ispn), mem_bra__);
+    //        phi.copy_to(spin_range(ispn), mem_bra__, 0, 2 * num_bands__);
+    //    }
+    //}
 
-    Wave_functions<double> phi1(gvp, 2 * num_bands__, mem_ket__, nsp);
-    if (is_device_memory(mem_ket__)) {
-        for (int ispn = 0; ispn < nsp; ispn++) {
-            phi1.allocate(spin_range(ispn), mem_ket__);
-        }
-    }
-    for (int ispn = 0; ispn < nsp; ispn++) {
-        phi1.copy_from(phi, 2 * num_bands__, ispn, 0, ispn, 0);
-    }
+    //Wave_functions<double> phi1(gvp, 2 * num_bands__, mem_ket__, nsp);
+    //if (is_device_memory(mem_ket__)) {
+    //    for (int ispn = 0; ispn < nsp; ispn++) {
+    //        phi1.allocate(spin_range(ispn), mem_ket__);
+    //    }
+    //}
+    //for (int ispn = 0; ispn < nsp; ispn++) {
+    //    phi1.copy_from(phi, 2 * num_bands__, ispn, 0, ispn, 0);
+    //}
 
-    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, *blacs_grid, bs__, bs__);
+    //dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, *blacs_grid, bs__, bs__);
 
-    if (is_device_memory(mem_o__)) {
-        ovlp.allocate(mem_o__);
-    }
-    ovlp.zero();
+    //if (is_device_memory(mem_o__)) {
+    //    ovlp.allocate(mem_o__);
+    //}
+    //ovlp.zero();
 
-    inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
-    inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
-    inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
-    inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
+    //inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
+    //inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
+    //inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
+    //inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
 
-    //ovlp.serialize("ovlp", 2 * num_bands__);
+    ////ovlp.serialize("ovlp", 2 * num_bands__);
 
-    auto max_diff = check_hermitian(ovlp, 2 * num_bands__);
-    if (Communicator::world().rank() == 0) {
-        printf("maximum difference: %18.12f\n", max_diff);
-        if (max_diff > 1e-12) {
-            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
-        } else {
-            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
-        }
-    }
+    //auto max_diff = check_hermitian(ovlp, 2 * num_bands__);
+    //if (Communicator::world().rank() == 0) {
+    //    printf("maximum difference: %18.12f\n", max_diff);
+    //    if (max_diff > 1e-12) {
+    //        printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+    //    } else {
+    //        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    //    }
+    //}
 }
 
 int main(int argn, char** argv)

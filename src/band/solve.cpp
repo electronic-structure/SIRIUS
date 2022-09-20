@@ -23,7 +23,6 @@
  */
 #include "band.hpp"
 #include "davidson.hpp"
-#include "potential/potential.hpp"
 
 namespace sirius {
 
@@ -68,7 +67,7 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__
 
 template <typename T, typename F>
 int
-Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol__, double empy_tol__) const
+Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const
 {
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -78,7 +77,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
     if (itso.type() == "exact") {
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_exact<T>(ispn, Hk__);
+                diag_pseudo_potential_exact<T, F>(ispn, Hk__);
             }
         } else {
             STOP();
@@ -99,11 +98,11 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
             return tol;
         };
 
-        auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, ctx_.num_bands(), ctx_.num_mag_dims(),
-                kp.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itso.num_steps(),
+        auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, wf::num_bands(ctx_.num_bands()),
+                wf::num_mag_dims(ctx_.num_mag_dims()),
+                kp.spinor_wave_functions_new(), tolerance, itso.residual_tolerance(), itso.num_steps(),
                 itso.locking(), itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(),
                 std::cout, 0);
-
         niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -114,11 +113,11 @@ Band::solve_pseudo_potential(Hamiltonian_k<real_type<T>>& Hk__, double itsol_tol
         RTE_THROW("unknown iterative solver type");
     }
 
-    /* check residuals */
-    if (ctx_.cfg().control().verification() >= 2) {
-        check_residuals<T>(Hk__);
-        check_wave_functions<T>(Hk__);
-    }
+    ///* check residuals */
+    //if (ctx_.cfg().control().verification() >= 2) {
+    //    check_residuals<T>(Hk__);
+    //    check_wave_functions<T>(Hk__);
+    //}
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -154,7 +153,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
             } else {
-                num_dav_iter += solve_pseudo_potential<std::complex<T>, std::complex<F>>(Hk, itsol_tol__, empy_tol);
+                num_dav_iter += solve_pseudo_potential<T, std::complex<F>>(Hk, itsol_tol__, empy_tol);
             }
         }
     }

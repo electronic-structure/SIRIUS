@@ -39,47 +39,37 @@ class Smooth_periodic_function;
 namespace sddk {
 class FFT3D;
 class Gvec_partition;
-template <typename T>
-class Wave_functions;
-template <typename T>
-class Wave_functions;
-class spin_range;
 }
 namespace wf {
 template <typename T>
 class Wave_functions;
 class band_range;
+class spin_range;
 }
 namespace spfft {
 class Transform;
 }
 
 #ifdef SIRIUS_GPU
-extern "C" void mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
+extern "C" {
+void mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
 
-extern "C" void mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
+void mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
 
-extern "C" void mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
+void mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
 
-extern "C" void mul_by_veff_complex_real_gpu_double(int nr__, double_complex* buf__, double* veff__);
+void mul_by_veff_complex_real_gpu_double(int nr__, std::complex<double>* buf__, double* veff__);
 
-extern "C" void mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
+void mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
 
-extern "C" void mul_by_veff_complex_complex_gpu_double(int nr__, double_complex* buf__, double pref__, double* vx__, double* vy__);
+void mul_by_veff_complex_complex_gpu_double(int nr__, std::complex<double>* buf__, double pref__, double* vx__, double* vy__);
 
-extern "C" void add_pw_ekin_gpu_float(int                        num_gvec__,
-                                      float                      alpha__,
-                                      float const*               pw_ekin__,
-                                      std::complex<float> const* phi__,
-                                      std::complex<float> const* vphi__,
-                                      std::complex<float>*       hphi__);
+void add_pw_ekin_gpu_float(int num_gvec__, float alpha__, float const* pw_ekin__,
+    std::complex<float> const* phi__, std::complex<float> const* vphi__, std::complex<float>* hphi__);
 
-extern "C" void add_pw_ekin_gpu_double(int                   num_gvec__,
-                                       double                alpha__,
-                                       double const*         pw_ekin__,
-                                       double_complex const* phi__,
-                                       double_complex const* vphi__,
-                                       double_complex*       hphi__);
+void add_pw_ekin_gpu_double(int num_gvec__, double alpha__, double const* pw_ekin__, std::complex<double> const* phi__,
+    std::complex<double> const* vphi__, std::complex<double>* hphi__);
+}
 #endif
 
 namespace sirius {
@@ -107,17 +97,15 @@ class Local_operator
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<T, 1> pw_ekin_;
 
+    // Names for indices.
     struct v_local_index_t
     {
-        enum
-        {
-            v0 = 0,
-            v1 = 1,
-            vx = 2,
-            vy = 3,
-            theta = 4,
-            rm_inv = 5
-        };
+        static const int v0 = 0;
+        static const int v1 = 1;
+        static const int vx = 2;
+        static const int vy = 3;
+        static const int theta = 4;
+        static const int rm_inv = 5;
     };
 
     /// Effective potential components and unit step function on a coarse FFT grid.
@@ -154,10 +142,8 @@ class Local_operator
      *  \param [in] potential     Effective potential and magnetic fields \f$ V_{eff}({\bf r}) \f$ and
      *                             \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
      */
-    Local_operator(Simulation_context          const& ctx__,
-                   spfft_transform_type<T>&           fft_coarse__,
-                   sddk::Gvec_partition        const& gvec_coarse_p__,
-                   Potential*                         potential__ = nullptr);
+    Local_operator(Simulation_context const& ctx__, spfft_transform_type<T>& fft_coarse__,
+                   sddk::Gvec_partition const& gvec_coarse_p__, Potential* potential__ = nullptr);
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
@@ -179,8 +165,11 @@ class Local_operator
      *
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    void apply_h(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
-                 sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>& hphi__, int idx0__, int n__);
+    ///void apply_h(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
+    ///        sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>& hphi__, int idx0__, int n__);
+
+    void apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__,
+            wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__, wf::band_range br__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -193,25 +182,25 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    void apply_h_o(spfft_transform_type<T>& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
-                   sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
+    //void apply_h_o(spfft_transform_type<T>& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
+    //               sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
 
-    void apply_h_o(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, wf::band_range b__,
-                   wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
-                   wf::Wave_functions<T>* ophi__);
+    void apply_fplapw(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__,
+            wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
+            wf::Wave_functions<T>* ophi__, wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__);
+
     /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
      *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
      *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. 
      *
      *  \param [in]  spfftk   SpFFT transform object for G+k vectors.
-     *  \param [in]  N        Starting index of wave-functions.
-     *  \param [in]  n        Number of wave-functions to which H and O are applied.
      *  \param [in]  phi      Input wave-functions.
      *  \param [out] bphi     Output vector of magentic field components, applied to the wave-functions.
+     *  \param [in]  br       Range of bands to which B is applied.
      */
-    void apply_b(spfft_transform_type<T>& spfftk__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-                 std::vector<sddk::Wave_functions<T>>& bphi__); // TODO: align argument order with apply_h()
+    //void apply_b(spfft_transform_type<T>& spfftk__, wf::Wave_functions<T> const& phi__,
+    //             std::vector<wf::Wave_functions<T>>& bphi__, wf::band_range br__);
 
     inline T v0(int ispn__) const
     {

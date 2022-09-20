@@ -1499,7 +1499,7 @@ class mdarray
     /// Zero the entire array.
     inline void zero(memory_t mem__ = memory_t::host)
     {
-        zero(mem__, 0, size());
+        this->zero(mem__, 0, size());
     }
 
     /// Copy n elements starting from idx0 from one memory type to another.

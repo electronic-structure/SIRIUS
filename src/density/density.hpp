@@ -276,19 +276,22 @@ class Density : public Field4D
         \f]
         Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is
         the occupancy operator written in spectral representation.
+
+        \tparam T  Precision type of wave-functions.
+        \tparam F  Type of the wave-functions inner product (used in pp-pw).
      */
-    template <typename T>
-    void add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    template <typename T, typename F>
+    void add_k_point_contribution_dm(K_point<T>& kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
-    template <typename T>
-    void add_k_point_contribution_dm_real(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    //template <typename T>
+    //void add_k_point_contribution_dm_real(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
-    template <typename T>
-    void add_k_point_contribution_dm_complex(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    //template <typename T>
+    //void add_k_point_contribution_dm_complex(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
-    void add_k_point_contribution_rg(K_point<T>* kp__);
+    void add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();

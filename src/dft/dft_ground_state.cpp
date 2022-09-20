@@ -83,7 +83,7 @@ DFT_ground_state::energy_kin_sum_pw() const
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                     double f = kp->band_occupancy(i, ispin);
-                    auto z   = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                    auto z   = kp->spinor_wave_functions_new().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                     d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                 }
             }
@@ -275,8 +275,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
                         int ik = kset_.spl_num_kpoints(ikloc);
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            kset_.get<double>(ik)->spinor_wave_functions().copy_from(sddk::device_t::CPU, ctx_.num_bands(),
-                                                                                     kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                            wf::copy(sddk::memory_t::host, kset_.get<float>(ik)->spinor_wave_functions_new(),
+                                    wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
+                                    kset_.get<double>(ik)->spinor_wave_functions_new(), wf::spin_index(ispn),
+                                    wf::band_range(0, ctx_.num_bands()));
                         }
                     }
                     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {

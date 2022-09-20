@@ -53,8 +53,8 @@ void test_wf_fft()
     for (int ispn = 0; ispn < 2; ispn++) {
         for (int i = 0; i < 10; i++) {
             for (int ig = 0; ig < gkvec->count(); ig++) {
-                wf.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(ispn), wf::band_index(i)) =
-                    wf_ref.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(ispn), wf::band_index(i)) =
+                wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) =
+                    wf_ref.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) =
                         utils::random<std::complex<double>>();
             }
         }
@@ -86,13 +86,13 @@ void test_wf_fft()
 
         for (int i = 0; i < 10; i++) {
             for (int ig = 0; ig < gkvec->count(); ig++) {
-                wf.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(ispn), wf::band_index(i)) = 0;
+                wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = 0;
             }
         }
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-            spfft_transform->backward(wf_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
-            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
+            spfft_transform->backward(wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
+            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
 
         transform_from_fft_layout(wf_fft, wf, wf::spin_index(ispn), wf::band_range(0, 10));
@@ -101,8 +101,8 @@ void test_wf_fft()
     for (int ispn = 0; ispn < 2; ispn++) {
         for (int i = 0; i < 10; i++) {
             for (int ig = 0; ig < gkvec->count(); ig++) {
-                if (std::abs(wf.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(ispn), wf::band_index(i)) -
-                             wf_ref.pw_coeffs(sddk::memory_t::host, ig, wf::spin_index(ispn), wf::band_index(i))) > 1e-10) {
+                if (std::abs(wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) -
+                             wf_ref.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i))) > 1e-10) {
                     std::cout << "Error!" << std::endl;
                 }
             }
