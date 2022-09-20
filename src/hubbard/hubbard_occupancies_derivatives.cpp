@@ -152,7 +152,6 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     // only derivatives of the atomic wave functions are needed.
     auto& phi_atomic   = kp__.atomic_wave_functions_new();
     auto& phi_atomic_S = kp__.atomic_wave_functions_S_new();
-    //auto& phi_hub_S    = kp__.hubbard_wave_functions_S_new();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();
@@ -164,7 +163,6 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 
     RTE_ASSERT(nawf == phi_atomic.num_wf().get());
     RTE_ASSERT(nawf == phi_atomic_S.num_wf().get());
-    RTE_ASSERT(nhwf == phi_hub_S.num_wf().get());
 
     //if (ctx_.processing_unit() == sddk::device_t::GPU) {
     //    dn__.allocate(sddk::memory_t::device);
