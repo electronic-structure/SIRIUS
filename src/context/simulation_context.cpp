@@ -733,7 +733,7 @@ Simulation_context::print_info(std::ostream& out__) const
             os << std::endl;
         }
         os << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
-           << "number of MPI ranks per node  : " << num_ranks_per_node() << std::endl
+           << "number of MPI ranks per node  : " << sddk::num_ranks_per_node() << std::endl
            << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
            << "number of pages               : " << utils::get_num_pages() << std::endl
            << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
@@ -743,9 +743,9 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::rte_ostream os(out__, "fft");
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
-        Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
-        FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
-        Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
+        sddk::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
+        sddk::FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+        sddk::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
         for (int i = 0; i < 2; i++) {
             os << headers[i] << std::endl
@@ -843,11 +843,11 @@ Simulation_context::print_info(std::ostream& out__) const
         }
         os << "processing unit                    : ";
         switch (processing_unit()) {
-            case device_t::CPU: {
+            case sddk::device_t::CPU: {
                 os << "CPU" << std::endl;
                 break;
             }
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 os << "GPU" << std::endl;
                 os << "number of devices                  : " << acc::num_devices() << std::endl;
                 acc::print_device_info(0, os);
