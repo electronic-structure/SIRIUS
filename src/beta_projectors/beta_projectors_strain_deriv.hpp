@@ -34,7 +34,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
 {
   private:
 
-    void generate_pw_coefs_t(std::vector<int> const& igk__)
+    void generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
 
@@ -54,21 +54,21 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            auto gvc = this->gkvec_.template gkvec_cart<index_domain_t::global>(igk__[igkloc]);
+            auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
             auto rtp = SHT::spherical_coordinates(gvc);
 
             double theta = rtp[1];
             double phi   = rtp[2];
 
             sf::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
-            mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
+            sddk::mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
             sf::dRlm_dr(lmax, gvc, rlm_dg_tmp);
         }
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            auto gvc = this->gkvec_.template gkvec_cart<index_domain_t::global>(igk__[igkloc]);
+            auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
             /* vs = {r, theta, phi} */
             auto gvs = SHT::spherical_coordinates(gvc);
 
@@ -223,12 +223,10 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
     //}
 
   public:
-    Beta_projectors_strain_deriv(Simulation_context&     ctx__,
-                                 Gvec const&             gkvec__,
-                                 std::vector<int> const& igk__)
-        : Beta_projectors_base<T>(ctx__, gkvec__, igk__, 9)
+    Beta_projectors_strain_deriv(Simulation_context& ctx__, sddk::Gvec const& gkvec__)
+        : Beta_projectors_base<T>(ctx__, gkvec__, 9)
     {
-        generate_pw_coefs_t(igk__);
+        generate_pw_coefs_t();
         //generate_pw_coefs_t_v2();
 
         //if (ctx__.processing_unit() == GPU) {

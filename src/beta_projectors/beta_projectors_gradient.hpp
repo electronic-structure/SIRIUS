@@ -35,7 +35,7 @@ template <typename T>
 class Beta_projectors_gradient: public Beta_projectors_base<T>
 {
   private:
-    void generate_pw_coefs_t(Beta_projectors<T>& beta__, std::vector<int> const& igk__)
+    void generate_pw_coefs_t(Beta_projectors<T>& beta__)
     {
         if (!this->num_beta_t()) {
             return;
@@ -45,8 +45,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<T>
             #pragma omp parallel for
             for (int i = 0; i < this->num_beta_t(); i++) {
                 for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-                    int igk = igk__[igkloc];
-                    auto vgc = this->gkvec_.template gkvec_cart<index_domain_t::global>(igk);
+                    auto vgc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
                     this->pw_coeffs_t_(igkloc, i, x) = std::complex<T>(0, -vgc[x]) * beta__.pw_coeffs_t(igkloc, i, 0);
                 }
             }
@@ -54,13 +53,10 @@ class Beta_projectors_gradient: public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors_gradient(Simulation_context&     ctx__,
-                             Gvec const&             gkvec__,
-                             std::vector<int> const& igk__,
-                             Beta_projectors<T>&        beta__)
-        : Beta_projectors_base<T>(ctx__, gkvec__, igk__, 3)
+    Beta_projectors_gradient(Simulation_context& ctx__, sddk::Gvec const& gkvec__, Beta_projectors<T>& beta__)
+        : Beta_projectors_base<T>(ctx__, gkvec__, 3)
     {
-        generate_pw_coefs_t(beta__, igk__);
+        generate_pw_coefs_t(beta__);
     }
 };
 

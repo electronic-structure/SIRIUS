@@ -45,7 +45,7 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 }
 
 void
-Force::symmetrize(mdarray<double, 2>& forces__) const
+Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
 {
     if (!ctx_.use_symmetry()) {
         return;
@@ -80,8 +80,8 @@ Force::symmetrize(mdarray<double, 2>& forces__) const
             sym_forces(x, ia) *= alpha;
         }
     }
-    double* sbuf = ctx_.unit_cell().spl_num_atoms().local_size() ? sym_forces.at(memory_t::host) : nullptr;
-    ctx_.comm().allgather(sbuf, forces__.at(memory_t::host), 3 * ctx_.unit_cell().spl_num_atoms().local_size(),
+    double* sbuf = ctx_.unit_cell().spl_num_atoms().local_size() ? sym_forces.at(sddk::memory_t::host) : nullptr;
+    ctx_.comm().allgather(sbuf, forces__.at(sddk::memory_t::host), 3 * ctx_.unit_cell().spl_num_atoms().local_size(),
         3 * ctx_.unit_cell().spl_num_atoms().global_offset());
 }
 
@@ -124,20 +124,20 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
 
 template <typename T>
 void
-Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
+    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
-            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
+            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
         }
     }
 
@@ -155,13 +155,13 @@ Force::add_k_point_contribution(K_point<real_type<T>>& kp__, mdarray<double, 2>&
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* deallocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
         }
     }
 }
 
 void
-Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
+Force::compute_dmat(K_point<double>* kp__, sddk::dmatrix<double_complex>& dm__) const
 {
     dm__.zero();
 
@@ -172,7 +172,7 @@ Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
         }
     } else {
         if (ctx_.num_mag_dims() != 3) {
-            dmatrix<double_complex> ev1(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+            sddk::dmatrix<double_complex> ev1(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
                                         ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -185,14 +185,14 @@ Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
                     }
                 }
 
-                linalg(linalg_t::scalapack)
+                sddk::linalg(sddk::linalg_t::scalapack)
                     .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &linalg_const<double_complex>::one(), ev1, 0, 0, ev, 0, 0,
-                          &linalg_const<double_complex>::one(), dm__, 0, 0);
+                          &sddk::linalg_const<double_complex>::one(), ev1, 0, 0, ev, 0, 0,
+                          &sddk::linalg_const<double_complex>::one(), dm__, 0, 0);
             }
         } else {
-            dmatrix<double_complex> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(),
-                                        ctx_.cyclic_block_size());
+            sddk::dmatrix<double_complex> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(),
+                    ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++) {
@@ -205,19 +205,19 @@ Force::compute_dmat(K_point<double>* kp__, dmatrix<double_complex>& dm__) const
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 int offs = ispn * ctx_.num_fv_states();
 
-                linalg(linalg_t::scalapack)
+                sddk::linalg(sddk::linalg_t::scalapack)
                     .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
-                          &linalg_const<double_complex>::one(), dm__, 0, 0);
+                          &sddk::linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
+                          &sddk::linalg_const<double_complex>::one(), dm__, 0, 0);
             }
         }
     }
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_total()
 {
-    forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_total_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     if (ctx_.full_potential()) {
         calc_forces_rho();
         calc_forces_hf();
@@ -236,7 +236,7 @@ Force::calc_forces_total()
         calc_forces_scf_corr();
         calc_forces_hubbard();
 
-        forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+        forces_total_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             for (int x : {0, 1, 2}) {
                 forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
@@ -248,13 +248,13 @@ Force::calc_forces_total()
     return forces_total_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_ibs()
 {
-    forces_ibs_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_ibs_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_ibs_.zero();
 
-    mdarray<double, 2> ffac(ctx_.unit_cell().num_atom_types(), ctx_.gvec().num_shells());
+    sddk::mdarray<double, 2> ffac(ctx_.unit_cell().num_atom_types(), ctx_.gvec().num_shells());
     #pragma omp parallel for
     for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
@@ -275,11 +275,11 @@ Force::calc_forces_ibs()
     return forces_ibs_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_rho()
 {
 
-    forces_rho_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_rho_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_rho_.zero();
     for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
         int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
@@ -294,10 +294,10 @@ Force::calc_forces_rho()
     return forces_rho_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_hf()
 {
-    forces_hf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_hf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_hf_.zero();
 
     for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
@@ -313,11 +313,11 @@ Force::calc_forces_hf()
     return forces_hf_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_hubbard()
 {
     PROFILE("sirius::Force::hubbard_force");
-    forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_hubbard_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_hubbard_.zero();
 
     if (ctx_.hubbard_correction()) {
@@ -339,14 +339,14 @@ Force::calc_forces_hubbard()
         }
 
         /* global reduction */
-        kset_.comm().allreduce(forces_hubbard_.at(memory_t::host), 3 * ctx_.unit_cell().num_atoms());
+        kset_.comm().allreduce(forces_hubbard_.at(sddk::memory_t::host), 3 * ctx_.unit_cell().num_atoms());
     }
 
     symmetrize(forces_hubbard_);
     return forces_hubbard_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_ewald()
 {
     PROFILE("sirius::Force::calc_forces_ewald");
@@ -382,10 +382,10 @@ Force::calc_forces_ewald()
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
+            double g2 = std::pow(ctx_.gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
 
             /* cartesian form for getting cartesian force components */
-            auto gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
 
             double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                  static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
@@ -425,7 +425,7 @@ Force::calc_forces_ewald()
     return forces_ewald_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_us()
 {
     PROFILE("sirius::Force::calc_forces_us");
@@ -439,18 +439,18 @@ Force::calc_forces_us()
 
     double reduce_g_fact = ctx_.gvec().reduced() ? 2.0 : 1.0;
 
-    linalg_t la{linalg_t::none};
+    sddk::linalg_t la{sddk::linalg_t::none};
 
-    memory_pool* mp{nullptr};
+    sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
-        case device_t::CPU: {
-            mp = &ctx_.mem_pool(memory_t::host);
-            la = linalg_t::blas;
+        case sddk::device_t::CPU: {
+            mp = &ctx_.mem_pool(sddk::memory_t::host);
+            la = sddk::linalg_t::blas;
             break;
         }
-        case device_t::GPU: {
-            mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::spla;
+        case sddk::device_t::GPU: {
+            mp = &ctx_.mem_pool(sddk::memory_t::host_pinned);
+            la = sddk::linalg_t::spla;
             break;
         }
     }
@@ -459,11 +459,11 @@ Force::calc_forces_us()
     for (int iat = 0; iat < unit_cell.num_atom_types(); iat++) {
         auto& atom_type = unit_cell.atom_type(iat);
 
-        auto aug_op = ctx_.augmentation_op(iat);
-
-        if (!aug_op) {
+        if (!ctx_.unit_cell().atom_type(iat).augment()) {
             continue;
         }
+
+        auto& aug_op = ctx_.augmentation_op(iat);
 
         int nbf = atom_type.mt_basis_size();
 
@@ -481,7 +481,7 @@ Force::calc_forces_us()
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                     int ig   = ctx_.gvec().offset() + igloc;
-                    auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+                    auto gvc = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                         /* here we write in v_tmp  -i * G * exp[ iGRn] Veff(G)
                          * but in formula we have   i * G * exp[-iGRn] Veff*(G)
@@ -495,16 +495,16 @@ Force::calc_forces_us()
                 }
 
                 /* multiply tmp matrices, or sum over G */
-                linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                &linalg_const<double>::one(), aug_op->q_pw().at(memory_t::host), aug_op->q_pw().ld(),
-                                v_tmp.at(memory_t::host), v_tmp.ld(), &linalg_const<double>::zero(),
-                                tmp.at(memory_t::host), tmp.ld());
+                sddk::linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                &sddk::linalg_const<double>::one(), aug_op.q_pw().at(sddk::memory_t::host), aug_op.q_pw().ld(),
+                                v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &sddk::linalg_const<double>::zero(),
+                                tmp.at(sddk::memory_t::host), tmp.ld());
 
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                         forces_us_(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact *
-                                                                   dm(i, ia, ispin) * aug_op->sym_weight(i) *
+                                                                   dm(i, ia, ispin) * aug_op.sym_weight(i) *
                                                                    tmp(i, ia);
                     }
                 }
@@ -519,7 +519,7 @@ Force::calc_forces_us()
     return forces_us_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_scf_corr()
 {
     PROFILE("sirius::Force::calc_forces_scf_corr");
@@ -528,7 +528,7 @@ Force::calc_forces_scf_corr()
     /* get form-factors for all G shells */
     auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
 
-    forces_scf_corr_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_scf_corr_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_scf_corr_.zero();
 
     /* get main arrays */
@@ -536,7 +536,7 @@ Force::calc_forces_scf_corr()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvec = ctx_.gvec();
+    sddk::Gvec const& gvec = ctx_.gvec();
 
     int gvec_count  = gvec.count();
     int gvec_offset = gvec.offset();
@@ -556,7 +556,7 @@ Force::calc_forces_scf_corr()
             int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            auto gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvec.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
             double_complex z =
@@ -575,7 +575,7 @@ Force::calc_forces_scf_corr()
     return forces_scf_corr_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
@@ -584,7 +584,7 @@ Force::calc_forces_core()
     /* get form-factors for all G shells */
     auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
 
-    forces_core_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_core_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_core_.zero();
 
     /* get main arrays */
@@ -595,7 +595,7 @@ Force::calc_forces_core()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvecs = ctx_.gvec();
+    sddk::Gvec const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.count();
     int gvec_offset = gvecs.offset();
@@ -616,7 +616,7 @@ Force::calc_forces_core()
             auto igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
             double_complex z =
@@ -637,7 +637,7 @@ Force::calc_forces_core()
 
 void
 Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                  mdarray<double, 2>& forceh__)
+                                                  sddk::mdarray<double, 2>& forceh__)
 {
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
@@ -699,7 +699,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
     }
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_vloc()
 {
     PROFILE("sirius::Force::calc_forces_vloc");
@@ -708,14 +708,14 @@ Force::calc_forces_vloc()
     /* get form-factors for all G shells */
     auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
 
-    forces_vloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_vloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_vloc_.zero();
 
     auto& valence_rho = density_.rho();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    Gvec const& gvecs = ctx_.gvec();
+    auto const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
@@ -734,7 +734,7 @@ Force::calc_forces_vloc()
             int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
             double_complex z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.f_pw_local(igloc)) *
@@ -754,13 +754,13 @@ Force::calc_forces_vloc()
     return forces_vloc_;
 }
 
-mdarray<double, 2> const&
+sddk::mdarray<double, 2> const&
 Force::calc_forces_usnl()
 {
     calc_forces_us();
     calc_forces_nonloc();
 
-    forces_usnl_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_usnl_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         for (int x : {0, 1, 2}) {
             forces_usnl_(x, ia) = forces_us_(x, ia) + forces_nonloc_(x, ia);
@@ -771,8 +771,8 @@ Force::calc_forces_usnl()
 }
 
 void
-Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__,
-                     mdarray<double, 2>& forcek__) const
+Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& ffac__,
+                     sddk::mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 
@@ -787,24 +787,24 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
     auto ngklo = kp__->gklo_basis_size();
 
     /* compute density matrix for a k-point */
-    dmatrix<double_complex> dm(nfv, nfv, bg, bs, bs);
+    sddk::dmatrix<double_complex> dm(nfv, nfv, bg, bs, bs);
     compute_dmat(kp__, dm);
 
     /* first-variational eigen-vectors in scalapack distribution */
     auto& fv_evec = kp__->fv_eigen_vectors();
 
-    dmatrix<double_complex> h(ngklo, ngklo, bg, bs, bs);
-    dmatrix<double_complex> o(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<double_complex> h(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<double_complex> o(ngklo, ngklo, bg, bs, bs);
 
-    dmatrix<double_complex> h1(ngklo, ngklo, bg, bs, bs);
-    dmatrix<double_complex> o1(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<double_complex> h1(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<double_complex> o1(ngklo, ngklo, bg, bs, bs);
 
-    dmatrix<double_complex> zm1(ngklo, nfv, bg, bs, bs);
-    dmatrix<double_complex> zf(nfv, nfv, bg, bs, bs);
+    sddk::dmatrix<double_complex> zm1(ngklo, nfv, bg, bs, bs);
+    sddk::dmatrix<double_complex> zf(nfv, nfv, bg, bs, bs);
 
-    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
-    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
-    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
 
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         h.zero();
@@ -824,27 +824,27 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         Hk__.H0().apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* apw-apw block of the overlap matrix */
-        linalg(linalg_t::blas)
+        sddk::linalg(sddk::linalg_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(),
-                  alm_col.at(memory_t::host), alm_col.ld(), &linalg_const<double_complex>::zero(), o.at(memory_t::host),
-                  o.ld());
+                  &sddk::linalg_const<double_complex>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
+                  alm_col.at(sddk::memory_t::host), alm_col.ld(), &sddk::linalg_const<double_complex>::zero(),
+                  o.at(sddk::memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
-        linalg(linalg_t::blas)
+        sddk::linalg(sddk::linalg_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(),
-                  halm_col.at(memory_t::host), halm_col.ld(), &linalg_const<double_complex>::zero(),
-                  h.at(memory_t::host), h.ld());
+                  &sddk::linalg_const<double_complex>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
+                  halm_col.at(sddk::memory_t::host), halm_col.ld(), &sddk::linalg_const<double_complex>::zero(),
+                  h.at(sddk::memory_t::host), h.ld());
 
         int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-            auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
-            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+            auto gvec_col       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
-                auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+                auto gvec_row       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
 
                 int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
@@ -861,13 +861,13 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
         for (int x = 0; x < 3; x++) {
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+                auto gvec_col = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
-                    auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                    auto gvec_row = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
                     /* compute index of G-G' */
                     int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
                     /* get G-G' */
-                    auto vg = ctx_.gvec().gvec_cart<index_domain_t::global>(ig12);
+                    auto vg = ctx_.gvec().gvec_cart<sddk::index_domain_t::global>(ig12);
                     /* multiply by i(G-G') */
                     h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
                     /* multiply by i(G-G') */
@@ -877,7 +877,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
             for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
-                    auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+                    auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
                     /* multiply by i(G+k) */
                     h1(igk_row, icol + kp__->num_gkvec_col()) =
                         double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
@@ -889,7 +889,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
             for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
-                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
                     /* multiply by i(G+k) */
                     h1(irow + kp__->num_gkvec_row(), igk_col) =
                         double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
@@ -900,9 +900,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
             }
 
             /* zm1 = dO * V */
-            linalg(linalg_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(), o1, 0, 0, fv_evec, 0, 0,
-                      &linalg_const<double_complex>::zero(), zm1, 0, 0);
+            sddk::linalg(sddk::linalg_t::scalapack)
+                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), o1, 0, 0, fv_evec, 0, 0,
+                      &sddk::linalg_const<double_complex>::zero(), zm1, 0, 0);
             /* multiply by energy: zm1 = E * (dO * V)  */
             for (int i = 0; i < zm1.num_cols_local(); i++) {
                 int ist = zm1.icol(i);
@@ -911,14 +911,14 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
                 }
             }
             /* compute zm1 = dH * V - E * (dO * V) */
-            linalg(linalg_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(), h1, 0, 0, fv_evec, 0, 0,
-                      &linalg_const<double_complex>::m_one(), zm1, 0, 0);
+            sddk::linalg(sddk::linalg_t::scalapack)
+                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), h1, 0, 0, fv_evec, 0, 0,
+                      &sddk::linalg_const<double_complex>::m_one(), zm1, 0, 0);
 
             /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
-            linalg(linalg_t::scalapack)
-                .gemm('C', 'N', nfv, nfv, ngklo, &linalg_const<double_complex>::one(), fv_evec, 0, 0, zm1, 0, 0,
-                      &linalg_const<double_complex>::zero(), zf, 0, 0);
+            sddk::linalg(sddk::linalg_t::scalapack)
+                .gemm('C', 'N', nfv, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), fv_evec, 0, 0, zm1, 0, 0,
+                      &sddk::linalg_const<double_complex>::zero(), zf, 0, 0);
 
             for (int i = 0; i < dm.num_cols_local(); i++) {
                 for (int j = 0; j < dm.num_rows_local(); j++) {
@@ -933,7 +933,7 @@ void
 Force::print_info()
 {
     if (ctx_.comm().rank() == 0) {
-        auto print_forces = [&](mdarray<double, 2> const& forces) {
+        auto print_forces = [&](sddk::mdarray<double, 2> const& forces) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 std::printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
                             forces(0, ia), forces(1, ia), forces(2, ia));

@@ -4,6 +4,7 @@
 /* test G-vectors */
 
 using namespace sirius;
+using namespace sddk;
 
 int run_test(cmd_args& args)
 {

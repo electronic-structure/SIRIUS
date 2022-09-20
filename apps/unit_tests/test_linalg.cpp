@@ -1,13 +1,14 @@
 #include <sirius.hpp>
 
 using namespace sirius;
+using namespace sddk;
 
 void test1()
 {
     int N = 400;
-    matrix<double_complex> A(N, N);
-    matrix<double_complex> B(N, N);
-    matrix<double_complex> C(N, N);
+    sddk::matrix<double_complex> A(N, N);
+    sddk::matrix<double_complex> B(N, N);
+    sddk::matrix<double_complex> C(N, N);
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++) B(j, i) = utils::random<double_complex>();

@@ -31,6 +31,7 @@
 #include "SDDK/omp.hpp"
 #include "k_point/k_point.hpp"
 #include "utils/profiler.hpp"
+#include "lapw/generate_alm_block.hpp"
 #include <chrono>
 
 namespace sirius {
@@ -51,7 +52,7 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__,
             new U_operator<T>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk()));
     }
     if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
-        kp_.hubbard_wave_functions_S().prepare(spin_range(0), true, &H0_.ctx().mem_pool(memory_t::device));
+        kp_.hubbard_wave_functions_S().prepare(sddk::spin_range(0), true, &H0_.ctx().mem_pool(sddk::memory_t::device));
     }
 }
 
@@ -64,7 +65,7 @@ Hamiltonian_k<T>::~Hamiltonian_k()
         }
     }
     if (!H0_.ctx().full_potential() && H0_.ctx().hubbard_correction()) {
-        kp_.hubbard_wave_functions_S().dismiss(spin_range(0), false);
+        kp_.hubbard_wave_functions_S().dismiss(sddk::spin_range(0), false);
     }
 }
 
@@ -92,7 +93,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
         #pragma omp parallel for schedule(static)
         for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
             if (what & 1) {
-                auto ekin            = 0.5 * kp_.gkvec().template gkvec_cart<index_domain_t::local>(ig_loc).length2();
+                auto ekin            = 0.5 * kp_.gkvec().template gkvec_cart<sddk::index_domain_t::local>(ig_loc).length2();
                 h_diag(ig_loc, ispn) = ekin + H0_.local_op().v0(ispn);
             }
             if (what & 2) {
@@ -105,7 +106,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
 
         /* non-local H contribution */
         auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
-        matrix<std::complex<T>> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
+        sddk::matrix<std::complex<T>> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
 
         for (int iat = 0; iat < uc.num_atom_types(); iat++) {
             auto& atom_type = uc.atom_type(iat);
@@ -114,15 +115,15 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                 continue;
             }
 
-            matrix<std::complex<T>> d_sum;
+            sddk::matrix<std::complex<T>> d_sum;
             if (what & 1) {
-                d_sum = matrix<std::complex<T>>(nbf, nbf);
+                d_sum = sddk::matrix<std::complex<T>>(nbf, nbf);
                 d_sum.zero();
             }
 
-            matrix<std::complex<T>> q_sum;
+            sddk::matrix<std::complex<T>> q_sum;
             if (what & 2) {
-                q_sum = matrix<std::complex<T>>(nbf, nbf);
+                q_sum = sddk::matrix<std::complex<T>>(nbf, nbf);
                 q_sum.zero();
             }
 
@@ -144,7 +145,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
             int offs = uc.atom_type(iat).offset_lo();
 
             if (what & 1) {
-                sddk::linalg(linalg_t::blas)
+                sddk::linalg(sddk::linalg_t::blas)
                     .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &sddk::linalg_const<std::complex<T>>::one(),
                           &beta_gk_t(0, offs), beta_gk_t.ld(), &d_sum(0, 0), d_sum.ld(),
                           &sddk::linalg_const<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
@@ -160,7 +161,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
             }
 
             if (what & 2) {
-                sddk::linalg(linalg_t::blas)
+                sddk::linalg(sddk::linalg_t::blas)
                     .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &sddk::linalg_const<std::complex<T>>::one(),
                           &beta_gk_t(0, offs), beta_gk_t.ld(), &q_sum(0, 0), q_sum.ld(),
                           &sddk::linalg_const<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
@@ -176,12 +177,12 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
             }
         }
     }
-    if (H0_.ctx().processing_unit() == device_t::GPU) {
+    if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
         if (what & 1) {
-            h_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            h_diag.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
         if (what & 2) {
-            o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            o_diag.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
     }
     return std::make_pair(std::move(h_diag), std::move(o_diag));
@@ -189,27 +190,27 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
 
 template <typename T>
 template <int what>
-std::pair<mdarray<T, 2>, mdarray<T, 2>>
+std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>>
 Hamiltonian_k<T>::get_h_o_diag_lapw() const
 {
     PROFILE("sirius::Hamiltonian::get_h_o_diag");
 
     auto const& uc = H0_.ctx().unit_cell();
 
-    splindex<splindex_t::block> spl_num_atoms(uc.num_atoms(), kp_.comm().size(), kp_.comm().rank());
+    sddk::splindex<sddk::splindex_t::block> spl_num_atoms(uc.num_atoms(), kp_.comm().size(), kp_.comm().rank());
     int nlo{0};
     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
         int ia = spl_num_atoms[ialoc];
         nlo += uc.atom(ia).mt_lo_basis_size();
     }
 
-    mdarray<T, 2> h_diag = (what & 1) ? mdarray<T, 2>(kp_.num_gkvec_loc() + nlo, 1) : mdarray<T, 2>();
-    mdarray<T, 2> o_diag = (what & 2) ? mdarray<T, 2>(kp_.num_gkvec_loc() + nlo, 1) : mdarray<T, 2>();
+    auto h_diag = (what & 1) ? sddk::mdarray<T, 2>(kp_.num_gkvec_loc() + nlo, 1) : sddk::mdarray<T, 2>();
+    auto o_diag = (what & 2) ? sddk::mdarray<T, 2>(kp_.num_gkvec_loc() + nlo, 1) : sddk::mdarray<T, 2>();
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
         if (what & 1) {
-            auto gvc      = kp_.gkvec().template gkvec_cart<index_domain_t::local>(igloc);
+            auto gvc      = kp_.gkvec().template gkvec_cart<sddk::index_domain_t::local>(igloc);
             T ekin        = 0.5 * dot(gvc, gvc);
             h_diag[igloc] = H0_.local_op().v0(0) + ekin * H0_.ctx().theta_pw(0).real();
         }
@@ -220,18 +221,17 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
     #pragma omp parallel
     {
-        matrix<std::complex<T>> alm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
+        sddk::matrix<std::complex<T>> alm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
 
-        matrix<std::complex<T>> halm = (what & 1)
-                                           ? matrix<std::complex<T>>(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size())
-                                           : matrix<std::complex<T>>();
+        auto halm = (what & 1) ? sddk::matrix<std::complex<T>>(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size())
+                               : sddk::matrix<std::complex<T>>();
 
-        auto h_diag_omp = (what & 1) ? mdarray<T, 1>(kp_.num_gkvec_loc()) : mdarray<T, 1>();
+        auto h_diag_omp = (what & 1) ? sddk::mdarray<T, 1>(kp_.num_gkvec_loc()) : sddk::mdarray<T, 1>();
         if (what & 1) {
             h_diag_omp.zero();
         }
 
-        auto o_diag_omp = (what & 2) ? mdarray<T, 1>(kp_.num_gkvec_loc()) : mdarray<T, 1>();
+        auto o_diag_omp = (what & 2) ? sddk::mdarray<T, 1>(kp_.num_gkvec_loc()) : sddk::mdarray<T, 1>();
         if (what & 2) {
             o_diag_omp.zero();
         }
@@ -288,12 +288,12 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         nlo += atom.mt_lo_basis_size();
     }
 
-    if (H0_.ctx().processing_unit() == device_t::GPU) {
+    if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
         if (what & 1) {
-            h_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            h_diag.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
         if (what & 2) {
-            o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            o_diag.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
     }
     return std::make_pair(std::move(h_diag), std::move(o_diag));
@@ -312,27 +312,32 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     /* split atoms in blocks */
     int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk               = uc.num_atoms() / num_atoms_in_block + std::min(1, uc.num_atoms() % num_atoms_in_block);
+
+
+    // TODO: use new way to split in blocks
+    // TODO: use generate_alm_block()
+
     /* maximum number of apw coefficients in the block of atoms */
     int max_mt_aw = num_atoms_in_block * uc.max_mt_aw_basis_size();
     /* current processing unit */
     auto pu = H0_.ctx().processing_unit();
 
-    auto la  = linalg_t::none;
-    auto mt  = memory_t::none;
-    auto mt1 = memory_t::none;
+    auto la  = sddk::linalg_t::none;
+    auto mt  = sddk::memory_t::none;
+    auto mt1 = sddk::memory_t::none;
     int nb   = 0;
     switch (pu) {
-        case device_t::CPU: {
-            la  = linalg_t::blas;
-            mt  = memory_t::host;
-            mt1 = memory_t::host;
+        case sddk::device_t::CPU: {
+            la  = sddk::linalg_t::blas;
+            mt  = sddk::memory_t::host;
+            mt1 = sddk::memory_t::host;
             nb  = 1;
             break;
         }
-        case device_t::GPU: {
-            la  = linalg_t::spla;
-            mt  = memory_t::host_pinned;
-            mt1 = memory_t::device;
+        case sddk::device_t::GPU: {
+            la  = sddk::linalg_t::spla;
+            mt  = sddk::memory_t::host_pinned;
+            mt1 = sddk::memory_t::device;
             nb  = 1;
             break;
         }
@@ -347,24 +352,15 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     h__.zero();
     o__.zero();
     switch (pu) {
-        case device_t::GPU: {
-            //        alm_row = mdarray<std::complex<T>, 3>(kp.num_gkvec_row(), max_mt_aw, 2,
-            //        H0_.ctx().mem_pool(memory_t::host_pinned)); alm_col = mdarray<std::complex<T>,
-            //        3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned)); halm_col =
-            //        mdarray<std::complex<T>, 3>(kp.num_gkvec_col(), max_mt_aw, 2,
-            //        H0_.ctx().mem_pool(memory_t::host_pinned));
-            alm_row.allocate(H0_.ctx().mem_pool(memory_t::device));
-            alm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
-            halm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
+        case sddk::device_t::GPU: {
+            alm_row.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
+            alm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
+            halm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
             //        h__.zero(memory_t::device);
             //        o__.zero(memory_t::device);
             break;
         }
-        case device_t::CPU: {
-            //        alm_row = mdarray<std::complex<T>, 3>(kp.num_gkvec_row(), max_mt_aw, 1,
-            //        H0_.ctx().mem_pool(memory_t::host)); alm_col = mdarray<std::complex<T>, 3>(kp.num_gkvec_col(),
-            //        max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host)); halm_col = mdarray<std::complex<T>,
-            //        3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+        case sddk::device_t::CPU: {
             break;
         }
     }
@@ -385,7 +381,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
             num_mt_aw += uc.atom(ia).type().mt_aw_basis_size();
         }
 
-        int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
+        int s = (pu == sddk::device_t::GPU) ? (iblk % 2) : 0;
         s     = 0;
 
         if (H0_.ctx().cfg().control().print_checksum()) {
@@ -415,28 +411,28 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
                 sddk::mdarray<std::complex<T>, 2> halm_col_atom;
 
                 switch (pu) {
-                    case device_t::CPU: {
-                        alm_row_atom = mdarray<std::complex<T>, 2>(alm_row.at(memory_t::host, 0, offsets[ia], s),
+                    case sddk::device_t::CPU: {
+                        alm_row_atom = sddk::mdarray<std::complex<T>, 2>(alm_row.at(sddk::memory_t::host, 0, offsets[ia], s),
                                                                    kp.num_gkvec_row(), naw);
 
-                        alm_col_atom = mdarray<std::complex<T>, 2>(alm_col.at(memory_t::host, 0, offsets[ia], s),
+                        alm_col_atom = sddk::mdarray<std::complex<T>, 2>(alm_col.at(sddk::memory_t::host, 0, offsets[ia], s),
                                                                    kp.num_gkvec_col(), naw);
 
-                        halm_col_atom = mdarray<std::complex<T>, 2>(halm_col.at(memory_t::host, 0, offsets[ia], s),
+                        halm_col_atom = sddk::mdarray<std::complex<T>, 2>(halm_col.at(sddk::memory_t::host, 0, offsets[ia], s),
                                                                     kp.num_gkvec_col(), naw);
                         break;
                     }
-                    case device_t::GPU: {
-                        alm_row_atom = mdarray<std::complex<T>, 2>(alm_row.at(memory_t::host, 0, offsets[ia], s),
-                                                                   alm_row.at(memory_t::device, 0, offsets[ia], s),
+                    case sddk::device_t::GPU: {
+                        alm_row_atom = sddk::mdarray<std::complex<T>, 2>(alm_row.at(sddk::memory_t::host, 0, offsets[ia], s),
+                                                                   alm_row.at(sddk::memory_t::device, 0, offsets[ia], s),
                                                                    kp.num_gkvec_row(), naw);
 
-                        alm_col_atom = mdarray<std::complex<T>, 2>(alm_col.at(memory_t::host, 0, offsets[ia], s),
-                                                                   alm_col.at(memory_t::device, 0, offsets[ia], s),
+                        alm_col_atom = sddk::mdarray<std::complex<T>, 2>(alm_col.at(sddk::memory_t::host, 0, offsets[ia], s),
+                                                                   alm_col.at(sddk::memory_t::device, 0, offsets[ia], s),
                                                                    kp.num_gkvec_col(), naw);
 
-                        halm_col_atom = mdarray<std::complex<T>, 2>(halm_col.at(memory_t::host, 0, offsets[ia], s),
-                                                                    halm_col.at(memory_t::device, 0, offsets[ia], s),
+                        halm_col_atom = sddk::mdarray<std::complex<T>, 2>(halm_col.at(sddk::memory_t::host, 0, offsets[ia], s),
+                                                                    halm_col.at(sddk::memory_t::device, 0, offsets[ia], s),
                                                                     kp.num_gkvec_col(), naw);
                         break;
                     }
@@ -446,14 +442,14 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
                 /* can't copy alm to device how as it might be modified by the iora */
 
                 H0_.template apply_hmt_to_apw<spin_block_t::nm>(atom, kp.num_gkvec_col(), alm_col_atom, halm_col_atom);
-                if (pu == device_t::GPU) {
-                    halm_col_atom.copy_to(memory_t::device, stream_id(tid));
+                if (pu == sddk::device_t::GPU) {
+                    halm_col_atom.copy_to(sddk::memory_t::device, stream_id(tid));
                 }
 
                 /* generate conjugated matching coefficients */
                 kp.alm_coeffs_row().template generate<true>(atom, alm_row_atom);
-                if (pu == device_t::GPU) {
-                    alm_row_atom.copy_to(memory_t::device, stream_id(tid));
+                if (pu == sddk::device_t::GPU) {
+                    alm_row_atom.copy_to(sddk::memory_t::device, stream_id(tid));
                 }
 
                 /* setup apw-lo and lo-apw blocks */
@@ -466,8 +462,8 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
                     H0_.add_o1mt_to_apw(atom, kp.num_gkvec_col(), alm_col_atom);
                 }
 
-                if (pu == device_t::GPU) {
-                    alm_col_atom.copy_to(memory_t::device, stream_id(tid));
+                if (pu == sddk::device_t::GPU) {
+                    alm_col_atom.copy_to(sddk::memory_t::device, stream_id(tid));
                 }
             }
             acc::sync_stream(stream_id(tid));
@@ -483,14 +479,14 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
             utils::print_checksum("halm_col", z3);
         }
 
-        linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
-                        &linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                        alm_col.at(mt1, 0, 0, s), alm_col.ld(), &linalg_const<std::complex<T>>::one(), o__.at(mt),
+        sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+                        &sddk::linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                        alm_col.at(mt1, 0, 0, s), alm_col.ld(), &sddk::linalg_const<std::complex<T>>::one(), o__.at(mt),
                         o__.ld());
 
-        linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
-                        &linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                        halm_col.at(mt1, 0, 0, s), halm_col.ld(), &linalg_const<std::complex<T>>::one(), h__.at(mt),
+        sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+                        &sddk::linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                        halm_col.at(mt1, 0, 0, s), halm_col.ld(), &sddk::linalg_const<std::complex<T>>::one(), h__.at(mt),
                         h__.ld());
     }
 
@@ -532,9 +528,9 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
 /* alm_row comes in already conjugated */
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::complex<T>, 2>& alm_row__,
-                                    mdarray<std::complex<T>, 2>& alm_col__, mdarray<std::complex<T>, 2>& h__,
-                                    mdarray<std::complex<T>, 2>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<std::complex<T>, 2>& alm_row__,
+                                    sddk::mdarray<std::complex<T>, 2>& alm_col__, sddk::mdarray<std::complex<T>, 2>& h__,
+                                    sddk::mdarray<std::complex<T>, 2>& o__) const
 {
     auto& type = atom__.type();
     /* apw-lo block */
@@ -623,7 +619,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_lo_lo(dmatrix<std::complex<T>>& h__, dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_lo_lo(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_lo_lo");
 
@@ -667,7 +663,7 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(dmatrix<std::complex<T>>& h__, dmatrix<std::c
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_it(dmatrix<std::complex<T>>& h__, dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_it");
 
@@ -679,13 +675,13 @@ Hamiltonian_k<T>::set_fv_h_o_it(dmatrix<std::complex<T>>& h__, dmatrix<std::comp
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
         int ig_col = kp.igk_col(igk_col);
         /* fractional coordinates of G vectors */
-        auto gvec_col = kp.gkvec().gvec(ig_col);
+        auto gvec_col = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_col);
         /* Cartesian coordinates of G+k vectors */
-        auto gkvec_col_cart = kp.gkvec().template gkvec_cart<index_domain_t::global>(ig_col);
+        auto gkvec_col_cart = kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(ig_col);
         for (int igk_row = 0; igk_row < kp.num_gkvec_row(); igk_row++) {
             int ig_row          = kp.igk_row(igk_row);
-            auto gvec_row       = kp.gkvec().gvec(ig_row);
-            auto gkvec_row_cart = kp.gkvec().template gkvec_cart<index_domain_t::global>(ig_row);
+            auto gvec_row       = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_row);
+            auto gkvec_row_cart = kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(ig_row);
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
             double t1 = 0.5 * geometry3d::dot(gkvec_row_cart, gkvec_col_cart);
@@ -783,8 +779,8 @@ Hamiltonian_k<T>::set_fv_h_o_it(dmatrix<std::complex<T>>& h__, dmatrix<std::comp
 template <typename T>
 template <typename F, typename>
 void
-Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions<T>& phi__, Wave_functions<T>* hphi__,
-                            Wave_functions<T>* sphi__)
+Hamiltonian_k<T>::apply_h_s(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<T>& phi__,
+    sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* sphi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
@@ -839,8 +835,8 @@ Hamiltonian_k<T>::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions
 
 template <typename T>
 void
-Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, Wave_functions<T>& phi__,
-                               Wave_functions<T>* hphi__, Wave_functions<T>* ophi__)
+Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions<T>& phi__,
+                               sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_fv_h_o");
 
@@ -853,8 +849,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
 
     auto pu = ctx.processing_unit();
 
-    auto la  = (pu == device_t::CPU) ? linalg_t::blas : linalg_t::gpublas;
-    auto mem = (pu == device_t::CPU) ? memory_t::host : memory_t::device;
+    auto la  = (pu == sddk::device_t::CPU) ? sddk::linalg_t::blas : sddk::linalg_t::gpublas;
+    auto mem = (pu == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
 
     if (ctx.cfg().control().print_checksum()) {
         phi__.print_checksum(pu, "phi", N__, n__, RTE_OUT(std::cout));
@@ -879,13 +875,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         }
         if (ophi__ != nullptr) {
             /* zero the local-orbital part */
-            ophi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
+            ophi__->mt_coeffs(0).zero(sddk::memory_t::host, N__, n__);
             ophi__->mt_coeffs(0).zero(mem, N__, n__);
         }
     }
 
-    if (pu == device_t::GPU && !apw_only__) {
-        phi__.mt_coeffs(0).copy_to(memory_t::host, N__, n__);
+    if (pu == sddk::device_t::GPU && !apw_only__) {
+        phi__.mt_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
     }
 
     if (!phi_is_lo__) {
@@ -914,68 +910,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     /* short name for local number of G+k vectors */
     int ngv = kp().num_gkvec_loc();
 
-    /* split atoms in blocks */
-    auto spl = utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64);
-
-    /* number of blocks of atoms */
-    int nblk = spl.first;
-    int num_atoms_in_block = spl.second;
-
     auto& comm = kp().comm();
-
-    /* generate Alm coefficients for the block of atoms */
-    auto generate_alm = [&ctx, &ngv, pu, this](int atom_begin, int na, int mt_size, std::vector<int> offsets_aw)
-    {
-        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
-
-        sddk::mdarray<std::complex<T>, 2> alm;
-        switch (pu) {
-            case device_t::CPU: {
-                alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(memory_t::host), "alm");
-                break;
-            }
-            case device_t::GPU: {
-                alm = sddk::mdarray<std::complex<T>, 2>(ngv, mt_size, ctx.mem_pool(memory_t::host_pinned), "alm");
-                alm.allocate(ctx.mem_pool(memory_t::device));
-                break;
-            }
-        }
-
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int i = 0; i < na; i++) {
-                auto& atom = ctx.unit_cell().atom(atom_begin + i);
-                auto& type = atom.type();
-                /* wrap matching coefficients of a single atom */
-                sddk::mdarray<std::complex<T>, 2> alm_atom;
-                switch (pu) {
-                    case device_t::CPU: {
-                        alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(memory_t::host, 0, offsets_aw[i]),
-                                                                     ngv, type.mt_aw_basis_size(), "alm_atom");
-                        break;
-                    }
-                    case device_t::GPU: {
-                        alm_atom = sddk::mdarray<std::complex<T>, 2>(alm.at(memory_t::host, 0, offsets_aw[i]),
-                                                                     alm.at(memory_t::device, 0, offsets_aw[i]),
-                                                                     ngv, type.mt_aw_basis_size(), "alm_atom");
-                        break;
-                    }
-                }
-                /* generate conjugated LAPW matching coefficients on the CPU */
-                kp().alm_coeffs_loc().template generate<true>(atom, alm_atom);
-                if (pu == device_t::GPU) {
-                    alm_atom.copy_to(memory_t::device, stream_id(tid));
-                }
-
-            }
-            if (pu == device_t::GPU) {
-                acc::sync_stream(stream_id(tid));
-            }
-        }
-        return alm;
-    };
 
     PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
@@ -1049,10 +984,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             mt_lo_counts[loc.rank] += type.mt_lo_basis_size();
         }
 
-        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
+        sddk::dmatrix<std::complex<T>, sddk::matrix_distribution_t::slab>
             apw_lo_phi_lo_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
-        if (pu == device_t::GPU) {
-            apw_lo_phi_lo_slab.allocate(ctx.mem_pool(memory_t::device));
+        if (pu == sddk::device_t::GPU) {
+            apw_lo_phi_lo_slab.allocate(ctx.mem_pool(sddk::memory_t::device));
         }
 
         if (hphi__) {
@@ -1069,18 +1004,20 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
 
                 auto& hmt = H0_.hmt(ia);
 
-                linalg(la).gemm('N', 'N', naw, n__, nlo, &linalg_const<std::complex<T>>::one(), hmt.at(mem, 0, naw), hmt.ld(),
-                                phi__.mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
-                                phi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-                                apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), apw_lo_phi_lo_slab.ld(), stream_id(tid));
+                sddk:: linalg(la).gemm('N', 'N', naw, n__, nlo, &sddk::linalg_const<std::complex<T>>::one(),
+                        hmt.at(mem, 0, naw), hmt.ld(), phi__.mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
+                                phi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+                                apw_lo_phi_lo_slab.at(mem, mt_aw_offsets[ialoc], 0), apw_lo_phi_lo_slab.ld(),
+                                stream_id(tid));
             }
 
-            if (pu == device_t::GPU) {
-                apw_lo_phi_lo_slab.copy_to(memory_t::host);
+            if (pu == sddk::device_t::GPU) {
+                apw_lo_phi_lo_slab.copy_to(sddk::memory_t::host);
             }
 
             costa::transform(apw_lo_phi_lo_slab.grid_layout(), h_apw_lo_phi_lo.grid_layout(), 'N',
-                    linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::one(), sddk::linalg_const<std::complex<T>>::zero(),
+                    comm.mpi_comm());
         }
         if (ophi__) {
             o_apw_lo_phi_lo = sddk::dmatrix<std::complex<T>>(ctx.unit_cell().mt_aw_basis_size(), n__,
@@ -1112,7 +1049,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             }
 
             costa::transform(apw_lo_phi_lo_slab.grid_layout(), o_apw_lo_phi_lo.grid_layout(), 'N',
-                    linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::one(), sddk::linalg_const<std::complex<T>>::zero(),
+                    comm.mpi_comm());
         }
     }
 
@@ -1142,11 +1080,11 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
 
             if (hphi__ != nullptr) {
                 auto& hmt = H0_.hmt(ia);
-                linalg(la).gemm('N', 'N', nlo, n__, nlo, &linalg_const<std::complex<T>>::one(),
+                sddk::linalg(la).gemm('N', 'N', nlo, n__, nlo, &sddk::linalg_const<std::complex<T>>::one(),
                                 hmt.at(mem, naw, naw), hmt.ld(),
                                 phi__.mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
                                 phi__.mt_coeffs(0).prime().ld(),
-                                &linalg_const<std::complex<T>>::one(),
+                                &sddk::linalg_const<std::complex<T>>::one(),
                                 hphi__->mt_coeffs(0).prime().at(mem, offset_mt_coeffs, N__),
                                 hphi__->mt_coeffs(0).prime().ld(), stream_id(tid));
             }
@@ -1196,14 +1134,11 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
      *  we are going to split the Alm coefficients into blocks of atoms
      */
     int offset_aw_global{0};
+    int atom_begin{0};
     /* loop over blocks of atoms */
-    for (int ib = 0; ib < nblk; ib++) {
-        /* number of atoms in this block */
-        int na = std::min(ctx.unit_cell().num_atoms(), (ib + 1) * num_atoms_in_block) - ib * num_atoms_in_block;
+    for (auto na : utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64)) {
 
-        int atom_begin = ib * num_atoms_in_block;
-
-        splindex<splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
+        sddk::splindex<sddk::splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
 
         /* actual number of AW radial functions in a block of atoms */
         int num_mt_aw{0};
@@ -1225,7 +1160,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
+        //auto alm = generate_alm(atom_begin, na, std::max(num_mt_aw, num_mt_lo), offsets_aw);
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na,  kp().alm_coeffs_loc());
 
 
         if (!phi_is_lo__) {
@@ -1237,36 +1173,36 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             spla::pgemm_ssb(num_mt_aw, n__, ngv, SPLA_OP_CONJ_TRANSPOSE, 1.0,
                     alm.at(mem), alm.ld(),
                     phi__.pw_coeffs(0).prime().at(mem, 0, N__), phi__.pw_coeffs(0).prime().ld(),
-                    0.0, alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
+                    0.0, alm_phi.at(sddk::memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
                     ctx.spla_context());
             gflops += ngop * num_mt_aw * n__ * ngv;
 
             if (ophi__) {
                 /* APW-APW contribution to ophi */
-                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
-                        alm.at(mem), alm.ld(), alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0,
-                        alm_phi.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, sddk::linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), alm_phi.at(sddk::memory_t::host), alm_phi.ld(), offset_aw_global, 0,
+                        alm_phi.spla_distribution(), sddk::linalg_const<std::complex<T>>::one(),
                         ophi__->pw_coeffs(0).prime().at(mem, 0, N__), ophi__->pw_coeffs(0).prime().ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * n__ * num_mt_aw;
             }
 
             if (hphi__) {
-                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> alm_phi_slab(num_mt_aw, n__, counts_aw, comm);
-                sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab> halm_phi_slab(num_mt_aw, n__, counts_aw, comm);
+                sddk::dmatrix<std::complex<T>, sddk::matrix_distribution_t::slab> alm_phi_slab(num_mt_aw, n__, counts_aw, comm);
+                sddk::dmatrix<std::complex<T>, sddk::matrix_distribution_t::slab> halm_phi_slab(num_mt_aw, n__, counts_aw, comm);
                 sddk::dmatrix<std::complex<T>> halm_phi(num_mt_aw, n__, ctx.blacs_grid(), bs, bs);
-                if (pu == device_t::GPU) {
-                    alm_phi_slab.allocate(ctx.mem_pool(memory_t::device));
-                    halm_phi_slab.allocate(ctx.mem_pool(memory_t::device));
+                if (pu == sddk::device_t::GPU) {
+                    alm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device));
+                    halm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device));
                 }
 
                 auto layout = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, n__);
 
-                costa::transform(layout, alm_phi_slab.grid_layout(), 'N', linalg_const<std::complex<T>>::one(),
-                        linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+                costa::transform(layout, alm_phi_slab.grid_layout(), 'N', sddk::linalg_const<std::complex<T>>::one(),
+                        sddk::linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
 
-                if (pu == device_t::GPU) {
-                    alm_phi_slab.copy_to(memory_t::device);
+                if (pu == sddk::device_t::GPU) {
+                    alm_phi_slab.copy_to(sddk::memory_t::device);
                 }
                 /* apply muffin-tin Hamiltonian */
                 /* each rank works on the local fraction of atoms in the current block */
@@ -1287,23 +1223,24 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
                     auto& hmt = H0_.hmt(ia);
 
                     // TODO: use in-place trmm
-                    linalg(la).gemm('N', 'N', type.mt_aw_basis_size(), n__, type.mt_aw_basis_size(),
-                            &linalg_const<std::complex<T>>::one(), hmt.at(mem), hmt.ld(),
+                    sddk::linalg(la).gemm('N', 'N', type.mt_aw_basis_size(), n__, type.mt_aw_basis_size(),
+                            &sddk::linalg_const<std::complex<T>>::one(), hmt.at(mem), hmt.ld(),
                             alm_phi_slab.at(mem, offset_aw[ialoc], 0), alm_phi_slab.ld(),
-                            &linalg_const<std::complex<T>>::zero(), halm_phi_slab.at(mem, offset_aw[ialoc], 0),
+                            &sddk::linalg_const<std::complex<T>>::zero(), halm_phi_slab.at(mem, offset_aw[ialoc], 0),
                             halm_phi_slab.ld(), stream_id(tid));
                 }
-                if (pu == device_t::GPU) {
-                    halm_phi_slab.copy_to(memory_t::host);
+                if (pu == sddk::device_t::GPU) {
+                    halm_phi_slab.copy_to(sddk::memory_t::host);
                 }
 
                 costa::transform(halm_phi_slab.grid_layout(), halm_phi.grid_layout(), 'N',
-                        linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+                        sddk::linalg_const<std::complex<T>>::one(), sddk::linalg_const<std::complex<T>>::zero(),
+                        comm.mpi_comm());
 
                 /* APW-APW contribution to hphi */
-                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
-                        alm.at(mem), alm.ld(), halm_phi.at(memory_t::host), halm_phi.ld(), 0, 0,
-                        halm_phi.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, sddk::linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), halm_phi.at(sddk::memory_t::host), halm_phi.ld(), 0, 0,
+                        halm_phi.spla_distribution(), sddk::linalg_const<std::complex<T>>::one(),
                         hphi__->pw_coeffs(0).prime().at(mem, 0, N__), hphi__->pw_coeffs(0).prime().ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * n__ * num_mt_aw;
@@ -1316,18 +1253,18 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             auto t0 = utils::time_now();
             if (hphi__) {
                 /* APW-lo contribution to hphi */
-                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
-                        alm.at(mem), alm.ld(), h_apw_lo_phi_lo.at(memory_t::host), h_apw_lo_phi_lo.ld(),
-                        offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(), linalg_const<std::complex<T>>::one(),
-                        hphi__->pw_coeffs(0).prime().at(mem, 0, N__), hphi__->pw_coeffs(0).prime().ld(),
-                        ctx.spla_context());
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, sddk::linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), h_apw_lo_phi_lo.at(sddk::memory_t::host), h_apw_lo_phi_lo.ld(),
+                        offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(),
+                        sddk::linalg_const<std::complex<T>>::one(), hphi__->pw_coeffs(0).prime().at(mem, 0, N__),
+                        hphi__->pw_coeffs(0).prime().ld(), ctx.spla_context());
                 gflops += ngop * ngv * n__ * num_mt_aw;
             }
             if (ophi__) {
                 /* APW-lo contribution to ophi */
-                spla::pgemm_sbs(ngv, n__, num_mt_aw, linalg_const<std::complex<T>>::one(),
-                        alm.at(mem), alm.ld(), o_apw_lo_phi_lo.at(memory_t::host), o_apw_lo_phi_lo.ld(),
-                        offset_aw_global, 0, o_apw_lo_phi_lo.spla_distribution(), linalg_const<std::complex<T>>::one(),
+                spla::pgemm_sbs(ngv, n__, num_mt_aw, sddk::linalg_const<std::complex<T>>::one(),
+                        alm.at(mem), alm.ld(), o_apw_lo_phi_lo.at(sddk::memory_t::host), o_apw_lo_phi_lo.ld(),
+                        offset_aw_global, 0, o_apw_lo_phi_lo.spla_distribution(), sddk::linalg_const<std::complex<T>>::one(),
                         ophi__->pw_coeffs(0).prime().at(mem, 0, N__), ophi__->pw_coeffs(0).prime().ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * n__ * num_mt_aw;
@@ -1335,6 +1272,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             time += utils::time_interval(t0);
         }
         offset_aw_global += num_mt_aw;
+        atom_begin += na;
     }
 
     /* compute lo-APW contribution
@@ -1355,13 +1293,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
     if (!apw_only__ && !phi_is_lo__ && ctx.unit_cell().mt_lo_basis_size()) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-apw");
 
-        sddk::dmatrix<std::complex<T>, matrix_distribution_t::slab>
+        sddk::dmatrix<std::complex<T>, sddk::matrix_distribution_t::slab>
             alm_phi_slab(ctx.unit_cell().mt_aw_basis_size(), n__, mt_aw_counts, comm);
 
         costa::transform(alm_phi.grid_layout(), alm_phi_slab.grid_layout(), 'N',
-            linalg_const<std::complex<T>>::one(), linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
-        if (pu == device_t::GPU) {
-             alm_phi_slab.allocate(ctx.mem_pool(memory_t::device)).copy_to(memory_t::device);
+            sddk::linalg_const<std::complex<T>>::one(), sddk::linalg_const<std::complex<T>>::zero(), comm.mpi_comm());
+        if (pu == sddk::device_t::GPU) {
+             alm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
         }
 
         #pragma omp parallel for
@@ -1391,27 +1329,24 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
             }
             if (hphi__ != nullptr) {
                 auto& hmt = H0_.hmt(ia);
-                linalg(la).gemm('N', 'N', nlo, n__, naw, &linalg_const<std::complex<T>>::one(), hmt.at(mem, naw, 0), hmt.ld(),
-                                alm_phi_slab.at(mem, mt_aw_offsets[ialoc], 0), alm_phi_slab.ld(),
-                                &linalg_const<std::complex<T>>::one(),
-                                hphi__->mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
-                                hphi__->mt_coeffs(0).prime().ld());
+                sddk::linalg(la).gemm('N', 'N', nlo, n__, naw, &sddk::linalg_const<std::complex<T>>::one(),
+                        hmt.at(mem, naw, 0), hmt.ld(), alm_phi_slab.at(mem, mt_aw_offsets[ialoc], 0), alm_phi_slab.ld(),
+                        &sddk::linalg_const<std::complex<T>>::one(),
+                        hphi__->mt_coeffs(0).prime().at(mem, mt_lo_offsets[ialoc], N__),
+                        hphi__->mt_coeffs(0).prime().ld());
             }
         }
     }
     PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
-    if (pu == device_t::GPU && !apw_only__) {
-        //if (hphi__ != nullptr) {
-        //    hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
-        //}
+    if (pu == sddk::device_t::GPU && !apw_only__) {
         if (ophi__ != nullptr) {
-            ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
+            ophi__->mt_coeffs(0).copy_to(sddk::memory_t::device, N__, n__);
         }
     }
-    if (pu == device_t::GPU) {
+    if (pu == sddk::device_t::GPU) {
         if (ophi__ != nullptr) {
-            ophi__->pw_coeffs(0).copy_to(memory_t::host, N__, n__);
+            ophi__->pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
         }
     }
     if (pp && kp().comm().rank() == 0) {
@@ -1429,7 +1364,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n
 
 template <typename T>
 void
-Hamiltonian_k<T>::apply_b(Wave_functions<T>& psi__, std::vector<Wave_functions<T>>& bpsi__)
+Hamiltonian_k<T>::apply_b(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__)
 {
     PROFILE("sirius::Hamiltonian_k::apply_b");
 
@@ -1453,66 +1388,83 @@ Hamiltonian_k<T>::apply_b(Wave_functions<T>& psi__, std::vector<Wave_functions<T
 
 template class Hamiltonian_k<double>;
 
-template void Hamiltonian_k<double>::apply_h_s<double>(spin_range spins__, int N__, int n__,
-                                                       Wave_functions<double>& phi__, Wave_functions<double>* hphi__,
-                                                       Wave_functions<double>* sphi__);
+template void
+Hamiltonian_k<double>::apply_h_s<double>(sddk::spin_range spins__, int N__, int n__,
+                                         sddk::Wave_functions<double>& phi__,
+                                         sddk::Wave_functions<double>* hphi__,
+                                         sddk::Wave_functions<double>* sphi__);
 
-template void Hamiltonian_k<double>::apply_h_s<double_complex>(spin_range spins__, int N__, int n__,
-                                                               Wave_functions<double>& phi__,
-                                                               Wave_functions<double>* hphi__,
-                                                               Wave_functions<double>* sphi__);
+template void
+Hamiltonian_k<double>::apply_h_s<double_complex>(sddk::spin_range spins__, int N__, int n__,
+                                                 sddk::Wave_functions<double>& phi__,
+                                                 sddk::Wave_functions<double>* hphi__,
+                                                 sddk::Wave_functions<double>* sphi__);
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_pw<double, 1>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_pw<double, 1>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_pw<double, 2>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_pw<double, 2>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_pw<double, 3>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_pw<double, 3>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 1>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 2>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 3>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_lapw<1>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_lapw<1>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_lapw<2>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_lapw<2>() const;
 
-template std::pair<mdarray<double, 2>, mdarray<double, 2>> Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
+template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
+Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 
 #ifdef USE_FP32
 template class Hamiltonian_k<float>;
 
-template void Hamiltonian_k<float>::apply_h_s<float>(spin_range spins__, int N__, int n__, Wave_functions<float>& phi__,
-                                                     Wave_functions<float>* hphi__, Wave_functions<float>* sphi__);
+template void
+Hamiltonian_k<float>::apply_h_s<float>(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<float>& phi__,
+                                       sddk::Wave_functions<float>* hphi__, sddk::Wave_functions<float>* sphi__);
 
-template void Hamiltonian_k<float>::apply_h_s<std::complex<float>>(spin_range spins__, int N__, int n__,
-                                                                   Wave_functions<float>& phi__,
-                                                                   Wave_functions<float>* hphi__,
-                                                                   Wave_functions<float>* sphi__);
+template void
+Hamiltonian_k<float>::apply_h_s<std::complex<float>>(sddk::spin_range spins__, int N__, int n__,
+                                                     sddk::Wave_functions<float>& phi__,
+                                                     sddk::Wave_functions<float>* hphi__,
+                                                     sddk::Wave_functions<float>* sphi__);
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_pw<float, 2>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_pw<float, 2>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_pw<float, 3>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_pw<float, 3>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 1>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 2>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 3>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_lapw<1>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_lapw<1>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_lapw<2>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_lapw<2>() const;
 
-template std::pair<mdarray<float, 2>, mdarray<float, 2>> Hamiltonian_k<float>::get_h_o_diag_lapw<3>() const;
+template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
+Hamiltonian_k<float>::get_h_o_diag_lapw<3>() const;
 #endif
 } // namespace sirius

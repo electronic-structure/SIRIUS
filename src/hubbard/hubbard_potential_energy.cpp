@@ -606,8 +606,8 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
             auto& hub_wf = atype.lo_descriptor_hub(lo_ind);
 
             if (hub_wf.use_for_calculation()) {
-                auto src1 = om__.local(at_lvl).at(memory_t::host);
-                auto src2 = pm__.local(at_lvl).at(memory_t::host);
+                auto src1 = om__.local(at_lvl).at(sddk::memory_t::host);
+                auto src2 = pm__.local(at_lvl).at(sddk::memory_t::host);
 
                 for (int i = 0; i < static_cast<int>(om__.local(at_lvl).size()); i++) {
                     tmp += src1[i] * std::conj(src2[i]);

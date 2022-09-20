@@ -54,7 +54,7 @@ class Potential : public Field4D
 
     Unit_cell& unit_cell_;
 
-    Communicator const& comm_;
+    sddk::Communicator const& comm_;
 
     /// Hartree potential.
     std::unique_ptr<Periodic_function<double>> hartree_potential_;
@@ -275,7 +275,7 @@ class Potential : public Field4D
         /* get form-factors for all G shells */
         auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
         /* make Vloc(G) */
-        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
 
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
 
@@ -634,7 +634,7 @@ class Potential : public Field4D
 
     void update_atomic_potential();
 
-    template <device_t pu>
+    template <sddk::device_t pu>
     void add_mt_contribution_to_pw();
 
     /// Generate plane-wave coefficients of the potential in the interstitial region.
@@ -795,7 +795,7 @@ class Potential : public Field4D
 
     void set_veff_pw(double_complex const* veff_pw__)
     {
-        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
+        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(sddk::memory_t::host));
     }
 
     auto const& rm_inv_pw(int ig__) const
@@ -805,7 +805,7 @@ class Potential : public Field4D
 
     void set_rm_inv_pw(double_complex const* rm_inv_pw__)
     {
-        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
+        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(sddk::memory_t::host));
     }
 
     auto const& rm2_inv_pw(int ig__) const
@@ -815,7 +815,7 @@ class Potential : public Field4D
 
     inline void set_rm2_inv_pw(double_complex const* rm2_inv_pw__)
     {
-        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(memory_t::host));
+        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(sddk::memory_t::host));
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.

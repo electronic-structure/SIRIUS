@@ -39,7 +39,10 @@ class BLACS_grid
 
     std::unique_ptr<MPI_grid> mpi_grid_;
 
+
+#ifdef SIRIUS_SCALAPACK
     int blacs_handler_{-1};
+#endif
 
     int blacs_context_{-1};
 

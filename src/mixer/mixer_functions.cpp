@@ -141,22 +141,18 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
         double result{0};
-        int ig0 = x.ctx().gvec().skip_g0();
         if (use_coarse_gvec__) {
-            for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
+            for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
-                /* global index */
-                int ig = x.ctx().gvec().offset() + ig1;
 
-                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) /
+                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(ig1), 2);
             }
         } else {
-            for (int igloc = ig0; igloc < x.ctx().gvec().count(); igloc++) {
-                /* global index */
-                int ig = x.ctx().gvec().offset() + igloc;
-
-                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+            for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
+                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) /
+                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
             }
         }
         if (x.ctx().gvec().reduced()) {
@@ -272,21 +268,21 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 {
-    auto global_size_func = [](const mdarray<double_complex, 4>& x) -> double { return x.size(); };
+    auto global_size_func = [](sddk::mdarray<double_complex, 4> const& x) -> double { return x.size(); };
 
-    auto inner_prod_func = [](const mdarray<double_complex, 4>& x, const mdarray<double_complex, 4>& y) -> double {
+    auto inner_prod_func = [](sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4> const& y) -> double {
         // do not contribute to mixing
         return 0.0;
     };
 
-    auto scal_function = [](double alpha, mdarray<double_complex, 4>& x) -> void {
+    auto scal_function = [](double alpha, sddk::mdarray<double_complex, 4>& x) -> void {
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
             x[i] *= alpha;
         }
     };
 
-    auto copy_function = [](const mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto copy_function = [](sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
@@ -294,7 +290,7 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
         }
     };
 
-    auto axpy_function = [](double alpha, const mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto axpy_function = [](double alpha, sddk::mdarray<double_complex, 4> const& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
@@ -302,7 +298,7 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
         }
     };
 
-    auto rotate_function = [](double c, double s, mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+    auto rotate_function = [](double c, double s, sddk::mdarray<double_complex, 4>& x, sddk::mdarray<double_complex, 4>& y) -> void {
         assert(x.size() == y.size());
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < x.size(); ++i) {
@@ -364,18 +360,11 @@ FunctionProperties<paw_density> paw_density_function_property()
     {
         for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
             for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                {
-                    auto tmp1 = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
-                    auto tmp2 = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
-                    x.ae_density(j, i) = std::move(tmp1);
-                    y.ae_density(j, i) = std::move(tmp2);
-                }
-                {
-                    auto tmp1 = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
-                    auto tmp2 = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
-                    x.ps_density(j, i) = std::move(tmp1);
-                    y.ps_density(j, i) = std::move(tmp2);
-                }
+                x.ae_density(j, i) = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
+                y.ae_density(j, i) = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+
+                x.ps_density(j, i) = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
+                y.ps_density(j, i) = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
             }
         }
     };

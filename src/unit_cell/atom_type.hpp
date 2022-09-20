@@ -369,7 +369,7 @@ class Atom_type
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
         radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
-        if (parameters_.processing_unit() == device_t::GPU) {
+        if (parameters_.processing_unit() == sddk::device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -378,7 +378,7 @@ class Atom_type
     inline void set_radial_grid(int num_points__, double const* points__)
     {
         radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-        if (parameters_.processing_unit() == device_t::GPU) {
+        if (parameters_.processing_unit() == sddk::device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -552,7 +552,7 @@ class Atom_type
             augment_ = true;
             /* number of radial beta-functions */
             int nbrf              = num_beta_radial_functions();
-            q_radial_functions_l_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
+            q_radial_functions_l_ = sddk::mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
 
             for (int l = 0; l <= 2 * lmax_beta(); l++) {
                 for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
@@ -969,14 +969,14 @@ class Atom_type
         return offset_lo_;
     }
 
-    inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
+    inline void d_mtrx_ion(sddk::matrix<double> const& d_mtrx_ion__)
     {
-        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(), memory_t::host,
-                                     "Atom_type::d_mtrx_ion_");
+        d_mtrx_ion_ = sddk::matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
+                sddk::memory_t::host, "Atom_type::d_mtrx_ion_");
         d_mtrx_ion__ >> d_mtrx_ion_;
     }
 
-    inline mdarray<double, 2> const& d_mtrx_ion() const
+    inline auto const& d_mtrx_ion() const
     {
         return d_mtrx_ion_;
     }
@@ -1003,32 +1003,32 @@ class Atom_type
         return paw_core_energy_;
     }
 
-    inline mdarray<int, 2> const& idx_radial_integrals() const
+    inline auto const& idx_radial_integrals() const
     {
         return idx_radial_integrals_;
     }
 
-    inline mdarray<double, 3>& rf_coef() const
+    inline auto& rf_coef() const
     {
         return rf_coef_;
     }
 
-    inline mdarray<double, 3>& vrf_coef() const
+    inline auto& vrf_coef() const
     {
         return vrf_coef_;
     }
 
-    inline Simulation_parameters const& parameters() const
+    inline auto const& parameters() const
     {
         return parameters_;
     }
 
-    inline double_complex f_coefficients(int xi1, int xi2, int s1, int s2) const
+    inline auto f_coefficients(int xi1, int xi2, int s1, int s2) const
     {
         return f_coefficients_(xi1, xi2, s1, s2);
     }
 
-    inline Spline<double> const& q_radial_function(int idxrf1__, int idxrf2__, int l__) const
+    inline auto const& q_radial_function(int idxrf1__, int idxrf2__, int l__) const
     {
         if (idxrf1__ > idxrf2__) {
             std::swap(idxrf1__, idxrf2__);

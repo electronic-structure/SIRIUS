@@ -45,8 +45,7 @@ static void custom_bessel(int lmax, double x, double* result) {
 Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__,
                                                        Radial_grid<double> const& rgrid__,
                                                        double q__)
-    : lmax_(lmax__)
-    , q_(q__)
+    : q_(q__)
     , rgrid_(&rgrid__)
 {
     assert(q_ >= 0);
@@ -99,14 +98,12 @@ Spherical_Bessel_functions::sbessel_deriv_q(int lmax__, double q__, double x__, 
 Spline<double> const&
 Spherical_Bessel_functions::operator[](int l__) const
 {
-    assert(l__ <= lmax_);
     return sbessel_[l__];
 }
 
 Spline<double>
 Spherical_Bessel_functions::deriv_q(int l__)
 {
-    assert(l__ <= lmax_);
     assert(q_ >= 0);
     Spline<double> s(*rgrid_);
     if (q_ != 0) {

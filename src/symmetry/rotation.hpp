@@ -32,7 +32,6 @@
 #include "constants.hpp"
 
 using namespace geometry3d;
-using namespace sddk;
 
 namespace sirius {
 

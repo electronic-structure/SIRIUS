@@ -45,18 +45,18 @@ void Potential::generate_D_operator_matrix()
 
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
-    if (ctx_.augmentation_op(0)) {
-        ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
+    if (ctx_.unit_cell().atom_type(0).augment()) {
+        ctx_.augmentation_op(0).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
     }
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf         = atom_type.mt_basis_size();
 
         /* start copy of Q(G) for the next atom type */
-        if (ctx_.processing_unit() == device_t::GPU) {
+        if (ctx_.processing_unit() == sddk::device_t::GPU) {
             acc::sync_stream(stream_id(0));
-            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.augmentation_op(iat + 1)) {
-                ctx_.augmentation_op(iat + 1)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
             }
         }
 
@@ -76,25 +76,25 @@ void Potential::generate_D_operator_matrix()
             }
             continue;
         }
-        matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.mem_pool(memory_t::host));
-        if (ctx_.processing_unit() == device_t::GPU) {
-            d_tmp.allocate(ctx_.mem_pool(memory_t::device));
+        sddk::matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.mem_pool(sddk::memory_t::host));
+        if (ctx_.processing_unit() == sddk::device_t::GPU) {
+            d_tmp.allocate(ctx_.mem_pool(sddk::memory_t::device));
         }
 
         ctx_.print_memory_usage(__FILE__, __LINE__);
 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), ctx_.mem_pool(memory_t::host));
+            sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), ctx_.mem_pool(sddk::memory_t::host));
 
-            auto la = linalg_t::blas;
-            auto mem = memory_t::host;
+            auto la = sddk::linalg_t::blas;
+            auto mem = sddk::memory_t::host;
 
             d_tmp.zero();
-            if (ctx_.processing_unit() == device_t::GPU) {
-                la = linalg_t::gpublas;
-                mem = memory_t::device;
-                d_tmp.zero(memory_t::device);
-                veff_a.allocate(ctx_.mem_pool(memory_t::device));
+            if (ctx_.processing_unit() == sddk::device_t::GPU) {
+                la = sddk::linalg_t::gpublas;
+                mem = sddk::memory_t::device;
+                d_tmp.zero(sddk::memory_t::device);
+                veff_a.allocate(ctx_.mem_pool(sddk::memory_t::device));
             }
 
             /* split a large loop over G-vectors into blocks */
@@ -103,7 +103,7 @@ void Potential::generate_D_operator_matrix()
                 int g_end = g_begin + spl_ngv_loc.local_size(ib);
 
                 switch (ctx_.processing_unit()) {
-                    case device_t::CPU: {
+                    case sddk::device_t::CPU: {
                         #pragma omp parallel for schedule(static)
                         for (int i = 0; i < atom_type.num_atoms(); i++) {
                             int ia = atom_type.atom_id(i);
@@ -118,45 +118,45 @@ void Potential::generate_D_operator_matrix()
                         }
                         break;
                     }
-                    case device_t::GPU: {
+                    case sddk::device_t::GPU: {
                         /* wait for stream#1 to finish previous zgemm */
                         acc::sync_stream(stream_id(1));
                         /* copy plane wave coefficients of effective potential to GPU */
-                        mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
-                        veff.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+                        sddk::mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
+                        veff.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
 #if defined(SIRIUS_GPU)
                         mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
-                                                        veff.at(memory_t::device),
-                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
-                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
-                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
-                                                        ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
-                                                        veff_a.at(memory_t::device), spl_ngv_loc.local_size(), 1);
+                                                        veff.at(sddk::memory_t::device),
+                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
+                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
+                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
+                                                        ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
+                                                        veff_a.at(sddk::memory_t::device), spl_ngv_loc.local_size(), 1);
 #endif
                         break;
                     }
                 }
                 if (ctx_.cfg().control().print_checksum()) {
-                    if (ctx_.processing_unit() == device_t::GPU) {
-                        veff_a.copy_to(memory_t::host);
+                    if (ctx_.processing_unit() == sddk::device_t::GPU) {
+                        veff_a.copy_to(sddk::memory_t::host);
                     }
                     auto cs = veff_a.checksum();
                     std::stringstream s;
                     s << "Gvec_block_" << ib << "_veff_a";
                     utils::print_checksum(s.str(), cs);
                 }
-                linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
-                                  &linalg_const<double>::one(),
-                                  ctx_.augmentation_op(iat)->q_pw().at(mem, 0, 2 * g_begin),
-                                  ctx_.augmentation_op(iat)->q_pw().ld(),
+                sddk::linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
+                                  &sddk::linalg_const<double>::one(),
+                                  ctx_.augmentation_op(iat).q_pw().at(mem, 0, 2 * g_begin),
+                                  ctx_.augmentation_op(iat).q_pw().ld(),
                                   veff_a.at(mem), veff_a.ld(),
-                                  &linalg_const<double>::one(),
+                                  &sddk::linalg_const<double>::one(),
                                   d_tmp.at(mem), d_tmp.ld(),
                                   stream_id(1));
             } // ib (blocks of G-vectors)
 
-            if (ctx_.processing_unit() == device_t::GPU) {
-                d_tmp.copy_to(memory_t::host);
+            if (ctx_.processing_unit() == sddk::device_t::GPU) {
+                d_tmp.copy_to(sddk::memory_t::host);
             }
 
             if (ctx_.gvec().reduced()) {
@@ -164,7 +164,7 @@ void Potential::generate_D_operator_matrix()
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
                             d_tmp(j, i) = 2 * d_tmp(j, i) - component(iv).f_pw_local(0).real() *
-                                ctx_.augmentation_op(iat)->q_pw(j, 0);
+                                ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {
@@ -177,13 +177,13 @@ void Potential::generate_D_operator_matrix()
             }
 
             /* sum from all ranks */
-            comm_.allreduce(d_tmp.at(memory_t::host), static_cast<int>(d_tmp.size()));
+            comm_.allreduce(d_tmp.at(sddk::memory_t::host), static_cast<int>(d_tmp.size()));
 
             if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
-                    auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
+                    auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
                     utils::print_checksum(s.str(), cs);
                 }
             }
@@ -202,8 +202,7 @@ void Potential::generate_D_operator_matrix()
                 }
             }
         }
-        ctx_.augmentation_op(iat)->dismiss();
-
+        ctx_.augmentation_op(iat).dismiss();
     }
 }
 

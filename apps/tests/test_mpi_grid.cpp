@@ -4,9 +4,9 @@ using namespace sirius;
 
 void test_grid(std::vector<int> grid__)
 {
-    MPI_grid mpi_grid(grid__, Communicator::world());
+    sddk::MPI_grid mpi_grid(grid__, sddk::Communicator::world());
 
-    pstdout pout(Communicator::world());
+    sddk::pstdout pout(sddk::Communicator::world());
 
     if (Communicator::world().rank() == 0) {
         pout << "dimensions: " << mpi_grid.communicator(1 << 0).size() << " " << mpi_grid.communicator(1 << 1).size()

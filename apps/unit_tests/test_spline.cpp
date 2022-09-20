@@ -1,6 +1,7 @@
 #include <sirius.hpp>
 
 using namespace sirius;
+using namespace sddk;
 
 void check_spline(Spline<double> const& s__, std::function<double(double)> f__, double x0, double x1)
 {

@@ -2,6 +2,7 @@
 #include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T, typename F>
 void test_wf_ortho(BLACS_grid const& blacs_grid__,

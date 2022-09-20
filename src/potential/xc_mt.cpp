@@ -80,16 +80,16 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
     for (auto& ixc: xc_func__) {
         /* if this is an LDA functional */
         if (ixc.is_lda()) {
-            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
-                vxc_tp.at(memory_t::host), exc_tp.at(memory_t::host));
+            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(sddk::memory_t::host),
+                vxc_tp.at(sddk::memory_t::host), exc_tp.at(sddk::memory_t::host));
         }
         /* if this is a GGA functional */
         if (ixc.is_gga()) {
 
             /* compute vrho and vsigma */
-            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
-                grad_rho_grad_rho_tp.at(memory_t::host), vxc_tp.at(memory_t::host), vsigma_tp.at(memory_t::host),
-                exc_tp.at(memory_t::host));
+            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(sddk::memory_t::host),
+                grad_rho_grad_rho_tp.at(sddk::memory_t::host), vxc_tp.at(sddk::memory_t::host), vsigma_tp.at(sddk::memory_t::host),
+                exc_tp.at(sddk::memory_t::host));
 
             if (use_lapl) {
                 vxc_tp -= 2.0 * vsigma_tp * lapl_rho_tp;
@@ -205,17 +205,17 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
 
     for (auto& ixc: xc_func__) {
         if (ixc.is_lda()) {
-            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
-                rho_dn_tp.at(memory_t::host), vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host),
-                exc_tp.at(memory_t::host));
+            ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(sddk::memory_t::host),
+                rho_dn_tp.at(sddk::memory_t::host), vxc_up_tp.at(sddk::memory_t::host), vxc_dn_tp.at(sddk::memory_t::host),
+                exc_tp.at(sddk::memory_t::host));
         }
         if (ixc.is_gga()) {
             /* get the vrho and vsigma */
-            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
-                    rho_dn_tp.at(memory_t::host), grad_rho_up_grad_rho_up_tp.at(memory_t::host),
-                    grad_rho_up_grad_rho_dn_tp.at(memory_t::host), grad_rho_dn_grad_rho_dn_tp.at(memory_t::host),
-                    vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host), vsigma_uu_tp.at(memory_t::host),
-                    vsigma_ud_tp.at(memory_t::host), vsigma_dd_tp.at(memory_t::host), exc_tp.at(memory_t::host));
+            ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(sddk::memory_t::host),
+                    rho_dn_tp.at(sddk::memory_t::host), grad_rho_up_grad_rho_up_tp.at(sddk::memory_t::host),
+                    grad_rho_up_grad_rho_dn_tp.at(sddk::memory_t::host), grad_rho_dn_grad_rho_dn_tp.at(sddk::memory_t::host),
+                    vxc_up_tp.at(sddk::memory_t::host), vxc_dn_tp.at(sddk::memory_t::host), vsigma_uu_tp.at(sddk::memory_t::host),
+                    vsigma_ud_tp.at(sddk::memory_t::host), vsigma_dd_tp.at(sddk::memory_t::host), exc_tp.at(sddk::memory_t::host));
 
             /* directly add to Vxc available contributions */
             vxc_up_tp -= (2.0 * vsigma_uu_tp * lapl_rho_up_tp + vsigma_ud_tp * lapl_rho_dn_tp);
@@ -351,7 +351,7 @@ void Potential::xc_mt(Density const& density__)
         /* add auxiliary magnetic field antiparallel to starting magnetization */
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                effective_magnetic_field(j).f_mt<index_domain_t::local>(0, ir, ialoc) -=
+                effective_magnetic_field(j).f_mt<sddk::index_domain_t::local>(0, ir, ialoc) -=
                     aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]];
             }
         }

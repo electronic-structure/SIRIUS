@@ -35,9 +35,9 @@ class Beta_projectors : public Beta_projectors_base<T>
 {
   protected:
     bool prepared_{false};
-    matrix<std::complex<T>> beta_pw_all_atoms_;
+    sddk::matrix<std::complex<T>> beta_pw_all_atoms_;
     /// Generate plane-wave coefficients for beta-projectors of atom types.
-    void generate_pw_coefs_t(std::vector<int>& igk__)
+    void generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
         if (!this->num_beta_t()) {
@@ -56,9 +56,8 @@ class Beta_projectors : public Beta_projectors_base<T>
         /* compute <G+k|beta> */
         #pragma omp parallel for
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            int igk = igk__[igkloc];
             /* vs = {r, theta, phi} */
-            auto vs = SHT::spherical_coordinates(this->gkvec_.template gkvec_cart<index_domain_t::global>(igk));
+            auto vs = SHT::spherical_coordinates(this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc));
             /* compute real spherical harmonics for G+k vector */
             std::vector<double> gkvec_rlm(utils::lmmax(this->ctx_.unit_cell().lmax()));
             sf::spherical_harmonics(this->ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
@@ -71,7 +70,8 @@ class Beta_projectors : public Beta_projectors_base<T>
                     int lm    = atom_type.indexb(xi).lm;
                     int idxrf = atom_type.indexb(xi).idxrf;
 
-                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, 0) = static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
+                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, 0) =
+                        static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
                 }
             }
         }
@@ -87,29 +87,30 @@ class Beta_projectors : public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int>& igk__)
-        : Beta_projectors_base<T>(ctx__, gkvec__, igk__, 1)
+    Beta_projectors(Simulation_context& ctx__, sddk::Gvec const& gkvec__)
+        : Beta_projectors_base<T>(ctx__, gkvec__, 1)
     {
         PROFILE("sirius::Beta_projectors");
         /* generate phase-factor independent projectors for atom types */
-        generate_pw_coefs_t(igk__);
+        generate_pw_coefs_t();
         if (!this->num_beta_t()) {
             return;
         }
         /* special treatment for beta-projectors as they are mostly often used */
         switch (this->ctx_.processing_unit()) {
             /* beta projectors for atom types will be stored on GPU for the entire run */
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 this->reallocate_pw_coeffs_t_on_gpu_ = false;
-                this->pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
+                this->pw_coeffs_t_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
                 break;
             }
             /* generate beta projectors for all atoms */
-            case device_t::CPU: {
-                beta_pw_all_atoms_ = matrix<std::complex<T>>(this->num_gkvec_loc(), this->ctx_.unit_cell().mt_lo_basis_size());
+            case sddk::device_t::CPU: {
+                beta_pw_all_atoms_ = sddk::matrix<std::complex<T>>(this->num_gkvec_loc(),
+                            this->ctx_.unit_cell().mt_lo_basis_size());
                 for (int ichunk = 0; ichunk < this->num_chunks(); ichunk++) {
                     /* wrap the the pointer in the big array beta_pw_all_atoms */
-                    this->pw_coeffs_a_ = matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(ichunk).offset_),
+                    this->pw_coeffs_a_ = sddk::matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(ichunk).offset_),
                                                                 this->num_gkvec_loc(), this->chunk(ichunk).num_beta_);
                     Beta_projectors_base<T>::generate(ichunk, 0);
                 }
@@ -124,11 +125,11 @@ class Beta_projectors : public Beta_projectors_base<T>
             TERMINATE("beta projectors are already prepared");
         }
         switch (this->ctx_.processing_unit()) {
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 Beta_projectors_base<T>::prepare();
                 break;
             }
-            case device_t::CPU: break;
+            case sddk::device_t::CPU: break;
         }
         prepared_ = true;
     }
@@ -139,11 +140,11 @@ class Beta_projectors : public Beta_projectors_base<T>
             TERMINATE("beta projectors are already dismissed");
         }
         switch (this->ctx_.processing_unit()) {
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 Beta_projectors_base<T>::dismiss();
                 break;
             }
-            case device_t::CPU: break;
+            case sddk::device_t::CPU: break;
         }
         prepared_ = false;
     }
@@ -151,12 +152,12 @@ class Beta_projectors : public Beta_projectors_base<T>
     void generate(int chunk__)
     {
         switch (this->ctx_.processing_unit()) {
-            case device_t::CPU: {
-                this->pw_coeffs_a_ = matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(chunk__).offset_),
+            case sddk::device_t::CPU: {
+                this->pw_coeffs_a_ = sddk::matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(chunk__).offset_),
                                                             this->num_gkvec_loc(), this->chunk(chunk__).num_beta_);
                 break;
             }
-            case device_t::GPU: {
+            case sddk::device_t::GPU: {
                 Beta_projectors_base<T>::generate(chunk__, 0);
                 break;
             }
