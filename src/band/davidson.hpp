@@ -25,6 +25,9 @@
 #ifndef __DAVIDSON_HPP__
 #define __DAVIDSON_HPP__
 
+#include "k_point/k_point.hpp"
+#include "band/band.hpp"
+#include "hamiltonian/hamiltonian.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/wf_ortho.hpp"
 #include "SDDK/wf_inner.hpp"
@@ -116,7 +119,7 @@ project_out_subspace(::spla::Context& spla_ctx__, sddk::memory_t mem__, wf::spin
 \param [in]     num_bands     Number of eigen-states (bands) to compute.
 \param [in]     num_mag_dims  Number of magnetic dimensions (0, 1 or 3).
 \param [in,out] psi           Wave-functions. On input they are used for the starting guess of the subspace basis.
-                              On output they are the solutions of Hk|psi> = e S|psi> eigen-problem. 
+                              On output they are the solutions of Hk|psi> = e S|psi> eigen-problem.
 \param [in]     tolerance     Lambda-function for the band energy tolerance.
 \param [in]     res_tol       Residual tolerance.
 \param [in]     num_stpes     Number of iterative steps.
@@ -159,7 +162,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     const int num_sc = nc_mag ? 2 : 1;
 
     /* number of spinor components stored under the same band index */
-    const int num_spinors = (num_mag_dims__.get() == 1) ? 2 : 1; 
+    const int num_spinors = (num_mag_dims__.get() == 1) ? 2 : 1;
 
     /* number of spins */
     const int num_spins = (num_mag_dims__.get() == 0) ? 1 : 2;
