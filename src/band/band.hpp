@@ -31,17 +31,7 @@
 #include "k_point/k_point_set.hpp"
 #include "SDDK/wave_functions.hpp"
 
-//namespace sddk {
-///* forward declaration */
-//class BLACS_grid;
-//}
-
 namespace sirius {
-
-
-
-/* forward declaration */
-//class K_point_set;
 
 /// Setup and solve the eigen value problem.
 class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
@@ -85,11 +75,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-    template <typename T, typename F>
-    void set_subspace_mtrx(int N__, int n__, int num_locked__, sddk::Wave_functions<real_type<T>>& phi__,
-                           sddk::Wave_functions<real_type<T>>& op_phi__, sddk::dmatrix<F>& mtrx__,
-                           sddk::dmatrix<F>* mtrx_old__ = nullptr) const;
-
     template <typename T, typename F>
     void set_subspace_mtrx(int N__, int n__, int num_locked__, wf::Wave_functions<T>& phi__,
                            wf::Wave_functions<T>& op_phi__, sddk::dmatrix<F>& mtrx__,

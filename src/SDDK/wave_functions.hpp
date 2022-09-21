@@ -621,40 +621,6 @@ class spin_range
     }
 };
 
-/* PW and LAPW wave-functions
- *
- * Wave_functions wf(gkvec_factory(..), 10);
- *
- *
- * Local coefficients consit of two parts: PW and MT
- * +-------+
- * |       |
- * |  G+k  |   -> swap only PW part
- * |       |
- * +-------+
- * | atom1 |
- * +-------+
- * | atom2 |
- * +-------+
- * | ....  |
- * +-------+
- *
- * wf_fft = remap_to_fft(gkvec_partition, wf, N, n);
- *
- * hpsi_fft = wf_fft_factory(gkvec_partition, n);
- *
- * remap_from_fft(gkvec_partition, wf_fft, wf, N, n)
- *
- * consider Wave_functions_fft class
- *
- *
- * Wave_functions wf(...);
- * memory_guard mem_guard(wf, memory_t::device);
- *
- *
- *
- */
-
 enum class copy_to : unsigned int
 {
     none   = 0b0000,
@@ -1134,40 +1100,6 @@ void transform_from_fft_layout(Wave_functions_fft<T>& wf_fft_in__, Wave_function
     costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
             sddk::linalg_const<std::complex<T>>::zero(), wf_out__.gkvec().comm().mpi_comm());
 }
-
-//template <typename T>
-//void check_wf_diff(std::string label__, sddk::Wave_functions<T>& wf_old__, wf::Wave_functions<T>& wf_new__)
-//{
-//    RTE_ASSERT(wf_old__.num_sc() == wf_new__.num_sc().get());
-//
-//    double diff_g{0};
-//    double diff_mt{0};
-//    auto num_mt_coeffs = wf_new__.num_mt_coeffs();
-//    for (int is = 0; is < wf_old__.num_sc(); is++) {
-//        for (int i = 0; i < wf_old__.num_wf(); i++) {
-//            for (int ig = 0; ig < wf_old__.gkvec().count(); ig++) {
-//                diff_g += std::abs(wf_old__.pw_coeffs(is).prime(ig, i) -
-//                        wf_new__.pw_coeffs(ig, wf::spin_index(is), wf::band_index(i)));
-//            }
-//            if (wf_old__.has_mt()) {
-//                for (int ialoc = 0; ialoc < wf_old__.spl_num_atoms().local_size(); ialoc++) {
-//                    int ia = wf_old__.spl_num_atoms()[ialoc];
-//                    for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
-//                        int j = wf_old__.offset_mt_coeffs(ialoc) + xi;
-//                        diff_mt += std::abs(wf_old__.mt_coeffs(is).prime(j, i) -
-//                            wf_new__.mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(is), wf::band_index(i)));
-//                    }
-//                }
-//            }
-//        }
-//    }
-//    if (diff_g + diff_mt > 1e-4) {
-//        std::stringstream s;
-//        s << label__ << ": wave functions are different: " << diff_g << " " << diff_mt;
-//        RTE_THROW(s);
-//    }
-//    std::cout << label__ << " OK" << std::endl;
-//}
 
 /// For real-type F (double or float).
 template <typename T, typename F>
