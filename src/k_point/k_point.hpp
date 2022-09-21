@@ -358,9 +358,6 @@ class K_point
     /// Collect distributed first-variational vectors into a global array.
     void get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) const;
 
-    /// Test orthonormalization of spinor wave-functions
-    void test_spinor_wave_functions(int use_fft);
-
     /// Collect distributed second-variational vectors into a global array.
     void get_sv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& sv_evec__) const
     {

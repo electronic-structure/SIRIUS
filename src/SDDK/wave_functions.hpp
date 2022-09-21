@@ -1456,7 +1456,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
 
     /* make sure result is updated on device as well */
     if (result__.on_device()) {
-        result__.copy_to(sddk::memory_t::device);
+        result__.copy_to(sddk::memory_t::device, irow0__, jcol0__, br_i__.size(), br_j__.size());
     }
 }
 

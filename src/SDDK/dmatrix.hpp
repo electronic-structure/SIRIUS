@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -215,6 +215,31 @@ class dmatrix: public matrix<T>
     //        acc::zero(this->template at<device_t::GPU>(m0, n0), this->ld(), m1 - m0, n1 - n0);
     //    }
     //}
+
+    using matrix<T>::copy_to;
+
+    void copy_to(sddk::memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
+    {
+        splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+        splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+
+        splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+        splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+
+        int m0 = spl_r0.local_size();
+        int m1 = spl_r1.local_size();
+        int n0 = spl_c0.local_size();
+        int n1 = spl_c1.local_size();
+
+        if (is_host_memory(mem__)) {
+            acc::copyout(this->at(sddk::memory_t::host, m0, n0), this->ld(),
+                         this->at(sddk::memory_t::device, m0, n0), this->ld(), m1 - m0, n1 - n0);
+        }
+        if (is_device_memory(mem__)) {
+            acc::copyin(this->at(sddk::memory_t::device, m0, n0), this->ld(),
+                        this->at(sddk::memory_t::host, m0, n0), this->ld(), m1 - m0, n1 - n0);
+        }
+    }
 
     void set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__);
 

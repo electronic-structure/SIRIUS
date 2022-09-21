@@ -54,7 +54,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     sddk::Communicator::world().barrier();
     t += utils::wtime();
 
-    double perf = 2 * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
+    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
     if (sddk::Communicator::world().rank() == 0) {
         printf("execution time (sec) : %12.6f\n", t);
         printf("performance (GFlops) : %12.6f\n", perf);
