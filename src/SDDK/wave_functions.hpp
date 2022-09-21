@@ -1384,6 +1384,9 @@ inline void scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf
  * \f]
  * where i0 and j0 and the dimensions of the resulting inner product matrix are determined by the band ranges for
  * bra- and ket- states.
+ *
+ * The location of the wave-functions data is determined by the mem parameter. The result is always returned in the
+ * CPU memory. If resulting matrix is allocated on the GPU memory, the result is copied to GPU as well.
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
@@ -1421,37 +1424,6 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
 
     T scale_half(0.5);
     T scale_two(2.0);
-
-//    auto scale_gamma_wf = [&ld, &mem__, &spins__, &br_i__, &wf_i__](T* scale__)
-//    {
-//        RTE_ASSERT(spins__.size() == 1);
-//
-//        auto& wf = const_cast<Wave_functions<T>&>(wf_i__);
-//        RTE_ASSERT(wf.num_sc() == wf::num_spins(1)); // TODO: might be too strong check
-//
-//        auto sp = wf.actual_spin_index(spins__.begin());
-//
-//        auto ptr = wf.at(mem__, 0, sp, wf::band_index(br_i__.begin()));
-//        auto m = br_i__.size();
-//
-//        if (is_device_memory(mem__)) {
-//#if defined(SIRIUS_GPU)
-//            if (std::is_same<T, double>::value) {
-//                accblas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
-//            } else if (std::is_same<T, float>::value) {
-//                accblas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
-//            }
-//#else
-//            RTE_THROW("not compiled with GPU support!");
-//#endif
-//        } else {
-//            if (std::is_same<T, double>::value) {
-//                FORTRAN(dscal)(&m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), &ld);
-//            } else if (std::is_same<T, float>::value) {
-//                FORTRAN(sscal)(&m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), &ld);
-//            }
-//        }
-//    };
 
     /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
     if (std::is_same<F, real_type<F>>::value) {
