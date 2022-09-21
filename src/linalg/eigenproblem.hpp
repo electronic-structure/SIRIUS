@@ -1958,13 +1958,13 @@ class Eigensolver_cuda: public Eigensolver
 
     int solve(ftn_int matrix_size__, int nev__, sddk::dmatrix<std::complex<float>>& A__, float* eval__, sddk::dmatrix<std::complex<float>>& Z__)
     {
-        PROFILE("Eigensolver_cuda|zheevdx");
+        PROFILE("Eigensolver_cuda|cheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
     {
-        PROFILE("Eigensolver_cuda|cheevdx");
+        PROFILE("Eigensolver_cuda|zheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
