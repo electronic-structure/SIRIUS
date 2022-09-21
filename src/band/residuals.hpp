@@ -276,7 +276,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (gamma__ && res__.comm().rank() == 0 && n != 0) {
-        RTE_ASSERT(spins__.begin().get() == spins__.end().get() + 1);
+        RTE_ASSERT(spins__.begin().get() + 1 == spins__.end().get());
         if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
             make_real_g0_gpu(res__.at(mem__, 0, spins__.begin(), wf::band_index(0)), res__.ld(), n);
