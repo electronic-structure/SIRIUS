@@ -37,16 +37,6 @@
 
 namespace sddk {
 
-enum class matrix_distribution_t
-{
-    slab,
-    block,
-    block_cyclic,
-};
-
-template <typename T, matrix_distribution_t D = matrix_distribution_t::block_cyclic>
-class dmatrix;
-
 namespace fmt {
 template <typename T>
 std::ostream& operator<<(std::ostream& out, std::complex<T> z)
@@ -58,7 +48,7 @@ std::ostream& operator<<(std::ostream& out, std::complex<T> z)
 
 /// Distributed matrix.
 template <typename T>
-class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
+class dmatrix: public matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -402,49 +392,6 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
                 this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
                 this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
                 this->blacs_grid().comm().rank());
-    }
-
-};
-
-/// Distributed matrix.
-template <typename T>
-class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
-{
-  private:
-    int num_cols_;
-    Communicator comm_;
-    costa::grid_layout<T> grid_layout_;
-  public:
-    dmatrix(std::vector<int> num_rows_local__, int num_cols__, Communicator const& comm__)
-        : matrix<T>(num_rows_local__[comm__.rank()], num_cols__)
-        , num_cols_(num_cols__)
-        , comm_(comm__)
-    {
-        RTE_ASSERT(static_cast<int>(num_rows_local__.size()) == comm_.size());
-
-        std::vector<int> rowsplit(comm_.size() + 1);
-        rowsplit[0] = 0;
-        for (int i = 0; i < comm_.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + num_rows_local__[i];
-        }
-        std::vector<int> colsplit({0, num_cols_});
-        std::vector<int> owners(comm_.size());
-        for (int i = 0; i < comm_.size(); i++) {
-            owners[i] = i;
-        }
-        costa::block_t localblock;
-        localblock.data = this->at(memory_t::host);
-        localblock.ld = this->ld();
-        localblock.row = comm_.rank();
-        localblock.col = 0;
-
-        grid_layout_ = costa::custom_layout<T>(comm_.size(), 1, rowsplit.data(), colsplit.data(),
-                owners.data(), 1, &localblock, 'C');
-    }
-
-    costa::grid_layout<T>& grid_layout()
-    {
-        return grid_layout_;
     }
 
 };
