@@ -213,6 +213,7 @@ endif(USE_CUDA)
 if(USE_ROCM)
   find_package(hip CONFIG REQUIRED)
   find_package(rocblas CONFIG REQUIRED)
+  find_package(rocsolver CONFIG REQUIRED)
 
   # FindHIP module provides compilation command for GPU code
   if(NOT HIP_HCC_FLAGS)
