@@ -1275,6 +1275,11 @@ void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_
  * \tparam T Precision type of the wave-functions (float or double).
  * \tparam F Type of the subspace and transformation matrix (float or double for Gamma-point calculation,
  *           complex<float> or complex<double> otherwise).
+ * \param [in] spla_ctx   Context of the SPLA library.
+ * \param [in] mem        Location of the input wave-functions (host or device).
+ * \param [in] M          The whole transformation matrix.
+ * \param [in] irow0      Location of the 1st row of the transfoormation sub-matrix.
+ * \param [in] jcol0      Location of the 1st column of the transfoormation sub-matrix.
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
