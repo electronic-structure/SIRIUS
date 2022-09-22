@@ -1577,12 +1577,38 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     /* orthogonalize new n x n block */
     inner(spla_ctx__, mem__, spins__, wf_i__, br_new__, wf_j__, br_new__, o__, 0, 0);
 
+    /* At this point overlap matrix is computed for the new block and stored on the CPU. We
+     * now have this choices
+     *   - mem: CPU
+     *     - o is not distributed
+     *       - potrf is computed on CPU with lapack
+     *       - trtri is computed on CPU with lapack
+     *       - trmm is computed on CPU with blas
+     *     - o is distributed
+     *       - potrf is computed on CPU with scalapack
+     *       - trtri is computed on CPU with scalapack
+     *       - trmm is computed on CPU with wf::transform
+     *
+     *   - mem: GPU
+     *     - o is not distributed
+     *       - potrf is computed on CPU with lapack; later with cuSolver
+     *       - trtri is computed on CPU with lapack; later with cuSolver
+     *       - trmm is computed on GPU with cublasxt
+     *
+     *     - o is distributed
+     *       - potrf is computed on CPU with scalapack
+     *       - trtri is computed on CPU with scalapack
+     *       - trmm is computed on GPU with wf::transform
+     */
     // TODO: test magma and cuSolver
     sddk::linalg_t la = sddk::linalg_t::lapack;
     sddk::linalg_t la1 = sddk::linalg_t::blas;
     sddk::memory_t mem = sddk::memory_t::host;
     if (o__.comm().size() > 1) {
         la = sddk::linalg_t::scalapack;
+    }
+    if (mem__ == sddk::memory_t::device) {
+        la1 = sddk::linalg_t::cublasxt;
     }
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
@@ -1624,10 +1650,10 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                 }
 
                 sddk::linalg(la1).trmm('R', 'U', 'N', ld, n, &sddk::linalg_const<F>::one(),
-                        o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
+                        o__.at(mem), o__.ld(), ptr, ld, stream_id(sid++));
             }
         }
-        if (la == sddk::linalg_t::gpublas || la == sddk::linalg_t::cublasxt || la == sddk::linalg_t::magma) {
+        if (la1 == sddk::linalg_t::gpublas || la1 == sddk::linalg_t::cublasxt || la1 == sddk::linalg_t::magma) {
             /* sync stream only if processing unit is GPU */
             for (int i = 0; i < sid; i++) {
                 acc::sync_stream(stream_id(i));
