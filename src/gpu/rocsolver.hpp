@@ -30,7 +30,7 @@ namespace rocsolver {
 
 ::acc::blas::handle_t& rocsolver_handle();
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | double
 template <class T>
 std::enable_if_t<std::is_same<T, double>::value>
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -39,7 +39,7 @@ syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill upl
     CALL_ROCSOLVER(rocsolver_dsyevd, (handle, evect, uplo, n, A, lda, D, E, info));
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | float
 template <class T>
 std::enable_if_t<std::is_same<T, float>::value>
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -48,7 +48,7 @@ syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill upl
     CALL_ROCSOLVER(rocsolver_ssyevd, (handle, evect, uplo, n, A, lda, D, E, info));
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | complex double
 template <class T>
 std::enable_if_t<std::is_same<T, double>::value>
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -58,7 +58,7 @@ syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill upl
                    (handle, evect, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda, D, E, info));
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | complex float
 template <class T>
 std::enable_if_t<std::is_same<T, float>::value>
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -68,7 +68,7 @@ syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill upl
                    (handle, evect, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda, D, E, info));
 }
 
-/// SYmmetric or HEmrmitian GENERALIZED eigenvalue problem
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | double
 template <class T>
 std::enable_if_t<std::is_same<T, double>::value>
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -77,7 +77,7 @@ syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect ev
     CALL_ROCSOLVER(rocsolver_dsygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, info));
 }
 
-/// SYmmetric or HEmrmitian GENERALIZED eigenvalue problem
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | float
 template <class T>
 std::enable_if_t<std::is_same<T, float>::value>
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -86,7 +86,7 @@ syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect ev
     CALL_ROCSOLVER(rocsolver_ssygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, info));
 }
 
-/// SYmmetric or HEmrmitian GENERALIZED eigenvalue problem
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | complex float
 template <class T>
 std::enable_if_t<std::is_same<T, float>::value>
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
@@ -96,7 +96,7 @@ syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect ev
                                       reinterpret_cast<rocblas_float_complex*>(B), ldb, D, E, info));
 }
 
-/// SYmmetric or HEmrmitian GENERALIZED eigenvalue problem
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | complex double
 template <class T>
 std::enable_if_t<std::is_same<T, double>::value>
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
