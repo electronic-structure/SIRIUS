@@ -562,8 +562,8 @@ Simulation_context::initialize()
     }
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-#if defined(SIRIUS_CUDA)
-    bool is_cuda{true};
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
+    bool has_gpu{true};
 #else
     bool is_cuda{false};
 #endif
@@ -584,7 +584,7 @@ Simulation_context::initialize()
 #endif
 
     if (processing_unit() == sddk::device_t::CPU || acc::num_devices() == 0) {
-        is_cuda  = false;
+        has_gpu  = false;
         is_magma = false;
     }
 
@@ -599,14 +599,14 @@ Simulation_context::initialize()
                 if (full_potential()) {
                     if (is_magma) {
                         evsn[i] = "magma";
-                    } else if (is_cuda) {
-                        evsn[i] = "cusolver";
+                    } else if (has_gpu) {
+                        evsn[i] = "cusolver"; // cusolver or rocsolver
                     } else {
                         evsn[i] = "lapack";
                     }
                 } else {
-                    if (is_cuda) {
-                        evsn[i] = "cusolver";
+                    if (has_gpu) {
+                        evsn[i] = "cusolver"; // cusolver or rocsolver
                     } else if (is_magma && num_bands() > 200) {
                         evsn[i] = "magma";
                     } else {
