@@ -247,7 +247,7 @@ K_point<T>::generate_hubbard_orbitals()
         phi.copy_from(sphi, nwf, 0, 0, 0, 0);
 
         sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, bp_generator, bp_coeffs,
-                phi, q_op.get(), sphi);
+                                                  phi, q_op.get(), sphi);
 
         if (ctx_.cfg().control().verification() >= 1) {
             sddk::inner(ctx_.spla_context(), sddk::spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);

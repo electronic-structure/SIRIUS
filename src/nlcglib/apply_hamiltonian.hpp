@@ -10,8 +10,9 @@
 
 namespace sirius {
 
-void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, sddk::Wave_functions<double>& wf_out,
-        sddk::Wave_functions<double>& wf, std::shared_ptr<sddk::Wave_functions<double>>& swf)
+template<class T>
+void apply_hamiltonian(Hamiltonian0<T>& H0, K_point<T>& kp, sddk::Wave_functions<T>& wf_out, sddk::Wave_functions<T>& wf,
+                       std::shared_ptr<sddk::Wave_functions<T>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //

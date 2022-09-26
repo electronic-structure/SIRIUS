@@ -40,6 +40,8 @@
 #include "band/davidson.hpp"
 #include "SDDK/wf_inner.hpp"
 #include "multi_cg/multi_cg.hpp"
+#include "SDDK/wf_trans.hpp"
+#include "band/davidson.hpp"
 
 struct sirius_context_handler_t
 {
@@ -5662,12 +5664,12 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             std::string smear(smearing__);
             std::string pu(processing_unit__);
 
-            device_t processing_unit{ctx.processing_unit()};
+            sddk::device_t processing_unit{ctx.processing_unit()};
 
             if(pu.compare("gpu") == 0) {
-                processing_unit = device_t::GPU;
+                processing_unit = sddk::device_t::GPU;
             } else if (pu.compare("cpu") == 0) {
-                processing_unit = device_t::CPU;
+                processing_unit = sddk::device_t::CPU;
             } else if (pu.compare("none") == 0 || pu.empty()) {
                 processing_unit = ctx.processing_unit();
             } else {
@@ -5704,11 +5706,11 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             // ultrasoft pp
             nlcglib::nlcg_info info;
             switch (processing_unit) {
-                case device_t::CPU: {
+                case sddk::device_t::CPU: {
                     info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                     break;
                 }
-                case device_t::GPU: {
+                case sddk::device_t::GPU: {
                     info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                     break;
                 }
@@ -5814,203 +5816,6 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
         }
         , error_code__);
 }
-
-/*
- * Linear response API.
- * TODO: move this to some place of its own.
- */
-
-struct Wave_functions_wrap {
-    Wave_functions<double> *x;
-
-    typedef double_complex value_type;
-
-    void fill(double_complex val) {
-        x->pw_coeffs(0).prime() = [=](){
-            return val;
-        };
-    }
-
-    int cols() const {
-        return x->num_wf();
-    }
-
-    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
-        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
-        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
-            rhos[i] = result(i);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        size_t j = 0;
-        for (auto i : ids) {
-            if (j != i) {
-                x->copy_from(*x, 1, 0, i, 0, j);
-            }
-
-            ++j;
-        }
-    }
-
-    void copy(Wave_functions_wrap const &y, size_t num) {
-        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
-    }
-
-    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
-        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
-    }
-
-    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids, size_t num) {
-        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, static_cast<int>(num));
-    }
-
-    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
-        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
-    }
-};
-
-struct Identity_preconditioner {
-    size_t num_active;
-
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
-        x.copy(y, num_active);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        num_active = ids.size();
-    }
-};
-
-struct Smoothed_diagonal_preconditioner {
-    sddk::mdarray<double, 2> H_diag;
-    sddk::mdarray<double, 2> S_diag;
-    sddk::mdarray<double, 1> eigvals;
-    size_t num_active;
-
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
-        // Could avoid a copy here, but apply_precondition is in-place.
-        x.copy(y, num_active);
-        sirius::apply_preconditioner(
-            memory_t::host,
-            sddk::spin_range(0),
-            static_cast<int>(num_active),
-            *x.x,
-            H_diag,
-            S_diag,
-            eigvals);
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        num_active = ids.size();
-        for (size_t i = 0; i < ids.size(); ++i) {
-            eigvals[i] = eigvals[ids[i]];
-        }
-    }
-};
-
-
-struct Linear_response_operator {
-    sirius::Simulation_context &ctx;
-    sirius::Hamiltonian_k<double> &Hk;
-    std::vector<double> min_eigenvals;
-    Wave_functions<double> * Hphi;
-    Wave_functions<double> * Sphi;
-    Wave_functions<double> * evq;
-    Wave_functions<double> * tmp;
-    double alpha_pv;
-    sddk::dmatrix<double_complex> overlap;
-
-
-    Linear_response_operator(
-        sirius::Simulation_context &ctx,
-        sirius::Hamiltonian_k<double> & Hk,
-        std::vector<double> const &eigvals,
-        Wave_functions<double> * Hphi,
-        Wave_functions<double> * Sphi,
-        Wave_functions<double> * evq,
-        Wave_functions<double> * tmp,
-        double alpha_pv)
-    : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), overlap(ctx.num_bands(), ctx.num_bands())
-    {
-        // I think we could just compute alpha_pv here by just making it big enough
-        // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
-        // alpha_pv = 2 * min_eigenvals.back();
-        // but QE has a very specific way to compute it, so we just forward it from
-        // there.;
-
-        // flip the sign of the eigenvals so that the axpby works
-        for (auto &e : min_eigenvals) {
-            e *= -1;
-        }
-    }
-
-    void repack(std::vector<size_t> const &ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
-            min_eigenvals[i] = min_eigenvals[ids[i]];
-        }
-    }
-
-    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
-    // where SQ is S * eigenvectors.
-    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
-        // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<double_complex>(
-            spin_range(0),
-            0,
-            num_active,
-            *x.x,
-            Hphi,
-            Sphi
-        );
-
-        // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
-        Hphi->axpy(device_t::CPU, spin_range(0), min_eigenvals, *Sphi, num_active);
-        tmp->copy_from(*Hphi, num_active, 0, 0, 0, 0);
-
-        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
-
-        // overlap := evq' * (S * x)
-        sddk::inner(
-            ctx.spla_context(),
-            spin_range(0),
-            *evq, 0, ctx.num_bands(),
-            *Sphi, 0, num_active,
-            overlap, 0, 0);
-
-        // Hphi := evq * overlap
-        sddk::transform<double_complex>(
-            ctx.spla_context(),
-            0, 1.0,
-            {evq}, 0, ctx.num_bands(),
-            overlap, 0, 0,
-            0.0, {Hphi}, 0, num_active);
-
-        auto bp_gen_cpu = Hk.kp().beta_projectors().make_generator(device_t::CPU);
-        auto bp_coeffs = bp_gen_cpu.prepare();
-
-        // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
-        sirius::apply_S_operator<double_complex>(
-            ctx.processing_unit(),
-            spin_range(0),
-            0,
-            num_active,
-            bp_gen_cpu,
-            bp_coeffs,
-            *Hphi,
-            &Hk.H0().Q(),
-            *Sphi);
-
-        // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
-        {
-            // okay, the block-scalar api is a bit awkward...
-            std::vector<double_complex> alpha_pvs(num_active, alpha_pv);
-            tmp->axpy(device_t::CPU, spin_range(0), alpha_pvs, *Sphi, num_active);
-        }
-        // y[:, i] <- alpha * tmp + beta * y[:, i]
-        y.x->axpby(device_t::CPU, spin_range(0), alpha, *tmp, beta, num_active);
-    }
-};
 
 /*
 @api begin

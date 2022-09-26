@@ -57,7 +57,7 @@ Overlap_operators<op_t>::apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t&
     auto array_out = make_matrix_view(out);
     auto array_in  = make_matrix_view(in);
     // TODO: make sure the processing unit is correct
-    memory_t pm = out.memtype == nlcglib::memory_type::host ? memory_t::host : memory_t::device;
+    sddk::memory_t pm = out.memtype == nlcglib::memory_type::host ? sddk::memory_t::host : sddk::memory_t::device;
     op->apply(array_out, array_in, pm);
 }
 

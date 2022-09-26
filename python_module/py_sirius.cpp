@@ -23,6 +23,7 @@
 using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace sirius;
+using namespace sddk;
 using namespace geometry3d;
 using json = nlohmann::json;
 

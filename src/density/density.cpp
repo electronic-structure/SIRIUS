@@ -33,6 +33,8 @@
 
 namespace sirius {
 
+using namespace sddk;
+
 #if defined(SIRIUS_GPU)
 void
 update_density_rg_1_real_gpu(int size__, float const* psi_rg__, float wt__, float* density_rg__)

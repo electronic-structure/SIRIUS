@@ -4,6 +4,8 @@
 #include "nlcglib/call_nlcg.hpp"
 
 using namespace sirius;
+using namespace sddk;
+
 using json = nlohmann::json;
 
 const std::string aiida_output_file = "output_aiida.json";
@@ -17,14 +19,14 @@ void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
     //dict__["build_date"] = build_date;
-    dict__["comm_world_size"] = sddk::Communicator::world().size();
+    dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
 std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, sddk::Communicator::world()));
+    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.cfg().parameters();
@@ -188,7 +190,7 @@ void run_tasks(cmd_args const& args)
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!utils::file_exists(fname)) {
-        if (sddk::Communicator::world().rank() == 0) {
+        if (Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;

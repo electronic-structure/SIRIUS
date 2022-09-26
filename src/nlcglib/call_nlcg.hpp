@@ -48,11 +48,11 @@ call_nlcg(Simulation_context& ctx, const config_t::nlcg_t& nlcg_params, Energy& 
 
     // ultrasoft pp
     switch (nlcg_pu) {
-        case device_t::CPU: {
+        case sddk::device_t::CPU: {
             nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }
-        case device_t::GPU: {
+        case sddk::device_t::GPU: {
             nlcglib::nlcg_us_device(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }

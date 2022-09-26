@@ -1,6 +1,7 @@
 #include "python_module_includes.hpp"
 
 using complex_double = std::complex<double>;
+using namespace sddk;
 
 using PT = double;
 

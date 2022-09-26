@@ -27,6 +27,7 @@
 
 #include "atomic_data.hpp"
 #include "radial/radial_grid.hpp"
+#include "radial/spline.hpp"
 
 namespace sirius {
 
@@ -192,4 +193,3 @@ class Atom_type_base
 } // namespace
 
 #endif // __ATOM_TYPE_BASE_HPP__
-
