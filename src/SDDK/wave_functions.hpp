@@ -433,14 +433,14 @@ class Wave_functions_base
         }
     }
 
-    /// Return const pointer to the wave-function coefficient at a given index, spin and band 
+    /// Return const pointer to the wave-function coefficient at a given index, spin and band
     inline std::complex<T> const*
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
-    /// Return pointer to the wave-function coefficient at a given index, spin and band 
+    /// Return pointer to the wave-function coefficient at a given index, spin and band
     inline auto
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__)
     {
@@ -828,7 +828,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
     /// Pointer to the original wave-functions.
     Wave_functions<T>* wf_{nullptr};
-    /// Spin-index of the wave-function component 
+    /// Spin-index of the wave-function component
     spin_index s_{0};
     /// Range of bands in the input wave-functions to be swapped.
     band_range br_{0};
@@ -1738,8 +1738,8 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     double gflops{0};
 
     /* project out the old subspace:
-     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> 
-     * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new> 
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new>
+     * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new>
      * S|\tilda phi_new> = S|phi_new> - S|phi_old><phi_old|phi_new> */
     if (br_old__.size() > 0 && project_out__) {
         inner(spla_ctx__, mem__, spins__, wf_i__, br_old__, wf_j__, br_new__, o__, 0, 0);
@@ -1939,7 +1939,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //        }
 //== //
 //== //    }
-//== 
+//==
 //== //    if (sddk_debug >= 1) {
 //== //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 //== //        auto err = check_identity(o__, n__);

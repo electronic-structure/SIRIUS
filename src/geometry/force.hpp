@@ -44,7 +44,7 @@ class Force
   private:
     Simulation_context& ctx_;
 
-    Density& density_;
+    const Density& density_;
 
     Potential& potential_;
 

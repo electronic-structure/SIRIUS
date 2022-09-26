@@ -200,7 +200,7 @@ class Potential : public Field4D
      *    V({\bf G}) = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf T} +
      *    {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} =
      *    \frac{N}{V} \sum_{\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} =
-     *    \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} } 
+     *    \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} }
      *    \int e^{-i{\bf G}{\bf r}}V_{\alpha}({\bf r})d{\bf r}
      * \f]
      * Using the well-known expansion of a plane wave in terms of spherical Bessel functions:
@@ -209,7 +209,7 @@ class Potential : public Field4D
      * \f]
      * and remembering that for \f$ \ell = 0 \f$ (potential is sphericla) \f$ j_{0}(x) = \sin(x) / x \f$ we have:
      * \f[
-     *   V_{\alpha}({\bf G}) =  \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00} 
+     *   V_{\alpha}({\bf G}) =  \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00}
      *   r^2 \sin(\theta) dr d \phi d\theta =  4\pi \int V_{\alpha}(r) \frac{\sin(Gr)}{Gr} r^2 dr
      * \f]
      * The tricky part comes next: \f$ V_{\alpha}({\bf r}) \f$ is a long-range potential -- it decays slowly as
@@ -242,7 +242,7 @@ class Potential : public Field4D
      * \f]
      * The final expression for the local potential radial integrals for \f$ G \ne 0 \f$ take the following form:
      * \f[
-     *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - 
+     *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -
      *   Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
      * \f]
      */

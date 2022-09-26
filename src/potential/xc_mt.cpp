@@ -251,7 +251,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
             vxc_up_tp -= (2.0 * grad_vsigma_uu_grad_rho_up_tp + grad_vsigma_ud_grad_rho_dn_tp);
             vxc_dn_tp -= (2.0 * grad_vsigma_dd_grad_rho_dn_tp + grad_vsigma_ud_grad_rho_up_tp);
         }
-        /* genertate magnetic filed and effective potential inside MT sphere */
+        /* generate magnetic field and effective potential inside MT sphere */
         for (int ir = 0; ir < rgrid__.num_points(); ir++) {
             for (int itp = 0; itp < sht__.num_points(); itp++) {
                 /* Vxc = 0.5 * (V_up + V_dn) */
