@@ -51,7 +51,7 @@ void repack(std::vector<T> &data, std::vector<size_t> const&ids) {
 
 template<class Matrix, class Prec, class StateVec>
 std::vector<std::vector<typename StateVec::value_type>> multi_cg(
-    Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
+    Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
     size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false
 ) {
     auto n = X.cols();
@@ -332,15 +332,15 @@ struct Linear_response_operator {
             0.0, {Hphi}, 0, num_active);
 
         // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
-        sirius::apply_S_operator<double_complex>(
-            ctx.processing_unit(),
-            sddk::spin_range(0),
-            0,
-            num_active,
-            Hk.kp().beta_projectors(),
-            *Hphi,
-            &Hk.H0().Q(),
-            *Sphi);
+        // sirius::apply_S_operator<double_complex>(
+        //     ctx.processing_unit(),
+        //     sddk::spin_range(0),
+        //     0,
+        //     num_active,
+        //     Hk.kp().beta_projectors(),
+        //     *Hphi,
+        //     &Hk.H0().Q(),
+        //     *Sphi);
 
         // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
         {
