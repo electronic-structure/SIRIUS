@@ -168,7 +168,7 @@ class Potential : public Field4D
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
                                   std::vector<sf const*> ps_density);
 
-    void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
+    void calc_PAW_local_Dij(const paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
 
     double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 

@@ -1440,7 +1440,7 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<double_compl
 }
 
 void
-Simulation_context::print_memory_usage(const char* file__, int line__)
+Simulation_context::print_memory_usage(const char* file__, int line__) const
 {
     auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
     if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || (pmu && *pmu))) {

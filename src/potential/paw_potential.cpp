@@ -259,7 +259,7 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& ppd,
     ppd.xc_energy_ = ae_xc_energy - ps_xc_energy;
 }
 
-void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
+void Potential::calc_PAW_local_Dij(const paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
 {
     int paw_ind = pdd.ia_paw;
 

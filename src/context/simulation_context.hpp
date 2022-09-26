@@ -368,7 +368,7 @@ class Simulation_context : public Simulation_parameters
     void print_info() const;
 
     /// Print the memory usage.
-    void print_memory_usage(const char* file__, int line__);
+    void print_memory_usage(const char* file__, int line__) const;
 
     /// Print message from the root rank.
     template <typename... Args>

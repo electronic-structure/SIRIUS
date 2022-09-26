@@ -25,6 +25,10 @@
 #ifndef __PAW_DENSITY_HPP__
 #define __PAW_DENSITY_HPP__
 
+#include "typedefs.hpp"
+#include "function3d/spheric_function.hpp"
+#include "context/simulation_context.hpp"
+
 namespace sirius {
 
 class paw_density

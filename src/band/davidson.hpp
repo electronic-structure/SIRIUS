@@ -32,6 +32,8 @@
 #include "SDDK/wf_ortho.hpp"
 #include "SDDK/wf_inner.hpp"
 #include "SDDK/wf_trans.hpp"
+#include "k_point/k_point.hpp"
+#include "hamiltonian/hamiltonian.hpp"
 #include "residuals.hpp"
 
 namespace sirius {

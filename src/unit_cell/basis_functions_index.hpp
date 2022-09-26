@@ -25,6 +25,9 @@
 #ifndef __BASIS_FUNCTIONS_INDEX_HPP__
 #define __BASIS_FUNCTIONS_INDEX_HPP__
 
+#include "radial_functions_index.hpp"
+#include "utils/rte.hpp"
+
 namespace sirius {
 
 struct basis_function_index_descriptor
@@ -52,10 +55,10 @@ struct basis_function_index_descriptor
         , idxlo(idxlo)
         , idxrf(idxrf)
     {
-        assert(l >= 0);
-        assert(m >= -l && m <= l);
-        assert(order >= 0);
-        assert(idxrf >= 0);
+        RTE_ASSERT(l >= 0);
+        RTE_ASSERT(m >= -l && m <= l);
+        RTE_ASSERT(order >= 0);
+        RTE_ASSERT(idxrf >= 0);
     }
 
     basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
@@ -67,10 +70,10 @@ struct basis_function_index_descriptor
         , idxlo(idxlo)
         , idxrf(idxrf)
     {
-        assert(l >= 0);
-        assert(m >= -l && m <= l);
-        assert(order >= 0);
-        assert(idxrf >= 0);
+        RTE_ASSERT(l >= 0);
+        RTE_ASSERT(m >= -l && m <= l);
+        RTE_ASSERT(order >= 0);
+        RTE_ASSERT(idxrf >= 0);
     }
 };
 

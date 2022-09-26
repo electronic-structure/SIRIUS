@@ -30,6 +30,7 @@
 #include <typeinfo>
 #include "radial/spline.hpp"
 #include "sht/sht.hpp"
+#include "memory.hpp"
 
 namespace sirius {
 

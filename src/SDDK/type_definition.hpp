@@ -6,6 +6,8 @@
 #ifndef __TYPE_DEFINITION_HPP__
 #define __TYPE_DEFINITION_HPP__
 
+#include <complex>
+
 using double_complex = std::complex<double>;
 
 // define type traits that return real type
