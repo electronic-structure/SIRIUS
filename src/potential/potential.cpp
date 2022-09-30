@@ -85,13 +85,13 @@ Potential::Potential(Simulation_context& ctx__)
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
         for (int i = 0; i < nsigma ; i++) {
-            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
+            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
         }
     }
 
     if (!ctx_.full_potential()) {
-        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
-        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
+        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
+        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
         dveff_->zero();
     }
 

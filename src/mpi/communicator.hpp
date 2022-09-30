@@ -276,6 +276,17 @@ class Communicator
     MPI_Comm mpi_comm_raw_{MPI_COMM_NULL};
     /// Smart pointer to allocated MPI communicator.
     std::shared_ptr<MPI_Comm> mpi_comm_;
+    /// Store communicator's rank.
+    int rank_{-1};
+    /// Store communicator's size.
+    int size_{-1};
+
+    void init()
+    {
+        assert(mpi_comm_raw_ != MPI_COMM_NULL);
+        CALL_MPI(MPI_Comm_rank, (mpi_comm_raw_, &rank_));
+        CALL_MPI(MPI_Comm_size, (mpi_comm_raw_, &size_));
+    }
 
   public:
     /// Default constructor.
@@ -287,6 +298,15 @@ class Communicator
     explicit Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_raw_(mpi_comm__)
     {
+        init();
+    }
+
+    /// Constructor for new communicator.
+    explicit Communicator(std::shared_ptr<MPI_Comm> comm__)
+        : mpi_comm_raw_(*comm__)
+        , mpi_comm_(comm__)
+    {
+        init();
     }
 
     /// MPI initialization.
@@ -340,38 +360,30 @@ class Communicator
 
     inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
     {
-        Communicator new_comm;
-        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Cart_create, (mpi_comm(), ndims__, dims__, periods__, 0, new_comm.mpi_comm_.get()));
-        new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return new_comm;
+        auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
+        CALL_MPI(MPI_Cart_create, (this->mpi_comm(), ndims__, dims__, periods__, 0, comm_sptr.get()));
+        return Communicator(comm_sptr);
     }
 
     inline Communicator cart_sub(int const* remain_dims__) const
     {
-        Communicator new_comm;
-        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Cart_sub, (mpi_comm(), remain_dims__, new_comm.mpi_comm_.get()));
-        new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return new_comm;
+        auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
+        CALL_MPI(MPI_Cart_sub, (this->mpi_comm(), remain_dims__, comm_sptr.get()));
+        return Communicator(comm_sptr);
     }
 
     inline Communicator split(int color__) const
     {
-        Communicator new_comm;
-        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Comm_split, (mpi_comm(), color__, rank(), new_comm.mpi_comm_.get()));
-        new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return new_comm;
+        auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
+        CALL_MPI(MPI_Comm_split, (this->mpi_comm(), color__, rank(), comm_sptr.get()));
+        return Communicator(comm_sptr);
     }
 
     inline Communicator duplicate() const
     {
-        Communicator new_comm;
-        new_comm.mpi_comm_ = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Comm_dup, (mpi_comm(), new_comm.mpi_comm_.get()));
-        new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return new_comm;
+        auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
+        CALL_MPI(MPI_Comm_dup, (this->mpi_comm(), comm_sptr.get()));
+        return Communicator(comm_sptr);
     }
 
     /// Mapping between Fortran and SIRIUS MPI communicators.
@@ -387,7 +399,7 @@ class Communicator
     }
 
     /// Return raw MPI communicator handler.
-    MPI_Comm mpi_comm() const
+    MPI_Comm mpi_comm() const // TODO: rename to mpi_comm_native or native()
     {
         return mpi_comm_raw_;
     }
@@ -411,21 +423,13 @@ class Communicator
     /// Rank of MPI process inside communicator.
     inline int rank() const
     {
-        assert(mpi_comm() != MPI_COMM_NULL);
-
-        int r;
-        CALL_MPI(MPI_Comm_rank, (mpi_comm(), &r));
-        return r;
+        return rank_;
     }
 
     /// Size of the communicator (number of ranks).
     inline int size() const
     {
-        assert(mpi_comm() != MPI_COMM_NULL);
-
-        int s;
-        CALL_MPI(MPI_Comm_size, (mpi_comm(), &s));
-        return s;
+        return size_;
     }
 
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.

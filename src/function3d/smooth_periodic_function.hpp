@@ -52,7 +52,7 @@ class Smooth_periodic_function
     spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition const* gvecp_{nullptr};
+    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
 
     /// Function on the regular real-space grid.
     sddk::mdarray<T, 1> f_rg_;
@@ -79,9 +79,9 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
+    Smooth_periodic_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
-        , gvecp_(&gvecp__)
+        , gvecp_(gvecp__)
     {
         if (mp__) {
             f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
@@ -196,9 +196,9 @@ class Smooth_periodic_function
         return gvecp_->gvec();
     }
 
-    sddk::Gvec_partition const& gvec_partition() const
+    auto gvec_fft() const
     {
-        return *gvecp_;
+        return gvecp_;
     }
 
     void fft_transform(int direction__)
@@ -317,7 +317,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition const* gvecp_{nullptr};
+    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
 
     Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
@@ -328,9 +328,9 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__)
+    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__)
         : spfft_(&spfft__)
-        , gvecp_(&gvecp__)
+        , gvecp_(gvecp__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
@@ -345,11 +345,10 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
         return *spfft_;
     }
 
-
-    sddk::Gvec_partition const& gvec_partition() const
+    auto gvec_fft() const
     {
         assert(gvecp_ != nullptr);
-        return *gvecp_;
+        return gvecp_;
     }
 };
 
@@ -361,7 +360,7 @@ inline Smooth_periodic_vector_function<T> gradient(Smooth_periodic_function<T>& 
 {
     PROFILE("sirius::gradient");
 
-    Smooth_periodic_vector_function<T> g(f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_vector_function<T> g(f__.spfft(), f__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -381,7 +380,7 @@ inline Smooth_periodic_function<T> divergence(Smooth_periodic_vector_function<T>
     PROFILE("sirius::divergence");
 
     /* resulting scalar function */
-    Smooth_periodic_function<T> f(g__.spfft(), g__.gvec_partition());
+    Smooth_periodic_function<T> f(g__.spfft(), g__.gvec_fft());
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
@@ -399,7 +398,7 @@ inline Smooth_periodic_function<T> laplacian(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::laplacian");
 
-    Smooth_periodic_function<T> g(f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_function<T> g(f__.spfft(), f__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -417,7 +416,7 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
 {
     PROFILE("sirius::dot");
 
-    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_partition());
+    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {

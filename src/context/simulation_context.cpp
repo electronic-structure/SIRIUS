@@ -1048,34 +1048,34 @@ Simulation_context::update()
         /* create list of coarse G-vectors */
         gvec_coarse_ = std::make_unique<sddk::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
         /* create FFT friendly partiton */
-        gvec_coarse_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_coarse_, comm_fft_coarse(),
+        gvec_coarse_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
                 comm_ortho_fft_coarse());
 
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
             spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #ifdef USE_FP32
         spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(new spfft::GridFloat(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
             spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto const& gv = gvec_coarse_partition_->gvec_array();
+        auto const& gv = gvec_coarse_fft_->gvec_array();
 
         /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #ifdef USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #endif
     } else {
@@ -1084,32 +1084,32 @@ Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_           = std::make_unique<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
-        gvec_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_, comm_fft(), comm_ortho_fft());
+        gvec_     = std::make_shared<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
+        gvec_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_, comm_fft(), comm_ortho_fft());
 
         auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
-                            gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                            gvec_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
-            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_partition_->zcol_count_fft(),
+            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count_fft(),
                                  spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto const& gv = gvec_partition_->gvec_array();
+        auto const& gv = gvec_fft_->gvec_array();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            spl_z.local_size(), gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
@@ -1174,7 +1174,9 @@ Simulation_context::update()
         }
     }
 
-    init_atoms_to_grid_idx(cfg().control().rmt_max());
+    if (unit_cell().num_atoms()) {
+        init_atoms_to_grid_idx(cfg().control().rmt_max());
+    }
 
     std::pair<int, int> limits(0, 0);
     for (int x : {0, 1, 2}) {
@@ -1560,8 +1562,8 @@ Simulation_context::init_step_function()
         }
         theta_pw_[0] += 1.0;
 
-        std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-        this->gvec_partition().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
+        std::vector<double_complex> ftmp(gvec_fft().gvec_count_fft());
+        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
         spfft_output(spfft<double>(), theta_ptr);
@@ -1569,7 +1571,7 @@ Simulation_context::init_step_function()
         std::stringstream s;
         s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
           << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-          << "gvec_partition().gvec_count_fft() = " << gvec_partition().gvec_count_fft();
+          << "gvec_fft().gvec_count_fft() = " << gvec_fft().gvec_count_fft();
         RTE_THROW(s);
     }
 

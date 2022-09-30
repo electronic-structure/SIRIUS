@@ -703,7 +703,7 @@ class Gvec
 /** FFT driver works with a small communicator. G-vectors are distributed over the entire communicator which is
     larger than the FFT communicator. In order to transform the functions, G-vectors must be redistributed to the
     FFT-friendly "fat" slabs based on the FFT communicator size. */
-class Gvec_partition // TODO: name change to Gvec_fft
+class Gvec_fft
 {
   private:
     /// Reference to the G-vector instance.
@@ -740,7 +740,7 @@ class Gvec_partition // TODO: name change to Gvec_fft
     void pile_gvec();
 
   public:
-    Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
+    Gvec_fft(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
 
     /// Return FFT communicator
     inline Communicator const& comm_fft() const

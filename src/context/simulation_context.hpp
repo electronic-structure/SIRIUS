@@ -123,16 +123,16 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// G-vectors within the Gmax cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_;
+    std::shared_ptr<sddk::Gvec> gvec_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_fft_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_coarse_;
+    std::shared_ptr<sddk::Gvec> gvec_coarse_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_coarse_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft_;
 
-    std::unique_ptr<sddk::Gvec_shells> remap_gvec_;
+    std::shared_ptr<sddk::Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -412,19 +412,34 @@ class Simulation_context : public Simulation_parameters
         return *unit_cell_;
     }
 
+    /// Return const reference to unit cell object.
     auto const& unit_cell() const
     {
         return *unit_cell_;
     }
 
+    /// Return const reference to Gvec object.
     auto const& gvec() const
     {
         return *gvec_;
     }
 
-    auto const& gvec_partition() const
+    /// Return shared pointer to Gvec object.
+    auto gvec_sptr() const
     {
-        return *gvec_partition_;
+        return gvec_;
+    }
+
+    /// Return const reference to Gvec_fft object.
+    auto const& gvec_fft() const
+    {
+        return *gvec_fft_;
+    }
+
+    /// Return shared pointer to Gvec_fft object.
+    auto gvec_fft_sptr() const
+    {
+        return gvec_fft_;
     }
 
     auto const& gvec_coarse() const
@@ -432,9 +447,14 @@ class Simulation_context : public Simulation_parameters
         return *gvec_coarse_;
     }
 
-    auto const& gvec_coarse_partition() const
+    auto const& gvec_coarse_sptr() const
     {
-        return *gvec_coarse_partition_;
+        return gvec_coarse_;
+    }
+
+    auto const& gvec_coarse_fft_sptr() const
+    {
+        return gvec_coarse_fft_;
     }
 
     auto const& remap_gvec() const

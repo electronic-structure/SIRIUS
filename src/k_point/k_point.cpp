@@ -456,7 +456,7 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    gkvec_partition_ = std::make_unique<sddk::Gvec_partition>(
+    gkvec_partition_ = std::make_shared<sddk::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;

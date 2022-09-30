@@ -4,42 +4,16 @@
 
 using namespace sirius;
 
-
-class spin
-{
-  private:
-    int idx_;
-  public:
-    explicit spin(int idx__)
-        : idx_(idx__)
-    {
-        if (!(idx_ == 0 || idx_ == 1)) {
-            RTE_THROW("wrong spin index");
-        }
-    }
-
-    inline int operator()() const
-    {
-        return idx_;
-    }
-};
-
-// spin_range(0, 2);
-// spin_range(0, 1);
-// for (auto s: spins) {
-//   pw_coeffs[s()]
-//
-// }
-
 void test_wf_fft()
 {
-    sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
+    //sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
+    sddk::MPI_grid mpi_grid({1, 1}, sddk::Communicator::world());
 
     /* creation of simple G+k vector set */
     auto gkvec = sddk::gkvec_factory(8.0, mpi_grid.communicator());
     std::cout << "num_gvec=" << gkvec->num_gvec() << std::endl;
     /* creation of G+k set for FFTt */
-    auto gkvec_fft = std::make_shared<sddk::Gvec_partition>(*gkvec, mpi_grid.communicator(1 << 0), mpi_grid.communicator(1 << 1));
+    auto gkvec_fft = std::make_shared<sddk::Gvec_fft>(*gkvec, mpi_grid.communicator(1 << 0), mpi_grid.communicator(1 << 1));
 
     /* get the FFT box boundaries */
     auto fft_grid = sddk::get_min_fft_grid(8.0, gkvec->lattice_vectors());
@@ -48,7 +22,7 @@ void test_wf_fft()
 
     wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
     wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
-    wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf::num_bands(10), sddk::memory_t::host);
+    //wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf::num_bands(10), sddk::memory_t::host);
 
     for (int ispn = 0; ispn < 2; ispn++) {
         for (int i = 0; i < 10; i++) {
@@ -67,7 +41,7 @@ void test_wf_fft()
     auto spfft_pu = pu == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto spl_z = split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
 
-        /* create spfft buffer for coarse transform */
+    /* create spfft buffer for coarse transform */
     auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
             fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count_fft(),
             spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
@@ -80,22 +54,40 @@ void test_wf_fft()
         spl_z.local_size(), gkvec_fft->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gkvec_fft->gvec_array().at(sddk::memory_t::host)));
 
+    std::array<wf::Wave_functions_fft_new<double>, 2> wf_new;
+    for (int ispn = 0; ispn < 2; ispn++) {
+        wf_new[ispn] = wf::Wave_functions_fft_new<double>(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10), wf::transform_layout::to);
+
+    }
+
     for (int ispn = 0; ispn < 2; ispn++) {
 
-        transform_to_fft_layout(wf, wf_fft, wf::spin_index(ispn), wf::band_range(0, 10));
+        wf::Wave_functions_fft_new<double> wf_fft(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
+                wf::transform_layout::to | wf::transform_layout::from);
 
-        for (int i = 0; i < 10; i++) {
-            for (int ig = 0; ig < gkvec->count(); ig++) {
-                wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = 0;
-            }
-        }
+        //transform_to_fft_layout(wf, wf_fft, wf::spin_index(ispn), wf::band_range(0, 10));
+        //double diff{0};
+        //for (int i = 0; i < wf_fft.num_wf_local(); i++) {
+        //    for (int j = 0; j < wf_fft.ld(); j++) {
+        //        diff += std::abs(wf_fft.pw_coeffs(j, wf::band_index(i)) -
+        //                wf_new[ispn].pw_coeffs(j, wf::band_index(i)));
+        //    }
+        //}
+        //std::cout << "fft diff =" << diff << std::endl;
+
+
+        //for (int i = 0; i < 10; i++) {
+        //    for (int ig = 0; ig < gkvec->count(); ig++) {
+        //        wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = 0;
+        //    }
+        //}
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
             spfft_transform->backward(wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
             spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
 
-        transform_from_fft_layout(wf_fft, wf, wf::spin_index(ispn), wf::band_range(0, 10));
+        //transform_from_fft_layout(wf_fft, wf, wf::spin_index(ispn), wf::band_range(0, 10));
     }
 
     for (int ispn = 0; ispn < 2; ispn++) {

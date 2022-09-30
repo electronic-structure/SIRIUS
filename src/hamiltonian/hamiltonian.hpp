@@ -479,7 +479,7 @@ class Hamiltonian_k
         if (hphi__ != nullptr) {
             /* apply local part of Hamiltonian */
             H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
-                                    kp().gkvec_fft(), spins__, phi__, *hphi__, br__);
+                                    kp().gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
         }
 
         auto mem = sddk::memory_t::host;

@@ -551,7 +551,7 @@ class band_range
         : begin_{0}
         , end_{size__}
     {
-        RTE_ASSERT(size__ > 0);
+        RTE_ASSERT(size__ >= 0);
     }
     inline auto begin() const
     {
@@ -666,6 +666,9 @@ class device_memory_guard
     }
 };
 
+template <typename T>
+class Wave_functions_fft_new;
+
 /// Base class for the wave-functions.
 template <typename T>
 class Wave_functions_base
@@ -699,8 +702,10 @@ class Wave_functions_base
     }
 
     friend class device_memory_guard<Wave_functions_base<T>>;
+    friend class Wave_functions_fft_new<T>;
 
     std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
+
   public:
     Wave_functions_base()
     {
@@ -793,81 +798,81 @@ class Wave_functions_base
     }
 };
 
-template <typename T>
-class Wave_functions_fft : public Wave_functions_base<T>
-{
-  private:
-    std::shared_ptr<sddk::Gvec_partition> gkvec_fft_;
-    sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
-
-  public:
-    Wave_functions_fft()
-    {
-    }
-
-    Wave_functions_fft(std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, num_bands num_wf_max__, sddk::memory_t default_mem__)
-        : Wave_functions_base<T>(gkvec_fft__->gvec_count_fft(), 0,
-                num_mag_dims(0), num_bands(sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), gkvec_fft__->comm_ortho_fft().size(),
-                    gkvec_fft__->comm_ortho_fft().rank()).local_size()), default_mem__)
-        , gkvec_fft_(gkvec_fft__)
-    {
-        auto& comm_col = gkvec_fft_->comm_ortho_fft();
-        spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), comm_col.size(), comm_col.rank());
-    }
-
-    auto grid_layout(int n__)
-    {
-        auto& comm_row = gkvec_fft_->comm_fft();
-        auto& comm_col = gkvec_fft_->comm_ortho_fft();
-
-        //spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(n__, comm_col.size(), comm_col.rank());
-
-        std::vector<int> rowsplit(comm_row.size() + 1);
-        rowsplit[0] = 0;
-        for (int i = 0; i < comm_row.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
-        }
-
-        std::vector<int> colsplit(comm_col.size() + 1);
-        colsplit[0] = 0;
-        for (int i = 0; i < comm_col.size(); i++) {
-            colsplit[i + 1] = colsplit[i] + spl_num_wf_.local_size(i);
-        }
-
-        std::vector<int> owners(gkvec_fft_->gvec().comm().size());
-        for (int i = 0; i < gkvec_fft_->gvec().comm().size(); i++) {
-            owners[i] = i;
-        }
-        costa::block_t localblock;
-        localblock.data = this->data_[0].at(sddk::memory_t::host);
-        localblock.ld = this->ld();
-        localblock.row = gkvec_fft_->comm_fft().rank();
-        localblock.col = comm_col.rank();
-
-        return costa::custom_layout<std::complex<T>>(comm_row.size(), comm_col.size(), rowsplit.data(),
-                colsplit.data(), owners.data(), 1, &localblock, 'C');
-    }
-
-    int num_wf_local() const
-    {
-        return spl_num_wf_.local_size();
-    }
-
-    auto spl_num_wf() const
-    {
-        return spl_num_wf_;
-    }
-
-    inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
-    {
-        return this->data_[0](ig__, b__.get());
-    }
-
-    inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
-    {
-        return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
-    }
-};
+//template <typename T>
+//class Wave_functions_fft : public Wave_functions_base<T>
+//{
+//  private:
+//    std::shared_ptr<sddk::Gvec_partition> gkvec_fft_;
+//    sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
+//
+//  public:
+//    Wave_functions_fft()
+//    {
+//    }
+//
+//    Wave_functions_fft(std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, num_bands num_wf_max__, sddk::memory_t default_mem__)
+//        : Wave_functions_base<T>(gkvec_fft__->gvec_count_fft(), 0,
+//                num_mag_dims(0), num_bands(sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), gkvec_fft__->comm_ortho_fft().size(),
+//                    gkvec_fft__->comm_ortho_fft().rank()).local_size()), default_mem__)
+//        , gkvec_fft_(gkvec_fft__)
+//    {
+//        auto& comm_col = gkvec_fft_->comm_ortho_fft();
+//        spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), comm_col.size(), comm_col.rank());
+//    }
+//
+//    auto grid_layout(int n__)
+//    {
+//        PROFILE("sirius::wf::Wave_functions_fft::grid_layout");
+//
+//        auto& comm_row = gkvec_fft_->comm_fft();
+//        auto& comm_col = gkvec_fft_->comm_ortho_fft();
+//
+//        std::vector<int> rowsplit(comm_row.size() + 1);
+//        rowsplit[0] = 0;
+//        for (int i = 0; i < comm_row.size(); i++) {
+//            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
+//        }
+//
+//        std::vector<int> colsplit(comm_col.size() + 1);
+//        colsplit[0] = 0;
+//        for (int i = 0; i < comm_col.size(); i++) {
+//            colsplit[i + 1] = colsplit[i] + spl_num_wf_.local_size(i);
+//        }
+//
+//        std::vector<int> owners(gkvec_fft_->gvec().comm().size());
+//        for (int i = 0; i < gkvec_fft_->gvec().comm().size(); i++) {
+//            owners[i] = i;
+//        }
+//        costa::block_t localblock;
+//        localblock.data = this->data_[0].at(sddk::memory_t::host);
+//        localblock.ld = this->ld();
+//        localblock.row = gkvec_fft_->comm_fft().rank();
+//        localblock.col = comm_col.rank();
+//
+//        return costa::custom_layout<std::complex<T>>(comm_row.size(), comm_col.size(), rowsplit.data(),
+//                colsplit.data(), owners.data(), 1, &localblock, 'C');
+//    }
+//
+//    int num_wf_local() const
+//    {
+//        return spl_num_wf_.local_size();
+//    }
+//
+//    auto spl_num_wf() const
+//    {
+//        return spl_num_wf_;
+//    }
+//
+//    inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
+//    {
+//        return this->data_[0](ig__, b__.get());
+//    }
+//
+//    inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
+//    {
+//        return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
+//    }
+//};
 
 template <typename T>
 class Wave_functions_mt : public Wave_functions_base<T>
@@ -1023,6 +1028,8 @@ class Wave_functions : public Wave_functions_mt<T>
 
     auto grid_layout_pw(spin_index ispn__, band_range b__) const
     {
+        PROFILE("sirius::wf::Wave_functions_fft::grid_layout_pw");
+
         std::vector<int> rowsplit(this->comm_.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < this->comm_.size(); i++) {
@@ -1077,29 +1084,205 @@ class Wave_functions : public Wave_functions_mt<T>
     }
 };
 
-template <typename T>
-void transform_to_fft_layout(Wave_functions<T> const& wf_in__, Wave_functions_fft<T>& wf_fft_out__,
-        spin_index ispn__, band_range b__)
+struct transform_layout
 {
-    auto sp = wf_in__.actual_spin_index(ispn__);
-    auto layout_in  = wf_in__.grid_layout_pw(sp, b__);
-    auto layout_out = wf_fft_out__.grid_layout(b__.size());
-
-    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-            sddk::linalg_const<std::complex<T>>::zero(), wf_in__.gkvec().comm().mpi_comm());
-}
+    static const unsigned int none = 0b0000;
+    static const unsigned int to   = 0b0001;
+    static const unsigned int from = 0b0010;
+};
 
 template <typename T>
-void transform_from_fft_layout(Wave_functions_fft<T>& wf_fft_in__, Wave_functions<T>& wf_out__,
-        spin_index ispn__, band_range b__)
+class Wave_functions_fft_new : public Wave_functions_base<T>
 {
-    auto sp = wf_out__.actual_spin_index(ispn__);
-    auto layout_in  = wf_fft_in__.grid_layout(b__.size());
-    auto layout_out = wf_out__.grid_layout_pw(sp, b__);
+  private:
+    std::shared_ptr<sddk::Gvec_fft> gkvec_fft_;
+    sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
+    Wave_functions<T>* wf_{nullptr};
+    spin_index s_{0};
+    band_range br_{0};
+    unsigned int fft_layout_flag_{0};
+    bool on_device_{false};
 
-    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-            sddk::linalg_const<std::complex<T>>::zero(), wf_out__.gkvec().comm().mpi_comm());
-}
+    auto grid_layout(int n__)
+    {
+        PROFILE("sirius::wf::Wave_functions_fft::grid_layout");
+
+        auto& comm_row = gkvec_fft_->comm_fft();
+        auto& comm_col = gkvec_fft_->comm_ortho_fft();
+
+        std::vector<int> rowsplit(comm_row.size() + 1);
+        rowsplit[0] = 0;
+        for (int i = 0; i < comm_row.size(); i++) {
+            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
+        }
+
+        std::vector<int> colsplit(comm_col.size() + 1);
+        colsplit[0] = 0;
+        for (int i = 0; i < comm_col.size(); i++) {
+            colsplit[i + 1] = colsplit[i] + spl_num_wf_.local_size(i);
+        }
+
+        std::vector<int> owners(gkvec_fft_->gvec().comm().size());
+        for (int i = 0; i < gkvec_fft_->gvec().comm().size(); i++) {
+            owners[i] = i;
+        }
+        costa::block_t localblock;
+        localblock.data = this->data_[0].at(sddk::memory_t::host);
+        localblock.ld = this->ld();
+        localblock.row = gkvec_fft_->comm_fft().rank();
+        localblock.col = comm_col.rank();
+
+        return costa::custom_layout<std::complex<T>>(comm_row.size(), comm_col.size(), rowsplit.data(),
+                colsplit.data(), owners.data(), 1, &localblock, 'C');
+    }
+
+    void transform_to_fft_layout(spin_index ispn__, band_range b__)
+    {
+        auto sp = wf_->actual_spin_index(ispn__);
+        auto layout_in  = wf_->grid_layout_pw(sp, b__);
+        auto layout_out = this->grid_layout(b__.size());
+        PROFILE("costa::transform");
+        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+                sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+    }
+
+    void transform_from_fft_layout(spin_index ispn__, band_range b__)
+    {
+        auto sp = wf_->actual_spin_index(ispn__);
+        auto layout_in  = this->grid_layout(b__.size());
+        auto layout_out = wf_->grid_layout_pw(sp, b__);
+        PROFILE("costa::transform");
+        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+                sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+    }
+
+  public:
+    Wave_functions_fft_new()
+    {
+    }
+
+    Wave_functions_fft_new(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
+            band_range br__, unsigned int fft_layout_flag__)
+        : gkvec_fft_{gkvec_fft__}
+        , wf_{&wf__}
+        , s_{s__}
+        , br_{br__}
+        , fft_layout_flag_{fft_layout_flag__}
+    {
+        auto& comm_col = gkvec_fft_->comm_ortho_fft();
+        spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(br__.size(), comm_col.size(), comm_col.rank());
+        this->num_mt_ = 0;
+        this->num_md_ = wf::num_mag_dims(0);
+        this->num_sc_ = wf::num_spins(1);
+        this->num_wf_ = wf::num_bands(spl_num_wf_.local_size());
+
+        /* special case when wave-functions are not redistributed */
+        if (comm_col.size() == 1) {
+            auto sp = wf_->actual_spin_index(s__);
+            auto i = wf::band_index(br__.begin());
+            auto ptr = wf__.at(sddk::memory_t::host, 0, sp, i);
+            auto ptr_gpu = wf__.data_[sp.get()].on_device() ? wf__.at(sddk::memory_t::device, 0, sp, i) : nullptr;
+            if (ptr_gpu) {
+                on_device_ = true;
+            }
+            /* make alias to the fraction of the wave-functions */
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(ptr, ptr_gpu, wf__.ld(), this->num_wf_.get());
+            this->num_pw_ = wf_->num_pw_;
+        } else {
+            /* do wave-functions swap */
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get());
+            this->num_pw_ = gkvec_fft__->gvec_count_fft();
+
+            if (fft_layout_flag_ & transform_layout::to) {
+                transform_to_fft_layout(s__, br__);
+            }
+        }
+    }
+
+    Wave_functions_fft_new& operator=(Wave_functions_fft_new&& src__)
+    {
+        if (this != &src__) {
+            gkvec_fft_       = src__.gkvec_fft_;
+            spl_num_wf_      = src__.spl_num_wf_;
+            wf_              = src__.wf_;
+            src__.wf_        = nullptr;
+            s_               = src__.s_;
+            br_              = src__.br_;
+            fft_layout_flag_ = src__.fft_layout_flag_;
+            on_device_       = src__.on_device_;
+            this->num_pw_    = src__.num_pw_;
+            this->num_mt_    = src__.num_mt_;
+            this->num_md_    = src__.num_md_;
+            this->num_wf_    = src__.num_wf_;
+            this->num_sc_    = src__.num_sc_;
+            for (int is = 0; is < this->num_sc_.get(); is++) {
+                this->data_[is] = std::move(src__.data_[is]);
+            }
+        }
+        return *this;
+    }
+
+    ~Wave_functions_fft_new()
+    {
+        if (wf_) {
+            auto& comm_col = gkvec_fft_->comm_ortho_fft();
+            if ((comm_col.size() != 1) && (fft_layout_flag_ & transform_layout::from)) {
+                transform_from_fft_layout(s_, br_);
+            }
+        }
+    }
+
+    int num_wf_local() const
+    {
+        return spl_num_wf_.local_size();
+    }
+
+    auto spl_num_wf() const
+    {
+        return spl_num_wf_;
+    }
+
+    inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
+    {
+        return this->data_[0](ig__, b__.get());
+    }
+
+    inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
+    {
+        return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
+    }
+
+    inline auto on_device() const
+    {
+        return on_device_;
+    }
+};
+
+//template <typename T>
+//void transform_to_fft_layout(Wave_functions<T> const& wf_in__, Wave_functions_fft<T>& wf_fft_out__,
+//        spin_index ispn__, band_range b__)
+//{
+//    auto sp = wf_in__.actual_spin_index(ispn__);
+//    auto layout_in  = wf_in__.grid_layout_pw(sp, b__);
+//    auto layout_out = wf_fft_out__.grid_layout(b__.size());
+//
+//    PROFILE("costa::transform");
+//    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+//            sddk::linalg_const<std::complex<T>>::zero(), wf_in__.gkvec().comm().mpi_comm());
+//}
+//
+//template <typename T>
+//void transform_from_fft_layout(Wave_functions_fft<T>& wf_fft_in__, Wave_functions<T>& wf_out__,
+//        spin_index ispn__, band_range b__)
+//{
+//    auto sp = wf_out__.actual_spin_index(ispn__);
+//    auto layout_in  = wf_fft_in__.grid_layout(b__.size());
+//    auto layout_out = wf_out__.grid_layout_pw(sp, b__);
+//
+//    PROFILE("costa::transform");
+//    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+//            sddk::linalg_const<std::complex<T>>::zero(), wf_out__.gkvec().comm().mpi_comm());
+//}
 
 /// For real-type F (double or float).
 template <typename T, typename F>

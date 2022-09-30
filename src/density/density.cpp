@@ -87,12 +87,12 @@ Density::Density(Simulation_context& ctx__)
 
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_partition()));
+        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr()));
     }
 
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
-        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_partition()));
+        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
     }
 
     l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
@@ -689,7 +689,7 @@ void add_k_point_contribution_rg_noncollinear(spfft_transform_type<T>& fft__, T 
 
 template <typename T>
 void
-Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__)
+Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft_new<T>, 2>& wf_fft__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
@@ -1256,16 +1256,15 @@ Density::generate_valence(K_point_set const& ks__)
         int ik  = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__.get<T>(ik);
 
-        std::array<wf::Wave_functions_fft<T>, 2> wf_fft;
+        std::array<wf::Wave_functions_fft_new<T>, 2> wf_fft;
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             /* swap wave functions for the FFT transformation */
-            ///kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(sddk::memory_t::host));
+            wf_fft[ispn] = wf::Wave_functions_fft_new<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions_new(),
+                    wf::spin_index(ispn), wf::band_range(0, nbnd), wf::transform_layout::to);
 
-            wf_fft[ispn] = wf::Wave_functions_fft<T>(kp->gkvec_fft(), wf::num_bands(nbnd), sddk::memory_t::host);
-
-            wf::transform_to_fft_layout(kp->spinor_wave_functions_new(), wf_fft[ispn], wf::spin_index(ispn), wf::band_range(0, nbnd));
+  //          wf::transform_to_fft_layout(kp->spinor_wave_functions_new(), wf_fft[ispn], wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
 
@@ -1336,7 +1335,7 @@ Density::generate_valence(K_point_set const& ks__)
         occupation_matrix_->reduce();
     }
 
-    auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
+    auto& comm = ctx_.gvec_coarse_fft_sptr()->comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */

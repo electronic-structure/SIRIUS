@@ -314,7 +314,7 @@ Stress::calc_stress_xc()
            derivative of sigm (which is grad(rho) * grad(rho)) */
 
         if (ctx_.num_spins() == 1) {
-            Smooth_periodic_function<double> rhovc(ctx_.spfft<double>(), ctx_.gvec_partition());
+            Smooth_periodic_function<double> rhovc(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
             rhovc.zero();
             rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());

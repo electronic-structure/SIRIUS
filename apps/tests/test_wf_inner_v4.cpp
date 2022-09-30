@@ -27,7 +27,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     /* create G-vectors */
     Gvec gvec(M, cutoff__, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+    Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     if (Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);

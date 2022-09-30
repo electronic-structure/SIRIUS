@@ -21,7 +21,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
 
     /* create G-vectors */
     Gvec gvec(M, cutoff__, Communicator::world(), false);
-    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
+    Gvec_fft gvecp(gvec, Communicator::world(), Communicator::self());
 
     int num_atoms = 10;
     auto nmt = [](int i) {

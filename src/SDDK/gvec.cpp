@@ -561,7 +561,7 @@ Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, i
     return gv;
 }
 
-void Gvec_partition::build_fft_distr()
+void Gvec_fft::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
     gvec_distr_fft_ = block_data_descriptor(comm_fft().size());
@@ -582,7 +582,7 @@ void Gvec_partition::build_fft_distr()
     gvec_distr_fft_.calc_offsets();
 }
 
-void Gvec_partition::pile_gvec()
+void Gvec_fft::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped distribution;
      * we are preparing to swap plane-wave coefficients from a default slab distribution to a FFT-friendly
@@ -625,7 +625,7 @@ void Gvec_partition::pile_gvec()
     update_gkvec_cart();
 }
 
-Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& comm_fft__, Communicator const& comm_ortho_fft__)
+Gvec_fft::Gvec_fft(Gvec const& gvec__, Communicator const& comm_fft__, Communicator const& comm_ortho_fft__)
     : gvec_(gvec__)
     , comm_fft_(comm_fft__)
     , comm_ortho_fft_(comm_ortho_fft__)

@@ -66,7 +66,7 @@ class K_point
     std::shared_ptr<sddk::Gvec> gkvec_col_;
 
     /// G-vector distribution for the FFT transformation.
-    std::shared_ptr<sddk::Gvec_partition> gkvec_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gkvec_partition_;
 
     std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
 
@@ -786,12 +786,12 @@ class K_point
         return *spfft_transform_;
     }
 
-    inline auto const& gkvec_partition() const
+    inline auto const& gkvec_fft() const
     {
         return *gkvec_partition_;
     }
 
-    inline auto gkvec_fft()
+    inline auto gkvec_fft_sptr() const
     {
         return gkvec_partition_;
     }

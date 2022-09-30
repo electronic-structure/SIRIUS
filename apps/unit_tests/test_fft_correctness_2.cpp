@@ -23,7 +23,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     Gvec gvec(M, cutoff, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+    Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
                            SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);

@@ -291,7 +291,7 @@ class Density : public Field4D
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
-    void add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
+    void add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft_new<T>, 2>& wf_fft__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();
@@ -905,9 +905,9 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     int num_points = ctx.spfft<double>().local_slice_size();
 
     auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
     auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};

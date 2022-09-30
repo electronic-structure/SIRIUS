@@ -25,7 +25,7 @@ int test_fft(cmd_args& args, device_t pu__)
 
     Gvec gvec(M, cutoff, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+    Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     auto spfft_pu = (pu__ == device_t::CPU) ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 

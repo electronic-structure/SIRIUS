@@ -38,7 +38,7 @@ class Smooth_periodic_function;
 }
 namespace sddk {
 class FFT3D;
-class Gvec_partition;
+class Gvec_fft;
 }
 namespace wf {
 template <typename T>
@@ -92,7 +92,7 @@ class Local_operator
     spfft_transform_type<T>& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
-    sddk::Gvec_partition const& gvec_coarse_p_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_p_;
 
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<T, 1> pw_ekin_;
@@ -143,11 +143,11 @@ class Local_operator
      *                             \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
      */
     Local_operator(Simulation_context const& ctx__, spfft_transform_type<T>& fft_coarse__,
-                   sddk::Gvec_partition const& gvec_coarse_p__, Potential* potential__ = nullptr);
+                   std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft__, Potential* potential__ = nullptr);
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
-    void prepare_k(sddk::Gvec_partition const& gkvec_p__);
+    void prepare_k(sddk::Gvec_fft const& gkvec_p__);
 
     /// Apply local part of Hamiltonian to pseudopotential wave-functions.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -165,11 +165,9 @@ class Local_operator
      *
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    ///void apply_h(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
-    ///        sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>& hphi__, int idx0__, int n__);
-
-    void apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__,
-            wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__, wf::band_range br__);
+    void apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
+            wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__,
+            wf::band_range br__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -182,10 +180,7 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    //void apply_h_o(spfft_transform_type<T>& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
-    //               sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
-
-    void apply_fplapw(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_partition> gkvec_fft__,
+    void apply_fplapw(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
             wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
             wf::Wave_functions<T>* ophi__, wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__);
 

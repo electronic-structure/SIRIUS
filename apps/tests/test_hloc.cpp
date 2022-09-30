@@ -1,91 +1,104 @@
 #include <sirius.hpp>
 #include <fstream>
-#include <string>
 
-using namespace sirius;
+auto simulation_context_factory(bool use_gpu__, std::vector<int> mpi_grid_dims__, double cutoff__)
+{
+    //json conf = {
+    //    {"control", {
+    //                    {"fft_mode", "serial"}
+    //                }
+    //    }
+    //};
+    //std::cout << conf << std::endl;
+    //auto ctx = std::make_unique<sirius::Simulation_context>(conf.dump());
+
+    auto ctx = std::make_unique<sirius::Simulation_context>();
+    if (use_gpu__) {
+        ctx->processing_unit("GPU");
+    } else {
+        ctx->processing_unit("CPU");
+    }
+
+    geometry3d::matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
+
+    ctx->unit_cell().set_lattice_vectors(M);
+    ctx->mpi_grid_dims(mpi_grid_dims__);
+    ctx->pw_cutoff(cutoff__ + 1);
+    ctx->gk_cutoff(cutoff__ / 2);
+    ctx->electronic_structure_method("pseudopotential");
+    ctx->use_symmetry(false);
+    ctx->initialize();
+    return ctx;
+}
 
 template <typename T>
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int reduce_gvec__,
                int use_gpu__, int gpu_ptr__)
 {
-    sddk::device_t pu = static_cast<sddk::device_t>(use_gpu__);
+    auto ctx = simulation_context_factory(use_gpu__, mpi_grid_dims__, cutoff__);
 
-    matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
-
-    for (int i = 0; i < 3; i++) {
-        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
-    }
-
-    Simulation_context params;
-    if (use_gpu__) {
-        params.processing_unit("GPU");
-    } else {
-        params.processing_unit("CPU");
-    }
-
-    params.unit_cell().set_lattice_vectors(M);
-    params.mpi_grid_dims(mpi_grid_dims__);
-    params.pw_cutoff(cutoff__ + 1);
-    params.gk_cutoff(cutoff__ / 2);
-    params.electronic_structure_method("pseudopotential");
-    params.use_symmetry(false);
-    params.initialize();
-
-    auto& gvec = params.gvec();
-    auto& gvecp = params.gvec_partition();
-    auto& fft = params.spfft<T>();
+    auto gvec = ctx->gvec_coarse_sptr();
+    auto gvec_fft = ctx->gvec_coarse_fft_sptr();
+    auto& fft = ctx->spfft_coarse<T>();
 
     if (sddk::Communicator::world().rank() == 0) {
-        printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
+        printf("total number of G-vectors: %i\n", gvec->num_gvec());
+        printf("local number of G-vectors: %i\n", gvec->count());
         printf("FFT grid size: %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
         printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups: %i\n", params.comm_ortho_fft().size());
+        printf("number of FFT groups:  %i\n", ctx->comm_ortho_fft_coarse().size());
+        printf("FTT comm size:         %i\n", ctx->comm_fft_coarse().size());
         //printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
-        printf("number of z-columns: %i\n", gvec.num_zcol());
+        printf("number of z-columns: %i\n", gvec->num_zcol());
     }
 
-    //Local_operator<T> hloc(params, fft, gvecp);
+    sirius::Local_operator<T> hloc(*ctx, fft, gvec_fft);
 
-    //sddk::Wave_functions<T> phi(gvecp, 4 * num_bands__, sddk::memory_t::host);
-    //for (int i = 0; i < 4 * num_bands__; i++) {
-    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-    //        phi.pw_coeffs(0).prime(j, i) = utils::random<std::complex<T>>();
-    //    }
-    //    phi.pw_coeffs(0).prime(0, i) = 1.0;
-    //}
-    //sddk::Wave_functions<T> hphi(gvecp, 4 * num_bands__, sddk::memory_t::host);
+    auto mem = (use_gpu__) ? sddk::memory_t::device : sddk::memory_t::host;
 
-    //if (pu == sddk::device_t::GPU) {
-    //    phi.pw_coeffs(0).allocate(sddk::memory_t::device);
-    //    phi.pw_coeffs(0).copy_to(sddk::memory_t::device, 0, 4 * num_bands__);
-    //    hphi.pw_coeffs(0).allocate(sddk::memory_t::device);
-    //}
-    //hloc.prepare_k(gvecp); 
-    //for (int i = 0; i < 4; i++) {
-    //    hloc.apply_h(fft, gvecp, sddk::spin_range(0), phi, hphi, i * num_bands__, num_bands__);
-    //}
-    ////hloc.dismiss();
+    wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.ld(); j++) {
+            phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) = utils::random<std::complex<T>>();
+        }
+        phi.pw_coeffs(0, wf::spin_index(0), wf::band_index(i)) = 1.0;
+    }
+    wf::Wave_functions<T> hphi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
 
-    //double diff{0};
-    //for (int i = 0; i < 4 * num_bands__; i++) {
-    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-    //        int ig = gvec.offset() + j;
-    //        auto gc = gvec.gvec_cart<sddk::index_domain_t::global>(ig);
-    //        diff += std::pow(std::abs(static_cast<T>(2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
-    //    }
-    //}
-    //if (diff != diff) {
-    //    TERMINATE("NaN");
-    //}
-    //sddk::Communicator::world().allreduce(&diff, 1);
-    //diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
-    //if (sddk::Communicator::world().rank() == 0) {
-    //    printf("RMS: %18.16f\n", diff);
-    //}
-    //if (diff > 1e-12) {
-    //    TERMINATE("RMS is too large");
-    //}
+    {
+        auto mg1 = phi.memory_guard(mem, wf::copy_to::device);
+        auto mg2 = hphi.memory_guard(mem, wf::copy_to::host);
+
+        hloc.prepare_k(*gvec_fft);
+        for (int i = 0; i < 4; i++) {
+            hloc.apply_h(fft, gvec_fft, wf::spin_range(0), phi, hphi,
+                    wf::band_range(i * num_bands__, (i + 1) * num_bands__));
+        }
+    }
+
+    double diff{0};
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.ld(); j++) {
+            int ig = gvec->offset() + j;
+            auto gc = gvec->gvec_cart<sddk::index_domain_t::global>(ig);
+            diff += std::pow(std::abs(static_cast<T>(2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(j, wf::spin_index(0),
+                            wf::band_index(i)) - hphi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i))), 2);
+        }
+    }
+    if (diff != diff) {
+        TERMINATE("NaN");
+    }
+    sddk::Communicator::world().allreduce(&diff, 1);
+    diff = std::sqrt(diff / 4 / num_bands__ / gvec->num_gvec());
+    if (sddk::Communicator::world().rank() == 0) {
+        printf("RMS: %18.16f\n", diff);
+    }
+    if (diff > 1e-12) {
+        RTE_THROW("RMS is too large");
+    }
+    if (sddk::Communicator::world().rank() == 0) {
+        std::cout << "number of hamiltonian applications : " << ctx->num_loc_op_applied() << std::endl;
+    }
 }
 
 int main(int argn, char** argv)
