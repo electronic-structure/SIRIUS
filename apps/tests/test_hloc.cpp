@@ -1,7 +1,7 @@
 #include <sirius.hpp>
 #include <fstream>
 
-auto simulation_context_factory(bool use_gpu__, std::vector<int> mpi_grid_dims__, double cutoff__)
+auto simulation_context_factory(bool use_gpu__, std::vector<int> mpi_grid_dims__, double cutoff__, bool gamma__)
 {
     //json conf = {
     //    {"control", {
@@ -27,34 +27,30 @@ auto simulation_context_factory(bool use_gpu__, std::vector<int> mpi_grid_dims__
     ctx->gk_cutoff(cutoff__ / 2);
     ctx->electronic_structure_method("pseudopotential");
     ctx->use_symmetry(false);
+    ctx->gamma_point(gamma__);
     ctx->initialize();
     return ctx;
 }
 
 template <typename T>
-void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int reduce_gvec__,
-               int use_gpu__, int gpu_ptr__)
+void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 {
-    auto ctx = simulation_context_factory(use_gpu__, mpi_grid_dims__, cutoff__);
-
-    auto gvec = ctx->gvec_coarse_sptr();
-    auto gvec_fft = ctx->gvec_coarse_fft_sptr();
-    auto& fft = ctx->spfft_coarse<T>();
+    auto gvec = ctx__.gvec_coarse_sptr();
+    auto gvec_fft = ctx__.gvec_coarse_fft_sptr();
+    auto& fft = ctx__.spfft_coarse<T>();
 
     if (sddk::Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec->num_gvec());
         printf("local number of G-vectors: %i\n", gvec->count());
         printf("FFT grid size: %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
         printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups:  %i\n", ctx->comm_ortho_fft_coarse().size());
-        printf("FTT comm size:         %i\n", ctx->comm_fft_coarse().size());
-        //printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
+        printf("number of FFT groups:  %i\n", gvec_fft->comm_ortho_fft().size());
+        printf("FTT comm size:         %i\n", gvec_fft->comm_fft().size());
         printf("number of z-columns: %i\n", gvec->num_zcol());
+        printf("fft_mode           : %s\n", ctx__.cfg().control().fft_mode().c_str());
     }
 
-    sirius::Local_operator<T> hloc(*ctx, fft, gvec_fft);
-
-    auto mem = (use_gpu__) ? sddk::memory_t::device : sddk::memory_t::host;
+    sirius::Local_operator<T> hloc(ctx__, fft, gvec_fft);
 
     wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {
@@ -66,8 +62,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     wf::Wave_functions<T> hphi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
 
     {
-        auto mg1 = phi.memory_guard(mem, wf::copy_to::device);
-        auto mg2 = hphi.memory_guard(mem, wf::copy_to::host);
+        auto mem_phi = (use_gpu__ && gvec_fft->comm_ortho_fft().size() == 1) ? sddk::memory_t::device : sddk::memory_t::host;
+        auto copy_policy_phi = (mem_phi == sddk::memory_t::device) ? wf::copy_to::device : wf::copy_to::none;
+
+        auto mem_hphi = (use_gpu__ && gvec_fft->comm_ortho_fft().size() == 1) ? sddk::memory_t::device : sddk::memory_t::host;
+        auto copy_policy_hphi = (mem_hphi == sddk::memory_t::device) ? wf::copy_to::host : wf::copy_to::none;
+
+        auto mg1 = phi.memory_guard(mem_phi, copy_policy_phi);
+        auto mg2 = hphi.memory_guard(mem_hphi, copy_policy_hphi);
 
         hloc.prepare_k(*gvec_fft);
         for (int i = 0; i < 4; i++) {
@@ -97,7 +99,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         RTE_THROW("RMS is too large");
     }
     if (sddk::Communicator::world().rank() == 0) {
-        std::cout << "number of hamiltonian applications : " << ctx->num_loc_op_applied() << std::endl;
+        std::cout << "number of hamiltonian applications : " << ctx__.num_loc_op_applied() << std::endl;
     }
 }
 
@@ -125,25 +127,26 @@ int main(int argn, char** argv)
     auto reduce_gvec = args.value<int>("reduce_gvec", 0);
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
-    auto gpu_ptr = args.value<int>("gpu_ptr", 0);
     auto repeat = args.value<int>("repeat", 3);
     auto t_file = args.value<std::string>("t_file", std::string(""));
     auto fp32 = args.exist("fp32");
 
     sirius::initialize(1);
-    for (int i = 0; i < repeat; i++) {
-        if (fp32) {
+    int my_rank = sddk::Communicator::world().rank();
+    {
+        auto ctx = simulation_context_factory(use_gpu, mpi_grid_dims, cutoff, reduce_gvec);
+        for (int i = 0; i < repeat; i++) {
+            if (fp32) {
 #if defined(USE_FP32)
-            test_hloc<float>(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
+                test_hloc<float>(*ctx, num_bands, use_gpu);
 #else
-            RTE_THROW("Not compiled with FP32 support");
+                RTE_THROW("Not compiled with FP32 support");
 #endif
-        } else {
-            test_hloc<double>(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
+            } else {
+            test_hloc<double>(*ctx, num_bands, use_gpu);
+            }
         }
     }
-    int my_rank = sddk::Communicator::world().rank();
-
     sirius::finalize(1);
 
     if (my_rank == 0)  {
