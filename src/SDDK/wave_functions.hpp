@@ -1091,6 +1091,12 @@ struct transform_layout
     static const unsigned int from = 0b0010;
 };
 
+static inline bool should_print_performance()
+{
+    auto val = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+    return val && *val;
+}
+
 template <typename T>
 class Wave_functions_fft_new : public Wave_functions_base<T>
 {
@@ -1141,9 +1147,17 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
         auto sp = wf_->actual_spin_index(ispn__);
         auto layout_in  = wf_->grid_layout_pw(sp, b__);
         auto layout_out = this->grid_layout(b__.size());
+        auto pp = should_print_performance();
+
         PROFILE("costa::transform");
+        auto t0 = utils::time_now();
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
                 sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+        if (pp && wf_->gkvec().comm().rank() == 0) {
+            auto t = utils::time_interval(t0);
+            std::cout << "[costa::transform] throughput: "
+                      << 16.0 * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
+        }
     }
 
     void transform_from_fft_layout(spin_index ispn__, band_range b__)
@@ -1151,9 +1165,17 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
         auto sp = wf_->actual_spin_index(ispn__);
         auto layout_in  = this->grid_layout(b__.size());
         auto layout_out = wf_->grid_layout_pw(sp, b__);
+        auto pp = should_print_performance();
+
         PROFILE("costa::transform");
+        auto t0 = utils::time_now();
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
                 sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+        if (pp && wf_->gkvec().comm().rank() == 0) {
+            auto t = utils::time_interval(t0);
+            std::cout << "[costa::transform] throughput: "
+                      << 16.0 * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
+        }
     }
 
   public:
@@ -1176,9 +1198,10 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
         this->num_sc_ = wf::num_spins(1);
         this->num_wf_ = wf::num_bands(spl_num_wf_.local_size());
 
+        auto sp = wf_->actual_spin_index(s__);
+
         /* special case when wave-functions are not redistributed */
         if (comm_col.size() == 1) {
-            auto sp = wf_->actual_spin_index(s__);
             auto i = wf::band_index(br__.begin());
             auto ptr = wf__.at(sddk::memory_t::host, 0, sp, i);
             auto ptr_gpu = wf__.data_[sp.get()].on_device() ? wf__.at(sddk::memory_t::device, 0, sp, i) : nullptr;
@@ -1194,6 +1217,12 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
             this->num_pw_ = gkvec_fft__->gvec_count_fft();
 
             if (fft_layout_flag_ & transform_layout::to) {
+                if (wf__.data_[sp.get()].on_device()) {
+                    /* copy block of wave-functions to host memory before calling COSTA */
+                    auto ptr = wf__.at(sddk::memory_t::host, 0, sp, wf::band_index(br__.begin()));
+                    auto ptr_gpu = wf__.at(sddk::memory_t::device, 0, sp, wf::band_index(br__.begin()));
+                    acc::copyout(ptr, wf__.ld(), ptr_gpu, wf__.ld(), wf__.num_pw_, br__.size());
+                }
                 transform_to_fft_layout(s__, br__);
             }
         }
@@ -1228,6 +1257,13 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
             if ((comm_col.size() != 1) && (fft_layout_flag_ & transform_layout::from)) {
                 transform_from_fft_layout(s_, br_);
+                auto sp = wf_->actual_spin_index(s_);
+                if (wf_->data_[sp.get()].on_device()) {
+                    /* copy block of wave-functions to device memory after calling COSTA */
+                    auto ptr = wf_->at(sddk::memory_t::host, 0, sp, wf::band_index(br_.begin()));
+                    auto ptr_gpu = wf_->at(sddk::memory_t::device, 0, sp, wf::band_index(br_.begin()));
+                    acc::copyout(ptr, wf_->ld(), ptr_gpu, wf_->ld(), wf_->num_pw_, br_.size());
+                }
             }
         }
     }
