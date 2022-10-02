@@ -1262,7 +1262,7 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
                     /* copy block of wave-functions to device memory after calling COSTA */
                     auto ptr = wf_->at(sddk::memory_t::host, 0, sp, wf::band_index(br_.begin()));
                     auto ptr_gpu = wf_->at(sddk::memory_t::device, 0, sp, wf::band_index(br_.begin()));
-                    acc::copyout(ptr, wf_->ld(), ptr_gpu, wf_->ld(), wf_->num_pw_, br_.size());
+                    acc::copyin(ptr_gpu, wf_->ld(), ptr, wf_->ld(), wf_->num_pw_, br_.size());
                 }
             }
         }

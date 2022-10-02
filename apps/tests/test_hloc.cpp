@@ -40,14 +40,14 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     auto& fft = ctx__.spfft_coarse<T>();
 
     if (sddk::Communicator::world().rank() == 0) {
-        printf("total number of G-vectors: %i\n", gvec->num_gvec());
-        printf("local number of G-vectors: %i\n", gvec->count());
-        printf("FFT grid size: %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
-        printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups:  %i\n", gvec_fft->comm_ortho_fft().size());
-        printf("FTT comm size:         %i\n", gvec_fft->comm_fft().size());
-        printf("number of z-columns: %i\n", gvec->num_zcol());
-        printf("fft_mode           : %s\n", ctx__.cfg().control().fft_mode().c_str());
+        printf("total number of G-vectors : %i\n", gvec->num_gvec());
+        printf("local number of G-vectors : %i\n", gvec->count());
+        printf("FFT grid size             : %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
+        printf("number of FFT threads     : %i\n", omp_get_max_threads());
+        printf("number of FFT groups      : %i\n", gvec_fft->comm_ortho_fft().size());
+        printf("FTT comm size             : %i\n", gvec_fft->comm_fft().size());
+        printf("number of z-columns       : %i\n", gvec->num_zcol());
+        printf("fft_mode                  : %s\n", ctx__.cfg().control().fft_mode().c_str());
     }
 
     sirius::Local_operator<T> hloc(ctx__, fft, gvec_fft);
