@@ -3862,7 +3862,7 @@ type(sirius_context_handler), target, intent(in) :: handler
 integer, optional, target, intent(in) :: gvec(:,:)
 real(8), optional, target, intent(in) :: gvec_cart(:,:)
 real(8), optional, target, intent(in) :: gvec_len(:)
-integer, optional, target, intent(in) :: index_by_gvec
+integer, optional, target, intent(in) :: index_by_gvec(:,:,:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3958,7 +3958,7 @@ subroutine sirius_get_fft_index(handler,fft_index,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, target, intent(out) :: fft_index
+integer, target, intent(out) :: fft_index(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr

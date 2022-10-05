@@ -3794,7 +3794,7 @@ sirius_get_gvec_arrays:
       doc: Length of G-vectors.
     index_by_gvec:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: G-vector index by lattice coordinates.
     error_code:
       type: int
@@ -3893,7 +3893,7 @@ sirius_get_fft_index:
       doc: Simulation context handler
     fft_index:
       type: int
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Index inside FFT buffer
     error_code:
       type: int
