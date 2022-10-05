@@ -1280,11 +1280,11 @@ sirius_set_periodic_function_ptr:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: Pointer to the muffin-tin part of the function.
     f_rg:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:)
       doc: Pointer to the regualr-grid part of the function.
     error_code:
       type: int
@@ -1339,7 +1339,7 @@ sirius_set_periodic_function:
       doc: Label of the function.
     f_rg:
       type: double
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Real space values on the regular grid.
     f_rg_global:
       type: bool
@@ -1394,7 +1394,7 @@ sirius_get_periodic_function:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: out, optional
+      attr: out, optional, dimension(:,:,:)
       doc: Muffin-tin part of the function.
     lmmax:
       type: int
@@ -1410,7 +1410,7 @@ sirius_get_periodic_function:
       doc: Number of atoms
     f_rg:
       type: double
-      attr: out, optional, dimension(*)
+      attr: out, optional, dimension(:)
       doc: Real space values on the regular grid.
     num_rg_points:
       type: int
@@ -2924,7 +2924,7 @@ sirius_get_band_occupancies:
       doc: Spin component.
     band_occupancies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2966,7 +2966,7 @@ sirius_get_band_energies:
       doc: Spin component.
     band_energies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band energies.
     error_code:
       type: int
@@ -4968,7 +4968,7 @@ sirius_get_fv_eigen_values:
       doc: Global index of the k-point
     fv_eval:
       type: double
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Output first-variational eigenvector array
     num_fv_states:
       type: int
