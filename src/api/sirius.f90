@@ -3324,7 +3324,7 @@ real(8), optional, target, intent(in) :: vkl(3)
 integer, optional, target, intent(in) :: spin
 integer, optional, target, intent(in) :: num_gvec_loc
 integer, optional, target, intent(in) :: gvec_loc(:,:)
-complex(8), optional, target, intent(out) :: evec
+complex(8), optional, target, intent(out) :: evec(:,:)
 integer, optional, target, intent(in) :: ld
 integer, optional, target, intent(in) :: num_spin_comp
 integer, optional, target, intent(out) :: error_code
