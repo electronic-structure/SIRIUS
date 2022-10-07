@@ -3235,7 +3235,7 @@ sirius_get_wave_functions:
       doc: List of G-vectors.
     evec:
       type: complex
-      attr: out, optional
+      attr: out, optional, dimension(:,:)
       doc: Wave-functions.
     ld:
       type: int
