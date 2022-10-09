@@ -199,13 +199,16 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         mt_part = true;
     }
 
+    std::vector<wf::device_memory_guard> mg;
+
     /* auxiliary wave-functions */
     auto phi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
     std::unique_ptr<wf_t> hphi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
-        hphi = wave_function_factory(ctx, kp, wf::num_bands(num_phi),  num_md, mt_part);
+        hphi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+        mg.emplace_back(hphi->memory_guard(mem));
     }
 
     /* S operator, applied to auxiliary wave-functions */
@@ -665,16 +668,6 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     int keep = num_bands__.get();
 
                     /* update basis functions, hphi and sphi */
-                    //for (int ispn = 0; ispn < num_sc; ispn++) {
-                    //    wf::copy(mem, psi__, wf::spin_index(nc_mag ? ispn : ispin_step)
-                    //    phi->copy_from(psi__, keep - num_locked, nc_mag ? ispn : ispin_step, num_locked,
-                    //                  nc_mag ? ispn : 0, num_locked);
-                    //    if (what == davidson_evp_t::hamiltonian) {
-                    //        hphi->copy_from(*hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
-                    //    }
-                    //    sphi->copy_from(*spsi, keep - num_locked, ispn, 0, ispn, num_locked);
-                    //}
-
                     for (auto s = sr.begin(); s != sr.end(); s++) {
                         auto sp = phi->actual_spin_index(s);
                         wf::copy(mem, psi__, s, wf::band_range(num_locked, keep), *phi, sp, wf::band_range(num_locked, keep));

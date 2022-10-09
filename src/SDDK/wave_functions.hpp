@@ -632,37 +632,69 @@ inline copy_to operator|(copy_to a__, copy_to b__)
     return static_cast<copy_to>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
-template <typename T>
 class device_memory_guard
 {
   private:
-    T& obj_;
+    void* obj_{nullptr};
+    sddk::memory_t mem_{sddk::memory_t::host};
+    copy_to copy_to_{wf::copy_to::none};
+    std::function<void(void*, sddk::memory_t, wf::copy_to)> handler_;
+
     device_memory_guard(device_memory_guard const&) = delete;
     device_memory_guard& operator=(device_memory_guard const&) = delete;
-    sddk::memory_t mem_;
-    copy_to copy_to_;
   public:
+    device_memory_guard()
+    {
+    }
+
+    template <typename T>
     device_memory_guard(T& obj__, sddk::memory_t mem__, copy_to copy_to__)
-        : obj_{obj__}
+        : obj_{&obj__}
         , mem_{mem__}
         , copy_to_{copy_to__}
     {
         if (is_device_memory(mem_)) {
-            obj_.allocate(mem_);
+            obj__.allocate(mem_);
             if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::device)) {
-                obj_.copy_to(mem_);
+                obj__.copy_to(mem_);
             }
         }
+        handler_ = [](void* p__,  sddk::memory_t mem__, wf::copy_to copy_to__)
+        {
+            if (p__) {
+                auto obj = static_cast<T*>(p__);
+                if (is_device_memory(mem__)) {
+                    if (static_cast<unsigned int>(copy_to__) & static_cast<unsigned int>(copy_to::host)) {
+                        obj->copy_to(sddk::memory_t::host);
+                    }
+                    obj->deallocate(mem__);
+                }
+            }
+        };
     }
-    device_memory_guard(device_memory_guard&& src__) = default;
+    device_memory_guard(device_memory_guard&& src__)
+    {
+        this->obj_ = src__.obj_;
+        src__.obj_ = nullptr;
+        this->handler_ = src__.handler_;
+        this->mem_ = src__.mem_;
+        this->copy_to_ = src__.copy_to_;
+    }
+    device_memory_guard& operator=(device_memory_guard&& src__)
+    {
+        if (this != &src__) {
+            this->obj_ = src__.obj_;
+            src__.obj_ = nullptr;
+            this->handler_ = src__.handler_;
+            this->mem_ = src__.mem_;
+            this->copy_to_ = src__.copy_to_;
+        }
+        return *this;
+    }
+
     ~device_memory_guard()
     {
-        if (is_device_memory(mem_)) {
-            if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::host)) {
-                obj_.copy_to(sddk::memory_t::host);
-            }
-            obj_.deallocate(mem_);
-        }
+        handler_(obj_, mem_, copy_to_);
     }
 };
 
@@ -701,7 +733,7 @@ class Wave_functions_base
         }
     }
 
-    friend class device_memory_guard<Wave_functions_base<T>>;
+    friend class device_memory_guard;
     friend class Wave_functions_fft_new<T>;
 
     std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
@@ -733,7 +765,7 @@ class Wave_functions_base
 
     auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none)
     {
-        return device_memory_guard<Wave_functions_base<T>>(*this, mem__, copy_to__);
+        return device_memory_guard(*this, mem__, copy_to__);
     }
 
     inline auto num_sc() const
@@ -797,82 +829,6 @@ class Wave_functions_base
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 };
-
-//template <typename T>
-//class Wave_functions_fft : public Wave_functions_base<T>
-//{
-//  private:
-//    std::shared_ptr<sddk::Gvec_partition> gkvec_fft_;
-//    sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
-//
-//  public:
-//    Wave_functions_fft()
-//    {
-//    }
-//
-//    Wave_functions_fft(std::shared_ptr<sddk::Gvec_partition> gkvec_fft__, num_bands num_wf_max__, sddk::memory_t default_mem__)
-//        : Wave_functions_base<T>(gkvec_fft__->gvec_count_fft(), 0,
-//                num_mag_dims(0), num_bands(sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), gkvec_fft__->comm_ortho_fft().size(),
-//                    gkvec_fft__->comm_ortho_fft().rank()).local_size()), default_mem__)
-//        , gkvec_fft_(gkvec_fft__)
-//    {
-//        auto& comm_col = gkvec_fft_->comm_ortho_fft();
-//        spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(num_wf_max__.get(), comm_col.size(), comm_col.rank());
-//    }
-//
-//    auto grid_layout(int n__)
-//    {
-//        PROFILE("sirius::wf::Wave_functions_fft::grid_layout");
-//
-//        auto& comm_row = gkvec_fft_->comm_fft();
-//        auto& comm_col = gkvec_fft_->comm_ortho_fft();
-//
-//        std::vector<int> rowsplit(comm_row.size() + 1);
-//        rowsplit[0] = 0;
-//        for (int i = 0; i < comm_row.size(); i++) {
-//            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
-//        }
-//
-//        std::vector<int> colsplit(comm_col.size() + 1);
-//        colsplit[0] = 0;
-//        for (int i = 0; i < comm_col.size(); i++) {
-//            colsplit[i + 1] = colsplit[i] + spl_num_wf_.local_size(i);
-//        }
-//
-//        std::vector<int> owners(gkvec_fft_->gvec().comm().size());
-//        for (int i = 0; i < gkvec_fft_->gvec().comm().size(); i++) {
-//            owners[i] = i;
-//        }
-//        costa::block_t localblock;
-//        localblock.data = this->data_[0].at(sddk::memory_t::host);
-//        localblock.ld = this->ld();
-//        localblock.row = gkvec_fft_->comm_fft().rank();
-//        localblock.col = comm_col.rank();
-//
-//        return costa::custom_layout<std::complex<T>>(comm_row.size(), comm_col.size(), rowsplit.data(),
-//                colsplit.data(), owners.data(), 1, &localblock, 'C');
-//    }
-//
-//    int num_wf_local() const
-//    {
-//        return spl_num_wf_.local_size();
-//    }
-//
-//    auto spl_num_wf() const
-//    {
-//        return spl_num_wf_;
-//    }
-//
-//    inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
-//    {
-//        return this->data_[0](ig__, b__.get());
-//    }
-//
-//    inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
-//    {
-//        return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
-//    }
-//};
 
 template <typename T>
 class Wave_functions_mt : public Wave_functions_base<T>
