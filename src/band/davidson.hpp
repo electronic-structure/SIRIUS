@@ -187,7 +187,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     /* alias for memory pool */
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
-    sddk::memory_t mem = sddk::memory_t::host;
+    sddk::memory_t mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
     /* allocate wave-functions */
 
@@ -201,8 +201,11 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     std::vector<wf::device_memory_guard> mg;
 
+    mg.emplace_back(psi__.memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
+
     /* auxiliary wave-functions */
     auto phi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+    mg.emplace_back(phi->memory_guard(mem));
 
     /* Hamiltonian, applied to auxiliary wave-functions */
     std::unique_ptr<wf_t> hphi{nullptr};
@@ -213,20 +216,24 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     /* S operator, applied to auxiliary wave-functions */
     auto sphi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+    mg.emplace_back(sphi->memory_guard(mem));
 
     /* Hamiltonain, applied to new Psi wave-functions */
     std::unique_ptr<wf_t> hpsi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
         hpsi = wave_function_factory(ctx, kp, num_bands__, num_md, mt_part);
+        mg.emplace_back(hpsi->memory_guard(mem));
     }
 
     /* S operator, applied to new Psi wave-functions */
     auto spsi = wave_function_factory(ctx, kp, num_bands__, num_md, mt_part);
+    mg.emplace_back(spsi->memory_guard(mem));
 
     /* residuals */
     /* res is also used as a temporary array in orthogonalize() and the first time num_extra_phi + num_bands
      * states will be orthogonalized */
     auto res = wave_function_factory(ctx, kp, wf::num_bands(num_bands__.get() + num_extra_phi), num_md, mt_part);
+    mg.emplace_back(res->memory_guard(mem));
 
     std::unique_ptr<wf_t> hphi_extra{nullptr};
     std::unique_ptr<wf_t> sphi_extra{nullptr};
@@ -234,6 +241,9 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     if (phi_extra__) {
         hphi_extra = wave_function_factory(ctx, kp, wf::num_bands(num_extra_phi), num_md, mt_part);
         sphi_extra = wave_function_factory(ctx, kp, wf::num_bands(num_extra_phi), num_md, mt_part);
+        mg.emplace_back(phi_extra__->memory_guard(mem, wf::copy_to::device));
+        mg.emplace_back(hphi_extra->memory_guard(mem));
+        mg.emplace_back(sphi_extra->memory_guard(mem));
     }
 
     int const bs = ctx.cyclic_block_size();
@@ -244,15 +254,13 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     int const num_ortho_steps = extra_ortho__ ? 2 : 1;
 
-    //if (is_device_memory(ctx.preferred_memory_t())) {
-    //    auto& mpd = ctx.mem_pool(ctx.preferred_memory_t());
-    //    psi__.prepare(sddk::spin_range(psi__.num_sc() == 2 ? 2 : 0), true, &mpd);
-
-    //    if (ctx.blacs_grid().comm().size() == 1) {
-    //        evec.allocate(mpd);
-    //        H.allocate(mpd);
-    //    }
-    //}
+    if (is_device_memory(mem)) {
+        auto& mpd = ctx.mem_pool(mem);
+        if (ctx.blacs_grid().comm().size() == 1) {
+            evec.allocate(mpd);
+            H.allocate(mpd);
+        }
+    }
 
     ctx.print_memory_usage(__FILE__, __LINE__);
 
@@ -273,8 +281,8 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             h_diag = &h_o_diag.second;
             o_diag = &h_o_diag.first;
             *o_diag = [](){ return 1.0;};
-            if (ctx.processing_unit() == sddk::device_t::GPU) {
-                o_diag->copy_to(sddk::memory_t::device);
+            if (is_device_memory(mem)) {
+                o_diag->copy_to(mem);
             }
             break;
         }
@@ -335,7 +343,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            wf::copy(sddk::memory_t::host, psi__, wf::spin_index(nc_mag ? ispn : ispin_step),
+            wf::copy(mem, psi__, wf::spin_index(nc_mag ? ispn : ispin_step),
                     wf::band_range(0, num_bands__.get()), *phi, wf::spin_index(ispn),
                     wf::band_range(0, num_bands__.get()));
         }
@@ -345,7 +353,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             if (num_mag_dims__.get() != 0) {
                 RTE_THROW("not supported");
             }
-            wf::copy(sddk::memory_t::host, *phi_extra__, wf::spin_index(0), wf::band_range(0, num_extra_phi),
+            wf::copy(mem, *phi_extra__, wf::spin_index(0), wf::band_range(0, num_extra_phi),
                     *phi, wf::spin_index(0), wf::band_range(num_bands__.get(), num_bands__.get() + num_extra_phi));
         }
 
@@ -531,8 +539,8 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         /* tolerance for the norm of L2-norms of the residuals, used for
          * relative convergence criterion. We can only compute this after
          * we have the first residual norms available */
-        T relative_frobenius_tolerance{0};
-        T current_frobenius_norm{0};
+        F relative_frobenius_tolerance{0};
+        F current_frobenius_norm{0};
 
         /* second phase: start iterative diagonalization */
         for (int iter_step = 0; iter_step < num_steps__; iter_step++) {
@@ -573,7 +581,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
                 /* set the relative tolerance convergence criterion */
                 if (iter_step == 0) {
-                    relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance();
+                    relative_frobenius_tolerance = std::abs(current_frobenius_norm) * itso.relative_tolerance();
                 }
 
                 if (verbosity__ >= 1) {
@@ -593,7 +601,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
             /* verify convergence criteria */
             int num_converged              = num_ritz - num_unconverged;
-            bool converged_by_relative_tol = (iter_step > 0) && (current_frobenius_norm < relative_frobenius_tolerance);
+            bool converged_by_relative_tol = (iter_step > 0) && (std::abs(current_frobenius_norm) < std::abs(relative_frobenius_tolerance));
             bool converged_by_absolute_tol = (num_locked + num_converged + itso.min_num_res()) >= num_bands__.get();
 
             bool converged = converged_by_relative_tol || converged_by_absolute_tol;
@@ -809,10 +817,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
 
-//    if (is_device_memory(ctx.preferred_memory_t())) {
-//        psi__.dismiss(sddk::spin_range(psi__.num_sc() == 2 ? 2 : 0), true);
-//    }
-
+    mg.clear();
     ctx.print_memory_usage(__FILE__, __LINE__);
     return result;
 }

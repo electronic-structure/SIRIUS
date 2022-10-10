@@ -62,9 +62,9 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     init_wf(&kp, kp.spinor_wave_functions_new(), ctx__.num_bands(), 0);
 
 
-    ///*
-    // * debug kinetic energy Hamiltonian (single MPI rank only)
-    // */
+    /*
+     * debug kinetic energy Hamiltonian (single MPI rank only)
+     */
 
     //const int bs = ctx__.cyclic_block_size();
     const int num_bands = ctx__.num_bands();
@@ -88,33 +88,31 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     //
     bool locking{true};
 
-    RTE_THROW("switch to  new wf");
+    auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk, wf::num_bands(num_bands),
+            wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions_new(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
+            60, locking, subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 
-//    auto result = davidson<std::complex<T>, std::complex<F>, davidson_evp_t::hamiltonian>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-//            [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
-//            subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
-//
-//    if (Communicator::world().rank() == 0 && only_kin__) {
-//        std::vector<double> ekin(kp.num_gkvec());
-//        for (int i = 0; i < kp.num_gkvec(); i++) {
-//            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
-//        }
-//        std::sort(ekin.begin(), ekin.end());
-//
-//        double max_diff{0};
-//        for (int i = 0; i < ctx__.num_bands(); i++) {
-//            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
-//            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
-//        }
-//        printf("maximum eigen-value difference: %20.16e\n", max_diff);
-//    }
-//
-//    if (Communicator::world().rank() == 0 && !only_kin__) {
-//        std::cout << "Converged eigen-values" << std::endl;
-//        for (int i = 0; i < ctx__.num_bands(); i++) {
-//            printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
-//        }
-//    }
+    if (sddk::Communicator::world().rank() == 0 && only_kin__) {
+        std::vector<double> ekin(kp.num_gkvec());
+        for (int i = 0; i < kp.num_gkvec(); i++) {
+            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(i).length2();
+        }
+        std::sort(ekin.begin(), ekin.end());
+
+        double max_diff{0};
+        for (int i = 0; i < ctx__.num_bands(); i++) {
+            max_diff = std::max(max_diff, std::abs(ekin[i] - result.eval(i, 0)));
+            printf("%20.16f %20.16f %20.16e\n", ekin[i], result.eval(i, 0), std::abs(ekin[i] - result.eval(i, 0)));
+        }
+        printf("maximum eigen-value difference: %20.16e\n", max_diff);
+    }
+
+    if (sddk::Communicator::world().rank() == 0 && !only_kin__) {
+        std::cout << "Converged eigen-values" << std::endl;
+        for (int i = 0; i < ctx__.num_bands(); i++) {
+            printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
+        }
+    }
 }
 
 void test_davidson(cmd_args const& args__)
@@ -266,16 +264,16 @@ void test_davidson(cmd_args const& args__)
         }
         if (precision_wf == "fp32" && precision_hs == "fp32") {
 #if defined(USE_FP32)
-            diagonalize<float, float>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<float, std::complex<float>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }
         if (precision_wf == "fp32" && precision_hs == "fp64") {
 #if defined(USE_FP32)
-            diagonalize<float, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<float, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }
         if (precision_wf == "fp64" && precision_hs == "fp64") {
-            diagonalize<double, double>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<double, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
         }
     }
 }
