@@ -220,16 +220,24 @@ class dmatrix: public matrix<T>
 
     void copy_to(sddk::memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
     {
-        splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-        splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+        int m0, m1, n0, n1;
+        if (blacs_grid_ != nullptr) {
+            splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
 
-        splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-        splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
 
-        int m0 = spl_r0.local_size();
-        int m1 = spl_r1.local_size();
-        int n0 = spl_c0.local_size();
-        int n1 = spl_c1.local_size();
+            m0 = spl_r0.local_size();
+            m1 = spl_r1.local_size();
+            n0 = spl_c0.local_size();
+            n1 = spl_c1.local_size();
+        } else {
+            m0 = ir0__;
+            m1 = ir0__ + nr__;
+            n0 = ic0__;
+            n1 = ic0__ + nc__;
+        }
 
         if (is_host_memory(mem__)) {
             acc::copyout(this->at(sddk::memory_t::host, m0, n0), this->ld(),
