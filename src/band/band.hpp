@@ -230,8 +230,6 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
-    auto mem = sddk::memory_t::host;
-
     ctx.print_memory_usage(__FILE__, __LINE__);
 
     /* initial basis functions */
@@ -239,7 +237,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
             wf::num_bands(num_phi_tot), sddk::memory_t::host);
 
     for (int ispn = 0; ispn < num_sc; ispn++) {
-        phi.zero(mem, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
+        phi.zero(sddk::memory_t::host, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
     }
 
     /* generate the initial atomic wavefunctions */
@@ -280,7 +278,6 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
             #pragma omp for schedule(static) nowait
             for (int igk_loc = Hk__.kp().gkvec().skip_g0(); igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
                 /* global index of G+k vector */
-                //int igk = Hk__.kp().idxgk(igk_loc);
                 int igk = Hk__.kp().gkvec().offset() + igk_loc;
                 phi.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(i)) += tmp[igk & 0xFFF];
             }
@@ -289,7 +286,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     if (ctx.num_mag_dims() == 3) {
         /* make pure spinor up- and dn- wave functions */
-        wf::copy(mem, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
+        wf::copy(sddk::memory_t::host, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
                 wf::band_range(num_phi, num_phi_tot));
     }
     PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
@@ -315,27 +312,21 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    //if (is_device_memory(ctx_.preferred_memory_t())) {
-    //    auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
+    auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::host;
 
-    //    for (int ispn = 0; ispn < num_sc; ispn++) {
-    //        phi.pw_coeffs(ispn).allocate(mpd);
-    //        phi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, num_phi_tot);
-    //    }
+    std::vector<wf::device_memory_guard> mg;
+    mg.emplace_back(Hk__.kp().spinor_wave_functions_new().memory_guard(mem, wf::copy_to::host));
+    mg.emplace_back(phi.memory_guard(mem, wf::copy_to::device));
+    mg.emplace_back(hphi.memory_guard(mem));
+    mg.emplace_back(ophi.memory_guard(mem));
+    mg.emplace_back(wf_tmp.memory_guard(mem));
 
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
-    //    }
-
-    //    for (int ispn = 0; ispn < num_sc; ispn++) {
-    //        hphi.pw_coeffs(ispn).allocate(mpd);
-    //        ophi.pw_coeffs(ispn).allocate(mpd);
-    //        wf_tmp.pw_coeffs(ispn).allocate(mpd);
-    //    }
-    //    evec.allocate(mpd);
-    //    hmlt.allocate(mpd);
-    //    ovlp.allocate(mpd);
-    //}
+    if (is_device_memory(mem)) {
+        auto& mpd = ctx.mem_pool(mem);
+        evec.allocate(mpd);
+        hmlt.allocate(mpd);
+        ovlp.allocate(mpd);
+    }
 
     ctx.print_memory_usage(__FILE__, __LINE__);
 
@@ -451,13 +442,6 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
             }
         }
     }
-
-    //if (is_device_memory(ctx_.preferred_memory_t())) {
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::host, 0, num_bands);
-    //        Hk__.kp().spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-    //    }
-    //}
 
     ///* check residuals */
     //if (ctx_.cfg().control().verification() >= 2) {
