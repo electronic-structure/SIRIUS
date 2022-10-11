@@ -399,7 +399,7 @@ class Communicator
     }
 
     /// Return raw MPI communicator handler.
-    MPI_Comm mpi_comm() const // TODO: rename to mpi_comm_native or native()
+    inline MPI_Comm mpi_comm() const // TODO: rename to mpi_comm_native or native()
     {
         return mpi_comm_raw_;
     }
