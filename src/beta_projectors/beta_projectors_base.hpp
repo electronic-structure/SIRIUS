@@ -98,7 +98,7 @@ class Beta_projectors_base
     /// Set of beta PW coefficients for a chunk of atoms.
     sddk::matrix<std::complex<T>> pw_coeffs_a_;
 
-    sddk::mdarray<std::complex<T>, 1> pw_coeffs_a_g0_;
+    //sddk::mdarray<std::complex<T>, 1> pw_coeffs_a_g0_;
 
     std::vector<beta_chunk_t> beta_chunks_;
 
@@ -119,60 +119,20 @@ class Beta_projectors_base
      *  \tparam F  Type of the resulting inner product matrix (float, double, complex<float> or complex<double>).
      */
     template <typename F>
-    std::enable_if_t<std::is_same<T, real_type<F>>::value, sddk::matrix<F>>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, sddk::dmatrix<F>>
     inner(int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__, wf::band_range br__) const
     {
         int nbeta = chunk(chunk__).num_beta_;
 
-        sddk::matrix<F> result(nbeta, br__.size(), ctx_.mem_pool(ctx_.host_memory_t()));
-
-        auto spla_mat_dist = spla::MatrixDistribution::create_mirror(phi__.comm().mpi_comm());
-
-        RTE_ASSERT(static_cast<uint32_t>(phi__.ld()) == pw_coeffs_a_.ld());
-
-        auto ld = phi__.ld();
-
-        F alpha = 1.0;
-        /* inner product matrix is real */
-        if (std::is_same<F, real_type<F>>::value) {
-            alpha = 2.0;
-            ld   *= 2;
-        }
-        F beta = 0.0;
-
-        auto mem__ = sddk::memory_t::host;
-
-        // TODO: most of the code replicates wf::inner(); think how to reuse it
-        // or convert beta_projector to wave-functions 
-        T scale_half(0.5);
-        T scale_two(2.0);
-
-        /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
-        if (std::is_same<F, real_type<F>>::value) {
-            wf::scale_gamma_wf(mem__, phi__, wf::spin_range(ispn__.get()), br__, &scale_half);
+        sddk::dmatrix<F> result(nbeta, br__.size(), ctx_.mem_pool(ctx_.host_memory_t()), "<beta|phi>");
+        if (ctx_.processing_unit() == sddk::device_t::GPU) {
+            result.allocate(ctx_.mem_pool(sddk::memory_t::device));
         }
 
-        F* result_ptr = result.at(sddk::memory_t::host, 0, 0);
+        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
-        auto wf_i_ptr = pw_coeffs_a_.at(mem__);
-        auto wf_j_ptr = phi__.at(mem__, 0, ispn__, wf::band_index(br__.begin()));
-
-        spla::pgemm_ssb(nbeta, br__.size(), ld, SPLA_OP_CONJ_TRANSPOSE,
-                        alpha,
-                        reinterpret_cast<F const*>(wf_i_ptr), ld,
-                        reinterpret_cast<F const*>(wf_j_ptr), ld,
-                        beta,
-                        result_ptr, result.ld(), 0, 0, spla_mat_dist, ctx_.spla_context());
-
-        /* for gamma case, G = 0 vector is rescaled back */
-        if (std::is_same<F, real_type<F>>::value && phi__.comm().rank() == 0) {
-            wf::scale_gamma_wf(mem__, phi__, wf::spin_range(ispn__.get()), br__, &scale_two);
-        }
-
-        /* make sure result is updated on device as well */
-        if (result.on_device()) {
-            result.copy_to(sddk::memory_t::device);
-        }
+        wf::inner<T, F, Beta_projectors_base<T>>(ctx_.spla_context(), mem, wf::spin_range(ispn__.get()), *this,
+                  wf::band_range(0, nbeta), phi__, br__, result, 0, 0);
 
         return result;
     }
@@ -189,18 +149,32 @@ class Beta_projectors_base
 
     void dismiss();
 
-    inline int num_gkvec_loc() const
+    inline auto num_gkvec_loc() const
     {
-        //return static_cast<int>(igk_.size());
         return gkvec_.count();
     }
 
-    inline int num_comp() const
+    inline auto ld() const
+    {
+        return this->num_gkvec_loc();
+    }
+
+    inline auto const& gkvec() const
+    {
+        return gkvec_;
+    }
+
+    inline auto num_md() const
+    {
+        return wf::num_mag_dims(0);
+    }
+
+    inline auto num_comp() const
     {
         return N_;
     }
 
-    inline Unit_cell const& unit_cell() const
+    inline auto const& unit_cell() const
     {
         return ctx_.unit_cell();
     }
@@ -244,6 +218,21 @@ class Beta_projectors_base
     inline int max_num_beta() const
     {
         return max_num_beta_;
+    }
+
+    inline auto const& comm() const
+    {
+        return gkvec_.comm();
+    }
+
+    inline auto actual_spin_index(wf::spin_index s__) const
+    {
+        return wf::spin_index(0);
+    }
+
+    inline std::complex<T> const* at(sddk::memory_t mem__, int i__, wf::spin_index s__, wf::band_index b__) const
+    {
+        return pw_coeffs_a_.at(mem__, i__, b__.get());
     }
 };
 

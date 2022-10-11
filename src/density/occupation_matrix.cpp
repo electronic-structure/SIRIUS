@@ -71,11 +71,11 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         mem      = sddk::memory_t::device;
         mem_host = sddk::memory_t::host_pinned;
-        if (is_device_memory(ctx_.preferred_memory_t())) {
+        //if (is_device_memory(ctx_.preferred_memory_t())) {
             la = sddk::linalg_t::gpublas;
-        } else {
+        //} else {
             la = sddk::linalg_t::spla;
-        }
+        //}
     }
 
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */

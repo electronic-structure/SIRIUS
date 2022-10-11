@@ -35,7 +35,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
         printf("local number of G-vectors: %i\n", gvec.count());
     }
 
-    int nsp{1};
+    //int nsp{1};
     //Wave_functions<double> phi(gvp, 2 * num_bands__, mem_bra__, nsp);
 
     //for (int is = 0; is < nsp; is++) {

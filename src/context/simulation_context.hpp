@@ -245,15 +245,6 @@ class Simulation_context : public Simulation_parameters
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
-    /// Type of preferred memory for wave-functions and related arrays.
-    sddk::memory_t preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
-    sddk::memory_t aux_preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of BLAS linear algebra library.
-    sddk::linalg_t blas_linalg_t_{sddk::linalg_t::none};
-
     /// Callback function to compute band occupancies.
     std::function<void(void)> band_occ_callback_{nullptr};
 
@@ -757,27 +748,10 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Type of the host memory for arrays used in linear algebra operations.
+    /** For CPU execution this is normal host memory, for GPU execution this is pinned memory. */
     inline auto host_memory_t() const
     {
         return host_memory_t_;
-    }
-
-    /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
-    inline auto preferred_memory_t() const
-    {
-        return preferred_memory_t_;
-    }
-
-    /// Type of preferred memory for the storage of auxiliary wave-functions.
-    inline auto aux_preferred_memory_t() const
-    {
-        return aux_preferred_memory_t_;
-    }
-
-    /// Linear algebra driver for the BLAS operations.
-    auto blas_linalg_t() const
-    {
-        return blas_linalg_t_;
     }
 
     /// Split local set of G-vectors into chunks.

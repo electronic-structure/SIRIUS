@@ -151,28 +151,9 @@ K_point<T>::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                //singular_components_ = std::make_unique<sddk::Wave_functions<T>>(
-                //    gkvec_partition(), ncomp, ctx_.preferred_memory_t());
-
                 singular_components_new_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ncomp), sddk::memory_t::host);
 
-                //singular_components_->pw_coeffs(0).prime().zero();
-                ///* starting guess for wave-functions */
-                //for (int i = 0; i < ncomp; i++) {
-                //    for (int igloc = 0; igloc < gkvec().count(); igloc++) {
-                //        int ig = igloc + gkvec().offset();
-                //        if (ig == i) {
-                //            singular_components_->pw_coeffs(0).prime(igloc, i) = 1.0;
-                //        }
-                //        if (ig == i + 1) {
-                //            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.5;
-                //        }
-                //        if (ig == i + 2) {
-                //            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.125;
-                //        }
-                //    }
-                //}
                 singular_components_new_->zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ncomp));
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -200,11 +181,6 @@ K_point<T>::initialize()
             fv_states_new_ = std::make_unique<wf::Wave_functions<T>>(
                 gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
-            //spinor_wave_functions_ = std::make_shared<sddk::Wave_functions<T>>(
-            //    gkvec_partition(), unit_cell_.num_atoms(),
-            //    [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
-            //    ctx_.num_spins());
-
             spinor_wave_functions_new_ = std::make_unique<wf::Wave_functions<T>>(
                 gkvec_, num_mt_coeffs, wf::num_mag_dims(ctx_.num_mag_dims()), wf::num_bands(nst), sddk::memory_t::host);
         } else {
@@ -216,15 +192,13 @@ K_point<T>::initialize()
 
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
-            int nwfh = unit_cell_.num_hubbard_wf().first;// * ctx_.num_spinor_comp();
-            int nwf  = unit_cell_.num_ps_atomic_wf().first;// * ctx_.num_spinor_comp();
-            auto mt  = ctx_.preferred_memory_t();
-            int ns   = 1; //ctx_.num_spins();
+            int nwfh = unit_cell_.num_hubbard_wf().first;
+            int nwf  = unit_cell_.num_ps_atomic_wf().first;
 
-            hubbard_wave_functions_new_   = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), sddk::memory_t::host);
-            hubbard_wave_functions_S_new_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), sddk::memory_t::host);
-            atomic_wave_functions_new_    = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), sddk::memory_t::host);
-            atomic_wave_functions_S_new_  = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), sddk::memory_t::host);
+            hubbard_wave_functions_new_   = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), ctx_.host_memory_t());
+            hubbard_wave_functions_S_new_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), ctx_.host_memory_t());
+            atomic_wave_functions_new_    = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), ctx_.host_memory_t());
+            atomic_wave_functions_S_new_  = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), ctx_.host_memory_t());
         }
     }
 
@@ -870,15 +844,15 @@ K_point<T>::save(std::string const& name__, int id__) const
     }
     /* wait for rank 0 */
     comm().barrier();
-    int gkvec_count  = gkvec().count();
-    int gkvec_offset = gkvec().offset();
-    std::vector<std::complex<T>> wf_tmp(num_gkvec());
+    //int gkvec_count  = gkvec().count();
+    //int gkvec_offset = gkvec().offset();
+    //std::vector<std::complex<T>> wf_tmp(num_gkvec());
 
-    std::unique_ptr<sddk::HDF5_tree> fout;
+    //std::unique_ptr<sddk::HDF5_tree> fout;
     /* rank 0 opens a file */
-    if (comm().rank() == 0) {
-        fout = std::make_unique<sddk::HDF5_tree>(name__, sddk::hdf5_access_t::read_write);
-    }
+    //if (comm().rank() == 0) {
+    //    fout = std::make_unique<sddk::HDF5_tree>(name__, sddk::hdf5_access_t::read_write);
+    //}
 
     RTE_THROW("re-implement");
 

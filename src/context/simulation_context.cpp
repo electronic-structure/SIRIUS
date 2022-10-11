@@ -387,58 +387,6 @@ Simulation_context::initialize()
         }
     }
 
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            preferred_memory_t_ = sddk::memory_t::host;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high") {
-                preferred_memory_t_ = sddk::memory_t::device;
-            }
-            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-                preferred_memory_t_ = sddk::memory_t::host_pinned;
-            }
-            break;
-        }
-    }
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            aux_preferred_memory_t_ = sddk::memory_t::host;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high" || cfg().control().memory_usage() == "medium") {
-                aux_preferred_memory_t_ = sddk::memory_t::device;
-            }
-            if (cfg().control().memory_usage() == "low") {
-                aux_preferred_memory_t_ = sddk::memory_t::host_pinned;
-            }
-            break;
-        }
-    }
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            blas_linalg_t_ = sddk::linalg_t::blas;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high") {
-                blas_linalg_t_ = sddk::linalg_t::gpublas;
-            }
-            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-#if defined(SIRIUS_ROCM)
-                blas_linalg_t_ = sddk::linalg_t::gpublas;
-#else
-                blas_linalg_t_ = sddk::linalg_t::cublasxt;
-#endif
-            }
-            break;
-        }
-    }
-
     if (processing_unit() == sddk::device_t::GPU) {
         spla_ctx_.reset(new spla::Context{SPLA_PU_GPU});
         spla_ctx_->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB

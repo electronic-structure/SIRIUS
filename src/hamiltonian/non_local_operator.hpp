@@ -148,7 +148,7 @@ class Non_local_operator
         auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
 
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-        sddk::linalg(ctx_.blas_linalg_t())
+        sddk::linalg(la)
             .gemm('N', 'N', num_gkvec_loc * size_factor, br__.size(), nbeta, &sddk::linalg_const<F>::one(),
                 reinterpret_cast<F const*>(beta_gk.at(mem)), num_gkvec_loc * size_factor, 
                 work.at(mem), nbeta, &sddk::linalg_const<F>::one(),
@@ -213,7 +213,7 @@ class Non_local_operator
 
         int jspn = ispn_block__ & 1;
 
-        sddk::linalg(ctx_.blas_linalg_t())
+        sddk::linalg(la)
             .gemm('N', 'N', num_gkvec_loc, br__.size(), nbf, &sddk::linalg_const<std::complex<T>>::one(), beta_gk.at(mem, 0, offs),
                   num_gkvec_loc, work.at(mem), nbf, &sddk::linalg_const<std::complex<T>>::one(),
                   op_phi__.at(sddk::memory_t::host, 0, wf::spin_index(jspn), wf::band_index(br__.begin())),
@@ -230,6 +230,7 @@ class Non_local_operator
             }
         }
     }
+
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
     inline F value(int xi1__, int xi2__, int ia__)
     {
