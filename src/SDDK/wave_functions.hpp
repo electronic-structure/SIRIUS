@@ -37,7 +37,7 @@
 #include "matrix_storage.hpp"
 #include "type_definition.hpp"
 
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
 extern "C" {
 
 void
@@ -1344,6 +1344,7 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
             }
         }
     } else {
+#if defined(SIRIUS_GPU)
         int reduced{0};
         /* gamma-point case */
         if (std::is_same<F, real_type<F>>::value) {
@@ -1373,6 +1374,7 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
         for (int i = 0; i < num_wf__.get(); i++) {
             result[i] = result_gpu[i];
         }
+#endif
     }
     return result;
 }
@@ -1435,6 +1437,7 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
             }
         }
     } else {
+#if defined(SIRIUS_GPU)
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             auto spy = y__->actual_spin_index(s);
             auto spx = x__ ? x__->actual_spin_index(s) : spy;
@@ -1467,6 +1470,7 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
                 RTE_THROW("[wf::axpby] implement GPU kernel for float");
             }
         }
+#endif
     }
 }
 
