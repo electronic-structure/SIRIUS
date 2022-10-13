@@ -443,8 +443,8 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
                 br__, wf::transform_layout::to);
 
         hphi_fft[s.get()] = wf::Wave_functions_fft_new<T>(gkvec_fft__, hphi__, s, br__, wf::transform_layout::from);
-        hphi_fft[s.get()].zero(sddk::memory_t::host, wf::spin_index(0),
-                wf::band_range(0, hphi_fft[s.get()].num_wf_local()));
+        auto hphi_mem = hphi_fft[s.get()].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+        hphi_fft[s.get()].zero(hphi_mem, wf::spin_index(0), wf::band_range(0, hphi_fft[s.get()].num_wf_local()));
     }
 
     auto spl_num_wf = phi_fft[spins__.begin().get()].spl_num_wf();

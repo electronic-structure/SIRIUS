@@ -62,11 +62,11 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     wf::Wave_functions<T> hphi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
 
     {
-        auto mem_phi = (use_gpu__ && gvec_fft->comm_ortho_fft().size() == 1) ? sddk::memory_t::device : sddk::memory_t::host;
-        auto copy_policy_phi = (mem_phi == sddk::memory_t::device) ? wf::copy_to::device : wf::copy_to::none;
+        auto mem_phi = (use_gpu__) ? sddk::memory_t::device : sddk::memory_t::host;
+        auto copy_policy_phi = wf::copy_to::device;
 
-        auto mem_hphi = (use_gpu__ && gvec_fft->comm_ortho_fft().size() == 1) ? sddk::memory_t::device : sddk::memory_t::host;
-        auto copy_policy_hphi = (mem_hphi == sddk::memory_t::device) ? wf::copy_to::host : wf::copy_to::none;
+        auto mem_hphi = (use_gpu__) ? sddk::memory_t::device : sddk::memory_t::host;
+        auto copy_policy_hphi = wf::copy_to::host;
 
         auto mg1 = phi.memory_guard(mem_phi, copy_policy_phi);
         auto mg2 = hphi.memory_guard(mem_hphi, copy_policy_hphi);

@@ -1424,16 +1424,6 @@ Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 #ifdef USE_FP32
 template class Hamiltonian_k<float>;
 
-//template void
-//Hamiltonian_k<float>::apply_h_s<float>(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<float>& phi__,
-//                                       sddk::Wave_functions<float>* hphi__, sddk::Wave_functions<float>* sphi__);
-//
-//template void
-//Hamiltonian_k<float>::apply_h_s<std::complex<float>>(sddk::spin_range spins__, int N__, int n__,
-//                                                     sddk::Wave_functions<float>& phi__,
-//                                                     sddk::Wave_functions<float>* hphi__,
-//                                                     sddk::Wave_functions<float>* sphi__);
-//
 template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
 

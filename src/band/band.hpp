@@ -114,7 +114,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
         /*  [--- num_locked -- | ------ N - num_locked ---- | ---- n ----] */
         /*  [ ------------------- N ------------------------| ---- n ----] */
 
-        auto mem = sddk::memory_t::host;
+        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
         /* <{phi,phi_new}|Op|phi_new> */
         inner(ctx_.spla_context(), mem, ctx_.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(0), phi__,
                 wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__),
@@ -188,14 +188,11 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /// Initialize the subspace for the entire k-point set.
     template <typename T>
     void initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const;
-
-    /// Initialize the wave-functions subspace at a given k-point.
-    /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
-     *  are created from the random numbers. */
-    //template <typename T>
-    //void initialize_subspace(Hamiltonian_k<real_type<T>>& Hk__, int num_ao__) const;
 };
 
+/// Initialize the wave-functions subspace at a given k-point.
+/** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
+ *  are created from the random numbers. */
 template <typename T, typename F>
 inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 {
@@ -312,7 +309,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::host;
+    auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
     std::vector<wf::device_memory_guard> mg;
     mg.emplace_back(Hk__.kp().spinor_wave_functions_new().memory_guard(mem, wf::copy_to::host));

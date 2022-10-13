@@ -22,27 +22,27 @@
  *  \brief Contains definition and implementation of sddk::matrix_storage class.
  */
 
-#ifndef __MATRIX_STORAGE_HPP__
-#define __MATRIX_STORAGE_HPP__
-
-#include "gvec.hpp"
-#include "dmatrix.hpp"
-
-#ifdef SIRIUS_GPU
-extern "C" void add_checksum_gpu_double(std::complex<double> const* wf__,
-                                        int                         num_rows_loc__,
-                                        int                         nwf__,
-                                        std::complex<double>*       result__);
-
-extern "C" void add_checksum_gpu_float(std::complex<float> const* wf__,
-                                       int                        num_rows_loc__,
-                                       int                        nwf__,
-                                       std::complex<float>*       result__);
-#endif
-
-namespace sddk {
-
-
-} // namespace sddk
-
-#endif // __MATRIX_STORAGE_HPP__
+//#ifndef __MATRIX_STORAGE_HPP__
+//#define __MATRIX_STORAGE_HPP__
+//
+//#include "gvec.hpp"
+//#include "dmatrix.hpp"
+//
+////#ifdef SIRIUS_GPU
+////extern "C" void add_checksum_gpu_double(std::complex<double> const* wf__,
+////                                        int                         num_rows_loc__,
+////                                        int                         nwf__,
+////                                        std::complex<double>*       result__);
+////
+////extern "C" void add_checksum_gpu_float(std::complex<float> const* wf__,
+////                                       int                        num_rows_loc__,
+////                                       int                        nwf__,
+////                                       std::complex<float>*       result__);
+////#endif
+//
+//namespace sddk {
+//
+//
+//} // namespace sddk
+//
+//#endif // __MATRIX_STORAGE_HPP__

@@ -22,7 +22,7 @@
  *  \brief CUDA kernel for the hphi update.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 template <typename T>

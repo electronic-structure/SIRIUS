@@ -482,7 +482,7 @@ class Hamiltonian_k
                                     kp().gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
         }
 
-        auto mem = sddk::memory_t::host;
+        auto mem = H0().ctx().processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
         if (pcs) {
             auto cs = phi__.checksum(mem, br__);

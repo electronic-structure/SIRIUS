@@ -22,7 +22,7 @@
  *  \brief CUDA kernels to multiply wave-functions by effective potential.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 template <typename T>

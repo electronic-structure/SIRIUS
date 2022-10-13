@@ -54,11 +54,31 @@ scale_matrix_columns_gpu_double(int nrow__, int ncol__, std::complex<double>* mt
 void
 scale_matrix_columns_gpu_float(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__);
 
+void
+add_checksum_gpu_double(void const* wf__, int ld__, int num_rows_loc__, int nwf__, void* result__);
+
+void
+add_checksum_gpu_float(void const* wf__, int ld__, int num_rows_loc__, int nwf__, void* result__);
+
+
+void
+inner_diag_local_gpu_double_complex_double(void const* wf1__, int ld1__, void const* wf2__, int ld2__, int ngv_loc__,
+    int nwf__, void* result__);
+
+void
+inner_diag_local_gpu_double_double(void const* wf1__, int ld1__, void const* wf2__, int ld2__, int ngv_loc__, int nwf__,
+    int reduced__, void* result__);
+
+void
+axpby_gpu_double_complex_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
+    void const* beta__, void* y__, int ld2__, int ngv_loc__);
+
+void
+axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
+    void const* beta__, void* y__, int ld2__, int ngv_loc__);
+
 }
 #endif
-
-const int sddk_inner_default_block_size = 1024;
-const int sddk_trans_default_block_size = 2048;
 
 namespace sddk {
 
@@ -1015,13 +1035,33 @@ class Wave_functions : public Wave_functions_mt<T>
     inline auto checksum_pw(sddk::memory_t mem__, spin_index s__, band_range b__) const
     {
         std::complex<T> cs{0};
-        if (is_host_memory(mem__)) {
-            for (int ib = b__.begin(); ib < b__.end(); ib++) {
-                auto ptr = this->data_[s__.get()].at(mem__, 0, ib);
-                cs = std::accumulate(ptr, ptr + this->num_pw_, cs);
+        if (b__.size()) {
+            if (is_host_memory(mem__)) {
+                for (int ib = b__.begin(); ib < b__.end(); ib++) {
+                    auto ptr = this->data_[s__.get()].at(mem__, 0, ib);
+                    cs = std::accumulate(ptr, ptr + this->num_pw_, cs);
+                }
             }
+            if (is_device_memory(mem__)) {
+#if defined(SIRIUS_GPU)
+                sddk::mdarray<std::complex<T>, 1> cs1(b__.size(), sddk::memory_t::host, "checksum");
+                cs1.allocate(sddk::memory_t::device).zero(sddk::memory_t::device);
+                auto ptr = this->data_[s__.get()].at(mem__, 0, b__.begin());
+                if (std::is_same<T, double>::value) {
+                    add_checksum_gpu_double(ptr, this->ld(), this->num_pw_, b__.size(), cs1.at(sddk::memory_t::device));
+                } else if (std::is_same<T, float>::value) {
+                    add_checksum_gpu_float(ptr, this->ld(), this->num_pw_, b__.size(), cs1.at(sddk::memory_t::device));
+                } else {
+                    std::stringstream s;
+                    s << "Precision type not yet implemented";
+                    RTE_THROW(s);
+                }
+                cs1.copy_to(sddk::memory_t::host);
+                cs = cs1.checksum();
+#endif
+            }
+            this->comm_.allreduce(&cs, 1);
         }
-        this->comm_.allreduce(&cs, 1);
         return cs;
     }
 
@@ -1250,46 +1290,20 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
     }
 };
 
-//template <typename T>
-//void transform_to_fft_layout(Wave_functions<T> const& wf_in__, Wave_functions_fft<T>& wf_fft_out__,
-//        spin_index ispn__, band_range b__)
-//{
-//    auto sp = wf_in__.actual_spin_index(ispn__);
-//    auto layout_in  = wf_in__.grid_layout_pw(sp, b__);
-//    auto layout_out = wf_fft_out__.grid_layout(b__.size());
-//
-//    PROFILE("costa::transform");
-//    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-//            sddk::linalg_const<std::complex<T>>::zero(), wf_in__.gkvec().comm().mpi_comm());
-//}
-//
-//template <typename T>
-//void transform_from_fft_layout(Wave_functions_fft<T>& wf_fft_in__, Wave_functions<T>& wf_out__,
-//        spin_index ispn__, band_range b__)
-//{
-//    auto sp = wf_out__.actual_spin_index(ispn__);
-//    auto layout_in  = wf_fft_in__.grid_layout(b__.size());
-//    auto layout_out = wf_out__.grid_layout_pw(sp, b__);
-//
-//    PROFILE("costa::transform");
-//    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-//            sddk::linalg_const<std::complex<T>>::zero(), wf_out__.gkvec().comm().mpi_comm());
-//}
-
 /// For real-type F (double or float).
 template <typename T, typename F>
 static inline std::enable_if_t<std::is_scalar<F>::value, F>
-inner_diag_local_aux(std::complex<T> z__)
+inner_diag_local_aux(std::complex<T> z1__, std::complex<T> z2__)
 {
-    return std::real(z__);
+    return z1__.real() * z2__.real() + z1__.imag() * z2__.imag();
 }
 
 /// For complex-type F (complex<double> or complex<float>).
 template <typename T, typename F>
 static inline std::enable_if_t<!std::is_scalar<F>::value, F>
-inner_diag_local_aux(std::complex<T> z__)
+inner_diag_local_aux(std::complex<T> z1__, std::complex<T> z2__)
 {
-    return z__;
+    return std::conj(z1__) * z2__;
 }
 
 template <typename T, typename F>
@@ -1314,10 +1328,10 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
             auto s1 = lhs__.actual_spin_index(s);
             auto s2 = rhs__.actual_spin_index(s);
             for (int i = 0; i < num_wf__.get(); i++) {
-                auto ptr1 = lhs__.at(sddk::memory_t::host, 0, s1, wf::band_index(i));
-                auto ptr2 = rhs__.at(sddk::memory_t::host, 0, s2, wf::band_index(i));
+                auto ptr1 = lhs__.at(mem__, 0, s1, wf::band_index(i));
+                auto ptr2 = rhs__.at(mem__, 0, s2, wf::band_index(i));
                 for (int j = 0; j < lhs__.ld(); j++) {
-                    result[i] += inner_diag_local_aux<T, F>(std::conj(ptr1[j]) * ptr2[j]);
+                    result[i] += inner_diag_local_aux<T, F>(ptr1[j], ptr2[j]);
                 }
                 /* gamma-point case */
                 if (std::is_same<F, real_type<F>>::value) {
@@ -1330,7 +1344,35 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
             }
         }
     } else {
-        RTE_THROW("implement inner_diag_local on GPUs");
+        int reduced{0};
+        /* gamma-point case */
+        if (std::is_same<F, real_type<F>>::value) {
+            reduced = lhs__.comm().rank() + 1;
+        }
+        sddk::mdarray<F, 1> result_gpu(num_wf__.get());
+        result_gpu.allocate(mem__).zero(mem__);
+
+        for (auto s = spins__.begin(); s != spins__.end(); s++) {
+            auto s1 = lhs__.actual_spin_index(s);
+            auto s2 = rhs__.actual_spin_index(s);
+            auto ptr1 = lhs__.at(mem__, 0, s1, wf::band_index(0));
+            auto ptr2 = rhs__.at(mem__, 0, s2, wf::band_index(0));
+            if (std::is_same<T, double>::value) {
+
+                if (std::is_same<F, double>::value) {
+                    inner_diag_local_gpu_double_double(ptr1, lhs__.ld(), ptr2, rhs__.ld(), lhs__.ld(), num_wf__.get(),
+                        reduced, result_gpu.at(mem__));
+                }
+                if (std::is_same<F, std::complex<double>>::value) {
+                    inner_diag_local_gpu_double_complex_double(ptr1, lhs__.ld(), ptr2, rhs__.ld(), lhs__.ld(), num_wf__.get(),
+                        result_gpu.at(mem__));
+                }
+            }
+        }
+        result_gpu.copy_to(sddk::memory_t::host);
+        for (int i = 0; i < num_wf__.get(); i++) {
+            result[i] = result_gpu[i];
+        }
     }
     return result;
 }
@@ -1340,6 +1382,7 @@ auto
 inner_diag(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
         wf::spin_range spins__, wf::num_bands num_wf__)
 {
+    PROFILE("wf::inner_diag");
     auto result = inner_diag_local<T, F>(mem__, lhs__, rhs__, spins__, num_wf__);
     lhs__.comm().allreduce(result);
     return result;
@@ -1369,6 +1412,9 @@ template <typename T, typename F>
 void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const* alpha__,
         wf::Wave_functions<T> const* x__, F const* beta__, wf::Wave_functions<T>* y__)
 {
+    if (x__) {
+        RTE_ASSERT(x__->ld() == y__->ld());
+    }
     if (is_host_memory(mem__)) {
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             auto spy = y__->actual_spin_index(s);
@@ -1389,7 +1435,38 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
             }
         }
     } else {
-        RTE_THROW("implement wf::axpby() on GPUs");
+        for (auto s = spins__.begin(); s != spins__.end(); s++) {
+            auto spy = y__->actual_spin_index(s);
+            auto spx = x__ ? x__->actual_spin_index(s) : spy;
+            auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(br__.begin()));
+            auto ptr_x = x__ ? x__->at(mem__, 0, spx, wf::band_index(br__.begin())) : nullptr;
+
+            sddk::mdarray<F, 1> alpha;
+            if (x__) {
+                alpha = sddk::mdarray<F, 1>(const_cast<F*>(alpha__), br__.size());
+                alpha.allocate(mem__).copy_to(mem__);
+            }
+            sddk::mdarray<F, 1> beta(const_cast<F*>(beta__), br__.size());
+            beta.allocate(mem__).copy_to(mem__);
+
+            auto ldx = x__ ? x__->ld() : 0;
+            auto ptr_alpha = x__ ? alpha.at(mem__) : nullptr;
+
+            if (std::is_same<T, double>::value) {
+
+                if (std::is_same<F, double>::value) {
+                    axpby_gpu_double_double(br__.size(), ptr_alpha, ptr_x, ldx,
+                        beta.at(mem__), ptr_y, y__->ld(), y__->ld());
+                }
+                if (std::is_same<F, std::complex<double>>::value) {
+                    axpby_gpu_double_complex_double(br__.size(), ptr_alpha, ptr_x, ldx,
+                        beta.at(mem__), ptr_y, y__->ld(), y__->ld());
+                }
+            }
+            if (std::is_same<T, float>::value) {
+                RTE_THROW("[wf::axpby] implement GPU kernel for float");
+            }
+        }
     }
 }
 
@@ -1768,7 +1845,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      *     - o is not distributed
      *       - potrf is computed on CPU with lapack; later with cuSolver
      *       - trtri is computed on CPU with lapack; later with cuSolver
-     *       - trmm is computed on GPU with cublasxt
+     *       - trmm is computed on GPU with cublas
      *
      *     - o is distributed
      *       - potrf is computed on CPU with scalapack
@@ -1783,7 +1860,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
         la = sddk::linalg_t::scalapack;
     }
     if (mem__ == sddk::memory_t::device) {
-        la1 = sddk::linalg_t::cublasxt;
+        la1 = sddk::linalg_t::gpublas;
     }
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
