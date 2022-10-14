@@ -666,7 +666,6 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
     }
 
     // TODO: need to pass temporaty functions or allocate from the pool
-    //wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, wf::num_bands(b__.size()), sddk::memory_t::host);
     wf::Wave_functions_fft_new<T> phi_fft(gkvec_fft__, phi__, wf::spin_index(0), b__, wf::transform_layout::to);
 
     //if (ctx_.processing_unit() == device_t::GPU) {
@@ -680,8 +679,6 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
     //}
 
     //auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(sddk::memory_t::host);
-
-    //wf::transform_to_fft_layout(phi__, phi_fft, wf::spin_index(0), b__);
 
     auto spl_num_wf = phi_fft.spl_num_wf();
 

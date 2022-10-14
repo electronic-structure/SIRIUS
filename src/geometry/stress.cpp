@@ -54,28 +54,12 @@ Stress::calc_stress_nonloc_aux()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<real_type<T>>(ik);
-        //if (is_device_memory(ctx_.preferred_memory_t())) {
-        //    int nbnd = ctx_.num_bands();
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        /* allocate GPU memory */
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-        //    }
-        //}
-        Beta_projectors_strain_deriv<real_type<T>> bp_strain_deriv(ctx_, kp->gkvec());
+        auto kp = kset_.get<T>(ik);
+        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+        auto mg = kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
+        Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
 
-        //Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
         add_k_point_contribution_nonlocal<T, F>(ctx_, bp_strain_deriv, *kp, collect_result);
-
-        //nlf.add_k_point_contribution(*kp, collect_result);
-
-        //if (is_device_memory(ctx_.preferred_memory_t())) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        /* deallocate GPU memory */
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-        //    }
-        //}
     }
 
     #pragma omp parallel
@@ -101,10 +85,6 @@ Stress::calc_stress_nonloc_aux()
 
     symmetrize(stress_nonloc_);
 }
-
-//template void Stress::calc_stress_nonloc_aux<double>();
-//
-//template void Stress::calc_stress_nonloc_aux<double_complex>();
 
 matrix3d<double>
 Stress::calc_stress_total()

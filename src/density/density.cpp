@@ -712,12 +712,15 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
     if (ctx_.num_mag_dims() != 3) {
         /* loop over pure spinor components */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* where fft-transformed wave-functions are stored */
+            auto wf_mem = wf_fft__[ispn].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            /* local number of bands for a fft-distribution */
             int nbnd = wf_fft__[ispn].num_wf_local();
             for (int i = 0; i < nbnd; i++) {
                 int j = wf_fft__[ispn].spl_num_wf()[i];
                 T w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
-                auto inp_wf = wf_fft__[ispn].pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i));
+                auto inp_wf = wf_fft__[ispn].pw_coeffs_spfft(wf_mem, wf::band_index(i));
 
                 add_k_point_contribution_rg_collinear(kp__->spfft_transform(), ispn, w, inp_wf, nr, ctx_.gamma_point(), density_rg);
             }
@@ -1251,6 +1254,8 @@ Density::generate_valence(K_point_set const& ks__)
         rho_mag_coarse_[i]->zero();
     }
 
+    auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+
     /* start the main loop over k-points */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = ks__.spl_num_kpoints(ikloc);
@@ -1258,13 +1263,13 @@ Density::generate_valence(K_point_set const& ks__)
 
         std::array<wf::Wave_functions_fft_new<T>, 2> wf_fft;
 
+        auto mg = kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
+
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             /* swap wave functions for the FFT transformation */
             wf_fft[ispn] = wf::Wave_functions_fft_new<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions_new(),
                     wf::spin_index(ispn), wf::band_range(0, nbnd), wf::transform_layout::to);
-
-  //          wf::transform_to_fft_layout(kp->spinor_wave_functions_new(), wf_fft[ispn], wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
 

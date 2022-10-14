@@ -132,16 +132,8 @@ Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forc
     }
 
     Beta_projectors_gradient<T> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
-    //if (is_device_memory(ctx_.preferred_memory_t())) {
-    //    int nbnd = ctx_.num_bands();
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        /* allocate GPU memory */
-    //        kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
-    //        kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-    //    }
-    //}
-
-    //Non_local_functor<T> nlf(ctx_, bp_grad);
+    auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+    auto mg = kp__.spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
 
     sddk::mdarray<real_type<F>, 2> f(3, ctx_.unit_cell().num_atoms());
     f.zero();
@@ -153,12 +145,6 @@ Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forc
             forces__(x, ia) += f(x, ia);
         }
     }
-    //if (is_device_memory(ctx_.preferred_memory_t())) {
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        /* deallocate GPU memory */
-    //        kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-    //    }
-    //}
 }
 
 void
