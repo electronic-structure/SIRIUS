@@ -739,9 +739,12 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
             int j = wf_fft__[0].spl_num_wf()[i];
             T w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
+            auto wf_mem_up = wf_fft__[0].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto wf_mem_dn = wf_fft__[1].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+
             /* up- and dn- components */
-            auto inp_wf_up = wf_fft__[0].pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i));
-            auto inp_wf_dn = wf_fft__[1].pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i));
+            auto inp_wf_up = wf_fft__[0].pw_coeffs_spfft(wf_mem_up, wf::band_index(i));
+            auto inp_wf_dn = wf_fft__[1].pw_coeffs_spfft(wf_mem_dn, wf::band_index(i));
 
             add_k_point_contribution_rg_noncollinear(kp__->spfft_transform(), w, inp_wf_up, inp_wf_dn, nr, psi_r_up,
                     density_rg);

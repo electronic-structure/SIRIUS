@@ -60,11 +60,11 @@ inline bool should_print_checksum()
     return val && *val;
 }
 
-//inline bool should_print_performance()
-//{
-//    auto val = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-//    return val && *val;
-//}
+inline bool should_print_performance()
+{
+    auto val = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+    return val && *val;
+}
 
 /// Utility function to print a CPU and GPU memory utilization.
 void print_memory_usage(const char* file__, int line__);

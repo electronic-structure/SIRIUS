@@ -52,25 +52,75 @@ class Transform;
 
 #ifdef SIRIUS_GPU
 extern "C" {
-void mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
 
-void mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
+void
+mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
 
-void mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
+void
+mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
 
-void mul_by_veff_complex_real_gpu_double(int nr__, std::complex<double>* buf__, double* veff__);
+void
+mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
 
-void mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
+void
+mul_by_veff_complex_real_gpu_double(int nr__, std::complex<double>* buf__, double* veff__);
 
-void mul_by_veff_complex_complex_gpu_double(int nr__, std::complex<double>* buf__, double pref__, double* vx__, double* vy__);
+void
+mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
 
-void add_pw_ekin_gpu_float(int num_gvec__, float alpha__, float const* pw_ekin__,
-    std::complex<float> const* phi__, std::complex<float> const* vphi__, std::complex<float>* hphi__);
+void
+mul_by_veff_complex_complex_gpu_double(int nr__, std::complex<double>* buf__, double pref__, double* vx__, double* vy__);
 
-void add_pw_ekin_gpu_double(int num_gvec__, double alpha__, double const* pw_ekin__, std::complex<double> const* phi__,
-    std::complex<double> const* vphi__, std::complex<double>* hphi__);
+void
+add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
+    void const* vphi__, void* hphi__);
+
+void
+add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
+    void const* vphi__, void* hphi__);
+
+void
+add_to_hphi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__,
+    void* hphi__);
+
+void
+add_to_hphi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__,
+    void* hphi__);
 }
 #endif
+
+template <typename T>
+inline void
+add_to_hphi_pw_gpu(int num_gvec__, int add_ekin__, T const* pw_ekin__, std::complex<T> const* phi__,
+    std::complex<T> const* vphi__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        add_to_hphi_pw_gpu_float(num_gvec__, add_ekin__, pw_ekin__, phi__, vphi__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        add_to_hphi_pw_gpu_double(num_gvec__, add_ekin__, pw_ekin__, phi__, vphi__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+add_to_hphi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        add_to_hphi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        add_to_hphi_lapw_gpu_double(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
 
 namespace sirius {
 
@@ -96,6 +146,8 @@ class Local_operator
 
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<T, 1> pw_ekin_;
+
+    sddk::mdarray<T, 2> gkvec_cart_;
 
     // Names for indices.
     struct v_local_index_t

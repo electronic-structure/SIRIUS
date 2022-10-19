@@ -244,6 +244,12 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         mg.emplace_back(phi_extra__->memory_guard(mem, wf::copy_to::device));
         mg.emplace_back(hphi_extra->memory_guard(mem));
         mg.emplace_back(sphi_extra->memory_guard(mem));
+        if (pcs) {
+            auto cs = phi_extra__->checksum(mem, wf::band_range(0, num_extra_phi));
+            if (kp.comm().rank() == 0) {
+                utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
+            }
+        }
     }
 
     int const bs = ctx.cyclic_block_size();

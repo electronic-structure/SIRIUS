@@ -746,13 +746,6 @@ class Wave_functions_base
         }
     }
 
-    inline void copy_to(sddk::memory_t mem__)
-    {
-        for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].copy_to(mem__);
-        }
-    }
-
     friend class device_memory_guard;
     friend class Wave_functions_fft_new<T>;
 
@@ -818,7 +811,8 @@ class Wave_functions_base
     }
 
     /// Zero a spin component of the wave-functions in a band range.
-    inline void zero(sddk::memory_t mem__, spin_index s__, band_range br__)
+    inline void
+    zero(sddk::memory_t mem__, spin_index s__, band_range br__)
     {
         if (is_host_memory(mem__)) {
             for (int ib = br__.begin(); ib < br__.end(); ib++) {
@@ -832,21 +826,31 @@ class Wave_functions_base
     }
 
     /// Zero all wave-functions.
-    inline void zero(sddk::memory_t mem__)
+    inline void
+    zero(sddk::memory_t mem__)
     {
         for (int is = 0; is < num_sc_.get(); is++) {
             data_[is].zero(mem__);
         }
     }
 
-    std::complex<T> const* at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
+    inline std::complex<T> const*
+    at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
-    auto at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) 
+    inline auto
+    at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__)
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
+    }
+
+    inline void copy_to(sddk::memory_t mem__)
+    {
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].copy_to(mem__);
+        }
     }
 };
 
@@ -923,9 +927,38 @@ class Wave_functions_mt : public Wave_functions_base<T>
         return this->data_[ispn__.get()](this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], i__.get());
     }
 
+    using Wave_functions_base<T>::at;
+
+    inline std::complex<T> const*
+    at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__) const
+    {
+        return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
+    }
+
+    inline auto
+    at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__)
+    {
+        return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
+    }
+
     inline auto const& spl_num_atoms() const
     {
         return spl_num_atoms_;
+    }
+
+    /// Copy muffin-tin coefficients to host or GPU memory.
+    /** This functionality is required for the application of LAPW overlap operator to the wave-functions, which
+     * is always done on the CPU. */
+    inline void copy_mt_to(sddk::memory_t mem__, spin_index s__, band_range br__)
+    {
+        auto ptr = this->data_[s__.get()].at(sddk::memory_t::host, this->num_pw_, br__.begin());
+        auto ptr_gpu = this->data_[s__.get()].at(sddk::memory_t::device, this->num_pw_, br__.begin());
+        if (is_device_memory(mem__)) {
+            acc::copyin(ptr_gpu, this->ld(), ptr, this->ld(), this->num_mt_, br__.size());
+        }
+        if (is_host_memory(mem__)) {
+            acc::copyout(ptr, this->ld(), ptr_gpu, this->ld(), this->num_mt_, br__.size());
+        }
     }
 
     auto grid_layout_mt(spin_index ispn__, band_range b__)

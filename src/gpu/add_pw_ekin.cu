@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,80 +19,105 @@
 
 /** \file add_pw_ekin.cu
  *
- *  \brief CUDA kernel for the hphi update.
+ *  \brief GPU kernel for the hphi update.
  */
 
 #include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 template <typename T>
-__global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
-                                       T alpha__,
-                                       T const* pw_ekin__,
-                                       gpu_complex_type<T> const* phi__,
-                                       gpu_complex_type<T> const* vphi__,
-                                       gpu_complex_type<T>* hphi__);
-
-template <>
-__global__ void add_pw_ekin_gpu_kernel<float>(int num_gvec__,
-                                              float alpha__,
-                                              float const* pw_ekin__,
-                                              acc_complex_float_t const* phi__,
-                                              acc_complex_float_t const* vphi__,
-                                              acc_complex_float_t* hphi__)
+__global__ void
+add_to_hphi_pw_gpu_kernel(int num_gvec__, gpu_complex_type<T> const* vphi__, gpu_complex_type<T>* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        acc_complex_float_t z1 = accCaddf(vphi__[ig], make_accFloatComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x,
-                                                                           alpha__ * pw_ekin__[ig] * phi__[ig].y));
-        hphi__[ig]             = accCaddf(hphi__[ig], z1);
+        hphi__[ig] = add_accNumbers(hphi__[ig], vphi__[ig]);
     }
 }
 
-template <>
-__global__ void add_pw_ekin_gpu_kernel<double>(int num_gvec__,
-                                               double alpha__,
-                                               double const* pw_ekin__,
-                                               acc_complex_double_t const* phi__,
-                                               acc_complex_double_t const* vphi__,
-                                               acc_complex_double_t* hphi__)
+template <typename T>
+__global__ void
+add_to_hphi_pw_gpu_kernel(int num_gvec__, T const* pw_ekin__, gpu_complex_type<T> const* phi__,
+        gpu_complex_type<T> const* vphi__, gpu_complex_type<T>* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        acc_complex_double_t z1 = accCadd(vphi__[ig], make_accDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x,
-                                                                            alpha__ * pw_ekin__[ig] * phi__[ig].y));
-        hphi__[ig]              = accCadd(hphi__[ig], z1);
+        auto z1    = add_accNumbers(vphi__[ig], mul_accNumbers(pw_ekin__[ig], phi__[ig]));
+        hphi__[ig] = add_accNumbers(hphi__[ig], z1);
     }
 }
+
+template <typename T>
+__global__ void
+add_to_hphi_lapw_gpu_kernel(int num_gvec__, gpu_complex_type<T>* const p__, T const* gkvec_cart__,
+        gpu_complex_type<T>* hphi__)
+{
+    int ig = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ig < num_gvec__) {
+        /* hphi[ig] = hphi[ig] + 1/2 p_{x,y,z}[ig] * G_{x,y,z}[ig] */
+        hphi__[ig] = add_accNumbers(hphi__[ig], mul_accNumbers(0.5 * gkvec_cart__[ig], p__[ig]));
+    }
+}
+
 
 /// Update the hphi wave functions.
 /** The following operation is performed:
  *    hphi[ig] += (alpha *  pw_ekin[ig] * phi[ig] + vphi[ig])
  */
-extern "C" void add_pw_ekin_gpu_float(int num_gvec__,
-                                       float alpha__,
-                                       float const* pw_ekin__,
-                                       acc_complex_float_t const* phi__,
-                                       acc_complex_float_t const* vphi__,
-                                       acc_complex_float_t* hphi__)
+extern "C" {
+
+void
+add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, float const* pw_ekin__, gpu_complex_type<float> const* phi__,
+    gpu_complex_type<float> const* vphi__, gpu_complex_type<float>* hphi__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
 
-    accLaunchKernel((add_pw_ekin_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, alpha__, pw_ekin__,
-                    phi__, vphi__, hphi__);
+    if (add_ekin__) {
+        accLaunchKernel((add_to_hphi_pw_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, pw_ekin__,
+                        phi__, vphi__, hphi__);
+    } else {
+        accLaunchKernel((add_to_hphi_pw_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__,
+                        vphi__, hphi__);
+    }
 }
 
-extern "C" void add_pw_ekin_gpu_double(int num_gvec__,
-                                double alpha__,
-                                double const* pw_ekin__,
-                                acc_complex_double_t const* phi__,
-                                acc_complex_double_t const* vphi__,
-                                acc_complex_double_t* hphi__)
+void
+add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, double const* pw_ekin__, gpu_complex_type<double> const* phi__,
+    gpu_complex_type<double> const* vphi__, gpu_complex_type<double>* hphi__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
 
-    accLaunchKernel((add_pw_ekin_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, alpha__, pw_ekin__,
-                    phi__, vphi__, hphi__);
+    if (add_ekin__) {
+        accLaunchKernel((add_to_hphi_pw_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__, pw_ekin__,
+                        phi__, vphi__, hphi__);
+    } else {
+        accLaunchKernel((add_to_hphi_pw_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__,
+                        vphi__, hphi__);
+    }
+}
+
+void
+add_to_hphi_lapw_gpu_float(int num_gvec__, gpu_complex_type<float>* const p__, float const* gkvec_cart__,
+        gpu_complex_type<float>* hphi__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
+
+    accLaunchKernel((add_to_hphi_lapw_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__,
+                     p__, gkvec_cart__, hphi__);
+}
+
+void
+add_to_hphi_lapw_gpu_double(int num_gvec__, gpu_complex_type<double>* const p__, double const* gkvec_cart__,
+        gpu_complex_type<double>* hphi__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
+
+    accLaunchKernel((add_to_hphi_lapw_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_gvec__,
+                     p__, gkvec_cart__, hphi__);
+}
+
 }

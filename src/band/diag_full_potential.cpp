@@ -290,24 +290,25 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     auto& itso = ctx_.cfg().iterative_solver();
 
-    get_singular_components(Hk__, itsol_tol__);
+    /* number of singular components */
+    int ncomp = kp.singular_components_new().num_wf().get();
+
+    if (ncomp) {
+        /* compute eigen-vectors of O^{APW-APW} */
+        get_singular_components(Hk__, itsol_tol__);
+    }
 
     /* total number of local orbitals */
     int nlo = ctx_.unit_cell().mt_lo_basis_size();
 
-    /* number of singular components */
-    int ncomp = kp.singular_components_new().num_wf().get();
-
-    //auto phi_extra = wave_function_factory(ctx_, kp, nlo + ncomp, 1, true);
-    //phi_extra->pw_coeffs(0).zero(sddk::memory_t::host, 0, nlo + ncomp);
-    //phi_extra->mt_coeffs(0).zero(sddk::memory_t::host, 0, nlo + ncomp);
-
     auto phi_extra_new = wave_function_factory(ctx_, kp, wf::num_bands(nlo + ncomp), wf::num_mag_dims(0), true);
     phi_extra_new->zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nlo + ncomp));
 
-    /* copy [0, ncomp) from kp.singular_components() to [0, ncomp) in phi_extra */
-    wf::copy(sddk::memory_t::host, kp.singular_components_new(), wf::spin_index(0), wf::band_range(0, ncomp),
-            *phi_extra_new, wf::spin_index(0), wf::band_range(0, ncomp));
+    if (ncomp) {
+        /* copy [0, ncomp) from kp.singular_components() to [0, ncomp) in phi_extra */
+        wf::copy(sddk::memory_t::host, kp.singular_components_new(), wf::spin_index(0), wf::band_range(0, ncomp),
+                *phi_extra_new, wf::spin_index(0), wf::band_range(0, ncomp));
+    }
 
     /* add pure local orbitals to the basis staring from ncomp index */
     if (nlo) {
@@ -319,13 +320,12 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             }
         }
     }
-    //if (is_device_memory(ctx_.preferred_memory_t())) {
-    //    phi_extra->copy_to(sddk::spin_range(0), sddk::memory_t::device, 0, nlo + ncomp);
-    //}
-    //if (ctx_.cfg().control().print_checksum()) {
-    //    phi_extra->print_checksum(get_device_t(phi_extra->preferred_memory_t()), "extra phi", 0, nlo + ncomp,
-    //            RTE_OUT(std::cout));
-    //}
+    if (::sirius::should_print_checksum()) {
+        auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
+        if (kp.comm().rank() == 0) {
+            utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
+        }
+    }
 
     auto tolerance = [&](int j__, int ispn__) -> double {
         return itsol_tol__;
@@ -336,7 +336,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab_new(), tolerance,
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
-            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2,
+            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity(),
             phi_extra_new.get());
 
     kp.set_fv_eigen_values(&result.eval[0]);

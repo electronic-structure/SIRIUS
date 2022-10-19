@@ -790,13 +790,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto la  = (pu == sddk::device_t::CPU) ? sddk::linalg_t::blas : sddk::linalg_t::gpublas;
     auto mem = (pu == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
 
-    //if (ctx.cfg().control().print_checksum()) {
-    //    phi__.print_checksum(pu, "phi", N__, n__, RTE_OUT(std::cout));
-    //}
-
-    //auto pp_raw = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-
-    //int pp = (pp_raw == nullptr) ? 0 : *pp_raw;
+    auto pp = sirius::should_print_performance();
+    auto pcs = sirius::should_print_checksum();
 
     /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
     double ngop{8e-9}; // default value for complex type
@@ -811,7 +806,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
     if (ophi__ != nullptr) {
         ophi__->zero(mem, wf::spin_index(0), b__);
+        /* in case of GPU muffin-tin part of ophi is computed on the CPU */
+        if (is_device_memory(mem)) {
+            ophi__->zero(sddk::memory_t::host, wf::spin_index(0), b__);
+        }
     }
+
+    auto& comm = kp().comm();
 
     //if (!apw_only__) {
     //    if (hphi__ != nullptr) {
@@ -825,23 +826,35 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     //    }
     //}
 
-    //if (pu == sddk::device_t::GPU && !apw_only__) {
-    //    phi__.mt_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
-    //}
+    /* ophi is computed on the CPU to avoid complicated GPU implementation */
+    if (is_device_memory(mem)) {
+        phi__.copy_mt_to(sddk::memory_t::host, wf::spin_index(0), b__);
+    }
+
+    if (pcs) {
+        auto cs = phi__.checksum(mem, wf::spin_index(0), b__);
+        if (comm.rank() == 0) {
+            utils::print_checksum("phi", cs, RTE_OUT(std::cout));
+        }
+    }
 
     if (!phi_is_lo__) {
         /* interstitial part */
         H0_.local_op().apply_fplapw(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
                 kp().gkvec_fft_sptr(), b__, phi__, hphi__, ophi__, nullptr, nullptr);
 
-        if (ctx.cfg().control().print_checksum()) {
+        if (pcs) {
             if (hphi__) {
-                auto cs = hphi__->checksum(sddk::memory_t::host, wf::spin_index(0), b__);
-                utils::print_checksum("hloc_phi", cs, RTE_OUT(std::cout));
+                auto cs = hphi__->checksum(mem, wf::spin_index(0), b__);
+                if (comm.rank() == 0) {
+                    utils::print_checksum("hloc_phi", cs, RTE_OUT(std::cout));
+                }
             }
             if (ophi__) {
-                auto cs = ophi__->checksum(sddk::memory_t::host, wf::spin_index(0), b__);
-                utils::print_checksum("oloc_phi", cs, RTE_OUT(std::cout));
+                auto cs = ophi__->checksum(mem, wf::spin_index(0), b__);
+                if (comm.rank() == 0) {
+                    utils::print_checksum("oloc_phi", cs, RTE_OUT(std::cout));
+                }
             }
         }
     } else {
@@ -856,8 +869,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     /* short name for local number of G+k vectors */
     int ngv = kp().num_gkvec_loc();
-
-    auto& comm = kp().comm();
 
     auto& spl_atoms = phi__.spl_num_atoms();
 
@@ -886,12 +897,14 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             sddk::linalg(la).gemm('N', 'N', naw, b__.size(), nlo,
                     &sddk::linalg_const<Tc>::one(),
                     hmt.at(mem, 0, naw), hmt.ld(),
-                    &phi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
+                    phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                     &sddk::linalg_const<Tc>::zero(),
-                    &h_apw_lo__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
+                    h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
                     stream_id(tid));
         }
-        // TODO: move to host in case of GPU
+        if (is_device_memory(mem)) {
+            h_apw_lo__.copy_to(sddk::memory_t::host);
+        }
     };
 
     /* apply APW-lo part of overlap matrix to lo- part of wave-functions */
@@ -945,9 +958,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             sddk::linalg(la).gemm('N', 'N', nlo, b__.size(), nlo, &sddk::linalg_const<Tc>::one(),
                             hmt.at(mem, naw, naw), hmt.ld(),
-                            &phi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
+                            phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                             &sddk::linalg_const<Tc>::one(),
-                            &hphi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
+                            hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                             stream_id(tid));
         }
     };
@@ -1005,9 +1018,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             // TODO: use in-place trmm
             sddk::linalg(la).gemm('N', 'N', naw, b__.size(), naw,
                     &sddk::linalg_const<Tc>::one(), hmt.at(mem), hmt.ld(),
-                    &alm_phi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
+                    alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                     &sddk::linalg_const<Tc>::zero(),
-                    &halm_phi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
+                    halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
                     stream_id(tid));
         }
     };
@@ -1016,6 +1029,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     {
         #pragma omp parallel for
         for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int tid = omp_get_thread_num();
             int ia     = spl_atoms[ialoc];
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
@@ -1030,10 +1044,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             sddk::linalg(la).gemm('N', 'N', nlo, b__.size(), naw, &sddk::linalg_const<Tc>::one(),
                     hmt.at(mem, naw, 0), hmt.ld(),
-                    &alm_phi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
+                    alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                     &sddk::linalg_const<Tc>::one(),
-                    &hphi__.mt_coeffs(0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
-                    hphi__.ld());
+                    hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
+                    hphi__.ld(), stream_id(tid));
         }
     };
 
@@ -1060,7 +1074,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                         ophi__.mt_coeffs(ilo, aidx, wf::spin_index(0), wf::band_index(b__.begin() + i)) +=
                             static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw)) *
-                            alm_phi__.mt_coeffs(type.indexb_by_lm_order(lm_lo, order_aw), aidx, wf::spin_index(0), wf::band_index(i));
+                            alm_phi__.mt_coeffs(type.indexb_by_lm_order(lm_lo, order_aw), aidx, wf::spin_index(0),
+                                    wf::band_index(i));
                     }
                 }
             }
@@ -1120,9 +1135,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         num_mt_apw_coeffs[ia] = ctx.unit_cell().atom(ia).mt_aw_basis_size();
     }
     wf::Wave_functions_mt<T> tmp(comm, num_mt_apw_coeffs, wf::num_mag_dims(0), wf::num_bands(b__.size()), sddk::memory_t::host);
-    // TODO: device allocation for tmp
-    //if (pu == sddk::device_t::GPU) {
-    //}
+    auto mg = tmp.memory_guard(mem);
 
     if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo-prep");
@@ -1145,6 +1158,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             costa::transform(layout_in, o_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.mpi_comm());
         }
     }
+
+    // here: h_apw_lo_phi_lo is on host
+    //       o_apw_lo_phi_lo is on host
 
     /* lo-lo contribution (lo-lo Hamiltonian and overlap are block-diagonal in atom index and the whole application is
      * local to MPI rank)
@@ -1213,7 +1229,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             /* compute alm_phi(lm, n) = < Alm | C > */
             spla::pgemm_ssb(num_mt_aw, b__.size(), ngv, SPLA_OP_CONJ_TRANSPOSE, 1.0,
                     alm.at(mem), alm.ld(),
-                    &phi__.pw_coeffs(0, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(), 0.0,
+                    phi__.at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(), 0.0,
                     alm_phi.at(sddk::memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
                     ctx.spla_context());
             gflops += ngop * num_mt_aw * b__.size() * ngv;
@@ -1221,9 +1237,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             if (ophi__) {
                 /* add APW-APW contribution to ophi */
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one,
-                        alm.at(mem), alm.ld(), alm_phi.at(sddk::memory_t::host), alm_phi.ld(), offset_aw_global, 0,
-                        alm_phi.spla_distribution(), one,
-                        &ophi__->pw_coeffs(0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
+                        alm.at(mem), alm.ld(), alm_phi.at(sddk::memory_t::host), alm_phi.ld(),
+                        offset_aw_global, 0, alm_phi.spla_distribution(), one,
+                        ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
@@ -1240,21 +1256,17 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         wf::num_bands(b__.size()), sddk::memory_t::host);
 
                 sddk::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), ctx.blacs_grid(), bs, bs);
-                //if (pu == sddk::device_t::GPU) {
-                //    alm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device));
-                //    halm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device));
-                //}
-
                 {
                     auto layout_in = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, b__.size());
                     auto layout_out = alm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
                     costa::transform(layout_in, layout_out, 'N', one, zero, comm.mpi_comm());
                 }
 
-                //if (pu == sddk::device_t::GPU) {
-                //    alm_phi_slab.copy_to(sddk::memory_t::device);
-                //}
-                appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+                {
+                    auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
+                    auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
+                    appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+                }
 
                 {
                     auto layout_in = halm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
@@ -1266,7 +1278,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one,
                         alm.at(mem), alm.ld(), halm_phi.at(sddk::memory_t::host), halm_phi.ld(), 0, 0,
                         halm_phi.spla_distribution(), one,
-                        &hphi__->pw_coeffs(0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
+                        hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
@@ -1281,7 +1293,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one,
                         alm.at(mem), alm.ld(), h_apw_lo_phi_lo.at(sddk::memory_t::host), h_apw_lo_phi_lo.ld(),
                         offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(), one,
-                        &hphi__->pw_coeffs(0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
+                        hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
@@ -1290,7 +1302,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one,
                         alm.at(mem), alm.ld(), o_apw_lo_phi_lo.at(sddk::memory_t::host), o_apw_lo_phi_lo.ld(),
                         offset_aw_global, 0, o_apw_lo_phi_lo.spla_distribution(), one,
-                        &ophi__->pw_coeffs(0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
+                        ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
@@ -1322,49 +1334,45 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             auto layout_out = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
             costa::transform(layout_in, layout_out, 'N', one, zero, comm.mpi_comm());
         }
-        //if (pu == sddk::device_t::GPU) {
-        //     alm_phi_slab.allocate(ctx.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-        //}
 
         if (ophi__) {
             apply_omt_lo_apw(tmp, *ophi__);
         }
 
         if (hphi__) {
+            if (is_device_memory(mem)) {
+                tmp.copy_to(mem);
+            }
             apply_hmt_lo_apw(tmp, *hphi__);
         }
     }
     PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
-    //if (pu == sddk::device_t::GPU && !apw_only__) {
-    //    if (ophi__ != nullptr) {
-    //        ophi__->mt_coeffs(0).copy_to(sddk::memory_t::device, N__, n__);
-    //    }
-    //}
+    if (is_device_memory(mem) && ophi__) {
+        ophi__->copy_mt_to(mem, wf::spin_index(0), b__);
+    }
+
     //if (pu == sddk::device_t::GPU) {
     //    if (ophi__ != nullptr) {
     //        ophi__->pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
     //    }
     //}
-    //if (pp && kp().comm().rank() == 0) {
-    //    RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
-    //}
-    //if (ctx.cfg().control().print_checksum()) {
-    //    if (hphi__) {
-    //        hphi__->print_checksum(pu, "hphi", N__, n__, RTE_OUT(std::cout));
-    //    }
-    //    if (ophi__) {
-    //        ophi__->print_checksum(pu, "ophi", N__, n__, RTE_OUT(std::cout));
-    //    }
-    //}
-    if (ctx.cfg().control().print_checksum()) {
+    if (pp && comm.rank() == 0) {
+        RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
+    }
+
+    if (pcs) {
         if (hphi__) {
-            auto cs = hphi__->checksum(sddk::memory_t::host, wf::spin_index(0), b__);
-            utils::print_checksum("h_phi", cs, RTE_OUT(std::cout));
+            auto cs = hphi__->checksum(mem, wf::spin_index(0), b__);
+            if (comm.rank() == 0) {
+                utils::print_checksum("h_phi", cs, RTE_OUT(std::cout));
+            }
         }
         if (ophi__) {
-            auto cs = ophi__->checksum(sddk::memory_t::host, wf::spin_index(0), b__);
-            utils::print_checksum("o_phi", cs, RTE_OUT(std::cout));
+            auto cs = ophi__->checksum(mem, wf::spin_index(0), b__);
+            if (comm.rank() == 0) {
+                utils::print_checksum("o_phi", cs, RTE_OUT(std::cout));
+            }
         }
     }
 }
