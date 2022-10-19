@@ -80,6 +80,29 @@ axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1
 }
 #endif
 
+template <typename T>
+auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int nwf__)
+{
+    std::complex<T> cs{0};
+#if defined(SIRIUS_GPU)
+    sddk::mdarray<std::complex<T>, 1> cs1(nwf__, sddk::memory_t::host, "checksum");
+    cs1.allocate(sddk::memory_t::device).zero(sddk::memory_t::device);
+
+    if (std::is_same<T, float>::value) {
+        add_checksum_gpu_float(wf__, ld__, num_rows_loc__, nwf__, cs1.at(sddk::memory_t::device));
+    } else if (std::is_same<T, double>::value) {
+        add_checksum_gpu_double(wf__, ld__, num_rows_loc__, nwf__, cs1.at(sddk::memory_t::device));
+    } else {
+        std::stringstream s;
+        s << "Precision type not yet implemented";
+        RTE_THROW(s);
+    }
+    cs1.copy_to(sddk::memory_t::host);
+    cs = cs1.checksum();
+#endif
+    return cs;
+}
+
 namespace sddk {
 
 // C++ wrappers for gpu kernels
@@ -993,6 +1016,10 @@ class Wave_functions_mt : public Wave_functions_base<T>
                     cs = std::accumulate(ptr, ptr + this->num_mt_, cs);
                 }
             }
+            if (is_device_memory(mem__)) {
+                auto ptr = this->data_[s__.get()].at(mem__, this->num_pw_, br__.begin());
+                cs = checksum_gpu<T>(ptr, this->ld(), this->num_mt_, br__.size());
+            }
             comm_.allreduce(&cs, 1);
         }
         return cs;
@@ -1076,22 +1103,8 @@ class Wave_functions : public Wave_functions_mt<T>
                 }
             }
             if (is_device_memory(mem__)) {
-#if defined(SIRIUS_GPU)
-                sddk::mdarray<std::complex<T>, 1> cs1(b__.size(), sddk::memory_t::host, "checksum");
-                cs1.allocate(sddk::memory_t::device).zero(sddk::memory_t::device);
                 auto ptr = this->data_[s__.get()].at(mem__, 0, b__.begin());
-                if (std::is_same<T, double>::value) {
-                    add_checksum_gpu_double(ptr, this->ld(), this->num_pw_, b__.size(), cs1.at(sddk::memory_t::device));
-                } else if (std::is_same<T, float>::value) {
-                    add_checksum_gpu_float(ptr, this->ld(), this->num_pw_, b__.size(), cs1.at(sddk::memory_t::device));
-                } else {
-                    std::stringstream s;
-                    s << "Precision type not yet implemented";
-                    RTE_THROW(s);
-                }
-                cs1.copy_to(sddk::memory_t::host);
-                cs = cs1.checksum();
-#endif
+                cs = checksum_gpu<T>(ptr, this->ld(), this->num_pw_, b__.size());
             }
             this->comm_.allreduce(&cs, 1);
         }
