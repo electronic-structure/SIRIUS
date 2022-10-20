@@ -28,6 +28,7 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/fft.hpp"
 #include "typedefs.hpp"
+#include "utils/rte.hpp"
 
 /* forward declarations */
 namespace sirius {
