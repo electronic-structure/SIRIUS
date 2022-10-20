@@ -141,12 +141,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         wf::Wave_functions<double> ofv_new(kp.gkvec_sptr(), num_mt_coeffs, wf::num_mag_dims(0),
                 wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
-        Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(),
-                nullptr, &ofv_new);
+        {
+            auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+            auto mg1 = kp.fv_eigen_vectors_slab_new().memory_guard(mem, wf::copy_to::device);
+            auto mg2 = ofv_new.memory_guard(mem, wf::copy_to::host);
 
-        //if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        //    kp.fv_eigen_vectors_slab().deallocate(sddk::spin_range(0), sddk::memory_t::device);
-        //}
+            Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(),
+                    nullptr, &ofv_new);
+        }
 
         //if (true) {
         //    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -394,6 +396,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     int nfv = ctx_.num_fv_states();
     int bs  = ctx_.cyclic_block_size();
 
+    // TODO: to GPU
+
     //if (ctx_.processing_unit() == sddk::device_t::GPU) {
     //    kp.fv_states().allocate(sddk::spin_range(0), ctx_.mem_pool(sddk::memory_t::device));
     //    kp.fv_states().copy_to(sddk::spin_range(0), sddk::memory_t::device, 0, nfv);
@@ -417,20 +421,12 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-
-            auto cs1 =  kp.fv_states_new().checksum(sddk::memory_t::host, wf::spin_index(0), br);
-            auto cs2 =  hpsi[ispn].checksum(sddk::memory_t::host, wf::spin_index(0), br);
-            utils::print_checksum("fv_states", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("hpsi", cs2, RTE_OUT(std::cout));
-
             /* compute <wf_i | h * wf_j> */
             wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[ispn], br, h, 0, 0);
 
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp.fv_eigen_value(i));
             }
-            auto cs3 = h.checksum(nfv, nfv);
-            utils::print_checksum("Hsv", cs3, RTE_OUT(std::cout));
             PROFILE("sirius::Band::diag_sv|stdevp");
             std_solver.solve(nfv, nfv, h, &band_energies(0, ispn), kp.sv_eigen_vectors(ispn));
         }

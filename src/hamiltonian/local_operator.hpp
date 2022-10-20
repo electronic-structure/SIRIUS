@@ -54,24 +54,6 @@ class Transform;
 extern "C" {
 
 void
-mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
-
-void
-mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
-
-void
-mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
-
-void
-mul_by_veff_complex_real_gpu_double(int nr__, std::complex<double>* buf__, double* veff__);
-
-void
-mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
-
-void
-mul_by_veff_complex_complex_gpu_double(int nr__, std::complex<double>* buf__, double pref__, double* vx__, double* vy__);
-
-void
 add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
     void const* vphi__, void* hphi__);
 
@@ -80,14 +62,88 @@ add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, void const* pw_ekin__,
     void const* vphi__, void* hphi__);
 
 void
-add_to_hphi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__,
-    void* hphi__);
+add_to_hphi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
 
 void
-add_to_hphi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__,
-    void* hphi__);
-}
+add_to_hphi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
+
+void
+grad_phi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
+
+void
+grad_phi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
+
+void
+mul_by_veff_real_real_gpu_float(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_real_real_gpu_double(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_real_gpu_float(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_real_gpu_double(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_complex_gpu_float(int nr__, void const* in__, float pref__,
+    void const* vx__, void const* vy__, void* out__);
+
+void
+mul_by_veff_complex_complex_gpu_double(int nr__, void const* in__, double pref__,
+    void const* vx__, void const* vy__, void* out__);
+
+} // extern C
 #endif
+
+template <typename T>
+inline void
+mul_by_veff_real_real_gpu(int nr__, T const* in__, T const* veff__, T* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_real_real_gpu_float(nr__, in__, veff__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_real_real_gpu_double(nr__, in__, veff__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+mul_by_veff_complex_real_gpu(int nr__, std::complex<T> const* in__, T const* veff__, std::complex<T>* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_complex_real_gpu_float(nr__, in__, veff__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_complex_real_gpu_double(nr__, in__, veff__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+mul_by_veff_complex_complex_gpu(int nr__, std::complex<T> const* in__, T pref__, T const* vx__, T const* vy__,
+        std::complex<T>* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_complex_complex_gpu_float(nr__, in__, pref__, vx__, vy__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_complex_complex_gpu_double(nr__, in__, pref__, vx__, vy__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
 
 template <typename T>
 inline void
@@ -116,6 +172,22 @@ add_to_hphi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_
     }
     if (std::is_same<T, double>::value) {
         add_to_hphi_lapw_gpu_double(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+grad_phi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        grad_phi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        grad_phi_lapw_gpu_double(num_gvec__, p__, gkvec_cart__, hphi__);
     }
 #else
     RTE_THROW("not compiled with GPU support");

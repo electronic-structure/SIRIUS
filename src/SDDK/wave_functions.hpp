@@ -1009,7 +1009,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     inline auto checksum_mt(sddk::memory_t mem__, spin_index s__, band_range br__) const
     {
         std::complex<T> cs{0};
-        if (this->num_mt_) {
+        if (this->num_mt_ && br__.size()) {
             if (is_host_memory(mem__)) {
                 for (int ib = br__.begin(); ib < br__.end(); ib++) {
                     auto ptr = this->data_[s__.get()].at(mem__, this->num_pw_, ib);

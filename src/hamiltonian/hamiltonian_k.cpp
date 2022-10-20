@@ -1310,6 +1310,21 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
         offset_aw_global += num_mt_aw;
         atom_begin += na;
+
+        if (pcs) {
+            if (hphi__) {
+                auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                if (comm.rank() == 0) {
+                    utils::print_checksum("hphi_apw", cs, RTE_OUT(std::cout));
+                }
+            }
+            if (ophi__) {
+                auto cs = ophi__->checksum_pw(mem, wf::spin_index(0), b__);
+                if (comm.rank() == 0) {
+                    utils::print_checksum("ophi_apw", cs, RTE_OUT(std::cout));
+                }
+            }
+        }
     } // blocks of atoms
 
     /* compute lo-APW contribution
@@ -1352,11 +1367,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         ophi__->copy_mt_to(mem, wf::spin_index(0), b__);
     }
 
-    //if (pu == sddk::device_t::GPU) {
-    //    if (ophi__ != nullptr) {
-    //        ophi__->pw_coeffs(0).copy_to(sddk::memory_t::host, N__, n__);
-    //    }
-    //}
     if (pp && comm.rank() == 0) {
         RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
     }
@@ -1365,13 +1375,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         if (hphi__) {
             auto cs = hphi__->checksum(mem, wf::spin_index(0), b__);
             if (comm.rank() == 0) {
-                utils::print_checksum("h_phi", cs, RTE_OUT(std::cout));
+                utils::print_checksum("hphi", cs, RTE_OUT(std::cout));
             }
         }
         if (ophi__) {
             auto cs = ophi__->checksum(mem, wf::spin_index(0), b__);
             if (comm.rank() == 0) {
-                utils::print_checksum("o_phi", cs, RTE_OUT(std::cout));
+                utils::print_checksum("ophi", cs, RTE_OUT(std::cout));
             }
         }
     }
