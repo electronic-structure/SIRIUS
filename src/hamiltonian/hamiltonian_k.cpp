@@ -1395,19 +1395,33 @@ Hamiltonian_k<T>::apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fun
 
     RTE_ASSERT(bpsi__.size() == 2 || bpsi__.size() == 3);
 
-    //H0().local_op().apply_b(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+    int nfv = H0().ctx().num_fv_states();
+
     auto bxypsi = bpsi__.size() == 2 ? nullptr : &bpsi__[2];
     H0().local_op().apply_fplapw(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
-            kp().gkvec_fft_sptr(), wf::band_range(0, H0().ctx().num_fv_states()), psi__, nullptr, nullptr,
-            &bpsi__[0], bxypsi);
+            this->kp().gkvec_fft_sptr(), wf::band_range(0, nfv), psi__, nullptr, nullptr, &bpsi__[0], bxypsi);
     H0().apply_bmt(psi__, bpsi__);
 
-    std::vector<double> alpha(H0().ctx().num_fv_states(), -1.0);
-    std::vector<double> beta(H0().ctx().num_fv_states(), 0.0);
+    std::vector<T> alpha(nfv, -1.0);
+    std::vector<T> beta(nfv, 0.0);
 
     /* copy Bz|\psi> to -Bz|\psi> */
-    wf::axpby(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, H0().ctx().num_fv_states()),
+    wf::axpby(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, nfv),
        alpha.data(), &bpsi__[0], beta.data(), &bpsi__[1]);
+
+    auto pcs = sirius::should_print_checksum();
+    if (pcs) {
+        auto cs1 = bpsi__[0].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs2 = bpsi__[0].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs3 = bpsi__[1].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs4 = bpsi__[1].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        if (this->kp().gkvec().comm().rank() == 0) {
+            utils::print_checksum("hpsi[0]_pw", cs1, RTE_OUT(std::cout));
+            utils::print_checksum("hpsi[0]_mt", cs2, RTE_OUT(std::cout));
+            utils::print_checksum("hpsi[1]_pw", cs3, RTE_OUT(std::cout));
+            utils::print_checksum("hpsi[1]_mt", cs4, RTE_OUT(std::cout));
+        }
+    }
 }
 
 template class Hamiltonian_k<double>;

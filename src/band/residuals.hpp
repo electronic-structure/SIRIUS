@@ -252,7 +252,6 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
     for (auto e : res_norm) {
         norm1.push_back(1.0 / std::sqrt(std::real(e)));
     }
-    //wf::scale<T, real_type<F>>(mem__, res__, spins__, num_bands__, res_norm);
     wf::axpby<T, real_type<F>>(mem__, spins__, wf::band_range(0, num_bands__.get()),
             nullptr, nullptr, norm1.data(), &res__);
 

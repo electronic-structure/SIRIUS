@@ -355,6 +355,11 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         return;
     }
 
+    auto pcs = sirius::should_print_checksum();
+
+    int nfv = ctx_.num_fv_states();
+    int bs  = ctx_.cyclic_block_size();
+
     sddk::mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spinors());
 
     std::vector<int> num_mt_coeffs(ctx_.unit_cell().num_atoms());
@@ -366,14 +371,23 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     std::vector<wf::Wave_functions<double>> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
         hpsi.push_back(wf::Wave_functions<double>(kp.gkvec_sptr(), num_mt_coeffs, 
-                    wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host));
+                    wf::num_mag_dims(0), wf::num_bands(nfv), sddk::memory_t::host));
+    }
+
+    if (pcs) {
+        auto cs1 = kp.fv_states_new().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs2 = kp.fv_states_new().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        if (kp.comm().rank() == 0) {
+            utils::print_checksum("psi_pw", cs1, RTE_OUT(std::cout));
+            utils::print_checksum("psi_mt", cs2, RTE_OUT(std::cout));
+        }
     }
 
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2) {
         Hk__.apply_b(kp.fv_states_new(), hpsi);
     } else {
-        hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
@@ -392,9 +406,6 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     if (ctx_.so_correction()) {
         Hk__.H0().apply_so_correction(kp.fv_states_new(), hpsi);
     }
-
-    int nfv = ctx_.num_fv_states();
-    int bs  = ctx_.cyclic_block_size();
 
     // TODO: to GPU
 
@@ -421,6 +432,18 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            if (pcs) {
+                auto cs1 = hpsi[ispn].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+                auto cs2 = hpsi[ispn].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+                if (kp.comm().rank() == 0) {
+                    std::stringstream s1;
+                    s1 << "hpsi_pw_" << ispn;
+                    utils::print_checksum(s1.str(), cs1, RTE_OUT(std::cout));
+                    std::stringstream s2;
+                    s2 << "hpsi_mt_" << ispn;
+                    utils::print_checksum(s2.str(), cs2, RTE_OUT(std::cout));
+                }
+            }
             /* compute <wf_i | h * wf_j> */
             wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[ispn], br, h, 0, 0);
 

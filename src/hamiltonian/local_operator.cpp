@@ -525,7 +525,7 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
                 wf::transform_layout::from);
     }
     if (bxyphi__) {
-        map_wf_fft[bzphi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *bxyphi__, wf::spin_index(0), b__,
+        map_wf_fft[bxyphi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *bxyphi__, wf::spin_index(0), b__,
                 wf::transform_layout::from);
     }
 

@@ -1472,8 +1472,18 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
                 auto ptr_y = y__->at(sddk::memory_t::host, 0, spy, wf::band_index(br__.begin() + i));
                 if (x__) {
                     auto ptr_x = x__->at(sddk::memory_t::host, 0, spx, wf::band_index(br__.begin() + i));
-                    for (int j = 0; j < y__->ld(); j++) {
-                        ptr_y[j] = axpby_aux<T, F>(alpha__[i], ptr_x[j], beta__[i], ptr_y[j]);
+                    if (beta__[i] == F(0)) {
+                        for (int j = 0; j < y__->ld(); j++) {
+                            ptr_y[j] = axpby_aux<T, F>(alpha__[i], ptr_x[j], 0.0, 0.0);
+                        }
+                    } else if (alpha__[i] == F(0)) {
+                        for (int j = 0; j < y__->ld(); j++) {
+                            ptr_y[j] = axpby_aux<T, F>(0.0, 0.0, beta__[i], ptr_y[j]);
+                        }
+                    } else {
+                        for (int j = 0; j < y__->ld(); j++) {
+                            ptr_y[j] = axpby_aux<T, F>(alpha__[i], ptr_x[j], beta__[i], ptr_y[j]);
+                        }
                     }
                 } else {
                     for (int j = 0; j < y__->ld(); j++) {

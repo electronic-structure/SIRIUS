@@ -552,13 +552,21 @@ __global__ void axpby_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x_
     /* idex of the band */
     int ibnd = blockIdx.y;
 
-    if (j < ngv_loc__) {
+    auto alpha = alpha__[ibnd];
+    auto beta = beta__[ibnd];
+
+    if  (j < ngv_loc__) {
         int k1 = array2D_offset(j, ibnd, ld1__);
         int k2 = array2D_offset(j, ibnd, ld2__);
-        y__[k2] = add_accNumbers(mul_accNumbers(alpha__[ibnd], x__[k1]), mul_accNumbers(beta__[ibnd], y__[k2]));
+        if (beta == F(0)) {
+            y__[k2] = mul_accNumbers(alpha, x__[k1]);
+        } else if (alpha == F(0)) {
+            y__[k2] = mul_accNumbers(beta, y__[k2]);
+        } else {
+            y__[k2] = add_accNumbers(mul_accNumbers(alpha, x__[k1]), mul_accNumbers(beta, y__[k2]));
+        }
     }
 }
-
 
 extern "C" {
 
