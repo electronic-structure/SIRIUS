@@ -318,13 +318,13 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
         TERMINATE("wrong number of G-vectors");
     }
 
-    std::array<wf::Wave_functions_fft_new<T>, 2> phi_fft;
-    std::array<wf::Wave_functions_fft_new<T>, 2> hphi_fft;
+    std::array<wf::Wave_functions_fft<T>, 2> phi_fft;
+    std::array<wf::Wave_functions_fft<T>, 2> hphi_fft;
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
-        phi_fft[s.get()] = wf::Wave_functions_fft_new<T>(gkvec_fft__, const_cast<wf::Wave_functions<T>&>(phi__), s,
+        phi_fft[s.get()] = wf::Wave_functions_fft<T>(gkvec_fft__, const_cast<wf::Wave_functions<T>&>(phi__), s,
                 br__, wf::transform_layout::to);
 
-        hphi_fft[s.get()] = wf::Wave_functions_fft_new<T>(gkvec_fft__, hphi__, s, br__, wf::transform_layout::from);
+        hphi_fft[s.get()] = wf::Wave_functions_fft<T>(gkvec_fft__, hphi__, s, br__, wf::transform_layout::from);
         auto hphi_mem = hphi_fft[s.get()].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
         hphi_fft[s.get()].zero(hphi_mem, wf::spin_index(0), wf::band_range(0, hphi_fft[s.get()].num_wf_local()));
     }
@@ -509,23 +509,23 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
     auto spfft_mem = spfft_memory_t.at(spfft_pu);
 
     // TODO: need to pass temporaty functions or allocate from the pool
-    wf::Wave_functions_fft_new<T> phi_fft(gkvec_fft__, phi__, wf::spin_index(0), b__, wf::transform_layout::to);
+    wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, phi__, wf::spin_index(0), b__, wf::transform_layout::to);
 
-    std::map<wf::Wave_functions<T>*, wf::Wave_functions_fft_new<T>> map_wf_fft;
+    std::map<wf::Wave_functions<T>*, wf::Wave_functions_fft<T>> map_wf_fft;
     if (hphi__) {
-        map_wf_fft[hphi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *hphi__, wf::spin_index(0), b__,
+        map_wf_fft[hphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *hphi__, wf::spin_index(0), b__,
                 wf::transform_layout::from);
     }
     if (ophi__) {
-        map_wf_fft[ophi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *ophi__, wf::spin_index(0), b__,
+        map_wf_fft[ophi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *ophi__, wf::spin_index(0), b__,
                 wf::transform_layout::from);
     }
     if (bzphi__) {
-        map_wf_fft[bzphi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *bzphi__, wf::spin_index(0), b__,
+        map_wf_fft[bzphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *bzphi__, wf::spin_index(0), b__,
                 wf::transform_layout::from);
     }
     if (bxyphi__) {
-        map_wf_fft[bxyphi__] = wf::Wave_functions_fft_new<T>(gkvec_fft__, *bxyphi__, wf::spin_index(0), b__,
+        map_wf_fft[bxyphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *bxyphi__, wf::spin_index(0), b__,
                 wf::transform_layout::from);
     }
 

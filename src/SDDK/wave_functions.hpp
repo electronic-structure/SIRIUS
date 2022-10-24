@@ -743,7 +743,7 @@ class device_memory_guard
 };
 
 template <typename T>
-class Wave_functions_fft_new;
+class Wave_functions_fft;
 
 /// Base class for the wave-functions.
 template <typename T>
@@ -757,7 +757,7 @@ class Wave_functions_base
     num_spins num_sc_{0};
 
     friend class device_memory_guard;
-    friend class Wave_functions_fft_new<T>;
+    friend class Wave_functions_fft<T>;
 
     std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
 
@@ -1144,7 +1144,7 @@ static inline bool should_print_performance()
 }
 
 template <typename T>
-class Wave_functions_fft_new : public Wave_functions_base<T>
+class Wave_functions_fft : public Wave_functions_base<T>
 {
   private:
     std::shared_ptr<sddk::Gvec_fft> gkvec_fft_;
@@ -1190,46 +1190,133 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
 
     void transform_to_fft_layout(spin_index ispn__, band_range b__)
     {
-        auto sp = wf_->actual_spin_index(ispn__);
-        auto layout_in  = wf_->grid_layout_pw(sp, b__);
-        auto layout_out = this->grid_layout(b__.size());
-        auto pp = should_print_performance();
+        PROFILE("transform_to_fft_layout");
 
-        PROFILE("costa::transform");
+        auto sp = wf_->actual_spin_index(ispn__);
         auto t0 = utils::time_now();
-        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
-        if (pp && wf_->gkvec().comm().rank() == 0) {
+        if (false) {
+            auto layout_in  = wf_->grid_layout_pw(sp, b__);
+            auto layout_out = this->grid_layout(b__.size());
+
+            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+        } else {
+            /*
+             * old implementation (to be removed when performance of COSTA is understood)
+             */
+            auto& comm_col = gkvec_fft_->comm_ortho_fft();
+
+            auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
+            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
+
+            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+
+            /* local number of columns */
+            int n_loc = spl_num_wf_.local_size();
+
+            /* send and receive dimensions */
+            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            for (int j = 0; j < comm_col.size(); j++) {
+                sd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];
+                rd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
+            }
+            sd.calc_offsets();
+            rd.calc_offsets();
+
+            auto send_buf = (this->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
+
+            {
+                comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf.at(sddk::memory_t::host),
+                                  rd.counts.data(), rd.offsets.data());
+            }
+
+            /* reorder received blocks */
+            #pragma omp parallel for
+            for (int i = 0; i < n_loc; i++) {
+                for (int j = 0; j < comm_col.size(); j++) {
+                    int offset = row_distr.offsets[j];
+                    int count  = row_distr.counts[j];
+                    if (count) {
+                        auto from = &send_recv_buf[offset * n_loc + count * i];
+                        std::copy(from, from + count, this->data_[0].at(sddk::memory_t::host, offset, i));
+                    }
+                }
+            }
+        }
+
+        if (should_print_performance() && wf_->gkvec().comm().rank() == 0) {
             auto t = utils::time_interval(t0);
-            std::cout << "[costa::transform] throughput: "
-                      << 16.0 * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
+            std::cout << "[transform_to_fft_layout] throughput: "
+                      << 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
         }
     }
 
     void transform_from_fft_layout(spin_index ispn__, band_range b__)
     {
+        PROFILE("transform_from_fft_layout");
+
         auto sp = wf_->actual_spin_index(ispn__);
-        auto layout_in  = this->grid_layout(b__.size());
-        auto layout_out = wf_->grid_layout_pw(sp, b__);
         auto pp = should_print_performance();
 
-        PROFILE("costa::transform");
         auto t0 = utils::time_now();
-        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+        if (false) {
+            auto layout_in  = this->grid_layout(b__.size());
+            auto layout_out = wf_->grid_layout_pw(sp, b__);
+
+            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+        } else {
+
+            auto& comm_col = gkvec_fft_->comm_ortho_fft();
+
+            auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
+            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
+
+            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+
+            /* local number of columns */
+            int n_loc = spl_num_wf_.local_size();
+
+            /* reorder sending blocks */
+            #pragma omp parallel for
+            for (int i = 0; i < n_loc; i++) {
+                for (int j = 0; j < comm_col.size(); j++) {
+                    int offset = row_distr.offsets[j];
+                    int count  = row_distr.counts[j];
+                    if (count) {
+                        auto from = this->data_[0].at(sddk::memory_t::host, offset, i);
+                        std::copy(from, from + count, &send_recv_buf[offset * n_loc + count * i]);
+                    }
+                }
+            }
+            /* send and receive dimensions */
+            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            for (int j = 0; j < comm_col.size(); j++) {
+                sd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
+                rd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];
+            }
+            sd.calc_offsets();
+            rd.calc_offsets();
+            auto* recv_buf = (this->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
+
+            comm_col.alltoall(send_recv_buf.at(sddk::memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
+                          rd.counts.data(), rd.offsets.data());
+        }
         if (pp && wf_->gkvec().comm().rank() == 0) {
             auto t = utils::time_interval(t0);
-            std::cout << "[costa::transform] throughput: "
-                      << 16.0 * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
+            std::cout << "[transform_from_fft_layout] throughput: "
+                      << 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
         }
     }
 
   public:
-    Wave_functions_fft_new()
+    Wave_functions_fft()
     {
     }
 
-    Wave_functions_fft_new(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
+    Wave_functions_fft(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
             band_range br__, unsigned int fft_layout_flag__)
         : gkvec_fft_{gkvec_fft__}
         , wf_{&wf__}
@@ -1259,7 +1346,8 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
             this->num_pw_ = wf_->num_pw_;
         } else {
             /* do wave-functions swap */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get());
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get(),
+                    sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
             this->num_pw_ = gkvec_fft__->gvec_count_fft();
 
             if (fft_layout_flag_ & transform_layout::to) {
@@ -1274,7 +1362,7 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
         }
     }
 
-    Wave_functions_fft_new& operator=(Wave_functions_fft_new&& src__)
+    Wave_functions_fft& operator=(Wave_functions_fft&& src__)
     {
         if (this != &src__) {
             gkvec_fft_       = src__.gkvec_fft_;
@@ -1297,7 +1385,7 @@ class Wave_functions_fft_new : public Wave_functions_base<T>
         return *this;
     }
 
-    ~Wave_functions_fft_new()
+    ~Wave_functions_fft()
     {
         if (wf_) {
             auto& comm_col = gkvec_fft_->comm_ortho_fft();

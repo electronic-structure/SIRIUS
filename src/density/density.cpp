@@ -689,7 +689,7 @@ void add_k_point_contribution_rg_noncollinear(spfft_transform_type<T>& fft__, T 
 
 template <typename T>
 void
-Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft_new<T>, 2>& wf_fft__)
+Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
@@ -1264,40 +1264,21 @@ Density::generate_valence(K_point_set const& ks__)
         int ik  = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__.get<T>(ik);
 
-        std::array<wf::Wave_functions_fft_new<T>, 2> wf_fft;
+        std::array<wf::Wave_functions_fft<T>, 2> wf_fft;
 
-        auto mg = kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
+        std::vector<wf::device_memory_guard> mg;
+
+        mg.emplace_back(kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device));
+        if (ctx_.hubbard_correction()) {
+            mg.emplace_back(kp->hubbard_wave_functions_S_new().memory_guard(mem, wf::copy_to::device));
+        }
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             /* swap wave functions for the FFT transformation */
-            wf_fft[ispn] = wf::Wave_functions_fft_new<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions_new(),
+            wf_fft[ispn] = wf::Wave_functions_fft<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions_new(),
                     wf::spin_index(ispn), wf::band_range(0, nbnd), wf::transform_layout::to);
         }
-
-
-        /*
-         * GPU memory allocation
-         */
-        //if (is_device_memory(ctx_.preferred_memory_t())) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        int nbnd = kp->num_occupied_bands(ispn);
-        //        /* allocate GPU memory */
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(sddk::memory_t::device));
-        //        /* copy to GPU */
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-        //    }
-        //}
-        //if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
-        //    //is_device_memory(kp->hubbard_wave_functions_S().preferred_memory_t())) {
-        //    //int nwfu = kp->hubbard_wave_functions_S().num_wf();
-        //    //for (int ispn = 0; ispn < kp->hubbard_wave_functions_S().num_sc(); ispn++) {
-        //    //    /* allocate GPU memory */
-        //    //    kp->hubbard_wave_functions_S().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(sddk::memory_t::device));
-        //    //    /* copy to GPU */
-        //    //    kp->hubbard_wave_functions_S().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nwfu);
-        //    //}
-        //}
 
         if (ctx_.full_potential()) {
             add_k_point_contribution_dm_fplapw<T>(ctx_, *kp, density_matrix_);
@@ -1314,22 +1295,6 @@ Density::generate_valence(K_point_set const& ks__)
 
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp, wf_fft);
-
-        /*
-         * GPU memory deallocation
-         */
-        //if (is_device_memory(ctx_.preferred_memory_t())) {
-        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //        /* deallocate GPU memory */
-        //        kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-        //    }
-        //}
-        //if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
-        //    is_device_memory(kp->hubbard_wave_functions_S().preferred_memory_t())) {
-        //    for (int ispn = 0; ispn < kp->hubbard_wave_functions_S().num_sc(); ispn++) {
-        //        kp->hubbard_wave_functions_S().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-        //    }
-        //}
     }
 
     if (density_matrix_.size()) {

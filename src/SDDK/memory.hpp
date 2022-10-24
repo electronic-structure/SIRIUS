@@ -661,12 +661,16 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
     mp_->free(ptr__);
 }
 
-//#ifdef SIRIUS_GPU
-//extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
-//                                 int num_rows_loc__,
-//                                 int nwf__,
-//                                 cuDoubleComplex* result__);
-//#endif
+/// Return a memory pool.
+/** A memory pool is created when this function called for the first time. */
+inline sddk::memory_pool& get_memory_pool(sddk::memory_t M__)
+{
+    static std::map<sddk::memory_t, sddk::memory_pool> memory_pool_;
+    if (memory_pool_.count(M__) == 0) {
+        memory_pool_.emplace(M__, sddk::memory_pool(M__));
+    }
+    return memory_pool_.at(M__);
+}
 
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
