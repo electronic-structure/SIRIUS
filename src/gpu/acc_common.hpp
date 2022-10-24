@@ -148,6 +148,26 @@ inline __device__ auto accZero<gpu_complex_type<float>>()
     return make_accComplex(float{0}, float{0});
 }
 
+inline bool __device__ is_zero(gpu_complex_type<float> x)
+{
+    return (x.x == 0.0) && (x.y == 0);
+}
+
+inline bool __device__ is_zero(gpu_complex_type<double> x)
+{
+    return (x.x == 0.0) && (x.y == 0);
+}
+
+inline bool __device__ is_zero(float x)
+{
+    return x == 0.0;
+}
+
+inline bool __device__ is_zero(double x)
+{
+    return x == 0.0;
+}
+
 template <typename T>
 struct Real;
 

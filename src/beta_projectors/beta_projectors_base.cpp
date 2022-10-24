@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -149,61 +149,42 @@ create_beta_gk_gpu(int num_atoms, int num_gkvec, int const* beta_desc, std::comp
 #endif
 
 template <typename T>
-void Beta_projectors_base<T>::generate(int ichunk__, int j__)
+void Beta_projectors_base<T>::generate(sddk::memory_t mem__, int ichunk__, int j__)
 {
     PROFILE("sirius::Beta_projectors_base::generate");
 
-    switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
-            #pragma omp parallel for
-            for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-                int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
+    if (is_host_memory(mem__)) {
+        #pragma omp parallel for
+        for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
+            int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
 
-                double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
-                auto phase_k = std::exp(std::complex<T>(0.0, phase));
+            double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
+            auto phase_k = std::exp(std::complex<T>(0.0, phase));
 
-                std::vector<std::complex<double>> phase_gk(num_gkvec_loc());
+            std::vector<std::complex<double>> phase_gk(num_gkvec_loc());
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+                auto G = gkvec_.gvec<sddk::index_domain_t::local>(igk_loc);
+                /* total phase e^{-i(G+k)r_{\alpha}} */
+                phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
+            }
+            int nbeta    = chunk(ichunk__).desc_(beta_desc_idx::nbf, i);
+            int offset_a = chunk(ichunk__).desc_(beta_desc_idx::offset, i);
+            int offset_t = chunk(ichunk__).desc_(beta_desc_idx::offset_t, i);
+            for (int xi = 0; xi < nbeta; xi++) {
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                    auto G = gkvec_.gvec<sddk::index_domain_t::local>(igk_loc);
-                    /* total phase e^{-i(G+k)r_{\alpha}} */
-                    phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
-                }
-                int nbeta    = chunk(ichunk__).desc_(beta_desc_idx::nbf, i);
-                int offset_a = chunk(ichunk__).desc_(beta_desc_idx::offset, i);
-                int offset_t = chunk(ichunk__).desc_(beta_desc_idx::offset_t, i);
-                for (int xi = 0; xi < nbeta; xi++) {
-                    for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                        pw_coeffs_a_(igk_loc, offset_a + xi) = pw_coeffs_t_(igk_loc, offset_t + xi, j__) *
-                            static_cast<std::complex<T>>(phase_gk[igk_loc]);
-                    }
+                    pw_coeffs_a_(igk_loc, offset_a + xi) = pw_coeffs_t_(igk_loc, offset_t + xi, j__) *
+                        static_cast<std::complex<T>>(phase_gk[igk_loc]);
                 }
             }
-            break;
         }
-        case sddk::device_t::GPU: {
+    }
+    if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
-            auto& desc = chunk(ichunk__).desc_;
-            create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
-                               num_gkvec_loc(),
-                               desc.at(sddk::memory_t::device),
-                               pw_coeffs_t_.at(sddk::memory_t::device, 0, 0, j__),
-                               gkvec_coord_.at(sddk::memory_t::device),
-                               chunk(ichunk__).atom_pos_.at(sddk::memory_t::device),
-                               pw_coeffs_a().at(sddk::memory_t::device));
+        auto& desc = chunk(ichunk__).desc_;
+        create_beta_gk_gpu(chunk(ichunk__).num_atoms_, num_gkvec_loc(), desc.at(mem__),
+                               pw_coeffs_t_.at(mem__, 0, 0, j__), gkvec_coord_.at(mem__),
+                               chunk(ichunk__).atom_pos_.at(mem__), pw_coeffs_a().at(mem__));
 #endif
-            ///* wave-functions are on CPU but the beta-projectors are on GPU */
-            //if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
-            //    /* make beta-projectors for G=0 on the CPU */
-            //    #pragma omp parallel for schedule(static)
-            //    for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-            //        for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
-            //            pw_coeffs_a_g0_(chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
-            //                pw_coeffs_t_(0, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__);
-            //        }
-            //    }
-            //}
-            break;
-        }
     }
 }
 
@@ -220,16 +201,11 @@ void Beta_projectors_base<T>::prepare()
         case sddk::device_t::CPU: {
             pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
                 "pw_coeffs_a_");
-            //pw_coeffs_a_g0_ = sddk::mdarray<std::complex<T>, 1>(max_num_beta(), ctx_.mem_pool(sddk::memory_t::host),
-            //    "pw_coeffs_a_g0_");
             break;
         }
         case sddk::device_t::GPU: {
             pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(sddk::memory_t::device),
                 "pw_coeffs_a_");
-            //pw_coeffs_a_g0_ = sddk::mdarray<std::complex<T>, 1>(max_num_beta(), ctx_.mem_pool(sddk::memory_t::host),
-            //    "pw_coeffs_a_g0_");
-            //pw_coeffs_a_g0_.allocate(ctx_.mem_pool(sddk::memory_t::device));
             break;
         }
     }
@@ -248,7 +224,6 @@ void Beta_projectors_base<T>::dismiss()
         pw_coeffs_t_.deallocate(sddk::memory_t::device);
     }
     pw_coeffs_a_.deallocate(sddk::memory_t::device);
-    //pw_coeffs_a_g0_.deallocate(sddk::memory_t::device);
 }
 
 template class Beta_projectors_base<double>;

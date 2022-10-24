@@ -839,8 +839,8 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_po
         /* total number of occupied bands for this spin */
         int nbnd = kp__.num_occupied_bands(ispn);
         /* compute <beta|psi> */
-        auto beta_psi = kp__.beta_projectors().template inner<F>(ichunk__, kp__.spinor_wave_functions_new(),
-                wf::spin_index(ispn), wf::band_range(0, nbnd));
+        auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
+                kp__.spinor_wave_functions_new(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
         sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
@@ -904,8 +904,8 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
 
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* compute <beta|psi> */
-        auto beta_psi = kp__.beta_projectors().template inner<F>(ichunk__, kp__.spinor_wave_functions_new(),
-                wf::spin_index(ispn), wf::band_range(0, nbnd));
+        auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
+                kp__.spinor_wave_functions_new(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < nbnd_loc; i++) {
             int j = spl_nbnd[i];
@@ -1028,7 +1028,7 @@ add_k_point_contribution_dm_pwpp(Simulation_context const& ctx__, K_point<T>& kp
     kp__.beta_projectors().prepare();
 
     for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
-        kp__.beta_projectors().generate(ichunk);
+        kp__.beta_projectors().generate(ctx__.processing_unit_memory_t(), ichunk);
 
         if (ctx__.num_mag_dims() != 3) {
             add_k_point_contribution_dm_pwpp_collinear<T, F>(ctx__, kp__, ichunk, density_matrix__);

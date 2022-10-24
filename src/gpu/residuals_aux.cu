@@ -558,9 +558,9 @@ __global__ void axpby_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x_
     if  (j < ngv_loc__) {
         int k1 = array2D_offset(j, ibnd, ld1__);
         int k2 = array2D_offset(j, ibnd, ld2__);
-        if (beta == F(0)) {
+        if (is_zero(beta)) {
             y__[k2] = mul_accNumbers(alpha, x__[k1]);
-        } else if (alpha == F(0)) {
+        } else if (is_zero(alpha)) {
             y__[k2] = mul_accNumbers(beta, y__[k2]);
         } else {
             y__[k2] = add_accNumbers(mul_accNumbers(alpha, x__[k1]), mul_accNumbers(beta, y__[k2]));

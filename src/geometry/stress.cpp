@@ -129,15 +129,25 @@ Stress::calc_stress_hubbard()
 
     auto nhwf = ctx_.unit_cell().num_hubbard_wf().first;
 
+    sddk::mdarray<double_complex, 4> dn(nhwf, nhwf, 2, 9);
+    if (is_device_memory(ctx_.processing_unit_memory_t())) {
+        dn.allocate(ctx_.processing_unit_memory_t());
+    }
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<double>(ik);
-        sddk::mdarray<double_complex, 4> dn(nhwf, nhwf, 2, 9);
         dn.zero();
+        if (is_device_memory(ctx_.processing_unit_memory_t())) {
+            dn.zero(ctx_.processing_unit_memory_t());
+        }
         kp->beta_projectors().prepare();
+        auto mg1 = kp->spinor_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg2 = kp->hubbard_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg3 = kp->atomic_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg4 = kp->atomic_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
 
         if (ctx_.num_mag_dims() == 3) {
-            TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
+            RTE_THROW("Hubbard stress correction is only implemented for the simple hubbard correction.");
         }
 
         /* compute the derivative of the occupancies numbers */

@@ -691,15 +691,16 @@ class device_memory_guard
     }
 
     template <typename T>
-    device_memory_guard(T& obj__, sddk::memory_t mem__, copy_to copy_to__)
-        : obj_{&obj__}
+    device_memory_guard(T const& obj__, sddk::memory_t mem__, copy_to copy_to__)
+        : obj_{const_cast<T*>(&obj__)}
         , mem_{mem__}
         , copy_to_{copy_to__}
     {
         if (is_device_memory(mem_)) {
-            obj__.allocate(mem_);
+            auto obj = static_cast<T*>(obj_);
+            obj->allocate(mem_);
             if (static_cast<unsigned int>(copy_to_) & static_cast<unsigned int>(copy_to::device)) {
-                obj__.copy_to(mem_);
+                obj->copy_to(mem_);
             }
         }
         handler_ = [](void* p__,  sddk::memory_t mem__, wf::copy_to copy_to__)
@@ -755,20 +756,6 @@ class Wave_functions_base
     num_bands num_wf_{0};
     num_spins num_sc_{0};
 
-    inline void allocate(sddk::memory_t mem__)
-    {
-        for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].allocate(mem__);
-        }
-    }
-
-    inline void deallocate(sddk::memory_t mem__)
-    {
-        for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].deallocate(mem__);
-        }
-    }
-
     friend class device_memory_guard;
     friend class Wave_functions_fft_new<T>;
 
@@ -799,7 +786,7 @@ class Wave_functions_base
         }
     }
 
-    auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none)
+    auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none) const
     {
         return device_memory_guard(*this, mem__, copy_to__);
     }
@@ -869,7 +856,24 @@ class Wave_functions_base
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
-    inline void copy_to(sddk::memory_t mem__)
+    inline void
+    allocate(sddk::memory_t mem__)
+    {
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].allocate(mem__);
+        }
+    }
+
+    inline void
+    deallocate(sddk::memory_t mem__)
+    {
+        for (int s = 0; s < num_sc_.get(); s++) {
+            data_[s].deallocate(mem__);
+        }
+    }
+
+    inline void
+    copy_to(sddk::memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
             data_[s].copy_to(mem__);

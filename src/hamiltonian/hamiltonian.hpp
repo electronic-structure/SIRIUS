@@ -213,12 +213,12 @@ class Hamiltonian_k
         return H0_;
     }
 
-    K_point<T>& kp()
+    auto& kp()
     {
         return kp_;
     }
 
-    K_point<T> const& kp() const
+    auto const& kp() const
     {
         return kp_;
     }
@@ -229,7 +229,7 @@ class Hamiltonian_k
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
 
-    U_operator<T>& U()
+    auto& U()
     {
         return *u_op_;
     }
@@ -482,7 +482,7 @@ class Hamiltonian_k
                                     kp().gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
         }
 
-        auto mem = H0().ctx().processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+        auto mem = H0().ctx().processing_unit_memory_t();
 
         if (pcs) {
             auto cs = phi__.checksum(mem, br__);
@@ -503,7 +503,7 @@ class Hamiltonian_k
 
         /* return if there are no beta-projectors */
         if (H0().ctx().unit_cell().mt_lo_basis_size()) {
-            apply_non_local_D_Q<T, F>(spins__, br__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
         }
 
         /* apply the hubbard potential if relevant */

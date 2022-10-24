@@ -338,7 +338,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab_new(), tolerance,
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
-            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity(),
+            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2,
             phi_extra_new.get());
 
     kp.set_fv_eigen_values(&result.eval[0]);

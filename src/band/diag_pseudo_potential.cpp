@@ -118,8 +118,8 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     kp.beta_projectors_col().prepare();
     for (int ichunk = 0; ichunk <  kp.beta_projectors_row().num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
-        kp.beta_projectors_row().generate(ichunk);
-        kp.beta_projectors_col().generate(ichunk);
+        kp.beta_projectors_row().generate(sddk::memory_t::host, ichunk);
+        kp.beta_projectors_col().generate(sddk::memory_t::host, ichunk);
 
         auto& beta_row = kp.beta_projectors_row().pw_coeffs_a();
         auto& beta_col = kp.beta_projectors_col().pw_coeffs_a();

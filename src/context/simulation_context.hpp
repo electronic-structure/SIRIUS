@@ -754,6 +754,11 @@ class Simulation_context : public Simulation_parameters
         return host_memory_t_;
     }
 
+    inline auto processing_unit_memory_t() const
+    {
+        return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
+    }
+
     /// Split local set of G-vectors into chunks.
     sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;
 

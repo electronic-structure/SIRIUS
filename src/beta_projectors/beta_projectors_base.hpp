@@ -120,7 +120,7 @@ class Beta_projectors_base
      */
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, sddk::dmatrix<F>>
-    inner(int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__, wf::band_range br__) const
+    inner(sddk::memory_t mem__, int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__, wf::band_range br__) const
     {
         int nbeta = chunk(chunk__).num_beta_;
 
@@ -129,9 +129,7 @@ class Beta_projectors_base
             result.allocate(ctx_.mem_pool(sddk::memory_t::device));
         }
 
-        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
-
-        wf::inner<T, F, Beta_projectors_base<T>>(ctx_.spla_context(), mem, wf::spin_range(ispn__.get()), *this,
+        wf::inner<T, F, Beta_projectors_base<T>>(ctx_.spla_context(), mem__, wf::spin_range(ispn__.get()), *this,
                   wf::band_range(0, nbeta), phi__, br__, result, 0, 0);
 
         return result;
@@ -140,10 +138,11 @@ class Beta_projectors_base
     /// Generate beta-projectors for a chunk of atoms.
     /** Beta-projectors are always generated and stored in the memory of a processing unit.
      *
-     *  \param [in] ichunk Index of a chunk of atoms for which beta-projectors are generated.
+     *  \param [in] mem     Location of the beta-projectors (host or device memory).
+     *  \param [in] ichunk  Index of a chunk of atoms for which beta-projectors are generated.
      *  \param [in] j index of the component (up to 9 components are used for the strain derivative)
      */
-    void generate(int ichunk__, int j__);
+    void generate(sddk::memory_t mem__, int ichunk__, int j__);
 
     void prepare();
 
