@@ -55,7 +55,7 @@ class ArgumentAttribute:
             idx1 = attr_str.find('(', idx)
             idx2 = attr_str.find(')', idx1)
             if idx1 != -1 and idx2 != -1 and idx2 > idx1:
-                self.dimension_ = attr_str[idx:idx2+1]
+                self.dimension_ = attr_str[idx1:idx2+1]
                 attr_str = attr_str[:idx] + attr_str[idx2+1:]
             else:
                 raise Exception(f'wrong attribute string: {attr_str}')
@@ -138,10 +138,13 @@ class Argument:
             out.write(', value')
         else:
             out.write(', target')
-        if self.attr().dimension() != 'scalar':
-            out.write(f', {self.attr().dimension()}')
+        #if self.attr().dimension() != 'scalar':
+        #    out.write(f', {self.attr().dimension()}')
 
-        out.write(f', intent({self.attr().intent()}) :: {self.name()}\n')
+        out.write(f', intent({self.attr().intent()}) :: {self.name()}')
+        if self.attr().dimension() != 'scalar':
+            out.write(f'{self.attr().dimension()}')
+        out.write('\n')
 
     def write_interface_api_arg(self, out):
         if self.type_id() == 'func':

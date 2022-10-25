@@ -1280,11 +1280,11 @@ sirius_set_periodic_function_ptr:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: Pointer to the muffin-tin part of the function.
     f_rg:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:)
       doc: Pointer to the regualr-grid part of the function.
     error_code:
       type: int
@@ -1339,7 +1339,7 @@ sirius_set_periodic_function:
       doc: Label of the function.
     f_rg:
       type: double
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Real space values on the regular grid.
     f_rg_global:
       type: bool
@@ -1394,7 +1394,7 @@ sirius_get_periodic_function:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: out, optional
+      attr: out, optional, dimension(:,:,:)
       doc: Muffin-tin part of the function.
     lmmax:
       type: int
@@ -1410,7 +1410,7 @@ sirius_get_periodic_function:
       doc: Number of atoms
     f_rg:
       type: double
-      attr: out, optional, dimension(*)
+      attr: out, optional, dimension(:)
       doc: Real space values on the regular grid.
     num_rg_points:
       type: int
@@ -1638,7 +1638,7 @@ sirius_initialize_kset:
       doc: K-point set handler.
     count:
       type: int
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Local number of k-points for each MPI rank.
     error_code:
       type: int
@@ -2456,7 +2456,7 @@ sirius_set_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Local array of plane-wave coefficients.
     transform_to_rg:
       type: bool
@@ -2468,7 +2468,7 @@ sirius_set_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2583,7 +2583,7 @@ sirius_get_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Local array of plane-wave coefficients.
     ngv:
       type: int
@@ -2591,7 +2591,7 @@ sirius_get_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2882,7 +2882,7 @@ sirius_set_band_occupancies:
       doc: Spin component index.
     band_occupancies:
       type: double
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2924,7 +2924,7 @@ sirius_get_band_occupancies:
       doc: Spin component.
     band_occupancies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2966,7 +2966,7 @@ sirius_get_band_energies:
       doc: Spin component.
     band_energies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band energies.
     error_code:
       type: int
@@ -3070,7 +3070,7 @@ sirius_get_forces:
       doc: Label of the force component to get.
     forces:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: Total force component for each atom.
     error_code:
       type: int
@@ -3231,11 +3231,11 @@ sirius_get_wave_functions:
       doc: Local number of G-vectors for a k-point.
     gvec_loc:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors.
     evec:
       type: complex
-      attr: out, optional
+      attr: out, optional, dimension(:,:)
       doc: Wave-functions.
     ld:
       type: int
@@ -3600,7 +3600,7 @@ sirius_generate_coulomb_potential:
       doc: DFT ground state handler
     vh_el:
       type: double
-      attr: out, optional, dimension(*)
+      attr: out, optional, dimension(:)
       doc: Electronic part of Hartree potential at each atom's origin.
     error_code:
       type: int
@@ -3784,19 +3784,19 @@ sirius_get_gvec_arrays:
       doc: Simulation context handler
     gvec:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: G-vectors in lattice coordinates.
     gvec_cart:
       type: double
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: G-vectors in Cartesian coordinates.
     gvec_len:
       type: double
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Length of G-vectors.
     index_by_gvec:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: G-vector index by lattice coordinates.
     error_code:
       type: int
@@ -3895,7 +3895,7 @@ sirius_get_fft_index:
       doc: Simulation context handler
     fft_index:
       type: int
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Index inside FFT buffer
     error_code:
       type: int
@@ -3966,23 +3966,23 @@ sirius_get_gkvec_arrays:
       doc: Number of G+k vectors.
     gvec_index:
       type: int
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Index of the G-vector part of G+k vector.
     gkvec:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: G+k vectors in fractional coordinates.
     gkvec_cart:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: G+k vectors in Cartesian coordinates.
     gkvec_len:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Length of G+k vectors.
     gkvec_tp:
       type: double
-      attr: out, required, dimension(2, *)
+      attr: out, required, dimension(:,:)
       doc: Theta and Phi angles of G+k vectors.
     error_code:
       type: int
@@ -4048,11 +4048,11 @@ sirius_get_step_function:
       doc: Simulation context handler
     cfunig:
       type: complex
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Plane-wave coefficients of step function.
     cfunrg:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Values of the step function on the regular grid.
     num_rg_points:
       type: int
@@ -4365,7 +4365,7 @@ sirius_set_radial_function:
       doc: Radial derivative order.
     f:
       type: double
-      attr: in, required
+      attr: in, required, dimension(:)
       doc: Values of the radial function.
     l:
       type: int
@@ -4441,7 +4441,7 @@ sirius_set_equivalent_atoms:
       doc: Simulation context handler.
     equivalent_atoms:
       type: int
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Array with equivalent atom IDs.
     error_code:
       type: int
@@ -4925,7 +4925,7 @@ sirius_get_fv_eigen_vectors:
       doc: Global index of the k-point
     fv_evec:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(:,:)
       doc: Output first-variational eigenvector array
     ld:
       type: int
@@ -4970,7 +4970,7 @@ sirius_get_fv_eigen_values:
       doc: Global index of the k-point
     fv_eval:
       type: double
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Output first-variational eigenvector array
     num_fv_states:
       type: int
@@ -5015,7 +5015,7 @@ sirius_get_sv_eigen_vectors:
       doc: Global index of the k-point
     sv_evec:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(:,:)
       doc: Output second-variational eigenvector array
     num_bands:
       type: int
@@ -5056,15 +5056,15 @@ sirius_set_rg_values:
       doc: Label of the function.
     grid_dims:
       type: int
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Dimensions of the FFT grid.
     local_box_origin:
       type: int
-      attr: in, required
+      attr: in, required, dimension(:,:)
       doc: Coordinates of the local box origin for each MPI rank
     local_box_size:
       type: int
-      attr: in, required
+      attr: in, required, dimension(:,:)
       doc: Dimensions of the local box for each MPI rank.
     fcomm:
       type: int
@@ -5189,15 +5189,15 @@ sirius_get_rg_values:
       doc: Label of the function.
     grid_dims:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(3)
       doc: Dimensions of the FFT grid.
     local_box_origin:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(:,:)
       doc: Coordinates of the local box origin for each MPI rank
     local_box_size:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(:,:)
       doc: Dimensions of the local box for each MPI rank.
     fcomm:
       type: int
