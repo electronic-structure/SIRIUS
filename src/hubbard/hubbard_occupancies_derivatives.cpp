@@ -150,8 +150,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     // TODO: check if we have a norm conserving pseudo potential;
     // TODO: distribute (MPI) all matrices in the basis of atomic orbitals
     // only derivatives of the atomic wave functions are needed.
-    auto& phi_atomic   = kp__.atomic_wave_functions_new();
-    auto& phi_atomic_S = kp__.atomic_wave_functions_S_new();
+    auto& phi_atomic   = kp__.atomic_wave_functions();
+    auto& phi_atomic_S = kp__.atomic_wave_functions_S();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();
@@ -190,8 +190,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     std::array<sddk::dmatrix<double_complex>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         psi_s_phi_hub[ispn] = sddk::dmatrix<double_complex>(kp__.num_occupied_bands(ispn), nhwf);
-        wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions_new(),
-            wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S_new(),
+        wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions(),
+            wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
             wf::band_range(0, nhwf), psi_s_phi_hub[ispn], 0, 0);
     }
 
@@ -236,7 +236,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
             grad_phi_atomic_s_psi[x][ispn] = sddk::dmatrix<double_complex>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < d phi_atomic / d r_{j} | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *s_phi_atomic_tmp,
-                    wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                    wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                     wf::band_range(0, kp__.num_occupied_bands(ispn)), grad_phi_atomic_s_psi[x][ispn], 0, 0);
         }
     }
@@ -248,7 +248,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
             phi_atomic_s_psi[ispn] = sddk::dmatrix<double_complex>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), phi_atomic_S,
-                    wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                    wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                     wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_s_psi[ispn], 0, 0);
         }
     }
@@ -313,7 +313,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                     /* compute <phi_atomic | dS/dr_j | psi_{ik}> */
                     sddk::dmatrix<double_complex> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
                     wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *phi_atomic_tmp,
-                            wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                            wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                             wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_ds_psi, 0, 0);
 
                     /* add <d phi / d r_{alpha} | S | psi_{jk}> which is diagonal (in atom index) */
@@ -403,9 +403,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     }
 
     /* atomic wave functions  */
-    auto& phi_atomic    = kp__.atomic_wave_functions_new();
-    auto& phi_atomic_S  = kp__.atomic_wave_functions_S_new();
-    auto& phi_hub_S     = kp__.hubbard_wave_functions_S_new();
+    auto& phi_atomic    = kp__.atomic_wave_functions();
+    auto& phi_atomic_S  = kp__.atomic_wave_functions_S();
+    auto& phi_hub_S     = kp__.hubbard_wave_functions_S();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();
@@ -428,7 +428,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     std::array<sddk::dmatrix<double_complex>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         psi_s_phi_hub[ispn] = sddk::dmatrix<double_complex>(kp__.num_occupied_bands(ispn), nhwf);
-        wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions_new(),
+        wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions(),
                 wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_hub_S, wf::band_range(0, nhwf),
                 psi_s_phi_hub[ispn], 0, 0);
     }
@@ -457,7 +457,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             phi_atomic_s_psi[ispn] = sddk::dmatrix<double_complex>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), phi_atomic_S,
-                    wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                    wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                     wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_s_psi[ispn], 0, 0);
         }
     }
@@ -503,12 +503,12 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 sddk::dmatrix<double_complex> dphi_atomic_s_psi(nawf, kp__.num_occupied_bands(ispn));
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *s_dphi_atomic,
-                        wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                        wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                         wf::band_range(0, kp__.num_occupied_bands(ispn)), dphi_atomic_s_psi, 0, 0);
 
                 sddk::dmatrix<double_complex> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *ds_phi_atomic,
-                        wf::band_range(0, nawf), kp__.spinor_wave_functions_new(),
+                        wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                         wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_ds_psi, 0, 0);
 
                 for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {

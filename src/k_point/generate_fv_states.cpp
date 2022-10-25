@@ -155,8 +155,8 @@ void K_point<T>::generate_fv_states()
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
         spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
                 alm.at(sddk::memory_t::host), alm.ld(),
-                &fv_eigen_vectors_slab_new().pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
-                fv_eigen_vectors_slab_new().ld(),
+                &fv_eigen_vectors_slab().pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
+                fv_eigen_vectors_slab().ld(),
                 0.0, alm_fv.at(sddk::memory_t::host), alm_fv.ld(), mt_aw_offset, 0, alm_fv.spla_distribution(),
                 ctx_.spla_context());
 
@@ -178,30 +178,26 @@ void K_point<T>::generate_fv_states()
     auto layout_out = alm_fv_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
     costa::transform(layout_in, layout_out, 'N', one, zero, this->comm().mpi_comm());
 
-    //check_wf_diff("fv_eigen_vectors_slab", fv_eigen_vectors_slab(), fv_eigen_vectors_slab_new());
-
     #pragma omp parallel for
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         /* G+k block */
-        auto in_ptr = &fv_eigen_vectors_slab_new().pw_coeffs(0, wf::spin_index(0), wf::band_index(i));
-        auto out_ptr = &fv_states_new_->pw_coeffs(0, wf::spin_index(0), wf::band_index(i));
+        auto in_ptr = &fv_eigen_vectors_slab().pw_coeffs(0, wf::spin_index(0), wf::band_index(i));
+        auto out_ptr = &fv_states_->pw_coeffs(0, wf::spin_index(0), wf::band_index(i));
         std::copy(in_ptr, in_ptr + gkvec().count(), out_ptr);
 
         for (int ialoc = 0; ialoc < alm_fv_slab.spl_num_atoms().local_size(); ialoc++) {
             int ia = alm_fv_slab.spl_num_atoms()[ialoc];
             int num_mt_aw = uc.atom(ia).type().mt_aw_basis_size();
             for (int xi = 0; xi < num_mt_aw; xi++) {
-                fv_states_new_->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
+                fv_states_->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
                     alm_fv_slab.mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
             }
             for (int xi = 0; xi < uc.atom(ia).type().mt_lo_basis_size(); xi++) {
-                fv_states_new_->mt_coeffs(num_mt_aw + xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
-                    fv_eigen_vectors_slab_new().mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
+                fv_states_->mt_coeffs(num_mt_aw + xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
+                    fv_eigen_vectors_slab().mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
             }
         }
     }
-
-    //check_wf_diff("fv_eigen_states",*fv_states_, *fv_states_new_);
 }
 
 template void K_point<double>::generate_fv_states();

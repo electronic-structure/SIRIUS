@@ -312,7 +312,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
     std::vector<wf::device_memory_guard> mg;
-    mg.emplace_back(Hk__.kp().spinor_wave_functions_new().memory_guard(mem, wf::copy_to::host));
+    mg.emplace_back(Hk__.kp().spinor_wave_functions().memory_guard(mem, wf::copy_to::host));
     mg.emplace_back(phi.memory_guard(mem, wf::copy_to::device));
     mg.emplace_back(hphi.memory_guard(mem));
     mg.emplace_back(ophi.memory_guard(mem));
@@ -419,7 +419,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
         for (int ispn = 0; ispn < num_sc; ispn++) {
             wf::transform(ctx.spla_context(), mem, evec, 0, 0, 1.0, phi,
                     wf::spin_index(num_sc == 2 ? ispn : 0), wf::band_range(0, num_phi_tot), 0.0,
-                    Hk__.kp().spinor_wave_functions_new(), wf::spin_index(num_sc == 2 ? ispn : ispn_step),
+                    Hk__.kp().spinor_wave_functions(), wf::spin_index(num_sc == 2 ? ispn : ispn_step),
                     wf::band_range(0, num_bands));
         }
 
@@ -430,7 +430,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     if (pcs) {
         for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
-            auto cs = Hk__.kp().spinor_wave_functions_new().checksum(mem, wf::spin_index(ispn),
+            auto cs = Hk__.kp().spinor_wave_functions().checksum(mem, wf::spin_index(ispn),
                     wf::band_range(0, num_bands));
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;

@@ -509,7 +509,7 @@ class Hamiltonian_k
         /* apply the hubbard potential if relevant */
         if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
             /* apply the hubbard potential */
-            apply_U_operator(H0().ctx(), spins__, br__, kp().hubbard_wave_functions_S_new(), phi__, this->U(), *hphi__);
+            apply_U_operator(H0().ctx(), spins__, br__, kp().hubbard_wave_functions_S(), phi__, this->U(), *hphi__);
         }
 
         if (pcs) {

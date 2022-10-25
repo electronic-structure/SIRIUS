@@ -132,8 +132,8 @@ Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forc
     }
 
     Beta_projectors_gradient<T> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
-    auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
-    auto mg = kp__.spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
+    auto mem = ctx_.processing_unit_memory_t();
+    auto mg = kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
 
     sddk::mdarray<real_type<F>, 2> f(3, ctx_.unit_cell().num_atoms());
     f.zero();
@@ -341,10 +341,10 @@ Force::calc_forces_hubbard()
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_.get<double>(ik);
             kp->beta_projectors().prepare();
-            auto mg1 = kp->spinor_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-            auto mg2 = kp->hubbard_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-            auto mg3 = kp->atomic_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-            auto mg4 = kp->atomic_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg4 = kp->atomic_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
 
             if (ctx_.num_mag_dims() == 3) {
                 RTE_THROW("Hubbard forces are only implemented for the simple hubbard correction.");

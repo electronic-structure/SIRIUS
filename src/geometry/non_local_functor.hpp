@@ -60,8 +60,8 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             int nbnd = kp__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk, kp__.spinor_wave_functions_new(),
-                    wf::spin_index(ispn), wf::band_range(0, nbnd));
+            beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
+                    kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
         bp.dismiss();
 
@@ -76,8 +76,8 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                 int nbnd = kp__.num_occupied_bands(ispn);
 
                 /* inner product of beta gradient and WF */
-                auto bp_base_phi_chunk = bp_base__.template inner<F>(ctx__.processing_unit_memory_t(), icnk, kp__.spinor_wave_functions_new(),
-                        wf::spin_index(ispn), wf::band_range(0, nbnd));
+                auto bp_base_phi_chunk = bp_base__.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
+                        kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
                 sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
 

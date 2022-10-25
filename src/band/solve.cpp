@@ -99,10 +99,9 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
         };
 
         auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, wf::num_bands(ctx_.num_bands()),
-                wf::num_mag_dims(ctx_.num_mag_dims()),
-                kp.spinor_wave_functions_new(), tolerance, itso.residual_tolerance(), itso.num_steps(),
-                itso.locking(), itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(),
-                std::cout, 0);
+                wf::num_mag_dims(ctx_.num_mag_dims()), kp.spinor_wave_functions(), tolerance,
+                itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
+                itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
         niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {

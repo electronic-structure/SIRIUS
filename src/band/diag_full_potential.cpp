@@ -119,14 +119,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     /* remap to slab */
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
-        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
             sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
     }
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
                 ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
-        auto layout_out = kp.fv_eigen_vectors_slab_new().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
             sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
     }
@@ -143,44 +143,15 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
         {
             auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
-            auto mg1 = kp.fv_eigen_vectors_slab_new().memory_guard(mem, wf::copy_to::device);
+            auto mg1 = kp.fv_eigen_vectors_slab().memory_guard(mem, wf::copy_to::device);
             auto mg2 = ofv_new.memory_guard(mem, wf::copy_to::host);
 
-            Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab_new(),
+            Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx_.num_fv_states()), kp.fv_eigen_vectors_slab(),
                     nullptr, &ofv_new);
         }
 
-        //if (true) {
-        //    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
-        //                       [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-        //                       ctx_.preferred_memory_t(), 1);
-        //    Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
-        //                       [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-        //                       ctx_.preferred_memory_t(), 1);
-        //    phi.allocate(spin_range(0), memory_t::device);
-        //    ofv.allocate(spin_range(0), memory_t::device);
-
-        //    for (int i = 0; i < kp.num_gkvec(); i++) {
-        //        phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
-        //        for (int j = 0; j < ctx_.num_fv_states(); j++) {
-        //            phi.pw_coeffs(0).prime(i, j) = 1.0;
-        //        }
-        //        phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
-        //        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
-        //    }
-
-        //    for (int i = 0; i < unit_cell_.mt_lo_basis_size(); i++) {
-        //        phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
-        //        for (int j = 0; j < ctx_.num_fv_states(); j++) {
-        //            phi.mt_coeffs(0).prime(i, j) = 1.0;
-        //        }
-        //        phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
-        //        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
-        //    }
-        //}
-
-        auto norm1 = wf::inner_diag<double, std::complex<double>>(sddk::memory_t::host, kp.fv_eigen_vectors_slab_new(), ofv_new, wf::spin_range(0),
-                wf::num_bands(ctx_.num_fv_states()));
+        auto norm1 = wf::inner_diag<double, std::complex<double>>(sddk::memory_t::host, kp.fv_eigen_vectors_slab(),
+                ofv_new, wf::spin_range(0), wf::num_bands(ctx_.num_fv_states()));
 
         std::vector<double> norm;
         for (auto e : norm1) {
@@ -188,7 +159,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         }
 
         wf::axpby<double, double>(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, ctx_.num_fv_states()),
-                nullptr, nullptr, norm.data(), &kp.fv_eigen_vectors_slab_new());
+                nullptr, nullptr, norm.data(), &kp.fv_eigen_vectors_slab());
     }
 
     //if (ctx_.cfg().control().verification() >= 2) {
@@ -264,7 +235,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
 
     auto& kp = Hk__.kp();
 
-    int ncomp = kp.singular_components_new().num_wf().get();
+    int ncomp = kp.singular_components().num_wf().get();
 
     ctx_.message(3, __function_name__, "number of singular components: %i\n", ncomp);
 
@@ -274,7 +245,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
     std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
 
     auto result = davidson<double, double_complex, davidson_evp_t::overlap>(Hk__, wf::num_bands(ncomp), wf::num_mag_dims(0),
-            kp.singular_components_new(),
+            kp.singular_components(),
             [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2);
 
@@ -293,7 +264,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     auto& itso = ctx_.cfg().iterative_solver();
 
     /* number of singular components */
-    int ncomp = kp.singular_components_new().num_wf().get();
+    int ncomp = kp.singular_components().num_wf().get();
 
     if (ncomp) {
         /* compute eigen-vectors of O^{APW-APW} */
@@ -308,7 +279,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     if (ncomp) {
         /* copy [0, ncomp) from kp.singular_components() to [0, ncomp) in phi_extra */
-        wf::copy(sddk::memory_t::host, kp.singular_components_new(), wf::spin_index(0), wf::band_range(0, ncomp),
+        wf::copy(sddk::memory_t::host, kp.singular_components(), wf::spin_index(0), wf::band_range(0, ncomp),
                 *phi_extra_new, wf::spin_index(0), wf::band_range(0, ncomp));
     }
 
@@ -336,7 +307,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     std::stringstream s;
     std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
-            wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab_new(), tolerance,
+            wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab(), tolerance,
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
             itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2,
             phi_extra_new.get());
@@ -371,12 +342,12 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     std::vector<wf::Wave_functions<double>> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
         hpsi.push_back(wf::Wave_functions<double>(kp.gkvec_sptr(), num_mt_coeffs, 
-                    wf::num_mag_dims(0), wf::num_bands(nfv), sddk::memory_t::host));
+                    wf::num_mag_dims(0), wf::num_bands(nfv), ctx_.host_memory_t()));
     }
 
     if (pcs) {
-        auto cs1 = kp.fv_states_new().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
-        auto cs2 = kp.fv_states_new().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs1 = kp.fv_states().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs2 = kp.fv_states().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (kp.comm().rank() == 0) {
             utils::print_checksum("psi_pw", cs1, RTE_OUT(std::cout));
             utils::print_checksum("psi_mt", cs2, RTE_OUT(std::cout));
@@ -385,7 +356,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
 
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2) {
-        Hk__.apply_b(kp.fv_states_new(), hpsi);
+        Hk__.apply_b(kp.fv_states(), hpsi);
     } else {
         hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
@@ -404,19 +375,14 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     //== }
 
     if (ctx_.so_correction()) {
-        Hk__.H0().apply_so_correction(kp.fv_states_new(), hpsi);
+        Hk__.H0().apply_so_correction(kp.fv_states(), hpsi);
     }
 
-    // TODO: to GPU
-
-    //if (ctx_.processing_unit() == sddk::device_t::GPU) {
-    //    kp.fv_states().allocate(sddk::spin_range(0), ctx_.mem_pool(sddk::memory_t::device));
-    //    kp.fv_states().copy_to(sddk::spin_range(0), sddk::memory_t::device, 0, nfv);
-    //    for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-    //        hpsi[i].allocate(sddk::spin_range(0), ctx_.mem_pool(sddk::memory_t::device));
-    //        hpsi[i].copy_to(sddk::spin_range(0), sddk::memory_t::device, 0, nfv);
-    //    }
-    //}
+    std::vector<wf::device_memory_guard> mg;
+    mg.emplace_back(kp.fv_states().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device));
+    for (int i = 0; i < ctx_.num_mag_comp(); i++) {
+        mg.emplace_back(hpsi[i].memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device));
+    }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -424,6 +390,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
 
     wf::band_range br(0, nfv);
     wf::spin_range sr(0, 1);
+
+    auto mem = ctx_.processing_unit_memory_t();
 
     if (ctx_.num_mag_dims() != 3) {
         sddk::dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
@@ -433,8 +401,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             if (pcs) {
-                auto cs1 = hpsi[ispn].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
-                auto cs2 = hpsi[ispn].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+                auto cs1 = hpsi[ispn].checksum_pw(mem, wf::spin_index(0), wf::band_range(0, nfv));
+                auto cs2 = hpsi[ispn].checksum_mt(mem, wf::spin_index(0), wf::band_range(0, nfv));
                 if (kp.comm().rank() == 0) {
                     std::stringstream s1;
                     s1 << "hpsi_pw_" << ispn;
@@ -445,7 +413,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
                 }
             }
             /* compute <wf_i | h * wf_j> */
-            wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[ispn], br, h, 0, 0);
+            wf::inner(ctx_.spla_context(), mem, sr, kp.fv_states(), br, hpsi[ispn], br, h, 0, 0);
 
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp.fv_eigen_value(i));
@@ -460,11 +428,11 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
             h.allocate(ctx_.mem_pool(sddk::memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
-        wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[0], br, h, 0, 0);
+        wf::inner(ctx_.spla_context(), mem, sr, kp.fv_states(), br, hpsi[0], br, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[1], br, h, nfv, nfv);
+        wf::inner(ctx_.spla_context(), mem, sr, kp.fv_states(), br, hpsi[1], br, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        wf::inner(ctx_.spla_context(), sddk::memory_t::host, sr, kp.fv_states_new(), br, hpsi[2], br, h, 0, nfv);
+        wf::inner(ctx_.spla_context(), mem, sr, kp.fv_states(), br, hpsi[2], br, h, 0, nfv);
 
         if (kp.comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {
@@ -484,12 +452,6 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         std_solver.solve(nb, nb, h, &band_energies(0, 0), kp.sv_eigen_vectors(0));
     }
 
-//    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-//        kp.fv_states().deallocate(sddk::spin_range(0), sddk::memory_t::device);
-//        for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-//            hpsi[i].deallocate(sddk::spin_range(0), sddk::memory_t::device);
-//        }
-//    }
     for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
         for (int j = 0; j < ctx_.num_bands(); j++) {
             kp.band_energy(j, ispn, band_energies(j, ispn));

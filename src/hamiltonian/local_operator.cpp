@@ -508,7 +508,6 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
 
     auto spfft_mem = spfft_memory_t.at(spfft_pu);
 
-    // TODO: need to pass temporaty functions or allocate from the pool
     wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, phi__, wf::spin_index(0), b__, wf::transform_layout::to);
 
     std::map<wf::Wave_functions<T>*, wf::Wave_functions_fft<T>> map_wf_fft;

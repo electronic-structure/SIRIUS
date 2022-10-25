@@ -754,6 +754,7 @@ class Simulation_context : public Simulation_parameters
         return host_memory_t_;
     }
 
+    /// Return the memory type for processing unit.
     inline auto processing_unit_memory_t() const
     {
         return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;

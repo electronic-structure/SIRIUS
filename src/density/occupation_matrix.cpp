@@ -93,8 +93,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        wf::inner(ctx_.spla_context(), mem, wf::spin_range(0, 2), kp__.spinor_wave_functions_new(),
-                wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S_new(),
+        wf::inner(ctx_.spla_context(), mem, wf::spin_range(0, 2), kp__.spinor_wave_functions(),
+                wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
                 wf::band_range(0, nwfu), dm, 0, 0);
 
         sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
@@ -154,8 +154,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 dm.allocate(ctx_.mem_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
-            wf::inner(ctx_.spla_context(), mem, wf::spin_range(ispn), kp__.spinor_wave_functions_new(),
-                    wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S_new(),
+            wf::inner(ctx_.spla_context(), mem, wf::spin_range(ispn), kp__.spinor_wave_functions(),
+                    wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
                     wf::band_range(0, nwfu), dm, 0, 0);
 
             sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");

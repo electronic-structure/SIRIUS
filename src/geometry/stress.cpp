@@ -56,7 +56,7 @@ Stress::calc_stress_nonloc_aux()
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<T>(ik);
         auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
-        auto mg = kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device);
+        auto mg = kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
         Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
 
         add_k_point_contribution_nonlocal<T, F>(ctx_, bp_strain_deriv, *kp, collect_result);
@@ -141,10 +141,10 @@ Stress::calc_stress_hubbard()
             dn.zero(ctx_.processing_unit_memory_t());
         }
         kp->beta_projectors().prepare();
-        auto mg1 = kp->spinor_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-        auto mg2 = kp->hubbard_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-        auto mg3 = kp->atomic_wave_functions_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-        auto mg4 = kp->atomic_wave_functions_S_new().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+        auto mg4 = kp->atomic_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
 
         if (ctx_.num_mag_dims() == 3) {
             RTE_THROW("Hubbard stress correction is only implemented for the simple hubbard correction.");
@@ -686,7 +686,7 @@ Stress::calc_stress_kin_aux()
                         auto Gk = kp->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igloc);
 
                         double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions_new().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
+                        auto z = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                         double d = fact * f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                         for (int mu : {0, 1, 2}) {
                             for (int nu : {0, 1, 2}) {

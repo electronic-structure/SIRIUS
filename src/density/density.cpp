@@ -797,14 +797,14 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
     /* add |psi_j> n_j <psi_j| to density matrix */
 
-    for (int ialoc = 0; ialoc < kp__.spinor_wave_functions_new().spl_num_atoms().local_size(); ialoc++) {
-        int ia            = kp__.spinor_wave_functions_new().spl_num_atoms()[ialoc];
+    for (int ialoc = 0; ialoc < kp__.spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
+        int ia            = kp__.spinor_wave_functions().spl_num_atoms()[ialoc];
         int mt_basis_size = uc.atom(ia).type().mt_basis_size();
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                 for (int xi = 0; xi < mt_basis_size; xi++) {
-                    auto z = kp__.spinor_wave_functions_new().mt_coeffs(xi, wf::atom_index(ialoc),
+                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, wf::atom_index(ialoc),
                             wf::spin_index(ispn), wf::band_index(j));
                     wf1(xi, j, ispn) = std::conj(z);
                     wf2(xi, j, ispn) = static_cast<std::complex<double>>(z) * kp__.band_occupancy(j, ispn) * kp__.weight();
@@ -840,7 +840,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_po
         int nbnd = kp__.num_occupied_bands(ispn);
         /* compute <beta|psi> */
         auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
-                kp__.spinor_wave_functions_new(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+                kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
         sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
@@ -905,7 +905,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* compute <beta|psi> */
         auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
-                kp__.spinor_wave_functions_new(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+                kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < nbnd_loc; i++) {
             int j = spl_nbnd[i];
@@ -1268,15 +1268,15 @@ Density::generate_valence(K_point_set const& ks__)
 
         std::vector<wf::device_memory_guard> mg;
 
-        mg.emplace_back(kp->spinor_wave_functions_new().memory_guard(mem, wf::copy_to::device));
+        mg.emplace_back(kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device));
         if (ctx_.hubbard_correction()) {
-            mg.emplace_back(kp->hubbard_wave_functions_S_new().memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(kp->hubbard_wave_functions_S().memory_guard(mem, wf::copy_to::device));
         }
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             /* swap wave functions for the FFT transformation */
-            wf_fft[ispn] = wf::Wave_functions_fft<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions_new(),
+            wf_fft[ispn] = wf::Wave_functions_fft<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions(),
                     wf::spin_index(ispn), wf::band_range(0, nbnd), wf::transform_layout::to);
         }
 

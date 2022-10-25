@@ -50,8 +50,8 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__)
         if (H0_.ctx().hubbard_correction()) {
             u_op_ = std::make_shared<U_operator<T>>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk());
             if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
-                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S_new()).allocate(H0_.ctx().processing_unit_memory_t());
-                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S_new()).copy_to(H0_.ctx().processing_unit_memory_t());
+                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S()).allocate(H0_.ctx().processing_unit_memory_t());
+                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S()).copy_to(H0_.ctx().processing_unit_memory_t());
             }
         }
     }
@@ -66,7 +66,7 @@ Hamiltonian_k<T>::~Hamiltonian_k()
         }
         if (H0_.ctx().hubbard_correction()) {
             if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
-                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S_new()).deallocate(H0_.ctx().processing_unit_memory_t());
+                const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S()).deallocate(H0_.ctx().processing_unit_memory_t());
             }
         }
     }

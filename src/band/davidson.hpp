@@ -187,7 +187,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     /* alias for memory pool */
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
-    sddk::memory_t mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+    sddk::memory_t mem = ctx.processing_unit_memory_t();
 
     /* allocate wave-functions */
 
