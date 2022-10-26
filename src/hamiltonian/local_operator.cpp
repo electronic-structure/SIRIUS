@@ -388,9 +388,9 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
             }
             case sddk::memory_t::device: {
                 add_to_hphi_pw_gpu(ngv_fft, ekin, pw_ekin_.at(sddk::memory_t::device),
-                        phi_fft[ispn].at(sddk::memory_t::device, 0, wf::spin_index(0), wf::band_index(i)),
+                        phi_fft[ispn].at(sddk::memory_t::device, 0, wf::band_index(i)),
                         vphi_.at(sddk::memory_t::device),
-                        hphi_fft[ispn].at(sddk::memory_t::device, 0, wf::spin_index(0), wf::band_index(i)));
+                        hphi_fft[ispn].at(sddk::memory_t::device, 0, wf::band_index(i)));
                 break;
             }
             default: {
@@ -627,7 +627,7 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
                     }
                 } else {
                     grad_phi_lapw_gpu(gkvec_fft__->gvec_count_fft(),
-                            phi_fft.at(mem, 0, wf::spin_index(0), wf::band_index(j)),
+                            phi_fft.at(mem, 0, wf::band_index(j)),
                             gkvec_cart_.at(mem, 0, x), buf_pw.at(mem));
                 }
 
@@ -662,7 +662,7 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
                 } else {
                     add_to_hphi_lapw_gpu(gkvec_fft__->gvec_count_fft(), buf_pw.at(sddk::memory_t::device),
                             gkvec_cart_.at(sddk::memory_t::device, 0, x),
-                            map_wf_fft[hphi__].at(sddk::memory_t::device, 0, wf::spin_index(0), wf::band_index(j)));
+                            map_wf_fft[hphi__].at(sddk::memory_t::device, 0, wf::band_index(j)));
                 }
             } // x
         }

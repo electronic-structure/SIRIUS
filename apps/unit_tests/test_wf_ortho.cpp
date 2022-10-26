@@ -23,10 +23,10 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     Gvec gvec(M, cutoff__, Communicator::world(), false);
     Gvec_fft gvecp(gvec, Communicator::world(), Communicator::self());
 
-    int num_atoms = 10;
-    auto nmt = [](int i) {
-        return 20;
-    };
+    //int num_atoms = 10;
+    //auto nmt = [](int i) {
+    //    return 20;
+    //};
 
 //    Wave_functions<double> phi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
 //    Wave_functions<double> hphi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);

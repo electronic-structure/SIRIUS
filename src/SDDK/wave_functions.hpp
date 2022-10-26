@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -34,7 +34,6 @@
 #include "SDDK/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/rte.hpp"
-#include "matrix_storage.hpp"
 #include "type_definition.hpp"
 
 #if defined(SIRIUS_GPU)
@@ -80,6 +79,7 @@ axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1
 }
 #endif
 
+/// Add checksum for the arrays on GPUs.
 template <typename T>
 auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int nwf__)
 {
@@ -103,431 +103,7 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
     return cs;
 }
 
-namespace sddk {
-
-// C++ wrappers for gpu kernels
-void add_square_sum_gpu(std::complex<double> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, double* result__);
-void add_square_sum_gpu(std::complex<float> const* wf__, int num_rows_loc__, int nwf__, int reduced__, int mpi_rank__, float* result__);
-void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<double>* mtrx__, double* a__);
-void scale_matrix_columns_gpu(int nrow__, int ncol__, std::complex<float>* mtrx__, float* a__);
-
-
-/// Wave-functions representation.
-/** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
- *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
- *  each component represents a pure (up- or dn-) spinor state and they are independent. In non-collinear case
- *  the two components represent a full spinor state.
- *
- *  In case of collinear magnetism we can work with auxiliary scalar wave-functions and update up- or dn- components
- *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is
- *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned
- *  for any spin index (ispn = 0 or ispn = 1).
- *
- *  Example below shows how the wave-functions are used:
-
-    \code{.cpp}
-    // alias for wave-functions
-    auto& psi = kp__->spinor_wave_functions();
-    // create hpsi
-    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
-    // create hpsi
-    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
-
-    // if preferred memory is on GPU
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        // alias for memory pool
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            // allocate GPU memory
-            psi.pw_coeffs(ispn).allocate(mpd);
-            // copy to GPU
-            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
-        }
-        // set the preferred memory type
-        psi.preferred_memory_t(ctx_.preferred_memory_t());
-        // allocate hpsi and spsi on GPU
-        for (int i = 0; i < num_sc; i++) {
-            hpsi.pw_coeffs(i).allocate(mpd);
-            spsi.pw_coeffs(i).allocate(mpd);
-        }
-        // set preferred memory for hpsi
-        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
-        // set preferred memory for spsi
-        spsi.preferred_memory_t(ctx_.preferred_memory_t());
-    }
-    // prepare beta projectors
-    kp__->beta_projectors().prepare();
-    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-        if (nc_mag) {
-            // apply Hamiltonian and S operators to both components of wave-functions
-            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
-        } else {
-            // apply Hamiltonian and S operators to a single components of wave-functions
-            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
-        }
-
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            // copy to host if needed
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                hpsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
-                spsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
-            }
-        }
-        // do something with hpsi and spsi
-    }
-    // free beta-projectors
-    kp__->beta_projectors().dismiss();
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            // deallocate wave-functions on GPU
-            psi.pw_coeffs(ispn).deallocate(memory_t::device);
-        }
-        // set preferred memory to CPU
-        psi.preferred_memory_t(memory_t::host);
-    }
-    \endcode
- */
-//template <typename T>   // template type is using real type that determine the precision, wavefunction is always complex
-//class Wave_functions
-//{
-//  private:
-//    /// Communicator used to distribute G+k vectors and atoms.
-//    Communicator const& comm_;
-//
-//    /// G+k vectors of the wave-function.
-//    Gvec_partition const& gkvecp_;
-//
-//    splindex<splindex_t::block> spl_num_atoms_;
-//
-//    /// Distribution of muffin-tin coefficients between ranks.
-//    block_data_descriptor mt_coeffs_distr_;
-//
-//    std::vector<int> offset_mt_coeffs_;
-//
-//    /// Total number of muffin-tin coefficients.
-//    int num_mt_coeffs_{0};
-//
-//    /// Total number of wave-functions.
-//    int num_wf_{0};
-//
-//    /// Number of spin components (1 or 2).
-//    int num_sc_{1};
-//
-//    /// Plane-wave part of wave-functions.
-//    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> pw_coeffs_{
-//        {nullptr, nullptr}};
-//
-//    /// Muffin-tin part of wave-functions.
-//    std::array<std::unique_ptr<matrix_storage<std::complex<T>, matrix_storage_t::slab>>, 2> mt_coeffs_{
-//        {nullptr, nullptr}};
-//
-//    bool has_mt_{false};
-//
-//    /// Preferred memory type for this wave functions.
-//    memory_t preferred_memory_t_{memory_t::host};
-//
-//    /// Lower boundary for the spin component index by spin index.
-//    inline int s0(int ispn__) const
-//    {
-//        assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
-//
-//        if (ispn__ == 2) {
-//            return 0;
-//        } else {
-//            return ispn__;
-//        }
-//    }
-//
-//    /// Upper boundary for the spin component index by spin index.
-//    inline int s1(int ispn__) const
-//    {
-//        assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
-//
-//        if (ispn__ == 2) {
-//            return (num_sc_ == 1) ? 0 : 1;
-//        } else {
-//            return ispn__;
-//        }
-//    }
-//
-//    /// Spin-component index by spin index.
-//    inline int isc(int ispn__) const
-//    {
-//        assert(ispn__ == 0 || ispn__ == 1);
-//        return (num_sc_ == 1) ? 0 : ispn__;
-//    }
-//
-//  public:
-//    /// Constructor for PW wave-functions.
-//    /** Memory to store plane-wave coefficients is allocated from the heap. */
-//    Wave_functions(Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
-//
-//    /// Constructor for PW wave-functions.
-//    /** Memory to store plane-wave coefficients is allocated from the memory pool. */
-//    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
-//                   int num_sc__ = 1);
-//
-//    /// Constructor for LAPW wave-functions.
-//    Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
-//                   memory_t preferred_memory_t__, int num_sc__ = 1);
-//
-//    /// Constructor for LAPW wave-functions.
-//    /** Memory to store wave-function coefficients is allocated from the memory pool. */
-//    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_atoms__,
-//                   std::function<int(int)> mt_size__, int num_wf__,
-//                   memory_t preferred_memory_t__, int num_sc__ = 1);
-//
-//    /// Communicator of the G+k vector distribution.
-//    Communicator const& comm() const
-//    {
-//        return comm_;
-//    }
-//
-//    /// G+k vectors of the wave-functions.
-//    Gvec const& gkvec() const
-//    {
-//        return gkvecp_.gvec();
-//    }
-//
-//    Gvec_partition const& gkvec_partition() const
-//    {
-//        return gkvecp_;
-//    }
-//
-//    inline int num_mt_coeffs() const
-//    {
-//        return num_mt_coeffs_;
-//    }
-//
-//    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& pw_coeffs(int ispn__)
-//    {
-//        return *pw_coeffs_[isc(ispn__)];
-//    }
-//
-//    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
-//    {
-//        return *pw_coeffs_[isc(ispn__)];
-//    }
-//
-//    inline matrix_storage<std::complex<T>, matrix_storage_t::slab>& mt_coeffs(int ispn__)
-//    {
-//        return *mt_coeffs_[isc(ispn__)];
-//    }
-//
-//    inline matrix_storage<std::complex<T>, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
-//    {
-//        return *mt_coeffs_[isc(ispn__)];
-//    }
-//
-//    inline bool has_mt() const
-//    {
-//        return has_mt_ && (mt_coeffs_distr_.counts[comm_.rank()] > 0);
-//    }
-//
-//    inline int num_wf() const
-//    {
-//        return num_wf_;
-//    }
-//
-//    inline int num_sc() const
-//    {
-//        return num_sc_;
-//    }
-//
-//    inline splindex<splindex_t::block> const& spl_num_atoms() const
-//    {
-//        return spl_num_atoms_;
-//    }
-//
-//    inline int offset_mt_coeffs(int ialoc__) const
-//    {
-//        return offset_mt_coeffs_[ialoc__];
-//    }
-//
-//    inline memory_t preferred_memory_t() const
-//    {
-//        return preferred_memory_t_;
-//    }
-//
-//    inline auto checksum(device_t pu__, int ispn__, int i0__, int n__) const
-//    {
-//        return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
-//    }
-//
-//    inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
-//    {
-//        this->zero_pw(pu__, ispn__, i0__, n__);
-//        this->zero_mt(pu__, ispn__, i0__, n__);
-//    }
-//
-//    inline void zero(device_t pu__)
-//    {
-//        for (int is = 0; is < this->num_sc(); is++) {
-//            this->zero(pu__, is, 0, this->num_wf());
-//        }
-//    }
-//
-//    // compute a dot, i.e. diag(this' * phi).
-//    mdarray<std::complex<T>, 1> dot(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, int n__) const;
-//
-//    // compute this[:, i] = alpha * phi[:, i] + beta * this[:, i]
-//    template<class Ta>
-//    void axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_functions<T> const &phi, Ta beta, int n__);
-//
-//    // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
-//    template<class Ta>
-//    void xpby(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, std::vector<Ta> const &betas, int n__);
-//
-//    // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
-//    template<class Ta>
-//    void axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, int n__);
-//
-//    // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
-//    template<class Ta>
-//    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids, int n__);
-//
-//    /// Compute the sum of squares of expansion coefficients.
-//    /** The result is always returned in the host memory */
-//    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
-//
-//
-//    /// Copy values from another wave-function.
-//    /** \param [in] pu   Type of processging unit which copies data.
-//     *  \param [in] n    Number of wave-functions to copy.
-//     *  \param [in] src  Input wave-function.
-//     *  \param [in] ispn Spin component on source wave-functions.
-//     *  \param [in] i0   Starting index of wave-functions in src.
-//     *  \param [in] jspn Spin component on destination wave-functions.
-//     *  \param [in] j0   Starting index of wave-functions in destination. */
-//    void copy_from(device_t pu__, int n__, Wave_functions<T> const& src__, int ispn__, int i0__, int jspn__, int j0__);
-//
-//    template <typename F>
-//    void copy_from(device_t pu__, int n__, Wave_functions<F> const& src__, int ispn__, int i0__, int jspn__, int j0__) {
-//        assert(ispn__ == 0 || ispn__ == 1);
-//        assert(jspn__ == 0 || jspn__ == 1);
-//        std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-//        std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
-//
-//        int ngv = pw_coeffs(jspn__).num_rows_loc();
-//        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
-//
-//        switch (pu__) {
-//            case device_t::CPU: {
-//                /* copy PW part */
-//                std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
-//                          src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
-//                          pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
-//                /* copy MT part */
-//                if (has_mt()) {
-//                    std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
-//                              src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
-//                              mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
-//                }
-//                break;
-//            }
-//            case device_t::GPU: {
-//                throw std::runtime_error("Copy mixed precision type not supported in device memory");
-//                break;
-//            }
-//        }
-//    }
-//
-//    /// Copy from and to preferred memory.
-//    void copy_from(Wave_functions<T> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
-//
-//    template <typename F>
-//    void copy_from(Wave_functions<F> const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__) {
-//        assert(ispn__ == 0 || ispn__ == 1);
-//        assert(jspn__ == 0 || jspn__ == 1);
-//        std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-//        std::cout << "    Copying Wavefunction with different type, possible lost of data precision" << std::endl;
-//
-//        int ngv = pw_coeffs(jspn__).num_rows_loc();
-//        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
-//
-//        copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
-//             preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
-//        if (has_mt()) {
-//            copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
-//                 preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
-//        }
-//    }
-//
-//    /// Compute the checksum of the spin-components.
-//    /** Checksum of the n wave-function spin components is computed starting from i0.
-//     *  Only plane-wave coefficients are considered. */
-//    std::complex<T> checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
-//
-//    /// Checksum of muffin-tin coefficients.
-//    std::complex<T> checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
-//
-//    void zero_pw(device_t pu__, int ispn__, int i0__, int n__);
-//
-//    void zero_mt(device_t pu__, int ispn__, int i0__, int n__);
-//
-//    void scale(memory_t mem__, int ispn__, int i0__, int n__, T beta__);
-//
-//    sddk::mdarray<T, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
-//
-//    /// Normalize the functions.
-//    void normalize(device_t pu__, spin_range spins__, int n__);
-//
-//    void allocate(spin_range spins__, memory_t mem__);
-//
-//    void allocate(spin_range spins__, memory_pool& mp__);
-//
-//    void deallocate(spin_range spins__, memory_t mem__);
-//
-//    void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__);
-//
-//    template <typename OUT>
-//    void print_checksum(device_t pu__, std::string label__, int N__, int n__, OUT&& out__) const
-//    {
-//        for (int ispn = 0; ispn < num_sc(); ispn++) {
-//            auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
-//            auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
-//            if (this->comm().rank() == 0) {
-//                out__ << "checksum (" << label__ << "_pw_" << ispn << ") : " << cs1 << std::endl;
-//                if (this->has_mt_) {
-//                    out__ << "checksum (" << label__ << "_mt_" << ispn << ") : " << cs2 << std::endl;
-//                }
-//                out__ << "checksum (" << label__ << "_" << ispn << ") : " << cs1 + cs2 << std::endl;
-//            }
-//        }
-//    }
-//
-//    /// Prepare wave-functions on the device.
-//    void prepare(spin_range spins__, bool with_copy__, memory_pool* mp__ = nullptr)
-//    {
-//        /* if operations on wave-functions are done on GPUs */
-//        if (is_device_memory(preferred_memory_t_)) {
-//            if (mp__) {
-//                if (!is_device_memory(mp__->memory_type())) {
-//                    RTE_THROW("not a device memory pool");
-//                }
-//                this->allocate(spins__, *mp__);
-//            } else {
-//                this->allocate(spins__, preferred_memory_t_);
-//            }
-//            if (with_copy__) {
-//                this->copy_to(spins__, preferred_memory_t_, 0, this->num_wf());
-//            }
-//        }
-//    }
-//
-//    void dismiss(spin_range spins__, bool with_copy__)
-//    {
-//        if (is_device_memory(preferred_memory_t_)) {
-//            if (with_copy__) {
-//                this->copy_to(spins__, memory_t::host, 0, this->num_wf());
-//            }
-//            this->deallocate(spins__, preferred_memory_t_);
-//        }
-//    }
-//};
-
-} // namespace sddk
-
+/// Namespace for the wave-functions.
 namespace wf {
 
 template <typename T, typename Tag>
@@ -576,6 +152,7 @@ using num_bands = strong_type<int, struct __num_bands_tag>;
 using num_spins = strong_type<int, struct __num_spins_tag>;
 using num_mag_dims = strong_type<int, struct __num_mag_dims_tag>;
 
+/// Describe a range of bands.
 class band_range
 {
   private:
@@ -610,10 +187,12 @@ class band_range
     }
 };
 
-// Only 3 combinations of spin range are allowed:
-// [0, 1)
-// [1, 2)
-// [0, 2)
+/// Describe a range of spins.
+/** Only 3 combinations of spin range are allowed:
+    - [0, 1)
+    - [1, 2)
+    - [0, 2)
+*/
 class spin_range
 {
   private:
@@ -675,6 +254,7 @@ inline copy_to operator|(copy_to a__, copy_to b__)
     return static_cast<copy_to>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
+/// Helper class to allocate and copy wave-functions to/from device.
 class device_memory_guard
 {
   private:
@@ -742,30 +322,50 @@ class device_memory_guard
     }
 };
 
+/* forward declaration */
 template <typename T>
 class Wave_functions_fft;
 
 /// Base class for the wave-functions.
+/** Wave-function is represented by a set of plane-wave and muffin-tin coefficients. 
+ *  \verbatim
+ *  +---------+
+ *  |         |
+ *  +---------+
+ *  \endverbatim
+ *
+ * */
 template <typename T>
 class Wave_functions_base
 {
   protected:
+    /// Local number of plane-wave coefficients.
     int num_pw_{0};
+    /// Local number of muffin-tin coefficients.
     int num_mt_{0};
+    /// Number of magnetic dimensions (0, 1, or 3).
+    /** This helps to distinguish between non-magnetic, collinear and full spinor wave-functions. */
     num_mag_dims num_md_{0};
+    /// Total number of wave-functions.
     num_bands num_wf_{0};
+    /// Number of spin components (1 or 2).
     num_spins num_sc_{0};
-
-    friend class device_memory_guard;
+    /// Friend class declaration.
+    /** Wave_functions_fft needs access to data to alias the pointers and avoid copy in trivial cases. */
     friend class Wave_functions_fft<T>;
-
+    /// Data storage for the wave-functions.
+    /** Wave-functions are stored as two independent arrays for spin-up and spin-dn. The planewave and muffin-tin
+        coefficients are stored consecutively. */
     std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
 
   public:
+    /// Constructor.
     Wave_functions_base()
     {
     }
-    Wave_functions_base(int num_pw__, int num_mt__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
+    /// Constructor.
+    Wave_functions_base(int num_pw__, int num_mt__, num_mag_dims num_md__, num_bands num_wf__,
+        sddk::memory_t default_mem__)
         : num_pw_{num_pw__}
         , num_mt_{num_mt__}
         , num_md_{num_md__}
@@ -786,31 +386,40 @@ class Wave_functions_base
         }
     }
 
+    /// Return an instance of the memory guard.
+    /** When the instance is created, it allocates the GPU memory and optionally copies data to the GPU. When the
+        instance is destroyed, the data is optionally copied to host and GPU memory is deallocated. */
     auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none) const
     {
         return device_memory_guard(*this, mem__, copy_to__);
     }
 
+    /// Return number of spin components.
     inline auto num_sc() const
     {
         return num_sc_;
     }
 
+    /// Return number of magnetic dimensions.
     inline auto num_md() const
     {
         return num_md_;
     }
 
+    /// Return number of wave-functions.
     inline auto num_wf() const
     {
         return num_wf_;
     }
 
+    /// Return leading dimensions of the wave-functions coefficients array.
     inline auto ld() const
     {
         return num_pw_ + num_mt_;
     }
 
+    /// Return the actual spin index of the wave-functions.
+    /** Return 0 if the wave-functions are non-magnetic, otherwise return the input spin index. */
     inline auto actual_spin_index(spin_index s__) const
     {
         if (num_sc_.get() == 2) {
@@ -844,18 +453,22 @@ class Wave_functions_base
         }
     }
 
+    /// Return const pointer to the wave-function coefficient at a given index, spin and band 
     inline std::complex<T> const*
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
+    /// Return pointer to the wave-function coefficient at a given index, spin and band 
     inline auto
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__)
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
+    /// Allocate wave-functions.
+    /** This function is primarily called by a memory_guard to allocate GPU memory. */
     inline void
     allocate(sddk::memory_t mem__)
     {
@@ -864,6 +477,8 @@ class Wave_functions_base
         }
     }
 
+    /// Deallocate wave-functions.
+    /** This function is primarily called by a memory_guard to deallocate GPU memory. */
     inline void
     deallocate(sddk::memory_t mem__)
     {
@@ -872,6 +487,7 @@ class Wave_functions_base
         }
     }
 
+    /// Copy date to host or device.
     inline void
     copy_to(sddk::memory_t mem__)
     {
@@ -881,12 +497,16 @@ class Wave_functions_base
     }
 };
 
+/// Wave-functions for the muffin-tin part of LAPW.
 template <typename T>
 class Wave_functions_mt : public Wave_functions_base<T>
 {
   protected:
+    /// Communicator that is used to split atoms between MPI ranks.
     sddk::Communicator const& comm_;
+    /// Total number of atoms.
     int num_atoms_{0};
+    /// Distribution of atoms between MPI ranks.
     sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
     /// Local size of muffin-tin coefficients for each rank.
     /** Each rank stores local fraction of atoms. Each atom has a set of MT coefficients. */
@@ -897,6 +517,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
     /// Numbef of muffin-tin coefficients for each atom.
     std::vector<int> num_mt_coeffs_;
 
+    /// Calculate the local number of muffin-tin coefficients.
+    /** Compute the local fraction of atoms and then sum the muffin-tin coefficients for this fraction. */
     static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, sddk::Communicator const& comm__)
     {
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
@@ -916,10 +538,12 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
   public:
+    /// Constructor.
     Wave_functions_mt()
     {
     }
 
+    /// Constructor.
     Wave_functions_mt(sddk::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__, int num_pw__ = 0)
         : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_md__, num_wf__,
@@ -942,12 +566,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
         mt_coeffs_distr_.calc_offsets();
     }
 
+    /// Return reference to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto&
     mt_coeffs(int xi__, atom_index ia__, spin_index ispn__, band_index i__)
     {
         return this->data_[ispn__.get()](this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], i__.get());
     }
 
+    /// Return const reference to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto const&
     mt_coeffs(int xi__, atom_index ia__, spin_index ispn__, band_index i__) const
     {
@@ -956,27 +582,32 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     using Wave_functions_base<T>::at;
 
+    /// Return const pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline std::complex<T> const*
     at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__) const
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }
 
+    /// Return pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto
     at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__)
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }
 
-    inline auto const& spl_num_atoms() const
+    /// Return a split index for the number of atoms.
+    inline auto const&
+    spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
 
     /// Copy muffin-tin coefficients to host or GPU memory.
     /** This functionality is required for the application of LAPW overlap operator to the wave-functions, which
-     * is always done on the CPU. */
-    inline void copy_mt_to(sddk::memory_t mem__, spin_index s__, band_range br__)
+     *  is always done on the CPU. */
+    inline void
+    copy_mt_to(sddk::memory_t mem__, spin_index s__, band_range br__)
     {
         auto ptr = this->data_[s__.get()].at(sddk::memory_t::host, this->num_pw_, br__.begin());
         auto ptr_gpu = this->data_[s__.get()].at(sddk::memory_t::device, this->num_pw_, br__.begin());
@@ -988,7 +619,9 @@ class Wave_functions_mt : public Wave_functions_base<T>
         }
     }
 
-    auto grid_layout_mt(spin_index ispn__, band_range b__)
+    /// Return COSTA layout for the muffin-tin part for a given spin index and band range.
+    auto
+    grid_layout_mt(spin_index ispn__, band_range b__)
     {
         std::vector<int> rowsplit(comm_.size() + 1);
         rowsplit[0] = 0;
@@ -1010,7 +643,9 @@ class Wave_functions_mt : public Wave_functions_base<T>
                 owners.data(), 1, &localblock, 'C');
     }
 
-    inline auto checksum_mt(sddk::memory_t mem__, spin_index s__, band_range br__) const
+    /// Compute checksum of the muffin-tin coefficients.
+    inline auto
+    checksum_mt(sddk::memory_t mem__, spin_index s__, band_range br__) const
     {
         std::complex<T> cs{0};
         if (this->num_mt_ && br__.size()) {
@@ -1029,21 +664,33 @@ class Wave_functions_mt : public Wave_functions_base<T>
         return cs;
     }
 
-    auto num_mt_coeffs() const
+    /// Return vector of muffin-tin coefficients for all atoms.
+    auto
+    num_mt_coeffs() const
     {
         return num_mt_coeffs_;
     }
 
-    auto const& comm() const
+    /// Return const reference to the communicator.
+    auto const&
+    comm() const
     {
         return comm_;
     }
 };
 
+/// Wave-functions representation.
+/** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Wave-functions have one or two spin
+ *  components. In case of collinear magnetism each component represents a pure (up- or dn-) spinor state and they
+ *  are independent. In non-collinear case the two components represent a full spinor state.
+ *
+ *  \tparam T  Precision type of the wave-functions (double or float).
+ */
 template <typename T>
 class Wave_functions : public Wave_functions_mt<T>
 {
   private:
+    /// Pointer to G+k- vectors object.
     std::shared_ptr<sddk::Gvec> gkvec_;
   public:
     /// Constructor for pure plane-wave functions.
@@ -1061,12 +708,16 @@ class Wave_functions : public Wave_functions_mt<T>
     {
     }
 
-    inline auto& pw_coeffs(int ig__, spin_index ispn__, band_index i__)
+    /// Return reference to the plane-wave coefficient for a given plane-wave, spin and band indices.
+    inline auto&
+    pw_coeffs(int ig__, spin_index ispn__, band_index i__)
     {
         return this->data_[ispn__.get()](ig__, i__.get());
     }
 
-    auto grid_layout_pw(spin_index ispn__, band_range b__) const
+    /// Return COSTA layout for the plane-wave part for a given spin index and band range.
+    auto
+    grid_layout_pw(spin_index ispn__, band_range b__) const
     {
         PROFILE("sirius::wf::Wave_functions_fft::grid_layout_pw");
 
@@ -1425,6 +1076,18 @@ class Wave_functions_fft : public Wave_functions_base<T>
     inline auto on_device() const
     {
         return on_device_;
+    }
+
+    inline std::complex<T> const*
+    at(sddk::memory_t mem__, int i__, band_index b__) const
+    {
+        return this->data_[0].at(mem__, i__, b__.get());
+    }
+
+    inline auto
+    at(sddk::memory_t mem__, int i__, band_index b__)
+    {
+        return this->data_[0].at(mem__, i__, b__.get());
     }
 };
 

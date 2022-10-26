@@ -51,7 +51,7 @@ struct BlockVector {
     }
 
     void repack(std::vector<int> const &ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(ids.size()); ++i) {
             auto j = ids[i];
             if (j != i) {
                 vec.col(i) = vec.col(j);
@@ -74,7 +74,7 @@ struct PosDefMatrixShifted {
     }
 
     void repack(std::vector<int> const &ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(ids.size()); ++i) {
             auto j = ids[i];
             if (j != i) {
                 shifts[i] = shifts[j];

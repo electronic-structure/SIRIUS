@@ -22,7 +22,6 @@ void test_wf_fft()
 
     wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
     wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
-    //wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf::num_bands(10), sddk::memory_t::host);
 
     for (int ispn = 0; ispn < 2; ispn++) {
         for (int i = 0; i < 10; i++) {
@@ -54,15 +53,15 @@ void test_wf_fft()
         spl_z.local_size(), gkvec_fft->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gkvec_fft->gvec_array().at(sddk::memory_t::host)));
 
-    std::array<wf::Wave_functions_fft_new<double>, 2> wf_new;
+    std::array<wf::Wave_functions_fft<double>, 2> wf1;
     for (int ispn = 0; ispn < 2; ispn++) {
-        wf_new[ispn] = wf::Wave_functions_fft_new<double>(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10), wf::transform_layout::to);
-
+        wf1[ispn] = wf::Wave_functions_fft<double>(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
+                wf::transform_layout::to);
     }
 
     for (int ispn = 0; ispn < 2; ispn++) {
 
-        wf::Wave_functions_fft_new<double> wf_fft(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
+        wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
                 wf::transform_layout::to | wf::transform_layout::from);
 
         //transform_to_fft_layout(wf, wf_fft, wf::spin_index(ispn), wf::band_range(0, 10));

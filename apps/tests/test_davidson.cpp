@@ -59,7 +59,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
-    init_wf(&kp, kp.spinor_wave_functions_new(), ctx__.num_bands(), 0);
+    init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
 
 
     /*
@@ -89,7 +89,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     bool locking{true};
 
     auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk, wf::num_bands(num_bands),
-            wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions_new(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
+            wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
             60, locking, subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 
     if (sddk::Communicator::world().rank() == 0 && only_kin__) {
