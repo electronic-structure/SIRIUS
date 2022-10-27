@@ -54,18 +54,6 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
 
 namespace sirius {
 
-inline bool should_print_checksum()
-{
-    auto val = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
-    return val && *val;
-}
-
-inline bool should_print_performance()
-{
-    auto val = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-    return val && *val;
-}
-
 /// Utility function to print a CPU and GPU memory utilization.
 void print_memory_usage(const char* file__, int line__);
 

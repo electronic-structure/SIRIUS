@@ -31,11 +31,11 @@
 #include <map>
 #include <sstream>
 
-namespace utils {
+namespace env {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
 template <typename T>
-inline T const* get_env(std::string const& name__)
+inline T const* get_value_ptr(std::string const& name__)
 {
     static std::map<std::string, T*> map_name;
     if (map_name.count(name__) == 0) {
@@ -51,6 +51,20 @@ inline T const* get_env(std::string const& name__)
     return map_name[name__];
 }
 
-} // namespace utils
+inline bool
+print_performance()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_PERFORMANCE");
+    return val && *val;
+}
+
+inline bool
+print_checksum()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_CHECKSUM");
+    return val && *val;
+}
+
+} // namespace env
 
 #endif

@@ -83,12 +83,12 @@ class Eigensolver
     ev_solver_t ev_solver_type_;
     /// Common error message.
     const std::string error_msg_not_implemented = "solver is not implemented";
-    /// Memory pool for CPU work buffers.
-    sddk::memory_pool mp_h_;
-    /// Memory pool for CPU work buffers using pinned memory.
-    sddk::memory_pool mp_hp_;
-    /// Memory pool for GPU work buffers.
-    std::shared_ptr<sddk::memory_pool> mp_d_{nullptr};
+    ///// Memory pool for CPU work buffers.
+    //sddk::memory_pool mp_h_;
+    ///// Memory pool for CPU work buffers using pinned memory.
+    //sddk::memory_pool mp_hp_;
+    ///// Memory pool for GPU work buffers.
+    //std::shared_ptr<sddk::memory_pool> mp_d_{nullptr};
     /// True if solver is MPI parallel.
     bool is_parallel_{false};
     /// Type of host memory needed for the solver.

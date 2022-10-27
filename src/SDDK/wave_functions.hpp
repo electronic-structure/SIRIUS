@@ -62,19 +62,19 @@ add_checksum_gpu_float(void const* wf__, int ld__, int num_rows_loc__, int nwf__
 
 void
 inner_diag_local_gpu_double_complex_double(void const* wf1__, int ld1__, void const* wf2__, int ld2__, int ngv_loc__,
-    int nwf__, void* result__);
+        int nwf__, void* result__);
 
 void
-inner_diag_local_gpu_double_double(void const* wf1__, int ld1__, void const* wf2__, int ld2__, int ngv_loc__, int nwf__,
-    int reduced__, void* result__);
+inner_diag_local_gpu_double_double(void const* wf1__, int ld1__, void const* wf2__, int ld2__, int ngv_loc__,
+        int nwf__, int reduced__, void* result__);
 
 void
 axpby_gpu_double_complex_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
-    void const* beta__, void* y__, int ld2__, int ngv_loc__);
+        void const* beta__, void* y__, int ld2__, int ngv_loc__);
 
 void
 axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
-    void const* beta__, void* y__, int ld2__, int ngv_loc__);
+        void const* beta__, void* y__, int ld2__, int ngv_loc__);
 
 }
 #endif
@@ -327,14 +327,26 @@ template <typename T>
 class Wave_functions_fft;
 
 /// Base class for the wave-functions.
-/** Wave-function is represented by a set of plane-wave and muffin-tin coefficients. 
- *  \verbatim
- *  +---------+
- *  |         |
- *  +---------+
- *  \endverbatim
- *
- * */
+/** Wave-functions are represented by a set of plane-wave and muffin-tin coefficients stored consecutively in a 2D array.
+ *  The leading dimensions of this array is a sum of the number of plane-waves and the number of muffin-tin coefficients.
+    \verbatim
+
+         band index
+       +-----------+
+       |           |
+       |           |
+    ig |  PW part  |
+       |           |
+       |           |
+       +-----------+
+       |           |
+    xi |  MT part  |
+       |           |
+       +-----------+
+
+
+    \endverbatim
+  */
 template <typename T>
 class Wave_functions_base
 {
@@ -781,31 +793,64 @@ class Wave_functions : public Wave_functions_mt<T>
     }
 };
 
-struct transform_layout
+struct shuffle_to
 {
+    /// Do nothing.
     static const unsigned int none = 0b0000;
-    static const unsigned int to   = 0b0001;
-    static const unsigned int from = 0b0010;
+    /// Shuffle to FFT distribution.
+    static const unsigned int fft_layout = 0b0001;
+    /// Shuffle to back to default slab distribution.
+    static const unsigned int wf_layout  = 0b0010;
 };
 
-static inline bool should_print_performance()
-{
-    auto val = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
-    return val && *val;
-}
+/// Wave-fucntions in the FFT-friendly distribution.
+/** To reduce the FFT MPI communication volume, it is often beneficial to redistribute wave-functions from
+ *  a default slab layout to a FFT-friendly layout. Often this is a full swap from G-vector to band distribution.
+ *  In general this is a redistribution of data from [N x 1] to [M x K] MPI grids.
+   \verbatim
+                  band index               band index               band index
+               ┌──────────────┐          ┌───────┬──────┐          ┌───┬───┬───┬──┐
+               │              │          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               ├──────────────┤          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               │              │ partial  │       │      │   full   │   │   │   │  │
+               │              │  swap    │       │      │   swap   │   │   │   │  │
+   G+k index   ├──────────────┤    ->    ├───────┼──────┤    ->    ├───┼───┼───┼──┤
+ (distributed) │              │          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               ├──────────────┤          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               │              │          │       │      │          │   │   │   │  │
+               └──────────────┘          └───────┴──────┘          └───┴───┴───┴──┘
 
+    \endverbatim
+
+    Wave-functions in FFT distribution are scalar with only one spin component.
+
+ *  \tparam T  Precision type of the wave-functions (double or float).
+ */
 template <typename T>
 class Wave_functions_fft : public Wave_functions_base<T>
 {
   private:
+    /// Pointer to FFT-friendly G+k vector deistribution.
     std::shared_ptr<sddk::Gvec_fft> gkvec_fft_;
+    /// Split number of wave-functions between column communicator.
     sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
+    /// Pointer to the original wave-functions.
     Wave_functions<T>* wf_{nullptr};
+    /// Spin-index of the wave-function component 
     spin_index s_{0};
+    /// Range of bands in the input wave-functions to be swapped.
     band_range br_{0};
-    unsigned int fft_layout_flag_{0};
+    /// Direction of the reshuffling: to FFT layout or back to WF layout or both.
+    unsigned int shuffle_flag_{0};
+    /// True if the FFT wave-functions are also available on the device.
     bool on_device_{false};
 
+    /// Return COSTA grd layout description.
     auto grid_layout(int n__)
     {
         PROFILE("sirius::wf::Wave_functions_fft::grid_layout");
@@ -839,9 +884,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
                 colsplit.data(), owners.data(), 1, &localblock, 'C');
     }
 
-    void transform_to_fft_layout(spin_index ispn__, band_range b__)
+    /// Shuffle wave-function to the FFT distribution.
+    void shuffle_to_fft_layout(spin_index ispn__, band_range b__)
     {
-        PROFILE("transform_to_fft_layout");
+        PROFILE("shuffle_to_fft_layout");
 
         auto sp = wf_->actual_spin_index(ispn__);
         auto t0 = utils::time_now();
@@ -903,9 +949,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
         }
     }
 
-    void transform_from_fft_layout(spin_index ispn__, band_range b__)
+    /// Shuffle wave-function to the original slab layout.
+    void shuffle_to_wf_layout(spin_index ispn__, band_range b__)
     {
-        PROFILE("transform_from_fft_layout");
+        PROFILE("shuffle_to_wf_layout");
 
         auto sp = wf_->actual_spin_index(ispn__);
         auto pp = should_print_performance();
@@ -963,10 +1010,12 @@ class Wave_functions_fft : public Wave_functions_base<T>
     }
 
   public:
+    /// Constructor.
     Wave_functions_fft()
     {
     }
 
+    /// Constructor.
     Wave_functions_fft(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
             band_range br__, unsigned int fft_layout_flag__)
         : gkvec_fft_{gkvec_fft__}
@@ -1013,6 +1062,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         }
     }
 
+    /// Move assignment operator.
     Wave_functions_fft& operator=(Wave_functions_fft&& src__)
     {
         if (this != &src__) {
@@ -1036,6 +1086,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         return *this;
     }
 
+    /// Destructor.
     ~Wave_functions_fft()
     {
         if (wf_) {
@@ -1053,37 +1104,46 @@ class Wave_functions_fft : public Wave_functions_base<T>
         }
     }
 
+    /// Return local number of wave-functions.
+    /** Wave-function band index is distributed over the columns of MPI grid. Each group of FFT communiators
+     * is working on its local set of wave-functions. */
     int num_wf_local() const
     {
         return spl_num_wf_.local_size();
     }
 
+    /// Return the split index for the number of wave-functions.
     auto spl_num_wf() const
     {
         return spl_num_wf_;
     }
 
+    /// Return reference to the plane-wave coefficient.
     inline std::complex<T>& pw_coeffs(int ig__, band_index b__)
     {
         return this->data_[0](ig__, b__.get());
     }
 
+    /// Return pointer to the beginning of wave-functions casted to real type as required by the SpFFT library.
     inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
     {
         return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
     }
 
+    /// Return true if data is avaliable on the device memory.
     inline auto on_device() const
     {
         return on_device_;
     }
 
+    /// Return const pointer to the data for a given plane-wave and band indices.
     inline std::complex<T> const*
     at(sddk::memory_t mem__, int i__, band_index b__) const
     {
         return this->data_[0].at(mem__, i__, b__.get());
     }
 
+    /// Return pointer to the data for a given plane-wave and band indices.
     inline auto
     at(sddk::memory_t mem__, int i__, band_index b__)
     {
