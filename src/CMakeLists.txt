@@ -58,7 +58,6 @@ set(_SOURSES
   "utils/utils.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
-  "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "mpi/communicator.cpp"
   "SDDK/dmatrix.cpp"
