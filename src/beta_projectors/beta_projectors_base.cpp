@@ -199,19 +199,19 @@ void Beta_projectors_base<T>::prepare()
 
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
+            pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), get_memory_pool(ctx_.host_memory_t()),
                 "pw_coeffs_a_");
             break;
         }
         case sddk::device_t::GPU: {
-            pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(sddk::memory_t::device),
+            pw_coeffs_a_ = sddk::matrix<std::complex<T>>(num_gkvec_loc(), max_num_beta(), get_memory_pool(sddk::memory_t::device),
                 "pw_coeffs_a_");
             break;
         }
     }
 
     if (ctx_.processing_unit() == sddk::device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
-        pw_coeffs_t_.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+        pw_coeffs_t_.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
     }
 }
 

@@ -58,10 +58,10 @@ class Smooth_periodic_function
     sddk::mdarray<T, 1> f_rg_;
 
     /// Local set of plane-wave expansion coefficients.
-    sddk::mdarray<complex_type<T>, 1> f_pw_local_;
+    sddk::mdarray<std::complex<T>, 1> f_pw_local_;
 
     /// Storage of the PW coefficients for the FFT transformation.
-    sddk::mdarray<complex_type<T>, 1> f_pw_fft_;
+    sddk::mdarray<std::complex<T>, 1> f_pw_fft_;
 
     /// Gather plane-wave coefficients for the subsequent FFT call.
     inline void gather_f_pw_fft()
@@ -92,25 +92,25 @@ class Smooth_periodic_function
         f_rg_.zero();
 
         if (mp__) {
-            f_pw_local_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec().count(), *mp__,
+            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), *mp__,
                                                            "Smooth_periodic_function.f_pw_local_");
         } else {
-            f_pw_local_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
+            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
                                                        "Smooth_periodic_function.f_pw_local_");
         }
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
             if (mp__) {
-                f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec_count_fft(), *mp__,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), *mp__,
                                                              "Smooth_periodic_function.f_pw_fft_");
             } else {
-                f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
                                                              "Smooth_periodic_function.f_pw_fft_");
             }
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
-            f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(&f_pw_local_[0], gvecp_->gvec().count());
+            f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(&f_pw_local_[0], gvecp_->gvec().count());
         }
     }
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
@@ -142,35 +142,35 @@ class Smooth_periodic_function
         return f_rg_;
     }
 
-    inline complex_type<T>& f_pw_local(int ig__)
+    inline std::complex<T>& f_pw_local(int ig__)
     {
         return f_pw_local_(ig__);
     }
 
-    inline complex_type<T> const& f_pw_local(int ig__) const
+    inline std::complex<T> const& f_pw_local(int ig__) const
     {
         return f_pw_local_(ig__);
     }
 
-    inline sddk::mdarray<complex_type<T>, 1>& f_pw_local()
+    inline sddk::mdarray<std::complex<T>, 1>& f_pw_local()
     {
       return f_pw_local_;
     }
 
-    inline const sddk::mdarray<complex_type<T>, 1>& f_pw_local() const
+    inline const sddk::mdarray<std::complex<T>, 1>& f_pw_local() const
     {
       return f_pw_local_;
     }
 
-    inline complex_type<T>& f_pw_fft(int ig__)
+    inline std::complex<T>& f_pw_fft(int ig__)
     {
         return f_pw_fft_(ig__);
     }
 
     /// Return plane-wave coefficient for G=0 component.
-    inline complex_type<T> f_0() const
+    inline std::complex<T> f_0() const
     {
-        complex_type<T> z;
+        std::complex<T> z;
         if (gvecp_->gvec().comm().rank() == 0) {
             z = f_pw_local_(0);
         }
@@ -231,7 +231,7 @@ class Smooth_periodic_function
                     int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
                     int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
-                                count * sizeof(complex_type<T>));
+                                count * sizeof(std::complex<T>));
                 }
                 break;
             }
@@ -241,17 +241,17 @@ class Smooth_periodic_function
         }
     }
 
-    inline std::vector<complex_type<T>> gather_f_pw()
+    inline std::vector<std::complex<T>> gather_f_pw()
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
-        std::vector<complex_type<T>> fpw(gvecp_->gvec().num_gvec());
+        std::vector<std::complex<T>> fpw(gvecp_->gvec().num_gvec());
         gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().count(), gvec().offset());
 
         return fpw;
     }
 
-    inline void scatter_f_pw(std::vector<complex_type<T>> const& f_pw__)
+    inline void scatter_f_pw(std::vector<std::complex<T>> const& f_pw__)
     {
         std::copy(&f_pw__[gvecp_->gvec().offset()], &f_pw__[gvecp_->gvec().offset()] + gvecp_->gvec().count(),
                   &f_pw_local_(0));
@@ -272,9 +272,9 @@ class Smooth_periodic_function
         return cs;
     }
 
-    inline complex_type<T> checksum_pw() const
+    inline auto checksum_pw() const
     {
-        complex_type<T> cs = this->f_pw_local_.checksum();
+        auto cs = this->f_pw_local_.checksum();
         this->gvecp_->gvec().comm().allreduce(&cs, 1);
         return cs;
     }

@@ -214,7 +214,7 @@ K_point<T>::generate_hubbard_orbitals()
     this->generate_atomic_wave_functions(atoms, [&](int iat){ return &ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
                 ctx_.ps_atomic_wf_ri(), *atomic_wave_functions_);
 
-    auto pcs = sirius::should_print_checksum();
+    auto pcs = env::print_checksum();
     if (pcs) {
         auto cs = atomic_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
@@ -909,7 +909,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         int iat = unit_cell_.atom(ia).type_id();
         if (wf_t[iat].size() == 0) {
             wf_t[iat] = sddk::mdarray<std::complex<T>, 2>(this->num_gkvec_loc(), indexb__(iat)->size(),
-                                                          ctx_.mem_pool(sddk::memory_t::host));
+                                                          get_memory_pool(sddk::memory_t::host));
         }
     }
 

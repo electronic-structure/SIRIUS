@@ -101,7 +101,7 @@ class Non_local_operator
             size_factor = 2;
         }
 
-        auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), ctx_.mem_pool(mem__));
+        auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), get_memory_pool(mem__));
 
         /* compute O * <beta|phi> for atoms in a chunk */
         #pragma omp parallel
@@ -186,7 +186,7 @@ class Non_local_operator
             pu = sddk::device_t::GPU;
         }
 
-        auto work = sddk::mdarray<std::complex<T>, 1>(nbf * br__.size(), ctx_.mem_pool(mem__));
+        auto work = sddk::mdarray<std::complex<T>, 1>(nbf * br__.size(), get_memory_pool(mem__));
 
         sddk::linalg(la).gemm('N', 'N', nbf, br__.size(), nbf, &sddk::linalg_const<std::complex<T>>::one(),
                         reinterpret_cast<std::complex<T>*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
@@ -340,7 +340,7 @@ class U_operator
                 utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
             }
             if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                um_[is].allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                um_[is].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
             }
         }
     }

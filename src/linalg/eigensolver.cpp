@@ -26,7 +26,7 @@
 #include "eigenproblem.hpp"
 
 std::unique_ptr<Eigensolver>
-Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__)
+Eigensolver_factory(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
@@ -57,7 +57,7 @@ Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__)
             break;
         }
         case ev_solver_t::cusolver: {
-            ptr = new Eigensolver_cuda(mpd__);
+            ptr = new Eigensolver_cuda();
             break;
         }
         default: {

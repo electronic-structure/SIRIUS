@@ -65,6 +65,53 @@ print_checksum()
     return val && *val;
 }
 
+inline bool
+print_mpi_layout()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_MPI_LAYOUT");
+    return val && *val;
+}
+
+inline bool
+print_memory_usage()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_MEMORY_USAGE");
+    return val && *val;
+}
+
+inline std::string
+save_config()
+{
+    auto val = get_value_ptr<std::string>("SIRIUS_SAVE_CONFIG");
+    if (val) {
+        return *val;
+    } else {
+        return "";
+    }
+}
+
+inline std::string
+get_ev_solver()
+{
+    auto val = get_value_ptr<std::string>("SIRIUS_EV_SOLVER");
+    if (val) {
+        return *val;
+    } else {
+        return "";
+    }
+}
+
+inline int
+get_verbosity()
+{
+    auto verb_lvl = env::get_value_ptr<int>("SIRIUS_VERBOSITY");
+    if (verb_lvl) {
+        return *verb_lvl;
+    } else {
+        return 0;
+    }
+}
+
 } // namespace env
 
 #endif

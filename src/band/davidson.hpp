@@ -144,7 +144,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     auto& ctx = Hk__.H0().ctx();
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto pcs = ::sirius::should_print_checksum();
+    auto pcs = env::print_checksum();
 
     auto& kp = Hk__.kp();
 
@@ -185,7 +185,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     }
 
     /* alias for memory pool */
-    auto& mp = ctx.mem_pool(ctx.host_memory_t());
+    auto& mp = get_memory_pool(ctx.host_memory_t());
 
     sddk::memory_t mem = ctx.processing_unit_memory_t();
 
@@ -261,7 +261,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     int const num_ortho_steps = extra_ortho__ ? 2 : 1;
 
     if (is_device_memory(mem)) {
-        auto& mpd = ctx.mem_pool(mem);
+        auto& mpd = get_memory_pool(mem);
         if (ctx.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
             H.allocate(mpd);

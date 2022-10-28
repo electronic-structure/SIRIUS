@@ -80,24 +80,24 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     int nwfu = r.first;
 
-    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(sddk::memory_t::host), "occ_mtrx");
+    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, get_memory_pool(sddk::memory_t::host), "occ_mtrx");
     if (is_device_memory(mem)) {
-        occ_mtrx.allocate(ctx_.mem_pool(mem));
+        occ_mtrx.allocate(get_memory_pool(mem));
     }
 
     // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
 
     /* full non collinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
+        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
-            dm.allocate(ctx_.mem_pool(mem));
+            dm.allocate(get_memory_pool(mem));
         }
         wf::inner(ctx_.spla_context(), mem, wf::spin_range(0, 2), kp__.spinor_wave_functions(),
                 wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
                 wf::band_range(0, nwfu), dm, 0, 0);
 
-        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
+        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
@@ -105,7 +105,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
         }
         if (is_device_memory(mem)) {
-            dm1.allocate(ctx_.mem_pool(mem)).copy_to(mem);
+            dm1.allocate(get_memory_pool(mem)).copy_to(mem);
         }
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
@@ -149,16 +149,16 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
            have two. The inner product takes care of this case internally. */
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
+            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
-                dm.allocate(ctx_.mem_pool(mem));
+                dm.allocate(get_memory_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
             wf::inner(ctx_.spla_context(), mem, wf::spin_range(ispn), kp__.spinor_wave_functions(),
                     wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
                     wf::band_range(0, nwfu), dm, 0, 0);
 
-            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
+            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
@@ -166,7 +166,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 }
             }
             if (is_device_memory(mem)) {
-                dm1.allocate(ctx_.mem_pool(mem)).copy_to(mem);
+                dm1.allocate(get_memory_pool(mem)).copy_to(mem);
             }
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
             /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the

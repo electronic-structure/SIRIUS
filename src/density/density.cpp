@@ -701,11 +701,11 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
     int nr = fft.local_slice_size();
 
     /* get preallocated memory */
-    sddk::mdarray<T, 2> density_rg(nr, ctx_.num_mag_dims() + 1, ctx_.mem_pool(sddk::memory_t::host), "density_rg");
+    sddk::mdarray<T, 2> density_rg(nr, ctx_.num_mag_dims() + 1, get_memory_pool(sddk::memory_t::host), "density_rg");
     density_rg.zero();
 
     if (fft.processing_unit() == SPFFT_PU_GPU) {
-        density_rg.allocate(ctx_.mem_pool(sddk::memory_t::device)).zero(sddk::memory_t::device);
+        density_rg.allocate(get_memory_pool(sddk::memory_t::device)).zero(sddk::memory_t::device);
     }
 
     /* non-magnetic or collinear case */
@@ -727,9 +727,9 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
         } // ispn
     } else { /* non-collinear case */
         /* allocate on CPU or GPU */
-        sddk::mdarray<std::complex<T>, 1> psi_r_up(nr, ctx_.mem_pool(sddk::memory_t::host));
+        sddk::mdarray<std::complex<T>, 1> psi_r_up(nr, get_memory_pool(sddk::memory_t::host));
         if (fft.processing_unit() == SPFFT_PU_GPU) {
-            psi_r_up.allocate(ctx_.mem_pool(sddk::memory_t::device));
+            psi_r_up.allocate(get_memory_pool(sddk::memory_t::device));
         }
 
         RTE_ASSERT(wf_fft__[0].num_wf_local() == wf_fft__[1].num_wf_local());
@@ -1277,7 +1277,7 @@ Density::generate_valence(K_point_set const& ks__)
             int nbnd = kp->num_occupied_bands(ispn);
             /* swap wave functions for the FFT transformation */
             wf_fft[ispn] = wf::Wave_functions_fft<T>(kp->gkvec_fft_sptr(), kp->spinor_wave_functions(),
-                    wf::spin_index(ispn), wf::band_range(0, nbnd), wf::transform_layout::to);
+                    wf::spin_index(ispn), wf::band_range(0, nbnd), wf::shuffle_to::fft_layout);
         }
 
         if (ctx_.full_potential()) {
@@ -1369,14 +1369,14 @@ Density::generate_rho_aug()
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
     sddk::mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1,
-                                             ctx_.mem_pool(sddk::memory_t::host));
+                                             get_memory_pool(sddk::memory_t::host));
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
             rho_aug.zero(sddk::memory_t::host);
             break;
         }
         case sddk::device_t::GPU: {
-            rho_aug.allocate(ctx_.mem_pool(sddk::memory_t::device)).zero(sddk::memory_t::device);
+            rho_aug.allocate(get_memory_pool(sddk::memory_t::device)).zero(sddk::memory_t::device);
             break;
         }
     }
@@ -1385,7 +1385,7 @@ Density::generate_rho_aug()
     //       overlap transfer of Q(G) for two consequtive blocks within one atom type
 
     if (ctx_.unit_cell().atom_type(0).augment()) {
-        ctx_.augmentation_op(0).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
+        ctx_.augmentation_op(0).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -1394,7 +1394,7 @@ Density::generate_rho_aug()
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
             }
         }
 
@@ -1415,9 +1415,9 @@ Density::generate_rho_aug()
         }
         /* treat auxiliary array as double with x2 size */
         sddk::mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_ngv_loc.local_size() * 2,
-                                       ctx_.mem_pool(sddk::memory_t::host));
+                                       get_memory_pool(sddk::memory_t::host));
         sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
-                                               ctx_.mem_pool(sddk::memory_t::host));
+                                               get_memory_pool(sddk::memory_t::host));
 
         ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -1426,9 +1426,9 @@ Density::generate_rho_aug()
                 break;
             }
             case sddk::device_t::GPU: {
-                phase_factors.allocate(ctx_.mem_pool(sddk::memory_t::device));
-                dm_pw.allocate(ctx_.mem_pool(sddk::memory_t::device));
-                dm.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                phase_factors.allocate(get_memory_pool(sddk::memory_t::device));
+                dm_pw.allocate(get_memory_pool(sddk::memory_t::device));
+                dm.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
                 break;
             }
         }

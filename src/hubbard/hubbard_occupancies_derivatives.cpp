@@ -339,8 +339,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                     }
 
                     if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                        phi_hub_s_psi_deriv.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-                        psi_s_phi_hub[ispn].allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                        phi_hub_s_psi_deriv.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                        psi_s_phi_hub[ispn].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
                     }
 
                     /* update the density matrix derivative */
@@ -531,8 +531,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                 }
 
                 if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                    psi_s_phi_hub[ispn].allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-                    phi_hub_s_psi_deriv.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                    psi_s_phi_hub[ispn].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                    phi_hub_s_psi_deriv.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
                 }
 
                 /* update the density matrix derivative */

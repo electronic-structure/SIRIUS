@@ -49,14 +49,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx_.cyclic_block_size();
 
-    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
-    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
+    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
+    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
 
     if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
-        auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
+        auto& mpd = get_memory_pool(sddk::memory_t::device);
         h.allocate(mpd);
         o.allocate(mpd);
         kp.fv_eigen_vectors().allocate(mpd);
@@ -293,7 +293,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
             }
         }
     }
-    if (::sirius::should_print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
         if (kp.comm().rank() == 0) {
             utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
@@ -326,7 +326,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         return;
     }
 
-    auto pcs = sirius::should_print_checksum();
+    auto pcs = env::print_checksum();
 
     int nfv = ctx_.num_fv_states();
     int bs  = ctx_.cyclic_block_size();
@@ -396,7 +396,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     if (ctx_.num_mag_dims() != 3) {
         sddk::dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
-            h.allocate(ctx_.mem_pool(sddk::memory_t::device));
+            h.allocate(get_memory_pool(sddk::memory_t::device));
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -425,7 +425,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         int nb = ctx_.num_bands();
         sddk::dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
-            h.allocate(ctx_.mem_pool(sddk::memory_t::device));
+            h.allocate(get_memory_pool(sddk::memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
         wf::inner(ctx_.spla_context(), mem, sr, kp.fv_states(), br, hpsi[0], br, h, 0, 0);

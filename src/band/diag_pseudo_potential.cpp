@@ -182,7 +182,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
 
         std::vector<real_type<F>> eo(kp.num_gkvec());
 
-        auto solver = Eigensolver_factory("scalapack", nullptr);
+        auto solver = Eigensolver_factory("scalapack");
         solver->solve(kp.num_gkvec(), ovlp1, eo.data(), evec);
 
         for (int i = 0; i < kp.num_gkvec(); i++) {

@@ -459,12 +459,12 @@ Force::calc_forces_us()
     sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            mp = &ctx_.mem_pool(sddk::memory_t::host);
+            mp = &get_memory_pool(sddk::memory_t::host);
             la = sddk::linalg_t::blas;
             break;
         }
         case sddk::device_t::GPU: {
-            mp = &ctx_.mem_pool(sddk::memory_t::host_pinned);
+            mp = &get_memory_pool(sddk::memory_t::host_pinned);
             la = sddk::linalg_t::spla;
             break;
         }

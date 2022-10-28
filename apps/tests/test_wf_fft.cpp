@@ -56,37 +56,18 @@ void test_wf_fft()
     std::array<wf::Wave_functions_fft<double>, 2> wf1;
     for (int ispn = 0; ispn < 2; ispn++) {
         wf1[ispn] = wf::Wave_functions_fft<double>(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
-                wf::transform_layout::to);
+                wf::shuffle_to::fft_layout);
     }
 
     for (int ispn = 0; ispn < 2; ispn++) {
 
         wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
-                wf::transform_layout::to | wf::transform_layout::from);
-
-        //transform_to_fft_layout(wf, wf_fft, wf::spin_index(ispn), wf::band_range(0, 10));
-        //double diff{0};
-        //for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-        //    for (int j = 0; j < wf_fft.ld(); j++) {
-        //        diff += std::abs(wf_fft.pw_coeffs(j, wf::band_index(i)) -
-        //                wf_new[ispn].pw_coeffs(j, wf::band_index(i)));
-        //    }
-        //}
-        //std::cout << "fft diff =" << diff << std::endl;
-
-
-        //for (int i = 0; i < 10; i++) {
-        //    for (int ig = 0; ig < gkvec->count(); ig++) {
-        //        wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = 0;
-        //    }
-        //}
+                wf::shuffle_to::fft_layout | wf::shuffle_to::wf_layout);
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
             spfft_transform->backward(wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
             spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
-
-        //transform_from_fft_layout(wf_fft, wf, wf::spin_index(ispn), wf::band_range(0, 10));
     }
 
     for (int ispn = 0; ispn < 2; ispn++) {

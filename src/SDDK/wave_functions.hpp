@@ -942,7 +942,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             }
         }
 
-        if (should_print_performance() && wf_->gkvec().comm().rank() == 0) {
+        if (env::print_performance() && wf_->gkvec().comm().rank() == 0) {
             auto t = utils::time_interval(t0);
             std::cout << "[transform_to_fft_layout] throughput: "
                       << 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
@@ -955,7 +955,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         PROFILE("shuffle_to_wf_layout");
 
         auto sp = wf_->actual_spin_index(ispn__);
-        auto pp = should_print_performance();
+        auto pp = env::print_performance();
 
         auto t0 = utils::time_now();
         if (false) {
@@ -1017,12 +1017,12 @@ class Wave_functions_fft : public Wave_functions_base<T>
 
     /// Constructor.
     Wave_functions_fft(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
-            band_range br__, unsigned int fft_layout_flag__)
+            band_range br__, unsigned int shuffle_flag___)
         : gkvec_fft_{gkvec_fft__}
         , wf_{&wf__}
         , s_{s__}
         , br_{br__}
-        , fft_layout_flag_{fft_layout_flag__}
+        , shuffle_flag_{shuffle_flag___}
     {
         auto& comm_col = gkvec_fft_->comm_ortho_fft();
         spl_num_wf_ = sddk::splindex<sddk::splindex_t::block>(br__.size(), comm_col.size(), comm_col.rank());
@@ -1050,14 +1050,14 @@ class Wave_functions_fft : public Wave_functions_base<T>
                     sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
             this->num_pw_ = gkvec_fft__->gvec_count_fft();
 
-            if (fft_layout_flag_ & transform_layout::to) {
+            if (shuffle_flag_ & shuffle_to::fft_layout) {
                 if (wf__.data_[sp.get()].on_device()) {
                     /* copy block of wave-functions to host memory before calling COSTA */
                     auto ptr = wf__.at(sddk::memory_t::host, 0, sp, wf::band_index(br__.begin()));
                     auto ptr_gpu = wf__.at(sddk::memory_t::device, 0, sp, wf::band_index(br__.begin()));
                     acc::copyout(ptr, wf__.ld(), ptr_gpu, wf__.ld(), wf__.num_pw_, br__.size());
                 }
-                transform_to_fft_layout(s__, br__);
+                shuffle_to_fft_layout(s__, br__);
             }
         }
     }
@@ -1066,19 +1066,19 @@ class Wave_functions_fft : public Wave_functions_base<T>
     Wave_functions_fft& operator=(Wave_functions_fft&& src__)
     {
         if (this != &src__) {
-            gkvec_fft_       = src__.gkvec_fft_;
-            spl_num_wf_      = src__.spl_num_wf_;
-            wf_              = src__.wf_;
-            src__.wf_        = nullptr;
-            s_               = src__.s_;
-            br_              = src__.br_;
-            fft_layout_flag_ = src__.fft_layout_flag_;
-            on_device_       = src__.on_device_;
-            this->num_pw_    = src__.num_pw_;
-            this->num_mt_    = src__.num_mt_;
-            this->num_md_    = src__.num_md_;
-            this->num_wf_    = src__.num_wf_;
-            this->num_sc_    = src__.num_sc_;
+            gkvec_fft_    = src__.gkvec_fft_;
+            spl_num_wf_   = src__.spl_num_wf_;
+            wf_           = src__.wf_;
+            src__.wf_     = nullptr;
+            s_            = src__.s_;
+            br_           = src__.br_;
+            shuffle_flag_ = src__.shuffle_flag_;
+            on_device_    = src__.on_device_;
+            this->num_pw_ = src__.num_pw_;
+            this->num_mt_ = src__.num_mt_;
+            this->num_md_ = src__.num_md_;
+            this->num_wf_ = src__.num_wf_;
+            this->num_sc_ = src__.num_sc_;
             for (int is = 0; is < this->num_sc_.get(); is++) {
                 this->data_[is] = std::move(src__.data_[is]);
             }
@@ -1091,8 +1091,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
     {
         if (wf_) {
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
-            if ((comm_col.size() != 1) && (fft_layout_flag_ & transform_layout::from)) {
-                transform_from_fft_layout(s_, br_);
+            if ((comm_col.size() != 1) && (shuffle_flag_ & shuffle_to::wf_layout)) {
+                shuffle_to_wf_layout(s_, br_);
                 auto sp = wf_->actual_spin_index(s_);
                 if (wf_->data_[sp.get()].on_device()) {
                     /* copy block of wave-functions to device memory after calling COSTA */

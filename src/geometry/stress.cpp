@@ -396,13 +396,13 @@ Stress::calc_stress_us()
     sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            mp   = &ctx_.mem_pool(sddk::memory_t::host);
+            mp   = &get_memory_pool(sddk::memory_t::host);
             la   = sddk::linalg_t::blas;
             qmem = sddk::memory_t::host;
             break;
         }
         case sddk::device_t::GPU: {
-            mp   = &ctx_.mem_pool(sddk::memory_t::host_pinned);
+            mp   = &get_memory_pool(sddk::memory_t::host_pinned);
             la   = sddk::linalg_t::spla;
             qmem = sddk::memory_t::device;
             break;
@@ -423,7 +423,7 @@ Stress::calc_stress_us()
         auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
         sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
-                                                       ctx_.mem_pool(sddk::memory_t::host));
+                                                       get_memory_pool(sddk::memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)

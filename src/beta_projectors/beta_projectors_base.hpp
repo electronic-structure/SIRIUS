@@ -124,9 +124,9 @@ class Beta_projectors_base
     {
         int nbeta = chunk(chunk__).num_beta_;
 
-        sddk::dmatrix<F> result(nbeta, br__.size(), ctx_.mem_pool(ctx_.host_memory_t()), "<beta|phi>");
+        sddk::dmatrix<F> result(nbeta, br__.size(), get_memory_pool(ctx_.host_memory_t()), "<beta|phi>");
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            result.allocate(ctx_.mem_pool(sddk::memory_t::device));
+            result.allocate(get_memory_pool(sddk::memory_t::device));
         }
 
         wf::inner<T, F, Beta_projectors_base<T>>(ctx_.spla_context(), mem__, wf::spin_range(ispn__.get()), *this,

@@ -32,7 +32,7 @@ void K_point_set::sync_band()
     PROFILE("sirius::K_point_set::sync_band");
 
     sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
-            ctx_.mem_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
+            get_memory_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
     #pragma omp parallel

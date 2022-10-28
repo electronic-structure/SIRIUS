@@ -89,9 +89,6 @@ class Simulation_parameters
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
-    /// Storage for various memory pools.
-    mutable std::map<sddk::memory_t, sddk::memory_pool> memory_pool_;
-
     /* copy constructor is forbidden */
     Simulation_parameters(Simulation_parameters const&) = delete;
 
@@ -509,32 +506,6 @@ class Simulation_parameters
     {
         cfg_.settings().sht_coverage(sht_coverage__);
         return cfg_.settings().sht_coverage();
-    }
-
-    /// Return a reference to a memory pool.
-    /** A memory pool is created when this function called for the first time. */
-    sddk::memory_pool& mem_pool(sddk::memory_t M__) const
-    {
-        if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, sddk::memory_pool(M__));
-        }
-        return memory_pool_.at(M__);
-    }
-
-    /// Get a default memory pool for a given device.
-    sddk::memory_pool& mem_pool(sddk::device_t dev__)
-    {
-        switch (dev__) {
-            case sddk::device_t::CPU: {
-                return mem_pool(sddk::memory_t::host);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                return mem_pool(sddk::memory_t::device);
-                break;
-            }
-        }
-        return mem_pool(sddk::memory_t::host); // make compiler happy
     }
 };
 

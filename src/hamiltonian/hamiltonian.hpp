@@ -474,7 +474,7 @@ class Hamiltonian_k
     {
         PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
-        auto pcs = ::sirius::should_print_checksum();
+        auto pcs = env::print_checksum();
 
         if (hphi__ != nullptr) {
             /* apply local part of Hamiltonian */

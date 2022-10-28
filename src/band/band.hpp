@@ -212,7 +212,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     //
     auto& ctx = Hk__.H0().ctx();
 
-    auto pcs = ::sirius::should_print_checksum();
+    auto pcs = env::print_checksum();
 
     /* number of non-zero spin components */
     const int num_sc = (ctx.num_mag_dims() == 3) ? 2 : 1;
@@ -225,7 +225,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     int num_phi_tot = num_phi * num_sc;
 
-    auto& mp = ctx.mem_pool(ctx.host_memory_t());
+    auto& mp = get_memory_pool(ctx.host_memory_t());
 
     ctx.print_memory_usage(__FILE__, __LINE__);
 
@@ -319,7 +319,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     mg.emplace_back(wf_tmp.memory_guard(mem));
 
     if (is_device_memory(mem)) {
-        auto& mpd = ctx.mem_pool(mem);
+        auto& mpd = get_memory_pool(mem);
         evec.allocate(mpd);
         hmlt.allocate(mpd);
         ovlp.allocate(mpd);

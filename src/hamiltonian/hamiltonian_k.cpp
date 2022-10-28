@@ -346,9 +346,9 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
         }
     }
 
-    sddk::mdarray<std::complex<T>, 3> alm_row(kp.num_gkvec_row(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
-    sddk::mdarray<std::complex<T>, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
-    sddk::mdarray<std::complex<T>, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+    sddk::mdarray<std::complex<T>, 3> alm_row(kp.num_gkvec_row(), max_mt_aw, nb, get_memory_pool(mt));
+    sddk::mdarray<std::complex<T>, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
+    sddk::mdarray<std::complex<T>, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
 
     H0_.ctx().print_memory_usage(__FILE__, __LINE__);
 
@@ -356,9 +356,9 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     o__.zero();
     switch (pu) {
         case sddk::device_t::GPU: {
-            alm_row.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
-            alm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
-            halm_col.allocate(H0_.ctx().mem_pool(sddk::memory_t::device));
+            alm_row.allocate(get_memory_pool(sddk::memory_t::device));
+            alm_col.allocate(get_memory_pool(sddk::memory_t::device));
+            halm_col.allocate(get_memory_pool(sddk::memory_t::device));
             //        h__.zero(memory_t::device);
             //        o__.zero(memory_t::device);
             break;
@@ -506,10 +506,10 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     // }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
-    auto pp                            = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+    auto pp                            = env::print_performance();
 
-    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || (pp && *pp))) {
-        kp.message((pp && *pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
+    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || pp)) {
+        kp.message((pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
                    2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
@@ -800,8 +800,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto la  = (pu == sddk::device_t::CPU) ? sddk::linalg_t::blas : sddk::linalg_t::gpublas;
     auto mem = (pu == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
 
-    auto pp = sirius::should_print_performance();
-    auto pcs = sirius::should_print_checksum();
+    auto pp = env::print_performance();
+    auto pcs = env::print_checksum();
 
     /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
     double ngop{8e-9}; // default value for complex type
@@ -1419,7 +1419,7 @@ Hamiltonian_k<T>::apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fun
     wf::axpby(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, nfv),
        alpha.data(), &bpsi__[0], beta.data(), &bpsi__[1]);
 
-    auto pcs = sirius::should_print_checksum();
+    auto pcs = env::print_checksum();
     if (pcs) {
         auto cs1 = bpsi__[0].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         auto cs2 = bpsi__[0].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));

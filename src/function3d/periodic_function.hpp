@@ -296,7 +296,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     void hdf5_read(sddk::HDF5_tree h5f__, sddk::mdarray<int, 2>& gvec__)
     {
-        std::vector<complex_type<T>> v(gvec_.num_gvec());
+        std::vector<std::complex<T>> v(gvec_.num_gvec());
         h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
         std::map<vector3d<int>, int> local_gvec_mapping;
