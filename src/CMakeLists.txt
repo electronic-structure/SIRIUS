@@ -62,6 +62,7 @@ set(_SOURSES
   "mpi/communicator.cpp"
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
+  "SDDK/memory.cpp"
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
