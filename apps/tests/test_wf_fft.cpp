@@ -32,8 +32,7 @@ void test_wf_fft()
             }
         }
     }
-    //auto mg = wf.memory_guard(sddk::memory_t::device, sddk::experimental::copy_to::device);
-    //auto mg_fft = wf_fft.memory_guard(sddk::memory_t::device);
+    auto mg = wf.memory_guard(sddk::memory_t::device, wf::copy_to::device);
 
     auto pu = sddk::device_t::CPU;
 

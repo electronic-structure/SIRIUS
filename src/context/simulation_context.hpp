@@ -336,6 +336,15 @@ class Simulation_context : public Simulation_parameters
         unit_cell_->import(cfg().unit_cell());
     }
 
+    explicit Simulation_context(nlohmann::json const& dict__)
+        : comm_(sddk::Communicator::world())
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+        import(dict__);
+        unit_cell_->import(cfg().unit_cell());
+    }
+
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
         : comm_(comm__)

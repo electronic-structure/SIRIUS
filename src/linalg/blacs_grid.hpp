@@ -57,7 +57,7 @@ class BLACS_grid
     BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
         : comm_(comm__)
     {
-        mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_));
+        mpi_grid_ = std::make_unique<MPI_grid>(std::vector<int>({num_ranks_row__, num_ranks_col__}), comm_);
         rank_map_.resize(num_ranks_row__ * num_ranks_col__);
 
 #ifdef SIRIUS_SCALAPACK
@@ -152,12 +152,12 @@ class BLACS_grid
         return mpi_grid_->communicator().cart_rank({irow__, icol__});
     }
 
-    MPI_grid const& mpi_grid() const
+    auto const& mpi_grid() const
     {
         return *mpi_grid_;
     }
 
-    std::vector<int> const& rank_map() const
+    auto const& rank_map() const
     {
         return rank_map_;
     }

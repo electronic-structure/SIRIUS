@@ -1,36 +1,5 @@
 #include <sirius.hpp>
-#include <fstream>
-
-auto simulation_context_factory(bool use_gpu__, std::vector<int> mpi_grid_dims__, double cutoff__, bool gamma__)
-{
-    //json conf = {
-    //    {"control", {
-    //                    {"fft_mode", "serial"}
-    //                }
-    //    }
-    //};
-    //std::cout << conf << std::endl;
-    //auto ctx = std::make_unique<sirius::Simulation_context>(conf.dump());
-
-    auto ctx = std::make_unique<sirius::Simulation_context>();
-    if (use_gpu__) {
-        ctx->processing_unit("GPU");
-    } else {
-        ctx->processing_unit("CPU");
-    }
-
-    geometry3d::matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
-
-    ctx->unit_cell().set_lattice_vectors(M);
-    ctx->mpi_grid_dims(mpi_grid_dims__);
-    ctx->pw_cutoff(cutoff__ + 1);
-    ctx->gk_cutoff(cutoff__ / 2);
-    ctx->electronic_structure_method("pseudopotential");
-    ctx->use_symmetry(false);
-    ctx->gamma_point(gamma__);
-    ctx->initialize();
-    return ctx;
-}
+#include <testing.hpp>
 
 template <typename T>
 void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
@@ -133,8 +102,22 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     int my_rank = sddk::Communicator::world().rank();
+
     {
-        auto ctx = simulation_context_factory(use_gpu, mpi_grid_dims, cutoff, reduce_gvec);
+        auto json_conf = R"({
+          "parameters" : {
+            "electronic_structure_method" : "pseudopotential",
+            "use_symmetry" : false
+          }
+        })"_json;
+        json_conf["control"]["processing_unit"] = use_gpu ? "GPU" : "CPU";
+        json_conf["control"]["mpi_grid_dims"] = mpi_grid_dims;
+        json_conf["parameters"]["pw_cutoff"] = cutoff + 1;
+        json_conf["parameters"]["gk_cutoff"] = cutoff / 2.0;
+        json_conf["parameters"]["gamma_point"] = reduce_gvec;
+
+        auto ctx = sirius::create_simulation_context(json_conf, {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}}, 0,
+            std::vector<geometry3d::vector3d<double>>(), false, false);
         for (int i = 0; i < repeat; i++) {
             if (fp32) {
 #if defined(USE_FP32)
@@ -152,9 +135,5 @@ int main(int argn, char** argv)
     if (my_rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();
         std::cout << timing_result.print();
-        //if (!t_file.empty()) {
-        //    std::ofstream json_file(t_file);
-        //    json_file << std::setw(2) << utils::timer::serialize() << std::endl;
-        //}
     }
 }

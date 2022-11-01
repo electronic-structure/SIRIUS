@@ -157,7 +157,7 @@ class Simulation_parameters
 
     void electronic_structure_method(std::string name__);
 
-    electronic_structure_method_t electronic_structure_method() const
+    auto electronic_structure_method() const
     {
         return electronic_structure_method_;
     }
@@ -172,7 +172,7 @@ class Simulation_parameters
 
     void smearing(std::string name__);
 
-    smearing::smearing_t smearing() const
+    auto smearing() const
     {
         return smearing_;
     }

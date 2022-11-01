@@ -1,14 +1,17 @@
 #include <sirius.hpp>
 #include <spla/spla.hpp>
-#include "SDDK/wf_ortho.hpp"
+#include "SDDK/wave_functions.hpp"
 
 using namespace sirius;
 using namespace sddk;
 
 void test1()
 {
-/* reciprocal lattice vectors in 
-    inverse atomic units */
+if (Communicator::world().rank() == 0) {
+    std::cout << "test1" << std::endl;
+}
+/* reciprocal lattice vectors in
+   inverse atomic units */
 matrix3d<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
@@ -35,64 +38,13 @@ for (int j = 0; j < gvec.count(); j++) {
     }
 }
 
-
 }
 
 void test2()
 {
-
-///* reciprocal lattice vectors in 
-//    inverse atomic units */
-//matrix3d<double> M = {{1, 0, 0},
-//                      {0, 1, 0},
-//                      {0, 0, 1}};
-///* G-vector cutoff radius in
-//    inverse atomic units */
-//double Gmax = 10;
-///* create a list of G-vectors;
-//   last boolean parameter switches
-//   off the reduction of G-vectors by 
-//   inversion symmetry */
-//Gvec gvec(M, Gmax, Communicator::world(), false);
-///* dimensions of the FFT box */
-//std::array<int, 3> dims = {20, 20, 20};
-///* create parallel FFT driver with CPU backend */
-//FFT3D fft(dims, Communicator::world(), device_t::CPU);
-///* create G-vector partition; second communicator 
-//   is used in remappting data for FFT */
-//Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
-///* create data buffer with local number of G-vectors
-//   and fill with random numbers */
-//mdarray<double_complex, 1> f(gvp.gvec_count_fft());
-//f = [](int64_t){
-//  return utils::random<double_complex>();
-//};
-///* prepare FFT driver for a given G-vector partition */
-//fft.prepare(gvp);
-///* transform to real-space domain */
-//fft.transform<1>(f.at(memory_t::host));
-///* now the fft buffer contains the real space values */
-//for (int j0 = 0; j0 < fft.size(0); j0++) {
-//    for (int j1 = 0; j1 < fft.size(1); j1++) {
-//        for (int j2 = 0; j2 < fft.local_size_z(); j2++) {
-//            int idx = fft.index_by_coord(j0, j1, j2);
-//            /* get the value at (j0, j1, j2) point of the grid */
-//            auto val = fft.buffer(idx);
-//        }
-//    }
-//}
-////for (int i = 0; i < fft.local_size(); i++) {
-////    /* get the value */
-////    auto val = fft.buffer(i);
-////}
-///* dismiss the FFT driver */
-//fft.dismiss();
+if (Communicator::world().rank() == 0) {
+    std::cout << "test2" << std::endl;
 }
-
-void test3()
-{
-spla::Context spla_ctx(SPLA_PU_HOST);
-
 /* reciprocal lattice vectors in 
     inverse atomic units */
 matrix3d<double> M = {{1, 0, 0},
@@ -106,139 +58,110 @@ double Gmax = 10;
    off the reduction of G-vectors by 
    inversion symmetry */
 Gvec gvec(M, Gmax, Communicator::world(), false);
-///* create G-vector partition; second communicator 
-//   is used in remappting data for FFT */
-//Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
-///* number of wave-functions */
-//int N = 100;
-///* create scalar wave-functions for N bands */
-//Wave_functions<double> wf(gvp, N, memory_t::host);
-///* spin index for scalar wave-functions */
-//int ispn = 0;
-///* fill with random numbers */
-//wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
-//    return utils::random<double_complex>();
-//};
-///* create a 2x2 BLACS grid */
-//BLACS_grid grid(Communicator::world(), 2, 2);
-///* cyclic block size */
-//int bs = 16;
-///* create a distributed overlap matrix */
-//dmatrix<double_complex> o(N, N, grid, bs, bs);
-///* create temporary wave-functions */
-//Wave_functions<double> tmp(gvp, N, memory_t::host);
-///* orthogonalize wave-functions */
-//orthogonalize<double_complex>(spla_ctx, memory_t::host, linalg_t::blas, spin_range(ispn), 0, 0, {&wf}, 0, N, o, tmp);
-///* compute overlap */
-//inner(spla_ctx, spin_range(ispn), wf, 0, N, wf, 0, N, o, 0, 0);
-///* get the diagonal of the matrix */
-//auto d = o.get_diag(N);
-///* check diagonal */
-//for (int i = 0; i < N; i++) {
-//    if (std::abs(d[i] - 1.0) > 1e-10) {
-//        throw std::runtime_error("wrong overlap");
-//    }
-//}
+/* FFT-friendly distribution */
+Gvec_fft gvp(gvec, Communicator::world(),
+        Communicator::self());
+/* dimensions of the FFT box */
+FFT3D_grid dims({40, 40, 40});
+
+/* this is how our code splits the z-dimension
+ * of the FFT buffer */
+auto spl_z = split_fft_z(dims[2],
+        Communicator::world());
+
+/* create SpFFT grid object */
+spfft_grid_type<double> spfft_grid(dims[0], dims[1],
+        dims[2], gvp.zcol_count_fft(), spl_z.local_size(),
+        SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(),
+        SPFFT_EXCH_DEFAULT);
+
+auto const& gv = gvp.gvec_array();
+/* create SpFFT transformation object */
+spfft_transform_type<double> spfft(
+        spfft_grid.create_transform(SPFFT_PU_HOST,
+            SPFFT_TRANS_C2C,
+            dims[0], dims[1], dims[2], spl_z.local_size(),
+            gvp.gvec_count_fft(),
+            SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
+
+/* create data buffer with local number of G-vectors
+   and fill with random numbers */
+mdarray<double_complex, 1> f(gvp.gvec_count_fft());
+f = [](int64_t){
+  return utils::random<double_complex>();
+};
+/* transform to real space */
+spfft.backward(reinterpret_cast<double const*>(
+            &f[0]), SPFFT_PU_HOST);
+/* get real space data pointer */
+auto ptr = reinterpret_cast<std::complex<double>*>(
+        spfft.space_domain_data(SPFFT_PU_HOST));
+/* now the fft buffer contains the real space values */
+for (int j0 = 0; j0 < dims[0]; j0++) {
+    for (int j1 = 0; j1 < dims[1]; j1++) {
+        for (int jz = 0; jz < spfft.local_z_length(); jz++) {
+            auto j2 = spfft.local_z_offset() + jz;
+            int idx = dims.index_by_coord(j0, j1, j2);
+            /* get the value at (j0, j1, j2) point of the grid */
+            ptr[idx] += 0.0;
+        }
+    }
 }
 
-void test4()
+}
+
+void test3()
 {
-///* dimensions of the FFT box */
-//std::array<int, 3> dims = {20, 20, 20};
-///* reciprocal lattice vectors in 
-//    inverse atomic units */
-//matrix3d<double> M = {{1, 0, 0},
-//                      {0, 1, 0},
-//                      {0, 0, 1}};
-///* G-vector cutoff radius in
-//    inverse atomic units */
-//double Gmax = 10;
-///* create a list of G-vectors;
-//   last boolean parameter switches
-//   off the reduction of G-vectors by 
-//   inversion symmetry */
-//Gvec gvec(M, Gmax, Communicator::world(), false);
-///* create sequential FFT driver with CPU backend */
-//FFT3D fft(dims, Communicator::self(), device_t::CPU);
-///* potential on a real-space grid */
-//std::vector<double> v(fft.local_size(), 1);
-///* create G-vector partition; second communicator 
-//   is used in remappting wave-functions */
-//Gvec_partition gvp(gvec, fft.comm(), Communicator::world());
-///* prepare FFT driver */
-//fft.prepare(gvp);
-///* number of wave-functions */
-//int N = 100;
-///* create scalar wave-functions for N bands */
-//Wave_functions wf(gvp, N, memory_t::host);
-///* spin index for scalar wave-functions */
-//int ispn = 0;
-///* fill with random numbers */
-//wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
-//    return utils::random<double_complex>();
-//};
-///* resulting |v*wf> */
-//Wave_functions vwf(gvp, N, memory_t::host);
-///* remap wave-functions */
-//wf.pw_coeffs(ispn).remap_forward(N, 0, nullptr);
-///* prepare the target wave-functions */
-//vwf.pw_coeffs(ispn).set_num_extra(N, 0, nullptr);
-///* loop over local number of bands */
-//for (int i = 0; i < wf.pw_coeffs(ispn).spl_num_col().local_size(); i++) {
-//    /* transform to real-space */
-//    fft.transform<1>(wf.pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
-//    /* multiply by potential */
-//    for (int j = 0; j < fft.local_size(); j++) {
-//        fft.buffer(j) *= v[j];
-//    }
-//    /* transform to reciprocal space */
-//    fft.transform<-1>(vwf.pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
-//}
-///* remap to default "slab" storage */
-//vwf.pw_coeffs(ispn).remap_backward(N, 0);
-///* dismiss the FFT driver */
-//fft.dismiss();
-
+if (Communicator::world().rank() == 0) {
+    std::cout << "test3" << std::endl;
 }
+spla::Context spla_ctx(SPLA_PU_HOST);
 
-void test5()
-{
-/* create simulation context */
-Simulation_context ctx("{\"parameters\" : "
-    "{\"electronic_structure_method\":"
-    "\"pseudopotential\"}}",
-     Communicator::world());
-/* lattice constant */
-double a{5};
-/* set lattice vectors */
-ctx.unit_cell().set_lattice_vectors({{a,0,0}, 
-                                     {0,a,0}, 
-                                     {0,0,a}});
-/* add atom type */
-ctx.unit_cell().add_atom_type("H");
-/* get created atom type */
-auto& atype = ctx.unit_cell().atom_type(0);
-/* set charge */
-atype.zn(1);
-/* set radial grid */
-atype.set_radial_grid(radial_grid_t::lin_exp,
-                      1000, 0, 2, 6);
-/* create beta radial function */
-std::vector<double> beta(atype.num_mt_points());
-for (int i = 0; i < atype.num_mt_points(); i++) {
-    double x = atype.radial_grid(i);
-    beta[i] = std::exp(-x) * (4 - x * x);
+/* reciprocal lattice vectors in 
+   inverse atomic units */
+matrix3d<double> M = {{1, 0, 0},
+                      {0, 1, 0},
+                      {0, 0, 1}};
+/* G-vector cutoff radius in
+   inverse atomic units */
+double Gmax = 10;
+/* create a list of G-vectors;
+   last boolean parameter switches
+   off the reduction of G-vectors by 
+   inversion symmetry */
+auto gvec = std::make_shared<Gvec>(M, Gmax, Communicator::world(), false);
+/* number of wave-functions */
+int N = 100;
+/* create scalar wave-functions for N bands */
+wf::Wave_functions<double> wf(gvec, wf::num_mag_dims(0), wf::num_bands(N), memory_t::host);
+/* fill with random numbers */
+for (int i = 0; i < N; i++) {
+    for (int j = 0; j < gvec->count(); j++) {
+        wf.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) =
+            utils::random<double_complex>();
+    }
 }
-/* add radial function for l=0 */
-atype.add_beta_radial_function(0, beta);
-/* add atom */
-ctx.unit_cell().add_atom("H", {0, 0, 0});
-/* initialize the context */
-ctx.initialize();
-/* get FFT driver */
-//auto& fft = ctx.spfft();
-/* get G-vectors */
-//auto& gvec = ctx.gvec();
+/* create a 2x2 BLACS grid */
+BLACS_grid grid(Communicator::world(), 2, 2);
+/* cyclic block size */
+int bs = 16;
+/* create a distributed overlap matrix */
+dmatrix<double_complex> o(N, N, grid, bs, bs);
+/* create temporary wave-functions */
+wf::Wave_functions<double> tmp(gvec, wf::num_mag_dims(0), wf::num_bands(N), memory_t::host);
+/* orthogonalize wave-functions */
+wf::orthogonalize(spla_ctx, memory_t::host, wf::spin_range(0), wf::band_range(0, 0),
+        wf::band_range(0, N), wf, wf, {&wf}, o, tmp, false);
+/* compute overlap */
+wf::inner(spla_ctx, memory_t::host, wf::spin_range(0), wf, wf::band_range(0, N), wf, wf::band_range(0, N), o, 0, 0);
+/* get the diagonal of the matrix */
+auto d = o.get_diag(N);
+/* check diagonal */
+for (int i = 0; i < N; i++) {
+    if (std::abs(d[i] - 1.0) > 1e-10) {
+        throw std::runtime_error("wrong overlap");
+    }
+}
 }
 
 int main(int argn, char** argv)
@@ -256,7 +179,5 @@ int main(int argn, char** argv)
     test1();
     test2();
     test3();
-    test4();
-    test5();
     sirius::finalize();
 }

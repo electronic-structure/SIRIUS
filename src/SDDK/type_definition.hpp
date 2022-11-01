@@ -19,17 +19,5 @@ struct Real<std::complex<T>> {using type = T;};
 
 template <typename T>
 using real_type = typename Real<T>::type;
-//
-//// define type traits that return a complex type 
-//// general case for real type
-//template <typename T>
-//struct Complex {using type = std::complex<T>;};
-//
-//// special case for complex type
-//template <typename T>
-//struct Complex<std::complex<T>> {using type = std::complex<T>;};
-//
-//template <typename T>
-//using complex_type = typename Complex<T>::type;
 
 #endif // __TYPE_DEFINITION_HPP__
