@@ -443,7 +443,7 @@ class Eigensolver_elpa : public Eigensolver
     //}
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
         , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
@@ -498,7 +498,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         elpa_generalized_eigenvectors_d(handle, A__.at(sddk::memory_t::host), B__.at(sddk::memory_t::host),
             w.get(), Z__.at(sddk::memory_t::host), 0, &error);
@@ -581,7 +583,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         using CT = double _Complex;
         elpa_generalized_eigenvectors_dc(handle, (CT*)A__.at(sddk::memory_t::host), (CT*)B__.at(sddk::memory_t::host),
@@ -676,7 +680,8 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         elpa_eigenvectors_all_host_arrays_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
 
@@ -740,12 +745,13 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         using CT = double _Complex;
         auto A_ptr = A__.size_local() ? (CT*)A__.at(sddk::memory_t::host) : nullptr;
         auto Z_ptr = Z__.size_local() ? (CT*)Z__.at(sddk::memory_t::host) : nullptr;
-        elpa_eigenvectors_all_host_arrays_dc(handle, A_ptr, w.get(), Z_ptr, &error);
+        /lpa_eigenvectors_all_host_arrays_dc(handle, A_ptr, w.get(), Z_ptr, &error);
 
         elpa_deallocate(handle, &error);
 
@@ -1459,7 +1465,7 @@ class Eigensolver_scalapack : public Eigensolver
 {
   public:
     Eigensolver_scalapack()
-        : Eigensolver(ev_solver_t::scalapack, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::scalapack, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
 };
@@ -1471,7 +1477,7 @@ class Eigensolver_magma: public Eigensolver
   public:
 
     Eigensolver_magma()
-        : Eigensolver(ev_solver_t::magma, nullptr, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
     {
     }
 
@@ -1485,7 +1491,9 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
         int info;
@@ -1494,8 +1502,8 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double>(lwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(sddk::memory_t::host), lda,
                              B__.at(sddk::memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
@@ -1532,7 +1540,9 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
         int info;
@@ -1542,9 +1552,9 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                              reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda,
@@ -1582,16 +1592,19 @@ class Eigensolver_magma: public Eigensolver
             return Eigensolver_lapack().solve(matrix_size__, nev__, A__, eval__, Z__);
         }
 
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+
         int nt  = omp_get_max_threads();
         int lda = A__.ld();
-        auto w  = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto w  = mph.get_unique_ptr<double>(matrix_size__);
 
         int lwork;
         int liwork;
         magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double>(lwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         int info;
         int m;
@@ -1626,7 +1639,9 @@ class Eigensolver_magma: public Eigensolver
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int info, m;
 
@@ -1635,9 +1650,9 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_2stage(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda, 0.0, 0.0, 1,
@@ -1818,7 +1833,9 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int info, m;
 
@@ -1828,11 +1845,11 @@ class Eigensolver_magma_gpu: public Eigensolver
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
         int llda = matrix_size__ + 32;
-        auto z_work = mp_hp_.get_unique_ptr<double_complex>(llda * matrix_size__);
+        auto z_work = mphp.get_unique_ptr<double_complex>(llda * matrix_size__);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::device)), lda, 0.0, 0.0, 1,
