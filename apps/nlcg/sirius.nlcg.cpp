@@ -93,7 +93,7 @@ double ground_state(Simulation_context& ctx,
         throw std::runtime_error("invalid smearing type given");
     }
 
-    if (is_device_memory(ctx.preferred_memory_t())) {
+    if (is_device_memory(ctx.processing_unit_memory_t())) {
         switch (pu) {
             case sddk::device_t::GPU: {
                 std::cout << "nlcg executing on gpu-gpu" << "\n";
