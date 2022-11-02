@@ -127,6 +127,10 @@ class strong_type
         return val_;
     }
 
+    operator T() const
+    {
+        return val_;
+    }
     bool operator!=(strong_type<T, Tag> const& rhs__)
     {
         return this->val_ != rhs__.val_;
