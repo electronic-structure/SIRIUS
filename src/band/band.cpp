@@ -25,8 +25,6 @@
 #include "band.hpp"
 #include "context/simulation_context.hpp"
 #include "k_point/k_point_set.hpp"
-#include "SDDK/wf_trans.hpp"
-#include "SDDK/wf_inner.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {

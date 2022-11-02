@@ -34,7 +34,6 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "band/davidson.hpp"
-#include "SDDK/wf_inner.hpp"
 #include "multi_cg/multi_cg.hpp"
 
 struct sirius_context_handler_t

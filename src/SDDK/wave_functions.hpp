@@ -1662,6 +1662,23 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
     }
 }
 
+/// Orthogonalize n new wave-functions to the N old wave-functions
+/** Orthogonalize sets of wave-fuctionsfuctions.
+\tparam T                  Precision of the wave-functions (float or double).
+\tparam F                  Type of the inner-product matrix (float, double or complex).
+\param [in]  spla_ctx      SPLA library context.
+\param [in]  mem           Location of the wave-functions data.
+\param [in]  spins         Spin index range.
+\param [in]  br_old        Band range of the functions that are alredy orthogonal and that will be peojected out.
+\param [in]  br_new        Band range of the functions that needed to be orthogonalized.
+\param [in]  wf_i          The <wf_i| states used to compute overlap matrix O_{ij}.
+\param [in]  wf_j          The |wf_j> states used to compute overlap matrix O_{ij}.
+\param [out  wfs           List of wave-functions sets (typically phi, hphi and sphi).
+\param [out] o             Work matrix to compute overlap <wf_i|wf_j>
+\param [out] tmp           Temporary wave-functions to store intermediate results.
+\param [in]  project_out   Project out old subspace (if this was not done before).
+\return                    Number of linearly independent wave-functions found.
+*/
 template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, band_range br_old__,
@@ -1868,9 +1885,6 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
             }
         }
     }
-        //if (tmp__.num_wf() < br_new__.size()) {
-        //    RTE_THROW("not enough workspace");
-        //}
 
 //== //
 //== //    if (sddk_debug >= 1) {
@@ -1907,123 +1921,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //        gflops += ngop * n__ * n__ * K;
 //== //    }
 //== //
-//==     /* single MPI rank and precision types of wave-functions and transformation matrices match */
-//==     if (o__.comm().size() == 1 && std::is_same<T, real_type<F>>::value) {
-//==         bool use_magma{false};
-//== //
-//== //        // MAGMA performance for Cholesky and inversion is not good enough; use lapack for the moment
-//== //        //#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
-//== //        //        if (pu__ == GPU) {
-//== //        //            use_magma = true;
-//== //        //        }
-//== //        //#endif
-//== //
-//==         PROFILE_START("wf::orthogonalize|trm");
-//==         if (use_magma) {
-//== //            /* Cholesky factorization */
-//== //            if (int info = linalg(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
-//== //                std::stringstream s;
-//== //                s << "error in GPU factorization, info = " << info;
-//== //                RTE_THROW(s);
-//== //            }
-//== //            /* inversion of triangular matrix */
-//== //            if (linalg(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
-//== //                RTE_THROW("error in inversion");
-//== //            }
-//==         } else { /* CPU version */
-//==             /* Cholesky factorization */
-//==             if (int info = sddk::linalg(sddk::linalg_t::lapack).potrf(br_new__.size(), &o__(0, 0), o__.ld())) {
-//==                 std::stringstream s;
-//==                 s << "error in Cholesky factorization, info = " << info << std::endl
-//==                   << "number of existing states: " << br_old__.size() << std::endl
-//==                   << "number of new states: " << br_new__.size();
-//==                 RTE_THROW(s);
-//==             }
-//==             /* inversion of triangular matrix */
-//==             if (sddk::linalg(sddk::linalg_t::lapack).trtri(br_new__.size(), &o__(0, 0), o__.ld())) {
-//==                 RTE_THROW("error in inversion");
-//==             }
-//== //            if (is_device_memory(mem__)) {
-//== //                acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
-//== //            }
-//==         }
-//==         PROFILE_STOP("wf::orthogonalize|trm");
 //== 
-//==         PROFILE_START("wf::orthogonalize|transform");
-//==         int sid{0};
-//==         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-//==             /* multiplication by triangular matrix */
-//==             for (auto& wf : wfs__) {
-//==                 auto sp = wf->actual_spin_index(s);
-//==                 auto ptr = reinterpret_cast<F*>(wf->data_ptr(mem__, 0, sp, wf::band_index(br_new__.begin())));
-//==                 int ld = wf->ld();
-//==                 /* Gamma-point case */
-//==                 if (std::is_same<F, real_type<F>>::value) {
-//==                     ld *= 2;
-//==                 }
-//== 
-//==                 sddk::linalg(la__).trmm('R', 'U', 'N', ld, br_new__.size(), &sddk::linalg_const<F>::one(),
-//==                         o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
-//== 
-//==             }
-//==         }
-//==         if (la__ == sddk::linalg_t::gpublas || la__ == sddk::linalg_t::cublasxt || la__ == sddk::linalg_t::magma) {
-//==             /* sync stream only if processing unit is GPU */
-//==             for (int i = 0; i < sid; i++) {
-//==                 acc::sync_stream(stream_id(i));
-//==             }
-//==         }
-//==         PROFILE_STOP("wf::orthogonalize|transform");
-//==     } else { /* parallel transformation */
-//==         PROFILE_START("wf::orthogonalize|trm");
-//== //        sddk::mdarray<F, 1> diag;
-//==         o__.make_real_diag(br_new__.size());
-//== //        if (sddk_debug >= 1) {
-//== //            diag = o__.get_diag(n__);
-//== //        }
-//==         auto o_ptr = (o__.size_local() == 0) ? nullptr : o__.at(sddk::memory_t::host);
-//== //        if (sddk_debug >= 2 && n__ <= 20) {
-//== //            auto s1 = o__.serialize("wf_ortho:o_nn", n__, n__);
-//== //            if (o__.comm().rank() == 0) {
-//== //                std::cout << s1.str() << std::endl;
-//== //            }
-//== //        }
-//==         if (int info = sddk::linalg(sddk::linalg_t::scalapack).potrf(br_new__.size(), o_ptr, o__.ld(), o__.descriptor())) {
-//==             std::stringstream s;
-//==             s << "error in Cholesky factorization, info = " << info << std::endl
-//==               << "number of existing states: " << br_old__.size() << std::endl
-//==               << "number of new states: " << br_new__.size();
-//==             RTE_THROW(s);
-//==         }
-//== 
-//==         if (sddk::linalg(sddk::linalg_t::scalapack).trtri(br_new__.size(), o_ptr, o__.ld(), o__.descriptor())) {
-//==             RTE_THROW("error in inversion");
-//==         }
-//==         PROFILE_STOP("wf::orthogonalize|trm");
-//== 
-//==         /* o is upper triangular matrix */
-//==         for (int i = 0; i < br_new__.size(); i++) {
-//==             for (int j = i + 1; j < br_new__.size(); j++) {
-//==                 o__.set(j, i, 0);
-//==             }
-//==         }
-//== 
-//==         //if (tmp__.num_wf() < br_new__.size()) {
-//==         //    RTE_THROW("not enough workspace");
-//==         //}
-//== 
-//==         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi
-//==          */
-//==         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-//==             for (auto wf: wfs__) {
-//==                 auto sp = wf->actual_spin_index(s);
-//==                 auto sp1 = tmp__.actual_spin_index(s);
-//==                 auto br1 = wf::band_range(0, br_new__.size());
-//==                 transform(spla_ctx__, o__, 0, 0, 1.0, *wf, sp, br_new__, 0.0, tmp__, sp1, br1);
-//==                 copy(tmp__, sp1, br1, *wf, sp, br_new__);
-//==             }
-//==         }
-//==     }
 //== //    if (sddk_debug >= 1) {
 //== //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 //== //        auto err = check_identity(o__, n__);

@@ -29,9 +29,6 @@
 #include "band/band.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "utils/profiler.hpp"
-#include "SDDK/wf_ortho.hpp"
-#include "SDDK/wf_inner.hpp"
-#include "SDDK/wf_trans.hpp"
 #include "residuals.hpp"
 
 namespace sirius {

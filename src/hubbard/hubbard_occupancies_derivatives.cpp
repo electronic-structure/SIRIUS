@@ -32,8 +32,6 @@
  */
 
 #include "hubbard.hpp"
-#include "SDDK/wf_inner.hpp"
-#include "SDDK/wf_trans.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "linalg/inverse_sqrt.hpp"
 #include "geometry/wavefunction_strain_deriv.hpp"

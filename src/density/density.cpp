@@ -28,7 +28,6 @@
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
-#include "SDDK/wf_inner.hpp"
 #include "SDDK/serialize_mdarray.hpp"
 
 namespace sirius {

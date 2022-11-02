@@ -23,7 +23,6 @@
  */
 
 #include "k_point/k_point.hpp"
-#include "wf_trans.hpp"
 
 namespace sirius {
 

@@ -22,8 +22,6 @@
  *  \brief Contains implementation of sirius::Non_local_operator class.
  */
 
-#include "SDDK/wf_inner.hpp"
-#include "SDDK/wf_trans.hpp"
 #include "non_local_operator.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
