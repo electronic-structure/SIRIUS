@@ -65,6 +65,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
         auto jcol = ovlp.icol(j);
         for (int i = 0; i < ovlp.num_rows_local(); i++) {
             auto irow = ovlp.irow(i);
+            /* 2 is accumulated from two spins */
             double_complex z = ovlp(i, j) - 2 * static_cast<double>(irow + 1) / (jcol + 1);
             max_diff = std::max(max_diff, std::abs(z));
         }
