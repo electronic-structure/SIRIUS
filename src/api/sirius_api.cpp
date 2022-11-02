@@ -1890,7 +1890,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
             }
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {
@@ -5542,7 +5542,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
             }
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {
@@ -5661,7 +5661,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             nlcglib::nlcg_info info;
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     info = nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {

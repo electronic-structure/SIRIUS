@@ -727,6 +727,16 @@ class Wave_functions : public Wave_functions_mt<T>
         return this->data_[ispn__.get()](ig__, i__.get());
     }
 
+    inline auto& pw_coeffs(spin_index ispn__)
+    {
+        return this->data_[ispn__.get()];
+    }
+
+    inline const auto& pw_coeffs(spin_index ispn__) const
+    {
+        return this->data_[ispn__.get()];
+    }
+
     /// Return COSTA layout for the plane-wave part for a given spin index and band range.
     auto
     grid_layout_pw(spin_index ispn__, band_range b__) const
