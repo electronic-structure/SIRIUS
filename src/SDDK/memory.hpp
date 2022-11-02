@@ -602,6 +602,12 @@ class memory_pool
         map_ptr_.clear();
     }
 
+    /// Clear memory pool and release all memory.
+    void clear()
+    {
+        memory_blocks_.clear();
+    }
+
     void print()
     {
         std::cout << "--- memory pool status ---\n";

@@ -1554,11 +1554,10 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
  * The location of the wave-functions data is determined by the mem parameter. The result is always returned in the
  * CPU memory. If resulting matrix is allocated on the GPU memory, the result is copied to GPU as well.
  */
-template <typename T, typename F, typename W>
+template <typename F, typename W, typename T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__,
-        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
-        int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
+      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
@@ -1592,7 +1591,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     T scale_two(2.0);
 
     /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
-    if (std::is_same<F, real_type<F>>::value) {
+    if (is_real_v<F>) {
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_half);
     }
 
@@ -1616,7 +1615,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     }
 
     /* for Gamma case, G = 0 vector is rescaled back */
-    if (std::is_same<F, real_type<F>>::value) {
+    if (is_real_v<F>) {
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_two);
     }
 

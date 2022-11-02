@@ -129,8 +129,8 @@ class Beta_projectors_base
             result.allocate(get_memory_pool(sddk::memory_t::device));
         }
 
-        wf::inner<T, F, Beta_projectors_base<T>>(ctx_.spla_context(), mem__, wf::spin_range(ispn__.get()), *this,
-                  wf::band_range(0, nbeta), phi__, br__, result, 0, 0);
+        wf::inner<F>(ctx_.spla_context(), mem__, wf::spin_range(ispn__.get()), *this,
+                     wf::band_range(0, nbeta), phi__, br__, result, 0, 0);
 
         return result;
     }
