@@ -145,7 +145,7 @@ Energy::compute()
             }
         }
 
-        assert(cphis[i] == kp.spinor_wave_functions_ptr());
+        assert(cphis[i] == &kp.spinor_wave_functions());
         apply_hamiltonian(H0, kp, *hphis[i], kp.spinor_wave_functions(), sphis[i]);
         // compute band energies aka diag(<psi|H|psi>)
         for (int ispn = 0; ispn < num_spins; ++ispn) {
