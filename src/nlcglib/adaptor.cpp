@@ -8,7 +8,6 @@
 #include "hamiltonian/local_operator.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "dft/energy.hpp"
-#include "SDDK/wf_inner.hpp"
 
 using namespace nlcglib;
 
