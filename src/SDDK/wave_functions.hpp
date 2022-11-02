@@ -1572,7 +1572,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     T scale_two(2.0);
 
     /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
-    if (std::is_same<F, real_type<F>>::value) {
+    if (is_real_v<F>) {
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_half);
     }
 
@@ -1596,7 +1596,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     }
 
     /* for Gamma case, G = 0 vector is rescaled back */
-    if (std::is_same<F, real_type<F>>::value) {
+    if (is_real_v<F>) {
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_two);
     }
 
