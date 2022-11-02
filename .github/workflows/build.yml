@@ -96,6 +96,26 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
 
+  build_magma:
+    runs-on: ubuntu-latest
+    container: electronicstructure/sirius
+    env:
+      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran +magma +cuda cuda_arch=60 build_type=RelWithDebInfo ^openblas ^mpich
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show the spec
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
+      - name: Configure SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_MAGMA=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
+
   build_cuda_fp32:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
