@@ -31,6 +31,7 @@
 #include <cmath>
 #include "SDDK/dmatrix.hpp"
 #include "SDDK/geometry3d.hpp"
+#include "SDDK/wave_functions.hpp"
 #include "utils/profiler.hpp"
 #include "linalg/linalg.hpp"
 #include "utils/cmd_args.hpp"
@@ -250,6 +251,20 @@ std::vector<geometry3d::vector3d<double>> coord__, bool add_vloc__, bool add_dio
     }
     ctx->initialize();
     return ctx;
+}
+
+template <typename T>
+inline void
+randomize(wf::Wave_functions<T>& wf__)
+{
+    for (int i = 0; i < wf__.num_wf().get(); i++) {
+        for (int s = 0; s < wf__.num_sc().get(); s++) {
+            auto ptr = wf__.at(sddk::memory_t::host, 0, wf::spin_index(s), wf::band_index(i));
+            for (int j = 0; j < wf__.ld(); j++) {
+                ptr[j] = utils::random<double_complex>();
+            }
+        }
+    }
 }
 
 }

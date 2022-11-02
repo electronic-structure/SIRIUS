@@ -107,9 +107,9 @@ template <typename T>
 int run_test(cmd_args& args)
 {
     int result = test_fft<T>(args, device_t::CPU);
-#ifdef SIRIUS_GPU
-    result += test_fft<T>(args, device_t::GPU);
-#endif
+    if (acc::num_devices()) {
+        result += test_fft<T>(args, device_t::GPU);
+    }
     return result;
 }
 

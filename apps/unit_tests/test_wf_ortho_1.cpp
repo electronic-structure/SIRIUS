@@ -1,65 +1,70 @@
-#include "spla/context.hpp"
 #include <sirius.hpp>
+#include <testing.hpp>
 #include <spla/spla.hpp>
-#include "SDDK/wf_ortho.hpp"
+#include <spla/context.hpp>
+#include "SDDK/wave_functions.hpp"
 
 using namespace sirius;
-using namespace sddk;
 
-void test_wf_ortho(std::vector<int> mpi_grid_dims__,
-                   double cutoff__,
-                   int num_bands__,
-                   int use_gpu__,
-                   int bs__)
+int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
 {
-    device_t pu = static_cast<device_t>(use_gpu__);
-    spla::Context spla_ctx(pu == device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
+    auto pu = use_gpu__ ? sddk::device_t::GPU : sddk::device_t::CPU;
+    spla::Context spla_ctx(pu == sddk::device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
 
-    BLACS_grid blacs_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    geometry3d::matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     /* create G-vectors */
-    Gvec gvec(M, cutoff__, Communicator::world(), false);
-    Gvec_fft gvecp(gvec, Communicator::world(), Communicator::self());
+    auto gvec = std::make_shared<sddk::Gvec>(M, cutoff__, sddk::Communicator::world(), false);
 
-    //int num_atoms = 10;
-    //auto nmt = [](int i) {
-    //    return 20;
-    //};
+    int num_atoms = 100;
+    std::vector<int> nmt;
+    for (int ia = 0; ia < num_atoms; ia++) {
+        nmt.push_back(ia);
+    }
+    wf::Wave_functions<double> phi(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), sddk::memory_t::host);
+    wf::Wave_functions<double> tmp(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), sddk::memory_t::host);
 
-//    Wave_functions<double> phi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
-//    Wave_functions<double> hphi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
-//    Wave_functions<double> tmp(gvecp, num_atoms, nmt, num_bands__, memory_t::host);
-//
-//    phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
-//    phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
-//    hphi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
-//    hphi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
-//
-//    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
-//
-//    linalg_t la{linalg_t::blas};
-//    memory_t mem{memory_t::host};
-//    if (pu == device_t::GPU) {
-//        la = linalg_t::gpublas;
-//        mem = memory_t::device;
-//    }
-//
-//    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, 0, num_bands__, ovlp, tmp);
-//    orthogonalize<double_complex>(spla_ctx, mem, la, spin_range(0), phi, hphi, num_bands__, num_bands__, ovlp, tmp);
-//
-//    inner(spla_ctx, spin_range(0), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
-//
-//    for (int j = 0; j < ovlp.num_cols_local(); j++) {
-//        for (int i = 0; i < ovlp.num_rows_local(); i++) {
-//            double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-//            if (std::abs(z) > 1e-12) {
-//                printf("test_wf_ortho: wrong overlap");
-//                exit(1);
-//            }
-//        }
-//    }
+    sirius::randomize(phi);
+
+    sddk::dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
+
+    sddk::memory_t mem{sddk::memory_t::host};
+    if (pu == sddk::device_t::GPU) {
+        mem = sddk::memory_t::device;
+    }
+
+    wf::orthogonalize(spla_ctx, mem, wf::spin_range(0), wf::band_range(0, 0), wf::band_range(0, num_bands__), phi, phi,
+            {&phi}, ovlp, tmp, true);
+
+    wf::orthogonalize(spla_ctx, mem, wf::spin_range(0), wf::band_range(0, num_bands__),
+            wf::band_range(num_bands__, 2 * num_bands__), phi, phi, {&phi}, ovlp, tmp, true);
+
+    wf::inner(spla_ctx, mem, wf::spin_range(0), phi, wf::band_range(0, 2 * num_bands__),
+            phi, wf::band_range(0, 2 * num_bands__), ovlp, 0, 0);
+
+    auto diff = sddk::check_identity(ovlp, 2 * num_bands__);
+    if (diff > 1e-12) {
+        printf("test_wf_ortho: wrong overlap");
+        return 1;
+    }
+    return 0;
+}
+
+int run_test(cmd_args const& args)
+{
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
+    auto cutoff = args.value<double>("cutoff", 8.0);
+    auto use_gpu = args.value<int>("use_gpu", 0);
+
+    auto result{0};
+    for (int bs = 1; bs < 16; bs++) {
+        for (int i = 30; i < 60; i++) {
+            result += test_wf_ortho(mpi_grid_dims, cutoff, i, use_gpu, bs);
+        }
+    }
+    return result;
 }
 
 int main(int argn, char** argv)
@@ -67,7 +72,6 @@ int main(int argn, char** argv)
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    //args.register_key("--bs=", "{int} block size");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
 
     args.parse_args(argn, argv);
@@ -76,19 +80,8 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
-    auto cutoff = args.value<double>("cutoff", 8.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
-    //auto bs = args.value<int>("bs", 16);
-
     sirius::initialize(1);
-    for (int bs = 1; bs < 16; bs++) {
-        for (int i = 30; i < 60; i++) {
-            test_wf_ortho(mpi_grid_dims, cutoff, i, use_gpu, bs);
-        }
-    }
-    Communicator::world().barrier();
+    int result = sirius::call_test(argv[0], run_test, args);
     sirius::finalize();
-
-    return 0;
+    return result;
 }
