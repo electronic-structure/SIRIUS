@@ -39,7 +39,7 @@ RUN yq -i '.compilers[0].compiler.paths.f77 = "/usr/bin/gfortran"' /root/.spack/
 # create GCC build env.
 RUN /spack/bin/spack env create --with-view /sirius-install gcc-build-env
 
-ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +vdwxc +fortran +tests +nlcglib +elpa +cuda cuda_arch=60 ^openblas ^mpich@3.3.2 ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60 ^spfft+single_precision target=x86_64"
+ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +vdwxc +fortran +tests +nlcglib +elpa +magma +cuda cuda_arch=60 ^openblas ^mpich@3.3.2 ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60 ^spfft+single_precision ^magma+cuda cuda_arch=60 target=x86_64"
 
 RUN /spack/bin/spack -e gcc-build-env spec $SPEC_GCC
 

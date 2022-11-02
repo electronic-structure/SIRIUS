@@ -1459,14 +1459,34 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> co
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
-    RTE_THROW("implement this");
+    if (is_device_memory(mem__)) {
+        RTE_THROW("wf::transform(): mixed FP32/FP64 precision is implemented only for CPU");
+    }
+    RTE_ASSERT(wf_in__.ld() == wf_out__.ld());
+    for (int j = 0; j < br_out__.size(); j++) {
+        for (int k = 0; k < wf_in__.ld(); k++) {
+            auto wf_out_ptr = wf_out__.at(sddk::memory_t::host, k, s_out__, wf::band_index(j + br_out__.begin()));
+            std::complex<real_type<F>> z(0, 0);;
+            for (int i = 0; i < br_in__.size(); i++) {
+                auto wf_in_ptr = wf_in__.at(sddk::memory_t::host, k, s_in__, wf::band_index(i + br_in__.begin()));
+
+                z += static_cast<std::complex<real_type<F>>>(*wf_in_ptr) * M__(irow0__ + i, jcol0__ + j);
+            }
+            if (beta__ == 0) {
+               *wf_out_ptr = alpha__ * z;
+            } else {
+               *wf_out_ptr = alpha__ * z + static_cast<std::complex<real_type<F>>>(*wf_out_ptr) * beta__;
+            }
+        }
+    }
 }
 
 /// Scale G=0 component of the wave-functions.
 /** This is needed for the Gamma-point calculation to exclude the double-counting of G=0 term.
  */
 template <typename T>
-inline void scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin_range spins__,
+inline void
+scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin_range spins__,
         wf::band_range br__, T* scale__)
 {
     RTE_ASSERT(spins__.size() == 1);
@@ -1612,7 +1632,35 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
         band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
         int irow0__, int jcol0__)
 {
-    RTE_THROW("implement this");
+    if (is_device_memory(mem__)) {
+        RTE_THROW("wf::inner(): mixed FP32/FP64 precision is implemented only for CPU");
+    }
+    RTE_ASSERT(wf_i__.ld() == wf_j__.ld());
+    RTE_ASSERT((wf_i__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+    RTE_ASSERT((wf_j__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+    for (int i = 0; i < br_i__.size(); i++) {
+        for (int j = 0; j < br_j__.size(); j++) {
+            result__(irow0__ + i, jcol0__ + j) = 0.0;
+        }
+    }
+    for (auto s = spins__.begin(); s != spins__.end(); s++) {
+        auto s_i = wf_i__.actual_spin_index(s);
+        auto s_j = wf_j__.actual_spin_index(s);
+        int nk = wf_i__.ld();
+
+        for (int i = 0; i < br_i__.size(); i++) {
+            for (int j = 0; j < br_j__.size(); j++) {
+                auto wf_i_ptr = wf_i__.at(sddk::memory_t::host, 0, s_i, wf::band_index(br_i__.begin() + i));
+                auto wf_j_ptr = wf_j__.at(sddk::memory_t::host, 0, s_j, wf::band_index(br_j__.begin() + j));
+                F z = 0.0;
+
+                for (int k = 0; k < nk; k++) {
+                    z += inner_diag_local_aux<T, F>(wf_i_ptr[k], wf_j_ptr[k]);
+                }
+                result__(irow0__ + i, jcol0__ + j) += z;
+            }
+        }
+    }
 }
 
 template <typename T, typename F>
