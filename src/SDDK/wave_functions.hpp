@@ -1534,11 +1534,10 @@ inline void scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf
  * The location of the wave-functions data is determined by the mem parameter. The result is always returned in the
  * CPU memory. If resulting matrix is allocated on the GPU memory, the result is copied to GPU as well.
  */
-template <typename T, typename F, typename W>
+template <typename F, typename W, typename T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__,
-        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
-        int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
+      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
