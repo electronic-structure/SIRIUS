@@ -117,7 +117,7 @@ class strong_type
     {
     }
 
-    explicit strong_type(T&& val__) 
+    explicit strong_type(T&& val__)
         : val_{std::move(val__)}
     {
     }
@@ -473,14 +473,14 @@ class Wave_functions_base
         }
     }
 
-    /// Return const pointer to the wave-function coefficient at a given index, spin and band 
+    /// Return const pointer to the wave-function coefficient at a given index, spin and band
     inline std::complex<T> const*
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
-    /// Return pointer to the wave-function coefficient at a given index, spin and band 
+    /// Return pointer to the wave-function coefficient at a given index, spin and band
     inline auto
     at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__)
     {
@@ -862,7 +862,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
     /// Pointer to the original wave-functions.
     Wave_functions<T>* wf_{nullptr};
-    /// Spin-index of the wave-function component 
+    /// Spin-index of the wave-function component
     spin_index s_{0};
     /// Range of bands in the input wave-functions to be swapped.
     band_range br_{0};
@@ -1561,10 +1561,10 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
  * The location of the wave-functions data is determined by the mem parameter. The result is always returned in the
  * CPU memory. If resulting matrix is allocated on the GPU memory, the result is copied to GPU as well.
  */
-template <typename F, typename W, typename T>
+template <typename F, template<class> class Wb, template<class> class Wk, class T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
-      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
+inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wb<T> const& wf_i__, band_range br_i__,
+      Wk<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
@@ -1594,11 +1594,9 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
         ld   *= 2;
     }
 
-    T scale_half(0.5);
-    T scale_two(2.0);
-
     /* for Gamma case, contribution of G = 0 vector must not be counted double -> multiply by 0.5 */
-    if (is_real_v<F>) {
+    if constexpr (is_real_v<F> && std::is_same<Wave_functions<T>, Wk<T>>::value) {
+        T scale_half(0.5);
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_half);
     }
 
@@ -1622,7 +1620,8 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     }
 
     /* for Gamma case, G = 0 vector is rescaled back */
-    if (is_real_v<F>) {
+    if constexpr (is_real_v<F> && std::is_same<Wave_functions<T>, Wk<T>>::value) {
+        T scale_two(2.0);
         scale_gamma_wf(mem__, wf_j__, spins__, br_j__, &scale_two);
     }
 
@@ -1728,8 +1727,8 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //    double gflops{0};
 //
     /* project out the old subspace:
-     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> 
-     * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new> 
+     * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new>
+     * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new>
      * S|\tilda phi_new> = S|phi_new> - S|phi_old><phi_old|phi_new> */
     if (br_old__.size() > 0 && project_out__) {
         inner(spla_ctx__, mem__, spins__, wf_i__, br_old__, wf_j__, br_new__, o__, 0, 0);
@@ -1928,7 +1927,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //        gflops += ngop * n__ * n__ * K;
 //== //    }
 //== //
-//== 
+//==
 //== //    if (sddk_debug >= 1) {
 //== //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 //== //        auto err = check_identity(o__, n__);
