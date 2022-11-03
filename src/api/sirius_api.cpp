@@ -3259,172 +3259,172 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
 
     // TODO: refactor this part; use QE order of G-vectors
 
-//    auto gvec_mapping = [&](sddk::Gvec const& gkvec) {
-//        std::vector<int> igm(*num_gvec_loc__);
-//
-//        sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
-//
-//        /* go in the order of host code */
-//        for (int ig = 0; ig < *num_gvec_loc__; ig++) {
-//            ///* G vector of host code */
-//            // auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
-//            //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
-//            // if (gvc.length() > kset.ctx().gk_cutoff()) {
-//            //    continue;
-//            //}
-//            int ig1 = gkvec.index_by_gvec({gv(0, ig), gv(1, ig), gv(2, ig)});
-//            /* index of G was not found */
-//            if (ig1 < 0) {
-//                /* try -G */
-//                ig1 = gkvec.index_by_gvec({-gv(0, ig), -gv(1, ig), -gv(2, ig)});
-//                /* index of -G was not found */
-//                if (ig1 < 0) {
-//                    RTE_THROW("index of G-vector is not found");
-//                } else {
-//                    /* this will tell to conjugate PW coefficients as we take them from -G index */
-//                    igm[ig] = -ig1;
-//                }
-//            } else {
-//                igm[ig] = ig1;
-//            }
-//        }
-//        return igm;
-//    };
-//
-//    call_sirius(
-//        [&]() {
-//            auto& ks = get_ks(ks_handler__);
-//
-//            auto& sim_ctx = ks.ctx();
-//
-//            std::vector<int> buf(ks.comm().size());
-//
-//            int jk{-1};
-//            if (vkl__) {
-//                jk = ks.find_kpoint(vkl__);
-//                if (jk == -1) {
-//                    std::stringstream s;
-//                    s << "k-point is not found";
-//                    RTE_THROW(s);
-//                }
-//            }
-//            ks.comm().allgather(&jk, buf.data(), 1, ks.comm().rank());
-//            int dest_rank{-1};
-//            for (int i = 0; i < ks.comm().size(); i++) {
-//                if (buf[i] >= 0) {
-//                    dest_rank = i;
-//                    jk        = buf[i];
-//                    break;
-//                }
-//            }
-//            int num_spin_comp{-1};
-//            if (num_spin_comp__) {
-//                num_spin_comp = *num_spin_comp__;
-//                if (!(num_spin_comp == 1 || num_spin_comp == 2)) {
-//                    RTE_THROW("wrong number of spin components");
-//                }
-//            }
-//            ks.comm().bcast(&num_spin_comp, 1, dest_rank);
-//            if ((sim_ctx.num_mag_dims() == 3 && num_spin_comp != 2) ||
-//                (sim_ctx.num_mag_dims() != 3 && num_spin_comp == 2)) {
-//                RTE_THROW("inconsistent number of spin components");
-//            }
-//
-//            int spin{-1};
-//            if (spin__) {
-//                spin = *spin__ - 1;
-//                if (!(spin == 0 || spin == 1)) {
-//                    RTE_THROW("wrong spin index");
-//                }
-//            }
-//            ks.comm().bcast(&spin, 1, dest_rank);
-//
-//            /* rank where k-point vkl resides on the SIRIUS side */
-//            int src_rank = ks.spl_num_kpoints().local_rank(jk);
-//
-//            if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
-//                /* send G+k copy to destination rank (where host code receives the data) */
-//                auto gkvec = ks.get_gkvec(jk, dest_rank);
-//
-//                sddk::mdarray<double_complex, 2> wf;
-//                if (ks.comm().rank() == dest_rank) {
-//                    /* check number of G+k vectors */
-//                    int ngk = *num_gvec_loc__;
-//                    gkvec.comm().allreduce(&ngk, 1);
-//                    if (ngk != gkvec.num_gvec()) {
-//                        vector3d<double> vkl(vkl__);
-//                        std::stringstream s;
-//                        s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk << std::endl
-//                          << "expected number : " << gkvec.num_gvec() << std::endl
-//                          << "actual number   : " << ngk << std::endl
-//                          << "local number of G+k vectors passed by rank " << gkvec.comm().rank() << " is "
-//                          << *num_gvec_loc__;
-//                        RTE_THROW(s);
-//                    }
-//                    wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
-//                }
-//
-//                int ispn0{0};
-//                int ispn1{1};
-//                /* fetch two components in non-collinear case, otherwise fetch only one component */
-//                if (sim_ctx.num_mag_dims() != 3) {
-//                    ispn0 = ispn1 = spin;
-//                }
-//                /* send wave-functions for each spin channel */
-//                for (int s = ispn0; s <= ispn1; s++) {
-//                    int tag = sddk::Communicator::get_tag(src_rank, dest_rank) + s;
-//                    sddk::Request req;
-//
-//                    /* send wave-functions */
-//                    if (ks.comm().rank() == src_rank) {
-//                        auto kp   = ks.get<double>(jk);
-//                        int count = kp->gkvec().count();
-//                        req       = ks.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
-//                                              count * sim_ctx.num_bands(), dest_rank, tag);
-//                    }
-//                    /* receive wave-functions */
-//                    if (ks.comm().rank() == dest_rank) {
-//                        int count = gkvec.count();
-//                        /* receive the array with wave-functions */
-//                        ks.comm().recv(&wf(0, 0), count * sim_ctx.num_bands(), src_rank, tag);
-//
-//                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
-//                        int offset = gkvec.offset();
-//                        sddk::mdarray<double_complex, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
-//
-//                        auto igmap = gvec_mapping(gkvec);
-//
-//                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s) {
-//                            int ispn = s;
-//                            if (sim_ctx.num_mag_dims() == 1) {
-//                                ispn = 0;
-//                            }
-//                            for (int ig = 0; ig < *num_gvec_loc__; ig++) {
-//                                int ig1 = igmap[ig];
-//                                double_complex z;
-//                                if (ig1 < 0) {
-//                                    z = std::conj(wf_tmp[-ig1]);
-//                                } else {
-//                                    z = wf_tmp[ig1];
-//                                }
-//                                evec(ig, ispn, i) = z;
-//                            }
-//                        };
-//
-//                        /* store wave-functions */
-//                        for (int i = 0; i < sim_ctx.num_bands(); i++) {
-//                            /* gather full column of PW coefficients */
-//                            sim_ctx.comm_band().allgather(&wf(0, i), wf_tmp.data(), count, offset);
-//                            store_wf(wf_tmp, i, s);
-//                        }
-//                    }
-//                    if (ks.comm().rank() == src_rank) {
-//                        req.wait();
-//                    }
-//                }
-//            }
-//        },
-//        error_code__);
+    auto gvec_mapping = [&](sddk::Gvec const& gkvec) {
+        std::vector<int> igm(*num_gvec_loc__);
+
+        sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
+
+        /* go in the order of host code */
+        for (int ig = 0; ig < *num_gvec_loc__; ig++) {
+            ///* G vector of host code */
+            // auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
+            //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
+            // if (gvc.length() > kset.ctx().gk_cutoff()) {
+            //    continue;
+            //}
+            int ig1 = gkvec.index_by_gvec({gv(0, ig), gv(1, ig), gv(2, ig)});
+            /* index of G was not found */
+            if (ig1 < 0) {
+                /* try -G */
+                ig1 = gkvec.index_by_gvec({-gv(0, ig), -gv(1, ig), -gv(2, ig)});
+                /* index of -G was not found */
+                if (ig1 < 0) {
+                    RTE_THROW("index of G-vector is not found");
+                } else {
+                    /* this will tell to conjugate PW coefficients as we take them from -G index */
+                    igm[ig] = -ig1;
+                }
+            } else {
+                igm[ig] = ig1;
+            }
+        }
+        return igm;
+    };
+
+    call_sirius(
+        [&]() {
+            auto& ks = get_ks(ks_handler__);
+
+            auto& sim_ctx = ks.ctx();
+
+            std::vector<int> buf(ks.comm().size());
+
+            int jk{-1};
+            if (vkl__) {
+                jk = ks.find_kpoint(vkl__);
+                if (jk == -1) {
+                    std::stringstream s;
+                    s << "k-point is not found";
+                    RTE_THROW(s);
+                }
+            }
+            ks.comm().allgather(&jk, buf.data(), 1, ks.comm().rank());
+            int dest_rank{-1};
+            for (int i = 0; i < ks.comm().size(); i++) {
+                if (buf[i] >= 0) {
+                    dest_rank = i;
+                    jk        = buf[i];
+                    break;
+                }
+            }
+            int num_spin_comp{-1};
+            if (num_spin_comp__) {
+                num_spin_comp = *num_spin_comp__;
+                if (!(num_spin_comp == 1 || num_spin_comp == 2)) {
+                    RTE_THROW("wrong number of spin components");
+                }
+            }
+            ks.comm().bcast(&num_spin_comp, 1, dest_rank);
+            if ((sim_ctx.num_mag_dims() == 3 && num_spin_comp != 2) ||
+                (sim_ctx.num_mag_dims() != 3 && num_spin_comp == 2)) {
+                RTE_THROW("inconsistent number of spin components");
+            }
+
+            int spin{-1};
+            if (spin__) {
+                spin = *spin__ - 1;
+                if (!(spin == 0 || spin == 1)) {
+                    RTE_THROW("wrong spin index");
+                }
+            }
+            ks.comm().bcast(&spin, 1, dest_rank);
+
+            /* rank where k-point vkl resides on the SIRIUS side */
+            int src_rank = ks.spl_num_kpoints().local_rank(jk);
+
+            if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
+                /* send G+k copy to destination rank (where host code receives the data) */
+                auto gkvec = ks.get_gkvec(jk, dest_rank);
+
+                sddk::mdarray<double_complex, 2> wf;
+                if (ks.comm().rank() == dest_rank) {
+                    /* check number of G+k vectors */
+                    int ngk = *num_gvec_loc__;
+                    gkvec.comm().allreduce(&ngk, 1);
+                    if (ngk != gkvec.num_gvec()) {
+                        vector3d<double> vkl(vkl__);
+                        std::stringstream s;
+                        s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk << std::endl
+                          << "expected number : " << gkvec.num_gvec() << std::endl
+                          << "actual number   : " << ngk << std::endl
+                          << "local number of G+k vectors passed by rank " << gkvec.comm().rank() << " is "
+                          << *num_gvec_loc__;
+                        RTE_THROW(s);
+                    }
+                    wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
+                }
+
+                int ispn0{0};
+                int ispn1{1};
+                /* fetch two components in non-collinear case, otherwise fetch only one component */
+                if (sim_ctx.num_mag_dims() != 3) {
+                    ispn0 = ispn1 = spin;
+                }
+                /* send wave-functions for each spin channel */
+                for (int s = ispn0; s <= ispn1; s++) {
+                    int tag = sddk::Communicator::get_tag(src_rank, dest_rank) + s;
+                    sddk::Request req;
+
+                    /* send wave-functions */
+                    if (ks.comm().rank() == src_rank) {
+                        auto kp   = ks.get<double>(jk);
+                        int count = kp->spinor_wave_functions().ld();
+                        req       = ks.comm().isend(kp->spinor_wave_functions().at(sddk::memory_t::host, 0,
+                                        wf::spin_index(0), wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
+                    }
+                    /* receive wave-functions */
+                    if (ks.comm().rank() == dest_rank) {
+                        int count = gkvec.count();
+                        /* receive the array with wave-functions */
+                        ks.comm().recv(&wf(0, 0), count * sim_ctx.num_bands(), src_rank, tag);
+
+                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
+                        int offset = gkvec.offset();
+                        sddk::mdarray<double_complex, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
+
+                        auto igmap = gvec_mapping(gkvec);
+
+                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s) {
+                            int ispn = s;
+                            if (sim_ctx.num_mag_dims() == 1) {
+                                ispn = 0;
+                            }
+                            for (int ig = 0; ig < *num_gvec_loc__; ig++) {
+                                int ig1 = igmap[ig];
+                                double_complex z;
+                                if (ig1 < 0) {
+                                    z = std::conj(wf_tmp[-ig1]);
+                                } else {
+                                    z = wf_tmp[ig1];
+                                }
+                                evec(ig, ispn, i) = z;
+                            }
+                        };
+
+                        /* store wave-functions */
+                        for (int i = 0; i < sim_ctx.num_bands(); i++) {
+                            /* gather full column of PW coefficients */
+                            sim_ctx.comm_band().allgather(&wf(0, i), wf_tmp.data(), count, offset);
+                            store_wf(wf_tmp, i, s);
+                        }
+                    }
+                    if (ks.comm().rank() == src_rank) {
+                        req.wait();
+                    }
+                }
+            }
+        },
+        error_code__);
 }
 
 /*
@@ -5849,12 +5849,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             std::shared_ptr<sddk::Gvec> gvkq_in;
             if (use_qe_gvec_order) {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__,
-                    gvec_kq_loc__, sctx.comm_band(), false);
+                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                        *num_gvec_kq_loc__, gvec_kq_loc__, sctx.comm_band(), false);
             } else {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                        sctx.gk_cutoff(), sctx.comm_k(), false);
             }
-
 
             int num_gvec_kq_loc = *num_gvec_kq_loc__;
             int num_gvec_kq = num_gvec_kq_loc;
@@ -6043,7 +6043,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             }
 
         }, error_code__);
-
 }
 
 /*
