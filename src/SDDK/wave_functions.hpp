@@ -629,13 +629,15 @@ class Wave_functions_mt : public Wave_functions_base<T>
     inline void
     copy_mt_to(sddk::memory_t mem__, spin_index s__, band_range br__)
     {
-        auto ptr = this->data_[s__.get()].at(sddk::memory_t::host, this->num_pw_, br__.begin());
-        auto ptr_gpu = this->data_[s__.get()].at(sddk::memory_t::device, this->num_pw_, br__.begin());
-        if (is_device_memory(mem__)) {
-            acc::copyin(ptr_gpu, this->ld(), ptr, this->ld(), this->num_mt_, br__.size());
-        }
-        if (is_host_memory(mem__)) {
-            acc::copyout(ptr, this->ld(), ptr_gpu, this->ld(), this->num_mt_, br__.size());
+        if (this->ld() && this->num_mt_) {
+            auto ptr = this->data_[s__.get()].at(sddk::memory_t::host, this->num_pw_, br__.begin());
+            auto ptr_gpu = this->data_[s__.get()].at(sddk::memory_t::device, this->num_pw_, br__.begin());
+            if (is_device_memory(mem__)) {
+                acc::copyin(ptr_gpu, this->ld(), ptr, this->ld(), this->num_mt_, br__.size());
+            }
+            if (is_host_memory(mem__)) {
+                acc::copyout(ptr, this->ld(), ptr_gpu, this->ld(), this->num_mt_, br__.size());
+            }
         }
     }
 
