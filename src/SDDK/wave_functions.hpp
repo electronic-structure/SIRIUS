@@ -449,14 +449,16 @@ class Wave_functions_base
     inline void
     zero(sddk::memory_t mem__, spin_index s__, band_range br__)
     {
-        if (is_host_memory(mem__)) {
-            for (int ib = br__.begin(); ib < br__.end(); ib++) {
-                auto ptr = data_[s__.get()].at(mem__, 0, ib);
-                std::fill(ptr, ptr + this->ld(), 0);
+        if (this->ld()) {
+            if (is_host_memory(mem__)) {
+                for (int ib = br__.begin(); ib < br__.end(); ib++) {
+                    auto ptr = data_[s__.get()].at(mem__, 0, ib);
+                    std::fill(ptr, ptr + this->ld(), 0);
+                }
             }
-        }
-        if (is_device_memory(mem__)) {
-            acc::zero(data_[s__.get()].at(mem__, 0, br__.begin()), this->ld(), this->ld(), br__.size());
+            if (is_device_memory(mem__)) {
+                acc::zero(data_[s__.get()].at(mem__, 0, br__.begin()), this->ld(), this->ld(), br__.size());
+            }
         }
     }
 
@@ -464,8 +466,10 @@ class Wave_functions_base
     inline void
     zero(sddk::memory_t mem__)
     {
-        for (int is = 0; is < num_sc_.get(); is++) {
-            data_[is].zero(mem__);
+        if (this->ld()) {
+            for (int is = 0; is < num_sc_.get(); is++) {
+                data_[is].zero(mem__);
+            }
         }
     }
 
@@ -650,7 +654,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = this->data_[ispn__.get()].at(sddk::memory_t::host, this->num_pw_, b__.begin());
+        localblock.data =  this->num_mt_ ?
+            this->data_[ispn__.get()].at(sddk::memory_t::host, this->num_pw_, b__.begin()) : nullptr;
         localblock.ld = this->ld();
         localblock.row = comm_.rank();
         localblock.col = 0;
@@ -675,8 +680,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
                 auto ptr = this->data_[s__.get()].at(mem__, this->num_pw_, br__.begin());
                 cs = checksum_gpu<T>(ptr, this->ld(), this->num_mt_, br__.size());
             }
-            comm_.allreduce(&cs, 1);
         }
+        comm_.allreduce(&cs, 1);
         return cs;
     }
 
