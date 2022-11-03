@@ -36,104 +36,11 @@ void K_point<T>::generate_fv_states()
         return;
     }
 
-//    sddk::mdarray<std::complex<T>, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), sddk::memory_t::host);
-//    sddk::mdarray<std::complex<T>, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
-//
-//    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-//        fv_eigen_vectors_slab().pw_coeffs(0).allocate(sddk::memory_t::device);
-//        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(sddk::memory_t::device, 0, ctx_.num_fv_states());
-//        alm.allocate(sddk::memory_t::device);
-//        tmp.allocate(sddk::memory_t::device);
-//    }
-//
-//    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-//        auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
-//        /* number of alm coefficients for atom */
-//        int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
-//        int mt_lo_size = unit_cell_.atom(ia).mt_lo_basis_size();
-//        /* generate matching coefficients for all G-vectors */
-//        alm_coeffs_loc_->generate<false>(unit_cell_.atom(ia), alm);
-//
-//        std::complex<T>* tmp_ptr_gpu{nullptr};
-//
-//        auto la = sddk::linalg_t::none;
-//        auto mt = sddk::memory_t::none;
-//        switch (ctx_.processing_unit()) {
-//            case sddk::device_t::CPU: {
-//                la = sddk::linalg_t::blas;
-//                mt = sddk::memory_t::host;
-//                break;
-//            }
-//            case sddk::device_t::GPU: {
-//                alm.copy_to(sddk::memory_t::device, 0, mt_aw_size * num_gkvec_loc());
-//                la = sddk::linalg_t::gpublas;
-//                mt = sddk::memory_t::device;
-//                tmp_ptr_gpu = tmp.at(sddk::memory_t::device);
-//                break;
-//            }
-//        }
-//
-//        sddk::mdarray<std::complex<T>, 2> tmp1(tmp.at(sddk::memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
-//
-//        /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-//        sddk::linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-//            &sddk::linalg_const<std::complex<T>>::one(), alm.at(mt), alm.ld(),
-//            fv_eigen_vectors_slab().pw_coeffs(0).prime().at(mt),
-//            fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-//            &sddk::linalg_const<std::complex<T>>::zero(), tmp1.at(mt), tmp1.ld());
-//
-//        switch (ctx_.processing_unit()) {
-//            case sddk::device_t::CPU: {
-//                break;
-//            }
-//            case sddk::device_t::GPU: {
-//                tmp1.copy_to(sddk::memory_t::host);
-//                break;
-//            }
-//        }
-//
-//        comm_.reduce(tmp1.at(sddk::memory_t::host), static_cast<int>(tmp1.size()), location.rank);
-//// TODO: remove __PRINT_OBJECT_CHECKSUM
-//#ifdef __PRINT_OBJECT_CHECKSUM
-//        auto z1 = tmp1.checksum();
-//        DUMP("checksum(tmp1): %18.10f %18.10f", std::real(z1), std::imag(z1));
-//#endif
-//
-//        if (location.rank == comm_.rank()) {
-//            int offset1 = fv_states().offset_mt_coeffs(location.local_index);
-//            int offset2 = fv_eigen_vectors_slab().offset_mt_coeffs(location.local_index);
-//            for (int i = 0; i < ctx_.num_fv_states(); i++) {
-//                /* aw block */
-//                std::memcpy(fv_states().mt_coeffs(0).prime().at(sddk::memory_t::host, offset1, i),
-//                            tmp1.at(sddk::memory_t::host, 0, i), mt_aw_size * sizeof(std::complex<T>));
-//                /* lo block */
-//                if (mt_lo_size) {
-//                    std::memcpy(fv_states().mt_coeffs(0).prime().at(sddk::memory_t::host, offset1 + mt_aw_size, i),
-//                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at(sddk::memory_t::host, offset2, i),
-//                                mt_lo_size * sizeof(std::complex<T>));
-//                }
-//            }
-//        }
-//    }
-//
-//    #pragma omp parallel for
-//    for (int i = 0; i < ctx_.num_fv_states(); i++) {
-//        /* G+k block */
-//        std::memcpy(fv_states().pw_coeffs(0).prime().at(sddk::memory_t::host, 0, i),
-//                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at(sddk::memory_t::host, 0, i),
-//                    num_gkvec_loc() * sizeof(std::complex<T>));
-//    }
-//
-//    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-//        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(sddk::memory_t::device);
-//    }
-
     auto const& uc = ctx_.unit_cell();
 
     auto bs = ctx_.cyclic_block_size();
     sddk::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(),
             ctx_.blacs_grid(), bs, bs);
-
 
     int atom_begin{0};
     int mt_aw_offset{0};
@@ -142,7 +49,6 @@ void K_point<T>::generate_fv_states()
     for (auto na : utils::split_in_blocks(uc.num_atoms(), 64)) {
         /* actual number of AW radial functions in a block of atoms */
         int num_mt_aw{0};
-        //std::vector<int> offsets_aw(na);
         for (int i = 0; i < na; i++) {
             int ia     = atom_begin + i;
             auto& type = uc.atom(ia).type();
@@ -188,10 +94,12 @@ void K_point<T>::generate_fv_states()
         for (int ialoc = 0; ialoc < alm_fv_slab.spl_num_atoms().local_size(); ialoc++) {
             int ia = alm_fv_slab.spl_num_atoms()[ialoc];
             int num_mt_aw = uc.atom(ia).type().mt_aw_basis_size();
+            /* aw part of the muffin-tin coefficients */
             for (int xi = 0; xi < num_mt_aw; xi++) {
                 fv_states_->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
                     alm_fv_slab.mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
             }
+            /* lo part of muffin-tin coefficients */
             for (int xi = 0; xi < uc.atom(ia).type().mt_lo_basis_size(); xi++) {
                 fv_states_->mt_coeffs(num_mt_aw + xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
                     fv_eigen_vectors_slab().mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));

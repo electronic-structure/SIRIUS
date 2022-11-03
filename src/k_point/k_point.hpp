@@ -201,9 +201,6 @@ class K_point
     /// Generate G+k and local orbital basis sets.
     void generate_gklo_basis();
 
-    /// Test orthonormalization of first-variational states.
-    void test_fv_states();
-
     /// Find G+k vectors within the cutoff.
     void generate_gkvec(double gk_cutoff__);
 
