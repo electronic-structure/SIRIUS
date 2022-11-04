@@ -33,6 +33,7 @@
 #include "mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
+#include "utils/env.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
@@ -116,16 +117,16 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// G-vectors within the Gmax cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_;
+    std::shared_ptr<sddk::Gvec> gvec_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_fft_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_coarse_;
+    std::shared_ptr<sddk::Gvec> gvec_coarse_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_coarse_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft_;
 
-    std::unique_ptr<sddk::Gvec_shells> remap_gvec_;
+    std::shared_ptr<sddk::Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -232,15 +233,6 @@ class Simulation_context : public Simulation_parameters
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
-    /// Type of preferred memory for wave-functions and related arrays.
-    sddk::memory_t preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
-    sddk::memory_t aux_preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of BLAS linear algebra library.
-    sddk::linalg_t blas_linalg_t_{sddk::linalg_t::none};
-
     /// Callback function to compute band occupancies.
     std::function<void(void)> band_occ_callback_{nullptr};
 
@@ -344,6 +336,15 @@ class Simulation_context : public Simulation_parameters
         unit_cell_->import(cfg().unit_cell());
     }
 
+    explicit Simulation_context(nlohmann::json const& dict__)
+        : comm_(sddk::Communicator::world())
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+        import(dict__);
+        unit_cell_->import(cfg().unit_cell());
+    }
+
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
         : comm_(comm__)
@@ -405,19 +406,34 @@ class Simulation_context : public Simulation_parameters
         return *unit_cell_;
     }
 
+    /// Return const reference to unit cell object.
     auto const& unit_cell() const
     {
         return *unit_cell_;
     }
 
+    /// Return const reference to Gvec object.
     auto const& gvec() const
     {
         return *gvec_;
     }
 
-    auto const& gvec_partition() const
+    /// Return shared pointer to Gvec object.
+    auto gvec_sptr() const
     {
-        return *gvec_partition_;
+        return gvec_;
+    }
+
+    /// Return const reference to Gvec_fft object.
+    auto const& gvec_fft() const
+    {
+        return *gvec_fft_;
+    }
+
+    /// Return shared pointer to Gvec_fft object.
+    auto gvec_fft_sptr() const
+    {
+        return gvec_fft_;
     }
 
     auto const& gvec_coarse() const
@@ -425,9 +441,14 @@ class Simulation_context : public Simulation_parameters
         return *gvec_coarse_;
     }
 
-    auto const& gvec_coarse_partition() const
+    auto const& gvec_coarse_sptr() const
     {
-        return *gvec_coarse_partition_;
+        return gvec_coarse_;
+    }
+
+    auto const& gvec_coarse_fft_sptr() const
+    {
+        return gvec_coarse_fft_;
     }
 
     auto const& remap_gvec() const
@@ -724,27 +745,16 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Type of the host memory for arrays used in linear algebra operations.
+    /** For CPU execution this is normal host memory, for GPU execution this is pinned memory. */
     inline auto host_memory_t() const
     {
         return host_memory_t_;
     }
 
-    /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
-    inline auto preferred_memory_t() const
+    /// Return the memory type for processing unit.
+    inline auto processing_unit_memory_t() const
     {
-        return preferred_memory_t_;
-    }
-
-    /// Type of preferred memory for the storage of auxiliary wave-functions.
-    inline auto aux_preferred_memory_t() const
-    {
-        return aux_preferred_memory_t_;
-    }
-
-    /// Linear algebra driver for the BLAS operations.
-    auto blas_linalg_t() const
-    {
-        return blas_linalg_t_;
+        return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
     }
 
     /// Split local set of G-vectors into chunks.

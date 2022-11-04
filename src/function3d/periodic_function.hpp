@@ -87,7 +87,7 @@ class Periodic_function : public Smooth_periodic_function<T>
   public:
     /// Constructor
     Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
-        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_partition())
+        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
@@ -296,7 +296,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     void hdf5_read(sddk::HDF5_tree h5f__, sddk::mdarray<int, 2>& gvec__)
     {
-        std::vector<complex_type<T>> v(gvec_.num_gvec());
+        std::vector<std::complex<T>> v(gvec_.num_gvec());
         h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
         std::map<vector3d<int>, int> local_gvec_mapping;

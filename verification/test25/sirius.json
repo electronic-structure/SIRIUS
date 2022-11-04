@@ -1,0 +1,85 @@
+{
+    "control": {
+        "gen_evp_solver_name": "lapack",
+        "print_checksum": false,
+        "print_forces": true,
+        "processing_unit": "cpu",
+        "verbosity": 2
+    },
+    "hubbard": {
+        "full_orthogonalization": true,
+        "local": [
+            {
+                "atom_type": "Ni",
+                "J": 0.0,
+                "J0": 0.0,
+                "U": 8.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "l": 2,
+                "n": 3,
+                "total_initial_occupancy": 8.0
+            }
+        ],
+        "simplified": false
+    },
+    "iterative_solver": {
+        "converge_by_energy": 1,
+        "early_restart": 0.5,
+        "empty_states_tolerance": 1e-05,
+        "energy_tolerance": 0.01,
+        "min_num_res": 0,
+        "num_singular": -1,
+        "num_steps": 20,
+        "relative_tolerance": 0,
+        "residual_tolerance": 1e-06,
+        "subspace_size": 2,
+        "type": "davidson"
+    },
+    "mixer": {
+        "beta": 0.7,
+        "beta0": 0.15,
+        "beta_scaling_factor": 1.0,
+        "max_history": 8,
+        "type": "anderson",
+        "use_hartree": false
+    },
+    "parameters": {
+        "density_tol": 1e-06,
+        "electronic_structure_method": "pseudopotential",
+        "energy_tol": 1e-06,
+        "gk_cutoff": 8.0,
+        "pw_cutoff": 25.0,
+        "hubbard_correction": true,
+        "ngridk": [ 4, 4, 4 ],
+        "num_dft_iter": 100,
+        "num_mag_dims": 1,
+        "smearing": "gaussian",
+        "smearing_width": 0.01,
+        "xc_functionals": [
+            "XC_GGA_X_PBE",
+            "XC_GGA_C_PBE"
+        ]
+    },
+    "unit_cell": {
+        "atom_coordinate_units": "lattice",
+        "atom_files": { "Ni": "Ni.json", "O": "O.json" },
+        "atom_types": [ "Ni", "O" ],
+        "atoms": {
+                "Ni": [
+                [ 0.0, 0.0, 0.0,0.0,0.0, 2.0 ]
+                ,[ 0.5, 0.5, -0.5,0.0, 0.0, -2.0 ]
+            ],
+            "O": [
+                [ 0.751, 0.751, 0.751 ],
+                [ 0.249, 0.249, 0.249 ]
+            ]
+        },
+        "lattice_vectors": [
+            [ 7.88, 3.94, 3.94 ],
+            [ 3.94, 7.88, 3.94 ],
+            [ 3.94, 3.94, 7.88 ]
+        ],
+        "lattice_vectors_scale": 1.0
+    }
+}

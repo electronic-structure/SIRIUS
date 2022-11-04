@@ -173,7 +173,11 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     // must be called before device is reset
     splablas::reset_handle();
 
+    sddk::get_memory_pool(sddk::memory_t::host).clear();
+
     if (acc::num_devices()) {
+        sddk::get_memory_pool(sddk::memory_t::host_pinned).clear();
+        sddk::get_memory_pool(sddk::memory_t::device).clear();
 #if defined(SIRIUS_GPU)
         accblas::destroy_stream_handles();
 #endif

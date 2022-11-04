@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& out, std::complex<T> z)
 
 /// Distributed matrix.
 template <typename T>
-class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
+class dmatrix: public matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -215,6 +215,39 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
     //        acc::zero(this->template at<device_t::GPU>(m0, n0), this->ld(), m1 - m0, n1 - n0);
     //    }
     //}
+
+    using matrix<T>::copy_to;
+
+    void copy_to(sddk::memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
+    {
+        int m0, m1, n0, n1;
+        if (blacs_grid_ != nullptr) {
+            splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+
+            splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+
+            m0 = spl_r0.local_size();
+            m1 = spl_r1.local_size();
+            n0 = spl_c0.local_size();
+            n1 = spl_c1.local_size();
+        } else {
+            m0 = ir0__;
+            m1 = ir0__ + nr__;
+            n0 = ic0__;
+            n1 = ic0__ + nc__;
+        }
+
+        if (is_host_memory(mem__)) {
+            acc::copyout(this->at(sddk::memory_t::host, m0, n0), this->ld(),
+                         this->at(sddk::memory_t::device, m0, n0), this->ld(), m1 - m0, n1 - n0);
+        }
+        if (is_device_memory(mem__)) {
+            acc::copyin(this->at(sddk::memory_t::device, m0, n0), this->ld(),
+                        this->at(sddk::memory_t::host, m0, n0), this->ld(), m1 - m0, n1 - n0);
+        }
+    }
 
     void set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__);
 
@@ -392,52 +425,6 @@ class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
                 this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
                 this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
                 this->blacs_grid().comm().rank());
-    }
-
-};
-
-/// Distributed matrix.
-template <typename T>
-class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
-{
-  private:
-    int num_rows_;
-    int num_cols_;
-    splindex<splindex_t::chunk, int> spl_row_;
-    Communicator comm_;
-    costa::grid_layout<T> grid_layout_;
-  public:
-    dmatrix(int num_rows__, int num_cols__, std::vector<int> counts__, Communicator const& comm__)
-        : matrix<T>(counts__[comm__.rank()], num_cols__)
-        , num_rows_(num_rows__)
-        , num_cols_(num_cols__)
-        , comm_(comm__)
-    {
-        spl_row_ = splindex<splindex_t::chunk, int>(num_rows__, comm_.size(), comm_.rank(), counts__);
-
-        std::vector<int> rowsplit(comm_.size() + 1);
-        rowsplit[0] = 0;
-        for (int i = 0; i < comm_.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + spl_row_.local_size(i);
-        }
-        std::vector<int> colsplit({0, num_cols_});
-        std::vector<int> owners(comm_.size());
-        for (int i = 0; i < comm_.size(); i++) {
-            owners[i] = i;
-        }
-        costa::block_t localblock;
-        localblock.data = this->at(memory_t::host);
-        localblock.ld = this->ld();
-        localblock.row = comm_.rank();
-        localblock.col = 0;
-
-        grid_layout_ = costa::custom_layout<T>(comm_.size(), 1, rowsplit.data(), colsplit.data(),
-                owners.data(), 1, &localblock, 'C');
-    }
-
-    costa::grid_layout<T>& grid_layout()
-    {
-        return grid_layout_;
     }
 
 };

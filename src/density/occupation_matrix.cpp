@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2020 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -64,47 +64,40 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         return;
     }
 
+    PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution");
+
     sddk::memory_t mem_host{sddk::memory_t::host};
     sddk::memory_t mem{sddk::memory_t::host};
     sddk::linalg_t la{sddk::linalg_t::blas};
-    /* find the appropriate linear algebra provider */
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         mem      = sddk::memory_t::device;
         mem_host = sddk::memory_t::host_pinned;
-        if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = sddk::linalg_t::gpublas;
-        } else {
-            la = sddk::linalg_t::spla;
-        }
-    }
-
-    int nwfu = kp__.hubbard_wave_functions_S().num_wf();
-
-    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(sddk::memory_t::host), "occ_mtrx");
-    if (is_device_memory(mem)) {
-        occ_mtrx.allocate(ctx_.mem_pool(mem));
+        la       = sddk::linalg_t::gpublas;
     }
 
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
+    int nwfu = r.first;
+
+    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, get_memory_pool(sddk::memory_t::host), "occ_mtrx");
+    if (is_device_memory(mem)) {
+        occ_mtrx.allocate(get_memory_pool(mem));
+    }
+
     // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
 
     /* full non collinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
+        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
-            dm.allocate(ctx_.mem_pool(mem));
+            dm.allocate(get_memory_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), sddk::spin_range(2), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(),
-                    kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
+        wf::inner(ctx_.spla_context(), mem, wf::spin_range(0, 2), kp__.spinor_wave_functions(),
+                wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
+                wf::band_range(0, nwfu), dm, 0, 0);
 
-        // TODO: check if inner() already moved data to CPU
-
-        // if (is_device_memory(mem)) {
-        //    dm.copy_to(memory_t::host);
-        //}
-        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
+        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
@@ -112,7 +105,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
         }
         if (is_device_memory(mem)) {
-            dm1.allocate(ctx_.mem_pool(mem)).copy_to(mem);
+            dm1.allocate(get_memory_pool(mem)).copy_to(mem);
         }
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
@@ -156,18 +149,16 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
            have two. The inner product takes care of this case internally. */
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|1");
-            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
+            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
-                dm.allocate(ctx_.mem_pool(mem));
+                dm.allocate(get_memory_pool(mem));
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
-            sddk::inner(ctx_.spla_context(), sddk::spin_range(ispn), kp__.spinor_wave_functions(), 0,
-                        kp__.num_occupied_bands(ispn), kp__.hubbard_wave_functions_S(), 0, nwfu, dm, 0, 0);
-            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|1");
+            wf::inner(ctx_.spla_context(), mem, wf::spin_range(ispn), kp__.spinor_wave_functions(),
+                    wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
+                    wf::band_range(0, nwfu), dm, 0, 0);
 
-            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|2");
-            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
+            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
@@ -175,15 +166,13 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 }
             }
             if (is_device_memory(mem)) {
-                dm1.allocate(ctx_.mem_pool(mem)).copy_to(mem);
+                dm1.allocate(get_memory_pool(mem)).copy_to(mem);
             }
-            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|2");
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
             /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the
              * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the
              * band occupancies. We need to compensate for it because it is taken into account in the
              * calculation of the hubbard potential */
-            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|3");
             auto alpha = std::complex<T>(kp__.weight() / ctx_.max_occupancy(), 0.0);
             sddk::linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
                             dm1.at(mem), dm1.ld(), &sddk::linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem),
@@ -191,10 +180,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(sddk::memory_t::host);
             }
-            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|3");
 
-            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|4");
-            #pragma omp parallel for schedule(static)
+            #pragma omp parallel for
             for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
                 const int ia     = atomic_orbitals_[at_lvl].first;
                 auto const& atom = ctx_.unit_cell().atom(ia);
@@ -212,9 +199,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                     }
                 }
             }
-            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|4");
 
-            PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution|nonloc");
             for (auto& e : this->occ_mtrx_T_) {
                 /* e^{-i k T} */
                 auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
@@ -224,7 +209,6 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                     }
                 }
             }
-            PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution|nonloc");
         } // ispn
     }
 }

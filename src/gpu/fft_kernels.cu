@@ -23,7 +23,7 @@
  */
 
 #include <stdio.h>
-#include "cuda_common.hpp"
+#include "acc_common.hpp"
 #include "acc_runtime.hpp"
 
 //NOTE: HIP will call the corresponding CUDA function if compiled with CUDA support

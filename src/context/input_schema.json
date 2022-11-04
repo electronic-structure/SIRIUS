@@ -427,13 +427,6 @@
                      "default" : true,
                      "title" : "True if second-variational diagonalization is used in LAPW method."
                  },
-                 "memory_usage" : {
-                     "type" : "string",
-                     "default" : "high",
-                     "enum" : ["high", "medium", "low"],
-                     "title" : "Control the usage of the GPU memory.",
-                     "$comment" : "subject to removal"
-                 },
                  "beta_chunk_size" : {
                      "type" : "integer",
                      "default" : 256,

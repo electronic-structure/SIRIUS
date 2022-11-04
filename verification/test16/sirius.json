@@ -6,7 +6,8 @@
         "!std_evp_solver_name" : "lapack",
         "!gen_evp_solver_name" : "lapack",
         "verbosity" : 2,
-        "print_forces" : false
+        "print_forces" : false,
+        "!print_checksum" : true
     },
 
     "parameters" : {

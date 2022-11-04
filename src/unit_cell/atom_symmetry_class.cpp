@@ -376,10 +376,10 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     sddk::mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
-    auto stdevp = Eigensolver_factory("lapack", nullptr);
+    auto stdevp = Eigensolver_factory("lapack");
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    sddk::dmatrix<double>     loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    sddk::dmatrix<double> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
     stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 

@@ -373,9 +373,12 @@ inline T zero_if_not_complex(std::complex<T> x__)
 };
 
 /// Simple random number generator.
-inline uint32_t rnd()
+inline uint32_t rnd(bool reset = false)
 {
     static uint32_t a = 123456;
+    if (reset) {
+        a = 123456;
+    }
     a                 = (a ^ 61) ^ (a >> 16);
     a                 = a + (a << 3);
     a                 = a ^ (a >> 4);

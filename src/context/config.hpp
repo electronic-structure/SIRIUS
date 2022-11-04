@@ -907,18 +907,6 @@ class config_t
             }
             dict_["/control/use_second_variation"_json_pointer] = use_second_variation__;
         }
-        /// Control the usage of the GPU memory.
-        inline auto memory_usage() const
-        {
-            return dict_.at("/control/memory_usage"_json_pointer).get<std::string>();
-        }
-        inline void memory_usage(std::string memory_usage__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/memory_usage"_json_pointer] = memory_usage__;
-        }
         /// Number of atoms in a chunk of beta-projectors.
         inline auto beta_chunk_size() const
         {

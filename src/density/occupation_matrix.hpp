@@ -23,7 +23,6 @@
  */
 
 #include "SDDK/memory.hpp"
-#include "SDDK/wf_inner.hpp"
 #include "k_point/k_point.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 

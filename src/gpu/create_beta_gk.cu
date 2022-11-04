@@ -22,7 +22,7 @@
  *  \brief CUDA kernel for the generation of beta(G+k) projectors.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 #ifdef SIRIUS_CUDA

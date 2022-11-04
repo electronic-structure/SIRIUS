@@ -41,9 +41,9 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 
 namespace sirius {
 
-template <typename T>
+template <typename T, typename F>
 void
-Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__) const
+Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
@@ -54,10 +54,10 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     }
 
     const int bs = ctx_.cyclic_block_size();
-    sddk::dmatrix<T> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    sddk::dmatrix<T> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    sddk::dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    std::vector<real_type<T>> eval(kp.num_gkvec());
+    sddk::dmatrix<F> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<F> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    std::vector<real_type<F>> eval(kp.num_gkvec());
 
     hmlt.zero();
     ovlp.zero();
@@ -109,49 +109,49 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     auto& Dop = Hk__.H0().D();
     auto& Qop = Hk__.H0().Q();
 
-    sddk::mdarray<T, 2> dop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
-    sddk::mdarray<T, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
+    sddk::mdarray<F, 2> dop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
+    sddk::mdarray<F, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
 
-    sddk::mdarray<T, 2> btmp(kp.num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
+    sddk::mdarray<F, 2> btmp(kp.num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
 
     kp.beta_projectors_row().prepare();
     kp.beta_projectors_col().prepare();
     for (int ichunk = 0; ichunk <  kp.beta_projectors_row().num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
-        kp.beta_projectors_row().generate(ichunk);
-        kp.beta_projectors_col().generate(ichunk);
+        kp.beta_projectors_row().generate(sddk::memory_t::host, ichunk);
+        kp.beta_projectors_col().generate(sddk::memory_t::host, ichunk);
 
         auto& beta_row = kp.beta_projectors_row().pw_coeffs_a();
         auto& beta_col = kp.beta_projectors_col().pw_coeffs_a();
 
         for (int i = 0; i <  kp.beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::nbf), i);
-            int offs = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::offset), i);
-            int ia   = kp.beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i);
+            int nbf  = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
+            int offs = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
+            int ia   = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    dop(xi1, xi2) = Dop.template value<T>(xi1, xi2, ispn__, ia);
-                    qop(xi1, xi2) = Qop.template value<T>(xi1, xi2, ispn__, ia);
+                    dop(xi1, xi2) = Dop.template value<F>(xi1, xi2, ispn__, ia);
+                    qop(xi1, xi2) = Qop.template value<F>(xi1, xi2, ispn__, ia);
                 }
             }
             /* compute <G+k|beta> D */
             sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                &sddk::linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
-                &sddk::linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
+                &sddk::linalg_const<F>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
+                &sddk::linalg_const<F>::zero(), &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
             sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                &sddk::linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                &sddk::linalg_const<T>::one(), &hmlt(0, 0), hmlt.ld());
+                &sddk::linalg_const<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                &sddk::linalg_const<F>::one(), &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
                 sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                    &sddk::linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
-                    &sddk::linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
+                    &sddk::linalg_const<F>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
+                    &sddk::linalg_const<F>::zero(), &btmp(0, 0), btmp.ld());
                 sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                    &sddk::linalg_const<T>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                    &sddk::linalg_const<T>::one(), &ovlp(0, 0), ovlp.ld());
+                    &sddk::linalg_const<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                    &sddk::linalg_const<F>::one(), &ovlp(0, 0), ovlp.ld());
             }
         } // i (atoms in chunk)
     }
@@ -175,14 +175,14 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     if (ctx_.cfg().control().verification() >= 2) {
         ctx_.message(1, __function_name__, "%s", "checking eigen-values of S-matrix\n");
 
-        sddk::dmatrix<T> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-        sddk::dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<F> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
 
         ovlp >> ovlp1;
 
-        std::vector<real_type<T>> eo(kp.num_gkvec());
+        std::vector<real_type<F>> eo(kp.num_gkvec());
 
-        auto solver = Eigensolver_factory("scalapack", nullptr);
+        auto solver = Eigensolver_factory("scalapack");
         solver->solve(kp.num_gkvec(), ovlp1, eo.data(), evec);
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
@@ -195,14 +195,18 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<real_type<T>>& Hk__)
     if (gen_solver.solve(kp.num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
         s << "error in full diagonalization";
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     for (int j = 0; j < ctx_.num_bands(); j++) {
         kp.band_energy(j, ispn__, eval[j]);
     }
 
-    kp.spinor_wave_functions().pw_coeffs(ispn__).remap_from(evec, 0);
+    auto layout_in  = evec.grid_layout(0, 0, kp.num_gkvec(), ctx_.num_bands());
+    auto layout_out = kp.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx_.num_bands()));
+
+    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
+            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().mpi_comm());
 }
 
 template <typename T>
@@ -211,71 +215,73 @@ Band::diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
 
-    auto& kp = Hk__.kp();
+    RTE_THROW("implement this");
 
-    auto& itso = ctx_.cfg().iterative_solver();
-
-    /* for overlap matrix we do non-magnetic or non-collinear diagonalization */
-    const int num_mag_dims = (ctx_.num_mag_dims() == 3) ? 3 : 0;
-
-    /* number of spin components, treated simultaneously
-     *   1 - in case of non-magnetic
-     *   2 - in case of non-collinear calculation
-     */
-    const int num_sc = (num_mag_dims == 3) ? 2 : 1;
-
+//    auto& kp = Hk__.kp();
+//
+//    auto& itso = ctx_.cfg().iterative_solver();
+//
+//    /* for overlap matrix we do non-magnetic or non-collinear diagonalization */
+//    const int num_mag_dims = (ctx_.num_mag_dims() == 3) ? 3 : 0;
+//
+//    /* number of spin components, treated simultaneously
+//     *   1 - in case of non-magnetic
+//     *   2 - in case of non-collinear calculation
+//     */
+//    const int num_sc = (num_mag_dims == 3) ? 2 : 1;
+//
     /* number of eigen-vectors to find */
     const int nevec{1};
-
-    /* alias for memory pool */
-    auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
-
-    /* eigen-vectors */
-    sddk::Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
-    for (int i = 0; i < nevec; i++) {
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                /* global index of G+k vector */
-                int igk = kp.idxgk(igk_loc);
-                if (igk == i + 1) {
-                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 1.0;
-                }
-                if (igk == i + 2) {
-                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.5;
-                }
-                if (igk == i + 3) {
-                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.25;
-                }
-                if (igk == i + 4) {
-                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.125;
-                }
-            }
-        }
-    }
-    std::vector<double> tmp(4096);
-    for (int i = 0; i < 4096; i++) {
-        tmp[i] = utils::random<double>();
-    }
-    #pragma omp parallel for schedule(static)
-    for (int i = 0; i < nevec; i++) {
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            for (int igk_loc = kp.gkvec().skip_g0(); igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                /* global index of G+k vector */
-                int igk = kp.idxgk(igk_loc);
-                psi.pw_coeffs(ispn).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
-            }
-        }
-    }
-
-    auto result = davidson<T, T, davidson_evp_t::overlap>(Hk__, nevec, num_mag_dims, psi,
-            [](int i, int ispn){ return 1e-10; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
-            10, itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
-
+//
+//    /* alias for memory pool */
+//    auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
+//
+//    /* eigen-vectors */
+//    sddk::Wave_functions<real_type<T>> psi(mp, kp.gkvec_partition(), nevec, ctx_.aux_preferred_memory_t(), num_sc);
+//    for (int i = 0; i < nevec; i++) {
+//        for (int ispn = 0; ispn < num_sc; ispn++) {
+//            for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+//                /* global index of G+k vector */
+//                int igk = kp.idxgk(igk_loc);
+//                if (igk == i + 1) {
+//                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 1.0;
+//                }
+//                if (igk == i + 2) {
+//                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.5;
+//                }
+//                if (igk == i + 3) {
+//                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.25;
+//                }
+//                if (igk == i + 4) {
+//                    psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.125;
+//                }
+//            }
+//        }
+//    }
+//    std::vector<double> tmp(4096);
+//    for (int i = 0; i < 4096; i++) {
+//        tmp[i] = utils::random<double>();
+//    }
+//    #pragma omp parallel for schedule(static)
+//    for (int i = 0; i < nevec; i++) {
+//        for (int ispn = 0; ispn < num_sc; ispn++) {
+//            for (int igk_loc = kp.gkvec().skip_g0(); igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+//                /* global index of G+k vector */
+//                int igk = kp.idxgk(igk_loc);
+//                psi.pw_coeffs(ispn).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
+//            }
+//        }
+//    }
+//
+//    auto result = davidson<T, T, davidson_evp_t::overlap>(Hk__, nevec, num_mag_dims, psi,
+//            [](int i, int ispn){ return 1e-10; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
+//            10, itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
+//
     sddk::mdarray<real_type<T>, 1> eval(nevec);
-    for (int i = 0; i < nevec; i++) {
-        eval(i) = result.eval(i, 0);
-    }
-
+//    for (int i = 0; i < nevec; i++) {
+//        eval(i) = result.eval(i, 0);
+//    }
+//
     return eval;
 }
 
@@ -289,11 +295,11 @@ Band::diag_S_davidson<std::complex<double>>(Hamiltonian_k<double>& Hk__) const;
 
 template
 void
-Band::diag_pseudo_potential_exact<std::complex<double>>(int ispn__, Hamiltonian_k<double>& Hk__) const;
+Band::diag_pseudo_potential_exact<double, std::complex<double>>(int ispn__, Hamiltonian_k<double>& Hk__) const;
 
 template<>
 void
-Band::diag_pseudo_potential_exact<double>(int ispn__, Hamiltonian_k<double>& Hk__) const
+Band::diag_pseudo_potential_exact<double, double>(int ispn__, Hamiltonian_k<double>& Hk__) const
 {
     RTE_THROW("not implemented");
 }
@@ -309,11 +315,23 @@ Band::diag_S_davidson<std::complex<float>>(Hamiltonian_k<float>& Hk__) const;
 
 template
 void
-Band::diag_pseudo_potential_exact<std::complex<float>>(int ispn__, Hamiltonian_k<float>& Hk__) const;
+Band::diag_pseudo_potential_exact<float, std::complex<float>>(int ispn__, Hamiltonian_k<float>& Hk__) const;
 
 template<>
 void
-Band::diag_pseudo_potential_exact<float>(int ispn__, Hamiltonian_k<float>& Hk__) const
+Band::diag_pseudo_potential_exact<float, float>(int ispn__, Hamiltonian_k<float>& Hk__) const
+{
+    RTE_THROW("not implemented");
+}
+template<>
+void
+Band::diag_pseudo_potential_exact<float, double>(int ispn__, Hamiltonian_k<float>& Hk__) const
+{
+    RTE_THROW("not implemented");
+}
+template<>
+void
+Band::diag_pseudo_potential_exact<float, std::complex<double>>(int ispn__, Hamiltonian_k<float>& Hk__) const
 {
     RTE_THROW("not implemented");
 }

@@ -1,0 +1,332 @@
+{
+    "comm_world_size": 1,
+    "context": {
+        "chemical_formula": "Ni2O2",
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 32,
+                "fft_mode": "serial",
+                "gen_evp_solver_name": "lapack",
+                "memory_usage": "high",
+                "mpi_grid_dims": [
+                    1,
+                    1
+                ],
+                "num_bands_to_print": 10,
+                "ortho_rf": false,
+                "print_checksum": false,
+                "print_forces": true,
+                "print_hash": false,
+                "print_memory_usage": false,
+                "print_neighbors": false,
+                "print_performance": false,
+                "print_stress": false,
+                "print_timers": true,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 0.0001,
+                "std_evp_solver_name": "lapack",
+                "use_second_variation": true,
+                "verbosity": 2,
+                "verification": 0
+            },
+            "hubbard": {
+                "full_orthogonalization": true,
+                "local": [
+                    {
+                        "J": 0.0,
+                        "J0": 0.0,
+                        "U": 8.0,
+                        "alpha": 0.0,
+                        "atom_type": "Ni",
+                        "beta": 0.0,
+                        "l": 2,
+                        "n": 3,
+                        "total_initial_occupancy": 8.0
+                    }
+                ],
+                "nonlocal": [],
+                "normalize": false,
+                "orthogonalize": false,
+                "simplified": false
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 1e-05,
+                "energy_tolerance": 0.01,
+                "extra_ortho": false,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 2,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.7,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": false
+            },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-06,
+                "electronic_structure_method": "pseudopotential",
+                "energy_tol": 1e-06,
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 8.0,
+                "hubbard_correction": true,
+                "lmax_apw": -1,
+                "lmax_pot": 4,
+                "lmax_rho": 4,
+                "molecule": false,
+                "ngridk": [
+                    4,
+                    4,
+                    4
+                ],
+                "nn_radius": -1,
+                "num_bands": 34,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 1,
+                "precision_gs": "auto",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
+                "pw_cutoff": 25.0,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.01,
+                "so_correction": false,
+                "use_ibz": true,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_GGA_X_PBE",
+                    "XC_GGA_C_PBE"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    80,
+                    80,
+                    80
+                ],
+                "fp32_to_fp64_rms": 0,
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.5
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ni": "Ni.json",
+                    "O": "O.json"
+                },
+                "atom_types": [
+                    "Ni",
+                    "O"
+                ],
+                "atoms": {
+                    "Ni": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.5,
+                            0.5,
+                            -0.5
+                        ]
+                    ],
+                    "O": [
+                        [
+                            0.751,
+                            0.751,
+                            0.751
+                        ],
+                        [
+                            0.249,
+                            0.249,
+                            0.249
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        7.88,
+                        3.94,
+                        3.94
+                    ],
+                    [
+                        3.94,
+                        7.88,
+                        3.94
+                    ],
+                    [
+                        3.94,
+                        3.94,
+                        7.88
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            }
+        },
+        "fft_coarse_grid": [
+            54,
+            54,
+            54
+        ],
+        "mpi_grid": [
+            1,
+            1
+        ],
+        "num_atoms": 4,
+        "omega": 244.65193599999998
+    },
+    "counters": {
+        "band_evp_work_count": 6117.245700183189,
+        "local_operator_num_applied": 44814
+    },
+    "git_hash": "d7ce09f9ac54bdd09dc9291ee8ce9c01f1d15409",
+    "ground_state": {
+        "band_gap": 0.11802673561426846,
+        "converged": true,
+        "core_leakage": 0.0,
+        "efermi": 0.5438705272027462,
+        "energy": {
+            "bxc": -0.21859447584759642,
+            "core_eval_sum": 0.0,
+            "entropy_sum": -4.200731650660978e-16,
+            "enuc": 0.0,
+            "eval_sum": -26.803877648570584,
+            "ewald": -239.32629513032276,
+            "exc": -42.97446450188511,
+            "kin": 115.09052147993134,
+            "scf_correction": 6.813148274886771e-06,
+            "total": -375.40350474684914,
+            "veff": -141.67580465265434,
+            "vha": 245.08051282721632,
+            "vloc": -333.0637124041647,
+            "vxc": -53.69260507567651
+        },
+        "etot_history": [
+            -359.4828282088488,
+            -371.2850943395904,
+            -373.7369694681939,
+            -375.1289643650721,
+            -375.1758735921571,
+            -374.9133582906594,
+            -375.2786549987677,
+            -375.3894463790578,
+            -375.39816028542475,
+            -375.402050325746,
+            -375.4046990084537,
+            -375.4034887537392,
+            -375.4038858399482,
+            -375.4034927452544,
+            -375.40351214097376,
+            -375.40350951600726,
+            -375.4034849314651,
+            -375.4035051373547,
+            -375.4035105730276,
+            -375.4035038930112,
+            -375.40350544771877,
+            -375.40350474684914
+        ],
+        "forces": [
+            [
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                -0.003147380200048457,
+                -0.003147380200048471,
+                -0.003147380200048471
+            ],
+            [
+                0.0031473802000484847,
+                0.003147380200048471,
+                0.003147380200048471
+            ]
+        ],
+        "num_scf_iterations": 21,
+        "rms_history": [
+            0.2608353227548882,
+            0.40858053508916237,
+            0.14421172485360406,
+            0.041156411707732835,
+            0.036559392706819197,
+            0.036728104126820066,
+            0.022348364211221914,
+            0.008346834084517194,
+            0.006787574390022183,
+            0.003059261310011073,
+            0.0017782021845775772,
+            0.00036227811437645476,
+            0.00015023509806226333,
+            4.8187868205314456e-05,
+            2.622905749106282e-05,
+            2.2417964105640664e-05,
+            1.5211917520931938e-05,
+            7.513976811385638e-06,
+            2.418616766186595e-06,
+            1.4374599664458488e-06,
+            6.507210784613721e-07,
+            1.8600699115531217e-07
+        ],
+        "scf_time": 136.89833212
+    },
+    "task": 0,
+    "threads_per_rank": 16
+}

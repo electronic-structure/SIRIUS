@@ -21,7 +21,7 @@
  *
  *  \brief Contains implementation of CUDA kernels to scale matrix elements (rows or columns).
  */
-#include "cuda_common.hpp"
+#include "acc_common.hpp"
 #include "acc_runtime.hpp"
 
 template <typename T>
