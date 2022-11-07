@@ -4,6 +4,9 @@
 #include <utils/json.hpp>
 #include <cfenv>
 #include <fenv.h>
+#if defined(SIRIUS_VCSQNM)
+#include "vcsqnm/periodic_optimizer.hpp"
+#endif
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -11,19 +14,21 @@ using namespace sddk;
 
 const std::string aiida_output_file = "output_aiida.json";
 
-enum class task_t : int
+struct task_t
 {
-    ground_state_new     = 0,
-    ground_state_restart = 1,
-    k_point_path         = 2,
-    eos                  = 3,
-    read_config          = 4
+    static const int ground_state_new         = 0;
+    static const int ground_state_restart     = 1;
+    static const int k_point_path             = 2;
+    static const int eos                      = 3;
+    static const int read_config              = 4;
+    static const int ground_state_new_relax   = 5;
+    static const int ground_state_new_vcrelax = 6;
 };
 
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    dict__["comm_world_size"] = Communicator::world().size();
+    dict__["comm_world_size"] = sddk::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
@@ -85,9 +90,35 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 
 
 double
-ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int write_output)
+ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
+
+    if (ctx.comm().rank() == 0) {
+        switch (task_id) {
+            case task_t::ground_state_new: {
+                ctx.out() << "+----------------------+" << std::endl
+                          << "| new SCF ground state |" << std::endl
+                          << "+----------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_new_relax: {
+                ctx.out() << "+---------------------------------------------+" << std::endl
+                          << "| new SCF ground state with atomic relaxation |" << std::endl
+                          << "+---------------------------------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_new_vcrelax: {
+                ctx.out() << "+---------------------------------------------------------+" << std::endl
+                          << "| new SCF ground state with atomic and lattice relaxation |" << std::endl
+                          << "+---------------------------------------------------------+" << std::endl;
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
 
     auto& inp = ctx.cfg().parameters();
 
@@ -104,9 +135,9 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
     auto& potential = dft.potential();
     auto& density = dft.density();
 
-    if (task == task_t::ground_state_restart) {
+    if (task_id == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
-            TERMINATE("storage file is not found");
+            RTE_THROW("storage file is not found");
         }
         density.load();
         potential.load();
@@ -114,38 +145,163 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
         dft.initial_state();
     }
 
-    /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
-            inp.num_dft_iter(), write_state);
-    /* compute forces and stress */
+    bool compute_stress{false};
+    bool compute_forces{false};
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-        Stress& s       = dft.stress();
-        auto stress_tot = s.calc_stress_total();
-        s.print_info();
-        result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                result["stress"][i][j] = stress_tot(j, i);
+        compute_stress = true;
+    }
+    if (ctx.cfg().control().print_forces()) {
+        compute_forces = true;
+    }
+
+    int num_geom_opt_steps{1};
+
+    int na = ctx.unit_cell().num_atoms();
+#if defined(SIRIUS_VCSQNM)
+    std::unique_ptr<PES_optimizer::periodic_optimizer> geom_opt;
+    Eigen::MatrixXd r(3, na);
+    Eigen::MatrixXd f(3, na);
+    Eigen::Vector3d lat_a, lat_b, lat_c;
+    for (int x = 0; x < 3; x++) {
+        lat_a[x] = ctx.unit_cell().lattice_vector(0)[x];
+        lat_b[x] = ctx.unit_cell().lattice_vector(1)[x];
+        lat_c[x] = ctx.unit_cell().lattice_vector(2)[x];
+    }
+
+    Eigen::Matrix3d stress;
+
+    for (int ia = 0; ia < na; ia++) {
+        for (auto x: {0, 1, 2}) {
+            r(x, ia) = ctx.unit_cell().atom(ia).position()[x];
+        }
+    }
+
+    if (task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
+        num_geom_opt_steps = 4;
+        if (task_id == task_t::ground_state_new_relax) {
+            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, 2.0, 10, 1.e-2, 1.e-4);
+            compute_forces = true;
+        }
+        if (task_id == task_t::ground_state_new_vcrelax) {
+            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c, 2.0, 10, 2.0, 1.e-2, 1.e-4);
+            compute_forces = true;
+            compute_stress = true;
+        }
+    }
+#endif
+
+
+    if (ctx.comm().rank() == 0) {
+        switch (task_id) {
+            case task_t::ground_state_new_relax: 
+            case task_t::ground_state_new_vcrelax: {
+                ctx.out() << "number of geometry optimisation steps : " << num_geom_opt_steps << std::endl;
+                break;
+            }
+            default: {
+                break;
             }
         }
     }
-    if (ctx.cfg().control().print_forces()) {
-        Force& f         = dft.forces();
-        auto& forces_tot = f.calc_forces_total();
-        f.print_info();
-        result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-        for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-            for (int j = 0; j < 3; j++) {
-                result["forces"][i][j] = forces_tot(j, i);
+
+    nlohmann::json result;
+
+    for (int igeom = 0; igeom < num_geom_opt_steps; igeom++) {
+
+        if (ctx.comm().rank() == 0) {
+            switch (task_id) {
+                case task_t::ground_state_new_relax: 
+                case task_t::ground_state_new_vcrelax: {
+                    ctx.out() << "optimisation step " << igeom  + 1 << " out of " << num_geom_opt_steps << std::endl;
+                    break;
+                }
+                default: {
+                    break;
+                }
             }
         }
+
+        /* launch the calculation */
+        result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                inp.num_dft_iter(), write_state);
+
+        if (compute_stress) {
+            dft.stress().calc_stress_total();
+        }
+        if (compute_forces) {
+            dft.forces().calc_forces_total();
+        }
+
+        /* compute forces and stress */
+        if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
+            dft.stress().print_info();
+            result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
+            auto st = dft.stress().stress_total();
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    result["stress"][i][j] = st(j, i);
+                }
+            }
+        }
+        if (ctx.cfg().control().print_forces()) {
+            dft.forces().print_info();
+            result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+            auto& ft = dft.forces().forces_total();
+            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                for (int j = 0; j < 3; j++) {
+                    result["forces"][i][j] = ft(j, i);
+                }
+            }
+        }
+#if defined(SIRIUS_VCSQNM)
+        /*
+         * geometry optimisataion
+         */
+        auto etot = result["energy"]["total"].get<double>();
+        if (task_id == task_t::ground_state_new_relax) {
+            auto& ft = dft.forces().forces_total();
+            for (int ia = 0; ia < na; ia++) {
+                for (int x : {0, 1, 2}) {
+                    f(x, ia) = ft(x, ia);
+                }
+            }
+            geom_opt->step(r, etot, f);
+        }
+        if (task_id == task_t::ground_state_new_vcrelax) {
+            auto& ft = dft.forces().forces_total();
+            for (int ia = 0; ia < na; ia++) {
+                for (int x : {0, 1, 2}) {
+                    f(x, ia) = ft(x, ia);
+                }
+            }
+            auto st = dft.stress().stress_total();
+            for (int i : {0, 1, 2}) {
+                for (int j : {0, 1, 2}) {
+                    stress(i, j) = st(i, j);
+                }
+            }
+            geom_opt->step(r, etot, f, lat_a, lat_b, lat_c, stress);
+        }
+        /*
+         * update geometry
+         */
+        if (task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
+            ctx.unit_cell().set_lattice_vectors({lat_a[0], lat_a[1], lat_a[2]},
+                                                {lat_b[0], lat_b[1], lat_b[2]},
+                                                {lat_c[0], lat_c[1], lat_c[2]});
+            for (int ia = 0; ia < na; ia++) {
+                ctx.unit_cell().atom(ia).set_position({r(0, ia), r(1, ia), r(2, ia)});
+            }
+            dft.update();
+        }
+#endif
     }
 
     if (write_state && write_output) {
         json dict;
         json_output_common(dict);
 
-        dict["task"] = static_cast<int>(task);
+        dict["task"] = task_id;
         dict["context"] = ctx.serialize();
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
@@ -283,7 +439,7 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
 void run_tasks(cmd_args const& args)
 {
     /* get the task id */
-    task_t task = static_cast<task_t>(args.value<int>("task", 0));
+    int task_id = args.value<int>("task", 0);
 
     /* get the input file name */
     auto fpath = args.value<fs::path>("input", "sirius.json");
@@ -300,8 +456,10 @@ void run_tasks(cmd_args const& args)
     }
 
     auto fname = fpath.string();
-
-    if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
+    if (task_id == task_t::ground_state_new ||
+        task_id == task_t::ground_state_restart ||
+        task_id == task_t::ground_state_new_relax ||
+        task_id == task_t::ground_state_new_vcrelax) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
         //if (ctx->comm().rank() == 0) {
@@ -309,14 +467,14 @@ void run_tasks(cmd_args const& args)
         //    std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
         //    ofs << dict.dump(4);
         //}
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
-        ground_state(*ctx, task, args, 1);
+        int write_output{1};
+        ground_state(*ctx, task_id, args, write_output);
     }
-    if (task == task_t::eos) {
+    if (task_id == task_t::eos) {
         auto s0 = std::pow(args.value<double>("volume_scale0"), 1.0 / 3);
         auto s1 = std::pow(args.value<double>("volume_scale1"), 1.0 / 3);
+
+        int write_output{0};
 
         int rank{0};
         int num_steps{10};
@@ -330,7 +488,7 @@ void run_tasks(cmd_args const& args)
             auto lv = ctx->unit_cell().lattice_vectors() * s;
             ctx->unit_cell().set_lattice_vectors(lv);
             ctx->initialize();
-            auto e = ground_state(*ctx, task_t::ground_state_new, args, 0);
+            auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
             volume.push_back(ctx->unit_cell().omega());
             energy.push_back(e);
         }
@@ -341,7 +499,7 @@ void run_tasks(cmd_args const& args)
             }
         }
     }
-    if (task == task_t::read_config) {
+    if (task_id == task_t::read_config) {
         //int count{0};
         //while (true) {
         //    std::stringstream s;
@@ -371,7 +529,7 @@ void run_tasks(cmd_args const& args)
 
     }
 
-    if (task == task_t::k_point_path) {
+    if (task_id == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
@@ -432,7 +590,7 @@ void run_tasks(cmd_args const& args)
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
-                TERMINATE("fix me");
+                RTE_THROW("fix me");
                 //potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }

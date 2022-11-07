@@ -482,6 +482,11 @@ class Stress
 
     matrix3d<double> calc_stress_total();
 
+    inline matrix3d<double> stress_total() const
+    {
+        return stress_total_;
+    }
+
     void print_info() const;
 };
 

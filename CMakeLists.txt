@@ -27,9 +27,9 @@ set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
 set(CUDA_ARCH               OFF CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
-set_property(CACHE USE_FP32 PROPERTY STRINGS
-  "AUTO" "ON" "OFF"
-  )
+set(USE_VCSQNM              OFF CACHE BOOL "use variable cell stabilized quasi Newton method")
+
+set_property(CACHE USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
