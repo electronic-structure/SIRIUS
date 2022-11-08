@@ -71,15 +71,15 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
-                auto& mp = ctx_.mem_pool(sddk::memory_t::host);
+                auto& mp = get_memory_pool(sddk::memory_t::host);
                 pf = sddk::mdarray<double_complex, 2>(ngv, na, mp);
                 qa = sddk::mdarray<double_complex, 2>(lmmax, na, mp);
                 qapf = sddk::mdarray<double_complex, 2>(lmmax, ngv, mp);
                 break;
             }
             case sddk::device_t::GPU: {
-                auto& mp = ctx_.mem_pool(sddk::memory_t::host);
-                auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
+                auto& mp = get_memory_pool(sddk::memory_t::host);
+                auto& mpd = get_memory_pool(sddk::memory_t::device);
                 /* allocate on GPU */
                 pf = sddk::mdarray<double_complex, 2>(nullptr, ngv, na);
                 pf.allocate(mpd);

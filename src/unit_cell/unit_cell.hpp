@@ -193,7 +193,7 @@ class Unit_cell
     void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
 
     /// Add new atom without vector field to the list of atom types.
-    void add_atom(const std::string label, std::vector<double> position)
+    void add_atom(const std::string label, vector3d<double> position)
     {
         add_atom(label, position, {0, 0, 0});
     }

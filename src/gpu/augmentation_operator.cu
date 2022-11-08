@@ -22,7 +22,7 @@
  *  \brief CUDA kernels to generate augmentation operator and its derivative.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 __global__ void aug_op_pw_coeffs_gpu_kernel(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,

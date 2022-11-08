@@ -40,7 +40,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
     PROFILE("sirius::Hamiltonian0");
 
     local_op_ = std::unique_ptr<Local_operator<T>>(
-        new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_partition(), &potential__));
+        new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_fft_sptr(), &potential__));
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
@@ -153,14 +153,14 @@ Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdar
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__) const
+Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const
 {
     sddk::mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
         int ia            = psi__.spl_num_atoms()[ialoc];
         auto& atom        = unit_cell_.atom(ia);
-        int offset        = psi__.offset_mt_coeffs(ialoc);
+        //int offset        = psi__.offset_mt_coeffs(ialoc);
         int mt_basis_size = atom.type().mt_basis_size();
 
         zm.zero();
@@ -183,9 +183,9 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
         /* compute bwf = B_z*|wf_j> */
         sddk::linalg(sddk::linalg_t::blas).hemm(
             'L', 'U', mt_basis_size, ctx_.num_fv_states(), &sddk::linalg_const<std::complex<T>>::one(),
-            zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
-            psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
-            bpsi__[0].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
+            zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
+            psi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+            &bpsi__[0].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
@@ -204,23 +204,25 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
 
             sddk::linalg(sddk::linalg_t::blas).gemm(
                'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &sddk::linalg_const<std::complex<T>>::one(),
-               zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
-               psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
-               bpsi__[2].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
+               zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
+               psi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+               &bpsi__[2].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());
         }
     }
 }
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& hpsi__) const
+Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian0::apply_so_correction");
+
+    wf::spin_index s(0);
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
         int ia     = psi__.spl_num_atoms()[ialoc];
         auto& atom = unit_cell_.atom(ia);
-        int offset = psi__.offset_mt_coeffs(ialoc);
+        wf::atom_index a(ialoc);
 
         for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */
@@ -237,15 +239,15 @@ Hamiltonian0<T>::apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector
                         // int idx4 = (m - l != 0) ? atom.type().indexb_by_l_m_order(l, m + 1, order2) : 0;
 
                         for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
-                            std::complex<T> z1 = psi__.mt_coeffs(0).prime(offset + idx2, ist) * T(m) * sori;
+                            wf::band_index b(ist);
+                            auto z1 = psi__.mt_coeffs(idx2, a, s, b) * T(m) * sori;
                             /* u-u part */
-                            hpsi__[0].mt_coeffs(0).prime(offset + idx1, ist) += z1;
+                            hpsi__[0].mt_coeffs(idx1, a, s, b) += z1;
                             /* d-d part */
-                            hpsi__[1].mt_coeffs(0).prime(offset + idx1, ist) -= z1;
+                            hpsi__[1].mt_coeffs(idx1, a, s, b) -= z1;
                             /* apply L_{-} operator; u-d part */
                             if (m + l) {
-                                hpsi__[2].mt_coeffs(0).prime(offset + idx1, ist) +=
-                                    psi__.mt_coeffs(0).prime(offset + idx3, ist) * sori *
+                                hpsi__[2].mt_coeffs(idx1, a, s, b) += psi__.mt_coeffs(idx3, a, s, b) * sori *
                                     std::sqrt(T(l * (l + 1) - m * (m - 1)));
                             }
                             /* for the d-u part */

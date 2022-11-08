@@ -23,7 +23,7 @@
  */
 
 #include <cmath>
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 inline __device__ int lmidx(int l, int m)

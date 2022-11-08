@@ -29,14 +29,26 @@
 #include <complex>
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
+#include "SDDK/dmatrix.hpp"
 #include "typedefs.hpp"
+#include "SDDK/wave_functions.hpp"
+#include "fft.hpp"
+#include "local_operator.hpp"
+#include "non_local_operator.hpp"
 
-namespace sddk {
-/* forward declaration */
-template <typename T>
-class Wave_functions;
-class spin_range;
-}
+//namespace sddk {
+///* forward declaration */
+//template <typename T>
+//class Wave_functions;
+//class spin_range;
+//}
+//
+//namespace wf {
+//template <typename T>
+//class Wave_functions;
+//class band_range;
+//class spin_range;
+//}
 
 namespace sirius {
 /* forward declaration */
@@ -71,6 +83,8 @@ template <typename T>
 class Hamiltonian_k;
 
 /// Represent the k-point independent part of Hamiltonian.
+/** \tparam T   Precision of the wave-functions (float or double).
+ */
 template <typename T> // type is real type precision
 class Hamiltonian0
 {
@@ -160,7 +174,7 @@ class Hamiltonian0
                          sddk::mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
 
     /// Apply muffin-tin part of magnetic filed to the wave-functions.
-    void apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__) const;
+    void apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
 
     /// Apply SO correction to the first-variational LAPW wave-functions.
     /** Raising and lowering operators:
@@ -168,7 +182,7 @@ class Hamiltonian0
      *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
      *  \f]
      */
-    void apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& hpsi__) const;
+    void apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const;
 };
 
 template <typename T>
@@ -199,12 +213,12 @@ class Hamiltonian_k
         return H0_;
     }
 
-    K_point<T>& kp()
+    auto& kp()
     {
         return kp_;
     }
 
-    K_point<T> const& kp() const
+    auto const& kp() const
     {
         return kp_;
     }
@@ -215,7 +229,7 @@ class Hamiltonian_k
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
 
-    U_operator<T>& U()
+    auto& U()
     {
         return *u_op_;
     }
@@ -351,9 +365,11 @@ class Hamiltonian_k
      *  \param [out] hphi       Result of Hamiltonian, applied to wave-functions.
      *  \param [out] ophi       Result of overlap operator, applied to wave-functions.
      */
-    void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-                      sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
+    //void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions<T>& phi__,
+    //                  sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
 
+    void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
+                      wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__);
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
      *  \f[
@@ -445,12 +461,79 @@ class Hamiltonian_k
      *  In non-collinear case (spins in [0,1]) the Hamiltonian and S operator are applied to both components of spinor
      *  wave-functions. Otherwise they are applied to a single component.
      */
-    template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
-    void apply_h_s(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-                   sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* sphi__);
+    //template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
+    //void apply_h_s(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<T>& phi__,
+    //               sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* sphi__);
+
+    /** \tparam F  Type of the subspace matrix.
+     */
+    template <typename F>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
+    apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+    {
+        PROFILE("sirius::Hamiltonian_k::apply_h_s");
+
+        auto pcs = env::print_checksum();
+
+        if (hphi__ != nullptr) {
+            /* apply local part of Hamiltonian */
+            H0().local_op().apply_h(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+                                    kp().gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
+        }
+
+        auto mem = H0().ctx().processing_unit_memory_t();
+
+        if (pcs) {
+            auto cs = phi__.checksum(mem, br__);
+            utils::print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
+            if (hphi__) {
+                auto cs = hphi__->checksum(mem, br__);
+                utils::print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
+            }
+        }
+
+        /* set initial sphi */
+        if (sphi__ != nullptr) {
+            for (auto s = spins__.begin(); s!= spins__.end(); s++) {
+                auto sp = phi__.actual_spin_index(s);
+                wf::copy(mem, phi__, sp, br__, *sphi__, sp, br__);
+            }
+        }
+
+        /* return if there are no beta-projectors */
+        if (H0().ctx().unit_cell().mt_lo_basis_size()) {
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+        }
+
+        /* apply the hubbard potential if relevant */
+        if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
+            /* apply the hubbard potential */
+            apply_U_operator(H0().ctx(), spins__, br__, kp().hubbard_wave_functions_S(), phi__, this->U(), *hphi__);
+        }
+
+        if (pcs) {
+            if (hphi__) {
+                auto cs = hphi__->checksum(mem, br__);
+                utils::print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
+            }
+            if (sphi__) {
+                auto cs = sphi__->checksum(mem, br__);
+                utils::print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
+            }
+        }
+    }
+
+    template <typename F>
+    std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
+    apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+    {
+        RTE_THROW("implementat this");
+    }
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
-    void apply_b(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__);
+    void apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__);
 };
 
 template <typename T>

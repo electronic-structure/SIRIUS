@@ -89,9 +89,6 @@ class Simulation_parameters
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
-    /// Storage for various memory pools.
-    mutable std::map<sddk::memory_t, sddk::memory_pool> memory_pool_;
-
     /* copy constructor is forbidden */
     Simulation_parameters(Simulation_parameters const&) = delete;
 
@@ -160,7 +157,7 @@ class Simulation_parameters
 
     void electronic_structure_method(std::string name__);
 
-    electronic_structure_method_t electronic_structure_method() const
+    auto electronic_structure_method() const
     {
         return electronic_structure_method_;
     }
@@ -175,7 +172,7 @@ class Simulation_parameters
 
     void smearing(std::string name__);
 
-    smearing::smearing_t smearing() const
+    auto smearing() const
     {
         return smearing_;
     }
@@ -418,11 +415,6 @@ class Simulation_parameters
         return cfg().control().cyclic_block_size();
     }
 
-    //inline void full_potential(const bool value)
-    //{
-    //    electronic_structure_method_ = electronic_structure_method_t::full_potential_lapwlo;
-    //}
-
     bool full_potential() const
     {
         return (electronic_structure_method_ == electronic_structure_method_t::full_potential_lapwlo);
@@ -514,32 +506,6 @@ class Simulation_parameters
     {
         cfg_.settings().sht_coverage(sht_coverage__);
         return cfg_.settings().sht_coverage();
-    }
-
-    /// Return a reference to a memory pool.
-    /** A memory pool is created when this function called for the first time. */
-    sddk::memory_pool& mem_pool(sddk::memory_t M__) const
-    {
-        if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, sddk::memory_pool(M__));
-        }
-        return memory_pool_.at(M__);
-    }
-
-    /// Get a default memory pool for a given device.
-    sddk::memory_pool& mem_pool(sddk::device_t dev__)
-    {
-        switch (dev__) {
-            case sddk::device_t::CPU: {
-                return mem_pool(sddk::memory_t::host);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                return mem_pool(sddk::memory_t::device);
-                break;
-            }
-        }
-        return mem_pool(sddk::memory_t::host); // make compiler happy
     }
 };
 

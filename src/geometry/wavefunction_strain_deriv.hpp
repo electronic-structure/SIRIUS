@@ -6,7 +6,7 @@
 namespace sirius {
 
 void
-wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp__, sddk::Wave_functions<double>& dphi__,
+wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp__, wf::Wave_functions<double>& dphi__,
                            sddk::mdarray<double, 2> const& rlm_g__, sddk::mdarray<double, 3> const& rlm_dg__,
                            int nu__, int mu__)
 {
@@ -53,9 +53,9 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
                     if (l == 0) {
                         auto d1 = ri_values[atom_type.id()][idxrf] * p * y00;
 
-                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * d1 * phase_factor;
+                        dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = -z * d1 * phase_factor;
                     } else {
-                        dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = 0.0;
+                        dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = 0.0;
                     }
                 } else {
                     auto d1 = ri_values[atom_type.id()][idxrf] *
@@ -63,7 +63,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
                     auto d2 =
                         ridjl_values[atom_type.id()][idxrf] * rlm_g__(lm, igkloc) * gvc[mu__] * gvc[nu__] / gvs[0];
 
-                    dphi__.pw_coeffs(0).prime(igkloc, offset_in_wf) = -z * (d1 + d2) * std::conj(phase_factor);
+                    dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = -z * (d1 + d2) * std::conj(phase_factor);
                 }
             } // xi
         }

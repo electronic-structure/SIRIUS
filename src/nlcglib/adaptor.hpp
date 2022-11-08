@@ -58,12 +58,12 @@ class Matrix : public nlcglib::MatrixBaseZ
     MPI_Comm mpi_comm;
 };
 
-
 /// TODO: Array1d owns data...
 class Array1d : public nlcglib::VectorBaseZ
 {
   public:
-    Array1d(const std::vector<std::vector<double>>& data, const std::vector<kindex_t>& indices, MPI_Comm mpi_comm = MPI_COMM_SELF)
+    Array1d(const std::vector<std::vector<double>>& data, const std::vector<kindex_t>& indices,
+            MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data(data)
         , indices(indices)
         , mpi_comm(mpi_comm)
@@ -111,16 +111,14 @@ class Array1d : public nlcglib::VectorBaseZ
 class Scalar : public nlcglib::ScalarBaseZ
 {
   public:
-    Scalar(const std::vector<double>& data__, const std::vector<kindex_t>& indices__,
-           MPI_Comm mpi_comm = MPI_COMM_SELF)
+    Scalar(const std::vector<double>& data__, const std::vector<kindex_t>& indices__, MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data(data__)
         , indices(indices__)
         , mpi_comm(mpi_comm)
     {
     }
 
-    Scalar(std::vector<double>&& data__, std::vector<kindex_t>&& indices__,
-           MPI_Comm mpi_comm = MPI_COMM_SELF)
+    Scalar(std::vector<double>&& data__, std::vector<kindex_t>&& indices__, MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data{std::forward<decltype(data)>(data__)}
         , indices{std::forward<decltype(indices)>(indices__)}
         , mpi_comm(mpi_comm)
@@ -187,11 +185,15 @@ class Energy : public nlcglib::EnergyBase
     K_point_set& kset;
     Density& density;
     Potential& potential;
-    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> hphis;
-    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> sphis;
-    std::vector<std::shared_ptr<sddk::Wave_functions<double>>> cphis;
+    /// H*psi
+    std::vector<std::shared_ptr<wf::Wave_functions<double>>> hphis;
+    /// S*spi
+    std::vector<std::shared_ptr<wf::Wave_functions<double>>> sphis;
+    /// original wfct
+    std::vector<wf::Wave_functions<double>*> cphis;
     double etot{std::nan("1")};
 };
+
 
 } // namespace sirius
 

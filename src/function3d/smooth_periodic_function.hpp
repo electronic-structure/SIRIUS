@@ -52,16 +52,16 @@ class Smooth_periodic_function
     spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition const* gvecp_{nullptr};
+    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
 
     /// Function on the regular real-space grid.
     sddk::mdarray<T, 1> f_rg_;
 
     /// Local set of plane-wave expansion coefficients.
-    sddk::mdarray<complex_type<T>, 1> f_pw_local_;
+    sddk::mdarray<std::complex<T>, 1> f_pw_local_;
 
     /// Storage of the PW coefficients for the FFT transformation.
-    sddk::mdarray<complex_type<T>, 1> f_pw_fft_;
+    sddk::mdarray<std::complex<T>, 1> f_pw_fft_;
 
     /// Gather plane-wave coefficients for the subsequent FFT call.
     inline void gather_f_pw_fft()
@@ -79,9 +79,9 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
+    Smooth_periodic_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
-        , gvecp_(&gvecp__)
+        , gvecp_(gvecp__)
     {
         if (mp__) {
             f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
@@ -92,25 +92,25 @@ class Smooth_periodic_function
         f_rg_.zero();
 
         if (mp__) {
-            f_pw_local_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec().count(), *mp__,
+            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), *mp__,
                                                            "Smooth_periodic_function.f_pw_local_");
         } else {
-            f_pw_local_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
+            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
                                                        "Smooth_periodic_function.f_pw_local_");
         }
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
             if (mp__) {
-                f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec_count_fft(), *mp__,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), *mp__,
                                                              "Smooth_periodic_function.f_pw_fft_");
             } else {
-                f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
                                                              "Smooth_periodic_function.f_pw_fft_");
             }
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
-            f_pw_fft_ = sddk::mdarray<complex_type<T>, 1>(&f_pw_local_[0], gvecp_->gvec().count());
+            f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(&f_pw_local_[0], gvecp_->gvec().count());
         }
     }
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
@@ -142,35 +142,35 @@ class Smooth_periodic_function
         return f_rg_;
     }
 
-    inline complex_type<T>& f_pw_local(int ig__)
+    inline std::complex<T>& f_pw_local(int ig__)
     {
         return f_pw_local_(ig__);
     }
 
-    inline complex_type<T> const& f_pw_local(int ig__) const
+    inline std::complex<T> const& f_pw_local(int ig__) const
     {
         return f_pw_local_(ig__);
     }
 
-    inline sddk::mdarray<complex_type<T>, 1>& f_pw_local()
+    inline sddk::mdarray<std::complex<T>, 1>& f_pw_local()
     {
       return f_pw_local_;
     }
 
-    inline const sddk::mdarray<complex_type<T>, 1>& f_pw_local() const
+    inline const sddk::mdarray<std::complex<T>, 1>& f_pw_local() const
     {
       return f_pw_local_;
     }
 
-    inline complex_type<T>& f_pw_fft(int ig__)
+    inline std::complex<T>& f_pw_fft(int ig__)
     {
         return f_pw_fft_(ig__);
     }
 
     /// Return plane-wave coefficient for G=0 component.
-    inline complex_type<T> f_0() const
+    inline std::complex<T> f_0() const
     {
-        complex_type<T> z;
+        std::complex<T> z;
         if (gvecp_->gvec().comm().rank() == 0) {
             z = f_pw_local_(0);
         }
@@ -196,9 +196,9 @@ class Smooth_periodic_function
         return gvecp_->gvec();
     }
 
-    sddk::Gvec_partition const& gvec_partition() const
+    auto gvec_fft() const
     {
-        return *gvecp_;
+        return gvecp_;
     }
 
     void fft_transform(int direction__)
@@ -231,7 +231,7 @@ class Smooth_periodic_function
                     int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
                     int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
-                                count * sizeof(complex_type<T>));
+                                count * sizeof(std::complex<T>));
                 }
                 break;
             }
@@ -241,17 +241,17 @@ class Smooth_periodic_function
         }
     }
 
-    inline std::vector<complex_type<T>> gather_f_pw()
+    inline std::vector<std::complex<T>> gather_f_pw()
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
-        std::vector<complex_type<T>> fpw(gvecp_->gvec().num_gvec());
+        std::vector<std::complex<T>> fpw(gvecp_->gvec().num_gvec());
         gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().count(), gvec().offset());
 
         return fpw;
     }
 
-    inline void scatter_f_pw(std::vector<complex_type<T>> const& f_pw__)
+    inline void scatter_f_pw(std::vector<std::complex<T>> const& f_pw__)
     {
         std::copy(&f_pw__[gvecp_->gvec().offset()], &f_pw__[gvecp_->gvec().offset()] + gvecp_->gvec().count(),
                   &f_pw_local_(0));
@@ -272,9 +272,9 @@ class Smooth_periodic_function
         return cs;
     }
 
-    inline complex_type<T> checksum_pw() const
+    inline auto checksum_pw() const
     {
-        complex_type<T> cs = this->f_pw_local_.checksum();
+        auto cs = this->f_pw_local_.checksum();
         this->gvecp_->gvec().comm().allreduce(&cs, 1);
         return cs;
     }
@@ -317,7 +317,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    sddk::Gvec_partition const* gvecp_{nullptr};
+    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
 
     Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
@@ -328,9 +328,9 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, sddk::Gvec_partition const& gvecp__)
+    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__)
         : spfft_(&spfft__)
-        , gvecp_(&gvecp__)
+        , gvecp_(gvecp__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
@@ -345,11 +345,10 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
         return *spfft_;
     }
 
-
-    sddk::Gvec_partition const& gvec_partition() const
+    auto gvec_fft() const
     {
         assert(gvecp_ != nullptr);
-        return *gvecp_;
+        return gvecp_;
     }
 };
 
@@ -361,7 +360,7 @@ inline Smooth_periodic_vector_function<T> gradient(Smooth_periodic_function<T>& 
 {
     PROFILE("sirius::gradient");
 
-    Smooth_periodic_vector_function<T> g(f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_vector_function<T> g(f__.spfft(), f__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -381,7 +380,7 @@ inline Smooth_periodic_function<T> divergence(Smooth_periodic_vector_function<T>
     PROFILE("sirius::divergence");
 
     /* resulting scalar function */
-    Smooth_periodic_function<T> f(g__.spfft(), g__.gvec_partition());
+    Smooth_periodic_function<T> f(g__.spfft(), g__.gvec_fft());
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
@@ -399,7 +398,7 @@ inline Smooth_periodic_function<T> laplacian(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::laplacian");
 
-    Smooth_periodic_function<T> g(f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_function<T> g(f__.spfft(), f__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -417,7 +416,7 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
 {
     PROFILE("sirius::dot");
 
-    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_partition());
+    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_fft());
 
     #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {

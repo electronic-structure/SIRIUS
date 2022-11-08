@@ -34,65 +34,46 @@
 #include "occupation_matrix.hpp"
 
 #if defined(SIRIUS_GPU)
-extern "C" void update_density_rg_1_real_gpu_float(int size__,
-                                                   float const* psi_rg__,
-                                                   float wt__,
-                                                   float* density_rg__);
+extern "C" {
 
-extern "C" void update_density_rg_1_real_gpu_double(int size__,
-                                                    double const* psi_rg__,
-                                                    double wt__,
-                                                    double* density_rg__);
+void
+update_density_rg_1_real_gpu_float(int size__, float const* psi_rg__, float wt__, float* density_rg__);
 
-extern "C" void update_density_rg_1_complex_gpu_float(int size__,
-                                                      std::complex<float> const* psi_rg__,
-                                                      float wt__,
-                                                      float* density_rg__);
+void
+update_density_rg_1_real_gpu_double(int size__, double const* psi_rg__, double wt__, double* density_rg__);
 
-extern "C" void update_density_rg_1_complex_gpu_double(int size__,
-                                                       double_complex const* psi_rg__,
-                                                       double wt__,
-                                                       double* density_rg__);
+void
+update_density_rg_1_complex_gpu_float(int size__, std::complex<float> const* psi_rg__, float wt__,
+                                           float* density_rg__);
 
-extern "C" void update_density_rg_2_gpu_float(int                        size__,
-                                              std::complex<float> const* psi_rg_up__,
-                                              std::complex<float> const* psi_rg_dn__,
-                                              float                      wt__,
-                                              float*                     density_x_rg__,
-                                              float*                     density_y_rg__);
+void
+update_density_rg_1_complex_gpu_double(int size__, double_complex const* psi_rg__, double wt__, double* density_rg__);
 
-extern "C" void update_density_rg_2_gpu_double(int                   size__,
-                                               double_complex const* psi_rg_up__,
-                                               double_complex const* psi_rg_dn__,
-                                               double                wt__,
-                                               double*               density_x_rg__,
-                                               double*               density_y_rg__);
+void
+update_density_rg_2_gpu_float(int size__, std::complex<float> const* psi_rg_up__, std::complex<float> const* psi_rg_dn__,
+                                   float wt__, float* density_x_rg__, float* density_y_rg__);
 
-extern "C" void generate_dm_pw_gpu(int           num_atoms__,
-                                   int           num_gvec_loc__,
-                                   int           num_beta__,
-                                   double const* atom_pos__,
-                                   int const*    gvx__,
-                                   int const*    gvy__,
-                                   int const*    gvz__,
-                                   double*       phase_factors__,
-                                   double const* dm__,
-                                   double*       dm_pw__,
-                                   int           stream_id__);
+void
+update_density_rg_2_gpu_double(int size__, double_complex const* psi_rg_up__, double_complex const* psi_rg_dn__,
+                                    double wt__, double* density_x_rg__, double* density_y_rg__);
 
-extern "C" void sum_q_pw_dm_pw_gpu(int             num_gvec_loc__,
-                                   int             nbf__,
-                                   double const*   q_pw__,
-                                   double const*   dm_pw__,
-                                   double const*   sym_weight__,
-                                   double_complex* rho_pw__,
-                                   int             stream_id__);
+void
+generate_dm_pw_gpu(int num_atoms__, int num_gvec_loc__, int num_beta__, double const* atom_pos__,
+                        int const* gvx__, int const* gvy__, int const* gvz__, double* phase_factors__,
+                        double const* dm__, double* dm_pw__, int stream_id__);
+
+void
+sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, double const* dm_pw__,
+                        double const* sym_weight__, double_complex* rho_pw__, int stream_id__);
+
+}
 #endif
 
 namespace sirius {
 
 /// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
-inline std::pair<double, double> get_rho_up_dn(int num_mag_dims__, double rho__, vector3d<double> mag__)
+inline std::pair<double, double>
+get_rho_up_dn(int num_mag_dims__, double rho__, vector3d<double> mag__)
 {
     if (rho__ < 0.0) {
         return std::make_pair<double, double>(0, 0);
@@ -276,19 +257,16 @@ class Density : public Field4D
         \f]
         Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is
         the occupancy operator written in spectral representation.
+
+        \tparam T  Precision type of wave-functions.
+        \tparam F  Type of the wave-functions inner product (used in pp-pw).
      */
-    template <typename T>
-    void add_k_point_contribution_dm(K_point<real_type<T>>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
-
-    template <typename T>
-    void add_k_point_contribution_dm_real(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
-
-    template <typename T>
-    void add_k_point_contribution_dm_complex(K_point<T>* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    template <typename T, typename F>
+    void add_k_point_contribution_dm(K_point<T>& kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
-    void add_k_point_contribution_rg(K_point<T>* kp__);
+    void add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();
@@ -902,9 +880,9 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     int num_points = ctx.spfft<double>().local_slice_size();
 
     auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
     auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_partition()));
+            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};

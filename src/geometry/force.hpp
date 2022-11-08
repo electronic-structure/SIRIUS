@@ -74,8 +74,8 @@ class Force
 
     sddk::mdarray<double, 2> forces_total_;
 
-    template <typename T>
-    void add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const;
+    template <typename T, typename F>
+    void add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const;
 
     void symmetrize(sddk::mdarray<double, 2>& forces__) const;
 

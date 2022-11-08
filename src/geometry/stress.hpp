@@ -215,7 +215,7 @@ class Stress
      *
      * \tparam T  One of float, double, complex<float> or complex<double> types for generic or Gamma point case.
      */
-    template <typename T>
+    template <typename T, typename F>
     void calc_stress_nonloc_aux();
 
     void symmetrize(matrix3d<double>& mtrx__) const;

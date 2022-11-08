@@ -205,15 +205,15 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::
 
     switch (processing_unit()) {
         case sddk::device_t::CPU: {
-            auto& mp      = this->mem_pool(sddk::memory_t::host);
+            auto& mp      = get_memory_pool(sddk::memory_t::host);
             phase_factors = sddk::matrix<double_complex>(ngv_loc, na_max, mp);
             zm            = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
             tmp           = sddk::matrix<double_complex>(lmmax, na_max, mp);
             break;
         }
         case sddk::device_t::GPU: {
-            auto& mp      = this->mem_pool(sddk::memory_t::host);
-            auto& mpd     = this->mem_pool(sddk::memory_t::device);
+            auto& mp      = get_memory_pool(sddk::memory_t::host);
+            auto& mpd     = get_memory_pool(sddk::memory_t::device);
             phase_factors = sddk::matrix<double_complex>(nullptr, ngv_loc, na_max);
             phase_factors.allocate(mpd);
             zm = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
@@ -338,7 +338,7 @@ Simulation_context::initialize()
         output_stream_ = &utils::null_stream__;
     }
 
-    auto verb_lvl = utils::get_env<int>("SIRIUS_VERBOSITY");
+    auto verb_lvl = env::get_value_ptr<int>("SIRIUS_VERBOSITY");
     if (verb_lvl) {
         this->verbosity(*verb_lvl);
     }
@@ -370,9 +370,9 @@ Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
+    auto print_mpi_layout = env::print_mpi_layout();
 
-    if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
+    if (verbosity() >= 3 || print_mpi_layout) {
         sddk::pstdout pout(comm());
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
@@ -393,58 +393,6 @@ Simulation_context::initialize()
         }
         case sddk::device_t::GPU: {
             host_memory_t_ = sddk::memory_t::host_pinned;
-            break;
-        }
-    }
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            preferred_memory_t_ = sddk::memory_t::host;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high") {
-                preferred_memory_t_ = sddk::memory_t::device;
-            }
-            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-                preferred_memory_t_ = sddk::memory_t::host_pinned;
-            }
-            break;
-        }
-    }
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            aux_preferred_memory_t_ = sddk::memory_t::host;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high" || cfg().control().memory_usage() == "medium") {
-                aux_preferred_memory_t_ = sddk::memory_t::device;
-            }
-            if (cfg().control().memory_usage() == "low") {
-                aux_preferred_memory_t_ = sddk::memory_t::host_pinned;
-            }
-            break;
-        }
-    }
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            blas_linalg_t_ = sddk::linalg_t::blas;
-            break;
-        }
-        case sddk::device_t::GPU: {
-            if (cfg().control().memory_usage() == "high") {
-                blas_linalg_t_ = sddk::linalg_t::gpublas;
-            }
-            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
-#if defined(SIRIUS_ROCM)
-                blas_linalg_t_ = sddk::linalg_t::gpublas;
-#else
-                blas_linalg_t_ = sddk::linalg_t::cublasxt;
-#endif
-            }
             break;
         }
     }
@@ -634,17 +582,17 @@ Simulation_context::initialize()
         }
     }
 
-    auto pstr = utils::get_env<std::string>("SIRIUS_EV_SOLVER");
-    if (pstr) {
-        evsn[0] = *pstr;
-        evsn[1] = *pstr;
+    auto ev_str = env::get_ev_solver();
+    if (ev_str.size()) {
+        evsn[0] = ev_str;
+        evsn[1] = ev_str;
     }
 
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name(), &mem_pool(sddk::memory_t::device));
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name(), &mem_pool(sddk::memory_t::device));
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name());
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name());
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -702,8 +650,8 @@ Simulation_context::initialize()
         print_info(this->out());
     }
 
-    auto pcs = utils::get_env<int>("SIRIUS_PRINT_CHECKSUM");
-    if (pcs && *pcs) {
+    auto pcs = env::print_checksum();
+    if (pcs) {
         this->cfg().control().print_checksum(true);
     }
 
@@ -1020,34 +968,34 @@ Simulation_context::update()
         /* create list of coarse G-vectors */
         gvec_coarse_ = std::make_unique<sddk::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
         /* create FFT friendly partiton */
-        gvec_coarse_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_coarse_, comm_fft_coarse(),
+        gvec_coarse_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
                 comm_ortho_fft_coarse());
 
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
             spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #ifdef USE_FP32
         spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(new spfft::GridFloat(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_partition_->zcol_count_fft(),
+            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
             spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto const& gv = gvec_coarse_partition_->gvec_array();
+        auto const& gv = gvec_coarse_fft_->gvec_array();
 
         /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #ifdef USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #endif
     } else {
@@ -1056,32 +1004,32 @@ Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_           = std::make_unique<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
-        gvec_partition_ = std::make_unique<sddk::Gvec_partition>(*gvec_, comm_fft(), comm_ortho_fft());
+        gvec_     = std::make_shared<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
+        gvec_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_, comm_fft(), comm_ortho_fft());
 
         auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
-                            gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                            gvec_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
-            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_partition_->zcol_count_fft(),
+            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count_fft(),
                                  spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-        auto const& gv = gvec_partition_->gvec_array();
+        auto const& gv = gvec_fft_->gvec_array();
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            spl_z.local_size(), gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
@@ -1146,7 +1094,9 @@ Simulation_context::update()
         }
     }
 
-    init_atoms_to_grid_idx(cfg().control().rmt_max());
+    if (unit_cell().num_atoms()) {
+        init_atoms_to_grid_idx(cfg().control().rmt_max());
+    }
 
     std::pair<int, int> limits(0, 0);
     for (int x : {0, 1, 2}) {
@@ -1300,12 +1250,12 @@ Simulation_context::update()
         sddk::memory_pool* mpd{nullptr};
         switch (this->processing_unit()) {
             case sddk::device_t::CPU: {
-                mp = &mem_pool(sddk::memory_t::host);
+                mp = &get_memory_pool(sddk::memory_t::host);
                 break;
             }
             case sddk::device_t::GPU: {
-                mp  = &mem_pool(sddk::memory_t::host_pinned);
-                mpd = &mem_pool(sddk::memory_t::device);
+                mp  = &get_memory_pool(sddk::memory_t::host_pinned);
+                mpd = &get_memory_pool(sddk::memory_t::device);
                 break;
             }
         }
@@ -1324,17 +1274,17 @@ Simulation_context::update()
         init_step_function();
     }
 
-    auto save_config = utils::get_env<std::string>("SIRIUS_SAVE_CONFIG");
-    if (save_config && this->comm().rank() == 0) {
+    auto save_config = env::save_config();
+    if (save_config.size() && this->comm().rank() == 0) {
         std::string name;
-        if (*save_config == "all") {
+        if (save_config == "all") {
             static int count{0};
             std::stringstream s;
             s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
             name = s.str();
             count++;
         } else {
-            name = *save_config;
+            name = save_config;
         }
         std::ofstream fi(name, std::ofstream::out | std::ofstream::trunc);
         auto conf_dict = this->serialize();
@@ -1414,18 +1364,18 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<double_compl
 void
 Simulation_context::print_memory_usage(const char* file__, int line__)
 {
-    auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
-    if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || (pmu && *pmu))) {
+    auto pmu = env::print_memory_usage();
+    if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || pmu)) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};
-        std::vector<sddk::memory_pool*> mp    = {&this->mem_pool(sddk::memory_t::host)};
+        std::vector<sddk::memory_pool*> mp    = {&get_memory_pool(sddk::memory_t::host)};
         int np{1};
         if (processing_unit() == sddk::device_t::GPU) {
             labels.push_back("host pinned");
             labels.push_back("device");
-            mp.push_back(&this->mem_pool(sddk::memory_t::host_pinned));
-            mp.push_back(&this->mem_pool(sddk::memory_t::device));
+            mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
+            mp.push_back(&get_memory_pool(sddk::memory_t::device));
             np = 3;
         }
         std::printf("memory pools\n");
@@ -1532,8 +1482,8 @@ Simulation_context::init_step_function()
         }
         theta_pw_[0] += 1.0;
 
-        std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-        this->gvec_partition().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
+        std::vector<double_complex> ftmp(gvec_fft().gvec_count_fft());
+        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
         spfft_output(spfft<double>(), theta_ptr);
@@ -1541,7 +1491,7 @@ Simulation_context::init_step_function()
         std::stringstream s;
         s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
           << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-          << "gvec_partition().gvec_count_fft() = " << gvec_partition().gvec_count_fft();
+          << "gvec_fft().gvec_count_fft() = " << gvec_fft().gvec_count_fft();
         RTE_THROW(s);
     }
 
