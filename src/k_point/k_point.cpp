@@ -400,6 +400,7 @@ K_point<T>::update()
     PROFILE("sirius::K_point::update");
 
     gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
+    gkvec_partition_->update_gkvec_cart();
 
     if (ctx_.full_potential()) {
         if (ctx_.cfg().iterative_solver().type() == "exact") {
@@ -414,8 +415,8 @@ K_point<T>::update()
         beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
-            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
-            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
+            beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, *gkvec_row_);
+            beta_projectors_col_ = std::make_unique<Beta_projectors<T>>(ctx_, *gkvec_col_);
         }
 
         if (ctx_.hubbard_correction()) {

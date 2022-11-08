@@ -621,13 +621,7 @@ void Gvec_partition::pile_gvec()
             }
         }
     }
-    for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
-        auto G = vector3d<int>(&gvec_array_(0, ig));
-        auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
-        for (int x : {0, 1, 2}) {
-            gkvec_cart_array_(x, ig) = Gkc[x];
-        }
-    }
+    update_gkvec_cart();
 }
 
 Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__)

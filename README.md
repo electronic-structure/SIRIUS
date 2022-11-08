@@ -6,9 +6,8 @@
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 [![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
-[![Verification tests master](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/badges/master/pipeline.svg?key_text=master)](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/-/commits/master)
-[![Verification tests develop](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/badges/develop/pipeline.svg?key_text=develop)](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/-/commits/develop)
-
+[![Verification tests master](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/badges/master/pipeline.svg?key_text=master)](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/-/commits/master)
+[![Verification tests develop](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/badges/master/pipeline.svg?key_text=develop)](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/-/commits/develop)
 
 ## Table of contents
 * [Introduction](#introduction)
