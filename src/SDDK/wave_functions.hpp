@@ -1937,9 +1937,11 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //        }
 //== //    }
     if (pp) {
+        comm.barrier();
         auto t = utils::time_interval(t0);
         if (comm.rank() == 0) {
-            RTE_OUT(std::cout) << "effective performance : " << gflops / t << " GFlop/s/rank" << std::endl;
+            RTE_OUT(std::cout) << "effective performance : " << gflops / t << " GFlop/s/rank, "
+                               << gflops * comm.size() / t << " GFlop/s" << std::endl;
         }
     }
 
