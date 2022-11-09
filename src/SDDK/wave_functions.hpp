@@ -1843,14 +1843,14 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     if (sddk::linalg(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
         RTE_THROW("error in inversion");
     }
-    if (is_device_memory(mem__)) {
-        o__.copy_to(mem__, 0, 0, n, n);
-    }
     PROFILE_STOP("wf::orthogonalize|tmtrx");
 
     /* single MPI rank and precision types of wave-functions and transformation matrices match */
     if (o__.comm().size() == 1 && std::is_same<T, real_type<F>>::value) {
         PROFILE_START("wf::orthogonalize|trans");
+        if (is_device_memory(mem__)) {
+            o__.copy_to(mem__, 0, 0, n, n);
+        }
         int sid{0};
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             /* multiplication by triangular matrix */
