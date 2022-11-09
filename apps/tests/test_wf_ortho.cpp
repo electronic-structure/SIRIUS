@@ -51,6 +51,9 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
     auto mg2 = tmp.memory_guard(mem__, wf::copy_to::none);
 
     dmatrix<F> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+    if (is_device_memory(mem__)) {
+        ovlp.allocate(mem__);
+    }
 
     orthogonalize(spla_ctx, mem__, sr, wf::band_range(0, 0), wf::band_range(0, num_bands__), phi, phi,
         {&phi}, ovlp, tmp, true);
