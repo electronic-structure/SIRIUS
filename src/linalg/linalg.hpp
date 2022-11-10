@@ -32,10 +32,11 @@
 #ifdef SIRIUS_MAGMA
 #include "gpu/magma.hpp"
 #endif
+#include "gpu/acc.hpp"
+#include "gpu/cusolver.hpp"
 #include "blas_lapack.h"
 #include "memory.hpp"
 #include "dmatrix.hpp"
-#include "gpu/acc.hpp"
 #include "linalg_spla.hpp"
 
 namespace la {
@@ -1015,6 +1016,13 @@ inline int wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #endif
             break;
         }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::potrf<ftn_double>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -1053,6 +1061,13 @@ inline int wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::potrf<ftn_single>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1093,6 +1108,13 @@ inline int wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #endif
             break;
         }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::potrf<ftn_double_complex>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -1131,6 +1153,13 @@ inline int wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
             throw std::runtime_error("not compiled with magma");
 #endif
             break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::potrf<ftn_complex>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1171,6 +1200,13 @@ inline int wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #endif
             break;
         }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::trtri<ftn_double>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -1209,6 +1245,13 @@ inline int wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
             throw std::runtime_error("not compiled with magma");
 #endif
             break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::trtri<ftn_single>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1249,6 +1292,13 @@ inline int wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #endif
             break;
         }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::trtri<ftn_double_complex>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -1287,6 +1337,13 @@ inline int wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
             throw std::runtime_error("not compiled with magma");
 #endif
             break;
+        }
+        case linalg_t::gpublas: {
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
+            cusolver::trtri<ftn_complex>(n, A, lda);
+#else
+            throw std::runtime_error("not compiled with CUDA");
+#endif
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
