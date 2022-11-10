@@ -106,8 +106,8 @@ int potrf(int n__, void* A__, int lda__)
         (cusolver_handle(), NULL, CUBLAS_FILL_MODE_UPPER, n, type_wrapper<T>::type, A__, lda,
          type_wrapper<T>::type, &d_lwork, &h_lwork));
 
-    auto h_work = get_memory_pool(sddk::memory_t::host).get_unique_ptr<char>(h_lwork + 1);
-    auto d_work = get_memory_pool(sddk::memory_t::device).get_unique_ptr<char>(d_lwork);
+    auto h_work = get_memory_pool(sddk::memory_t::host).get_unique_ptr<T>(h_lwork + 1);
+    auto d_work = get_memory_pool(sddk::memory_t::device).get_unique_ptr<T>(d_lwork);
     sddk::mdarray<int, 1> info(1);
     info.allocate(get_memory_pool(sddk::memory_t::device));
 

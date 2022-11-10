@@ -1024,6 +1024,7 @@ inline int wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1070,6 +1071,7 @@ inline int wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1116,6 +1118,7 @@ inline int wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1162,6 +1165,7 @@ inline int wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1208,6 +1212,7 @@ inline int wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1254,6 +1259,7 @@ inline int wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1300,6 +1306,7 @@ inline int wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -1346,6 +1353,7 @@ inline int wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
 #else
             throw std::runtime_error("not compiled with CUDA");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
