@@ -1829,12 +1829,20 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     auto la = la::lib_t::lapack;
     auto la1 = la::lib_t::blas;
     auto mem = sddk::memory_t::host;
+    /* if matrix is distributed, we use ScaLAPACK for Cholesky factorization */
     if (o__.comm().size() > 1) {
         la = la::lib_t::scalapack;
     }
     if (mem__ == sddk::memory_t::device) {
         la1 = la::lib_t::gpublas;
     }
+    //if (is_device_memory(mem__)) {
+    //    mem = mem__;
+    //    if (o__.comm().size() == 1) {
+    //        la = sddk::linalg_t::gpublas;
+    //        o__.copy_to(mem__, 0, 0, n, n);
+    //    }
+    //}
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
     PROFILE_START("wf::orthogonalize|tmtrx");
@@ -1859,9 +1867,9 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     /* single MPI rank and precision types of wave-functions and transformation matrices match */
     if (o__.comm().size() == 1 && std::is_same<T, real_type<F>>::value) {
         PROFILE_START("wf::orthogonalize|trans");
-        if (is_device_memory(mem__)) {
-            o__.copy_to(mem__, 0, 0, n, n);
-        }
+        //if (is_device_memory(mem__)) {
+        //    o__.copy_to(mem__, 0, 0, n, n);
+        //}
         int sid{0};
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             /* multiplication by triangular matrix */
