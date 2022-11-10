@@ -29,7 +29,7 @@ if(USE_MKL)
   target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
 endif()
 
-set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
 
 # set relative RPATH
 if(isSystemDir STREQUAL "-1")

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      SPEC_GCC: sirius@develop %gcc +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      SPEC_GCC: sirius@develop %gcc +python +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
