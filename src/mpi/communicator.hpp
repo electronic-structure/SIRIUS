@@ -58,7 +58,7 @@ template <mpi_op_t op>
 struct mpi_op_wrapper;
 
 template <>
-struct mpi_op_wrapper<mpi_op_t::sum>
+struct mpi_op_wrapper<mpi_op_t::sum> // TODO: should be typedef, not a static function
 {
     static MPI_Op kind()
     {
