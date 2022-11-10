@@ -139,7 +139,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     PROFILE("sirius::davidson");
 
     auto& ctx = Hk__.H0().ctx();
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, out__);
 
     auto pcs = env::print_checksum();
 
@@ -265,7 +265,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         }
     }
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, out__);
 
     /* get diagonal elements for preconditioning */
     auto h_o_diag = (ctx.full_potential()) ?
@@ -325,7 +325,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         }
         auto sr = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispin_step);
 
-        ctx.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(__FILE__, __LINE__, out__);
 
         /* converged vectors */
         int num_locked{0};
@@ -816,12 +816,12 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             result.niter++;
 
         } /* loop over iterative steps k */
-        ctx.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(__FILE__, __LINE__, out__);
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
 
     mg.clear();
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, out__);
     return result;
 }
 

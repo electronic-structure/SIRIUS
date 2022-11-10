@@ -155,7 +155,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
     if (ctx_.verbosity() > 0) {
         this->print_info();
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
     this->initialized_ = true;
 }
 

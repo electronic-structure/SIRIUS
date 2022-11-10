@@ -1418,7 +1418,7 @@ Density::generate_rho_aug()
         sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
                                                get_memory_pool(sddk::memory_t::host));
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
@@ -1432,7 +1432,7 @@ Density::generate_rho_aug()
             }
         }
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
         for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
             int g_begin = spl_ngv_loc.global_index(0, ib);

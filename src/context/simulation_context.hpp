@@ -55,7 +55,47 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
 namespace sirius {
 
 /// Utility function to print a CPU and GPU memory utilization.
-void print_memory_usage(const char* file__, int line__);
+/** Print information about raw memory and memory pools. */
+template <typename OUT>
+void
+print_memory_usage(const char* file__, int line__, OUT&& out__)
+{
+    if (!env::print_memory_usage()) {
+        return;
+    }
+
+    size_t VmRSS, VmHWM;
+    utils::get_proc_status(&VmHWM, &VmRSS);
+
+    std::stringstream s;
+    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    out__ << "[" << s.str() << " at line " << line__ << " of file " << std::string(file__) << "] "
+          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
+    }
+    out__ << std::endl;
+
+    std::vector<std::string> labels = {"host"};
+    std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    int np{1};
+    if (acc::num_devices() > 0) {
+        labels.push_back("host pinned");
+        labels.push_back("device");
+        mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
+        mp.push_back(&get_memory_pool(sddk::memory_t::device));
+        np = 3;
+    }
+    for (int i = 0; i < np; i++) {
+        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
+              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
+              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
+              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+    }
+}
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
@@ -359,7 +399,7 @@ class Simulation_context : public Simulation_parameters
     ~Simulation_context()
     {
         if (!comm().is_finalized()) {
-            this->print_memory_usage(__FILE__, __LINE__);
+            print_memory_usage(__FILE__, __LINE__, this->out());
         }
     }
 
@@ -369,7 +409,7 @@ class Simulation_context : public Simulation_parameters
     void print_info(std::ostream& out__) const;
 
     /// Print the memory usage.
-    void print_memory_usage(const char* file__, int line__);
+    //void print_memory_usage(const char* file__, int line__);
 
     /// Print message from the root rank.
     template <typename... Args>

@@ -36,26 +36,6 @@
 
 namespace sirius {
 
-void
-print_memory_usage(const char* file__, int line__)
-{
-    size_t VmRSS, VmHWM;
-    utils::get_proc_status(&VmHWM, &VmRSS);
-
-    std::vector<char> str(2048);
-
-    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", sddk::Communicator::world().rank(), line__, file__);
-
-    n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
-                  static_cast<int>(VmRSS >> 20));
-
-    if (acc::num_devices() > 0) {
-        size_t gpu_mem = acc::get_free_mem();
-        n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
-    }
-    std::printf("%s\n", &str[0]);
-}
-
 double
 unit_step_function_form_factors(double R__, double g__)
 {
@@ -644,7 +624,7 @@ Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    this->print_memory_usage(__FILE__, __LINE__);
+    ::sirius::print_memory_usage(__FILE__, __LINE__, this->out());
 
     if (verbosity() >= 1 && comm().rank() == 0) {
         print_info(this->out());
@@ -821,38 +801,43 @@ Simulation_context::print_info(std::ostream& out__) const
            << spg_get_micro_version() << std::endl;
     }
     {
+        rte::rte_ostream os(out__, "info");
         unsigned int vmajor, vminor, vmicro;
         H5get_libversion(&vmajor, &vminor, &vmicro);
-        std::printf("HDF5 version: %d.%d.%d\n", vmajor, vminor, vmicro);
+        os << "HDF5 version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
     }
     {
+        rte::rte_ostream os(out__, "info");
         int vmajor, vminor, vmicro;
         xc_version(&vmajor, &vminor, &vmicro);
-        std::printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
+        os << "Libxc version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
     }
 
-    int i{1};
-    std::printf("\n");
-    std::printf("XC functionals\n");
-    std::printf("==============\n");
-    for (auto& xc_label : xc_functionals()) {
-        XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
+    {
+        rte::rte_ostream os(out__, "info");
+        int i{1};
+        os << std::endl << "XC functionals" << std::endl
+           << utils::hbar(14, '=') << std::endl;
+        for (auto& xc_label : xc_functionals()) {
+            XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(SIRIUS_USE_VDWXC)
-        if (xc.is_vdw()) {
-            std::printf("Van der Walls functional\n");
-            std::printf("%s\n", xc.refs().c_str());
-            continue;
-        }
+            if (xc.is_vdw()) {
+                os << "Van der Walls functional" << std::endl
+                   << xc.refs() << std::endl;
+                continue;
+            }
 #endif
-        std::printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
-        std::printf("%s\n", xc.refs().c_str());
-        i++;
+            os << i << ") " << xc_label << " : " << xc.name() << std::endl
+               << xc.refs() << std::endl;
+            i++;
+        }
     }
 
     if (!full_potential()) {
-        std::printf("\n");
-        std::printf("memory consumption\n");
-        std::printf("==================\n");
+        rte::rte_ostream os(out__, "info");
+        os << std::endl
+           << "memory consumption" << std::endl
+           << utils::hbar(18, '=') << std::endl;
         /* volume of the Brillouin zone */
         double v0 = std::pow(twopi, 3) / unit_cell().omega();
         /* volume of the cutoff sphere for wave-functions */
@@ -876,12 +861,12 @@ Simulation_context::print_info(std::ostream& out__) const
         if (cfg().control().reduce_gvec()) {
             ngc /= 2;
         }
-        std::printf("approximate number of G+k vectors        : %li\n", ngk);
-        std::printf("approximate number of G vectors          : %li\n", ng);
-        std::printf("approximate number of coarse G vectors   : %li\n", ngc);
+        os << "approximate number of G+k vectors        : " << ngk << std::endl
+           << "approximate number of G vectors          : " << ng << std::endl
+           << "approximate number of coarse G vectors   : " << ngc << std::endl;
         size_t wf_size = ngk * num_bands() * num_spins() * 16;
-        std::printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
-                    static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
+        os << "approximate size of wave-functions for each k-point: " << static_cast<int>(wf_size >> 20) << " Mb,  "
+           << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
@@ -901,8 +886,8 @@ Simulation_context::print_info(std::ostream& out__) const
         size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
                            num_bands() * num_sc + num_bands()) *
                           ngk * sizeof(double_complex);
-        std::printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
-                    static_cast<int>((tot_size / comm_band().size()) >> 20));
+        os << "approximate memory consumption of Davidson solver: "
+           << static_cast<int>((tot_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
         if (unit_cell().augment()) {
             /* approximate size of local fraction of G vectors */
@@ -931,8 +916,8 @@ Simulation_context::print_info(std::ostream& out__) const
             size2        = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
-            std::printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
-                        static_cast<int>(size_aug >> 20));
+            os << "approximate memory consumption of charge density augmentation: "
+               <<  static_cast<int>(size_aug >> 20) << " Mb/rank" << std::endl;
         }
         /* FFT buffers of fine and coarse meshes */
         size_t size_fft = spfft<double>().local_slice_size() + spfft_coarse<double>().local_slice_size();
@@ -940,7 +925,8 @@ Simulation_context::print_info(std::ostream& out__) const
         if (!gamma_point()) {
             size_fft *= 2;
         }
-        std::printf("approximate memory consumption of FFT transforms: %i Mb/rank\n", static_cast<int>(size_fft >> 20));
+        os << "approximate memory consumption of FFT transforms: "
+           << static_cast<int>(size_fft >> 20) << " Mb/rank" << std::endl;
     }
 }
 
@@ -1357,33 +1343,6 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<double_compl
                                        phase_factors__.at(sddk::memory_t::device));
 #endif
             break;
-        }
-    }
-}
-
-void
-Simulation_context::print_memory_usage(const char* file__, int line__)
-{
-    auto pmu = env::print_memory_usage();
-    if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || pmu)) {
-        sirius::print_memory_usage(file__, line__);
-
-        std::vector<std::string> labels = {"host"};
-        std::vector<sddk::memory_pool*> mp    = {&get_memory_pool(sddk::memory_t::host)};
-        int np{1};
-        if (processing_unit() == sddk::device_t::GPU) {
-            labels.push_back("host pinned");
-            labels.push_back("device");
-            mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
-            mp.push_back(&get_memory_pool(sddk::memory_t::device));
-            np = 3;
-        }
-        std::printf("memory pools\n");
-        std::printf("------------\n");
-        for (int i = 0; i < np; i++) {
-            std::printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
-                        labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
-                        mp[i]->num_stored_ptr());
         }
     }
 }

@@ -30,7 +30,7 @@ template <typename T>
 void
 Band::solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const
 {
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.cfg().iterative_solver();
@@ -49,7 +49,7 @@ Band::solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const
         throw std::runtime_error("not implemented");
         //diag_full_potential_single_variation();
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 }
 
 template
@@ -69,7 +69,7 @@ template <typename T, typename F>
 int
 Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const
 {
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     int niter{0};
 
@@ -118,7 +118,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
     //    check_wave_functions<T>(Hk__);
     //}
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     return niter;
 }
@@ -129,7 +129,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 {
     PROFILE("sirius::Band::solve");
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     double empy_tol{itsol_tol__};
     if (ctx_.cfg().iterative_solver().type() == "davidson") {
@@ -182,7 +182,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
             std::printf("\n");
         }
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 }
 
 template

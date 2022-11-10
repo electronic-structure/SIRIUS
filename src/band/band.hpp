@@ -227,7 +227,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     auto& mp = get_memory_pool(ctx.host_memory_t());
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx.out());
 
     /* initial basis functions */
     wf::Wave_functions<T> phi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
@@ -307,7 +307,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     std::vector<real_type<F>> eval(num_bands);
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx.out());
 
     auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
@@ -325,7 +325,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
         ovlp.allocate(mpd);
     }
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx.out());
 
     if (pcs) {
         for (int ispn = 0; ispn < num_sc; ispn++) {

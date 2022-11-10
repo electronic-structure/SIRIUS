@@ -350,7 +350,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     sddk::mdarray<std::complex<T>, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
     sddk::mdarray<std::complex<T>, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
 
-    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, H0_.ctx().out());
 
     h__.zero();
     o__.zero();

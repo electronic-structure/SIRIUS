@@ -89,11 +89,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         RTE_THROW("error in generalized eigen-value problem");
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
         h.deallocate(sddk::memory_t::device);
@@ -358,7 +358,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     //== if (ctx_.uj_correction())
     //== {
@@ -381,7 +381,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         mg.emplace_back(hpsi[i].memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device));
     }
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(__FILE__, __LINE__, ctx_.out());
 
     auto& std_solver = ctx_.std_evp_solver();
 
