@@ -474,12 +474,12 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
         // acc::sync_stream(stream_id(omp_get_max_threads()));
 
         if (H0_.ctx().cfg().control().print_checksum()) {
-            std::complex<T> z1 = alm_row.checksum();
-            std::complex<T> z2 = alm_col.checksum();
-            std::complex<T> z3 = halm_col.checksum();
-            utils::print_checksum("alm_row", z1);
-            utils::print_checksum("alm_col", z2);
-            utils::print_checksum("halm_col", z3);
+            auto z1 = alm_row.checksum();
+            auto z2 = alm_col.checksum();
+            auto z3 = halm_col.checksum();
+            utils::print_checksum("alm_row", z1, H0_.ctx().out());
+            utils::print_checksum("alm_col", z2, H0_.ctx().out());
+            utils::print_checksum("halm_col", z3, H0_.ctx().out());
         }
 
         sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,

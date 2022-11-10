@@ -93,29 +93,9 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 #define STOP() TERMINATE("terminated by request")
 
 template <typename T, typename OUT>
-inline void print_checksum(std::string label__, T cs__, OUT&& out__)
+inline void print_checksum(std::string label__, T value__, OUT&& out__)
 {
-    out__ << "checksum(" << label__ << ") : " << cs__ << std::endl;
-}
-
-inline void print_checksum(std::string label__, float cs__)
-{
-    std::printf("checksum(%s): %18.6f\n", label__.c_str(), cs__);
-}
-
-inline void print_checksum(std::string label__, double cs__)
-{
-    std::printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
-}
-
-inline void print_checksum(std::string label__, std::complex<float> cs__)
-{
-    std::printf("checksum(%s): %18.6f %18.6f\n", label__.c_str(), cs__.real(), cs__.imag());
-}
-
-inline void print_checksum(std::string label__, std::complex<double> cs__)
-{
-    std::printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+    out__ << "checksum(" << label__ << ") : " << value__ << std::endl;
 }
 
 inline void print_hash(std::string label__, unsigned long long int hash__)

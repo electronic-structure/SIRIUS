@@ -143,7 +143,7 @@ void Potential::generate_D_operator_matrix()
                     auto cs = veff_a.checksum();
                     std::stringstream s;
                     s << "Gvec_block_" << ib << "_veff_a";
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
                 sddk::linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
                                   &sddk::linalg_const<double>::one(),
@@ -184,7 +184,7 @@ void Potential::generate_D_operator_matrix()
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
             }
 

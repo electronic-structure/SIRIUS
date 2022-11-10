@@ -1473,10 +1473,8 @@ Simulation_context::init_step_function()
         double_complex z1 = theta_pw_.checksum();
         double d1         = theta_.checksum();
         sddk::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
-        if (comm().rank() == 0) {
-            utils::print_checksum("theta", d1);
-            utils::print_checksum("theta_pw", z1);
-        }
+        utils::print_checksum("theta", d1, this->out());
+        utils::print_checksum("theta_pw", z1, this->out());
     }
 }
 
