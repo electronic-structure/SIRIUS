@@ -184,7 +184,7 @@ inline double wtime()
 
 using time_point_t = std::chrono::high_resolution_clock::time_point;
 
-inline std::chrono::high_resolution_clock::time_point time_now()
+inline auto time_now()
 {
     return std::chrono::high_resolution_clock::now();
 }
