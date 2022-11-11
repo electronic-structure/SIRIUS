@@ -249,6 +249,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom_type", &Unit_cell::add_atom_type, py::return_value_policy::reference)
+        .def("add_atom", [](Unit_cell& obj, std::string& label, std::array<double, 3>& v) { obj.add_atom(label, v); })
         .def("add_atom", py::overload_cast<const std::string, vector3d<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
@@ -826,4 +827,3 @@ PYBIND11_MODULE(py_sirius, m)
     }
     /* sirius.smearing submodules (end) */
 }
-
