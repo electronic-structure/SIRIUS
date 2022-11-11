@@ -142,25 +142,26 @@ initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 PYBIND11_MODULE(py_sirius, m)
 {
     // this is needed to be able to pass MPI_Comm from Python->C++
-    if (import_mpi4py() < 0)
+    if (import_mpi4py() < 0) {
         return;
+    }
     // MPI_Init/Finalize
     int mpi_init_flag;
     MPI_Initialized(&mpi_init_flag);
     if (mpi_init_flag == true) {
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0)
-            std::cout << "loading SIRIUS python module, MPI already initialized"
-                      << "\n";
+        if (rank == 0) {
+            std::cout << "loading SIRIUS python module, MPI already initialized\n";
+        }
         sirius::initialize(false);
     } else {
         sirius::initialize(true);
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0)
-            std::cout << "loading SIRIUS python module, initialize MPI"
-                      << "\n";
+        if (rank == 0) {
+            std::cout << "loading SIRIUS python module, initialize MPI\n";
+       }
     }
     auto atexit = py::module::import("atexit");
     atexit.attr("register")(py::cpp_function([]() {
