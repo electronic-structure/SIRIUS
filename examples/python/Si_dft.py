@@ -26,8 +26,8 @@ def make_new_ctx(pw_cutoff, gk_cutoff):
 # add atom type
     ctx.unit_cell().add_atom_type('Si','Si.json')
 # add atoms
-    ctx.unit_cell().add_atom('Si',sirius.vector3d_double([0.0,0.0,0.0]))
-    ctx.unit_cell().add_atom('Si',[0.25,0.25,0.25])
+    ctx.unit_cell().add_atom('Si', [0.0,0.0,0.0])
+    ctx.unit_cell().add_atom('Si', [0.25,0.25,0.25])
 # intialize and return simulation context
     ctx.initialize()
     return ctx
@@ -40,7 +40,7 @@ def main():
     kgrid = sirius.K_point_set(ctx, [k,k,k], [0,0,0], True)
     dft = sirius.DFT_ground_state(kgrid)
     dft.initial_state()
-    result = dft.find(1e-10, 1e-8, 1e-2, 100, False)
+    result = dft.find(1e-6, 1e-6, 1e-2, 100, False)
     print(json.dumps(result, indent=2))
 
 
