@@ -493,7 +493,7 @@ class Wave_functions_base
     allocate(sddk::memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].allocate(mem__);
+            data_[s].allocate(get_memory_pool(mem__));
         }
     }
 

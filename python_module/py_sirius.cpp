@@ -15,7 +15,6 @@
 #include <mpi.h>
 
 #include "utils/json.hpp"
-// #include "unit_cell/free_atom.hpp"
 #include "dft/energy.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
@@ -28,7 +27,6 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
-using namespace wf;
 
 using nlohmann::basic_json;
 
@@ -99,15 +97,47 @@ show_vec(const vector3d<T>& vec)
     return str;
 }
 
-// forward declaration
-void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
-                       wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf);
-
 /* typedefs */
-// template <typename T>
-// using matrix_storage_slab = sddk::matrix_storage<T, sddk::matrix_storage_t::slab>;
 using complex_double = std::complex<double>;
+
+void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
+        wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
+{
+    /////////////////////////////////////////////////////////////
+    // // TODO: Hubbard needs manual call to copy to device // //
+    /////////////////////////////////////////////////////////////
+    int num_wf = wf.num_wf();
+    int num_sc = wf.num_sc();
+    if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+        throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+    }
+    auto H    = H0(kp);
+    auto& ctx = H0.ctx();
+    auto mg_wf = wf.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device);
+    auto mg_wf_out = wf_out.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::host);
+
+    /* apply H to all wave functions */
+    int N = 0;
+    int n = num_wf;
+    for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
+        // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
+        auto spin_range = wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
+        H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+    }
+    if (is_device_memory(ctx.processing_unit_memory_t())) {
+        if (swf) {
+            swf->copy_to(sddk::memory_t::host);
+        }
+    }
+}
+
+void
+initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
+{
+    auto& kset = dft_gs.k_point_set();
+    Hamiltonian0<double> H0(dft_gs.potential(), false);
+    Band(ctx).initialize_subspace(kset, H0);
+}
 
 PYBIND11_MODULE(py_sirius, m)
 {
@@ -654,12 +684,12 @@ PYBIND11_MODULE(py_sirius, m)
     //                                    arr.at(memory_t::host), obj);
     //     });
 
-    // py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
+    py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
-    // py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
+    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
 
     py::class_<wf::num_mag_dims>(m, "num_mag_dims");
-    py::class_<wf::num_mag_dims>(m, "num_bands");
+    py::class_<wf::num_bands>(m, "num_bands");
 
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
@@ -796,53 +826,3 @@ PYBIND11_MODULE(py_sirius, m)
     /* sirius.smearing submodules (end) */
 }
 
-// void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
-//         wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
-// {
-//     /////////////////////////////////////////////////////////////
-//     // // TODO: Hubbard needs manual call to copy to device // //
-//     /////////////////////////////////////////////////////////////
-//     int num_wf = wf.num_wf();
-//     int num_sc = wf.num_sc();
-//     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-//         throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
-//     }
-//     auto H    = H0(kp);
-//     auto& ctx = H0.ctx();
-// #ifdef SIRIUS_GPU
-//     if (is_device_memory(ctx.preferred_memory_t())) {
-//         auto& mpd = ctx.mem_pool(memory_t::device);
-//         for (int ispn = 0; ispn < num_sc; ++ispn) {
-//             wf_out.pw_coeffs(ispn).allocate(mpd);
-//             wf.pw_coeffs(ispn).allocate(mpd);
-//             wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-//         }
-//     }
-// #endif
-//     /* apply H to all wave functions */
-//     int N = 0;
-//     int n = num_wf;
-//     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
-//         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
-//         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
-//         H.apply_h_s<complex_double>(spin_range, N, n, wf, &wf_out, swf.get());
-//     }
-// #ifdef SIRIUS_GPU
-//     if (is_device_memory(ctx.preferred_memory_t())) {
-//         for (int ispn = 0; ispn < num_sc; ++ispn) {
-//             wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//             if (swf) {
-//                 swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//             }
-//         }
-//     }
-// #endif // SIRIUS_GPU
-// }
-
-void
-initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
-{
-    auto& kset = dft_gs.k_point_set();
-    Hamiltonian0<double> H0(dft_gs.potential(), false);
-    Band(ctx).initialize_subspace(kset, H0);
-}

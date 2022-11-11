@@ -73,7 +73,6 @@ include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 if (CREATE_PYTHON_MODULE)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-  message(STATUS "Python version: ${Python3_VERSION}")
 endif()
 
 # Set release as the default build type.
