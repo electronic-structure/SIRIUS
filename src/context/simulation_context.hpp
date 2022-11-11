@@ -398,7 +398,7 @@ class Simulation_context : public Simulation_parameters
     /// Destructor.
     ~Simulation_context()
     {
-        if (!comm().is_finalized()) {
+        if (!comm().is_finalized() && initialized_) {
             print_memory_usage(__FILE__, __LINE__, this->out());
         }
     }
@@ -407,9 +407,6 @@ class Simulation_context : public Simulation_parameters
     void initialize();
 
     void print_info(std::ostream& out__) const;
-
-    /// Print the memory usage.
-    //void print_memory_usage(const char* file__, int line__);
 
     /// Print message from the root rank.
     template <typename... Args>
