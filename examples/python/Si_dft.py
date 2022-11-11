@@ -36,10 +36,12 @@ def main():
     pw_cutoff = 20 # in a.u.^-1
     gk_cutoff = 7 # in a.u.^-1
     ctx = make_new_ctx(pw_cutoff, gk_cutoff)
+    k = 2
     kgrid = sirius.K_point_set(ctx, [k,k,k], [0,0,0], True)
     dft = sirius.DFT_ground_state(kgrid)
     dft.initial_state()
     result = dft.find(1e-10, 1e-8, 1e-2, 100, False)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
