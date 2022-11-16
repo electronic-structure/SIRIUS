@@ -514,38 +514,32 @@ double K_point_set::entropy_sum() const
 
 void K_point_set::print_info()
 {
+    sddk::pstdout pout(this->comm());
+
     if (ctx_.comm().rank() == 0) {
-        std::printf("\n");
-        std::printf("total number of k-points : %i\n", num_kpoints());
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
-        }
-        std::printf("\n");
-        std::printf("  ik                vk                    weight  num_gkvec");
+        pout << std::endl;
+        pout << "total number of k-points : " << num_kpoints() << std::endl;
+        pout << utils::hbar(80, '-') << std::endl;
+        pout << std::endl;
+        pout << "  ik                vk                    weight  num_gkvec";
         if (ctx_.full_potential()) {
-            std::printf("   gklo_basis_size");
+            pout << "   gklo_basis_size";
         }
-        std::printf("\n");
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
-        }
-        std::printf("\n");
+        pout << std::endl << utils::hbar(80, '-') << std::endl;
     }
 
-    if (ctx_.comm_band().rank() == 0) {
-        sddk::pstdout pout(comm());
-        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
-            int ik = spl_num_kpoints(ikloc);
-            pout << ik << " " << kpoints_[ik]->vk()[0] << " " << kpoints_[ik]->vk()[1] << " "
-                 << kpoints_[ik]->vk()[2] << " " << kpoints_[ik]->weight() << " " << kpoints_[ik]->num_gkvec();
+    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
+        int ik = spl_num_kpoints(ikloc);
+        pout << std::setw(4) << ik << utils::ffmt(9, 4) << kpoints_[ik]->vk()[0] << utils::ffmt(9, 4)
+             << kpoints_[ik]->vk()[1] << utils::ffmt(9, 4) << kpoints_[ik]->vk()[2] << utils::ffmt(17, 6)
+             << kpoints_[ik]->weight() << std::setw(11) << kpoints_[ik]->num_gkvec();
 
-            if (ctx_.full_potential()) {
-                pout << "            " << kpoints_[ik]->gklo_basis_size();
-            }
-            pout << std::endl;
+        if (ctx_.full_potential()) {
+            pout << std::setw(18) << kpoints_[ik]->gklo_basis_size();
         }
-        std::cout << pout.flush(0);
+        pout << std::endl;
     }
+    RTE_OUT(ctx_.out()) << pout.flush(0);
 }
 
 void K_point_set::save(std::string const& name__) const

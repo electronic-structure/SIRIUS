@@ -220,7 +220,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
             }
             out__ << "   ";
             for (int x: {0, 1, 2}) {
-                out__<< utils::ffmt(10, 5) << vf[x];
+                out__ << utils::ffmt(10, 5) << vf[x];
             }
             out__ << std::endl;
         }
