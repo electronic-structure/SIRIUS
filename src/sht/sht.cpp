@@ -155,7 +155,7 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
     double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
 
     if ((spin != 0) && (spin != 1)) {
-        std::printf("Error : unknown spin direction\n");
+        RTE_THROW("Error : unknown spin direction");
     }
 
     const double denom = sqrt(1.0 / (2.0 * l + 1.0));
@@ -182,8 +182,9 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
                 }
             }
         } else {
-            std::printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
-            exit(0);
+            std::stringstream s;
+            s << "Clebsch-Gordan coefficients do not exist for this combination of j=" << j << " and l=" << l;
+            RTE_THROW(s);
         }
     }
     return (CG * denom);
@@ -201,8 +202,7 @@ double_complex
 calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
 {
     if ((sigma != 0) && (sigma != 1)) {
-        std::printf("SphericalIndex function : unknown spin direction\n");
-        return 0;
+        RTE_THROW("SphericalIndex function : unknown spin direction");
     }
 
     if (std::abs(j - l - 0.5) < 1e-8) {
@@ -232,8 +232,7 @@ calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, con
                 return SHT::rlm_dot_ylm(l, m1, mp);
             }
         } else {
-            std::printf("Spherical Index function : l and j are not compatible\n");
-            exit(0);
+            RTE_THROW("Spherical Index function : l and j are not compatible");
         }
     }
 }

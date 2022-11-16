@@ -41,6 +41,7 @@
 #include <complex>
 #include <chrono>
 #include "json.hpp"
+#include "rte.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
@@ -123,7 +124,7 @@ inline int lmax(int lmmax__)
     if (lmmax(lmax) != lmmax__) {
         std::stringstream s;
         s << "wrong lmmax: " << lmmax__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     return lmax;
 }
