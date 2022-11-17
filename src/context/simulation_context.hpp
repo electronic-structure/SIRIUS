@@ -97,6 +97,48 @@ print_memory_usage(const char* file__, int line__, OUT&& out__)
     }
 }
 
+template <typename OUT>
+void
+print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
+{
+    if (!env::print_memory_usage()) {
+        return;
+    }
+
+    size_t VmRSS, VmHWM;
+    utils::get_proc_status(&VmHWM, &VmRSS);
+
+    std::stringstream s;
+    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    out__ << "[" << s.str() << " at " << file_and_line__ << "] "
+          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
+    }
+    out__ << std::endl;
+
+    std::vector<std::string> labels = {"host"};
+    std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    int np{1};
+    if (acc::num_devices() > 0) {
+        labels.push_back("host pinned");
+        labels.push_back("device");
+        mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
+        mp.push_back(&get_memory_pool(sddk::memory_t::device));
+        np = 3;
+    }
+    for (int i = 0; i < np; i++) {
+        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
+              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
+              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
+              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+    }
+}
+
+
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
 
@@ -399,7 +441,7 @@ class Simulation_context : public Simulation_parameters
     ~Simulation_context()
     {
         if (!comm().is_finalized() && initialized_) {
-            print_memory_usage(__FILE__, __LINE__, this->out());
+            print_memory_usage(this->out(), FILE_AND_LINE);
         }
     }
 

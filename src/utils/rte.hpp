@@ -7,6 +7,8 @@
 #include <vector>
 #include <iostream>
 
+#define FILE_AND_LINE std::string(__FILE__) + ":" + std::to_string(__LINE__)
+
 namespace rte {
 
 inline std::vector<std::string> split(std::string const str__)
