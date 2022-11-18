@@ -145,26 +145,30 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 
 template <typename T>
 inline auto
-random_positive_definite(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
+random_positive_definite(int N__, int bs__ = 16, sddk::BLACS_grid const *blacs_grid__ = nullptr)
 {
     PROFILE("random_positive_definite");
 
     double p = 1.0 / N__;
-    la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
-    la::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
+    auto A = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
+    auto B = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
             A(i, j) = p * utils::random<T>();
         }
     }
 
+    if (blacs_grid__) {
 #ifdef SIRIUS_SCALAPACK
-    la::wrap(la::lib_t::scalapack).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0,
-        &la::constant<T>::zero(), B, 0, 0);
+        la::wrap(la::lib_t::scalapack).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0,
+            &la::constant<T>::zero(), B, 0, 0);
 #else
-    la::wrap(la::lib_t::blas).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), &A(0, 0), A.ld(),
-            &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
+        RTE_THROW("not compiled with scalapack");
 #endif
+    } else {
+        la::wrap(la::lib_t::blas).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), &A(0, 0), A.ld(),
+                &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
+    }
 
     for (int i = 0; i < N__; i++) {
         B.set(i, i, 50.0);

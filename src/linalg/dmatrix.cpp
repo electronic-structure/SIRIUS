@@ -164,12 +164,16 @@ void dmatrix<T>::set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld_
 template <typename T>
 void dmatrix<T>::set(const int irow_glob, const int icol_glob, T val)
 {
-    auto r = spl_row_.location(irow_glob);
-    if (blacs_grid_->rank_row() == r.rank) {
-        auto c = spl_col_.location(icol_glob);
-        if (blacs_grid_->rank_col() == c.rank) {
-            (*this)(r.local_index, c.local_index) = val;
+    if (blacs_grid_) {
+        auto r = spl_row_.location(irow_glob);
+        if (blacs_grid_->rank_row() == r.rank) {
+            auto c = spl_col_.location(icol_glob);
+            if (blacs_grid_->rank_col() == c.rank) {
+                (*this)(r.local_index, c.local_index) = val;
+            }
         }
+    } else {
+        (*this)(irow_glob, icol_glob) = val;
     }
 }
 

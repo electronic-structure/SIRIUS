@@ -17,7 +17,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     la::dmatrix<T> B;
     la::dmatrix<T> B_ref;
     if (test_gen__) {
-        B_ref = random_positive_definite<T>(N__, bs__, blacs_grid__);
+        B_ref = random_positive_definite<T>(N__, bs__, &blacs_grid__);
         B = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
         sddk::copy(B_ref, B);
     }
