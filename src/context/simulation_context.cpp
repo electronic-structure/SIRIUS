@@ -593,9 +593,9 @@ Simulation_context::initialize()
 
     /* setup BLACS grid */
     if (std_solver.is_parallel()) {
-        blacs_grid_ = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(comm_band(), npr, npc));
+        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(comm_band(), npr, npc);
     } else {
-        blacs_grid_ = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::self(), 1, 1));
+        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(sddk::Communicator::self(), 1, 1);
     }
 
     /* setup the cyclic block size */
@@ -1002,13 +1002,13 @@ Simulation_context::update()
         auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
-        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
-            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+        spfft_grid_coarse_ = std::make_unique<spfft::Grid>(fft_coarse_grid_[0], fft_coarse_grid_[1],
+                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
+                spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT);
 #ifdef USE_FP32
-        spfft_grid_coarse_float_ = std::unique_ptr<spfft::GridFloat>(new spfft::GridFloat(
-            fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
-            spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+        spfft_grid_coarse_float_ = std::make_unique<spfft::GridFloat>(fft_coarse_grid_[0], fft_coarse_grid_[1],
+                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT);
 #endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -1289,8 +1289,7 @@ Simulation_context::update()
         }
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
-                augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
-                    new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
+                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec());
                 augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
             } else {
                 augmentation_op_[iat] = nullptr;
@@ -1589,7 +1588,7 @@ Simulation_context::init_comm()
     /* here we know the number of ranks for band parallelization */
 
     /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
-    if (sddk::num_ranks_per_node() > 1 && comm_band().size() > 1) {
+    if ((npr == npb) || (sddk::num_ranks_per_node() > acc::num_devices() && comm_band().size() > 1)) {
         cfg().control().fft_mode("parallel");
     }
 
