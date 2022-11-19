@@ -935,24 +935,26 @@ Force::print_info()
         std::printf("===== total Forces in Ha/bohr =====\n");
         print_forces(forces_total());
 
-        std::printf("===== ultrasoft contribution from Qij =====\n");
-        print_forces(forces_us());
+        if (!ctx_.full_potential()) {
+            std::printf("===== ultrasoft contribution from Qij =====\n");
+            print_forces(forces_us());
 
-        std::printf("===== non-local contribution from Beta-projectors =====\n");
-        print_forces(forces_nonloc());
+            std::printf("===== non-local contribution from Beta-projectors =====\n");
+            print_forces(forces_nonloc());
 
-        std::printf("===== contribution from local potential =====\n");
-        print_forces(forces_vloc());
+            std::printf("===== contribution from local potential =====\n");
+            print_forces(forces_vloc());
 
-        std::printf("===== contribution from core density =====\n");
-        print_forces(forces_core());
+            std::printf("===== contribution from core density =====\n");
+            print_forces(forces_core());
 
-        std::printf("===== Ewald forces from ions =====\n");
-        print_forces(forces_ewald());
+            std::printf("===== Ewald forces from ions =====\n");
+            print_forces(forces_ewald());
 
-        if (ctx_.hubbard_correction()) {
-            std::printf("===== contribution from Hubbard correction =====\n");
-            print_forces(forces_hubbard());
+            if (ctx_.hubbard_correction()) {
+                std::printf("===== contribution from Hubbard correction =====\n");
+                print_forces(forces_hubbard());
+            }
         }
     }
 }
