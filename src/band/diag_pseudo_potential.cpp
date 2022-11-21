@@ -173,7 +173,9 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
         }
     }
     if (ctx_.cfg().control().verification() >= 2) {
-        ctx_.message(1, __function_name__, "%s", "checking eigen-values of S-matrix\n");
+        if (ctx_.verbosity() >= 1) {
+            RTE_OUT(ctx_.out()) << "checking eigen-values of S-matrix\n";
+        }
 
         sddk::dmatrix<F> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
         sddk::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
@@ -187,7 +189,9 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
             if (eo[i] < 1e-6) {
-                ctx_.message(1, __function_name__, "small eigen-value: %18.10f\n", eo[i]);
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "small eigen-value: " << eo[i] << std::endl;
+                }
             }
         }
     }

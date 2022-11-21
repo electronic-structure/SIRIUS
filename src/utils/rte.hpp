@@ -7,8 +7,6 @@
 #include <vector>
 #include <iostream>
 
-#define FILE_AND_LINE std::string(__FILE__) + ":" + std::to_string(__LINE__)
-
 namespace rte {
 
 inline std::vector<std::string> split(std::string const str__)
@@ -43,6 +41,33 @@ inline void throw_impl(const char* func__, const char* file__, int line__, std::
     throw_impl(func__, file__, line__, msg.str(), pmsg);
 }
 
+class ostream : public std::ostringstream
+{
+  private:
+    std::ostream& out_;
+    std::string prefix_;
+  public:
+    ostream(std::ostream& out__, std::string prefix__)
+        : out_(out__)
+        , prefix_(prefix__)
+    {
+    }
+    ~ostream()
+    {
+        auto strings = rte::split(this->str());
+        for (size_t i = 0; i < strings.size(); i++) {
+            if (!(i == strings.size() - 1 && strings[i].size() == 0)) {
+                out_ << "[" << prefix_ << "] " << strings[i];
+            }
+            if (i != strings.size() - 1) {
+                out_ << std::endl;
+            }
+        }
+    }
+};
+
+#define FILE_LINE std::string(__FILE__) + ":" + std::to_string(__LINE__)
+
 #define RTE_THROW(...) \
 {\
     ::rte::throw_impl(__func__, __FILE__, __LINE__, __VA_ARGS__);\
@@ -62,32 +87,7 @@ inline void throw_impl(const char* func__, const char* file__, int line__, std::
 }
 #endif
 
-class rte_ostream : public std::ostringstream
-{
-  private:
-    std::ostream& out_;
-    std::string prefix_;
-  public:
-    rte_ostream(std::ostream& out__, std::string prefix__)
-        : out_(out__)
-        , prefix_(prefix__)
-    {
-    }
-    ~rte_ostream()
-    {
-        auto strings = rte::split(this->str());
-        for (size_t i = 0; i < strings.size(); i++) {
-            if (!(i == strings.size() - 1 && strings[i].size() == 0)) {
-                out_ << "[" << prefix_ << "] " << strings[i];
-            }
-            if (i != strings.size() - 1) {
-                out_ << std::endl;
-            }
-        }
-    }
-};
-
-#define RTE_OUT(_out) rte::rte_ostream(_out, std::string(__func__))
+#define RTE_OUT(_out) rte::ostream(_out, std::string(__func__))
 
 }
 

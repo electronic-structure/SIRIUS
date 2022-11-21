@@ -350,7 +350,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     sddk::mdarray<std::complex<T>, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
     sddk::mdarray<std::complex<T>, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
 
-    print_memory_usage(__FILE__, __LINE__, H0_.ctx().out());
+    print_memory_usage(H0_.ctx().out(), FILE_LINE);
 
     h__.zero();
     o__.zero();
@@ -372,7 +372,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     std::vector<int> offsets(uc.num_atoms());
 
     PROFILE_START("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
-    const auto t1 = std::chrono::high_resolution_clock::now();
+    const auto t1 = utils::time_now();
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -505,12 +505,10 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     //         kp.num_gkvec_col());
     // }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
-    std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
-    auto pp                            = env::print_performance();
-
-    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || pp)) {
-        kp.message((pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
-                   2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
+    if (env::print_performance()) {
+        auto tval = utils::time_interval(t1);
+        RTE_OUT(kp.out(0)) << "effective zgemm performance: "
+            << 2 * 8e-9 * std::pow(kp.num_gkvec(), 2) * uc.mt_aw_basis_size() / tval << " GFlop/s" << std::endl;
     }
 
     /* add interstitial contributon */

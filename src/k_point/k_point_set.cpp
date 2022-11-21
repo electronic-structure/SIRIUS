@@ -155,7 +155,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
     if (ctx_.verbosity() > 0) {
         this->print_info();
     }
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
     this->initialized_ = true;
 }
 
@@ -358,12 +358,15 @@ void K_point_set::find_band_occupancies()
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
             auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
             energy_fermi_ = res_newton.mu;
-            ctx_.message(2, __function_name__, "newton iteration converged after %d steps\n", res_newton.iter);
-
+            if (ctx_.verbosity() >= 2) {
+                RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
+            }
         }
     } catch(std::exception const& e) {
-        ctx_.message(2, __function_name__, "%s\n", e.what());
-        ctx_.message(2, __function_name__, "%s\n", "fallback to bisection search\n");
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << e.what() << std::endl
+                << "fallback to bisection search" << std::endl;
+        }
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
         energy_fermi_ = bisection_search(F, emin, emax, tol);

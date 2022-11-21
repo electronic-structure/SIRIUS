@@ -30,7 +30,7 @@ template <typename T>
 void
 Band::solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const
 {
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
     if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.cfg().iterative_solver();
@@ -49,7 +49,7 @@ Band::solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const
         throw std::runtime_error("not implemented");
         //diag_full_potential_single_variation();
     }
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 }
 
 template
@@ -69,7 +69,7 @@ template <typename T, typename F>
 int
 Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const
 {
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     int niter{0};
 
@@ -118,7 +118,7 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
     //    check_wave_functions<T>(Hk__);
     //}
 
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     return niter;
 }
@@ -129,14 +129,16 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 {
     PROFILE("sirius::Band::solve");
 
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(),FILE_LINE);
 
     double empy_tol{itsol_tol__};
     if (ctx_.cfg().iterative_solver().type() == "davidson") {
         empy_tol = std::max(itsol_tol__ * ctx_.cfg().settings().itsol_tol_ratio(),
                                    ctx_.cfg().iterative_solver().empty_states_tolerance());
-        ctx_.message(2, __function_name__, "iterative solver tolerance (occupied, empty) : %1.4e, %1.4e\n",
-                     itsol_tol__, itsol_tol__ + empy_tol);
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
+                << itsol_tol__ + empy_tol << std::endl;
+        }
     }
 
     int num_dav_iter{0};
@@ -159,30 +161,35 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
     kset__.comm().allreduce(&num_dav_iter, 1);
     ctx_.num_itsol_steps(num_dav_iter);
     if (!ctx_.full_potential()) {
-        ctx_.message(2, __function_name__, "average number of iterations: %12.6f\n",
-                     static_cast<double>(num_dav_iter) / kset__.num_kpoints());
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << "average number of iterations: " <<
+                static_cast<double>(num_dav_iter) / kset__.num_kpoints() << std::endl;
+        }
     }
 
     /* synchronize eigen-values */
     kset__.sync_band<T, sync_band_t::energy>();
 
-    ctx_.message(2, __function_name__, "%s", "Lowest band energies\n");
-    if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() >= 2) {
+        std::stringstream s;
+        s << "Lowest band energie" << std::endl;
+        int nbnd = std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands());
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-            std::printf("ik : %2i, ", ik);
-            for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                std::printf("%12.6f", kset__.get<T>(ik)->band_energy(j, 0));
+            s << "ik: " << std::setw(2) << ik;
+            for (int j = 0; j < nbnd; j++) {
+                s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
             }
             if (ctx_.num_mag_dims() == 1) {
-                std::printf("\n         ");
-                for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
-                    std::printf("%12.6f", kset__.get<T>(ik)->band_energy(j, 1));
+                s << std::endl << "         ";
+                for (int j = 0; j < nbnd; j++) {
+                    s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
                 }
             }
-            std::printf("\n");
+            s << std::endl;
         }
+        RTE_OUT(ctx_.out()) << s.str();
     }
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 }
 
 template

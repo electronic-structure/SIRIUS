@@ -235,6 +235,7 @@ calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, con
             RTE_THROW("Spherical Index function : l and j are not compatible");
         }
     }
+    return 0; // make compiler happy
 }
 
 } // namespace sht

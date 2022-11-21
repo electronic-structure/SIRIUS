@@ -227,7 +227,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     auto& mp = get_memory_pool(ctx.host_memory_t());
 
-    print_memory_usage(__FILE__, __LINE__, ctx.out());
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     /* initial basis functions */
     wf::Wave_functions<T> phi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
@@ -307,7 +307,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     std::vector<real_type<F>> eval(num_bands);
 
-    print_memory_usage(__FILE__, __LINE__, ctx.out());
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
@@ -325,7 +325,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
         ovlp.allocate(mpd);
     }
 
-    print_memory_usage(__FILE__, __LINE__, ctx.out());
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     if (pcs) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -410,8 +410,11 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     //            utils::print_checksum("eval", cs1);
     //        }
     //    }
-        for (int i = 0; i < num_bands; i++) {
-            Hk__.kp().message(3, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
+        {
+            rte::ostream out(Hk__.kp().out(3), std::string(__func__));
+            for (int i = 0; i < num_bands; i++) {
+                out << "eval[" << i << "]=" << eval[i] << std::endl;
+            }
         }
 
         /* compute wave-functions */

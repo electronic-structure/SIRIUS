@@ -1139,8 +1139,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     diff = std::max(diff, std::abs(dm_ref[i] - density_matrix_[i]));
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
-                ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n", diff,
-                             status.c_str());
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "error of the density matrix symmetrization: " << diff << " "
+                        << status << std::endl;
+                }
             }
             /* compare with reference occupation matrix */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
@@ -1154,8 +1156,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     }
                 }
                 std::string status = (diff1 > 1e-8) ? "Fail" : "OK";
-                ctx_.message(1, __function_name__, "error of the LDA+U local occupation matrix symmetrization: %12.6e %s\n",
-                             diff1, status.c_str());
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "error of the LDA+U local occupation matrix symmetrization: " << diff1
+                        << " " << status << std::endl;
+                }
             }
         }
     }
@@ -1404,7 +1408,7 @@ Density::generate_rho_aug()
         sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
                                                get_memory_pool(sddk::memory_t::host));
 
-        print_memory_usage(__FILE__, __LINE__, ctx_.out());
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
@@ -1418,7 +1422,7 @@ Density::generate_rho_aug()
             }
         }
 
-        print_memory_usage(__FILE__, __LINE__, ctx_.out());
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
             int g_begin = spl_ngv_loc.global_index(0, ib);

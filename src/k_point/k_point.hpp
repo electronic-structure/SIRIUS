@@ -761,15 +761,14 @@ class K_point
         return ctx_;
     }
 
-    /// Print message from the root rank.
-    template <typename... Args>
-    inline void message(int level__, char const* label__, Args... args) const
+    /// Return stdout stream for high verbosity output.
+    /** This output will not be passed to a ctx_.out() stream. */
+    std::ostream& out(int level__) const
     {
-        if (this->comm().rank() == 0 && this->ctx().cfg().control().verbosity() >= level__) {
-            if (label__) {
-                std::printf("[%s] ", label__);
-            }
-            std::printf(args...);
+        if (level__ >= ctx_.verbosity() && this->comm().rank() == 0) {
+            return std::cout;
+        } else {
+            return utils::null_stream();
         }
     }
 

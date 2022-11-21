@@ -31,7 +31,7 @@ void test(std::vector<int> sizes, memory_t M__)
         //auto t3 = utils::wtime();
 
         std::cout << "block size (Mb) : " << sm << ", alloc time : " << (t1 - t0) - (t2 - t1) << "\n";
-        print_memory_usage(__FILE__, __LINE__, std::cout);
+        print_memory_usage(std::cout, FILE_LINE);
     }
     for (auto p: ptrs) {
         sddk::deallocate(p, M__);

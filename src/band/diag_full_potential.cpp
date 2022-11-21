@@ -83,15 +83,15 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         utils::print_checksum("o_lapw", z2, ctx_.out());
     }
 
-    assert(kp.gklo_basis_size() > ctx_.num_fv_states());
+    RTE_ASSERT(kp.gklo_basis_size() > ctx_.num_fv_states());
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         RTE_THROW("error in generalized eigen-value problem");
     }
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
         h.deallocate(sddk::memory_t::device);
@@ -100,8 +100,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
     kp.set_fv_eigen_values(&eval[0]);
 
-    for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
+    {
+        rte::ostream out(kp.out(4), std::string(__func__));
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            out << "eval[" << i << "]=" << eval[i] << std::endl;
+        }
     }
 
     if (ctx_.print_checksum()) {
@@ -232,7 +235,9 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
 
     int ncomp = kp.singular_components().num_wf().get();
 
-    ctx_.message(3, __function_name__, "number of singular components: %i\n", ncomp);
+    if (ctx_.verbosity() >= 3) {
+        RTE_OUT(ctx_.out()) << "number of singular components: " << ncomp << std::endl;
+    }
 
     auto& itso = ctx_.cfg().iterative_solver();
 
@@ -244,9 +249,9 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
             [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2);
 
-    kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", result.eval[0]);
+    RTE_OUT(kp.out(2)) << "smallest eigen-value of the singular components: " << result.eval[0] << std::endl;
     for (int i = 0; i < ncomp; i++) {
-        kp.message(3, __function_name__, "singular component eigen-value[%i] : %20.16f\n", i, result.eval[i]);
+        RTE_OUT(kp.out(3)) << "singular component eigen-value[" << i << "]=" << result.eval[i] << std::endl;
     }
 }
 
@@ -356,7 +361,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
 
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     //== if (ctx_.uj_correction())
     //== {
@@ -379,7 +384,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         mg.emplace_back(hpsi[i].memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device));
     }
 
-    print_memory_usage(__FILE__, __LINE__, ctx_.out());
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     auto& std_solver = ctx_.std_evp_solver();
 

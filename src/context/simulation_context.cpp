@@ -311,16 +311,16 @@ Simulation_context::initialize()
         RTE_THROW("Simulation parameters are already initialized.");
     }
 
-    /* setup the output stream */
-    if (this->comm().rank() == 0) {
-        output_stream_ = &std::cout;
-    } else {
-        output_stream_ = &utils::null_stream__;
-    }
-
     auto verb_lvl = env::get_value_ptr<int>("SIRIUS_VERBOSITY");
     if (verb_lvl) {
         this->verbosity(*verb_lvl);
+    }
+
+    /* setup the output stream */
+    if (this->comm().rank() == 0 && this->verbosity() >= 1) {
+        output_stream_ = &std::cout;
+    } else {
+        output_stream_ = &utils::null_stream();
     }
 
     electronic_structure_method(cfg().parameters().electronic_structure_method());
@@ -363,7 +363,7 @@ Simulation_context::initialize()
              << ", comm_k_rank: " << comm_k().rank()
              << ", hostname: " << utils::hostname()
              << ", mpi processor name: " << sddk::Communicator::processor_name() << std::endl;
-        this->out() << pout.flush(0);
+        rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
     switch (processing_unit()) {
@@ -624,7 +624,7 @@ Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    ::sirius::print_memory_usage(__FILE__, __LINE__, this->out());
+    ::sirius::print_memory_usage(this->out(), FILE_LINE);
 
     if (verbosity() >= 1 && comm().rank() == 0) {
         print_info(this->out());
@@ -643,7 +643,7 @@ void
 Simulation_context::print_info(std::ostream& out__) const
 {
     {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         tm const* ptm = localtime(&start_time_.tv_sec);
         char buf[100];
         strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
@@ -671,7 +671,7 @@ Simulation_context::print_info(std::ostream& out__) const
         os << std::endl;
     }
     {
-        rte::rte_ostream os(out__, "fft");
+        rte::ostream os(out__, "fft");
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
         sddk::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
@@ -702,26 +702,26 @@ Simulation_context::print_info(std::ostream& out__) const
         os << std::endl;
     }
     {
-        rte::rte_ostream os(out__, "unit cell");
+        rte::ostream os(out__, "unit cell");
         unit_cell().print_info(os, verbosity());
     }
     {
-        rte::rte_ostream os(out__, "sym");
+        rte::ostream os(out__, "sym");
         unit_cell().symmetry().print_info(os, verbosity());
     }
     {
-        rte::rte_ostream os(out__, "atom type");
+        rte::ostream os(out__, "atom type");
         for (int i = 0; i < unit_cell().num_atom_types(); i++) {
             unit_cell().atom_type(i).print_info(os);
         }
     }
     if (this->cfg().control().print_neighbors()) {
-        rte::rte_ostream os(out__, "nghbr");
+        rte::ostream os(out__, "nghbr");
         unit_cell().print_nearest_neighbours(os);
     }
 
     {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         os << "total nuclear charge               : " << unit_cell().total_nuclear_charge() << std::endl
            << "number of core electrons           : " << unit_cell().num_core_electrons() << std::endl
            << "number of valence electrons        : " << unit_cell().num_valence_electrons() << std::endl
@@ -801,20 +801,19 @@ Simulation_context::print_info(std::ostream& out__) const
            << spg_get_micro_version() << std::endl;
     }
     {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         unsigned int vmajor, vminor, vmicro;
         H5get_libversion(&vmajor, &vminor, &vmicro);
         os << "HDF5 version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
     }
     {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         int vmajor, vminor, vmicro;
         xc_version(&vmajor, &vminor, &vmicro);
         os << "Libxc version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
     }
-
     {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         int i{1};
         os << std::endl << "XC functionals" << std::endl
            << utils::hbar(14, '=') << std::endl;
@@ -834,7 +833,7 @@ Simulation_context::print_info(std::ostream& out__) const
     }
 
     if (!full_potential()) {
-        rte::rte_ostream os(out__, "info");
+        rte::ostream os(out__, "info");
         os << std::endl
            << "memory consumption" << std::endl
            << utils::hbar(18, '=') << std::endl;

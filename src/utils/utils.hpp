@@ -46,18 +46,18 @@
 /// Namespace for simple utility functions.
 namespace utils {
 
-class null_stream : public std::ostream
+class null_stream_t : public std::ostream
 {
   public:
-    null_stream() : std::ostream(nullptr)
+    null_stream_t() : std::ostream(nullptr)
     {
     }
-    null_stream(null_stream&&) : std::ostream(nullptr)
+    null_stream_t(null_stream_t&&) : std::ostream(nullptr)
     {
     };
 };
 
-extern null_stream null_stream__;
+null_stream_t& null_stream();
 
 /// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
