@@ -751,7 +751,7 @@ class pstdout : public std::stringstream
     {
     }
 
-    std::stringstream get() const
+    std::string flush(int root__)
     {
         std::stringstream s;
 
@@ -773,27 +773,15 @@ class pstdout : public std::stringstream
             comm_.allgather(this->str().c_str(), &outb[0], count, offset);
             s.write(outb.data(), sz);
         }
-        return s;
-    }
-
-    std::string flush(int root__)
-    {
-        auto s = this->get().str();
+        /* reset the internal string */
         this->str("");
         if (comm_.rank() == root__) {
-            return s;
+            return s.str();
         } else {
             return std::string("");
         }
     }
 };
-
-// TODO: document or remove
-//inline std::ostream& operator<<(std::ostream& out__, pstdout const& in__)
-//{
-//    out__ << in__.get().str();
-//    return out__;
-//}
 
 } // namespace sddk
 
