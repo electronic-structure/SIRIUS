@@ -110,7 +110,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     if (ctx_.print_checksum()) {
         auto z1 = kp.fv_eigen_vectors().checksum(kp.gklo_basis_size(), ctx_.num_fv_states());
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("fv_eigen_vectors", z1, std::cout);
+            utils::print_checksum("fv_eigen_vectors", z1, kp.out(1));
         }
     }
 
@@ -235,9 +235,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
 
     int ncomp = kp.singular_components().num_wf().get();
 
-    if (ctx_.verbosity() >= 3) {
-        RTE_OUT(ctx_.out()) << "number of singular components: " << ncomp << std::endl;
-    }
+    ctx_.out(3, __func__) << "number of singular components: " << ncomp << std::endl;
 
     auto& itso = ctx_.cfg().iterative_solver();
 
@@ -296,7 +294,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (env::print_checksum()) {
         auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
+            utils::print_checksum("phi_extra", cs, RTE_OUT(ctx_.out()));
         }
     }
 
@@ -306,6 +304,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     std::stringstream s;
     std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
+
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab(), tolerance,
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
@@ -349,8 +348,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         auto cs1 = kp.fv_states().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         auto cs2 = kp.fv_states().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("psi_pw", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("psi_mt", cs2, RTE_OUT(std::cout));
+            utils::print_checksum("psi_pw", cs1, RTE_OUT(ctx_.out()));
+            utils::print_checksum("psi_mt", cs2, RTE_OUT(ctx_.out()));
         }
     }
 
@@ -406,10 +405,10 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
                 if (kp.comm().rank() == 0) {
                     std::stringstream s1;
                     s1 << "hpsi_pw_" << ispn;
-                    utils::print_checksum(s1.str(), cs1, RTE_OUT(std::cout));
+                    utils::print_checksum(s1.str(), cs1, RTE_OUT(ctx_.out()));
                     std::stringstream s2;
                     s2 << "hpsi_mt_" << ispn;
-                    utils::print_checksum(s2.str(), cs2, RTE_OUT(std::cout));
+                    utils::print_checksum(s2.str(), cs2, RTE_OUT(ctx_.out()));
                 }
             }
             /* compute <wf_i | h * wf_j> */

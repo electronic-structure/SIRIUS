@@ -243,9 +243,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         mg.emplace_back(sphi_extra->memory_guard(mem));
         if (pcs) {
             auto cs = phi_extra__->checksum(mem, wf::band_range(0, num_extra_phi));
-            if (kp.comm().rank() == 0) {
-                utils::print_checksum("phi_extra", cs, RTE_OUT(out__));
-            }
+            utils::print_checksum("phi_extra", cs, RTE_OUT(out__));
         }
     }
 
@@ -299,7 +297,6 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         kp.comm().allreduce(&cs2, 1);
         utils::print_checksum("h_diag", cs1, RTE_OUT(out__));
         utils::print_checksum("o_diag", cs2, RTE_OUT(out__));
-
         auto cs = psi__.checksum(mem, wf::band_range(0, num_bands__.get()));
         utils::print_checksum("input spinor_wave_functions", cs, RTE_OUT(out__));
     }

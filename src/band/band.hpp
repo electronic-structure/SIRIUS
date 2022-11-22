@@ -106,7 +106,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             if (ctx_.print_checksum()) {
                 auto cs = mtrx__.checksum(N__ - num_locked__, N__ - num_locked__);
                 if (ctx_.comm_band().rank() == 0) {
-                    utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(ctx_.out()));
+                    utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
                 }
             }
         }
@@ -142,7 +142,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
             auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
             if (ctx_.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx", cs, RTE_OUT(ctx_.out()));
+                utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
             }
         }
 

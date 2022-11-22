@@ -98,10 +98,13 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
             return tol;
         };
 
+        std::stringstream s;
+        std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
+
         auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, wf::num_bands(ctx_.num_bands()),
                 wf::num_mag_dims(ctx_.num_mag_dims()), kp.spinor_wave_functions(), tolerance,
                 itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
-                itso.converge_by_energy(), itso.extra_ortho(), std::cout, 0);
+                itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
         niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -135,10 +138,8 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
     if (ctx_.cfg().iterative_solver().type() == "davidson") {
         empy_tol = std::max(itsol_tol__ * ctx_.cfg().settings().itsol_tol_ratio(),
                                    ctx_.cfg().iterative_solver().empty_states_tolerance());
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
-                << itsol_tol__ + empy_tol << std::endl;
-        }
+        ctx_.out(2, __func__) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
+                              << itsol_tol__ + empy_tol << std::endl;
     }
 
     int num_dav_iter{0};
@@ -161,10 +162,8 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
     kset__.comm().allreduce(&num_dav_iter, 1);
     ctx_.num_itsol_steps(num_dav_iter);
     if (!ctx_.full_potential()) {
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << "average number of iterations: " <<
-                static_cast<double>(num_dav_iter) / kset__.num_kpoints() << std::endl;
-        }
+        ctx_.out(2, __func__) << "average number of iterations: "
+                              << static_cast<double>(num_dav_iter) / kset__.num_kpoints() << std::endl;
     }
 
     /* synchronize eigen-values */
@@ -187,7 +186,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
             }
             s << std::endl;
         }
-        RTE_OUT(ctx_.out()) << s.str();
+        ctx_.message(2, __func__, s);
     }
     print_memory_usage(ctx_.out(), FILE_LINE);
 }

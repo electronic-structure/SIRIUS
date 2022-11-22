@@ -44,23 +44,35 @@ inline void throw_impl(const char* func__, const char* file__, int line__, std::
 class ostream : public std::ostringstream
 {
   private:
-    std::ostream& out_;
+    std::ostream* out_{nullptr};
     std::string prefix_;
   public:
+    ostream()
+    {
+    }
     ostream(std::ostream& out__, std::string prefix__)
-        : out_(out__)
+        : out_(&out__)
         , prefix_(prefix__)
     {
     }
+    ostream(ostream&& src__)
+      : std::ostringstream(std::move(src__))
+    {
+        out_ = src__.out_;
+        src__.out_ = nullptr;
+        prefix_ = src__.prefix_;
+    }
     ~ostream()
     {
-        auto strings = rte::split(this->str());
-        for (size_t i = 0; i < strings.size(); i++) {
-            if (!(i == strings.size() - 1 && strings[i].size() == 0)) {
-                out_ << "[" << prefix_ << "] " << strings[i];
-            }
-            if (i != strings.size() - 1) {
-                out_ << std::endl;
+        if (out_) {
+            auto strings = rte::split(this->str());
+            for (size_t i = 0; i < strings.size(); i++) {
+                if (!(i == strings.size() - 1 && strings[i].size() == 0)) {
+                    (*out_) << "[" << prefix_ << "] " << strings[i];
+                }
+                if (i != strings.size() - 1) {
+                    (*out_) << std::endl;
+                }
             }
         }
     }

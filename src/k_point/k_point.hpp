@@ -765,7 +765,7 @@ class K_point
     /** This output will not be passed to a ctx_.out() stream. */
     std::ostream& out(int level__) const
     {
-        if (level__ >= ctx_.verbosity() && this->comm().rank() == 0) {
+        if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
             return std::cout;
         } else {
             return utils::null_stream();

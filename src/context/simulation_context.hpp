@@ -399,17 +399,6 @@ class Simulation_context : public Simulation_parameters
 
     void print_info(std::ostream& out__) const;
 
-    /// Print message from the stringstream.
-    inline void message(int level__, char const* label__, std::stringstream& s) const
-    {
-        if (this->cfg().control().verbosity() >= level__) {
-            auto strings = ::rte::split(s.str());
-            for (auto& e : strings) {
-                this->out() << "[" << label__ << "] " << e << std::endl;
-            }
-        }
-    }
-
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update();
 
@@ -933,11 +922,43 @@ class Simulation_context : public Simulation_parameters
         return dict;
     }
 
-    std::ostream& out() const
+    /// Return output stream.
+    inline std::ostream& out() const
     {
         RTE_ASSERT(output_stream_ != nullptr);
         return *output_stream_;
     }
+
+    /// Return output stream based on the verbosity level.
+    inline std::ostream& out(int level__) const
+    {
+        if (level__ >= this->verbosity()) {
+            return this->out();
+        } else {
+            return utils::null_stream();
+        }
+    }
+
+    inline rte::ostream out(int level__, const char* label__) const
+    {
+        if (level__ >= this->verbosity()) {
+            return rte::ostream(this->out(), label__);
+        } else {
+            return rte::ostream(utils::null_stream(), label__);
+        }
+    }
+
+    /// Print message from the stringstream.
+    inline void message(int level__, char const* label__, std::stringstream const& s) const
+    {
+        if (this->verbosity() >= level__) {
+            auto strings = ::rte::split(s.str());
+            for (auto& e : strings) {
+                this->out() << "[" << label__ << "] " << e << std::endl;
+            }
+        }
+    }
+
 };
 
 } // namespace sirius

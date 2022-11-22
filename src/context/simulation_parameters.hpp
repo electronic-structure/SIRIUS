@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_HPP__
 #define __SIMULATION_PARAMETERS_HPP__
 
-#include <mpi.h>
 #include "typedefs.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/utils.hpp"
