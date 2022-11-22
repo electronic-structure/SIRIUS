@@ -37,6 +37,8 @@
 #include <cstdio>
 #include <map>
 
+#include "utils/utils.hpp"
+
 namespace sddk {
 
 #define CALL_MPI(func__, args__)                                                     \
@@ -740,10 +742,11 @@ int get_device_id(int num_devices__);
  *  // print from root rank (id=0) and flush the internal buffer
  *  std::cout << pout.flush(0);
  */
-class pstdout : public std::stringstream
+class pstdout
 {
   private:
     Communicator const& comm_;
+    std::stringstream buf_;
 
   public:
     pstdout(Communicator const& comm__)
@@ -756,7 +759,7 @@ class pstdout : public std::stringstream
         std::stringstream s;
 
         std::vector<int> counts(comm_.size());
-        int count = this->str().length();
+        int count = buf_.str().length();
         comm_.allgather(&count, counts.data(), 1, comm_.rank());
 
         int offset{0};
@@ -770,18 +773,53 @@ class pstdout : public std::stringstream
 
         if (sz != 0) {
             std::vector<char> outb(sz);
-            comm_.allgather(this->str().c_str(), &outb[0], count, offset);
+            comm_.allgather(buf_.str().c_str(), &outb[0], count, offset);
             s.write(outb.data(), sz);
         }
         /* reset the internal string */
-        this->str("");
+        buf_.str("");
         if (comm_.rank() == root__) {
             return s.str();
         } else {
             return std::string("");
         }
     }
+
+    template <typename T>
+    inline pstdout& operator<<(T val__)
+    {
+        buf_ << val__;
+        return *this;
+    }
+    auto& buf()
+    {
+        return buf_;
+    }
 };
+
+using pstdout_manip = std::ostream&(std::ostream&);
+inline pstdout& operator<<(pstdout& lhs__, pstdout_manip manip__)
+{
+   return lhs__.operator<<(manip__);
+}
+
+inline pstdout&
+operator<<(pstdout& out, utils::hbar&& b)
+{
+    char prev = out.buf().fill();
+    out << std::setfill(b.c()) << std::setw(b.w()) << b.c() << std::setfill(prev);
+    return out;
+}
+
+inline pstdout&
+operator<<(pstdout& out, utils::ffmt&& f)
+{
+    out.buf().precision(f.p());
+    out.buf().width(f.w());
+    out.buf().setf(std::ios_base::fixed, std::ios_base::floatfield);
+    return out;
+}
+
 
 } // namespace sddk
 
