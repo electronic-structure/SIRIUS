@@ -188,6 +188,9 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
         }
     }
 
+    if (ctx__.num_spins() == 1) {
+        hubbard_energy *= 2.0;
+    }
     return -0.5 * hubbard_energy;
 }
 
@@ -630,6 +633,10 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
                 }
               }
             }
+        }
+
+        if (ctx.num_spins() == 1) {
+          tmp *= 2.0;
         }
         return std::real(tmp);
     }
