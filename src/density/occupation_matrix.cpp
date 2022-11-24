@@ -64,7 +64,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         return;
     }
 
-    PROFILE_START("sirius::Occupation_matrix::add_k_point_contribution");
+    PROFILE("sirius::Occupation_matrix::add_k_point_contribution");
 
     sddk::memory_t mem_host{sddk::memory_t::host};
     sddk::memory_t mem{sddk::memory_t::host};
