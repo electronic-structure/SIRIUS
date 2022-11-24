@@ -188,9 +188,11 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
         }
     }
 
+    // non magnetic case
     if (ctx__.num_spins() == 1) {
         hubbard_energy *= 2.0;
     }
+
     return -0.5 * hubbard_energy;
 }
 
