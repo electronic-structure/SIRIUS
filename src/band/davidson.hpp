@@ -138,6 +138,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 {
     PROFILE("sirius::davidson");
 
+    PROFILE_START("sirius::davidson|init");
     auto& ctx = Hk__.H0().ctx();
     ctx.print_memory_usage(__FILE__, __LINE__);
 
@@ -317,6 +318,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                << "  non-collinear       : " << nc_mag << std::endl
                << "  number of extra phi : " << num_extra_phi << std::endl;
     }
+    PROFILE_STOP("sirius::davidson|init");
 
     PROFILE_START("sirius::davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spinors; ispin_step++) {

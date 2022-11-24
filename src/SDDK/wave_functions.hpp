@@ -397,8 +397,8 @@ class Wave_functions_base
             num_sc_ = num_spins(2);
         }
         for (int is = 0; is < num_sc_.get(); is++) {
-            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(), default_mem__,
-                "Wave_functions_base::data_");
+            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(),
+                    sddk::get_memory_pool(default_mem__), "Wave_functions_base::data_");
         }
     }
 
@@ -493,7 +493,7 @@ class Wave_functions_base
     allocate(sddk::memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].allocate(get_memory_pool(mem__));
+            data_[s].allocate(sddk::get_memory_pool(mem__));
         }
     }
 
