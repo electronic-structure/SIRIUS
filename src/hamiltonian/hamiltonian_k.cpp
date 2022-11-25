@@ -350,7 +350,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     sddk::mdarray<std::complex<T>, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
     sddk::mdarray<std::complex<T>, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, get_memory_pool(mt));
 
-    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(H0_.ctx().out(), FILE_LINE);
 
     h__.zero();
     o__.zero();
@@ -372,7 +372,7 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     std::vector<int> offsets(uc.num_atoms());
 
     PROFILE_START("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
-    const auto t1 = std::chrono::high_resolution_clock::now();
+    const auto t1 = utils::time_now();
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -474,12 +474,12 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
         // acc::sync_stream(stream_id(omp_get_max_threads()));
 
         if (H0_.ctx().cfg().control().print_checksum()) {
-            std::complex<T> z1 = alm_row.checksum();
-            std::complex<T> z2 = alm_col.checksum();
-            std::complex<T> z3 = halm_col.checksum();
-            utils::print_checksum("alm_row", z1);
-            utils::print_checksum("alm_col", z2);
-            utils::print_checksum("halm_col", z3);
+            auto z1 = alm_row.checksum();
+            auto z2 = alm_col.checksum();
+            auto z3 = halm_col.checksum();
+            utils::print_checksum("alm_row", z1, H0_.ctx().out());
+            utils::print_checksum("alm_col", z2, H0_.ctx().out());
+            utils::print_checksum("halm_col", z3, H0_.ctx().out());
         }
 
         sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
@@ -505,12 +505,10 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     //         kp.num_gkvec_col());
     // }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
-    std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
-    auto pp                            = env::print_performance();
-
-    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || pp)) {
-        kp.message((pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
-                   2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
+    if (env::print_performance()) {
+        auto tval = utils::time_interval(t1);
+        RTE_OUT(kp.out(0)) << "effective zgemm performance: "
+            << 2 * 8e-9 * std::pow(kp.num_gkvec(), 2) * uc.mt_aw_basis_size() / tval << " GFlop/s" << std::endl;
     }
 
     /* add interstitial contributon */

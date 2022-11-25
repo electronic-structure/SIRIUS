@@ -9,13 +9,15 @@ void test_grid(std::vector<int> grid__)
     sddk::pstdout pout(sddk::Communicator::world());
 
     if (sddk::Communicator::world().rank() == 0) {
-        pout.printf("dimensions: %i %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),
-                    mpi_grid.communicator(1 << 2).size());
+        pout << "dimensions: " << mpi_grid.communicator(1 << 0).size() << " " << mpi_grid.communicator(1 << 1).size()
+             << " " << mpi_grid.communicator(1 << 2).size() << std::endl;
     }
 
-    pout.printf("rank(flat): %3i, coordinate: %3i %3i %3i, hostname: %s\n", sddk::Communicator::world().rank(),
-        mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),
-        mpi_grid.communicator(1 << 2).size(), utils::hostname().c_str());
+    pout << "rank(flat): " << sddk::Communicator::world().rank() << ", coordinate: "
+         << mpi_grid.communicator(1 << 0).rank() << " "
+         << mpi_grid.communicator(1 << 1).rank() << " "
+         << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << utils::hostname() << std::endl;
+    std::cout << pout.flush(0) << std::endl;
 }
 
 int main(int argn, char** argv)

@@ -266,7 +266,7 @@ class Crystal_symmetry
     double sym_op_R_error() const;
 
     /// Print information about the unit cell symmetry.
-    void print_info(int verbosity__) const;
+    void print_info(std::ostream& out__, int verbosity__) const;
 };
 
 } // namespace

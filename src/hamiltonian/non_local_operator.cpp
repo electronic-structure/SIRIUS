@@ -220,9 +220,9 @@ D_operator<T>::initialize()
         }
     }
 
-    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum()) {
         auto cs = this->op_.checksum();
-        utils::print_checksum("D_operator", cs);
+        utils::print_checksum("D_operator", cs, this->ctx_.out());
     }
 
     if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {
@@ -313,9 +313,9 @@ Q_operator<T>::initialize()
             }
         }
     }
-    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum()) {
         auto cs = this->op_.checksum();
-        utils::print_checksum("Q_operator", cs);
+        utils::print_checksum("Q_operator", cs, this->ctx_.out());
     }
 
     if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {

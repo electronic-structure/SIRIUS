@@ -81,7 +81,7 @@ void Potential::generate_D_operator_matrix()
             d_tmp.allocate(get_memory_pool(sddk::memory_t::device));
         }
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
@@ -143,7 +143,7 @@ void Potential::generate_D_operator_matrix()
                     auto cs = veff_a.checksum();
                     std::stringstream s;
                     s << "Gvec_block_" << ib << "_veff_a";
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
                 sddk::linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
                                   &sddk::linalg_const<double>::one(),
@@ -184,7 +184,7 @@ void Potential::generate_D_operator_matrix()
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
             }
 

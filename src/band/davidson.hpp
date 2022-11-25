@@ -140,7 +140,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     PROFILE_START("sirius::davidson|init");
     auto& ctx = Hk__.H0().ctx();
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(out__, FILE_LINE);
 
     auto pcs = env::print_checksum();
 
@@ -244,9 +244,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         mg.emplace_back(sphi_extra->memory_guard(mem));
         if (pcs) {
             auto cs = phi_extra__->checksum(mem, wf::band_range(0, num_extra_phi));
-            if (kp.comm().rank() == 0) {
-                utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
-            }
+            utils::print_checksum("phi_extra", cs, RTE_OUT(out__));
         }
     }
 
@@ -266,7 +264,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         }
     }
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(out__, FILE_LINE);
 
     /* get diagonal elements for preconditioning */
     auto h_o_diag = (ctx.full_potential()) ?
@@ -300,7 +298,6 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         kp.comm().allreduce(&cs2, 1);
         utils::print_checksum("h_diag", cs1, RTE_OUT(out__));
         utils::print_checksum("o_diag", cs2, RTE_OUT(out__));
-
         auto cs = psi__.checksum(mem, wf::band_range(0, num_bands__.get()));
         utils::print_checksum("input spinor_wave_functions", cs, RTE_OUT(out__));
     }
@@ -327,7 +324,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         }
         auto sr = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispin_step);
 
-        ctx.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(out__, FILE_LINE);
 
         /* converged vectors */
         int num_locked{0};
@@ -534,8 +531,10 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
         ctx.evp_work_count(1);
 
-        for (int i = 0; i < num_bands__.get(); i++) {
-            kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
+        if (verbosity__ >= 4) {
+            for (int i = 0; i < num_bands__.get(); i++) {
+                RTE_OUT(out__) << "eval[" << i << "]=" << eval[i] << std::endl;
+            }
         }
 
         /* number of newly added basis functions */
@@ -617,11 +616,12 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             bool should_restart = (N + expand_with > num_phi) ||
                                   (num_lockable > 5 && num_unconverged < itso.early_restart() * num_lockable);
 
-            kp.message(3, __function_name__,
-                       "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. "
-                       "Num ritz = %d. Expansion size = %d\n",
-                       should_restart ? "yes" : "no", num_locked, num_converged, num_bands__, num_lockable, num_ritz,
-                       expand_with);
+            if (verbosity__ >= 3) {
+                RTE_OUT(out__) << "restart=" << (should_restart ? "yes" : "no") << ", locked=" << num_locked
+                               << ", converged=" << num_converged << ", wanted=" << num_bands__
+                               << ", lockable=" << num_lockable << ", num_ritz=" << num_ritz
+                               << ", expansion size=" << expand_with << std::endl;
+            }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
@@ -639,20 +639,23 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     result.eval(j, ispin_step) = eval[j - num_locked];
                 }
 
-                if (last_iteration && !converged) {
-                    kp.message(3, __function_name__,
-                               "Warning: maximum number of iterations reached, but %i "
-                               "residual(s) did not converge for k-point %f %f %f\n",
-                               num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2]);
+                if (last_iteration && !converged && verbosity__ >= 3) {
+                    RTE_OUT(out__) << "Warning: maximum number of iterations reached, but " << num_unconverged
+                        << "residual(s) did not converge for k-point "
+                        << kp.vk()[0] << " " << kp.vk()[1] << " " << kp.vk()[2] << std::endl;
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (converged || last_iteration) {
-                    kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n",
-                               num_unconverged, iter_step);
+                    if (verbosity__ >= 3) {
+                        RTE_OUT(out__) << "end of iterative diagonalization; num_unconverged: " << num_unconverged
+                            << ", iteration step: " << iter_step << std::endl;
+                    }
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
-                    kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
+                    if (verbosity__ >= 3) {
+                        RTE_OUT(out__) << "subspace size limit reached" << std::endl;
+                    }
 
                     /* need to compute all hpsi and spsi states (not only unconverged - that was done
                      * by the residuals() function before) */
@@ -782,14 +785,18 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                 }
             }
 
-            kp.message(3, __function_name__, "Orthogonalized %d to %d\n", expand_with, N);
+            if (verbosity__ >= 3) {
+                RTE_OUT(out__) << "orthogonalized " << expand_with << " to " << N << std::endl;
+            }
 
             if (ctx.cfg().control().verification() >= 1) {
                 auto max_diff = check_hermitian(H, N + expand_with - num_locked);
                 if (max_diff > (std::is_same<T, double>::value ? 1e-12 : 1e-6)) {
                     std::stringstream s;
-                    kp.message(1, __function_name__, "H matrix of size %i is not Hermitian, maximum error: %18.12e\n",
-                               N + expand_with - num_locked, max_diff);
+                    if (verbosity__ >= 1) {
+                        RTE_OUT(out__) << "H matrix of size " << N + expand_with - num_locked
+                            << " is not Hermitian, maximum error: " << max_diff << std::endl;
+                    }
                 }
             }
 
@@ -799,7 +806,9 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             /* copy the Ritz values */
             eval >> eval_old;
 
-            kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands__.get() - num_locked);
+            if (verbosity__ >= 3) {
+                RTE_OUT(out__) << "computing " << num_bands__.get() << " pre-Ritz pairs" << std::endl;
+            }
             /* solve standard eigen-value problem with the size N */
             if (std_solver.solve(N - num_locked, num_bands__.get() - num_locked, H, &eval[0], evec)) {
                 std::stringstream s;
@@ -809,24 +818,27 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
             ctx.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands__.get(), 3));
 
-            kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n",
-                iter_step, N, num_phi);
-            for (int i = 0; i < num_bands__.get() - num_locked; i++) {
-                kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i],
-                           std::abs(eval[i] - eval_old[i]));
+            if (verbosity__ >= 3) {
+                RTE_OUT(out__) << "step: " << iter_step << ", current subspace size:" << N
+                    << ", maximum subspace size: " << num_phi << std::endl;
+            }
+            if (verbosity__ >= 4) {
+                for (int i = 0; i < num_bands__.get() - num_locked; i++) {
+                    RTE_OUT(out__) << "eval[" << i << "]=" << eval[i]
+                        << ", diff=" << std::abs(eval[i] - eval_old[i]) << std::endl;
+                }
             }
             result.niter++;
 
         } /* loop over iterative steps k */
-        ctx.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(out__, FILE_LINE);
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::davidson|iter");
 
     mg.clear();
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(out__, FILE_LINE);
     return result;
 }
-
 
 } // namespace
 

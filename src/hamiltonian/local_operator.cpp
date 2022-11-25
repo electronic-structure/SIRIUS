@@ -67,10 +67,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
         if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
             auto cs2 = veff_vec_[v_local_index_t::theta]->checksum_rg();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_checksum("theta_pw", cs1);
-                utils::print_checksum("theta_rg", cs2);
-            }
+            utils::print_checksum("theta_pw", cs1, ctx_.out());
+            utils::print_checksum("theta_rg", cs2, ctx_.out());
         }
     }
 
@@ -155,10 +153,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 auto cs1 = veff_vec_[j]->checksum_pw();
                 auto cs2 = veff_vec_[j]->checksum_rg();
-                if (ctx_.comm().rank() == 0) {
-                    utils::print_checksum("veff_pw", cs1);
-                    utils::print_checksum("veff_rg", cs2);
-                }
+                utils::print_checksum("veff_pw", cs1, ctx_.out());
+                utils::print_checksum("veff_rg", cs2, ctx_.out());
             }
         }
     }

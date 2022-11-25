@@ -79,21 +79,19 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     if (ctx_.print_checksum()) {
         auto z1 = h.checksum(ngklo, ngklo);
         auto z2 = o.checksum(ngklo, ngklo);
-        if (kp.comm().rank() == 0) {
-            utils::print_checksum("h_lapw", z1);
-            utils::print_checksum("o_lapw", z2);
-        }
+        utils::print_checksum("h_lapw", z1, ctx_.out());
+        utils::print_checksum("o_lapw", z2, ctx_.out());
     }
 
-    assert(kp.gklo_basis_size() > ctx_.num_fv_states());
+    RTE_ASSERT(kp.gklo_basis_size() > ctx_.num_fv_states());
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx_.out(), FILE_LINE);
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         RTE_THROW("error in generalized eigen-value problem");
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
         h.deallocate(sddk::memory_t::device);
@@ -102,14 +100,17 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
     kp.set_fv_eigen_values(&eval[0]);
 
-    for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
+    {
+        rte::ostream out(kp.out(4), std::string(__func__));
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            out << "eval[" << i << "]=" << eval[i] << std::endl;
+        }
     }
 
     if (ctx_.print_checksum()) {
         auto z1 = kp.fv_eigen_vectors().checksum(kp.gklo_basis_size(), ctx_.num_fv_states());
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("fv_eigen_vectors", z1);
+            utils::print_checksum("fv_eigen_vectors", z1, kp.out(1));
         }
     }
 
@@ -234,7 +235,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
 
     int ncomp = kp.singular_components().num_wf().get();
 
-    ctx_.message(3, __function_name__, "number of singular components: %i\n", ncomp);
+    ctx_.out(3, __func__) << "number of singular components: " << ncomp << std::endl;
 
     auto& itso = ctx_.cfg().iterative_solver();
 
@@ -246,9 +247,9 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
             [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2);
 
-    kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", result.eval[0]);
+    RTE_OUT(kp.out(2)) << "smallest eigen-value of the singular components: " << result.eval[0] << std::endl;
     for (int i = 0; i < ncomp; i++) {
-        kp.message(3, __function_name__, "singular component eigen-value[%i] : %20.16f\n", i, result.eval[i]);
+        RTE_OUT(kp.out(3)) << "singular component eigen-value[" << i << "]=" << result.eval[i] << std::endl;
     }
 }
 
@@ -293,7 +294,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (env::print_checksum()) {
         auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("phi_extra", cs, RTE_OUT(std::cout));
+            utils::print_checksum("phi_extra", cs, RTE_OUT(ctx_.out()));
         }
     }
 
@@ -303,6 +304,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     std::stringstream s;
     std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
+
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(Hk__,
             wf::num_bands(ctx_.num_fv_states()), wf::num_mag_dims(0), kp.fv_eigen_vectors_slab(), tolerance,
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
@@ -346,8 +348,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         auto cs1 = kp.fv_states().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         auto cs2 = kp.fv_states().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("psi_pw", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("psi_mt", cs2, RTE_OUT(std::cout));
+            utils::print_checksum("psi_pw", cs1, RTE_OUT(ctx_.out()));
+            utils::print_checksum("psi_mt", cs2, RTE_OUT(ctx_.out()));
         }
     }
 
@@ -358,7 +360,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     //== if (ctx_.uj_correction())
     //== {
@@ -381,7 +383,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         mg.emplace_back(hpsi[i].memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device));
     }
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx_.out(), FILE_LINE);
 
     auto& std_solver = ctx_.std_evp_solver();
 
@@ -403,10 +405,10 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
                 if (kp.comm().rank() == 0) {
                     std::stringstream s1;
                     s1 << "hpsi_pw_" << ispn;
-                    utils::print_checksum(s1.str(), cs1, RTE_OUT(std::cout));
+                    utils::print_checksum(s1.str(), cs1, RTE_OUT(ctx_.out()));
                     std::stringstream s2;
                     s2 << "hpsi_mt_" << ispn;
-                    utils::print_checksum(s2.str(), cs2, RTE_OUT(std::cout));
+                    utils::print_checksum(s2.str(), cs2, RTE_OUT(ctx_.out()));
                 }
             }
             /* compute <wf_i | h * wf_j> */

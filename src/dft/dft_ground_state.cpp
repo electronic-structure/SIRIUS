@@ -170,10 +170,12 @@ DFT_ground_state::check_scf_density()
     dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
     dict["detot"] = total_energy() - etot;
 
-    ctx_.message(1, __function_name__, "RSS: %18.12E\n", dict["rss"].get<double>());
-    ctx_.message(1, __function_name__, "RMS: %18.12E\n", dict["rms"].get<double>());
-    ctx_.message(1, __function_name__, "dEtot: %18.12E\n", dict["detot"].get<double>());
-    ctx_.message(1, __function_name__, "Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
+    if (ctx_.verbosity() >= 1) {
+        RTE_OUT(ctx_.out()) << "RSS: " << dict["rss"].get<double>() << std::endl
+                            << "RMS: " << dict["rms"].get<double>() << std::endl
+                            << "dEtot: " << dict["detot"].get<double>() << std::endl
+                            << "Eold: " << etot << " Enew: " << total_energy() << std::endl;
+    }
 
     return dict;
 }
@@ -302,7 +304,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         potential_.generate(density_, ctx_.use_symmetry(), true);
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
-            ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
+            if (ctx_.verbosity() >= 1) {
+                RTE_OUT(ctx_.out()) << "checking functional derivative of Exc\n";
+            }
             sirius::check_xc_potential(density_);
         }
 
@@ -414,13 +418,11 @@ DFT_ground_state::print_info(std::ostream& out__) const
         one_elec_en -= hub_one_elec;
     }
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
-
     density_.print_info(out__);
 
     out__ << std::endl;
-    out__ << "Energy" << std::endl;
-    draw_bar(80);
+    out__ << "Energy" << std::endl
+          << utils::hbar(80, '-') << std::endl;
 
     auto write_energy = [&](std::string label__, double value__) {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)

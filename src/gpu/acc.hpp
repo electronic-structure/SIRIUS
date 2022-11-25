@@ -263,7 +263,7 @@ inline size_t get_free_mem()
     return free;
 }
 
-inline void print_device_info(int device_id__)
+inline void print_device_info(int device_id__, std::ostream& out__)
 {
 #if defined(SIRIUS_CUDA)
     cudaDeviceProp devprop;
@@ -274,34 +274,38 @@ inline void print_device_info(int device_id__)
     CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
 
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
-    std::printf("  name                             : %s\n",       devprop.name);
-    std::printf("  major                            : %i\n",       devprop.major);
-    std::printf("  minor                            : %i\n",       devprop.minor);
-    std::printf("  clockRate                        : %i kHz\n",   devprop.clockRate);
-    std::printf("  memoryClockRate                  : %i kHz\n",   devprop.memoryClockRate);
-    std::printf("  memoryBusWidth                   : %i bits\n",  devprop.memoryBusWidth);
-    std::printf("  sharedMemPerBlock                : %li kB\n",   devprop.sharedMemPerBlock >> 10);
-    std::printf("  totalConstMem                    : %li kB\n",   devprop.totalConstMem >> 10);
-    std::printf("  totalGlobalMem                   : %li kB\n",   devprop.totalGlobalMem >> 10);
-    std::printf("  available memory                 : %li kB\n",   get_free_mem() >> 10);
-    std::printf("  l2CacheSize                      : %i kB\n",    devprop.l2CacheSize >> 10);
-    std::printf("  warpSize                         : %i\n",       devprop.warpSize);
-    std::printf("  regsPerBlock                     : %i\n",       devprop.regsPerBlock);
-    std::printf("  canMapHostMemory                 : %i\n",       devprop.canMapHostMemory);
-    std::printf("  concurrentKernels                : %i\n",       devprop.concurrentKernels);
-    std::printf("  maxGridSize                      : %i %i %i\n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
-    std::printf("  maxThreadsDim                    : %i %i %i\n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
-    std::printf("  maxThreadsPerBlock               : %i\n",       devprop.maxThreadsPerBlock);
-    std::printf("  maxThreadsPerMultiProcessor      : %i\n",       devprop.maxThreadsPerMultiProcessor);
-    std::printf("  multiProcessorCount              : %i\n",       devprop.multiProcessorCount);
-    std::printf("  pciBusID                         : %i\n",       devprop.pciBusID);
-    std::printf("  pciDeviceID                      : %i\n",       devprop.pciDeviceID);
-    std::printf("  pciDomainID                      : %i\n",       devprop.pciDomainID);
+    out__ << "  name                             : " << std::string(devprop.name) << std::endl
+          << "  major                            : " << devprop.major << std::endl
+          << "  minor                            : " << devprop.minor << std::endl
+          << "  clockRate                        : " << devprop.clockRate << " kHz" << std::endl
+          << "  memoryClockRate                  : " << devprop.memoryClockRate << " kHz" << std::endl
+          << "  memoryBusWidth                   : " << devprop.memoryBusWidth << " bits" << std::endl
+          << "  sharedMemPerBlock                : " << (devprop.sharedMemPerBlock >> 10) << " kB" << std::endl
+          << "  totalConstMem                    : " << (devprop.totalConstMem >> 10) << " kB" << std::endl
+          << "  totalGlobalMem                   : " << (devprop.totalGlobalMem >> 10) << " kB" << std::endl
+          << "  available memory                 : " << (get_free_mem() >> 10) << " kB" << std::endl
+          << "  l2CacheSize                      : " << (devprop.l2CacheSize >> 10) << " kB" << std::endl
+          << "  warpSize                         : " << devprop.warpSize << std::endl
+          << "  regsPerBlock                     : " << devprop.regsPerBlock << std::endl
+          << "  canMapHostMemory                 : " << devprop.canMapHostMemory << std::endl
+          << "  concurrentKernels                : " << devprop.concurrentKernels << std::endl
+          << "  maxGridSize                      : " << devprop.maxGridSize[0] << " "
+                                                     << devprop.maxGridSize[1] << " "
+                                                     << devprop.maxGridSize[2] << std::endl
+          << "  maxThreadsDim                    : " << devprop.maxThreadsDim[0] << " "
+                                                     << devprop.maxThreadsDim[1] << " "
+                                                     << devprop.maxThreadsDim[2] << std::endl
+          << "  maxThreadsPerBlock               : " << devprop.maxThreadsPerBlock << std::endl
+          << "  maxThreadsPerMultiProcessor      : " << devprop.maxThreadsPerMultiProcessor << std::endl
+          << "  multiProcessorCount              : " << devprop.multiProcessorCount << std::endl
+          << "  pciBusID                         : " << devprop.pciBusID << std::endl
+          << "  pciDeviceID                      : " << devprop.pciDeviceID << std::endl
+          << "  pciDomainID                      : " << devprop.pciDomainID << std::endl;
 #if defined(SIRIUS_CUDA)
-    std::printf("  regsPerMultiprocessor            : %i\n",       devprop.regsPerMultiprocessor);
-    std::printf("  asyncEngineCount                 : %i\n" ,      devprop.asyncEngineCount);
-    std::printf("  ECCEnabled                       : %i\n",       devprop.ECCEnabled);
-    std::printf("  memPitch                         : %li\n",      devprop.memPitch);
+    out__ << "  regsPerMultiprocessor            : " << devprop.regsPerMultiprocessor << std::endl
+          << "  asyncEngineCount                 : " << devprop.asyncEngineCount << std::endl
+          << "  ECCEnabled                       : " << devprop.ECCEnabled << std::endl
+          << "  memPitch                         : " << devprop.memPitch << std::endl;
 #endif
     //this is cuda10
     //printf("  uuid                             : ");

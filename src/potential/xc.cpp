@@ -84,9 +84,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = density__.rho().checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_rg", cs);
-        }
+        utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho;
@@ -245,9 +243,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = xc_potential_->checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("exc", cs);
-        }
+        utils::print_checksum("exc", cs, ctx_.out());
     }
 }
 
