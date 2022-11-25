@@ -149,15 +149,8 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
                 for (int m2 = 0; m2 < lmax_at; m2++) {
                     for (int m3 = 0; m3 < lmax_at; m3++) {
                         for (int m4 = 0; m4 < lmax_at; m4++) {
-
-                            /* non-magnetic case */
-                            if (ctx__.num_mag_dims() == 0) {
-                                um__(m1, m2, is) += 2.0 * hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is);
-                            } else {
-                                /* collinear case */
-                                for (int is2 = 0; is2 < ctx__.num_spins(); is2++) {
-                                    um__(m1, m2, is) += hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is2);
-                                }
+                            for (int is2 = 0; is2 < ctx__.num_spins(); is2++) {
+                                um__(m1, m2, is) += hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is2);
                             }
 
                             um__(m1, m2, is) -= hub_wf.hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is);
