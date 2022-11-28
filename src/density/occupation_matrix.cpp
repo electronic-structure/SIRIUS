@@ -211,6 +211,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
         } // ispn
     }
+
+    PROFILE_STOP("sirius::Occupation_matrix::add_k_point_contribution");
 }
 
 template void Occupation_matrix::add_k_point_contribution<double>(K_point<double>& kp__);
