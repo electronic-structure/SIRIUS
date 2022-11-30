@@ -178,9 +178,7 @@ Density::initial_density_pseudo()
     if (ctx_.cfg().control().print_checksum()) {
         auto z1 = sddk::mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_pw_init", z1);
-        }
+        utils::print_checksum("rho_pw_init", z1, ctx_.out());
     }
     std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
 
@@ -215,9 +213,7 @@ Density::initial_density_pseudo()
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_rg_init", cs);
-        }
+        utils::print_checksum("rho_rg_init", cs, ctx_.out());
     }
 
     /* initialize the magnetization */
@@ -254,14 +250,12 @@ Density::initial_density_pseudo()
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs  = component(i).checksum_rg();
             auto cs1 = component(i).checksum_pw();
-            if (ctx_.comm().rank() == 0) {
-                std::stringstream s;
-                s << "component[" << i << "]_rg";
-                utils::print_checksum(s.str(), cs);
-                std::stringstream s1;
-                s1 << "component[" << i << "]_pw";
-                utils::print_checksum(s1.str(), cs1);
-            }
+            std::stringstream s;
+            s << "component[" << i << "]_rg";
+            utils::print_checksum(s.str(), cs, ctx_.out());
+            std::stringstream s1;
+            s1 << "component[" << i << "]_pw";
+            utils::print_checksum(s1.str(), cs1, ctx_.out());
         }
     }
 }
@@ -288,9 +282,7 @@ Density::initial_density_full_pot()
     if (ctx_.cfg().control().print_checksum()) {
         auto z = sddk::mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_pw", z);
-        }
+        utils::print_checksum("rho_pw", z, ctx_.out());
     }
 
     /* set plane-wave coefficients of the charge density */
@@ -300,9 +292,7 @@ Density::initial_density_full_pot()
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_rg", cs);
-        }
+        utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
     /* remove possible negative noise */
@@ -1149,8 +1139,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     diff = std::max(diff, std::abs(dm_ref[i] - density_matrix_[i]));
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
-                ctx_.message(1, __function_name__, "error of the density matrix symmetrization: %12.6e %s\n", diff,
-                             status.c_str());
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "error of the density matrix symmetrization: " << diff << " "
+                        << status << std::endl;
+                }
             }
             /* compare with reference occupation matrix */
             if (ctx_.cfg().control().verification() >= 1 && ctx_.cfg().parameters().use_ibz() == false &&
@@ -1164,8 +1156,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     }
                 }
                 std::string status = (diff1 > 1e-8) ? "Fail" : "OK";
-                ctx_.message(1, __function_name__, "error of the LDA+U local occupation matrix symmetrization: %12.6e %s\n",
-                             diff1, status.c_str());
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "error of the LDA+U local occupation matrix symmetrization: " << diff1
+                        << " " << status << std::endl;
+                }
             }
         }
     }
@@ -1317,9 +1311,7 @@ Density::generate_valence(K_point_set const& ks__)
         if (ctx_.cfg().control().print_checksum()) {
             auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
             sddk::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
-            if (ctx_.comm().rank() == 0) {
-                utils::print_checksum("rho_mag_coarse_rg", cs);
-            }
+            utils::print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
@@ -1408,9 +1400,7 @@ Density::generate_rho_aug()
 
         if (ctx_.cfg().control().print_checksum()) {
             auto cs = dm.checksum();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_checksum("density_matrix_aux", cs);
-            }
+            utils::print_checksum("density_matrix_aux", cs, ctx_.out());
         }
         /* treat auxiliary array as double with x2 size */
         sddk::mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_ngv_loc.local_size() * 2,
@@ -1418,7 +1408,7 @@ Density::generate_rho_aug()
         sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
                                                get_memory_pool(sddk::memory_t::host));
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
@@ -1432,7 +1422,7 @@ Density::generate_rho_aug()
             }
         }
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
             int g_begin = spl_ngv_loc.global_index(0, ib);
@@ -1511,9 +1501,7 @@ Density::generate_rho_aug()
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_aug", cs);
-        }
+        utils::print_checksum("rho_aug", cs, ctx_.out());
     }
 
     if (ctx_.cfg().control().print_hash()) {
@@ -1748,11 +1736,7 @@ Density::symmetrize_density_matrix()
 
     if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
         auto cs = dm.checksum();
-        utils::print_checksum("density_matrix", cs);
-        // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //    auto cs = mdarray<double_complex, 1>(&dm(0, 0, 0, ia), dm.size(0) * dm.size(1) * dm.size(2)).checksum();
-        //    DUMP("checksum(density_matrix(%i)): %20.14f %20.14f", ia, cs.real(), cs.imag());
-        //}
+        utils::print_checksum("density_matrix", cs, ctx_.out());
     }
 
     if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
@@ -1981,24 +1965,21 @@ void Density::print_info(std::ostream& out__) const
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
-
     auto write_vector = [&](vector3d<double> v__) {
         out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
               << std::setprecision(5) << std::fixed << v__[1] << ", " << std::setw(9) << std::setprecision(5)
               << std::fixed << v__[2] << "]";
     };
 
-    out__ << "Charges and magnetic moments" << std::endl;
-    draw_bar(80);
+    out__ << "Charges and magnetic moments" << std::endl
+          << utils::hbar(80, '-') << std::endl;
     if (ctx_.full_potential()) {
         double total_core_leakage{0.0};
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
             out__ << "                 moment                |moment|";
         }
-        out__ << std::endl;
-        draw_bar(80);
+        out__ << std::endl << utils::hbar(80, '-') << std::endl;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
@@ -2025,8 +2006,8 @@ void Density::print_info(std::ostream& out__) const
         }
     } else {
         if (ctx_.num_mag_dims()) {
-            out__ << "atom                moment                |moment|" << std::endl;
-            draw_bar(80);
+            out__ << "atom                moment                |moment|" << std::endl
+                  << utils::hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 vector3d<double> v(mt_mag[ia]);

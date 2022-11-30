@@ -29,7 +29,7 @@ if(USE_MKL)
   target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
 endif()
 
-set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
 
 # set relative RPATH
 if(isSystemDir STREQUAL "-1")
@@ -41,32 +41,20 @@ endif()
 target_link_libraries(${libname} PRIVATE sirius)
 # collect python files in module dir
 # install to cmake prefix
-if(NOT PYTHON2)
-  install(DIRECTORY sirius
-    DESTINATION
-    ${PYTHON_INSTALL_SITE_DIR}
-    FILES_MATCHING REGEX
-    ".*py"
-    )
-  install(TARGETS ${libname}
-    LIBRARY
-    DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
-  install(
-    PROGRAMS
-    ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
-    ${CMAKE_SOURCE_DIR}/python_module/apps/marzari_cg.py
-    ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg.py
-    ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-    )
-else()
-  # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
-  install(DIRECTORY sirius_minimal/
-    DESTINATION
-    ${PYTHON_INSTALL_SITE_DIR}sirius
-    FILES_MATCHING REGEX
-    ".*py")
-  install(TARGETS ${libname}
-    LIBRARY
-    DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
-endif()
+install(DIRECTORY sirius
+  DESTINATION
+  ${PYTHON_INSTALL_SITE_DIR}
+  FILES_MATCHING REGEX
+  ".*py"
+)
+install(TARGETS ${libname}
+  LIBRARY
+  DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
+install(
+  PROGRAMS
+  ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
+  ${CMAKE_SOURCE_DIR}/python_module/apps/marzari_cg.py
+  ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg.py
+  ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+)

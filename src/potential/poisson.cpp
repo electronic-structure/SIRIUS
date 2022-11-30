@@ -165,18 +165,14 @@ void Potential::poisson(Periodic_function<double> const& rho)
         auto qmt = poisson_vmt(rho);
 
         if (ctx_.cfg().control().print_checksum()) {
-            if (ctx_.comm().rank() == 0) {
-                utils::print_checksum("qmt", qmt.checksum());
-            }
+            utils::print_checksum("qmt", qmt.checksum(), ctx_.out());
         }
 
         /* compute multipoles of interstitial density in MT region */
         auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
         if (ctx_.cfg().control().print_checksum()) {
-            if (ctx_.comm().rank() == 0) {
-                utils::print_checksum("qit", qit.checksum());
-            }
+            utils::print_checksum("qit", qit.checksum(), ctx_.out());
         }
 
         /* add contribution from the pseudo-charge */
@@ -191,7 +187,9 @@ void Potential::poisson(Periodic_function<double> const& rho)
                     d += std::abs(qmt(lm, ia) - qit(lm, ia));
                 }
             }
-            ctx_.message(1, __function_name__, "pseudocharge error: %18.10f\n", d);
+            if (ctx_.verbosity() >= 1) {
+                RTE_OUT(ctx_.out()) << "pseudocharge error: " << d << std::endl;
+            }
         }
     }
 
@@ -283,10 +281,8 @@ void Potential::poisson(Periodic_function<double> const& rho)
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = hartree_potential_->checksum_rg();
         auto cs1 = hartree_potential_->checksum_pw();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("vha_rg", cs);
-            utils::print_checksum("vha_pw", cs1);
-        }
+        utils::print_checksum("vha_rg", cs, ctx_.out());
+        utils::print_checksum("vha_pw", cs1, ctx_.out());
     }
 
     /* compute contribution from the smooth part of Hartree potential */

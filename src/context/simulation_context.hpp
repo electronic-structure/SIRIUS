@@ -44,18 +44,49 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif
 
-//#ifdef __GNUC__
-//    #define __function_name__ __PRETTY_FUNCTION__
-//#else
-//    #define __function_name__ __func__
-//#endif
-
-#define __function_name__ __func__
-
 namespace sirius {
 
-/// Utility function to print a CPU and GPU memory utilization.
-void print_memory_usage(const char* file__, int line__);
+template <typename OUT>
+void
+print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
+{
+    if (!env::print_memory_usage()) {
+        return;
+    }
+
+    size_t VmRSS, VmHWM;
+    utils::get_proc_status(&VmHWM, &VmRSS);
+
+    std::stringstream s;
+    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    out__ << "[" << s.str() << " at " << file_and_line__ << "] "
+          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
+    }
+    out__ << std::endl;
+
+    std::vector<std::string> labels = {"host"};
+    std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    int np{1};
+    if (acc::num_devices() > 0) {
+        labels.push_back("host pinned");
+        labels.push_back("device");
+        mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
+        mp.push_back(&get_memory_pool(sddk::memory_t::device));
+        np = 3;
+    }
+    for (int i = 0; i < np; i++) {
+        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
+              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
+              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
+              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+    }
+}
+
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
@@ -242,7 +273,7 @@ class Simulation_context : public Simulation_parameters
     /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
-    std::shared_ptr<std::ostream> output_stream_;
+    std::ostream* output_stream_{nullptr};
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -358,40 +389,15 @@ class Simulation_context : public Simulation_parameters
     /// Destructor.
     ~Simulation_context()
     {
-        if (!comm().is_finalized()) {
-            this->print_memory_usage(__FILE__, __LINE__);
+        if (!comm().is_finalized() && initialized_) {
+            print_memory_usage(this->out(), FILE_LINE);
         }
     }
 
     /// Initialize the similation (can only be called once).
     void initialize();
 
-    void print_info() const;
-
-    /// Print the memory usage.
-    void print_memory_usage(const char* file__, int line__);
-
-    /// Print message from the root rank.
-    template <typename... Args>
-    inline void message(int level__, char const* label__, Args... args) const
-    {
-        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
-            if (label__) {
-                std::printf("[%s] ", label__);
-            }
-            std::printf(args...);
-        }
-    }
-
-    inline void message(int level__, char const* label__, std::stringstream& s) const
-    {
-        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
-            auto strings = ::rte::split(s.str());
-            for (auto& e : strings) {
-                std::cout << "[" << label__ << "] " << e << std::endl;
-            }
-        }
-    }
+    void print_info(std::ostream& out__) const;
 
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update();
@@ -916,14 +922,43 @@ class Simulation_context : public Simulation_parameters
         return dict;
     }
 
-    std::ostream& out() const
+    /// Return output stream.
+    inline std::ostream& out() const
     {
-        if (output_stream_ == nullptr) {
-            return std::cout;
+        RTE_ASSERT(output_stream_ != nullptr);
+        return *output_stream_;
+    }
+
+    /// Return output stream based on the verbosity level.
+    inline std::ostream& out(int level__) const
+    {
+        if (level__ >= this->verbosity()) {
+            return this->out();
         } else {
-            return *output_stream_;
+            return utils::null_stream();
         }
     }
+
+    inline rte::ostream out(int level__, const char* label__) const
+    {
+        if (level__ >= this->verbosity()) {
+            return rte::ostream(this->out(), label__);
+        } else {
+            return rte::ostream(utils::null_stream(), label__);
+        }
+    }
+
+    /// Print message from the stringstream.
+    inline void message(int level__, char const* label__, std::stringstream const& s) const
+    {
+        if (this->verbosity() >= level__) {
+            auto strings = ::rte::split(s.str());
+            for (auto& e : strings) {
+                this->out() << "[" << label__ << "] " << e << std::endl;
+            }
+        }
+    }
+
 };
 
 } // namespace sirius

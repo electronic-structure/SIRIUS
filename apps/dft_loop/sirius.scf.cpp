@@ -88,11 +88,10 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     return ctx_ptr;
 }
 
-
 double
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     if (ctx.comm().rank() == 0) {
         switch (task_id) {
@@ -130,7 +129,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), reduce_kp);
     DFT_ground_state dft(kset);
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& potential = dft.potential();
     auto& density = dft.density();

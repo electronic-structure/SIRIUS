@@ -870,21 +870,22 @@ class Gvec_shells
 
     Gvec_shells(Gvec const& gvec__);
 
-    inline void print_gvec() const
+    inline void print_gvec(std::ostream& out__) const
     {
         pstdout pout(gvec_.comm());
-        pout.printf("rank: %i\n", gvec_.comm().rank());
-        pout.printf("-- list of G-vectors in the remapped distribution --\n");
+        pout << "rank: " << gvec_.comm().rank() << std::endl;
+        pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
         for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
             auto G = gvec_remapped(igloc);
 
             int igsh = gvec_shell_remapped(igloc);
-            pout.printf("igloc=%i igsh=%i G=%i %i %i\n", igloc, igsh, G[0], G[1], G[2]);
+            pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
         }
-        pout.printf("-- reverse list --\n");
+        pout << "-- reverse list --" << std::endl;
         for (auto const& e: idx_gvec_) {
-            pout.printf("G=%i %i %i, igloc=%i\n", e.first[0], e.first[1], e.first[2], e.second);
+            pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
         }
+        out__ << pout.flush(0);
     }
 
     /// Local number of G-vectors in the remapped distribution with complete shells on each rank.

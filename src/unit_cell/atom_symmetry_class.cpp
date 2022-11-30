@@ -734,37 +734,36 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
 void
 Atom_symmetry_class::write_enu(sddk::pstdout& pout) const
 {
-    pout.printf("Atom : %s, class id : %i\n", atom_type_.symbol().c_str(), id_);
-    pout.printf("augmented waves\n");
+    pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
+    pout << "augmented waves" << std::endl;
     for (int l = 0; l < num_aw_descriptors(); l++) {
         for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
             auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) {
-                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                pout << rsd; //printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
                 if (rsd.new_enu_found) {
-                    pout.printf("  +\n");
-                } else {
-                    pout.printf("\n");
+                    pout << "  +";
                 }
+                pout << std::endl;
             }
         }
     }
 
-    pout.printf("local orbitals\n");
+    pout << "local orbitals" << std::endl;
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
         for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
             auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) {
-                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                //pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                pout << rsd;
                 if (rsd.new_enu_found) {
-                    pout.printf("  +\n");
-                } else {
-                    pout.printf("\n");
+                    pout << "  +";
                 }
+                pout << std::endl;
             }
         }
     }
-    pout.printf("\n");
+    pout << std::endl;
 }
 
 void

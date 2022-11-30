@@ -397,8 +397,8 @@ class Wave_functions_base
             num_sc_ = num_spins(2);
         }
         for (int is = 0; is < num_sc_.get(); is++) {
-            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(), default_mem__,
-                "Wave_functions_base::data_");
+            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(),
+                    sddk::get_memory_pool(default_mem__), "Wave_functions_base::data_");
         }
     }
 
@@ -493,7 +493,7 @@ class Wave_functions_base
     allocate(sddk::memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].allocate(mem__);
+            data_[s].allocate(sddk::get_memory_pool(mem__));
         }
     }
 
@@ -1697,36 +1697,35 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     /* number of new states */
     int n = br_new__.size();
 
-//    //const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
-//    //int sddk_pp             = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
-//
-//    auto& comm = wfs__[0]->comm();
-//
-//    int K{0};
-//
-//    if (sddk_pp) {
-//        K = wfs__[0]->gkvec().num_gvec() + wfs__[0]->num_mt_coeffs();
-//        if (std::is_same<T, real_type<T>>::value) {
-//            K *= 2;
-//        }
-//    }
-//
+    auto pp = env::print_performance();
+
+    auto& comm = wf_i__.gkvec().comm();
+
+    int K{0};
+
+    if (pp) {
+        K = wf_i__.ld();
+        if (is_real_v<F>) {
+            K *= 2;
+        }
+    }
+
 //    //auto sddk_debug_ptr = utils::get_env<int>("SDDK_DEBUG");
 //    //int sddk_debug      = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 //
-//    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
-//    double ngop{8e-9}; // default value for complex type
-//    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
-//        ngop = 2e-9;
-//    }
-//
-//    if (sddk_pp) {
-//        comm.barrier();
-//    }
-//    // double time = -omp_get_wtime();
-//
-//    double gflops{0};
-//
+    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
+    double ngop{8e-9}; // default value for complex type
+    if (is_real_v<F>) { // change it if it is real type
+        ngop = 2e-9;
+    }
+
+    if (pp) {
+        comm.barrier();
+    }
+    auto t0 = utils::time_now();
+
+    double gflops{0};
+
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> 
      * H|\tilda phi_new> = H|phi_new> - H|phi_old><phi_old|phi_new> 
@@ -1739,10 +1738,10 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                 transform(spla_ctx__, mem__, o__, 0, 0, -1.0, *wf, sp, br_old__, 1.0, *wf, sp, br_new__);
             }
         }
-        //if (sddk_pp) {
-        //    /* inner and transform have the same number of flops */
-        //    gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ * K;
-        //}
+        if (pp) {
+            /* inner and transform have the same number of flops */
+            gflops += spins__.size() * static_cast<int>(1 + wfs__.size()) * ngop * br_old__.size() * n * K;
+        }
     }
 
 //    if (sddk_debug >= 2) {
@@ -1788,6 +1787,9 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //
     /* orthogonalize new n x n block */
     inner(spla_ctx__, mem__, spins__, wf_i__, br_new__, wf_j__, br_new__, o__, 0, 0);
+    if (pp) {
+        gflops += spins__.size() * ngop * n * n * K;
+    }
 
     /* At this point overlap matrix is computed for the new block and stored on the CPU. We
      * now have this choices
@@ -1841,14 +1843,14 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     if (sddk::linalg(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
         RTE_THROW("error in inversion");
     }
-    //if (is_device_memory(mem)) {
-    //    acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n, n);
-    //}
     PROFILE_STOP("wf::orthogonalize|tmtrx");
 
     /* single MPI rank and precision types of wave-functions and transformation matrices match */
     if (o__.comm().size() == 1 && std::is_same<T, real_type<F>>::value) {
         PROFILE_START("wf::orthogonalize|trans");
+        if (is_device_memory(mem__)) {
+            o__.copy_to(mem__, 0, 0, n, n);
+        }
         int sid{0};
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             /* multiplication by triangular matrix */
@@ -1857,12 +1859,12 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                 auto ptr = reinterpret_cast<F*>(wf->at(mem__, 0, sp, wf::band_index(br_new__.begin())));
                 int ld = wf->ld();
                 /* Gamma-point case */
-                if (std::is_same<F, real_type<F>>::value) {
+                if (is_real_v<F>) {
                     ld *= 2;
                 }
 
                 sddk::linalg(la1).trmm('R', 'U', 'N', ld, n, &sddk::linalg_const<F>::one(),
-                        o__.at(mem), o__.ld(), ptr, ld, stream_id(sid++));
+                        o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
             }
         }
         if (la1 == sddk::linalg_t::gpublas || la1 == sddk::linalg_t::cublasxt || la1 == sddk::linalg_t::magma) {
@@ -1870,6 +1872,9 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
             for (int i = 0; i < sid; i++) {
                 acc::sync_stream(stream_id(i));
             }
+        }
+        if (pp) {
+            gflops += spins__.size() * wfs__.size() * ngop * 0.5 * n * n * K;
         }
         PROFILE_STOP("wf::orthogonalize|trans");
     } else {
@@ -1923,11 +1928,6 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //        }
 //== //
 //== //    }
-//== //
-//== //    if (sddk_pp) {
-//== //        gflops += ngop * n__ * n__ * K;
-//== //    }
-//== //
 //== 
 //== //    if (sddk_debug >= 1) {
 //== //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
@@ -1936,10 +1936,15 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //            RTE_OUT(std::cout) << "orthogonalization error : " << err << std::endl;
 //== //        }
 //== //    }
-//== //
-//== //    // TODO: remove this?
-//== //    (void) gflops;
-//== //
+    if (pp) {
+        comm.barrier();
+        auto t = utils::time_interval(t0);
+        if (comm.rank() == 0) {
+            RTE_OUT(std::cout) << "effective performance : " << gflops / t << " GFlop/s/rank, "
+                               << gflops * comm.size() / t << " GFlop/s" << std::endl;
+        }
+    }
+
     return 0;
 }
 
