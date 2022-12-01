@@ -227,6 +227,8 @@ class Unit_cell
     /// Print basic info.
     void print_info(std::ostream& out__, int verbosity__) const;
 
+    void print_geometry_info(std::ostream& out__, int verbosity__) const;
+
     void print_nearest_neighbours(std::ostream& out__) const;
 
     unit_cell_parameters_descriptor unit_cell_parameters();

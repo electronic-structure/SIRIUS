@@ -42,8 +42,9 @@ class Lattice_relaxation
     {
     }
 
-    void find(int max_num_steps__, double forces_thr__ = 1e-4, double stress_thr__ = -1e-4)
+    nlohmann::json find(int max_num_steps__, double forces_thr__ = 1e-4, double stress_thr__ = -1e-4)
     {
+        nlohmann::json result;
 #if defined(SIRIUS_VCSQNM)
         bool compute_stress = stress_thr__ > 0;
         bool compute_forces = forces_thr__ > 0;
@@ -98,18 +99,20 @@ class Lattice_relaxation
             bool write_state{false};
 
             /* launch the calculation */
-            auto result = dft_.find(inp.density_tol(), inp.energy_tol(), dft_.ctx().cfg().iterative_solver().energy_tolerance(),
+            result = dft_.find(inp.density_tol(), inp.energy_tol(), dft_.ctx().cfg().iterative_solver().energy_tolerance(),
                 inp.num_dft_iter(), write_state);
+
+            rte::ostream out(dft_.ctx().out(), __func__);
 
             if (compute_stress) {
                 dft_.stress().calc_stress_total();
-                dft_.stress().print_info();
+                dft_.stress().print_info(out, dft_.ctx().verbosity());
 
                 auto st = dft_.stress().stress_total();
                 double d{0};
                 for (int i = 0; i < 3; i++) {
                     for (int j = 0; j < 3; j++) {
-                        stress(i, j) = st(i, j);
+                        stress(i, j) = -st(i, j);
                         d += std::abs(st(i, j));
                     }
                 }
@@ -119,13 +122,13 @@ class Lattice_relaxation
                     stress_converged = false;
                 }
 
-                RTE_OUT(dft_.ctx().out()) << "total stress value: " << d << ", stress threshold: " << stress_thr__
+                out << "total stress value: " << d << ", stress threshold: " << stress_thr__
                     << ", converged: " << stress_converged << std::endl;
             }
 
             if (compute_forces) {
                 dft_.forces().calc_forces_total();
-                dft_.forces().print_info();
+                dft_.forces().print_info(out, dft_.ctx().verbosity());
 
                 auto& ft = dft_.forces().forces_total();
                 double d{0};
@@ -140,13 +143,13 @@ class Lattice_relaxation
                 } else {
                     forces_converged = false;
                 }
-                RTE_OUT(dft_.ctx().out()) << "total forces value: " << d << ", forces threshold: " << forces_thr__
+                out << "total forces value: " << d << ", forces threshold: " << forces_thr__
                     << ", converged: " << forces_converged << std::endl;
             }
             auto etot = result["energy"]["total"].get<double>();
 
             if (forces_converged && stress_converged) {
-                RTE_OUT(dft_.ctx().out()) << "lattice relaxation is done" << std::endl;
+                out << "lattice relaxation is converged in " << istep << " steps" << std::endl;
                 break;
             }
 
@@ -169,14 +172,16 @@ class Lattice_relaxation
                 ctx.unit_cell().atom(ia).set_position({r(0, ia), r(1, ia), r(2, ia)});
             }
             dft_.update();
+            ctx.unit_cell().print_geometry_info(out, ctx.verbosity());
         }
 #else
         RTE_THROW("not compiled with vcsqnm support");
 #endif
+        if (!(forces_converged && stress_converged)) {
+            RTE_OUT(dft_.ctx().out()) << "lattice relaxation not converged" << std::endl;
+        }
+        return result;
     }
-
-
-
 };
 
 }

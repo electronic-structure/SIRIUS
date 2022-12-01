@@ -101,7 +101,7 @@ namespace PES_optimizer{
      * @param lat_c third lattice vector
     * @param initial_step_size initial step size. default is 1.0. For systems with hard bonds (e.g. C-C) use a value between and 1.0 and
     * 2.5. If a system only contains weaker bonds a value up to 5.0 may speed up the convergence.
-    * @param nhist_max Maximal number of steps that will be stored in the history list. Use a value between 3 and 20. Must be <= than 3*nat.
+    * @param nhist_max Maximal number of steps that will be stored in the history list. Use a value between 3 and 20. Must be <= than 3*nat + 9.
     * @param lattice_weight weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2. Default is 2.
     * @param alpha0 Lower limit on the step size. 1.e-2 is the default.
     * @param eps_subsp Lower limit on linear dependencies of basis vectors in history list. Default 1.e-4.
@@ -165,7 +165,6 @@ namespace PES_optimizer{
       alat.col(1) = lat_b;
       alat.col(2) = lat_c;
 
-      //cout << "transform atom coordinates" << endl;
       //  calculate transformed coordinates
       Eigen::MatrixXd q(3, nat);
       Eigen::MatrixXd dq(3, nat);
@@ -175,16 +174,12 @@ namespace PES_optimizer{
       //cout << "transform lattice vectors" << endl;
       // transform lattice vectors
       alat_tilde = alat * lattice_transformer;
-      //cout << calc_lattice_derivatices(stress, alat).array() / da.array() << endl;
       Eigen::MatrixXd dalat = calc_lattice_derivatices(stress, alat) * lattice_transformer_inv;
       Eigen::VectorXd qall = combine_matrices(q, alat_tilde);
       Eigen::VectorXd dqall = combine_matrices(dq, dalat);
       
-      // 
       //cout << "update coordinates" << endl;
       qall += this->opt->step(qall, energy, dqall);
-      //cout << "update done" << endl;
-      //cout << qall(1) << endl;
 
       split_matrices(q, alat_tilde, qall);
       alat = alat_tilde * lattice_transformer_inv;

@@ -1,12 +1,9 @@
-#include "utils/profiler.hpp"
 #include <sirius.hpp>
-#include "utils/filesystem.hpp"
-#include <utils/json.hpp>
 #include <cfenv>
-#include <fenv.h>
-#if defined(SIRIUS_VCSQNM)
-#include "vcsqnm/periodic_optimizer.hpp"
-#endif
+#include "utils/profiler.hpp"
+#include "utils/filesystem.hpp"
+#include "utils/json.hpp"
+#include "dft/lattice_relaxation.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -127,6 +124,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
 
     bool const reduce_kp = ctx.use_symmetry() && ctx.cfg().parameters().use_ibz();
     K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), reduce_kp);
+
     DFT_ground_state dft(kset);
 
     print_memory_usage(ctx.out(), FILE_LINE);
@@ -153,147 +151,60 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         compute_forces = true;
     }
 
-    int num_geom_opt_steps{1};
-
-    int na = ctx.unit_cell().num_atoms();
-#if defined(SIRIUS_VCSQNM)
-    std::unique_ptr<PES_optimizer::periodic_optimizer> geom_opt;
-    Eigen::MatrixXd r(3, na);
-    Eigen::MatrixXd f(3, na);
-    Eigen::Vector3d lat_a, lat_b, lat_c;
-    for (int x = 0; x < 3; x++) {
-        lat_a[x] = ctx.unit_cell().lattice_vector(0)[x];
-        lat_b[x] = ctx.unit_cell().lattice_vector(1)[x];
-        lat_c[x] = ctx.unit_cell().lattice_vector(2)[x];
-    }
-
-    Eigen::Matrix3d stress;
-
-    for (int ia = 0; ia < na; ia++) {
-        for (auto x: {0, 1, 2}) {
-            r(x, ia) = ctx.unit_cell().atom(ia).position()[x];
-        }
-    }
-
-    if (task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
-        num_geom_opt_steps = 4;
-        if (task_id == task_t::ground_state_new_relax) {
-            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, 2.0, 10, 1.e-2, 1.e-4);
-            compute_forces = true;
-        }
-        if (task_id == task_t::ground_state_new_vcrelax) {
-            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c, 2.0, 10, 2.0, 1.e-2, 1.e-4);
-            compute_forces = true;
-            compute_stress = true;
-        }
-    }
-#endif
-
-
-    if (ctx.comm().rank() == 0) {
-        switch (task_id) {
-            case task_t::ground_state_new_relax: 
-            case task_t::ground_state_new_vcrelax: {
-                ctx.out() << "number of geometry optimisation steps : " << num_geom_opt_steps << std::endl;
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    }
-
     nlohmann::json result;
 
-    for (int igeom = 0; igeom < num_geom_opt_steps; igeom++) {
+    Lattice_relaxation lr(dft);
 
-        if (ctx.comm().rank() == 0) {
-            switch (task_id) {
-                case task_t::ground_state_new_relax: 
-                case task_t::ground_state_new_vcrelax: {
-                    ctx.out() << "optimisation step " << igeom  + 1 << " out of " << num_geom_opt_steps << std::endl;
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-        }
+    switch (task_id) {
+        case task_t::ground_state_new:
+        case task_t::ground_state_restart: {
+            /* launch the calculation */
+            result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                    inp.num_dft_iter(), write_state);
 
-        /* launch the calculation */
-        result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
-                inp.num_dft_iter(), write_state);
-
-        if (compute_stress) {
-            dft.stress().calc_stress_total();
-        }
-        if (compute_forces) {
-            dft.forces().calc_forces_total();
-        }
-
-        /* compute forces and stress */
-        if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-            dft.stress().print_info();
-            result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-            auto st = dft.stress().stress_total();
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    result["stress"][i][j] = st(j, i);
+            if (compute_stress) {
+                dft.stress().calc_stress_total();
+            }
+            if (compute_forces) {
+                dft.forces().calc_forces_total();
+            }
+            /* compute forces and stress */
+            if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
+                rte::ostream out(dft.ctx().out(), __func__);
+                dft.stress().print_info(out, dft.ctx().verbosity());
+                result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
+                auto st = dft.stress().stress_total();
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        result["stress"][i][j] = st(j, i);
+                    }
                 }
             }
-        }
-        if (ctx.cfg().control().print_forces()) {
-            dft.forces().print_info();
-            result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-            auto& ft = dft.forces().forces_total();
-            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                for (int j = 0; j < 3; j++) {
-                    result["forces"][i][j] = ft(j, i);
+            if (ctx.cfg().control().print_forces()) {
+                rte::ostream out(dft.ctx().out(), __func__);
+                dft.forces().print_info(out, dft.ctx().verbosity());
+                result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+                auto& ft = dft.forces().forces_total();
+                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                    for (int j = 0; j < 3; j++) {
+                        result["forces"][i][j] = ft(j, i);
+                    }
                 }
             }
+            break;
         }
-#if defined(SIRIUS_VCSQNM)
-        /*
-         * geometry optimisataion
-         */
-        auto etot = result["energy"]["total"].get<double>();
-        if (task_id == task_t::ground_state_new_relax) {
-            auto& ft = dft.forces().forces_total();
-            for (int ia = 0; ia < na; ia++) {
-                for (int x : {0, 1, 2}) {
-                    f(x, ia) = ft(x, ia);
-                }
-            }
-            geom_opt->step(r, etot, f);
+        case task_t::ground_state_new_relax: {
+            result = lr.find(40, 1e-4);
+            break;
         }
-        if (task_id == task_t::ground_state_new_vcrelax) {
-            auto& ft = dft.forces().forces_total();
-            for (int ia = 0; ia < na; ia++) {
-                for (int x : {0, 1, 2}) {
-                    f(x, ia) = ft(x, ia);
-                }
-            }
-            auto st = dft.stress().stress_total();
-            for (int i : {0, 1, 2}) {
-                for (int j : {0, 1, 2}) {
-                    stress(i, j) = st(i, j);
-                }
-            }
-            geom_opt->step(r, etot, f, lat_a, lat_b, lat_c, stress);
+        case task_t::ground_state_new_vcrelax: {
+            result = lr.find(40, 1e-4, 1e-5);
+            break;
         }
-        /*
-         * update geometry
-         */
-        if (task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
-            ctx.unit_cell().set_lattice_vectors({lat_a[0], lat_a[1], lat_a[2]},
-                                                {lat_b[0], lat_b[1], lat_b[2]},
-                                                {lat_c[0], lat_c[1], lat_c[2]});
-            for (int ia = 0; ia < na; ia++) {
-                ctx.unit_cell().atom(ia).set_position({r(0, ia), r(1, ia), r(2, ia)});
-            }
-            dft.update();
+        default: {
+            RTE_OUT(ctx.out()) << "task " << task_id << " is not handeled" << std::endl;
+            break;
         }
-#endif
     }
 
     if (write_state && write_output) {
@@ -525,7 +436,6 @@ void run_tasks(cmd_args const& args)
             ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
         }
         ctx1.update();
-
     }
 
     if (task_id == task_t::k_point_path) {
@@ -665,11 +575,6 @@ int main(int argn, char** argv)
     args.register_key("--volume_scale1=", "{double} final volume scale for EOS calculation");
 
     args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        std::printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
 
 #if defined(_GNU_SOURCE)
     if (args.exist("fpe")) {

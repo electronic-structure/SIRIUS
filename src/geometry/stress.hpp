@@ -487,7 +487,7 @@ class Stress
         return stress_total_;
     }
 
-    void print_info() const;
+    void print_info(std::ostream& out__, int verbosity__) const;
 };
 
 } // namespace sirius

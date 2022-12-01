@@ -932,7 +932,7 @@ class Simulation_context : public Simulation_parameters
     /// Return output stream based on the verbosity level.
     inline std::ostream& out(int level__) const
     {
-        if (level__ >= this->verbosity()) {
+        if (this->verbosity() >= level__) {
             return this->out();
         } else {
             return utils::null_stream();
@@ -941,7 +941,7 @@ class Simulation_context : public Simulation_parameters
 
     inline rte::ostream out(int level__, const char* label__) const
     {
-        if (level__ >= this->verbosity()) {
+        if (this->verbosity() >= level__) {
             return rte::ostream(this->out(), label__);
         } else {
             return rte::ostream(utils::null_stream(), label__);
@@ -958,7 +958,6 @@ class Simulation_context : public Simulation_parameters
             }
         }
     }
-
 };
 
 } // namespace sirius

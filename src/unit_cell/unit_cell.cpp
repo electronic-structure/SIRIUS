@@ -254,6 +254,62 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     out__ << std::endl;
 }
 
+void
+Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
+{
+    if (verbosity__ >= 1) {
+        out__ << std::endl
+              << "lattice vectors" << std::endl;
+        for (int i = 0; i < 3; i++) {
+            out__ << "  a" << i + 1 << " : ";
+            for (int x: {0, 1, 2}) {
+                out__ << utils::ffmt(18, 10) << lattice_vectors_(x, i);
+            }
+            out__ << std::endl;
+        }
+        out__ << std::endl
+              << "unit cell volume : " << utils::ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
+    }
+
+    if (verbosity__ >= 2) {
+        out__ << std::endl
+              << "atom id  type id  class id             position                      vector_field" << std::endl
+              << utils::hbar(90, '-') << std::endl;
+        for (int i = 0; i < num_atoms(); i++) {
+            auto pos = atom(i).position();
+            auto vf  = atom(i).vector_field();
+            out__ << std::setw(6) << i
+                  << std::setw(9) << atom(i).type_id()
+                  << std::setw(9) << atom(i).symmetry_class_id()
+                  << "   ";
+            for (int x: {0, 1, 2}) {
+                out__ << utils::ffmt(10, 5) << pos[x];
+            }
+            out__ << "   ";
+            for (int x: {0, 1, 2}) {
+                out__ << utils::ffmt(10, 5) << vf[x];
+            }
+            out__ << std::endl;
+        }
+        out__ << std::endl
+              << "atom id         position (Cartesian, a.u.)" << std::endl
+              << utils::hbar(45, '-') << std::endl;
+        for (int i = 0; i < num_atoms(); i++) {
+            auto pos = atom(i).position();
+            auto vc  = get_cartesian_coordinates(pos);
+            out__ << std::setw(6) << i << "   ";
+            for (int x: {0, 1 ,2}) {
+                out__ << utils::ffmt(12, 6) << vc[x];
+            }
+            out__ << std::endl;
+        }
+    }
+    if (verbosity__ >= 1) {
+        out__ << std::endl
+              << "minimum bond length: " << utils::ffmt(12, 6) << min_bond_length() << std::endl;
+    }
+}
+
 unit_cell_parameters_descriptor
 Unit_cell::unit_cell_parameters()
 {
