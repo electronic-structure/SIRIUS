@@ -436,7 +436,12 @@
                      "type" : "boolean",
                      "default" : false,
                      "title" : "Orthogonalize LAPW radial functions."
-                 }
+                 },
+                 "output" : {
+                     "type" : "string",
+                     "default" : "stdout:",
+                     "title" : "Type of the output stream (stdout:, file:name)"
+                }
             }
         },
         "parameters" : {

@@ -318,7 +318,18 @@ Simulation_context::initialize()
 
     /* setup the output stream */
     if (this->comm().rank() == 0 && this->verbosity() >= 1) {
-        output_stream_ = &std::cout;
+        auto out_str = utils::split(cfg().control().output(), ':');
+        if (out_str.size() != 2) {
+            RTE_THROW("wrong output stream parameter");
+        }
+        if (out_str[0] == "stdout") {
+            output_stream_ = &std::cout;
+        } else if (out_str[0] == "file") {
+            output_file_stream_ = std::ofstream(out_str[1]);
+            output_stream_ = &output_file_stream_;
+        } else {
+            RTE_THROW("unknown output stream type");
+        }
     } else {
         output_stream_ = &utils::null_stream();
     }

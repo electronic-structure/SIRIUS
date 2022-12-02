@@ -580,9 +580,9 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
     call_sirius(
         [&]() {
             auto& comm                 = sddk::Communicator::map_fcomm(fcomm__);
-            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator::null();
+            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator();
             auto const& comm_band =
-                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator::null();
+                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator();
             *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);

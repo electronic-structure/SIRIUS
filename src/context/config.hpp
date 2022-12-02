@@ -931,6 +931,18 @@ class config_t
             }
             dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
         }
+        /// Type of the output stream (stdout:, file:name)
+        inline auto output() const
+        {
+            return dict_.at("/control/output"_json_pointer).get<std::string>();
+        }
+        inline void output(std::string output__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/output"_json_pointer] = output__;
+        }
       private:
         nlohmann::json& dict_;
     };

@@ -274,6 +274,7 @@ class Simulation_context : public Simulation_parameters
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
     std::ostream* output_stream_{nullptr};
+    std::ofstream output_file_stream_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
