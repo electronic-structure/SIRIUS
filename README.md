@@ -103,12 +103,6 @@ $ spack build-env $SPEC -- cmake ..
 $ spack build-env $SPEC -- make -j$(nproc)
 ```
 
-Building tests with `-DBUILD_TESTING=On` requires [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page). Use the following `SPEC` instead:
-
-```bash
-$ export SPEC="sirius@develop build_type=Debug +cuda +tests"
-```
-
 ### Manual installation
 
 When installing SIRIUS without Spack, make sure to install the required dependencies first:
