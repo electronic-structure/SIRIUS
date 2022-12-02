@@ -371,7 +371,19 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     auto tstop = std::chrono::high_resolution_clock::now();
 
-    json dict            = serialize();
+    auto dict = serialize();
+
+    /* check density */
+    if (num_iter >= 0) {
+        density_.rho().fft_transform(1);
+        double rho_min{1e100};
+        for (int ir = 0; ir < density_.rho().spfft().local_slice_size(); ir++) {
+            rho_min = std::min(rho_min, density_.rho().f_rg(ir));
+        }
+        dict["rho_min"] = rho_min;
+        ctx_.comm().allreduce<double, sddk::mpi_op_t::min>(&rho_min, 1);
+    }
+
     dict["scf_time"]     = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();
     dict["etot_history"] = etot_hist;
     if (num_iter >= 0) {
@@ -382,9 +394,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         dict["converged"] = false;
     }
 
-    // if (ctx_.control().verification_ >= 1) {
-    //    check_scf_density();
-    //}
+    if (ctx_.cfg().control().verification() >= 1) {
+        check_scf_density();
+    }
 
     // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
     // dict["volume_units"] = "angstrom^3";

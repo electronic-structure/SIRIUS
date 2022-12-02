@@ -1702,6 +1702,10 @@ sirius_find_ground_state:
       type: int
       attr: out, optional
       doc: Actual number of SCF iterations.
+    rho_min:
+      type: double
+      attr: out, optional
+      doc: Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if SCF calculation is converged.
     error_code:
       type: int
       attr: out, optional
@@ -1711,7 +1715,8 @@ sirius_find_ground_state:
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
                          double const* iter_solver_tol__, bool const* initial_guess__, int const* max_niter__,
-                         bool const* save_state__, bool* converged__, int* niter__, int* error_code__)
+                         bool const* save_state__, bool* converged__, int* niter__, double* rho_min__,
+                         int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1744,12 +1749,18 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                 if (niter__) {
                     *niter__ = result["num_scf_iterations"].get<int>();
                 }
+                if (rho_min__) {
+                    *rho_min__ = result["rho_min"].get<double>();
+                }
             } else {
                 if (converged__) {
                     *converged__ = false;
                 }
                 if (niter__) {
                     *niter__ = max_niter;
+                }
+                if (rho_min__) {
+                    *rho_min__ = 0;
                 }
             }
         },

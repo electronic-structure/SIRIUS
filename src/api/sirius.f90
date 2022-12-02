@@ -1687,9 +1687,10 @@ end subroutine sirius_initialize_kset
 !> @param [in] save_state Boolean variable indicating if we want to save the ground state.
 !> @param [out] converged Boolean variable indicating if the calculation has converged
 !> @param [out] niter Actual number of SCF iterations.
+!> @param [out] rho_min Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if SCF calculation is converged.
 !> @param [out] error_code Error code.
 subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,iter_solver_tol,&
-&initial_guess,max_niter,save_state,converged,niter,error_code)
+&initial_guess,max_niter,save_state,converged,niter,rho_min,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
@@ -1701,6 +1702,7 @@ integer, optional, target, intent(in) :: max_niter
 logical, optional, target, intent(in) :: save_state
 logical, optional, target, intent(out) :: converged
 integer, optional, target, intent(out) :: niter
+real(8), optional, target, intent(out) :: rho_min
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -1715,11 +1717,12 @@ logical(C_BOOL), target :: save_state_c_type
 type(C_PTR) :: converged_ptr
 logical(C_BOOL), target :: converged_c_type
 type(C_PTR) :: niter_ptr
+type(C_PTR) :: rho_min_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,iter_solver_tol,&
-&initial_guess,max_niter,save_state,converged,niter,error_code)&
+&initial_guess,max_niter,save_state,converged,niter,rho_min,error_code)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -1731,6 +1734,7 @@ type(C_PTR), value :: max_niter
 type(C_PTR), value :: save_state
 type(C_PTR), value :: converged
 type(C_PTR), value :: niter
+type(C_PTR), value :: rho_min
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -1771,13 +1775,17 @@ niter_ptr = C_NULL_PTR
 if (present(niter)) then
 niter_ptr = C_LOC(niter)
 endif
+rho_min_ptr = C_NULL_PTR
+if (present(rho_min)) then
+rho_min_ptr = C_LOC(rho_min)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
 &iter_solver_tol_ptr,initial_guess_ptr,max_niter_ptr,save_state_ptr,converged_ptr,&
-&niter_ptr,error_code_ptr)
+&niter_ptr,rho_min_ptr,error_code_ptr)
 if (present(initial_guess)) then
 endif
 if (present(save_state)) then
