@@ -174,12 +174,12 @@ class Lattice_relaxation
             dft_.update();
             ctx.unit_cell().print_geometry_info(out, ctx.verbosity());
         }
-#else
-        RTE_THROW("not compiled with vcsqnm support");
-#endif
         if (!(forces_converged && stress_converged)) {
             RTE_OUT(dft_.ctx().out()) << "lattice relaxation not converged" << std::endl;
         }
+#else
+        RTE_THROW("not compiled with vcsqnm support");
+#endif
         return result;
     }
 };
