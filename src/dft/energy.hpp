@@ -256,6 +256,39 @@ double one_electron_energy(Density const& density, Potential const& potential);
 
 double one_electron_energy_hubbard(Density const& density, Potential const& potential);
 double hubbard_energy(Density const& density);
+
+inline auto
+energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density const& density__,
+    Potential const& potential__, double ewald_energy__, double scf_correction__ = 0)
+{
+    nlohmann::json dict;
+
+    dict["energy"] =  nlohmann::json::object();
+
+    dict["energy"]["total"]         = total_energy(ctx__, kset__, density__, potential__, ewald_energy__);
+    dict["energy"]["vha"]           = energy_vha(potential__);
+    dict["energy"]["vxc"]           = energy_vxc(density__, potential__);
+    dict["energy"]["exc"]           = energy_exc(density__, potential__);
+    dict["energy"]["bxc"]           = energy_bxc(density__, potential__);
+    dict["energy"]["veff"]          = energy_veff(density__, potential__);
+    dict["energy"]["eval_sum"]      = eval_sum(ctx__.unit_cell(), kset__);
+    dict["energy"]["kin"]           = energy_kin(ctx__, kset__, density__, potential__);
+    dict["energy"]["ewald"]         = ewald_energy__;
+    dict["energy"]["scf_correction"] = scf_correction__;
+    dict["energy"]["entropy_sum"]    = kset__.entropy_sum();
+    dict["efermi"]                   = kset__.energy_fermi();
+    dict["band_gap"]                 = kset__.band_gap();
+    if (ctx__.full_potential()) {
+        dict["energy"]["core_eval_sum"] = core_eval_sum(ctx__.unit_cell());
+        dict["energy"]["enuc"]          = energy_enuc(ctx__, potential__);
+        dict["core_leakage"]            = density__.core_leakage();
+    } else {
+        dict["energy"]["vloc"] = energy_vloc(density__, potential__);
+    }
+
+    return dict;
+}
+
 } // namespace sirius
 
 #endif /* __ENERGY_HPP__ */

@@ -106,30 +106,7 @@ DFT_ground_state::total_energy() const
 json
 DFT_ground_state::serialize()
 {
-    nlohmann::json dict;
-
-    dict["energy"]                  = json::object();
-    dict["energy"]["total"]         = total_energy();
-    dict["energy"]["enuc"]          = energy_enuc(ctx_, potential_);
-    dict["energy"]["core_eval_sum"] = core_eval_sum(ctx_.unit_cell());
-    dict["energy"]["vha"]           = energy_vha(potential_);
-    dict["energy"]["vxc"]           = energy_vxc(density_, potential_);
-    dict["energy"]["exc"]           = energy_exc(density_, potential_);
-    dict["energy"]["bxc"]           = energy_bxc(density_, potential_);
-    dict["energy"]["veff"]          = energy_veff(density_, potential_);
-    dict["energy"]["eval_sum"]      = eval_sum(ctx_.unit_cell(), kset_);
-    dict["energy"]["kin"]           = energy_kin(ctx_, kset_, density_, potential_);
-    dict["energy"]["ewald"]         = ewald_energy_;
-    if (!ctx_.full_potential()) {
-        dict["energy"]["vloc"] = energy_vloc(density_, potential_);
-    }
-    dict["energy"]["scf_correction"] = this->scf_energy_;
-    dict["energy"]["entropy_sum"]    = kset_.entropy_sum();
-    dict["efermi"]                   = kset_.energy_fermi();
-    dict["band_gap"]                 = kset_.band_gap();
-    dict["core_leakage"]             = density_.core_leakage();
-
-    return dict;
+    return energy_dict(ctx_, kset_, density_, potential_, ewald_energy_, this->scf_energy_);
 }
 
 /// A quick check of self-constent density in case of pseudopotential.
@@ -140,11 +117,15 @@ DFT_ground_state::check_scf_density()
         return json();
     }
     std::vector<double_complex> rho_pw(ctx_.gvec().count());
+    std::vector<double_complex> veff_pw(ctx_.gvec().count());
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rho_pw[ig] = density_.rho().f_pw_local(ig);
+        veff_pw[ig] = potential_.effective_potential().f_pw_local(ig);
     }
 
     double etot = total_energy();
+
+    auto gs0 = energy_dict(ctx_, kset_, density_, potential_, ewald_energy_);
 
     /* create new potential */
     Potential pot(ctx_);
@@ -161,8 +142,10 @@ DFT_ground_state::check_scf_density()
     /* generate new density from the occupied wave-functions */
     density_.generate<double>(kset_, true, true, false);
     double rms{0};
+    double rms_veff{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
+        rms_veff += std::pow(std::abs(pot.effective_potential().f_pw_local(ig) - veff_pw[ig]), 2);
     }
     ctx_.comm().allreduce(&rms, 1);
     json dict;
@@ -170,11 +153,21 @@ DFT_ground_state::check_scf_density()
     dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
     dict["detot"] = total_energy() - etot;
 
+    auto gs1 = energy_dict(ctx_, kset_, density_, pot, ewald_energy_);
+
     if (ctx_.verbosity() >= 1) {
         RTE_OUT(ctx_.out()) << "RSS: " << dict["rss"].get<double>() << std::endl
                             << "RMS: " << dict["rms"].get<double>() << std::endl
-                            << "dEtot: " << dict["detot"].get<double>() << std::endl
-                            << "Eold: " << etot << " Enew: " << total_energy() << std::endl;
+                            << "RMS_veff: " << rms_veff << std::endl
+                            << "Eold: " << etot << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
+
+        std::vector<std::string> labels({"total", "vha", "vxc", "exc", "bxc", "veff", "eval_sum", "kin", "ewald",
+                "vloc", "scf_correction", "entropy_sum"});
+
+        for (auto e: labels) {
+            RTE_OUT(ctx_.out()) << "energy component: " << e << ", diff: " <<
+                std::abs(gs0["energy"][e].get<double>() - gs1["energy"][e].get<double>()) << std::endl;
+        }
     }
 
     return dict;
@@ -394,9 +387,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         dict["converged"] = false;
     }
 
-    if (ctx_.cfg().control().verification() >= 1) {
-        check_scf_density();
-    }
+    //if (ctx_.cfg().control().verification() >= 1) {
+    //    check_scf_density();
+    //}
 
     // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
     // dict["volume_units"] = "angstrom^3";
