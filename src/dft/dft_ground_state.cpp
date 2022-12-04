@@ -116,10 +116,6 @@ DFT_ground_state::check_scf_density()
     if (ctx_.full_potential()) {
         return json();
     }
-    std::vector<double_complex> rho_pw(ctx_.gvec().count());
-    for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rho_pw[ig] = density_.rho().f_pw_local(ig);
-    }
 
     auto gs0 = energy_dict(ctx_, kset_, density_, potential_, ewald_energy_);
 
@@ -140,30 +136,33 @@ DFT_ground_state::check_scf_density()
     /* generate new density from the occupied wave-functions */
     bool symmetrize{true};
     bool add_core{true};
-    density_.generate<double>(kset_, symmetrize, add_core, transform_to_rg);
+    /* create new density */
+    Density rho1(ctx_);
+    rho1.generate<double>(kset_, symmetrize, add_core, transform_to_rg);
 
-    auto gs1 = energy_dict(ctx_, kset_, density_, pot, ewald_energy_);
+    auto gs1 = energy_dict(ctx_, kset_, rho1, pot, ewald_energy_);
 
-    double rms{0};
-    double rms_veff{0};
-    for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
-        rms_veff += std::pow(std::abs(pot.effective_potential().f_pw_local(ig) -
-                             potential_.effective_potential().f_pw_local(ig)), 2);
-    }
-    ctx_.comm().allreduce(&rms, 1);
-    ctx_.comm().allreduce(&rms_veff, 1);
+    auto calc_rms = [&](Field4D& a, Field4D& b) -> double
+    {
+        double rms{0};
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rms += std::pow(std::abs(a.component(0).f_pw_local(ig) - b.component(0).f_pw_local(ig)), 2);
+        }
+        ctx_.comm().allreduce(&rms, 1);
+        return std::sqrt(rms / ctx_.gvec().num_gvec());
+    };
+
+    double rms = calc_rms(density_, rho1);
+    double rms_veff = calc_rms(potential_, pot);
+
     json dict;
-    dict["rss"]   = rms;
-    dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
+    dict["rms"]   = rms;
     dict["detot"] = gs0["energy"]["total"].get<double>() - gs1["energy"]["total"].get<double>();
 
     rms_veff = std::sqrt(rms_veff / ctx_.gvec().num_gvec());
 
-
     if (ctx_.verbosity() >= 1) {
-        RTE_OUT(ctx_.out()) << "RSS: " << dict["rss"].get<double>() << std::endl
-                            << "RMS: " << dict["rms"].get<double>() << std::endl
+        RTE_OUT(ctx_.out()) << "RMS_rho: " << dict["rms"].get<double>() << std::endl
                             << "RMS_veff: " << rms_veff << std::endl
                             << "Eold: " << gs0["energy"]["total"].get<double>()
                             << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;

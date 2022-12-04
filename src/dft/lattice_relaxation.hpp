@@ -76,11 +76,12 @@ class Lattice_relaxation
          * @param alpha0 Lower limit on the step size. 1.e-2 is the default.
          * @param eps_subsp Lower limit on linear dependencies of basis vectors in history list. Default 1.e-4.
          * */
-        double initial_step_size{2.0};
-        int nhist_max{10};
-        double lattice_weight{2.0};
-        double alpha0{1e-2};
-        double eps_subsp{1e-4};
+        auto& inp = dft_.ctx().cfg().vcsqnm();
+        double initial_step_size = inp.initial_step_size();
+        int nhist_max = inp.nhist_max();
+        double lattice_weight = inp.lattice_weight();
+        double alpha0 = inp.alpha0();
+        double eps_subsp = inp.eps_subsp();
         if (compute_forces && compute_stress) {
             geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c, initial_step_size,
                     nhist_max, lattice_weight, alpha0, eps_subsp);
