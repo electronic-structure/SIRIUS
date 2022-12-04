@@ -117,22 +117,20 @@ DFT_ground_state::check_scf_density()
         return json();
     }
     std::vector<double_complex> rho_pw(ctx_.gvec().count());
-    std::vector<double_complex> veff_pw(ctx_.gvec().count());
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rho_pw[ig] = density_.rho().f_pw_local(ig);
-        veff_pw[ig] = potential_.effective_potential().f_pw_local(ig);
     }
-
-    double etot = total_energy();
 
     auto gs0 = energy_dict(ctx_, kset_, density_, potential_, ewald_energy_);
 
     /* create new potential */
     Potential pot(ctx_);
     /* generate potential from existing density */
-    pot.generate(density_, ctx_.use_symmetry(), true);
+    bool transform_to_rg{true};
+    pot.generate(density_, ctx_.use_symmetry(), transform_to_rg);
     /* create new Hamiltonian */
-    Hamiltonian0<double> H0(pot, true);
+    bool precompute_lapw{true};
+    Hamiltonian0<double> H0(pot, precompute_lapw);
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -140,26 +138,35 @@ DFT_ground_state::check_scf_density()
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    density_.generate<double>(kset_, true, true, false);
+    bool symmetrize{true};
+    bool add_core{true};
+    density_.generate<double>(kset_, symmetrize, add_core, transform_to_rg);
+
+    auto gs1 = energy_dict(ctx_, kset_, density_, pot, ewald_energy_);
+
     double rms{0};
     double rms_veff{0};
     for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
         rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
-        rms_veff += std::pow(std::abs(pot.effective_potential().f_pw_local(ig) - veff_pw[ig]), 2);
+        rms_veff += std::pow(std::abs(pot.effective_potential().f_pw_local(ig) -
+                             potential_.effective_potential().f_pw_local(ig)), 2);
     }
     ctx_.comm().allreduce(&rms, 1);
+    ctx_.comm().allreduce(&rms_veff, 1);
     json dict;
     dict["rss"]   = rms;
     dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
-    dict["detot"] = total_energy() - etot;
+    dict["detot"] = gs0["energy"]["total"].get<double>() - gs1["energy"]["total"].get<double>();
 
-    auto gs1 = energy_dict(ctx_, kset_, density_, pot, ewald_energy_);
+    rms_veff = std::sqrt(rms_veff / ctx_.gvec().num_gvec());
+
 
     if (ctx_.verbosity() >= 1) {
         RTE_OUT(ctx_.out()) << "RSS: " << dict["rss"].get<double>() << std::endl
                             << "RMS: " << dict["rms"].get<double>() << std::endl
                             << "RMS_veff: " << rms_veff << std::endl
-                            << "Eold: " << etot << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
+                            << "Eold: " << gs0["energy"]["total"].get<double>()
+                            << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
 
         std::vector<std::string> labels({"total", "vha", "vxc", "exc", "bxc", "veff", "eval_sum", "kin", "ewald",
                 "vloc", "scf_correction", "entropy_sum"});
