@@ -194,11 +194,12 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             break;
         }
         case task_t::ground_state_new_relax: {
-            result = lr.find(40, 1e-4);
+            result = lr.find(ctx.cfg().vcsqnm().num_steps(), ctx.cfg().vcsqnm().forces_tol());
             break;
         }
         case task_t::ground_state_new_vcrelax: {
-            result = lr.find(40, 1e-4, 1e-5);
+            result = lr.find(ctx.cfg().vcsqnm().num_steps(), ctx.cfg().vcsqnm().forces_tol(),
+                    ctx.cfg().vcsqnm().stress_tol());
             break;
         }
         default: {

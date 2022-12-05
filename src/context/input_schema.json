@@ -729,6 +729,21 @@
                     "type" : "number",
                     "default" : 1e-4,
                     "title" : "Lower limit on linear dependencies of basis vectors in history list"
+                },
+                "forces_tol" : {
+                    "type" : "number",
+                    "default" : 1e-4,
+                    "title" : "Total error tolerance on the atomic forces"
+                },
+                "stress_tol" : {
+                    "type" : "number",
+                    "default" : 1e-5,
+                    "title" : "Total error tolerance on the lattice stress"
+                },
+                "num_steps" : {
+                    "type" : "integer",
+                    "default" : 40,
+                    "title" : "Number of lattice relaxation steps"
                 }
             }
         },

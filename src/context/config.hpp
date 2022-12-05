@@ -1559,6 +1559,42 @@ class config_t
             }
             dict_["/vcsqnm/eps_subsp"_json_pointer] = eps_subsp__;
         }
+        /// Total error tolerance on the atomic forces
+        inline auto forces_tol() const
+        {
+            return dict_.at("/vcsqnm/forces_tol"_json_pointer).get<double>();
+        }
+        inline void forces_tol(double forces_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/forces_tol"_json_pointer] = forces_tol__;
+        }
+        /// Total error tolerance on the lattice stress
+        inline auto stress_tol() const
+        {
+            return dict_.at("/vcsqnm/stress_tol"_json_pointer).get<double>();
+        }
+        inline void stress_tol(double stress_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/stress_tol"_json_pointer] = stress_tol__;
+        }
+        /// Number of lattice relaxation steps
+        inline auto num_steps() const
+        {
+            return dict_.at("/vcsqnm/num_steps"_json_pointer).get<int>();
+        }
+        inline void num_steps(int num_steps__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/num_steps"_json_pointer] = num_steps__;
+        }
       private:
         nlohmann::json& dict_;
     };
