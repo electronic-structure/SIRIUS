@@ -114,7 +114,7 @@ When installing SIRIUS without Spack, make sure to install the required dependen
  * [GSL](https://www.gnu.org/software/gsl/) - GNU scientific library
  * [LibXC](https://www.tddft.org/programs/libxc/) - library of exchange-correlation potentials
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
- * [spglib](https://atztogo.github.io/spglib/) - library for finding and handling crystal symmetries
+ * [spglib](https://spglib.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
  * [SPLA](https://github.com/eth-cscs/spla) - domain-specific distributed GEMM library
 
