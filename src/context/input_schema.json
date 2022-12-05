@@ -727,7 +727,7 @@
                 },
                 "eps_subsp" : {
                     "type" : "number",
-                    "default" : 1e-4,
+                    "default" : 1e-3,
                     "title" : "Lower limit on linear dependencies of basis vectors in history list"
                 },
                 "forces_tol" : {
@@ -742,7 +742,7 @@
                 },
                 "num_steps" : {
                     "type" : "integer",
-                    "default" : 40,
+                    "default" : 300,
                     "title" : "Number of lattice relaxation steps"
                 }
             }
