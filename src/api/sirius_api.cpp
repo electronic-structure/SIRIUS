@@ -2658,12 +2658,15 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                             dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                        RTE_THROW(s);
-                    }
-                    if (is_inverse) {
-                        pw_coeffs__[i] = std::conj(v[ig]);
+                        WARNING(s);
+                        pw_coeffs__[i] = 0;
+                        //RTE_THROW(s);
                     } else {
-                        pw_coeffs__[i] = v[ig];
+                        if (is_inverse) {
+                            pw_coeffs__[i] = std::conj(v[ig]);
+                        } else {
+                            pw_coeffs__[i] = v[ig];
+                        }
                     }
                 }
             }

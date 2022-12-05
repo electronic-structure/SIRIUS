@@ -171,15 +171,15 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 
     if (ctx_.verbosity() >= 2) {
         std::stringstream s;
-        s << "Lowest band energie" << std::endl;
+        s << "Lowest band energies" << std::endl;
         int nbnd = std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands());
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-            s << "ik: " << std::setw(2) << ik;
+            s << "ik:" << std::setw(5) << ik;
             for (int j = 0; j < nbnd; j++) {
                 s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
             }
             if (ctx_.num_mag_dims() == 1) {
-                s << std::endl << "         ";
+                s << std::endl << "        ";
                 for (int j = 0; j < nbnd; j++) {
                     s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
                 }
