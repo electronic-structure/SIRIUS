@@ -100,13 +100,13 @@ DFT_ground_state::energy_kin_sum_pw() const
 double
 DFT_ground_state::total_energy() const
 {
-    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_energy_;
+    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_correction_energy_;
 }
 
 json
 DFT_ground_state::serialize()
 {
-    return energy_dict(ctx_, kset_, density_, potential_, ewald_energy_, this->scf_energy_);
+    return energy_dict(ctx_, kset_, density_, potential_, ewald_energy_, this->scf_correction_energy_);
 }
 
 /// A quick check of self-constent density in case of pseudopotential.
@@ -310,8 +310,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         }
 
         if (ctx_.cfg().parameters().use_scf_correction()) {
-            double e2         = energy_potential(rho1, potential_);
-            this->scf_energy_ = e2 - e1;
+            double e2 = energy_potential(rho1, potential_);
+            this->scf_correction_energy_ = e2 - e1;
         }
 
         /* compute new total energy for a new density */
@@ -465,7 +465,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy("PAW contribution", potential_.PAW_total_energy());
     }
     write_energy("smearing (-TS)", s_sum);
-    write_energy("SCF correction", this->scf_energy_);
+    write_energy("SCF correction", this->scf_correction_energy_);
     if (ctx_.hubbard_correction()) {
         auto e = ::sirius::energy(density_.occupation_matrix());
         write_energy2("Hubbard energy", e);

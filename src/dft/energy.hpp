@@ -265,15 +265,15 @@ energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density 
 
     dict["energy"] =  nlohmann::json::object();
 
-    dict["energy"]["total"]         = total_energy(ctx__, kset__, density__, potential__, ewald_energy__);
-    dict["energy"]["vha"]           = energy_vha(potential__);
-    dict["energy"]["vxc"]           = energy_vxc(density__, potential__);
-    dict["energy"]["exc"]           = energy_exc(density__, potential__);
-    dict["energy"]["bxc"]           = energy_bxc(density__, potential__);
-    dict["energy"]["veff"]          = energy_veff(density__, potential__);
-    dict["energy"]["eval_sum"]      = eval_sum(ctx__.unit_cell(), kset__);
-    dict["energy"]["kin"]           = energy_kin(ctx__, kset__, density__, potential__);
-    dict["energy"]["ewald"]         = ewald_energy__;
+    dict["energy"]["total"]          = total_energy(ctx__, kset__, density__, potential__, ewald_energy__) + scf_correction__;
+    dict["energy"]["vha"]            = energy_vha(potential__);
+    dict["energy"]["vxc"]            = energy_vxc(density__, potential__);
+    dict["energy"]["exc"]            = energy_exc(density__, potential__);
+    dict["energy"]["bxc"]            = energy_bxc(density__, potential__);
+    dict["energy"]["veff"]           = energy_veff(density__, potential__);
+    dict["energy"]["eval_sum"]       = eval_sum(ctx__.unit_cell(), kset__);
+    dict["energy"]["kin"]            = energy_kin(ctx__, kset__, density__, potential__);
+    dict["energy"]["ewald"]          = ewald_energy__;
     dict["energy"]["scf_correction"] = scf_correction__;
     dict["energy"]["entropy_sum"]    = kset__.entropy_sum();
     dict["efermi"]                   = kset__.energy_fermi();
