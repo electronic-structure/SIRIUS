@@ -436,7 +436,12 @@
                      "type" : "boolean",
                      "default" : false,
                      "title" : "Orthogonalize LAPW radial functions."
-                 }
+                 },
+                 "output" : {
+                     "type" : "string",
+                     "default" : "stdout:",
+                     "title" : "Type of the output stream (stdout:, file:name)"
+                }
             }
         },
         "parameters" : {
@@ -672,7 +677,7 @@
                 "restart" : {
                     "type" : "integer",
                     "default" : 10,
-                    "title" : " CG restart"
+                    "title" : "CG restart"
                 },
                 "tau" : {
                     "type" : "number",
@@ -693,6 +698,52 @@
                     "type" : "number",
                     "default" : 1e-9,
                     "title" : "CG tolerance"
+                }
+            }
+        },
+        "vcsqnm" : {
+            "type" : "object",
+            "title" : "Variable cell shape stabilized quasi Newton method (VC-SQNM)",
+            "properties": {
+                "initial_step_size" : {
+                    "type" : "number",
+                    "default" : -0.1,
+                    "title" : "Initial step size"
+                },
+                "nhist_max" : {
+                    "type" : "integer",
+                    "default" : 10,
+                    "title" : "Maximal number of steps that will be stored in the history list"
+                },
+                "lattice_weight" : {
+                    "type" : "number",
+                    "default" : 2.0,
+                    "title" : "Weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2."
+                },
+                "alpha0": {
+                    "type" : "number",
+                    "default" : 1e-2,
+                    "title" : "Lower limit on the step size"
+                },
+                "eps_subsp" : {
+                    "type" : "number",
+                    "default" : 1e-3,
+                    "title" : "Lower limit on linear dependencies of basis vectors in history list"
+                },
+                "forces_tol" : {
+                    "type" : "number",
+                    "default" : 1e-4,
+                    "title" : "Total error tolerance on the atomic forces"
+                },
+                "stress_tol" : {
+                    "type" : "number",
+                    "default" : 1e-5,
+                    "title" : "Total error tolerance on the lattice stress"
+                },
+                "num_steps" : {
+                    "type" : "integer",
+                    "default" : 300,
+                    "title" : "Number of lattice relaxation steps"
                 }
             }
         },

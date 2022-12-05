@@ -189,7 +189,7 @@ class Force
         return forces_total_;
     }
 
-    void print_info();
+    void print_info(std::ostream& out__, int verbosity__);
 };
 
 } // namespace sirius

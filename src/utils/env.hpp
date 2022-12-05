@@ -79,6 +79,17 @@ print_memory_usage()
     return val && *val;
 }
 
+inline int
+print_timing()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_TIMING");
+    if (val) {
+        return *val;
+    } else {
+        return 0;
+    }
+}
+
 inline std::string
 save_config()
 {

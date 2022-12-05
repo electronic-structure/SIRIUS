@@ -274,6 +274,7 @@ class Simulation_context : public Simulation_parameters
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
     std::ostream* output_stream_{nullptr};
+    std::ofstream output_file_stream_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -932,7 +933,7 @@ class Simulation_context : public Simulation_parameters
     /// Return output stream based on the verbosity level.
     inline std::ostream& out(int level__) const
     {
-        if (level__ >= this->verbosity()) {
+        if (this->verbosity() >= level__) {
             return this->out();
         } else {
             return utils::null_stream();
@@ -941,7 +942,7 @@ class Simulation_context : public Simulation_parameters
 
     inline rte::ostream out(int level__, const char* label__) const
     {
-        if (level__ >= this->verbosity()) {
+        if (this->verbosity() >= level__) {
             return rte::ostream(this->out(), label__);
         } else {
             return rte::ostream(utils::null_stream(), label__);
@@ -958,7 +959,6 @@ class Simulation_context : public Simulation_parameters
             }
         }
     }
-
 };
 
 } // namespace sirius

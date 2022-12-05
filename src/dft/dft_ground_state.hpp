@@ -70,7 +70,7 @@ class DFT_ground_state
     double ewald_energy_{0};
 
     /// Correction to total energy from the SCF density minimisation.
-    double scf_energy_{0};
+    double scf_correction_energy_{0};
 
   public:
     /// Constructor.
@@ -143,9 +143,9 @@ class DFT_ground_state
         return ewald_energy_;
     }
 
-    inline double scf_energy() const
+    inline double scf_correction_energy() const
     {
-        return scf_energy_;
+        return scf_correction_energy_;
     }
 
     double total_energy() const;

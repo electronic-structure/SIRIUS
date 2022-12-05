@@ -495,6 +495,19 @@ operator<<(std::ostream& out, ffmt&& f)
     return out;
 }
 
+inline auto split(std::string const str__, char delim__)
+{
+    std::istringstream iss(str__);
+    std::vector<std::string> result;
+
+    while (iss.good()) {
+        std::string s;
+        std::getline(iss, s, delim__);
+        result.push_back(s);
+    }
+    return result;
+}
+
 } // namespace
 
 template <typename T>

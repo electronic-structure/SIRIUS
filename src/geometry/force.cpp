@@ -922,39 +922,34 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 }
 
 void
-Force::print_info()
+Force::print_info(std::ostream& out__, int verbosity__)
 {
-    if (ctx_.comm().rank() == 0) {
-        auto print_forces = [&](sddk::mdarray<double, 2> const& forces) {
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                std::printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
-                            forces(0, ia), forces(1, ia), forces(2, ia));
-            }
-        };
+    auto print_forces = [&](std::string label__, sddk::mdarray<double, 2> const& forces) {
+        out__ << "==== " << label__ << " =====" << std::endl;
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            out__ << "atom: " << std::setw(4) << ia << ", force: " << utils::ffmt(15, 7) << forces(0, ia) <<
+                utils::ffmt(15, 7) << forces(1, ia) << utils::ffmt(15, 7) << forces(2, ia) << std::endl;
+        }
+    };
 
-        std::printf("===== total Forces in Ha/bohr =====\n");
-        print_forces(forces_total());
+    if (verbosity__ >= 1) {
+        out__ << std::endl;
+        print_forces("total Forces in Ha/bohr", forces_total());
+    }
 
-        if (!ctx_.full_potential()) {
-            std::printf("===== ultrasoft contribution from Qij =====\n");
-            print_forces(forces_us());
+    if (!ctx_.full_potential() && verbosity__ >= 2) {
+        print_forces("ultrasoft contribution from Qij", forces_us());
 
-            std::printf("===== non-local contribution from Beta-projectors =====\n");
-            print_forces(forces_nonloc());
+        print_forces("non-local contribution from Beta-projector", forces_nonloc());
 
-            std::printf("===== contribution from local potential =====\n");
-            print_forces(forces_vloc());
+        print_forces("contribution from local potential", forces_vloc());
 
-            std::printf("===== contribution from core density =====\n");
-            print_forces(forces_core());
+        print_forces("contribution from core density", forces_core());
 
-            std::printf("===== Ewald forces from ions =====\n");
-            print_forces(forces_ewald());
+        print_forces("Ewald forces from ions", forces_ewald());
 
-            if (ctx_.hubbard_correction()) {
-                std::printf("===== contribution from Hubbard correction =====\n");
-                print_forces(forces_hubbard());
-            }
+        if (ctx_.hubbard_correction()) {
+            print_forces("contribution from Hubbard correction", forces_hubbard());
         }
     }
 }

@@ -580,9 +580,9 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
     call_sirius(
         [&]() {
             auto& comm                 = sddk::Communicator::map_fcomm(fcomm__);
-            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator::null();
+            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator();
             auto const& comm_band =
-                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator::null();
+                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator();
             *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
@@ -1702,6 +1702,10 @@ sirius_find_ground_state:
       type: int
       attr: out, optional
       doc: Actual number of SCF iterations.
+    rho_min:
+      type: double
+      attr: out, optional
+      doc: Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if SCF calculation is converged.
     error_code:
       type: int
       attr: out, optional
@@ -1711,7 +1715,8 @@ sirius_find_ground_state:
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
                          double const* iter_solver_tol__, bool const* initial_guess__, int const* max_niter__,
-                         bool const* save_state__, bool* converged__, int* niter__, int* error_code__)
+                         bool const* save_state__, bool* converged__, int* niter__, double* rho_min__,
+                         int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1744,12 +1749,18 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                 if (niter__) {
                     *niter__ = result["num_scf_iterations"].get<int>();
                 }
+                if (rho_min__) {
+                    *rho_min__ = result["rho_min"].get<double>();
+                }
             } else {
                 if (converged__) {
                     *converged__ = false;
                 }
                 if (niter__) {
                     *niter__ = max_niter;
+                }
+                if (rho_min__) {
+                    *rho_min__ = 0;
                 }
             }
         },
@@ -3041,7 +3052,7 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             {"enuc", [&]() { return sirius::energy_enuc(ctx, potential); }},
             {"kin", [&]() { return sirius::energy_kin(ctx, kset, density, potential); }},
             {"one-el", [&]() { return sirius::one_electron_energy(density, potential); }},
-            {"descf", [&]() { return gs.scf_energy(); }},
+            {"descf", [&]() { return gs.scf_correction_energy(); }},
             {"demet", [&]() { return kset.entropy_sum(); }},
             {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
             {"paw", [&]() { return potential.PAW_total_energy(); }},

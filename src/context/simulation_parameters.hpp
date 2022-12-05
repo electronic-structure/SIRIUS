@@ -55,6 +55,7 @@ class Config : public config_t
 };
 
 /// Set of basic parameters of a simulation.
+/** This class provides shortcuts to the mostly used input parameters, for example `verbosity`. */
 class Simulation_parameters
 {
   private:
@@ -475,12 +476,14 @@ class Simulation_parameters
         return cfg().parameters().molecule();
     }
 
-    /// Get a `using symmetry` flag.
+    /// Get a use_symmetry flag.
+    /** If crystal symmetry is used, density and potential are symmetrized. */
     bool use_symmetry() const
     {
         return cfg().parameters().use_symmetry();
     }
 
+    /// Set a use_symmetry flag.
     bool use_symmetry(bool use_symmetry__)
     {
         cfg().parameters().use_symmetry(use_symmetry__);
