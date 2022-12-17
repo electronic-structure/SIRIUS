@@ -24,13 +24,13 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
     switch (ctx__.processing_unit()) {
         case sddk::device_t::CPU: {
             result = sddk::mdarray<std::complex<T>, 2>(alm__.gkvec().count(), num_mt_aw,
-                    ctx__.mem_pool(sddk::memory_t::host), "alm_block");
+                    get_memory_pool(sddk::memory_t::host), "alm_block");
             break;
         }
         case sddk::device_t::GPU: {
             result = sddk::mdarray<std::complex<T>, 2>(alm__.gkvec().count(), num_mt_aw,
-                    ctx__.mem_pool(sddk::memory_t::host_pinned), "alm_block");
-            result.allocate(ctx__.mem_pool(sddk::memory_t::device));
+                    get_memory_pool(sddk::memory_t::host_pinned), "alm_block");
+            result.allocate(get_memory_pool(sddk::memory_t::device));
             break;
         }
     }

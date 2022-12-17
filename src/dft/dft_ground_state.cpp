@@ -83,7 +83,7 @@ DFT_ground_state::energy_kin_sum_pw() const
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                     double f = kp->band_occupancy(i, ispin);
-                    auto z   = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                    auto z   = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                     d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                 }
             }
@@ -100,36 +100,13 @@ DFT_ground_state::energy_kin_sum_pw() const
 double
 DFT_ground_state::total_energy() const
 {
-    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_energy_;
+    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_correction_energy_;
 }
 
 json
 DFT_ground_state::serialize()
 {
-    nlohmann::json dict;
-
-    dict["energy"]                  = json::object();
-    dict["energy"]["total"]         = total_energy();
-    dict["energy"]["enuc"]          = energy_enuc(ctx_, potential_);
-    dict["energy"]["core_eval_sum"] = core_eval_sum(ctx_.unit_cell());
-    dict["energy"]["vha"]           = energy_vha(potential_);
-    dict["energy"]["vxc"]           = energy_vxc(density_, potential_);
-    dict["energy"]["exc"]           = energy_exc(density_, potential_);
-    dict["energy"]["bxc"]           = energy_bxc(density_, potential_);
-    dict["energy"]["veff"]          = energy_veff(density_, potential_);
-    dict["energy"]["eval_sum"]      = eval_sum(ctx_.unit_cell(), kset_);
-    dict["energy"]["kin"]           = energy_kin(ctx_, kset_, density_, potential_);
-    dict["energy"]["ewald"]         = ewald_energy_;
-    if (!ctx_.full_potential()) {
-        dict["energy"]["vloc"] = energy_vloc(density_, potential_);
-    }
-    dict["energy"]["scf_correction"] = this->scf_energy_;
-    dict["energy"]["entropy_sum"]    = kset_.entropy_sum();
-    dict["efermi"]                   = kset_.energy_fermi();
-    dict["band_gap"]                 = kset_.band_gap();
-    dict["core_leakage"]             = density_.core_leakage();
-
-    return dict;
+    return energy_dict(ctx_, kset_, density_, potential_, ewald_energy_, this->scf_correction_energy_);
 }
 
 /// A quick check of self-constent density in case of pseudopotential.
@@ -139,19 +116,17 @@ DFT_ground_state::check_scf_density()
     if (ctx_.full_potential()) {
         return json();
     }
-    std::vector<double_complex> rho_pw(ctx_.gvec().count());
-    for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rho_pw[ig] = density_.rho().f_pw_local(ig);
-    }
 
-    double etot = total_energy();
+    auto gs0 = energy_dict(ctx_, kset_, density_, potential_, ewald_energy_);
 
     /* create new potential */
     Potential pot(ctx_);
     /* generate potential from existing density */
-    pot.generate(density_, ctx_.use_symmetry(), true);
+    bool transform_to_rg{true};
+    pot.generate(density_, ctx_.use_symmetry(), transform_to_rg);
     /* create new Hamiltonian */
-    Hamiltonian0<double> H0(pot, true);
+    bool precompute_lapw{true};
+    Hamiltonian0<double> H0(pot, precompute_lapw);
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -159,21 +134,47 @@ DFT_ground_state::check_scf_density()
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    density_.generate<double>(kset_, true, true, false);
-    double rms{0};
-    for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-        rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
-    }
-    ctx_.comm().allreduce(&rms, 1);
-    json dict;
-    dict["rss"]   = rms;
-    dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
-    dict["detot"] = total_energy() - etot;
+    bool symmetrize{true};
+    bool add_core{true};
+    /* create new density */
+    Density rho1(ctx_);
+    rho1.generate<double>(kset_, symmetrize, add_core, transform_to_rg);
 
-    ctx_.message(1, __function_name__, "RSS: %18.12E\n", dict["rss"].get<double>());
-    ctx_.message(1, __function_name__, "RMS: %18.12E\n", dict["rms"].get<double>());
-    ctx_.message(1, __function_name__, "dEtot: %18.12E\n", dict["detot"].get<double>());
-    ctx_.message(1, __function_name__, "Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
+    auto gs1 = energy_dict(ctx_, kset_, rho1, pot, ewald_energy_);
+
+    auto calc_rms = [&](Field4D& a, Field4D& b) -> double
+    {
+        double rms{0};
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rms += std::pow(std::abs(a.component(0).f_pw_local(ig) - b.component(0).f_pw_local(ig)), 2);
+        }
+        ctx_.comm().allreduce(&rms, 1);
+        return std::sqrt(rms / ctx_.gvec().num_gvec());
+    };
+
+    double rms = calc_rms(density_, rho1);
+    double rms_veff = calc_rms(potential_, pot);
+
+    json dict;
+    dict["rms"]   = rms;
+    dict["detot"] = gs0["energy"]["total"].get<double>() - gs1["energy"]["total"].get<double>();
+
+    rms_veff = std::sqrt(rms_veff / ctx_.gvec().num_gvec());
+
+    if (ctx_.verbosity() >= 1) {
+        RTE_OUT(ctx_.out()) << "RMS_rho: " << dict["rms"].get<double>() << std::endl
+                            << "RMS_veff: " << rms_veff << std::endl
+                            << "Eold: " << gs0["energy"]["total"].get<double>()
+                            << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
+
+        std::vector<std::string> labels({"total", "vha", "vxc", "exc", "bxc", "veff", "eval_sum", "kin", "ewald",
+                "vloc", "scf_correction", "entropy_sum"});
+
+        for (auto e: labels) {
+            RTE_OUT(ctx_.out()) << "energy component: " << e << ", diff: " <<
+                std::abs(gs0["energy"][e].get<double>() - gs1["energy"][e].get<double>()) << std::endl;
+        }
+    }
 
     return dict;
 }
@@ -275,8 +276,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
                         int ik = kset_.spl_num_kpoints(ikloc);
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            kset_.get<double>(ik)->spinor_wave_functions().copy_from(sddk::device_t::CPU, ctx_.num_bands(),
-                                                                                     kset_.get<float>(ik)->spinor_wave_functions(), ispn, 0, ispn, 0);
+                            wf::copy(sddk::memory_t::host, kset_.get<float>(ik)->spinor_wave_functions(),
+                                    wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
+                                    kset_.get<double>(ik)->spinor_wave_functions(), wf::spin_index(ispn),
+                                    wf::band_range(0, ctx_.num_bands()));
                         }
                     }
                     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
@@ -300,13 +303,15 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         potential_.generate(density_, ctx_.use_symmetry(), true);
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
-            ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
+            if (ctx_.verbosity() >= 1) {
+                RTE_OUT(ctx_.out()) << "checking functional derivative of Exc\n";
+            }
             sirius::check_xc_potential(density_);
         }
 
         if (ctx_.cfg().parameters().use_scf_correction()) {
-            double e2         = energy_potential(rho1, potential_);
-            this->scf_energy_ = e2 - e1;
+            double e2 = energy_potential(rho1, potential_);
+            this->scf_correction_energy_ = e2 - e1;
         }
 
         /* compute new total energy for a new density */
@@ -365,7 +370,19 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     auto tstop = std::chrono::high_resolution_clock::now();
 
-    json dict            = serialize();
+    auto dict = serialize();
+
+    /* check density */
+    if (num_iter >= 0) {
+        density_.rho().fft_transform(1);
+        double rho_min{1e100};
+        for (int ir = 0; ir < density_.rho().spfft().local_slice_size(); ir++) {
+            rho_min = std::min(rho_min, density_.rho().f_rg(ir));
+        }
+        dict["rho_min"] = rho_min;
+        ctx_.comm().allreduce<double, sddk::mpi_op_t::min>(&rho_min, 1);
+    }
+
     dict["scf_time"]     = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();
     dict["etot_history"] = etot_hist;
     if (num_iter >= 0) {
@@ -376,7 +393,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         dict["converged"] = false;
     }
 
-    // if (ctx_.control().verification_ >= 1) {
+    //if (ctx_.cfg().control().verification() >= 1) {
     //    check_scf_density();
     //}
 
@@ -412,13 +429,11 @@ DFT_ground_state::print_info(std::ostream& out__) const
         one_elec_en -= hub_one_elec;
     }
 
-    auto draw_bar = [&](int w) { out__ << std::setfill('-') << std::setw(w) << '-' << std::setfill(' ') << std::endl; };
-
     density_.print_info(out__);
 
     out__ << std::endl;
-    out__ << "Energy" << std::endl;
-    draw_bar(80);
+    out__ << "Energy" << std::endl
+          << utils::hbar(80, '-') << std::endl;
 
     auto write_energy = [&](std::string label__, double value__) {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
@@ -450,7 +465,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy("PAW contribution", potential_.PAW_total_energy());
     }
     write_energy("smearing (-TS)", s_sum);
-    write_energy("SCF correction", this->scf_energy_);
+    write_energy("SCF correction", this->scf_correction_energy_);
     if (ctx_.hubbard_correction()) {
         auto e = ::sirius::energy(density_.occupation_matrix());
         write_energy2("Hubbard energy", e);

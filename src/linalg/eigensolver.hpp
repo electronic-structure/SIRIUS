@@ -83,12 +83,6 @@ class Eigensolver
     ev_solver_t ev_solver_type_;
     /// Common error message.
     const std::string error_msg_not_implemented = "solver is not implemented";
-    /// Memory pool for CPU work buffers.
-    sddk::memory_pool mp_h_;
-    /// Memory pool for CPU work buffers using pinned memory.
-    sddk::memory_pool mp_hp_;
-    /// Memory pool for GPU work buffers.
-    std::shared_ptr<sddk::memory_pool> mp_d_{nullptr};
     /// True if solver is MPI parallel.
     bool is_parallel_{false};
     /// Type of host memory needed for the solver.
@@ -101,20 +95,13 @@ class Eigensolver
 
   public:
     /// Constructor.
-    Eigensolver(ev_solver_t type__, sddk::memory_pool* mpd__, bool is_parallel__, sddk::memory_t host_memory_t__,
+    Eigensolver(ev_solver_t type__, bool is_parallel__, sddk::memory_t host_memory_t__,
                 sddk::memory_t data_memory_t__)
         : ev_solver_type_(type__)
-        , mp_h_(sddk::memory_pool(sddk::memory_t::host))
-        , mp_hp_(sddk::memory_pool(sddk::memory_t::host_pinned))
         , is_parallel_(is_parallel__)
         , host_memory_t_(host_memory_t__)
         , data_memory_t_(data_memory_t__)
     {
-        if (mpd__) {
-            mp_d_ = std::shared_ptr<sddk::memory_pool>(mpd__, [](sddk::memory_pool*){});
-        } else {
-            mp_d_ = std::shared_ptr<sddk::memory_pool>(new sddk::memory_pool(sddk::memory_t::device));
-        }
     }
 
     /// Destructor.
@@ -270,6 +257,6 @@ class Eigensolver
 };
 
 std::unique_ptr<Eigensolver>
-Eigensolver_factory(std::string name__, sddk::memory_pool* mpd__);
+Eigensolver_factory(std::string name__);
 
 #endif

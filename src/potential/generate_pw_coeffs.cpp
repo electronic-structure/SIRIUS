@@ -32,7 +32,7 @@ void Potential::generate_pw_coefs()
 
     double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
 
-    int gv_count  = ctx_.gvec_partition().gvec_count_fft();
+    int gv_count  = ctx_.gvec_fft().gvec_count_fft();
 
     auto& fft = ctx_.spfft<double>();
 
@@ -47,7 +47,7 @@ void Potential::generate_pw_coefs()
                                  return ctx_.theta(ir) / std::pow(M, 2);
                              });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
-            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
+            ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
         }
         case relativity_t::zora: {
             spfft_input<double>(fft, [&](int ir)
@@ -56,7 +56,7 @@ void Potential::generate_pw_coefs()
                                  return ctx_.theta(ir) / M;
                              });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
-            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
+            ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
             spfft_input<double>(fft, [&](int ir)
@@ -64,7 +64,7 @@ void Potential::generate_pw_coefs()
                                  return effective_potential().f_rg(ir) * ctx_.theta(ir);
                              });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
-            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
+            ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
         }
     }
 

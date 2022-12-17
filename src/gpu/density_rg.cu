@@ -22,7 +22,7 @@
  *  \brief CUDA kernel to update density on the regular FFT grid.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 template <typename T>

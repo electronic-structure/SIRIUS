@@ -95,7 +95,7 @@ class Sirius(CMakePackage, CudaPackage):
     depends_on('pkgconfig', type='build')
 
     # Python module
-    depends_on('python', when='+python', type=('build', 'run'))
+    depends_on('python', when='+python@3.6:', type=('build', 'run'))
     depends_on('python', when='@:6', type=('build', 'run'))
     depends_on('py-numpy', when='+python', type=('build', 'run'))
     depends_on('py-scipy', when='+python', type=('build', 'run'))

@@ -193,7 +193,7 @@ class Unit_cell
     void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
 
     /// Add new atom without vector field to the list of atom types.
-    void add_atom(const std::string label, std::vector<double> position)
+    void add_atom(const std::string label, vector3d<double> position)
     {
         add_atom(label, position, {0, 0, 0});
     }
@@ -225,7 +225,9 @@ class Unit_cell
     }
 
     /// Print basic info.
-    void print_info(int verbosity__) const;
+    void print_info(std::ostream& out__, int verbosity__) const;
+
+    void print_geometry_info(std::ostream& out__, int verbosity__) const;
 
     void print_nearest_neighbours(std::ostream& out__) const;
 
@@ -530,7 +532,8 @@ class Unit_cell
 
     inline Crystal_symmetry const& symmetry() const
     {
-        return (*symmetry_);
+        RTE_ASSERT(symmetry_ != nullptr);
+        return *symmetry_;
     }
 
     inline auto const& lattice_vectors() const

@@ -30,9 +30,9 @@
 #include "function3d/spheric_function.hpp"
 #include "utils/profiler.hpp"
 
-namespace sirius {
-
 using namespace geometry3d;
+
+namespace sirius {
 
 /// Data and methods specific to the actual atom in the unit cell.
 class Atom
@@ -97,14 +97,6 @@ class Atom
         , position_(position__)
         , vector_field_(vector_field__)
     {
-        //for (int x : {0, 1, 2}) {
-        //    if (position_[x] < 0 || position_[x] >= 1) {
-        //        std::stringstream s;
-        //        s << "Wrong atomic position for atom " << type__.label() << ": " << position_[0] << " " << position_[1]
-        //          << " " << position_[2];
-        //        TERMINATE(s);
-        //    }
-        //}
     }
 
     /// Initialize atom.
@@ -163,7 +155,7 @@ class Atom
         int num_mag_dims = type().parameters().num_mag_dims();
 
         if (comm__.size() != 1) {
-            TERMINATE("not yet mpi parallel");
+            RTE_THROW("not yet mpi parallel");
         }
 
         sddk::splindex<sddk::splindex_t::block> spl_lm(lmmax, comm__.size(), comm__.rank());

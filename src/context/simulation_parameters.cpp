@@ -174,7 +174,6 @@ Simulation_parameters::import(cmd_args const& args__)
     cfg_.control().gen_evp_solver_name(
         args__.value("control.gen_evp_solver_name", cfg_.control().gen_evp_solver_name()));
     cfg_.control().fft_mode(args__.value("control.fft_mode", cfg_.control().fft_mode()));
-    cfg_.control().memory_usage(args__.value("control.memory_usage", cfg_.control().memory_usage()));
     cfg_.control().verbosity(args__.value("control.verbosity", cfg_.control().verbosity()));
     cfg_.control().verification(args__.value("control.verification", cfg_.control().verification()));
 

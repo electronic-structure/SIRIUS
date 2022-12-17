@@ -53,7 +53,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
         }
     }
     if (blacs_grid__.comm().rank() == 0) {
-        sirius::print_memory_usage(__FILE__, __LINE__);
+        sirius::print_memory_usage(std::cout, FILE_LINE);
     }
     double t = -utils::wtime();
     if (test_gen__) {
@@ -71,7 +71,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
     }
     t += utils::wtime();
     if (blacs_grid__.comm().rank() == 0) {
-        sirius::print_memory_usage(__FILE__, __LINE__);
+        sirius::print_memory_usage(std::cout, FILE_LINE);
     }
 
     if (blacs_grid__.comm().rank() == 0) {
@@ -136,7 +136,7 @@ void test_diag2(sddk::BLACS_grid const& blacs_grid__,
                 std::string name__,
                 std::string fname__)
 {
-    auto solver = Eigensolver_factory(name__, nullptr);
+    auto solver = Eigensolver_factory(name__);
 
     sddk::matrix<double_complex> full_mtrx;
     int n;
@@ -190,7 +190,7 @@ void call_test(std::vector<int> mpi_grid__,
                int repeat__,
                int type__)
 {
-    auto solver = Eigensolver_factory(name__, nullptr);
+    auto solver = Eigensolver_factory(name__);
     sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;

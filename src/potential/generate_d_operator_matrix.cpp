@@ -46,7 +46,7 @@ void Potential::generate_D_operator_matrix()
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
     if (ctx_.unit_cell().atom_type(0).augment()) {
-        ctx_.augmentation_op(0).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
+        ctx_.augmentation_op(0).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
     }
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -56,7 +56,7 @@ void Potential::generate_D_operator_matrix()
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &ctx_.mem_pool(sddk::memory_t::device));
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
             }
         }
 
@@ -76,15 +76,15 @@ void Potential::generate_D_operator_matrix()
             }
             continue;
         }
-        sddk::matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.mem_pool(sddk::memory_t::host));
+        sddk::matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            d_tmp.allocate(ctx_.mem_pool(sddk::memory_t::device));
+            d_tmp.allocate(get_memory_pool(sddk::memory_t::device));
         }
 
-        ctx_.print_memory_usage(__FILE__, __LINE__);
+        print_memory_usage(ctx_.out(), FILE_LINE);
 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), ctx_.mem_pool(sddk::memory_t::host));
+            sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
 
             auto la = sddk::linalg_t::blas;
             auto mem = sddk::memory_t::host;
@@ -94,7 +94,7 @@ void Potential::generate_D_operator_matrix()
                 la = sddk::linalg_t::gpublas;
                 mem = sddk::memory_t::device;
                 d_tmp.zero(sddk::memory_t::device);
-                veff_a.allocate(ctx_.mem_pool(sddk::memory_t::device));
+                veff_a.allocate(get_memory_pool(sddk::memory_t::device));
             }
 
             /* split a large loop over G-vectors into blocks */
@@ -123,7 +123,7 @@ void Potential::generate_D_operator_matrix()
                         acc::sync_stream(stream_id(1));
                         /* copy plane wave coefficients of effective potential to GPU */
                         sddk::mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
-                        veff.allocate(ctx_.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                        veff.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
 #if defined(SIRIUS_GPU)
                         mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
                                                         veff.at(sddk::memory_t::device),
@@ -143,7 +143,7 @@ void Potential::generate_D_operator_matrix()
                     auto cs = veff_a.checksum();
                     std::stringstream s;
                     s << "Gvec_block_" << ib << "_veff_a";
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
                 sddk::linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
                                   &sddk::linalg_const<double>::one(),
@@ -184,7 +184,7 @@ void Potential::generate_D_operator_matrix()
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    utils::print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs, ctx_.out());
                 }
             }
 

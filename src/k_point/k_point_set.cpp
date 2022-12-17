@@ -32,7 +32,7 @@ void K_point_set::sync_band()
     PROFILE("sirius::K_point_set::sync_band");
 
     sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
-            ctx_.mem_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
+            get_memory_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
     #pragma omp parallel
@@ -155,7 +155,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
     if (ctx_.verbosity() > 0) {
         this->print_info();
     }
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx_.out(), FILE_LINE);
     this->initialized_ = true;
 }
 
@@ -358,12 +358,15 @@ void K_point_set::find_band_occupancies()
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
             auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
             energy_fermi_ = res_newton.mu;
-            ctx_.message(2, __function_name__, "newton iteration converged after %d steps\n", res_newton.iter);
-
+            if (ctx_.verbosity() >= 2) {
+                RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
+            }
         }
     } catch(std::exception const& e) {
-        ctx_.message(2, __function_name__, "%s\n", e.what());
-        ctx_.message(2, __function_name__, "%s\n", "fallback to bisection search\n");
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << e.what() << std::endl
+                << "fallback to bisection search" << std::endl;
+        }
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
         energy_fermi_ = bisection_search(F, emin, emax, tol);
@@ -514,38 +517,32 @@ double K_point_set::entropy_sum() const
 
 void K_point_set::print_info()
 {
+    sddk::pstdout pout(this->comm());
+
     if (ctx_.comm().rank() == 0) {
-        std::printf("\n");
-        std::printf("total number of k-points : %i\n", num_kpoints());
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
-        }
-        std::printf("\n");
-        std::printf("  ik                vk                    weight  num_gkvec");
+        pout << std::endl;
+        pout << "total number of k-points : " << num_kpoints() << std::endl;
+        pout << utils::hbar(80, '-') << std::endl;
+        pout << std::endl;
+        pout << "  ik                vk                    weight  num_gkvec";
         if (ctx_.full_potential()) {
-            std::printf("   gklo_basis_size");
+            pout << "   gklo_basis_size";
         }
-        std::printf("\n");
-        for (int i = 0; i < 80; i++) {
-            std::printf("-");
-        }
-        std::printf("\n");
+        pout << std::endl << utils::hbar(80, '-') << std::endl;
     }
 
-    if (ctx_.comm_band().rank() == 0) {
-        sddk::pstdout pout(comm());
-        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
-            int ik = spl_num_kpoints(ikloc);
-            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1],
-                        kpoints_[ik]->vk()[2], kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
+    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
+        int ik = spl_num_kpoints(ikloc);
+        pout << std::setw(4) << ik << utils::ffmt(9, 4) << kpoints_[ik]->vk()[0] << utils::ffmt(9, 4)
+             << kpoints_[ik]->vk()[1] << utils::ffmt(9, 4) << kpoints_[ik]->vk()[2] << utils::ffmt(17, 6)
+             << kpoints_[ik]->weight() << std::setw(11) << kpoints_[ik]->num_gkvec();
 
-            if (ctx_.full_potential()) {
-                pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
-            }
-
-            pout.printf("\n");
+        if (ctx_.full_potential()) {
+            pout << std::setw(18) << kpoints_[ik]->gklo_basis_size();
         }
+        pout << std::endl;
     }
+    RTE_OUT(ctx_.out()) << pout.flush(0);
 }
 
 void K_point_set::save(std::string const& name__) const

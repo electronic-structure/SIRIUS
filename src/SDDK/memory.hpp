@@ -228,7 +228,7 @@ template <typename T>
 inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {
     if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
-        std::memcpy(to_ptr__, from_ptr__, n__ * sizeof(T));
+        std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
         return;
     }
 #if defined(SIRIUS_GPU)
@@ -602,6 +602,12 @@ class memory_pool
         map_ptr_.clear();
     }
 
+    /// Clear memory pool and release all memory.
+    void clear()
+    {
+        memory_blocks_.clear();
+    }
+
     void print()
     {
         std::cout << "--- memory pool status ---\n";
@@ -661,12 +667,9 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
     mp_->free(ptr__);
 }
 
-//#ifdef SIRIUS_GPU
-//extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
-//                                 int num_rows_loc__,
-//                                 int nwf__,
-//                                 cuDoubleComplex* result__);
-//#endif
+/// Return a memory pool.
+/** A memory pool is created when this function called for the first time. */
+sddk::memory_pool& get_memory_pool(sddk::memory_t M__);
 
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
@@ -1499,7 +1502,7 @@ class mdarray
     /// Zero the entire array.
     inline void zero(memory_t mem__ = memory_t::host)
     {
-        zero(mem__, 0, size());
+        this->zero(mem__, 0, size());
     }
 
     /// Copy n elements starting from idx0 from one memory type to another.
@@ -1552,6 +1555,11 @@ class mdarray
 #else
         return false;
 #endif
+    }
+
+    auto label() const
+    {
+        return label_;
     }
 
     mdarray<T, N>& operator=(std::function<T(void)> f__)
@@ -1617,7 +1625,7 @@ inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
         }
     }
     std::cout << "=== WARNING at line " << __LINE__ << " of file " << __FILE__ << " ===" << std::endl;
-    std::cout << "    Copying matrix element with different type, possible lost of data precision" << std::endl;
+    std::cout << "    Copying matrix element with different type, possible loss of data precision" << std::endl;
     std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
 }
 

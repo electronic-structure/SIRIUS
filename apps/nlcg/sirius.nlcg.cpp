@@ -44,7 +44,7 @@ double ground_state(Simulation_context& ctx,
                     cmd_args const&     args,
                     int                 write_output)
 {
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& inp = ctx.cfg().parameters();
 
@@ -61,7 +61,7 @@ double ground_state(Simulation_context& ctx,
     }
     DFT_ground_state dft(*kset);
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& potential = dft.potential();
     auto& density = dft.density();
@@ -93,7 +93,7 @@ double ground_state(Simulation_context& ctx,
         throw std::runtime_error("invalid smearing type given");
     }
 
-    if (is_device_memory(ctx.preferred_memory_t())) {
+    if (is_device_memory(ctx.processing_unit_memory_t())) {
         switch (pu) {
             case sddk::device_t::GPU: {
                 std::cout << "nlcg executing on gpu-gpu" << "\n";
@@ -130,7 +130,7 @@ double ground_state(Simulation_context& ctx,
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
-        s.print_info();
+        s.print_info(dft.ctx().out(), dft.ctx().verbosity());
         result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -141,7 +141,7 @@ double ground_state(Simulation_context& ctx,
     if (ctx.cfg().control().print_forces()) {
         Force& f         = dft.forces();
         auto& forces_tot = f.calc_forces_total();
-        f.print_info();
+        f.print_info(dft.ctx().out(), dft.ctx().verbosity());
         result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
         for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
             for (int j = 0; j < 3; j++) {

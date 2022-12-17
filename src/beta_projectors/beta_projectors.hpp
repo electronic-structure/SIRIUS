@@ -80,10 +80,9 @@ class Beta_projectors : public Beta_projectors_base<T>
             auto c1 = this->pw_coeffs_t_.checksum();
             comm.allreduce(&c1, 1);
             if (comm.rank() == 0) {
-                utils::print_checksum("beta_pw_coeffs_t", c1);
+                utils::print_checksum("beta_pw_coeffs_t", c1, std::cout);
             }
         }
-
     }
 
   public:
@@ -112,7 +111,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                     /* wrap the the pointer in the big array beta_pw_all_atoms */
                     this->pw_coeffs_a_ = sddk::matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(ichunk).offset_),
                                                                 this->num_gkvec_loc(), this->chunk(ichunk).num_beta_);
-                    Beta_projectors_base<T>::generate(ichunk, 0);
+                    Beta_projectors_base<T>::generate(sddk::memory_t::host, ichunk, 0);
                 }
                 break;
             }
@@ -129,7 +128,9 @@ class Beta_projectors : public Beta_projectors_base<T>
                 Beta_projectors_base<T>::prepare();
                 break;
             }
-            case sddk::device_t::CPU: break;
+            case sddk::device_t::CPU: {
+                break;
+            }
         }
         prepared_ = true;
     }
@@ -144,23 +145,21 @@ class Beta_projectors : public Beta_projectors_base<T>
                 Beta_projectors_base<T>::dismiss();
                 break;
             }
-            case sddk::device_t::CPU: break;
+            case sddk::device_t::CPU: {
+                break;
+            }
         }
         prepared_ = false;
     }
 
-    void generate(int chunk__)
+    void generate(sddk::memory_t mem__, int chunk__)
     {
-        switch (this->ctx_.processing_unit()) {
-            case sddk::device_t::CPU: {
-                this->pw_coeffs_a_ = sddk::matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(chunk__).offset_),
+        if (is_host_memory(mem__)) {
+            this->pw_coeffs_a_ = sddk::matrix<std::complex<T>>(&beta_pw_all_atoms_(0, this->chunk(chunk__).offset_),
                                                             this->num_gkvec_loc(), this->chunk(chunk__).num_beta_);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                Beta_projectors_base<T>::generate(chunk__, 0);
-                break;
-            }
+        }
+        if (is_device_memory(mem__)) {
+            Beta_projectors_base<T>::generate(mem__, chunk__, 0);
         }
     }
 

@@ -173,7 +173,11 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     // must be called before device is reset
     splablas::reset_handle();
 
+    sddk::get_memory_pool(sddk::memory_t::host).clear();
+
     if (acc::num_devices()) {
+        sddk::get_memory_pool(sddk::memory_t::host_pinned).clear();
+        sddk::get_memory_pool(sddk::memory_t::device).clear();
 #if defined(SIRIUS_GPU)
         accblas::destroy_stream_handles();
 #endif
@@ -194,13 +198,13 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(SIRIUS_USE_POWER_COUNTER)
     double e = energy() + utils::power::energy();
     double e_acc = energy_acc() + utils::power::device_energy();
-    if (Communicator::world().rank() == 0) {
+    if (sddk::Communicator::world().rank() == 0) {
         printf("=== Energy consumption (root MPI rank) ===\n");
         printf("energy     : %9.2f Joules\n", e);
         printf("energy_acc : %9.2f Joules\n", e_acc);
     }
-    Communicator::world().allreduce(&e, 1);
-    Communicator::world().allreduce(&e_acc, 1);
+    sddk::Communicator::world().allreduce(&e, 1);
+    sddk::Communicator::world().allreduce(&e_acc, 1);
     int nn = utils::power::num_nodes();
     if (Communicator::world().rank() == 0 && nn > 0) {
         printf("=== Energy consumption (all nodes) ===\n");
@@ -208,6 +212,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
     }
 #endif
+    auto rank = sddk::Communicator::world().rank();
     if (call_mpi_fin__) {
         sddk::Communicator::finalize();
     }
@@ -220,6 +225,23 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
     PROFILE_STOP("sirius::finalize");
     PROFILE_STOP("sirius");
+
+    auto pt = env::print_timing();
+    if (pt && rank == 0) {
+        auto timing_result = ::utils::global_rtgraph_timer.process();
+
+        if (pt & 1) {
+            std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                              rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median,
+                                              rt_graph::Stat::Min, rt_graph::Stat::Max});
+        }
+        if (pt & 2) {
+            timing_result = timing_result.flatten(1).sort_nodes();
+            std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                              rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median,
+                                              rt_graph::Stat::Min, rt_graph::Stat::Max});
+        }
+    }
 }
 
 }

@@ -70,7 +70,7 @@ class DFT_ground_state
     double ewald_energy_{0};
 
     /// Correction to total energy from the SCF density minimisation.
-    double scf_energy_{0};
+    double scf_correction_energy_{0};
 
   public:
     /// Constructor.
@@ -92,13 +92,19 @@ class DFT_ground_state
     {
         int n = ctx_.num_loc_op_applied();
         kset_.comm().allreduce(&n, 1);
-        ctx_.message(2, __function_name__, "local op. applied: %i\n", n);
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << "local op. applied: " << n << std::endl;
+        }
         double d = ctx_.evp_work_count();
         kset_.comm().allreduce(&d, 1);
-        ctx_.message(2, __function_name__, "evp. work count: %f\n", d);
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << "evp. work count: " << d << std::endl;
+        }
         n = ctx_.num_itsol_steps();
         kset_.comm().allreduce(&n, 1);
-        ctx_.message(2, __function_name__, "number of iterative solver steps: %i\n", n);
+        if (ctx_.verbosity() >= 2) {
+            RTE_OUT(ctx_.out()) << "numbef of iterative solver steps: " << n << std::endl;
+        }
     }
 
     /// Return reference to a simulation context.
@@ -137,9 +143,9 @@ class DFT_ground_state
         return ewald_energy_;
     }
 
-    inline double scf_energy() const
+    inline double scf_correction_energy() const
     {
-        return scf_energy_;
+        return scf_correction_energy_;
     }
 
     double total_energy() const;

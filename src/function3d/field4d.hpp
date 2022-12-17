@@ -30,13 +30,10 @@
 #include <cassert>
 #include <stdexcept>
 #include "SDDK/memory.hpp"
+#include "function3d/periodic_function.hpp"
 #include "typedefs.hpp"
 
 namespace sirius {
-
-/* forward declarations */
-class Simulation_context;
-template<class> class Periodic_function;
 
 /// Four-component function consisting of scalar and vector parts.
 /** This class is used to represents density/magnetisation and potential/magentic filed of the system. */
