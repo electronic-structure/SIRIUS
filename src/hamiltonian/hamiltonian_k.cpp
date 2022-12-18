@@ -685,7 +685,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatr
             auto gkvec_row_cart = kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(ig_row);
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
-            double t1 = 0.5 * geometry3d::dot(gkvec_row_cart, gkvec_col_cart);
+            double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);
 
             h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);

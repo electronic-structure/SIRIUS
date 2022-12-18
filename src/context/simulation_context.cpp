@@ -421,7 +421,7 @@ Simulation_context::initialize()
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
-        auto lv = matrix3d<double>(unit_cell().lattice_vectors());
+        auto lv = r3::matrix<double>(unit_cell().lattice_vectors());
 
         auto lat_sym = find_lat_sym(lv, cfg().control().spglib_tolerance());
 
@@ -1372,27 +1372,27 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
-    vector3d<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
+    r3::vector<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
 
     int z_off = spfft<double>().local_z_offset();
-    vector3d<int> grid_beg(0, 0, z_off);
-    vector3d<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
+    r3::vector<int> grid_beg(0, 0, z_off);
+    r3::vector<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
+    std::vector<r3::vector<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
                                              {-R, -R, R},  {R, -R, R},  {-R, R, R},  {R, R, R}};
 
-    auto bounds_box = [&](vector3d<double> pos) {
-        std::vector<vector3d<double>> verts;
+    auto bounds_box = [&](r3::vector<double> pos) {
+        std::vector<r3::vector<double>> verts;
 
         /* pos is a position of atom */
         for (auto v : verts_cart) {
             verts.push_back(pos + unit_cell().get_fractional_coordinates(v));
         }
 
-        std::pair<vector3d<int>, vector3d<int>> bounds_ind;
+        std::pair<r3::vector<int>, r3::vector<int>> bounds_ind;
 
         for (int x : {0, 1, 2}) {
             std::sort(verts.begin(), verts.end(),
-                      [x](vector3d<double>& a, vector3d<double>& b) { return a[x] < b[x]; });
+                      [x](r3::vector<double>& a, r3::vector<double>& b) { return a[x] < b[x]; });
             bounds_ind.first[x]  = std::max(static_cast<int>(verts[0][x] / delta[x]) - 1, grid_beg[x]);
             bounds_ind.second[x] = std::min(static_cast<int>(verts[5][x] / delta[x]) + 1, grid_end[x]);
         }
@@ -1408,7 +1408,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
         for (int t0 = -1; t0 <= 1; t0++) {
             for (int t1 = -1; t1 <= 1; t1++) {
                 for (int t2 = -1; t2 <= 1; t2++) {
-                    auto pos = unit_cell().atom(ia).position() + vector3d<double>(t0, t1, t2);
+                    auto pos = unit_cell().atom(ia).position() + r3::vector<double>(t0, t1, t2);
 
                     /* find the small box around this atom */
                     auto box = bounds_box(pos);
@@ -1416,7 +1416,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
                     for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
                         for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
-                                auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
+                                auto v = pos - r3::vector<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r = unit_cell().get_cartesian_coordinates(v).length();
                                 if (r < Rmt[unit_cell().atom(ia).type_id()]) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);

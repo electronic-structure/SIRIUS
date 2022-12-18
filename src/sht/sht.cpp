@@ -52,7 +52,7 @@ wigner_d_matrix(int l, double beta)
 
 template <>
 sddk::mdarray<double_complex, 2>
-rotation_matrix_l<double_complex>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+rotation_matrix_l<double_complex>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
     sddk::mdarray<double_complex, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
 
@@ -70,7 +70,7 @@ rotation_matrix_l<double_complex>(int l, geometry3d::vector3d<double> euler_angl
 
 template <>
 sddk::mdarray<double, 2>
-rotation_matrix_l<double>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
     auto rot_mtrx_ylm = rotation_matrix_l<double_complex>(l, euler_angles, proper_rotation);
 
@@ -100,7 +100,7 @@ rotation_matrix_l<double>(int l, geometry3d::vector3d<double> euler_angles, int 
 // the rotation must happen inside l-shells
 template <typename T>
 void
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
                 sddk::mdarray<T, 2>& rotm)
 {
     rotm.zero();
@@ -117,17 +117,17 @@ rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_
 
 template
 void
-rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
                         sddk::mdarray<double, 2>& rotm);
 
 template
 void
-rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+rotation_matrix<double_complex>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
                                 sddk::mdarray<double_complex, 2>& rotm);
 
 template <typename T>
 std::vector<sddk::mdarray<T, 2>>
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
 {
     std::vector<sddk::mdarray<T, 2>> result(lmax + 1);
 
@@ -139,11 +139,11 @@ rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_
 
 template
 std::vector<sddk::mdarray<double, 2>>
-rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 template
 std::vector<sddk::mdarray<double_complex, 2>>
-rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+rotation_matrix<double_complex>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double
 ClebschGordan(const int l, const double j, const double mj, const int spin)

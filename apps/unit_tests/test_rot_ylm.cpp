@@ -9,7 +9,7 @@ using namespace sddk;
 template <typename T>
 int run_test_impl(cmd_args& args)
 {
-    matrix3d<double> lattice;
+    r3::matrix<double> lattice;
     lattice(0, 0) = 7;
     lattice(1, 1) = 7;
     lattice(2, 2) = 7;
@@ -43,7 +43,7 @@ int run_test_impl(cmd_args& args)
             auto ang = symmetry[isym].spg_op.euler_angles;
 
             /* random Cartesian vector */
-            vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+            r3::vector<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
             auto scoord = SHT::spherical_coordinates(coord);
             /* rotated coordinates */
             auto coord2 = dot(Rc, coord);

@@ -32,11 +32,11 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
-#include <geometry3d.hpp>
 #include <constants.hpp>
 
 #include "typedefs.hpp"
 #include "linalg/linalg.hpp"
+#include "linalg/r3.hpp"
 #include "lebedev_grids.hpp"
 #include "specfunc/specfunc.hpp"
 
@@ -49,15 +49,15 @@ wigner_d_matrix(int l, double beta);
 
 template <typename T>
 sddk::mdarray<T, 2>
-rotation_matrix_l(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
 
 template <typename T>
 void
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation, sddk::mdarray<T, 2>& rotm);
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, sddk::mdarray<T, 2>& rotm);
 
 template <typename T>
 std::vector<sddk::mdarray<T, 2>>
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double
 ClebschGordan(const int l, const double j, const double mj, const int spin);
@@ -177,7 +177,7 @@ class SHT // TODO: better name
                     coord_(1, itp) = y[itp];
                     coord_(2, itp) = z[itp];
 
-                    auto vs = spherical_coordinates(geometry3d::vector3d<double>(x[itp], y[itp], z[itp]));
+                    auto vs = spherical_coordinates(r3::vector<double>(x[itp], y[itp], z[itp]));
 
                     tp_(0, itp) = vs[1];
                     tp_(1, itp) = vs[2];
@@ -330,9 +330,9 @@ class SHT // TODO: better name
     //}
 
     /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-    static geometry3d::vector3d<double> spherical_coordinates(geometry3d::vector3d<double> vc)
+    static r3::vector<double> spherical_coordinates(r3::vector<double> vc)
     {
-        geometry3d::vector3d<double> vs;
+        r3::vector<double> vs;
 
         const double eps{1e-12};
 
@@ -553,57 +553,57 @@ class SHT // TODO: better name
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
     }
 
-    inline double_complex ylm_backward(int lm, int itp) const
+    inline auto ylm_backward(int lm, int itp) const
     {
         return ylm_backward_(lm, itp);
     }
 
-    inline double rlm_backward(int lm, int itp) const
+    inline auto rlm_backward(int lm, int itp) const
     {
         return rlm_backward_(lm, itp);
     }
 
-    inline double coord(int x, int itp) const
+    inline auto coord(int x, int itp) const
     {
         return coord_(x, itp);
     }
 
-    inline geometry3d::vector3d<double> coord(int idx__) const
+    inline auto coord(int idx__) const
     {
-        return geometry3d::vector3d<double>(coord_(0, idx__), coord_(1, idx__), coord(2, idx__));
+        return r3::vector<double>(coord_(0, idx__), coord_(1, idx__), coord(2, idx__));
     }
 
-    inline double theta(int idx__) const
+    inline auto theta(int idx__) const
     {
         return tp_(0, idx__);
     }
 
-    inline double phi(int idx__) const
+    inline auto phi(int idx__) const
     {
         return tp_(1, idx__);
     }
 
-    inline double weight(int idx__) const
+    inline auto weight(int idx__) const
     {
         return w_[idx__];
     }
 
-    inline int num_points() const
+    inline auto num_points() const
     {
         return num_points_;
     }
 
-    inline int lmax() const
+    inline auto lmax() const
     {
         return lmax_;
     }
 
-    inline int lmmax() const
+    inline auto lmmax() const
     {
         return lmmax_;
     }
-
 };
+
 } // namespace sirius
 
 #endif // __SHT_HPP__

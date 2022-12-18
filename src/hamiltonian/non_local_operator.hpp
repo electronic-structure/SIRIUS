@@ -271,7 +271,7 @@ class U_operator
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
-    vector3d<double> vk_;
+    r3::vector<double> vk_;
 
   public:
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
@@ -321,7 +321,7 @@ class U_operator
             int at1_lvl = um1__.find_orbital_index(ia, nl.n()[0], il);
             int at2_lvl = um1__.find_orbital_index(ja, nl.n()[1], jl);
 
-            auto z1 = std::exp(double_complex(0, twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
+            auto z1 = std::exp(double_complex(0, twopi * dot(vk_, r3::vector<int>(Tr))));
             for (int is = 0; is < ctx_.num_spins(); is++) {
                 for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {

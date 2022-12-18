@@ -58,11 +58,11 @@ Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
 
     for (int isym = 0; isym < ctx_.unit_cell().symmetry().size(); isym++) {
         auto Rc = dot(dot(ctx_.unit_cell().symmetry().lattice_vectors(),
-                          matrix3d<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
+                          r3::matrix<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
                       ctx_.unit_cell().symmetry().inverse_lattice_vectors());
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            vector3d<double> force_ia(&forces__(0, ia));
+            r3::vector<double> force_ia(&forces__(0, ia));
             int ja        = ctx_.unit_cell().symmetry()[isym].spg_op.sym_atom[ia];
             auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
             if (location.rank == ctx_.comm().rank()) {
@@ -400,7 +400,7 @@ Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            auto t = dot(unit_cell.lattice_vectors(), vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation));
+            auto t = dot(unit_cell.lattice_vectors(), r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation));
 
             double scalar_part =
                 static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
@@ -671,7 +671,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 int jn  = nl.n()[1];
                 auto Tr = nl.T();
 
-                auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp__.vk())));
+                auto z1           = std::exp(double_complex(0, -twopi * dot(r3::vector<int>(Tr), kp__.vk())));
                 const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia1, in, il);
                 const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
                 const int offset1 = potential_.hubbard_potential().offset(at_lvl1);

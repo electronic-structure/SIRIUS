@@ -26,7 +26,7 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "radial/radial_solver.hpp"
 #include "context/simulation_parameters.hpp"
 #include "radial_functions_index.hpp"

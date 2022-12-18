@@ -12,7 +12,7 @@ if (Communicator::world().rank() == 0) {
 }
 /* reciprocal lattice vectors in
    inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in
@@ -47,7 +47,7 @@ if (Communicator::world().rank() == 0) {
 }
 /* reciprocal lattice vectors in 
     inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in
@@ -119,7 +119,7 @@ spla::Context spla_ctx(SPLA_PU_HOST);
 
 /* reciprocal lattice vectors in 
    inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in

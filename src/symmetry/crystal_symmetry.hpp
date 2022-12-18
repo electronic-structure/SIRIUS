@@ -32,10 +32,8 @@ extern "C" {
 }
 
 #include "SDDK/memory.hpp"
-#include "SDDK/geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "utils/profiler.hpp"
-
-using namespace geometry3d;
 
 namespace sirius {
 
@@ -43,28 +41,28 @@ namespace sirius {
 struct space_group_symmetry_descriptor
 {
     /// Rotational part of symmetry operation (fractional coordinates).
-    matrix3d<int> R;
+    r3::matrix<int> R;
 
     /// Inverse of R.
-    matrix3d<int> invR;
+    r3::matrix<int> invR;
 
     /// Inverse transposed of R.
-    matrix3d<int> invRT;
+    r3::matrix<int> invRT;
 
     /// Proper rotation matrix in Cartesian coordinates.
-    matrix3d<double> Rcp;
+    r3::matrix<double> Rcp;
 
     /// (Im)proper Rotation matrix in Cartesian coordinates.
-    matrix3d<double> Rc;
+    r3::matrix<double> Rc;
 
     /// Fractional translation.
-    vector3d<double> t;
+    r3::vector<double> t;
 
     /// Proper (+1) or improper (-1) rotation.
     int proper;
 
     /// Three Euler angles that generate the proper rotation matrix.
-    vector3d<double> euler_angles;
+    r3::vector<double> euler_angles;
 
     /// Symmetry table.
     std::vector<int> sym_atom;
@@ -73,7 +71,7 @@ struct space_group_symmetry_descriptor
     std::vector<int> inv_sym_atom;
 
     /// Translation vector that prings symmetry-transformed atom back to the unit cell.
-    std::vector<vector3d<int>> inv_sym_atom_T;
+    std::vector<r3::vector<int>> inv_sym_atom_T;
 };
 
 /// Descriptor of the magnetic group symmetry operation.
@@ -83,10 +81,10 @@ struct magnetic_group_symmetry_descriptor
     space_group_symmetry_descriptor spg_op;
 
     /// Proper rotation matrix in Cartesian coordinates.
-    matrix3d<double> spin_rotation;
+    r3::matrix<double> spin_rotation;
 
     /// Inverse of proper spin rotation matrix in Cartesian coordinates.
-    matrix3d<double> spin_rotation_inv;
+    r3::matrix<double> spin_rotation_inv;
 
     sddk::mdarray<std::complex<double>, 2> spin_rotation_su2;
 };
@@ -98,10 +96,10 @@ class Crystal_symmetry
 
     /// Matrix of lattice vectors.
     /** Spglib requires this matrix to have a positively defined determinant. */
-    matrix3d<double> lattice_vectors_;
+    r3::matrix<double> lattice_vectors_;
 
     /// Inverse of the lattice vectors matrix.
-    matrix3d<double> inverse_lattice_vectors_;
+    r3::matrix<double> inverse_lattice_vectors_;
 
     /// Number of atoms in the unit cell.
     int num_atoms_;
@@ -143,7 +141,7 @@ class Crystal_symmetry
 
   public:
 
-    Crystal_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
+    Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
         std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
         sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
 
@@ -193,20 +191,20 @@ class Crystal_symmetry
     inline auto transformation_matrix() const
     {
         if (spg_dataset_) {
-            return matrix3d<double>(spg_dataset_->transformation_matrix);
+            return r3::matrix<double>(spg_dataset_->transformation_matrix);
         } else {
-            return matrix3d<double>({{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}});
+            return r3::matrix<double>({{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}});
         }
     }
 
     inline auto origin_shift() const
     {
         if (spg_dataset_) {
-            return vector3d<double>(spg_dataset_->origin_shift[0],
+            return r3::vector<double>(spg_dataset_->origin_shift[0],
                                     spg_dataset_->origin_shift[1],
                                     spg_dataset_->origin_shift[2]);
         } else {
-            return vector3d<double>(0, 0, 0);
+            return r3::vector<double>(0, 0, 0);
         }
     }
 

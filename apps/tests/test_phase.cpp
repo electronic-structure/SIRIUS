@@ -5,7 +5,7 @@ using namespace sirius;
 void test1()
 {
     int N = 30000000;
-    std::vector<vector3d<double>> a(N);
+    std::vector<r3::vector<double>> a(N);
 
     for (int i = 0; i < N; i++) {
         double r = utils::random<double>();

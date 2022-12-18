@@ -424,7 +424,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             /* get the sign between mag and B */
             auto s = utils::sign((rho_up.f_rg(irloc) - rho_dn.f_rg(irloc)) * bxc);
 
-            vector3d<double> m;
+            r3::vector<double> m;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 m[j] = density__.magnetization(j).f_rg(irloc);
             }

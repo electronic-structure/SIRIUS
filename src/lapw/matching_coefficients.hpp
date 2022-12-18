@@ -79,7 +79,7 @@ class Matching_coefficients // TODO: compute on GPU
      */
     template <int N, bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
-                         matrix3d<double> const& A, T* alm) const
+                         r3::matrix<double> const& A, T* alm) const
     {
         double_complex zt;
 
@@ -205,12 +205,12 @@ class Matching_coefficients // TODO: compute on GPU
         }
 
         const double eps{0.1};
-        std::vector<matrix3d<double>> Al(atom__.type().lmax_apw() + 1);
+        std::vector<r3::matrix<double>> Al(atom__.type().lmax_apw() + 1);
         /* create inverse matrix of radial derivatives for all values of \ell */
         for (int l = 0; l <= atom__.type().lmax_apw(); l++) {
             /* order of augmentation for a given orbital quantum number */
             int num_aw = static_cast<int>(type.aw_descriptor(l).size());
-            matrix3d<double> A;
+            r3::matrix<double> A;
             /* create matrix of radial derivatives */
             for (int order = 0; order < num_aw; order++) {
                 for (int dm = 0; dm < num_aw; dm++) {

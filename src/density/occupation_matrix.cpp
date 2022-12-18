@@ -47,7 +47,7 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
 
         for (int isym = 0; isym < sym.size(); isym++) {
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
-                        dot(sym[isym].spg_op.invR, vector3d<int>(T));
+                        dot(sym[isym].spg_op.invR, r3::vector<int>(T));
             if (!occ_mtrx_T_.count(Ttot)) {
                 occ_mtrx_T_[Ttot] = sddk::mdarray<double_complex, 3>(nhwf, nhwf, ctx_.num_mag_comp());
                 occ_mtrx_T_[Ttot].zero();
@@ -377,7 +377,7 @@ Occupation_matrix::symmetrize()
             int jap = sym[isym].spg_op.inv_sym_atom[ja];
 
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
-                        dot(sym[isym].spg_op.invR, vector3d<int>(T));
+                        dot(sym[isym].spg_op.invR, r3::vector<int>(T));
 
             /* we must search for the right hubbard subspace since we may have
              * multiple orbitals involved in the hubbard correction */

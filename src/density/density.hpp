@@ -73,7 +73,7 @@ namespace sirius {
 
 /// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
 inline std::pair<double, double>
-get_rho_up_dn(int num_mag_dims__, double rho__, vector3d<double> mag__)
+get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
 {
     if (rho__ < 0.0) {
         return std::make_pair<double, double>(0, 0);
@@ -511,7 +511,7 @@ class Density : public Field4D
         //==             double frv[] = {double(j0) / fft_->size(0),
         //==                             double(j1) / fft_->size(1),
         //==                             double(j2) / fft_->size(2)};
-        //==             vector3d<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
+        //==             r3::vector<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(r3::vector<double>(frv));
         //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
         //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
         //==             if (ctx_.num_mag_dims() == 3)
@@ -888,7 +888,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     double rhomin{0};
     #pragma omp parallel for reduction(min:rhomin)
     for (int ir = 0; ir < num_points; ir++) {
-        vector3d<double> m;
+        r3::vector<double> m;
         for (int j = 0; j < ctx.num_mag_dims(); j++) {
             m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc__);
         }

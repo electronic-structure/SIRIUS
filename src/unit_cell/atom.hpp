@@ -30,8 +30,6 @@
 #include "function3d/spheric_function.hpp"
 #include "utils/profiler.hpp"
 
-using namespace geometry3d;
-
 namespace sirius {
 
 /// Data and methods specific to the actual atom in the unit cell.
@@ -45,10 +43,10 @@ class Atom
     std::shared_ptr<Atom_symmetry_class> symmetry_class_;
 
     /// Position in fractional coordinates.
-    vector3d<double> position_;
+    r3::vector<double> position_;
 
     /// Vector field associated with the current site.
-    vector3d<double> vector_field_;
+    r3::vector<double> vector_field_;
 
     /// Muffin-tin potential.
     sddk::mdarray<double, 2> veff_;
@@ -92,7 +90,7 @@ class Atom
 
   public:
     /// Constructor.
-    Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__)
+    Atom(Atom_type const& type__, r3::vector<double> position__, r3::vector<double> vector_field__)
         : type_(type__)
         , position_(position__)
         , vector_field_(vector_field__)
@@ -346,19 +344,19 @@ class Atom
     }
 
     /// Return atom position in fractional coordinates.
-    inline vector3d<double> const& position() const
+    inline r3::vector<double> const& position() const
     {
         return position_;
     }
 
     /// Set atom position in fractional coordinates.
-    inline void set_position(vector3d<double> position__)
+    inline void set_position(r3::vector<double> position__)
     {
         position_ = position__;
     }
 
     /// Return vector field.
-    inline vector3d<double> vector_field() const
+    inline auto vector_field() const
     {
         return vector_field_;
     }
