@@ -683,7 +683,7 @@ class Eigensolver_elpa : public Eigensolver
         auto& mph = get_memory_pool(sddk::memory_t::host);
         auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-        elpa_eigenvectors_all_host_arrays_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
+        elpa_eigenvectors_a_h_a_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
 
         elpa_deallocate(handle, &error);
 
@@ -751,7 +751,7 @@ class Eigensolver_elpa : public Eigensolver
         using CT = double _Complex;
         auto A_ptr = A__.size_local() ? (CT*)A__.at(sddk::memory_t::host) : nullptr;
         auto Z_ptr = Z__.size_local() ? (CT*)Z__.at(sddk::memory_t::host) : nullptr;
-        elpa_eigenvectors_all_host_arrays_dc(handle, A_ptr, w.get(), Z_ptr, &error);
+        elpa_eigenvectors_a_h_a_dc(handle, A_ptr, w.get(), Z_ptr, &error);
 
         elpa_deallocate(handle, &error);
 
