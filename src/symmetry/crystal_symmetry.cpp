@@ -324,78 +324,82 @@ Crystal_symmetry::sym_op_R_error() const
 }
 
 void
-Crystal_symmetry::print_info(int verbosity__) const
+Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
 {
-    std::printf("\n");
     if (this->spg_dataset_ && (this->spg_dataset_->n_operations != this->num_spg_sym())) {
-        std::printf("space group found by spglib is defferent\n");
+        out__ << "space group found by spglib is defferent" << std::endl;
     } else {
-        std::printf("space group number   : %i\n", this->spacegroup_number());
-        std::printf("international symbol : %s\n", this->international_symbol().c_str());
-        std::printf("Hall symbol          : %s\n", this->hall_symbol().c_str());
-        std::printf("space group transformation matrix : \n");
+        out__ << "space group number   : " << this->spacegroup_number() << std::endl
+              << "international symbol : " << this->international_symbol() << std::endl
+              << "Hall symbol          : " << this->hall_symbol() << std::endl
+              << "space group transformation matrix : " << std::endl;
         auto tm = this->transformation_matrix();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                std::printf("%12.6f ", tm(i, j));
+                out__ << utils::ffmt(8, 4) << tm(i, j);
             }
-            std::printf("\n");
+            out__ << std::endl;
         }
-        std::printf("space group origin shift : \n");
+        out__ << "space group origin shift : " << std::endl;
         auto t = this->origin_shift();
-        std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+        for (auto x: {0, 1, 2}) {
+            out__ << utils::ffmt(8, 4) << t[x];
+        }
+        out__ << std::endl;
     }
-    std::printf("number of space group operations  : %i\n", this->num_spg_sym());
-    std::printf("number of magnetic group operations : %i\n", this->size());
-    std::printf("metric tensor error: %18.12f\n", this->metric_tensor_error());
-    std::printf("rotation matrix error: %18.12f\n", this->sym_op_R_error());
+    out__ << "number of space group operations  : " << this->num_spg_sym() << std::endl
+          << "number of magnetic group operations : " << this->size() << std::endl
+          << "metric tensor error: " << std::scientific << this->metric_tensor_error() << std::endl
+          << "rotation matrix error: " << std::scientific << this->sym_op_R_error() << std::endl;
 
     if (verbosity__ >= 2) {
-        std::printf("symmetry operations  : \n");
+        out__ << std::endl
+              << "symmetry operations " << std::endl
+              << std::endl;
         for (int isym = 0; isym < this->size(); isym++) {
             auto R = this->operator[](isym).spg_op.R;
             auto Rc = this->operator[](isym).spg_op.Rc;
             auto t = this->operator[](isym).spg_op.t;
             auto S = this->operator[](isym).spin_rotation;
 
-            std::printf("isym : %i\n", isym);
-            std::printf("R : ");
-            for (int i = 0; i < 3; i++) {
+            out__ << "isym : " << isym << std::endl
+                  << "R : ";
+            for (int i: {0, 1, 2}) {
                 if (i) {
-                    std::printf("    ");
+                    out__ << "    ";
                 }
-                for (int j = 0; j < 3; j++) {
-                    std::printf("%3i ", R(i, j));
+                for (int j: {0, 1, 2,}) {
+                    out__ << std::setw(3) << R(i, j);
                 }
-                std::printf("\n");
+                out__ << std::endl;
             }
-            std::printf("Rc: ");
-            for (int i = 0; i < 3; i++) {
+            out__ << "Rc: ";
+            for (int i: {0, 1, 2}) {
                 if (i) {
-                    std::printf("    ");
+                    out__ << "    ";
                 }
-                for (int j = 0; j < 3; j++) {
-                    std::printf("%8.4f ", Rc(i, j));
+                for (int j: {0, 1, 2}) {
+                    out__ << utils::ffmt(8, 4) << Rc(i, j);
                 }
-                std::printf("\n");
+                out__ << std::endl;
             }
-            std::printf("t : ");
-            for (int j = 0; j < 3; j++) {
-                std::printf("%8.4f ", t[j]);
+            out__ << "t : ";
+            for (int j: {0, 1, 2}) {
+                out__ << utils::ffmt(8, 4) << t[j];
             }
-            std::printf("\n");
-            std::printf("S : ");
-            for (int i = 0; i < 3; i++) {
+            out__ << std::endl;
+            out__ << "S : ";
+            for (int i: {0, 1, 2}) {
                 if (i) {
-                    std::printf("    ");
+                    out__ << "    ";
                 }
-                for (int j = 0; j < 3; j++) {
-                    std::printf("%8.4f ", S(i, j));
+                for (int j: {0, 1, 2}) {
+                    out__ << utils::ffmt(8, 4) << S(i, j);
                 }
-                std::printf("\n");
+                out__ << std::endl;
             }
-            printf("proper: %i\n", this->operator[](isym).spg_op.proper);
-            std::printf("\n");
+            out__ << "proper: " << std::setw(2) << this->operator[](isym).spg_op.proper << std::endl
+                  << std::endl;
         }
     }
 }

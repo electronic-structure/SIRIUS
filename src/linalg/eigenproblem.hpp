@@ -46,7 +46,7 @@ class Eigensolver_lapack : public Eigensolver
 {
   public:
     Eigensolver_lapack()
-        : Eigensolver(ev_solver_t::lapack, nullptr, false, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::lapack, false, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
 
@@ -88,9 +88,11 @@ class Eigensolver_lapack : public Eigensolver
             lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
         }
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsyevd)
@@ -154,9 +156,11 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int m{-1};
         ftn_int info;
 
-        auto w      = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
-        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
-        auto ifail  = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);     // for complex matrix
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto w      = mph.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto isuppz = mph.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
+        auto ifail  = mph.get_unique_ptr<ftn_int>(matrix_size__);     // for complex matrix
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
@@ -189,9 +193,9 @@ class Eigensolver_lapack : public Eigensolver
             lwork  = (nb + 1) * matrix_size__;
         }
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsyevr)
@@ -292,9 +296,10 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
 
-        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
+        auto w     = mph.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto ifail = mph.get_unique_ptr<ftn_int>(matrix_size__);
 
         int nb, lwork, liwork;
         int lrwork = 0; // only required in complex
@@ -318,9 +323,9 @@ class Eigensolver_lapack : public Eigensolver
             liwork = 5 * matrix_size__;
         }
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork); // only required in complex
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsygvx)
@@ -438,7 +443,7 @@ class Eigensolver_elpa : public Eigensolver
     //}
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
         , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
@@ -493,7 +498,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         elpa_generalized_eigenvectors_d(handle, A__.at(sddk::memory_t::host), B__.at(sddk::memory_t::host),
             w.get(), Z__.at(sddk::memory_t::host), 0, &error);
@@ -576,7 +583,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         using CT = double _Complex;
         elpa_generalized_eigenvectors_dc(handle, (CT*)A__.at(sddk::memory_t::host), (CT*)B__.at(sddk::memory_t::host),
@@ -671,9 +680,10 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-        elpa_eigenvectors_all_host_arrays_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
+        elpa_eigenvectors_a_h_a_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
 
         elpa_deallocate(handle, &error);
 
@@ -735,12 +745,13 @@ class Eigensolver_elpa : public Eigensolver
         elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         using CT = double _Complex;
         auto A_ptr = A__.size_local() ? (CT*)A__.at(sddk::memory_t::host) : nullptr;
         auto Z_ptr = Z__.size_local() ? (CT*)Z__.at(sddk::memory_t::host) : nullptr;
-        elpa_eigenvectors_all_host_arrays_dc(handle, A_ptr, w.get(), Z_ptr, &error);
+        elpa_eigenvectors_a_h_a_dc(handle, A_ptr, w.get(), Z_ptr, &error);
 
         elpa_deallocate(handle, &error);
 
@@ -774,7 +785,7 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
 };
@@ -789,7 +800,7 @@ class Eigensolver_scalapack : public Eigensolver
 
   public:
     Eigensolver_scalapack()
-        : Eigensolver(ev_solver_t::scalapack, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::scalapack, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
 
@@ -834,9 +845,10 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<ftn_int>(rwork1) + 1;
         liwork = iwork1;
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevd)
@@ -894,8 +906,9 @@ class Eigensolver_scalapack : public Eigensolver
         lwork  = static_cast<ftn_int>(work1[0]) + 1;
         liwork = iwork1[0];
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevd)
@@ -944,10 +957,12 @@ class Eigensolver_scalapack : public Eigensolver
         T d1;
         ftn_int info{-1};
 
-        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h_.get_unique_ptr<T>(A__.blacs_grid().comm().size());
-        auto w       = mp_h_.get_unique_ptr<T>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mph.get_unique_ptr<T>(A__.blacs_grid().comm().size());
+        auto w       = mph.get_unique_ptr<T>(matrix_size__);
 
         /* work size query */
         T work3[3];
@@ -974,8 +989,8 @@ class Eigensolver_scalapack : public Eigensolver
         lwork  = static_cast<ftn_int>(work3[0]) + 4 * (1 << 20);
         liwork = iwork1;
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevx)
@@ -1064,10 +1079,12 @@ class Eigensolver_scalapack : public Eigensolver
         real_type<T> d1;
         ftn_int info{-1};
 
-        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h_.get_unique_ptr<real_type<T>>(A__.blacs_grid().comm().size());
-        auto w       = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mph.get_unique_ptr<real_type<T>>(A__.blacs_grid().comm().size());
+        auto w       = mph.get_unique_ptr<real_type<T>>(matrix_size__);
 
         /* work size query */
         T work3[3];
@@ -1099,9 +1116,9 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<int32_t>(rwork3[0]) + (1 << 16);
         liwork = iwork1;
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevx)
@@ -1189,10 +1206,11 @@ class Eigensolver_scalapack : public Eigensolver
         sddk::linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h_.get_unique_ptr<T>(A__.blacs_grid().comm().size());
-        auto w       = mp_h_.get_unique_ptr<T>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mph.get_unique_ptr<T>(A__.blacs_grid().comm().size());
+        auto w       = mph.get_unique_ptr<T>(matrix_size__);
 
         ftn_int ione{1};
 
@@ -1223,8 +1241,8 @@ class Eigensolver_scalapack : public Eigensolver
 
         lwork = static_cast<int32_t>(work1[0]) + 4 * (1 << 20);
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsygvx)
@@ -1312,10 +1330,12 @@ class Eigensolver_scalapack : public Eigensolver
         sddk::linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h_.get_unique_ptr<real_type<T>>(A__.blacs_grid().comm().size());
-        auto w       = mp_h_.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+
+        auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mph.get_unique_ptr<real_type<T>>(A__.blacs_grid().comm().size());
+        auto w       = mph.get_unique_ptr<real_type<T>>(matrix_size__);
 
         ftn_int ione{1};
 
@@ -1361,9 +1381,9 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = 2 * static_cast<int32_t>(rwork3[0]) + 4096;
         liwork = 2 * iwork1 + 4096;
 
-        auto work  = mp_h_.get_unique_ptr<T>(lwork);
-        auto rwork = mp_h_.get_unique_ptr<real_type<T>>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mph.get_unique_ptr<T>(lwork);
+        auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork);
+        auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzhegvx)
@@ -1445,7 +1465,7 @@ class Eigensolver_scalapack : public Eigensolver
 {
   public:
     Eigensolver_scalapack()
-        : Eigensolver(ev_solver_t::scalapack, nullptr, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::scalapack, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
 };
@@ -1457,7 +1477,7 @@ class Eigensolver_magma: public Eigensolver
   public:
 
     Eigensolver_magma()
-        : Eigensolver(ev_solver_t::magma, nullptr, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
     {
     }
 
@@ -1471,7 +1491,9 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
         int info;
@@ -1480,8 +1502,8 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double>(lwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(sddk::memory_t::host), lda,
                              B__.at(sddk::memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
@@ -1518,7 +1540,9 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
         int info;
@@ -1528,9 +1552,9 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                              reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda,
@@ -1568,16 +1592,19 @@ class Eigensolver_magma: public Eigensolver
             return Eigensolver_lapack().solve(matrix_size__, nev__, A__, eval__, Z__);
         }
 
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+
         int nt  = omp_get_max_threads();
         int lda = A__.ld();
-        auto w  = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto w  = mph.get_unique_ptr<double>(matrix_size__);
 
         int lwork;
         int liwork;
         magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double>(lwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         int info;
         int m;
@@ -1612,7 +1639,9 @@ class Eigensolver_magma: public Eigensolver
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int info, m;
 
@@ -1621,9 +1650,9 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_2stage(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda, 0.0, 0.0, 1,
@@ -1656,7 +1685,7 @@ class Eigensolver_magma_gpu: public Eigensolver
   public:
 
     Eigensolver_magma_gpu()
-        : Eigensolver(ev_solver_t::magma, nullptr, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }
 
@@ -1804,7 +1833,9 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int info, m;
 
@@ -1814,11 +1845,11 @@ class Eigensolver_magma_gpu: public Eigensolver
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
         int llda = matrix_size__ + 32;
-        auto z_work = mp_hp_.get_unique_ptr<double_complex>(llda * matrix_size__);
+        auto z_work = mphp.get_unique_ptr<double_complex>(llda * matrix_size__);
 
-        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::device)), lda, 0.0, 0.0, 1,
@@ -1854,7 +1885,7 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
     Eigensolver_magma()
-        : Eigensolver(ev_solver_t::magma, nullptr, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
     {
     }
 };
@@ -1863,7 +1894,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
     Eigensolver_magma_gpu()
-        : Eigensolver(ev_solver_t::magma, nullptr, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }
 };
@@ -1873,8 +1904,8 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    Eigensolver_cuda(sddk::memory_pool* mpd__)
-        : Eigensolver(ev_solver_t::cusolver, mpd__, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+    Eigensolver_cuda()
+        : Eigensolver(ev_solver_t::cusolver, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }
 
@@ -1885,7 +1916,8 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
         cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_->get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd = get_memory_pool(sddk::memory_t::device);
+        auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -1911,10 +1943,10 @@ class Eigensolver_cuda: public Eigensolver
                                                          A__.ld(), vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         }
 
-        auto work = mp_d_->get_unique_ptr<T>(lwork);
+        auto work = mpd.get_unique_ptr<T>(lwork);
 
         int info;
-        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsyevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
@@ -1976,7 +2008,8 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
         cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_->get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd = get_memory_pool(sddk::memory_t::device);
+        auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(sddk::memory_t::device), B__.ld(), B__.at(sddk::memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
@@ -2007,10 +2040,10 @@ class Eigensolver_cuda: public Eigensolver
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         }
 
-        auto work = mp_d_->get_unique_ptr<T>(lwork);
+        auto work = mpd.get_unique_ptr<T>(lwork);
 
         int info;
-        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsygvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
@@ -2099,8 +2132,8 @@ class Eigensolver_cuda: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    Eigensolver_cuda(sddk::memory_pool* mpd__)
-        : Eigensolver(ev_solver_t::cusolver, mpd__, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+    Eigensolver_cuda()
+        : Eigensolver(ev_solver_t::cusolver, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }
 };

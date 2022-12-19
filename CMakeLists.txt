@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(SIRIUS VERSION 7.3.2)
+project(SIRIUS VERSION 7.4.0)
 
 # user variables
 set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
@@ -23,13 +23,12 @@ set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with 
 set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
 set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
 set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
-set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
 set(CUDA_ARCH               OFF CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
-set_property(CACHE USE_FP32 PROPERTY STRINGS
-  "AUTO" "ON" "OFF"
-  )
+set(USE_VCSQNM              OFF CACHE BOOL "use variable cell stabilized quasi Newton method")
+
+set_property(CACHE USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
@@ -72,15 +71,8 @@ include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
 if (CREATE_PYTHON_MODULE)
-  if(PYTHON2)
-    # force cmake to use python2
-    set(PYBIND11_PYTHON_VERSION 2.7)
-    find_package(Python2 REQUIRED)
-    set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
-  else()
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-  endif()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
 
 # Set release as the default build type.

@@ -114,7 +114,7 @@ When installing SIRIUS without Spack, make sure to install the required dependen
  * [GSL](https://www.gnu.org/software/gsl/) - GNU scientific library
  * [LibXC](https://www.tddft.org/programs/libxc/) - library of exchange-correlation potentials
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
- * [spglib](https://atztogo.github.io/spglib/) - library for finding and handling crystal symmetries
+ * [spglib](https://spglib.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
  * [SPLA](https://github.com/eth-cscs/spla) - domain-specific distributed GEMM library
 
@@ -124,8 +124,11 @@ and optionally any of the additional libraries:
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
  * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
+ * [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page)**
 
 \* Only required when `BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.
+
+\** Only required when `-DBUILD_TESTING=On`
 
 Clone the repository and build as follows:
 

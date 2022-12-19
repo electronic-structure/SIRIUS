@@ -40,7 +40,7 @@ ewald_energy(const Simulation_context& ctx, const sddk::Gvec& gvec, const Unit_c
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
             rho += ctx.gvec_phase_factor(gvec.gvec<sddk::index_domain_t::local>(igloc), ia) *
-                static_cast<double>(unit_cell.atom(ia).zn());
+                   static_cast<double>(unit_cell.atom(ia).zn());
         }
 
         ewald_g += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
@@ -165,16 +165,11 @@ total_energy(Simulation_context const& ctx, K_point_set const& kset, Density con
 
         case electronic_structure_method_t::pseudopotential: {
             tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) - energy_bxc(density, potential) -
-                      potential.PAW_one_elec_energy(density)) -
+                      potential.PAW_one_elec_energy(density) - one_electron_energy_hubbard(density, potential)) -
                      0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
-                     ewald_energy + kset.entropy_sum();
+                     ewald_energy + kset.entropy_sum() + ::sirius::hubbard_energy(density);
             break;
         }
-    }
-
-    if (ctx.hubbard_correction()) {
-        tot_en += ::sirius::energy(density.occupation_matrix());
-        tot_en -= ::sirius::one_electron_energy_hubbard(density, potential);
     }
 
     return tot_en;
@@ -210,11 +205,8 @@ one_electron_energy_hubbard(Density const& density, Potential const& potential)
 double
 energy_potential(Density const& density, Potential const& potential)
 {
-    double e =
-        energy_veff(density, potential) + energy_bxc(density, potential) + potential.PAW_one_elec_energy(density);
-    if (potential.ctx().hubbard_correction()) {
-        e += ::sirius::energy(density.occupation_matrix());
-    }
+    const double e = energy_veff(density, potential) + energy_bxc(density, potential) +
+                     potential.PAW_one_elec_energy(density) + ::sirius::hubbard_energy(density);
     return e;
 }
 

@@ -221,8 +221,8 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);
         if (gvec_.comm().rank() == 0) {
-            utils::print_checksum("q_pw", cs);
-            utils::print_checksum("q_mtrx", cs1);
+            utils::print_checksum("q_pw", cs, std::cout);
+            utils::print_checksum("q_mtrx", cs1, std::cout);
         }
     }
 }
@@ -260,8 +260,8 @@ Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_pa
             break;
         }
         case sddk::device_t::GPU: {
-            rlm_g_.allocate(param__.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-            rlm_dg_.allocate(param__.mem_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            rlm_g_.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            rlm_dg_.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
         }
     }
 }
@@ -276,7 +276,7 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
     /* number of beta- radial functions */
     int nbrf = atom_type__.mt_radial_basis_size();
 
-    auto& mp = atom_type__.parameters().mem_pool(sddk::memory_t::host);
+    auto& mp = get_memory_pool(sddk::memory_t::host);
 
     ri_values_ = sddk::mdarray<double, 3>(2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2, gvec_.num_gvec_shells_local(), mp);
     ri_dg_values_ = sddk::mdarray<double, 3>(2 * lmax_beta + 1, nbrf * (nbrf + 1) / 2, gvec_.num_gvec_shells_local(),
@@ -321,8 +321,8 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
 
     int gvec_count  = gvec_.count();
 
-    gvec_shell_ = sddk::mdarray<int, 1>(gvec_count, atom_type__.parameters().mem_pool(sddk::memory_t::host));
-    gvec_cart_ = sddk::mdarray<double, 2>(3, gvec_count, atom_type__.parameters().mem_pool(sddk::memory_t::host));
+    gvec_shell_ = sddk::mdarray<int, 1>(gvec_count, get_memory_pool(sddk::memory_t::host));
+    gvec_cart_ = sddk::mdarray<double, 2>(3, gvec_count, get_memory_pool(sddk::memory_t::host));
     for (int igloc = 0; igloc < gvec_count; igloc++) {
         auto gvc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
         gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
@@ -347,7 +347,7 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
             break;
         }
         case sddk::device_t::GPU: {
-            auto& mpd = atom_type__.parameters().mem_pool(sddk::memory_t::device);
+            auto& mpd = get_memory_pool(sddk::memory_t::device);
             ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
             ri_dg_values_.allocate(mpd).copy_to(sddk::memory_t::device);
             idx_.allocate(mpd).copy_to(sddk::memory_t::device);
@@ -412,7 +412,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             break;
         }
         case sddk::device_t::GPU: {
-            auto& mpd = atom_type__.parameters().mem_pool(sddk::memory_t::device);
+            auto& mpd = get_memory_pool(sddk::memory_t::device);
 
             auto gc = gaunt_coefs_->get_full_set_L3();
             gc.allocate(mpd).copy_to(sddk::memory_t::device);

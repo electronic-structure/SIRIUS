@@ -14,8 +14,7 @@ template <typename T>
 inline auto
 inverse_sqrt(sddk::dmatrix<T>& A__, int N__)
 {
-    auto solver = (A__.comm().size() == 1) ? Eigensolver_factory("lapack", nullptr) :
-                                             Eigensolver_factory("scalapack", nullptr);
+    auto solver = (A__.comm().size() == 1) ? Eigensolver_factory("lapack") : Eigensolver_factory("scalapack");
 
     std::unique_ptr<sddk::dmatrix<T>> Z;
     std::unique_ptr<sddk::dmatrix<T>> B;

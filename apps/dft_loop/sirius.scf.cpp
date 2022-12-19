@@ -1,9 +1,9 @@
-#include "utils/profiler.hpp"
 #include <sirius.hpp>
-#include "utils/filesystem.hpp"
-#include <utils/json.hpp>
 #include <cfenv>
-#include <fenv.h>
+#include "utils/profiler.hpp"
+#include "utils/filesystem.hpp"
+#include "utils/json.hpp"
+#include "dft/lattice_relaxation.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -11,19 +11,21 @@ using namespace sddk;
 
 const std::string aiida_output_file = "output_aiida.json";
 
-enum class task_t : int
+struct task_t
 {
-    ground_state_new     = 0,
-    ground_state_restart = 1,
-    k_point_path         = 2,
-    eos                  = 3,
-    read_config          = 4
+    static const int ground_state_new         = 0;
+    static const int ground_state_restart     = 1;
+    static const int k_point_path             = 2;
+    static const int eos                      = 3;
+    static const int read_config              = 4;
+    static const int ground_state_new_relax   = 5;
+    static const int ground_state_new_vcrelax = 6;
 };
 
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    dict__["comm_world_size"] = Communicator::world().size();
+    dict__["comm_world_size"] = sddk::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
@@ -83,11 +85,36 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     return ctx_ptr;
 }
 
-
 double
-ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int write_output)
+ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
+
+    if (ctx.comm().rank() == 0) {
+        switch (task_id) {
+            case task_t::ground_state_new: {
+                ctx.out() << "+----------------------+" << std::endl
+                          << "| new SCF ground state |" << std::endl
+                          << "+----------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_new_relax: {
+                ctx.out() << "+---------------------------------------------+" << std::endl
+                          << "| new SCF ground state with atomic relaxation |" << std::endl
+                          << "+---------------------------------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_new_vcrelax: {
+                ctx.out() << "+---------------------------------------------------------+" << std::endl
+                          << "| new SCF ground state with atomic and lattice relaxation |" << std::endl
+                          << "+---------------------------------------------------------+" << std::endl;
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
 
     auto& inp = ctx.cfg().parameters();
 
@@ -97,16 +124,17 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
 
     bool const reduce_kp = ctx.use_symmetry() && ctx.cfg().parameters().use_ibz();
     K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), reduce_kp);
+
     DFT_ground_state dft(kset);
 
-    ctx.print_memory_usage(__FILE__, __LINE__);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& potential = dft.potential();
     auto& density = dft.density();
 
-    if (task == task_t::ground_state_restart) {
+    if (task_id == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
-            TERMINATE("storage file is not found");
+            RTE_THROW("storage file is not found");
         }
         density.load();
         potential.load();
@@ -114,30 +142,69 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
         dft.initial_state();
     }
 
-    /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
-            inp.num_dft_iter(), write_state);
-    /* compute forces and stress */
+    bool compute_stress{false};
+    bool compute_forces{false};
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-        Stress& s       = dft.stress();
-        auto stress_tot = s.calc_stress_total();
-        s.print_info();
-        result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                result["stress"][i][j] = stress_tot(j, i);
-            }
-        }
+        compute_stress = true;
     }
     if (ctx.cfg().control().print_forces()) {
-        Force& f         = dft.forces();
-        auto& forces_tot = f.calc_forces_total();
-        f.print_info();
-        result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-        for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-            for (int j = 0; j < 3; j++) {
-                result["forces"][i][j] = forces_tot(j, i);
+        compute_forces = true;
+    }
+
+    nlohmann::json result;
+
+    Lattice_relaxation lr(dft);
+
+    switch (task_id) {
+        case task_t::ground_state_new:
+        case task_t::ground_state_restart: {
+            /* launch the calculation */
+            result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                    inp.num_dft_iter(), write_state);
+
+            if (compute_stress) {
+                dft.stress().calc_stress_total();
             }
+            if (compute_forces) {
+                dft.forces().calc_forces_total();
+            }
+            /* compute forces and stress */
+            if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
+                rte::ostream out(dft.ctx().out(), __func__);
+                dft.stress().print_info(out, dft.ctx().verbosity());
+                result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
+                auto st = dft.stress().stress_total();
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        result["stress"][i][j] = st(j, i);
+                    }
+                }
+            }
+            if (ctx.cfg().control().print_forces()) {
+                rte::ostream out(dft.ctx().out(), __func__);
+                dft.forces().print_info(out, dft.ctx().verbosity());
+                result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+                auto& ft = dft.forces().forces_total();
+                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                    for (int j = 0; j < 3; j++) {
+                        result["forces"][i][j] = ft(j, i);
+                    }
+                }
+            }
+            break;
+        }
+        case task_t::ground_state_new_relax: {
+            result = lr.find(ctx.cfg().vcsqnm().num_steps(), ctx.cfg().vcsqnm().forces_tol());
+            break;
+        }
+        case task_t::ground_state_new_vcrelax: {
+            result = lr.find(ctx.cfg().vcsqnm().num_steps(), ctx.cfg().vcsqnm().forces_tol(),
+                    ctx.cfg().vcsqnm().stress_tol());
+            break;
+        }
+        default: {
+            RTE_OUT(ctx.out()) << "task " << task_id << " is not handeled" << std::endl;
+            break;
         }
     }
 
@@ -145,7 +212,7 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
         json dict;
         json_output_common(dict);
 
-        dict["task"] = static_cast<int>(task);
+        dict["task"] = task_id;
         dict["context"] = ctx.serialize();
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
@@ -283,7 +350,7 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
 void run_tasks(cmd_args const& args)
 {
     /* get the task id */
-    task_t task = static_cast<task_t>(args.value<int>("task", 0));
+    int task_id = args.value<int>("task", 0);
 
     /* get the input file name */
     auto fpath = args.value<fs::path>("input", "sirius.json");
@@ -300,8 +367,10 @@ void run_tasks(cmd_args const& args)
     }
 
     auto fname = fpath.string();
-
-    if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
+    if (task_id == task_t::ground_state_new ||
+        task_id == task_t::ground_state_restart ||
+        task_id == task_t::ground_state_new_relax ||
+        task_id == task_t::ground_state_new_vcrelax) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
         //if (ctx->comm().rank() == 0) {
@@ -309,10 +378,65 @@ void run_tasks(cmd_args const& args)
         //    std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
         //    ofs << dict.dump(4);
         //}
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        int write_output{1};
+        ground_state(*ctx, task_id, args, write_output);
+    }
+    if (task_id == task_t::eos) {
+        auto s0 = std::pow(args.value<double>("volume_scale0"), 1.0 / 3);
+        auto s1 = std::pow(args.value<double>("volume_scale1"), 1.0 / 3);
+
+        int write_output{0};
+
+        int rank{0};
+        int num_steps{10};
+        std::vector<double> volume;
+        std::vector<double> energy;
+        for (int i = 0; i < num_steps; i++) {
+            double s = s0 + i * (s1 - s0) / (num_steps - 1);
+            auto ctx = create_sim_ctx(fname, args);
+            rank = ctx->comm().rank();
+            /* scale lattice vectors */
+            auto lv = ctx->unit_cell().lattice_vectors() * s;
+            ctx->unit_cell().set_lattice_vectors(lv);
+            ctx->initialize();
+            auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+            volume.push_back(ctx->unit_cell().omega());
+            energy.push_back(e);
+        }
+        if (rank == 0) {
+            std::cout << "final result:" << std::endl;
+            for (int i = 0; i < num_steps; i++) {
+                std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
+            }
+        }
+    }
+    if (task_id == task_t::read_config) {
+        //int count{0};
+        //while (true) {
+        //    std::stringstream s;
+        //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
+        //    fname = s.str();
+        //    try {
+        //        auto dict = utils::read_json_from_file_or_string(fname);
+        //        Simulation_context ctx(dict["config"].dump());
+        //    } catch(...) {
+        //        break;
+        //    }
+        //    count++;
         //}
-        ground_state(*ctx, task, args, 1);
+        auto dict1 = utils::read_json_from_file_or_string("sirius000030.json");
+        Simulation_context ctx1(dict1["config"].dump());
+        ctx1.initialize();
+
+        auto dict2 = utils::read_json_from_file_or_string("sirius000031.json");
+        Simulation_context ctx2(dict1["config"].dump());
+        ctx2.initialize();
+
+        ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
+        for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
+            ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
+        }
+        ctx1.update();
     }
     if (task == task_t::eos) {
         auto s0 = std::pow(args.value<double>("volume_scale0"), 1.0 / 3);
@@ -371,7 +495,7 @@ void run_tasks(cmd_args const& args)
 
     }
 
-    if (task == task_t::k_point_path) {
+    if (task_id == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
@@ -432,7 +556,7 @@ void run_tasks(cmd_args const& args)
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
-                TERMINATE("fix me");
+                RTE_THROW("fix me");
                 //potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
@@ -508,11 +632,6 @@ int main(int argn, char** argv)
     args.register_key("--volume_scale1=", "{double} final volume scale for EOS calculation");
 
     args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        std::printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
 
 #if defined(_GNU_SOURCE)
     if (args.exist("fpe")) {

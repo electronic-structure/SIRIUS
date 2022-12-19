@@ -28,6 +28,7 @@
 #include "SDDK/memory.hpp"
 #include "SDDK/fft.hpp"
 #include "typedefs.hpp"
+#include "utils/rte.hpp"
 
 /* forward declarations */
 namespace sirius {
@@ -38,9 +39,12 @@ class Smooth_periodic_function;
 }
 namespace sddk {
 class FFT3D;
-class Gvec_partition;
+class Gvec_fft;
+}
+namespace wf {
 template <typename T>
 class Wave_functions;
+class band_range;
 class spin_range;
 }
 namespace spfft {
@@ -48,32 +52,148 @@ class Transform;
 }
 
 #ifdef SIRIUS_GPU
-extern "C" void mul_by_veff_real_real_gpu_float(int nr__, float* buf__, float* veff__);
+extern "C" {
 
-extern "C" void mul_by_veff_real_real_gpu_double(int nr__, double* buf__, double* veff__);
+void
+add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
+    void const* vphi__, void* hphi__);
 
-extern "C" void mul_by_veff_complex_real_gpu_float(int nr__, std::complex<float>* buf__, float* veff__);
+void
+add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
+    void const* vphi__, void* hphi__);
 
-extern "C" void mul_by_veff_complex_real_gpu_double(int nr__, double_complex* buf__, double* veff__);
+void
+add_to_hphi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
 
-extern "C" void mul_by_veff_complex_complex_gpu_float(int nr__, std::complex<float>* buf__, float pref__, float* vx__, float* vy__);
+void
+add_to_hphi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
 
-extern "C" void mul_by_veff_complex_complex_gpu_double(int nr__, double_complex* buf__, double pref__, double* vx__, double* vy__);
+void
+grad_phi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
 
-extern "C" void add_pw_ekin_gpu_float(int                        num_gvec__,
-                                      float                      alpha__,
-                                      float const*               pw_ekin__,
-                                      std::complex<float> const* phi__,
-                                      std::complex<float> const* vphi__,
-                                      std::complex<float>*       hphi__);
+void
+grad_phi_lapw_gpu_double(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
 
-extern "C" void add_pw_ekin_gpu_double(int                   num_gvec__,
-                                       double                alpha__,
-                                       double const*         pw_ekin__,
-                                       double_complex const* phi__,
-                                       double_complex const* vphi__,
-                                       double_complex*       hphi__);
+void
+mul_by_veff_real_real_gpu_float(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_real_real_gpu_double(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_real_gpu_float(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_real_gpu_double(int nr__, void const* in__, void const* veff__, void* out__);
+
+void
+mul_by_veff_complex_complex_gpu_float(int nr__, void const* in__, float pref__,
+    void const* vx__, void const* vy__, void* out__);
+
+void
+mul_by_veff_complex_complex_gpu_double(int nr__, void const* in__, double pref__,
+    void const* vx__, void const* vy__, void* out__);
+
+} // extern C
 #endif
+
+template <typename T>
+inline void
+mul_by_veff_real_real_gpu(int nr__, T const* in__, T const* veff__, T* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_real_real_gpu_float(nr__, in__, veff__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_real_real_gpu_double(nr__, in__, veff__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+mul_by_veff_complex_real_gpu(int nr__, std::complex<T> const* in__, T const* veff__, std::complex<T>* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_complex_real_gpu_float(nr__, in__, veff__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_complex_real_gpu_double(nr__, in__, veff__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+mul_by_veff_complex_complex_gpu(int nr__, std::complex<T> const* in__, T pref__, T const* vx__, T const* vy__,
+        std::complex<T>* out__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        mul_by_veff_complex_complex_gpu_float(nr__, in__, pref__, vx__, vy__, out__);
+    }
+    if (std::is_same<T, double>::value) {
+        mul_by_veff_complex_complex_gpu_double(nr__, in__, pref__, vx__, vy__, out__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+add_to_hphi_pw_gpu(int num_gvec__, int add_ekin__, T const* pw_ekin__, std::complex<T> const* phi__,
+    std::complex<T> const* vphi__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        add_to_hphi_pw_gpu_float(num_gvec__, add_ekin__, pw_ekin__, phi__, vphi__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        add_to_hphi_pw_gpu_double(num_gvec__, add_ekin__, pw_ekin__, phi__, vphi__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+add_to_hphi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        add_to_hphi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        add_to_hphi_lapw_gpu_double(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
+
+template <typename T>
+inline void
+grad_phi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
+{
+#ifdef SIRIUS_GPU
+    if (std::is_same<T, float>::value) {
+        grad_phi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+    if (std::is_same<T, double>::value) {
+        grad_phi_lapw_gpu_double(num_gvec__, p__, gkvec_cart__, hphi__);
+    }
+#else
+    RTE_THROW("not compiled with GPU support");
+#endif
+}
 
 namespace sirius {
 
@@ -95,10 +215,23 @@ class Local_operator
     spfft_transform_type<T>& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
-    sddk::Gvec_partition const& gvec_coarse_p_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_p_;
 
     /// Kinetic energy of G+k plane-waves.
     sddk::mdarray<T, 1> pw_ekin_;
+
+    sddk::mdarray<T, 2> gkvec_cart_;
+
+    // Names for indices.
+    struct v_local_index_t
+    {
+        static const int v0 = 0;
+        static const int v1 = 1;
+        static const int vx = 2;
+        static const int vy = 3;
+        static const int theta = 4;
+        static const int rm_inv = 5;
+    };
 
     /// Effective potential components and unit step function on a coarse FFT grid.
     /** The following elements are stored in the array:
@@ -134,14 +267,12 @@ class Local_operator
      *  \param [in] potential     Effective potential and magnetic fields \f$ V_{eff}({\bf r}) \f$ and
      *                             \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
      */
-    Local_operator(Simulation_context          const& ctx__,
-                   spfft_transform_type<T>&           fft_coarse__,
-                   sddk::Gvec_partition        const& gvec_coarse_p__,
-                   Potential*                         potential__ = nullptr);
+    Local_operator(Simulation_context const& ctx__, spfft_transform_type<T>& fft_coarse__,
+                   std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft__, Potential* potential__ = nullptr);
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
-    void prepare_k(sddk::Gvec_partition const& gkvec_p__);
+    void prepare_k(sddk::Gvec_fft const& gkvec_p__);
 
     /// Apply local part of Hamiltonian to pseudopotential wave-functions.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -159,8 +290,9 @@ class Local_operator
      *
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    void apply_h(spfft_transform_type<T>& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
-                 sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>& hphi__, int idx0__, int n__);
+    void apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
+            wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__,
+            wf::band_range br__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -173,8 +305,9 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    void apply_h_o(spfft_transform_type<T>& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
-                   sddk::Wave_functions<T>& phi__, sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
+    void apply_fplapw(spfft_transform_type<T>& spfftik__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
+            wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
+            wf::Wave_functions<T>* ophi__, wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__);
 
     /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
@@ -182,13 +315,12 @@ class Local_operator
      *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. 
      *
      *  \param [in]  spfftk   SpFFT transform object for G+k vectors.
-     *  \param [in]  N        Starting index of wave-functions.
-     *  \param [in]  n        Number of wave-functions to which H and O are applied.
      *  \param [in]  phi      Input wave-functions.
      *  \param [out] bphi     Output vector of magentic field components, applied to the wave-functions.
+     *  \param [in]  br       Range of bands to which B is applied.
      */
-    void apply_b(spfft_transform_type<T>& spfftk__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-                 std::vector<sddk::Wave_functions<T>>& bphi__); // TODO: align argument order with apply_h()
+    //void apply_b(spfft_transform_type<T>& spfftk__, wf::Wave_functions<T> const& phi__,
+    //             std::vector<wf::Wave_functions<T>>& bphi__, wf::band_range br__);
 
     inline T v0(int ispn__) const
     {

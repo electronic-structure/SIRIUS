@@ -122,6 +122,12 @@ do i = 1, n
 enddo
 
 
+call sirius_option_get("control", "output", SIRIUS_STRING_TYPE, C_LOC(str_val), len(str_val))
+write(*,*)trim(adjustl(str_val))
+str_val = "file:output.txt"
+call sirius_option_set(handler, "control", "output", SIRIUS_STRING_TYPE, C_LOC(str_val), len(trim(adjustl(str_val))))
+
+
 call sirius_initialize_context(handler)
 !call sirius_print_info(handler)
 !

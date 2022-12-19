@@ -34,7 +34,6 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "band/davidson.hpp"
-#include "SDDK/wf_inner.hpp"
 #include "multi_cg/multi_cg.hpp"
 
 struct sirius_context_handler_t
@@ -581,9 +580,9 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
     call_sirius(
         [&]() {
             auto& comm                 = sddk::Communicator::map_fcomm(fcomm__);
-            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator::null();
+            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator();
             auto const& comm_band =
-                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator::null();
+                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator();
             *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
@@ -1231,7 +1230,7 @@ sirius_print_info(void* const* handler__, int* error_code__)
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            sim_ctx.print_info();
+            sim_ctx.print_info(sim_ctx.out());
         },
         error_code__);
 }
@@ -1280,11 +1279,11 @@ sirius_set_periodic_function_ptr:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: Pointer to the muffin-tin part of the function.
     f_rg:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(:)
       doc: Pointer to the regualr-grid part of the function.
     error_code:
       type: int
@@ -1339,7 +1338,7 @@ sirius_set_periodic_function:
       doc: Label of the function.
     f_rg:
       type: double
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Real space values on the regular grid.
     f_rg_global:
       type: bool
@@ -1394,7 +1393,7 @@ sirius_get_periodic_function:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: out, optional
+      attr: out, optional, dimension(:,:,:)
       doc: Muffin-tin part of the function.
     lmmax:
       type: int
@@ -1410,7 +1409,7 @@ sirius_get_periodic_function:
       doc: Number of atoms
     f_rg:
       type: double
-      attr: out, optional, dimension(*)
+      attr: out, optional, dimension(:)
       doc: Real space values on the regular grid.
     num_rg_points:
       type: int
@@ -1638,7 +1637,7 @@ sirius_initialize_kset:
       doc: K-point set handler.
     count:
       type: int
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Local number of k-points for each MPI rank.
     error_code:
       type: int
@@ -1703,6 +1702,10 @@ sirius_find_ground_state:
       type: int
       attr: out, optional
       doc: Actual number of SCF iterations.
+    rho_min:
+      type: double
+      attr: out, optional
+      doc: Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if SCF calculation is converged.
     error_code:
       type: int
       attr: out, optional
@@ -1712,7 +1715,8 @@ sirius_find_ground_state:
 void
 sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__, double const* energy_tol__,
                          double const* iter_solver_tol__, bool const* initial_guess__, int const* max_niter__,
-                         bool const* save_state__, bool* converged__, int* niter__, int* error_code__)
+                         bool const* save_state__, bool* converged__, int* niter__, double* rho_min__,
+                         int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1745,12 +1749,18 @@ sirius_find_ground_state(void* const* gs_handler__, double const* density_tol__,
                 if (niter__) {
                     *niter__ = result["num_scf_iterations"].get<int>();
                 }
+                if (rho_min__) {
+                    *rho_min__ = result["rho_min"].get<double>();
+                }
             } else {
                 if (converged__) {
                     *converged__ = false;
                 }
                 if (niter__) {
                     *niter__ = max_niter;
+                }
+                if (rho_min__) {
+                    *rho_min__ = 0;
                 }
             }
         },
@@ -1890,7 +1900,7 @@ sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handl
             }
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {
@@ -2456,7 +2466,7 @@ sirius_set_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Local array of plane-wave coefficients.
     transform_to_rg:
       type: bool
@@ -2468,7 +2478,7 @@ sirius_set_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2583,7 +2593,7 @@ sirius_get_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Local array of plane-wave coefficients.
     ngv:
       type: int
@@ -2591,7 +2601,7 @@ sirius_get_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2659,12 +2669,15 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                             dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                        RTE_THROW(s);
-                    }
-                    if (is_inverse) {
-                        pw_coeffs__[i] = std::conj(v[ig]);
+                        WARNING(s);
+                        pw_coeffs__[i] = 0;
+                        //RTE_THROW(s);
                     } else {
-                        pw_coeffs__[i] = v[ig];
+                        if (is_inverse) {
+                            pw_coeffs__[i] = std::conj(v[ig]);
+                        } else {
+                            pw_coeffs__[i] = v[ig];
+                        }
                     }
                 }
             }
@@ -2882,7 +2895,7 @@ sirius_set_band_occupancies:
       doc: Spin component index.
     band_occupancies:
       type: double
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2924,7 +2937,7 @@ sirius_get_band_occupancies:
       doc: Spin component.
     band_occupancies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band occupancies.
     error_code:
       type: int
@@ -2966,7 +2979,7 @@ sirius_get_band_energies:
       doc: Spin component.
     band_energies:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Array of band energies.
     error_code:
       type: int
@@ -3039,7 +3052,7 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             {"enuc", [&]() { return sirius::energy_enuc(ctx, potential); }},
             {"kin", [&]() { return sirius::energy_kin(ctx, kset, density, potential); }},
             {"one-el", [&]() { return sirius::one_electron_energy(density, potential); }},
-            {"descf", [&]() { return gs.scf_energy(); }},
+            {"descf", [&]() { return gs.scf_correction_energy(); }},
             {"demet", [&]() { return kset.entropy_sum(); }},
             {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
             {"paw", [&]() { return potential.PAW_total_energy(); }},
@@ -3070,7 +3083,7 @@ sirius_get_forces:
       doc: Label of the force component to get.
     forces:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: Total force component for each atom.
     error_code:
       type: int
@@ -3231,11 +3244,11 @@ sirius_get_wave_functions:
       doc: Local number of G-vectors for a k-point.
     gvec_loc:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: List of G-vectors.
     evec:
       type: complex
-      attr: out, optional
+      attr: out, optional, dimension(:,:)
       doc: Wave-functions.
     ld:
       type: int
@@ -3257,6 +3270,8 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                           int const* ld__, int const* num_spin_comp__, int* error_code__)
 {
     PROFILE("sirius_api::sirius_get_wave_functions");
+
+    // TODO: refactor this part; use QE order of G-vectors
 
     auto gvec_mapping = [&](sddk::Gvec const& gkvec) {
         std::vector<int> igm(*num_gvec_loc__);
@@ -3377,9 +3392,9 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                     /* send wave-functions */
                     if (ks.comm().rank() == src_rank) {
                         auto kp   = ks.get<double>(jk);
-                        int count = kp->gkvec().count();
-                        req       = ks.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
-                                              count * sim_ctx.num_bands(), dest_rank, tag);
+                        int count = kp->spinor_wave_functions().ld();
+                        req       = ks.comm().isend(kp->spinor_wave_functions().at(sddk::memory_t::host, 0,
+                                        wf::spin_index(0), wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
                     }
                     /* receive wave-functions */
                     if (ks.comm().rank() == dest_rank) {
@@ -3598,7 +3613,7 @@ sirius_generate_coulomb_potential:
       doc: DFT ground state handler
     vh_el:
       type: double
-      attr: out, optional, dimension(*)
+      attr: out, optional, dimension(:)
       doc: Electronic part of Hartree potential at each atom's origin.
     error_code:
       type: int
@@ -3782,19 +3797,19 @@ sirius_get_gvec_arrays:
       doc: Simulation context handler
     gvec:
       type: int
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: G-vectors in lattice coordinates.
     gvec_cart:
       type: double
-      attr: in, optional, dimension(3, *)
+      attr: in, optional, dimension(:,:)
       doc: G-vectors in Cartesian coordinates.
     gvec_len:
       type: double
-      attr: in, optional, dimension(*)
+      attr: in, optional, dimension(:)
       doc: Length of G-vectors.
     index_by_gvec:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(:,:,:)
       doc: G-vector index by lattice coordinates.
     error_code:
       type: int
@@ -3893,7 +3908,7 @@ sirius_get_fft_index:
       doc: Simulation context handler
     fft_index:
       type: int
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Index inside FFT buffer
     error_code:
       type: int
@@ -3964,23 +3979,23 @@ sirius_get_gkvec_arrays:
       doc: Number of G+k vectors.
     gvec_index:
       type: int
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Index of the G-vector part of G+k vector.
     gkvec:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: G+k vectors in fractional coordinates.
     gkvec_cart:
       type: double
-      attr: out, required, dimension(3, *)
+      attr: out, required, dimension(:,:)
       doc: G+k vectors in Cartesian coordinates.
     gkvec_len:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Length of G+k vectors.
     gkvec_tp:
       type: double
-      attr: out, required, dimension(2, *)
+      attr: out, required, dimension(:,:)
       doc: Theta and Phi angles of G+k vectors.
     error_code:
       type: int
@@ -4046,11 +4061,11 @@ sirius_get_step_function:
       doc: Simulation context handler
     cfunig:
       type: complex
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Plane-wave coefficients of step function.
     cfunrg:
       type: double
-      attr: out, required, dimension(*)
+      attr: out, required, dimension(:)
       doc: Values of the step function on the regular grid.
     num_rg_points:
       type: int
@@ -4363,7 +4378,7 @@ sirius_set_radial_function:
       doc: Radial derivative order.
     f:
       type: double
-      attr: in, required
+      attr: in, required, dimension(:)
       doc: Values of the radial function.
     l:
       type: int
@@ -4439,7 +4454,7 @@ sirius_set_equivalent_atoms:
       doc: Simulation context handler.
     equivalent_atoms:
       type: int
-      attr: in, required, dimension(*)
+      attr: in, required, dimension(:)
       doc: Array with equivalent atom IDs.
     error_code:
       type: int
@@ -4923,7 +4938,7 @@ sirius_get_fv_eigen_vectors:
       doc: Global index of the k-point
     fv_evec:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(:,:)
       doc: Output first-variational eigenvector array
     ld:
       type: int
@@ -4968,7 +4983,7 @@ sirius_get_fv_eigen_values:
       doc: Global index of the k-point
     fv_eval:
       type: double
-      attr: out, required
+      attr: out, required, dimension(:)
       doc: Output first-variational eigenvector array
     num_fv_states:
       type: int
@@ -5013,7 +5028,7 @@ sirius_get_sv_eigen_vectors:
       doc: Global index of the k-point
     sv_evec:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(:,:)
       doc: Output second-variational eigenvector array
     num_bands:
       type: int
@@ -5054,15 +5069,15 @@ sirius_set_rg_values:
       doc: Label of the function.
     grid_dims:
       type: int
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Dimensions of the FFT grid.
     local_box_origin:
       type: int
-      attr: in, required
+      attr: in, required, dimension(:,:)
       doc: Coordinates of the local box origin for each MPI rank
     local_box_size:
       type: int
-      attr: in, required
+      attr: in, required, dimension(:,:)
       doc: Dimensions of the local box for each MPI rank.
     fcomm:
       type: int
@@ -5187,15 +5202,15 @@ sirius_get_rg_values:
       doc: Label of the function.
     grid_dims:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(3)
       doc: Dimensions of the FFT grid.
     local_box_origin:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(:,:)
       doc: Coordinates of the local box origin for each MPI rank
     local_box_size:
       type: int
-      attr: in, required
+      attr: in, required, dimensions(:,:)
       doc: Dimensions of the local box for each MPI rank.
     fcomm:
       type: int
@@ -5540,7 +5555,7 @@ sirius_nlcg(void* const* handler__, void* const* ks_handler__, int* error_code__
             }
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {
@@ -5659,7 +5674,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             nlcglib::nlcg_info info;
 
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.preferred_memory_t())) {
+            if (is_device_memory(ctx.processing_unit_memory_t())) {
                 if (pu.empty() || pu.compare("gpu") == 0) {
                     info = nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                 } else if (pu.compare("cpu") == 0) {
@@ -5837,7 +5852,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
     PROFILE("sirius_api::sirius_linear_solver");
     call_sirius(
         [&]() {
-            assert(*num_spin_comp__ == 1);
+            RTE_ASSERT(*num_spin_comp__ == 1);
 
             vector3d<double> vkq(vkq__);
 
@@ -5848,12 +5863,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             std::shared_ptr<sddk::Gvec> gvkq_in;
             if (use_qe_gvec_order) {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__,
-                    gvec_kq_loc__, sctx.comm_band(), false);
+                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                        *num_gvec_kq_loc__, gvec_kq_loc__, sctx.comm_band(), false);
             } else {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(), sctx.gk_cutoff(), sctx.comm_k(), false);
+                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                        sctx.gk_cutoff(), sctx.comm_k(), false);
             }
-
 
             int num_gvec_kq_loc = *num_gvec_kq_loc__;
             int num_gvec_kq = num_gvec_kq_loc;
@@ -5922,10 +5937,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
             sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, sctx.num_bands());
 
-            auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-            auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-            auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-            auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
+            auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
+            auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
+            auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
             std::vector<std::complex<double>> tmp_psi(num_gvec_kq);
             std::vector<std::complex<double>> tmp_dpsi(num_gvec_kq);
@@ -5935,9 +5950,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 for (int i = 0; i < sctx.num_bands(); i++) {
                     if (use_qe_gvec_order) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            psi_wf->pw_coeffs(ispn).prime(ig, i) = psi(ig, ispn, i);
-                            dpsi_wf->pw_coeffs(ispn).prime(ig, i) = dpsi(ig, ispn, i);
-                            dvpsi_wf->pw_coeffs(ispn).prime(ig, i) = dvpsi(ig, ispn, i) / 2.0;
+                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
+                            dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
+                            dvpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dvpsi(ig, ispn, i) / 2.0;
                         }
                     } else {
                         /* gather the full wave-function in the order of QE */
@@ -5952,11 +5967,11 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
                         /* copy local part */
                         for (int ig = 0; ig < gvkq.count(); ig++) {
-                            psi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_psi[igmap[ig + gvkq.offset()]];
-                            dpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dpsi[igmap[ig + gvkq.offset()]];
+                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_psi[igmap[ig + gvkq.offset()]];
+                            dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_dpsi[igmap[ig + gvkq.offset()]];
                             // divide by two to account for hartree / rydberg, this is
                             // dv * psi and dv should be 2x smaller in sirius.
-                            dvpsi_wf->pw_coeffs(ispn).prime(ig, i) = tmp_dvpsi[igmap[ig + gvkq.offset()]] / 2.0;
+                            dvpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_dvpsi[igmap[ig + gvkq.offset()]] / 2.0;
                         }
                     }
                 }
@@ -5976,11 +5991,11 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             //}
 
             // setup auxiliary state vectors for CG.
-            auto U = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-            auto C = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
+            auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
-            auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
-            auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
+            auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
+            auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
             sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
@@ -6027,11 +6042,11 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 for (int i = 0; i < sctx.num_bands(); i++) {
                     if (use_qe_gvec_order) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ispn).prime(ig, i);
+                            dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                         }
                     } else {
                         for (int ig = 0; ig < gvkq.count(); ++ig) {
-                            tmp_dpsi[igmap[ig + gvkq.offset()]] = dpsi_wf->pw_coeffs(ispn).prime(ig, i);
+                            tmp_dpsi[igmap[ig + gvkq.offset()]] = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                         }
                         gvkq.comm().allgather(tmp_dpsi.data(), gkq_in_distr.counts.data(), gkq_in_distr.offsets.data());
                         for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
@@ -6042,7 +6057,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             }
 
         }, error_code__);
-
 }
 
 /*

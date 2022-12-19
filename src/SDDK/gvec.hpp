@@ -41,11 +41,6 @@ using namespace geometry3d;
 
 namespace sddk {
 
-inline FFT3D_grid get_min_fft_grid(double cutoff__, matrix3d<double> M__)
-{
-    return FFT3D_grid(find_translations(cutoff__, M__) + vector3d<int>({2, 2, 2}));
-}
-
 /// Descriptor of the z-column (x,y fixed, z varying) of the G-vectors.
 /** Sphere of G-vectors within a given plane-wave cutoff is represented as a set of z-columns with different lengths. */
 struct z_column_descriptor
@@ -708,14 +703,14 @@ class Gvec
 /** FFT driver works with a small communicator. G-vectors are distributed over the entire communicator which is
     larger than the FFT communicator. In order to transform the functions, G-vectors must be redistributed to the
     FFT-friendly "fat" slabs based on the FFT communicator size. */
-class Gvec_partition
+class Gvec_fft
 {
   private:
-    /// Pointer to the G-vector instance.
+    /// Reference to the G-vector instance.
     Gvec const& gvec_;
 
     /// Communicator for the FFT.
-    Communicator const& fft_comm_;
+    Communicator const& comm_fft_;
 
     /// Communicator which is orthogonal to FFT communicator.
     Communicator const& comm_ortho_fft_;
@@ -723,8 +718,8 @@ class Gvec_partition
     /// Distribution of G-vectors for FFT.
     block_data_descriptor gvec_distr_fft_;
 
-    /// Distribution of z-columns for FFT.
-    block_data_descriptor zcol_distr_fft_;
+    /// Local number of z-columns.
+    int num_zcol_local_{0};
 
     /// Distribution of G-vectors inside FFT-friendly "fat" slab.
     block_data_descriptor gvec_fft_slab_;
@@ -745,12 +740,12 @@ class Gvec_partition
     void pile_gvec();
 
   public:
-    Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
+    Gvec_fft(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
 
     /// Return FFT communicator
-    inline Communicator const& fft_comm() const
+    inline Communicator const& comm_fft() const
     {
-        return fft_comm_;
+        return comm_fft_;
     }
 
     inline Communicator const& comm_ortho_fft() const
@@ -766,16 +761,16 @@ class Gvec_partition
     /// Local number of G-vectors for FFT-friendly distribution.
     inline int gvec_count_fft() const
     {
-        return gvec_count_fft(fft_comm().rank());
+        return gvec_count_fft(comm_fft().rank());
     }
 
     /// Return local number of z-columns.
     inline int zcol_count_fft() const
     {
-        return zcol_distr_fft_.counts[fft_comm().rank()];
+        return num_zcol_local_;
     }
 
-    inline block_data_descriptor const& gvec_fft_slab() const
+    inline auto const& gvec_fft_slab() const
     {
         return gvec_fft_slab_;
     }
@@ -785,12 +780,12 @@ class Gvec_partition
         return gvec_;
     }
 
-    inline vector3d<double> gkvec_cart(int igloc__) const
+    inline auto gkvec_cart(int igloc__) const
     {
         return vector3d<double>(&gkvec_cart_array_(0, igloc__));
     }
 
-    inline mdarray<int, 2> const& gvec_array() const
+    inline auto const& gvec_array() const
     {
         return gvec_array_;
     }
@@ -821,7 +816,7 @@ class Gvec_partition
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
             /* offset in global index */
-            int offset = this->gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i));
+            int offset = this->gvec_.gvec_offset(rank_map_(comm_fft_.rank(), i));
             for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                 f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
             }
@@ -875,21 +870,22 @@ class Gvec_shells
 
     Gvec_shells(Gvec const& gvec__);
 
-    inline void print_gvec() const
+    inline void print_gvec(std::ostream& out__) const
     {
         pstdout pout(gvec_.comm());
-        pout.printf("rank: %i\n", gvec_.comm().rank());
-        pout.printf("-- list of G-vectors in the remapped distribution --\n");
+        pout << "rank: " << gvec_.comm().rank() << std::endl;
+        pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
         for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
             auto G = gvec_remapped(igloc);
 
             int igsh = gvec_shell_remapped(igloc);
-            pout.printf("igloc=%i igsh=%i G=%i %i %i\n", igloc, igsh, G[0], G[1], G[2]);
+            pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
         }
-        pout.printf("-- reverse list --\n");
+        pout << "-- reverse list --" << std::endl;
         for (auto const& e: idx_gvec_) {
-            pout.printf("G=%i %i %i, igloc=%i\n", e.first[0], e.first[1], e.first[2], e.second);
+            pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
         }
+        out__ << pout.flush(0);
     }
 
     /// Local number of G-vectors in the remapped distribution with complete shells on each rank.
@@ -968,6 +964,21 @@ class Gvec_shells
         return gvec_;
     }
 };
+
+/// This is only for debug purpose.
+inline std::shared_ptr<Gvec>
+gkvec_factory(double gk_cutoff__, sddk::Communicator const& comm__)
+{
+    auto M = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    return std::make_shared<Gvec>(vector3d<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
+}
+
+inline std::shared_ptr<Gvec>
+gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
+              Communicator const& comm__ = sddk::Communicator::self(), bool gamma__ = false)
+{
+    return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
+}
 
 } // namespace sddk
 

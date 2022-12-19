@@ -35,8 +35,8 @@ vector3d<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
     uint32_t j = idx__ & 0xFFF;
     /* index of z-column: last 20 bits */
     uint32_t i = idx__ >> 12;
-    assert(i < (uint32_t)z_columns_.size());
-    assert(j < (uint32_t)z_columns_[i].z.size());
+    RTE_ASSERT(i < (uint32_t)z_columns_.size());
+    RTE_ASSERT(j < (uint32_t)z_columns_[i].z.size());
     int x = z_columns_[i].x;
     int y = z_columns_[i].y;
     int z = z_columns_[i].z[j];
@@ -539,7 +539,7 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     int offs = (z0 >= 0) ? z0 : z0 + col_size;
     /* full index */
     int ig = ig0 + offs;
-    assert(ig >= 0 && ig < num_gvec());
+    RTE_ASSERT(ig >= 0 && ig < num_gvec());
     return ig;
 }
 
@@ -561,27 +561,28 @@ Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, i
     return gv;
 }
 
-void Gvec_partition::build_fft_distr()
+void Gvec_fft::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
-    gvec_distr_fft_ = block_data_descriptor(fft_comm().size());
-    zcol_distr_fft_ = block_data_descriptor(fft_comm().size());
+    gvec_distr_fft_ = block_data_descriptor(comm_fft().size());
 
-    for (int rank = 0; rank < fft_comm().size(); rank++) {
+    for (int rank = 0; rank < comm_fft().size(); rank++) {
         for (int i = 0; i < comm_ortho_fft().size(); i++) {
             /* fine-grained rank */
             int r = rank_map_(rank, i);
             gvec_distr_fft_.counts[rank] += gvec().gvec_count(r);
-            zcol_distr_fft_.counts[rank] += gvec().zcol_count(r);
         }
     }
-    /* get offsets of z-columns */
-    zcol_distr_fft_.calc_offsets();
+    for (int i = 0; i < comm_ortho_fft().size(); i++) {
+        /* fine-grained rank */
+        int r = rank_map_(comm_fft().rank(), i);
+        num_zcol_local_ += gvec().zcol_count(r);
+    }
     /* get offsets of G-vectors */
     gvec_distr_fft_.calc_offsets();
 }
 
-void Gvec_partition::pile_gvec()
+void Gvec_fft::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped distribution;
      * we are preparing to swap plane-wave coefficients from a default slab distribution to a FFT-friendly
@@ -598,21 +599,21 @@ void Gvec_partition::pile_gvec()
      * between columns of the 2D MPI grid */
     gvec_fft_slab_ = block_data_descriptor(comm_ortho_fft_.size());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
-        gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(fft_comm_.rank(), i));
+        gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(comm_fft_.rank(), i));
     }
     gvec_fft_slab_.calc_offsets();
 
-    RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
+    RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[comm_fft().rank()]);
 
     gvec_array_       = mdarray<int, 2>(3, this->gvec_count_fft());
     gkvec_cart_array_ = mdarray<double, 2>(3, this->gvec_count_fft());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
-        for (int j = 0; j < fft_comm_.size(); j++) {
+        for (int j = 0; j < comm_fft_.size(); j++) {
             int r = rank_map_(j, i);
             /* get array of G-vectors of rank r */
             auto gv = this->gvec_.gvec_local(r);
 
-            if (j == fft_comm_.rank()) {
+            if (j == comm_fft_.rank()) {
                 for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                     for (int x : {0, 1, 2}) {
                         gvec_array_(x, gvec_fft_slab_.offsets[i] + ig) = gv(x, ig);
@@ -624,23 +625,23 @@ void Gvec_partition::pile_gvec()
     update_gkvec_cart();
 }
 
-Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__)
+Gvec_fft::Gvec_fft(Gvec const& gvec__, Communicator const& comm_fft__, Communicator const& comm_ortho_fft__)
     : gvec_(gvec__)
-    , fft_comm_(fft_comm__)
+    , comm_fft_(comm_fft__)
     , comm_ortho_fft_(comm_ortho_fft__)
 {
-    if (fft_comm_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
+    if (comm_fft_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
         std::stringstream s;
         s << "wrong size of communicators" << std::endl
-          << "  fft_comm_.size()       = " << fft_comm_.size() << std::endl
+          << "  comm_fft_.size()       = " << comm_fft_.size() << std::endl
           << "  comm_ortho_fft_.size() = " << comm_ortho_fft_.size() << std::endl
           << "  gvec_.comm().size()    = " << gvec_.comm().size();
         RTE_THROW(s);
     }
-    rank_map_ = mdarray<int, 2>(fft_comm_.size(), comm_ortho_fft_.size());
+    rank_map_ = mdarray<int, 2>(comm_fft_.size(), comm_ortho_fft_.size());
     rank_map_.zero();
     /* get a global rank */
-    rank_map_(fft_comm_.rank(), comm_ortho_fft_.rank()) = gvec_.comm().rank();
+    rank_map_(comm_fft_.rank(), comm_ortho_fft_.rank()) = gvec_.comm().rank();
     gvec_.comm().allreduce(&rank_map_(0, 0), gvec_.comm().size());
 
     build_fft_distr();

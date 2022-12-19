@@ -1,75 +1,142 @@
 #include <sirius.hpp>
-#include "utils/cmd_args.hpp"
-#include "SDDK/dmatrix.hpp"
-#include <spla/spla.hpp>
 
-using namespace sddk;
+using namespace sirius;
 
-void test(int M, int N, int BS, std::vector<int> mpi_grid)
+void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__,
+                   sddk::memory_t mem__)
 {
-    std::vector<int> counts({85, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 17, 13, 13, 13, 13, 13, 13, 13, 13,
-        13, 13, 13, 13, 13, 13, 13, 29, 64, 28, 0, 0});
+    spla::Context spla_ctx(sddk::is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
-    BLACS_grid blacs_grid(Communicator::world(), mpi_grid[0], mpi_grid[1]);
-
-    int rank = Communicator::world().rank();
-
-    bool local_has_mt  = counts[rank] != 0;
-    bool global_has_mt = false;
-    // Not all ranks may have mt, but all must call spla if at least one does
-    MPI_Allreduce(&local_has_mt, &global_has_mt, 1, MPI_C_BOOL, MPI_LOR, Communicator::world().mpi_comm());
-
-    int nr{0};
-    nr = std::accumulate(counts.begin(), counts.end(), nr);
-
-    dmatrix<std::complex<double>> result(M, N, blacs_grid, BS, BS);
-
-    dmatrix<std::complex<double>, matrix_distribution_t::slab> A(nr, M, counts, Communicator::world());
-    A.allocate(memory_t::device);
-    dmatrix<std::complex<double>, matrix_distribution_t::slab> B(nr, N, counts, Communicator::world());
-    B.allocate(memory_t::device);
-
-    std::complex<double>* result_ptr = result.size_local() ? result.at(memory_t::host, 0, 0) : nullptr;
-    std::shared_ptr<::spla::Context> spla_ctx{new ::spla::Context{SPLA_PU_GPU}};
-    spla_ctx->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB
-
-    std::cout << "rank" << Communicator::world().rank() << " in" << std::endl;
-    if (local_has_mt) {
-        spla::pgemm_ssb(
-            M, N, counts[rank], SPLA_OP_CONJ_TRANSPOSE, 1.0,
-            A.at(memory_t::device, 0, 0), A.ld(), B.at(memory_t::device, 0, 0), B.ld(),
-            1.0, result_ptr, result.ld(), 0, 0, result.spla_distribution(), *spla_ctx);
+    std::unique_ptr<sddk::BLACS_grid> blacs_grid;
+    if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
+        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::self(), 1, 1));
     } else {
-        spla::pgemm_ssb(
-            M, N, 0, SPLA_OP_CONJ_TRANSPOSE, 1.0,
-            nullptr, 0, nullptr, 0,
-            1.0, result_ptr, result.ld(), 0, 0, result.spla_distribution(), *spla_ctx);
+        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
-    std::cout << "rank" << Communicator::world().rank() << " out" << std::endl;
-    Communicator::world().barrier();
+
+    /* create G-vectors */
+    auto gvec = gkvec_factory(cutoff__, sddk::Communicator::world());
+
+    if (sddk::Communicator::world().rank() == 0) {
+        printf("number of bands          : %i\n", num_bands__);
+        printf("total number of G-vectors: %i\n", gvec->num_gvec());
+        printf("local number of G-vectors: %i\n", gvec->count());
+    }
+
+    wf::Wave_functions<double> phi1(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), sddk::memory_t::host);
+    wf::Wave_functions<double> phi2(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), sddk::memory_t::host);
+
+    auto sr = wf::spin_range(0, 2);
+
+    for (auto s = sr.begin(); s != sr.end(); s++) {
+        for (int i = 0; i < num_bands__; i++) {
+            for (int igloc = 0; igloc < gvec->count(); igloc++) {
+                int ig = igloc + gvec->offset();
+                phi1.pw_coeffs(igloc, s, wf::band_index(i)) =
+                    static_cast<double>(i + 1) / (ig + 1);
+                phi2.pw_coeffs(igloc, s, wf::band_index(i)) =
+                    static_cast<double>(ig + 1) / (i + 1) / gvec->num_gvec();
+            }
+        }
+    }
+
+    auto mg1 = phi1.memory_guard(mem__, wf::copy_to::device);
+    auto mg2 = phi2.memory_guard(mem__, wf::copy_to::device);
+
+    sddk::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
+
+    /* warmup call */
+    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    sddk::Communicator::world().barrier();
+
+    double t = -utils::wtime();
+    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    sddk::Communicator::world().barrier();
+    t += utils::wtime();
+
+    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
+    if (sddk::Communicator::world().rank() == 0) {
+        printf("execution time (sec) : %12.6f\n", t);
+        printf("performance (GFlops) : %12.6f\n", perf);
+    }
+
+    double max_diff{0};
+    for (int j = 0; j < ovlp.num_cols_local(); j++) {
+        auto jcol = ovlp.icol(j);
+        for (int i = 0; i < ovlp.num_rows_local(); i++) {
+            auto irow = ovlp.irow(i);
+            /* 2 is accumulated from two spins */
+            double_complex z = ovlp(i, j) - 2 * static_cast<double>(irow + 1) / (jcol + 1);
+            max_diff = std::max(max_diff, std::abs(z));
+        }
+    }
+    sddk::Communicator::world().reduce<double, sddk::mpi_op_t::max>(&max_diff, 1, 0);
+    if (sddk::Communicator::world().rank() == 0) {
+        printf("maximum difference: %18.12f\n", max_diff);
+        if (max_diff > 1e-10) {
+            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+        } else {
+            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+        }
+    }
+
+
+    //for (auto s = sr.begin(); s != sr.end(); s++) {
+    //    for (int i = 0; i < num_bands__; i++) {
+    //        for (int igloc = 0; igloc < gvec->count(); igloc++) {
+    //            phi1.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
+    //        }
+    //    }
+    //}
+    //orthogonalize(spla_ctx, sddk::memory_t::host, sr, wf::band_range(0, 0),
+    //        wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
+    //wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    //max_diff = sddk::check_identity(ovlp, num_bands__);
+    //if (sddk::Communicator::world().rank() == 0) {
+    //    printf("checking identity\n");
+    //    printf("maximum difference: %18.12f\n", max_diff);
+    //    if (max_diff > 1e-10) {
+    //        printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+    //    } else {
+    //        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    //    }
+    //}
 }
 
-int main(int argn, char **argv)
+int main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"M=", "{int} M"},
-        {"N=", "{int} N"},
-        {"BS=", "{int} BS"},
-        {"mpi_grid=", "{vector<int>} 2D MPI grid"},
-        {"repeat=", "{int} repeat test number of times"}});
+    cmd_args args;
+    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
+    args.register_key("--cutoff=", "{double} wave-functions cutoff");
+    args.register_key("--bs=", "{int} block size");
+    args.register_key("--num_bands=", "{int} number of bands");
+    args.register_key("--memory_t=", "{string} type of the memory");
 
-
-    int M = args.value<int>("M", 1000);
-    int N = args.value<int>("N", 1000);
-    int BS = args.value<int>("BS", 256);
-    int repeat = args.value<int>("repeat", 2);
-    auto mpi_grid = args.value("mpi_grid", std::vector<int>({1, 1}));
-
-    sirius::initialize(true);
-
-    for (int i = 0; i < repeat; i++) {
-        test(M, N, BS, mpi_grid);
+    args.parse_args(argn, argv);
+    if (args.exist("help")) {
+        printf("Usage: %s [options]\n", argv[0]);
+        args.print_help();
+        return 0;
     }
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
+    auto cutoff = args.value<double>("cutoff", 8.0);
+    auto bs = args.value<int>("bs", 32);
+    auto num_bands = args.value<int>("num_bands", 100);
+    std::string memory_t_str = args.value<std::string>("memory_t", "host");
 
-    sirius::finalize();
+    sirius::initialize(1);
+
+    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_memory_t(memory_t_str));
+
+    sddk::Communicator::world().barrier();
+    int my_rank = sddk::Communicator::world().rank();
+
+    sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
+        //std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        //ofs << timing_result.json();
+    }
 }

@@ -33,6 +33,7 @@
 #include "mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
+#include "utils/env.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
@@ -43,18 +44,49 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif
 
-//#ifdef __GNUC__
-//    #define __function_name__ __PRETTY_FUNCTION__
-//#else
-//    #define __function_name__ __func__
-//#endif
-
-#define __function_name__ __func__
-
 namespace sirius {
 
-/// Utility function to print a CPU and GPU memory utilization.
-void print_memory_usage(const char* file__, int line__);
+template <typename OUT>
+void
+print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
+{
+    if (!env::print_memory_usage()) {
+        return;
+    }
+
+    size_t VmRSS, VmHWM;
+    utils::get_proc_status(&VmHWM, &VmRSS);
+
+    std::stringstream s;
+    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    out__ << "[" << s.str() << " at " << file_and_line__ << "] "
+          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
+    }
+    out__ << std::endl;
+
+    std::vector<std::string> labels = {"host"};
+    std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    int np{1};
+    if (acc::num_devices() > 0) {
+        labels.push_back("host pinned");
+        labels.push_back("device");
+        mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
+        mp.push_back(&get_memory_pool(sddk::memory_t::device));
+        np = 3;
+    }
+    for (int i = 0; i < np; i++) {
+        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
+              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
+              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
+              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+    }
+}
+
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
@@ -116,16 +148,16 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// G-vectors within the Gmax cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_;
+    std::shared_ptr<sddk::Gvec> gvec_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_fft_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::unique_ptr<sddk::Gvec> gvec_coarse_;
+    std::shared_ptr<sddk::Gvec> gvec_coarse_;
 
-    std::unique_ptr<sddk::Gvec_partition> gvec_coarse_partition_;
+    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft_;
 
-    std::unique_ptr<sddk::Gvec_shells> remap_gvec_;
+    std::shared_ptr<sddk::Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -232,15 +264,6 @@ class Simulation_context : public Simulation_parameters
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
-    /// Type of preferred memory for wave-functions and related arrays.
-    sddk::memory_t preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
-    sddk::memory_t aux_preferred_memory_t_{sddk::memory_t::none};
-
-    /// Type of BLAS linear algebra library.
-    sddk::linalg_t blas_linalg_t_{sddk::linalg_t::none};
-
     /// Callback function to compute band occupancies.
     std::function<void(void)> band_occ_callback_{nullptr};
 
@@ -250,7 +273,8 @@ class Simulation_context : public Simulation_parameters
     /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
-    std::shared_ptr<std::ostream> output_stream_;
+    std::ostream* output_stream_{nullptr};
+    std::ofstream output_file_stream_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -344,6 +368,15 @@ class Simulation_context : public Simulation_parameters
         unit_cell_->import(cfg().unit_cell());
     }
 
+    explicit Simulation_context(nlohmann::json const& dict__)
+        : comm_(sddk::Communicator::world())
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+        import(dict__);
+        unit_cell_->import(cfg().unit_cell());
+    }
+
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
         : comm_(comm__)
@@ -357,40 +390,15 @@ class Simulation_context : public Simulation_parameters
     /// Destructor.
     ~Simulation_context()
     {
-        if (!comm().is_finalized()) {
-            this->print_memory_usage(__FILE__, __LINE__);
+        if (!comm().is_finalized() && initialized_) {
+            print_memory_usage(this->out(), FILE_LINE);
         }
     }
 
     /// Initialize the similation (can only be called once).
     void initialize();
 
-    void print_info() const;
-
-    /// Print the memory usage.
-    void print_memory_usage(const char* file__, int line__);
-
-    /// Print message from the root rank.
-    template <typename... Args>
-    inline void message(int level__, char const* label__, Args... args) const
-    {
-        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
-            if (label__) {
-                std::printf("[%s] ", label__);
-            }
-            std::printf(args...);
-        }
-    }
-
-    inline void message(int level__, char const* label__, std::stringstream& s) const
-    {
-        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
-            auto strings = ::rte::split(s.str());
-            for (auto& e : strings) {
-                std::cout << "[" << label__ << "] " << e << std::endl;
-            }
-        }
-    }
+    void print_info(std::ostream& out__) const;
 
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update();
@@ -405,19 +413,34 @@ class Simulation_context : public Simulation_parameters
         return *unit_cell_;
     }
 
+    /// Return const reference to unit cell object.
     auto const& unit_cell() const
     {
         return *unit_cell_;
     }
 
+    /// Return const reference to Gvec object.
     auto const& gvec() const
     {
         return *gvec_;
     }
 
-    auto const& gvec_partition() const
+    /// Return shared pointer to Gvec object.
+    auto gvec_sptr() const
     {
-        return *gvec_partition_;
+        return gvec_;
+    }
+
+    /// Return const reference to Gvec_fft object.
+    auto const& gvec_fft() const
+    {
+        return *gvec_fft_;
+    }
+
+    /// Return shared pointer to Gvec_fft object.
+    auto gvec_fft_sptr() const
+    {
+        return gvec_fft_;
     }
 
     auto const& gvec_coarse() const
@@ -425,9 +448,14 @@ class Simulation_context : public Simulation_parameters
         return *gvec_coarse_;
     }
 
-    auto const& gvec_coarse_partition() const
+    auto const& gvec_coarse_sptr() const
     {
-        return *gvec_coarse_partition_;
+        return gvec_coarse_;
+    }
+
+    auto const& gvec_coarse_fft_sptr() const
+    {
+        return gvec_coarse_fft_;
     }
 
     auto const& remap_gvec() const
@@ -724,27 +752,16 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Type of the host memory for arrays used in linear algebra operations.
+    /** For CPU execution this is normal host memory, for GPU execution this is pinned memory. */
     inline auto host_memory_t() const
     {
         return host_memory_t_;
     }
 
-    /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
-    inline auto preferred_memory_t() const
+    /// Return the memory type for processing unit.
+    inline auto processing_unit_memory_t() const
     {
-        return preferred_memory_t_;
-    }
-
-    /// Type of preferred memory for the storage of auxiliary wave-functions.
-    inline auto aux_preferred_memory_t() const
-    {
-        return aux_preferred_memory_t_;
-    }
-
-    /// Linear algebra driver for the BLAS operations.
-    auto blas_linalg_t() const
-    {
-        return blas_linalg_t_;
+        return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
     }
 
     /// Split local set of G-vectors into chunks.
@@ -906,12 +923,40 @@ class Simulation_context : public Simulation_parameters
         return dict;
     }
 
-    std::ostream& out() const
+    /// Return output stream.
+    inline std::ostream& out() const
     {
-        if (output_stream_ == nullptr) {
-            return std::cout;
+        RTE_ASSERT(output_stream_ != nullptr);
+        return *output_stream_;
+    }
+
+    /// Return output stream based on the verbosity level.
+    inline std::ostream& out(int level__) const
+    {
+        if (this->verbosity() >= level__) {
+            return this->out();
         } else {
-            return *output_stream_;
+            return utils::null_stream();
+        }
+    }
+
+    inline rte::ostream out(int level__, const char* label__) const
+    {
+        if (this->verbosity() >= level__) {
+            return rte::ostream(this->out(), label__);
+        } else {
+            return rte::ostream(utils::null_stream(), label__);
+        }
+    }
+
+    /// Print message from the stringstream.
+    inline void message(int level__, char const* label__, std::stringstream const& s) const
+    {
+        if (this->verbosity() >= level__) {
+            auto strings = ::rte::split(s.str());
+            for (auto& e : strings) {
+                this->out() << "[" << label__ << "] " << e << std::endl;
+            }
         }
     }
 };

@@ -6,6 +6,9 @@
 #ifndef __TYPE_DEFINITION_HPP__
 #define __TYPE_DEFINITION_HPP__
 
+#include <type_traits>
+#include <complex>
+
 using double_complex = std::complex<double>;
 
 // define type traits that return real type
@@ -20,17 +23,8 @@ struct Real<std::complex<T>> {using type = T;};
 template <typename T>
 using real_type = typename Real<T>::type;
 
-// define type traits that return a complex type 
-// general case for real type
-template <typename T>
-struct Complex {using type = std::complex<T>;};
-
-// special case for complex type
-template <typename T>
-struct Complex<std::complex<T>> {using type = std::complex<T>;};
-
-template <typename T>
-using complex_type = typename Complex<T>::type;
+template <class T>
+constexpr bool is_real_v = std::is_same<T, real_type<T>>::value;
 
 namespace sddk {
 enum class matrix_distribution_t

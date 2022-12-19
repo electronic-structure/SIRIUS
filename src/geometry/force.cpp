@@ -97,9 +97,9 @@ void Force::calc_forces_nonloc_aux()
         auto* kp = kset_.get<T>(spl_num_kp[ikploc]);
 
         if (ctx_.gamma_point()) {
-            add_k_point_contribution<T>(*kp, forces_nonloc_);
+            add_k_point_contribution<T, T>(*kp, forces_nonloc_);
         } else {
-            add_k_point_contribution<std::complex<T>>(*kp, forces_nonloc_);
+            add_k_point_contribution<T, std::complex<T>>(*kp, forces_nonloc_);
         }
     }
 
@@ -122,40 +122,27 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
     return forces_nonloc_;
 }
 
-template <typename T>
+template <typename T, typename F>
 void
-Force::add_k_point_contribution(K_point<real_type<T>>& kp__, sddk::mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    Beta_projectors_gradient<real_type<T>> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        int nbnd = ctx_.num_bands();
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* allocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(sddk::memory_t::device));
-            kp__.spinor_wave_functions().pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, nbnd);
-        }
-    }
+    Beta_projectors_gradient<T> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
+    auto mem = ctx_.processing_unit_memory_t();
+    auto mg = kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
 
-    Non_local_functor<T> nlf(ctx_, bp_grad);
-
-    sddk::mdarray<real_type<T>, 2> f(3, ctx_.unit_cell().num_atoms());
+    sddk::mdarray<real_type<F>, 2> f(3, ctx_.unit_cell().num_atoms());
     f.zero();
 
-    nlf.add_k_point_contribution(kp__, f);
+    add_k_point_contribution_nonlocal<T, F>(ctx_, bp_grad, kp__, f);
+
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         for (int x : {0, 1, 2}) {
             forces__(x, ia) += f(x, ia);
-        }
-    }
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* deallocate GPU memory */
-            kp__.spinor_wave_functions().pw_coeffs(ispn).deallocate(sddk::memory_t::device);
         }
     }
 }
@@ -263,7 +250,7 @@ Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0<double> H0(potential_, true);
+    Hamiltonian0<double> H0(potential_, false);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_.get<double>(ik));
@@ -271,14 +258,6 @@ Force::calc_forces_ibs()
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
-
-    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
-        std::printf("ibs force\n");
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            std::printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, forces_ibs_(0, ia), forces_ibs_(1, ia),
-                        forces_ibs_(2, ia));
-        }
-    }
 
     return forces_ibs_;
 }
@@ -299,13 +278,6 @@ Force::calc_forces_rho()
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
     symmetrize(forces_rho_);
 
-    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
-        std::printf("rho force\n");
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            std::printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forces_rho_(0, ia),
-                        forces_rho_(1, ia), forces_rho_(2, ia));
-        }
-    }
     return forces_rho_;
 }
 
@@ -324,14 +296,6 @@ Force::calc_forces_hf()
     }
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
     symmetrize(forces_hf_);
-
-    if (ctx_.cfg().control().verbosity() > 2 && ctx_.comm().rank() == 0) {
-        std::printf("H-F force\n");
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            std::printf("ia : %i, Hellmann Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
-                        forces_hf_(2, ia));
-        }
-    }
 
     return forces_hf_;
 }
@@ -354,8 +318,13 @@ Force::calc_forces_hubbard()
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_.get<double>(ik);
             kp->beta_projectors().prepare();
+            auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg4 = kp->atomic_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+
             if (ctx_.num_mag_dims() == 3) {
-                TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
+                RTE_THROW("Hubbard forces are only implemented for the simple hubbard correction.");
             }
             hubbard_force_add_k_contribution_collinear(*kp, q_op, forces_hubbard_);
             kp->beta_projectors().dismiss();
@@ -467,12 +436,12 @@ Force::calc_forces_us()
     sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            mp = &ctx_.mem_pool(sddk::memory_t::host);
+            mp = &get_memory_pool(sddk::memory_t::host);
             la = sddk::linalg_t::blas;
             break;
         }
         case sddk::device_t::GPU: {
-            mp = &ctx_.mem_pool(sddk::memory_t::host_pinned);
+            mp = &get_memory_pool(sddk::memory_t::host_pinned);
             la = sddk::linalg_t::spla;
             break;
         }
@@ -953,37 +922,34 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 }
 
 void
-Force::print_info()
+Force::print_info(std::ostream& out__, int verbosity__)
 {
-    if (ctx_.comm().rank() == 0) {
-        auto print_forces = [&](sddk::mdarray<double, 2> const& forces) {
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                std::printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
-                            forces(0, ia), forces(1, ia), forces(2, ia));
-            }
-        };
+    auto print_forces = [&](std::string label__, sddk::mdarray<double, 2> const& forces) {
+        out__ << "==== " << label__ << " =====" << std::endl;
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            out__ << "atom: " << std::setw(4) << ia << ", force: " << utils::ffmt(15, 7) << forces(0, ia) <<
+                utils::ffmt(15, 7) << forces(1, ia) << utils::ffmt(15, 7) << forces(2, ia) << std::endl;
+        }
+    };
 
-        std::printf("===== total Forces in Ha/bohr =====\n");
-        print_forces(forces_total());
+    if (verbosity__ >= 1) {
+        out__ << std::endl;
+        print_forces("total Forces in Ha/bohr", forces_total());
+    }
 
-        std::printf("===== ultrasoft contribution from Qij =====\n");
-        print_forces(forces_us());
+    if (!ctx_.full_potential() && verbosity__ >= 2) {
+        print_forces("ultrasoft contribution from Qij", forces_us());
 
-        std::printf("===== non-local contribution from Beta-projectors =====\n");
-        print_forces(forces_nonloc());
+        print_forces("non-local contribution from Beta-projector", forces_nonloc());
 
-        std::printf("===== contribution from local potential =====\n");
-        print_forces(forces_vloc());
+        print_forces("contribution from local potential", forces_vloc());
 
-        std::printf("===== contribution from core density =====\n");
-        print_forces(forces_core());
+        print_forces("contribution from core density", forces_core());
 
-        std::printf("===== Ewald forces from ions =====\n");
-        print_forces(forces_ewald());
+        print_forces("Ewald forces from ions", forces_ewald());
 
         if (ctx_.hubbard_correction()) {
-            std::printf("===== contribution from Hubbard correction =====\n");
-            print_forces(forces_hubbard());
+            print_forces("contribution from Hubbard correction", forces_hubbard());
         }
     }
 }

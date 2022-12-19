@@ -41,22 +41,23 @@
 #include <complex>
 #include <chrono>
 #include "json.hpp"
+#include "rte.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
 
-class null_stream : public std::ostream
+class null_stream_t : public std::ostream
 {
   public:
-    null_stream() : std::ostream(nullptr)
+    null_stream_t() : std::ostream(nullptr)
     {
     }
-    null_stream(null_stream&&) : std::ostream(nullptr)
+    null_stream_t(null_stream_t&&) : std::ostream(nullptr)
     {
     };
 };
 
-extern null_stream null_stream__;
+null_stream_t& null_stream();
 
 /// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
@@ -93,29 +94,9 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 #define STOP() TERMINATE("terminated by request")
 
 template <typename T, typename OUT>
-inline void print_checksum(std::string label__, T cs__, OUT&& out__)
+inline void print_checksum(std::string label__, T value__, OUT&& out__)
 {
-    out__ << "checksum(" << label__ << ") : " << cs__ << std::endl;
-}
-
-inline void print_checksum(std::string label__, float cs__)
-{
-    std::printf("checksum(%s): %18.6f\n", label__.c_str(), cs__);
-}
-
-inline void print_checksum(std::string label__, double cs__)
-{
-    std::printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
-}
-
-inline void print_checksum(std::string label__, std::complex<float> cs__)
-{
-    std::printf("checksum(%s): %18.6f %18.6f\n", label__.c_str(), cs__.real(), cs__.imag());
-}
-
-inline void print_checksum(std::string label__, std::complex<double> cs__)
-{
-    std::printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+    out__ << "checksum(" << label__ << ") : " << value__ << std::endl;
 }
 
 inline void print_hash(std::string label__, unsigned long long int hash__)
@@ -143,7 +124,7 @@ inline int lmax(int lmmax__)
     if (lmmax(lmax) != lmmax__) {
         std::stringstream s;
         s << "wrong lmmax: " << lmmax__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     return lmax;
 }
@@ -184,7 +165,7 @@ inline double wtime()
 
 using time_point_t = std::chrono::high_resolution_clock::time_point;
 
-inline std::chrono::high_resolution_clock::time_point time_now()
+inline auto time_now()
 {
     return std::chrono::high_resolution_clock::now();
 }
@@ -373,9 +354,12 @@ inline T zero_if_not_complex(std::complex<T> x__)
 };
 
 /// Simple random number generator.
-inline uint32_t rnd()
+inline uint32_t rnd(bool reset = false)
 {
     static uint32_t a = 123456;
+    if (reset) {
+        a = 123456;
+    }
     a                 = (a ^ 61) ^ (a >> 16);
     a                 = a + (a << 3);
     a                 = a ^ (a >> 4);
@@ -509,6 +493,19 @@ operator<<(std::ostream& out, ffmt&& f)
     out.width(f.w());
     out.setf(std::ios_base::fixed, std::ios_base::floatfield);
     return out;
+}
+
+inline auto split(std::string const str__, char delim__)
+{
+    std::istringstream iss(str__);
+    std::vector<std::string> result;
+
+    while (iss.good()) {
+        std::string s;
+        std::getline(iss, s, delim__);
+        result.push_back(s);
+    }
+    return result;
 }
 
 } // namespace

@@ -9,15 +9,14 @@ void test_lapw_xc(cmd_args const& args__)
     auto N         = args__.value<int>("N", 1);
 
     /* create simulation context */
-    Simulation_context ctx(
-        "{"
-        "   \"parameters\" : {"
-        "        \"electronic_structure_method\" : \"full_potential_lapwlo\""
-        "    },"
-        "   \"control\" : {"
-        "       \"verification\" : 0"
-        "    }"
-        "}");
+    auto json_conf = R"({
+      "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "use_symmetry" : false
+      }
+    })"_json;
+
+    Simulation_context ctx(json_conf);
 
     int lmax{8};
     ctx.lmax_apw(lmax);

@@ -93,47 +93,4 @@ int get_device_id(int num_devices__)
     return id;
 }
 
-void sddk::pstdout::printf(const char* fmt, ...)
-{
-    std::vector<char> str(1024); // assume that one printf will not output more than this
-
-    std::va_list arg;
-    va_start(arg, fmt);
-    int n = vsnprintf(&str[0], str.size(), fmt, arg);
-    va_end(arg);
-
-    n = std::min(n, (int)str.size());
-
-    if ((int)buffer_.size() - count_ < n) {
-        buffer_.resize(buffer_.size() + str.size());
-    }
-    std::memcpy(&buffer_[count_], &str[0], n);
-    count_ += n;
-}
-
-void sddk::pstdout::flush()
-{
-    std::vector<int> counts(comm_.size());
-    comm_.allgather(&count_, counts.data(), 1, comm_.rank());
-
-    int offset{0};
-    for (int i = 0; i < comm_.rank(); i++) {
-        offset += counts[i];
-    }
-
-    /* total size of the output buffer */
-    int sz = count_;
-    comm_.allreduce(&sz, 1);
-
-    if (sz != 0) {
-        std::vector<char> outb(sz + 1);
-        comm_.allgather(&buffer_[0], &outb[0], count_, offset);
-        outb[sz] = 0;
-
-        if (comm_.rank() == 0) {
-            std::printf("%s", &outb[0]);
-        }
-    }
-    count_ = 0;
-}
 } // namespace sddk

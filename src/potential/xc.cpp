@@ -39,7 +39,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     bool const use_2nd_deriv{false};
 
-    auto& gvp = ctx_.gvec_partition();
+    auto gvp = ctx_.gvec_fft_sptr();
 
     bool is_gga = is_gradient_correction();
 
@@ -84,9 +84,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = density__.rho().checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_rg", cs);
-        }
+        utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho;
@@ -128,7 +126,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     Smooth_periodic_function<double> vsigma;
     if (is_gga) {
-        vsigma = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
+        vsigma = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_[0]->zero();
     }
 
@@ -245,9 +243,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = xc_potential_->checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("exc", cs);
-        }
+        utils::print_checksum("exc", cs, ctx_.out());
     }
 }
 
@@ -322,9 +318,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> vsigma_dd;
 
     if (is_gga) {
-        vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
-        vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
-        vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_partition());
+        vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         for (int i = 0; i < 3; i++) {
             vsigma_[i]->zero();
         }
@@ -391,8 +387,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 vsigma_[2]->f_rg(ir) += vsigma_dd.f_rg(ir);
             }
 
-            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_partition());
-            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_partition());
+            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
             for (int x: {0, 1, 2}) {
                 for(int ir = 0; ir < num_points; ir++) {
                   up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);

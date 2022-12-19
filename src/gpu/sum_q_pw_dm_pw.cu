@@ -22,7 +22,7 @@
  *  \brief CUDA kernel to perform a summation over xi,xi' indices for the charge density augmentation.
  */
 
-#include "gpu/cuda_common.hpp"
+#include "gpu/acc_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
 #ifdef SIRIUS_CUDA

@@ -25,8 +25,6 @@
 #include "k_point/k_point.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "linalg/inverse_sqrt.hpp"
-#include "SDDK/wf_inner.hpp"
-#include "SDDK/wf_trans.hpp"
 
 namespace sirius {
 
@@ -89,26 +87,30 @@ K_point<T>::initialize()
                     sv_eigen_vectors_[is] = sddk::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
                 }
             }
-            /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ = std::make_unique<sddk::Wave_functions<T>>(
-                gkvec_partition(), unit_cell_.num_atoms(),
-                [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-                ctx_.preferred_memory_t());
 
-            fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
-            fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
-            /* starting guess for wave-functions */
+            std::vector<int> num_mt_coeffs(unit_cell_.num_atoms());
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
+            }
+
+            /* allocate fv eien vectors */
+            fv_eigen_vectors_slab_ = std::make_unique<wf::Wave_functions<T>>(
+                    gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()),
+                    ctx_.host_memory_t());
+
+            fv_eigen_vectors_slab_->zero(sddk::memory_t::host, wf::spin_index(0),
+                    wf::band_range(0, ctx_.num_fv_states()));
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
                     int ig = igloc + gkvec().gvec_offset(comm().rank());
                     if (ig == i) {
-                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 1.0;
+                        fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 1.0;
                     }
                     if (ig == i + 1) {
-                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.5;
+                        fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 0.5;
                     }
                     if (ig == i + 2) {
-                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.125;
+                        fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 0.125;
                     }
                 }
             }
@@ -127,56 +129,55 @@ K_point<T>::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::make_unique<sddk::Wave_functions<T>>(
-                    gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+                singular_components_ = std::make_unique<wf::Wave_functions<T>>(
+                    gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ncomp), ctx_.host_memory_t());
 
-                singular_components_->pw_coeffs(0).prime().zero();
+                singular_components_->zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ncomp));
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
                     for (int igloc = 0; igloc < gkvec().count(); igloc++) {
                         int ig = igloc + gkvec().offset();
                         if (ig == i) {
-                            singular_components_->pw_coeffs(0).prime(igloc, i) = 1.0;
+                            singular_components_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 1.0;
                         }
                         if (ig == i + 1) {
-                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.5;
+                            singular_components_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 0.5;
                         }
                         if (ig == i + 2) {
-                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.125;
+                            singular_components_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 0.125;
                         }
                     }
                 }
-                if (ctx_.cfg().control().print_checksum()) {
-                    singular_components_->print_checksum(sddk::device_t::CPU, "singular_components", 0, ncomp, RTE_OUT(std::cout));
-                }
             }
 
-            fv_states_ = std::make_unique<sddk::Wave_functions<T>>(
-                gkvec_partition(), unit_cell_.num_atoms(),
-                [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
-                ctx_.preferred_memory_t());
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_basis_size();
+            }
+            fv_states_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs, wf::num_mag_dims(0),
+                    wf::num_bands(ctx_.num_fv_states()), ctx_.host_memory_t());
 
-            spinor_wave_functions_ = std::make_shared<sddk::Wave_functions<T>>(
-                gkvec_partition(), unit_cell_.num_atoms(),
-                [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
-                ctx_.num_spins());
+            spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs,
+                    wf::num_mag_dims(ctx_.num_mag_dims()), wf::num_bands(nst), ctx_.host_memory_t());
         } else {
-            throw std::runtime_error("not implemented");
+            RTE_THROW("not implemented");
         }
     } else {
-        spinor_wave_functions_ =
-            std::make_shared<sddk::Wave_functions<T>>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
+        spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(ctx_.num_mag_dims()),
+                wf::num_bands(nst), ctx_.host_memory_t());
+
         if (ctx_.hubbard_correction()) {
             /* allocate Hubbard wave-functions */
-            int nwfh = unit_cell_.num_hubbard_wf().first;// * ctx_.num_spinor_comp();
-            int nwf  = unit_cell_.num_ps_atomic_wf().first;// * ctx_.num_spinor_comp();
-            auto mt  = ctx_.preferred_memory_t();
-            int ns   = 1; //ctx_.num_spins();
+            int nwfh = unit_cell_.num_hubbard_wf().first;
+            int nwf  = unit_cell_.num_ps_atomic_wf().first;
 
-            hubbard_wave_functions_   = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwfh, mt, ns);
-            hubbard_wave_functions_S_ = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwfh, mt, ns);
-            atomic_wave_functions_    = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
-            atomic_wave_functions_S_  = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwf, mt, ns);
+            hubbard_wave_functions_   = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
+                    wf::num_bands(nwfh),  ctx_.host_memory_t());
+            hubbard_wave_functions_S_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
+                    wf::num_bands(nwfh), ctx_.host_memory_t());
+            atomic_wave_functions_    = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
+                    wf::num_bands(nwf), ctx_.host_memory_t());
+            atomic_wave_functions_S_  = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
+                    wf::num_bands(nwf), ctx_.host_memory_t());
         }
     }
 
@@ -189,8 +190,8 @@ K_point<T>::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
-    auto& phi = atomic_wave_functions();
-    auto& sphi = atomic_wave_functions_S();
+    //auto& phi = atomic_wave_functions();
+    //auto& sphi = atomic_wave_functions_S();
     if (ctx_.so_correction()) {
         RTE_THROW("Hubbard+SO is not implemented");
     }
@@ -198,8 +199,8 @@ K_point<T>::generate_hubbard_orbitals()
         RTE_THROW("Hubbard+Gamma point is not implemented");
     }
 
-    phi.zero(sddk::device_t::CPU);
-    sphi.zero(sddk::device_t::CPU);
+    //phi.zero(sddk::device_t::CPU);
+    //sphi.zero(sddk::device_t::CPU);
 
     auto num_ps_atomic_wf = unit_cell_.num_ps_atomic_wf();
     int nwf = num_ps_atomic_wf.first;
@@ -207,66 +208,87 @@ K_point<T>::generate_hubbard_orbitals()
     /* generate the initial atomic wavefunctions (full set composed of all atoms wfs) */
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
-    this->generate_atomic_wave_functions(atoms, [&](int iat){ return &ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
-                ctx_.ps_atomic_wf_ri(), phi);
 
-    if (ctx_.cfg().control().print_checksum()) {
-        atomic_wave_functions_->print_checksum(sddk::device_t::CPU, "atomic_wave_functions", 0, nwf, RTE_OUT(std::cout));
+    this->generate_atomic_wave_functions(atoms, [&](int iat){ return &ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
+                ctx_.ps_atomic_wf_ri(), *atomic_wave_functions_);
+
+    auto pcs = env::print_checksum();
+    if (pcs) {
+        auto cs = atomic_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
+        if (this->comm().rank() == 0) {
+            utils::print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
+        }
     }
 
     /* check if we have a norm conserving pseudo potential only */
     auto q_op = (unit_cell_.augment()) ? std::make_unique<Q_operator<T>>(ctx_) : nullptr;
 
-    phi.prepare(sddk::spin_range(0), true);
-    sphi.prepare(sddk::spin_range(0), false);
+    auto mem = ctx_.processing_unit_memory_t();
 
-    /* compute S|phi> */
-    beta_projectors().prepare();
+    std::unique_ptr<wf::Wave_functions<T>> wf_tmp;
+    std::unique_ptr<wf::Wave_functions<T>> swf_tmp;
 
-    sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, beta_projectors(),
-            phi, q_op.get(), sphi);
+    {
+        auto mg1 = atomic_wave_functions_->memory_guard(mem, wf::copy_to::device | wf::copy_to::host);
+        auto mg2 = atomic_wave_functions_S_->memory_guard(mem, wf::copy_to::host);
 
-    std::unique_ptr<sddk::Wave_functions<T>> wf_tmp;
-    std::unique_ptr<sddk::Wave_functions<T>> swf_tmp;
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
-        wf_tmp = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwf, sddk::memory_t::host, 1);
-        swf_tmp = std::make_unique<sddk::Wave_functions<T>>(gkvec_partition(), nwf, sddk::memory_t::host, 1);
+        /* compute S|phi> */
+        beta_projectors().prepare();
 
-        wf_tmp->copy_from(sddk::device_t::CPU, nwf, phi, 0, 0, 0, 0);
-        if (is_device_memory(sphi.preferred_memory_t())) {
-            sphi.copy_to(sddk::spin_range(0), sddk::memory_t::host, 0, nwf);
+        sirius::apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), beta_projectors(),
+                *atomic_wave_functions_, q_op.get(), *atomic_wave_functions_S_);
+
+        if (ctx_.cfg().hubbard().full_orthogonalization()) {
+            /* save phi and sphi */
+
+            wf_tmp = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf),
+                    ctx_.host_memory_t());
+            swf_tmp = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf),
+                    ctx_.host_memory_t());
+
+            auto mg3 = wf_tmp->memory_guard(mem, wf::copy_to::host);
+            auto mg4 = swf_tmp->memory_guard(mem, wf::copy_to::host);
+
+            wf::copy(mem, *atomic_wave_functions_, wf::spin_index(0), wf::band_range(0, nwf),
+                    *wf_tmp, wf::spin_index(0), wf::band_range(0, nwf));
+            wf::copy(mem, *atomic_wave_functions_S_, wf::spin_index(0), wf::band_range(0, nwf),
+                    *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf));
+
+            int BS = ctx_.cyclic_block_size();
+            sddk::dmatrix<std::complex<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
+
+            wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *atomic_wave_functions_,
+                    wf::band_range(0, nwf), *atomic_wave_functions_S_, wf::band_range(0, nwf), ovlp, 0, 0);
+            auto B = std::get<0>(inverse_sqrt(ovlp, nwf));
+
+            /* use sphi as temporary */
+            wf::transform(ctx_.spla_context(), mem, *B, 0, 0, 1.0, *atomic_wave_functions_,
+                    wf::spin_index(0), wf::band_range(0, nwf), 0.0, *atomic_wave_functions_S_, wf::spin_index(0),
+                    wf::band_range(0, nwf));
+
+            wf::copy(mem, *atomic_wave_functions_S_, wf::spin_index(0), wf::band_range(0, nwf),
+                     *atomic_wave_functions_, wf::spin_index(0), wf::band_range(0, nwf));
+
+            apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), beta_projectors(),
+                *atomic_wave_functions_, q_op.get(), *atomic_wave_functions_S_);
+
+            //if (ctx_.cfg().control().verification() >= 1) {
+            //    sddk::inner(ctx_.spla_context(), sddk::spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);
+
+            //    auto diff = check_identity(ovlp, nwf);
+            //    RTE_OUT(std::cout) << "orthogonalization error " << diff << std::endl;
+            //}
         }
-        swf_tmp->copy_from(sddk::device_t::CPU, nwf, sphi, 0, 0, 0, 0);
 
-        int BS = ctx_.cyclic_block_size();
-        sddk::dmatrix<complex_type<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
-        sddk::inner(ctx_.spla_context(), sddk::spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);
-        auto B = std::get<0>(inverse_sqrt(ovlp, nwf));
+        beta_projectors().dismiss();
+   }
 
-        sddk::transform<complex_type<T>>(ctx_.spla_context(), 0, {&phi}, 0, nwf, *B, 0, 0, {&sphi}, 0, nwf);
-        phi.copy_from(sphi, nwf, 0, 0, 0, 0);
-
-        sirius::apply_S_operator<std::complex<T>>(ctx_.processing_unit(), sddk::spin_range(0), 0, nwf, beta_projectors(),
-                phi, q_op.get(), sphi);
-
-        if (ctx_.cfg().control().verification() >= 1) {
-            sddk::inner(ctx_.spla_context(), sddk::spin_range(0), phi, 0, nwf, sphi, 0, nwf, ovlp, 0, 0);
-
-            auto diff = check_identity(ovlp, nwf);
-            RTE_OUT(std::cout) << "orthogonalization error " << diff << std::endl;
+    if (pcs) {
+        auto cs = atomic_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
+        if (this->comm().rank() == 0) {
+            utils::print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
         }
     }
-
-    beta_projectors().dismiss();
-    phi.dismiss(sddk::spin_range(0), true);
-    sphi.dismiss(sddk::spin_range(0), true);
-
-    if (ctx_.cfg().control().print_checksum()) {
-        sphi.print_checksum(sddk::device_t::CPU, "atomic_wave_functions_S", 0, nwf, RTE_OUT(std::cout));
-    }
-
-    auto& phi_hub = hubbard_wave_functions();
-    auto& sphi_hub = hubbard_wave_functions_S();
 
     auto num_hubbard_wf = unit_cell_.num_hubbard_wf();
 
@@ -286,41 +308,34 @@ K_point<T>::generate_hubbard_orbitals()
                 int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(idxr_wf);
                 int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(idxrf);
 
-                phi_hub.copy_from(sddk::device_t::CPU, mmax, phi, 0, offset_in_wf, 0, offset_in_hwf);
-                sphi_hub.copy_from(sddk::device_t::CPU, mmax, sphi, 0, offset_in_wf, 0, offset_in_hwf);
+                wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
+                        wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,
+                        wf::spin_index(0), wf::band_range(offset_in_hwf, offset_in_hwf + mmax));
+
+                wf::copy(sddk::memory_t::host, *atomic_wave_functions_S_, wf::spin_index(0),
+                        wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_S_,
+                        wf::spin_index(0), wf::band_range(offset_in_hwf, offset_in_hwf + mmax));
             }
         }
     }
     /* restore phi and sphi */
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
-        phi.copy_from(sddk::device_t::CPU, nwf, *wf_tmp, 0, 0, 0, 0);
-        sphi.copy_from(sddk::device_t::CPU, nwf, *swf_tmp, 0, 0, 0, 0);
+
+        wf::copy(sddk::memory_t::host, *wf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
+                *atomic_wave_functions_, wf::spin_index(0), wf::band_range(0, nwf));
+        wf::copy(sddk::memory_t::host, *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
+                *atomic_wave_functions_S_, wf::spin_index(0), wf::band_range(0, nwf));
     }
 
-    //if (ctx_.num_spins() == 2) {
-    //    /* copy up component to dn component in collinear case
-    //     * +-------------------------------+
-    //     * |  phi1_{lm}, phi2_{lm}, ...    |
-    //     * +-------------------------------+
-    //     * |  phi1_{lm}, phi2_{lm}, ...    |
-    //     * +-------------------------------+
-    //     *
-    //     * or with offset in non-collinear case
-    //     *
-    //     * +-------------------------------+---------------------------------+
-    //     * |  phi1_{lm}, phi2_{lm}, ...    |              0                  |
-    //     * +-------------------------------+---------------------------------+
-    //     * |           0                   |   phi1_{lm}, phi2_{lm}, ...     |
-    //     * +-------------------------------+---------------------------------+
-    //     */
-    //    phi.copy_from(device_t::CPU, r.first, phi, 0, 0, 1, (ctx_.num_mag_dims() == 3) ? r.first : 0);
-    //}
-
-    if (ctx_.cfg().control().print_checksum()) {
-        hubbard_wave_functions_->print_checksum(sddk::device_t::CPU, "hubbard_phi", 0,
-                                                hubbard_wave_functions_->num_wf(), RTE_OUT(std::cout));
-        hubbard_wave_functions_S_->print_checksum(sddk::device_t::CPU, "hubbard_phi_S", 0,
-                                                  hubbard_wave_functions_S_->num_wf(), RTE_OUT(std::cout));
+    if (pcs) {
+        auto cs1 = hubbard_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0),
+                wf::band_range(0, num_hubbard_wf.first));
+        auto cs2 = hubbard_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0),
+                wf::band_range(0, num_hubbard_wf.first));
+        if (comm().rank() == 0) {
+            utils::print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
+            utils::print_checksum("hubbard_wave_functions_S", cs2, RTE_OUT(std::cout));
+        }
     }
 }
 
@@ -348,7 +363,7 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    gkvec_partition_ = std::make_unique<sddk::Gvec_partition>(
+    gkvec_partition_ = std::make_shared<sddk::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -711,145 +726,6 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
 //==     }
 //== }
 
-template <typename T>
-void
-K_point<T>::test_spinor_wave_functions(int use_fft)
-{
-    STOP();
-
-    //==     if (num_ranks() > 1) error_local(__FILE__, __LINE__, "test of spinor wave functions on multiple ranks is
-    //not implemented");
-    //==
-    //==     std::vector<double_complex> v1[2];
-    //==     std::vector<double_complex> v2;
-    //==
-    //==     if (use_fft == 0 || use_fft == 1) v2.resize(fft_->size());
-    //==
-    //==     if (use_fft == 0)
-    //==     {
-    //==         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) v1[ispn].resize(num_gkvec());
-    //==     }
-    //==
-    //==     if (use_fft == 1)
-    //==     {
-    //==         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) v1[ispn].resize(fft_->size());
-    //==     }
-    //==
-    //==     double maxerr = 0;
-    //==
-    //==     for (int j1 = 0; j1 < ctx_.num_bands(); j1++)
-    //==     {
-    //==         if (use_fft == 0)
-    //==         {
-    //==             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==             {
-    //==                 fft_->input(num_gkvec(), gkvec_.index_map(),
-    //==                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
-    //==                 fft_->transform(1);
-    //==                 fft_->output(&v2[0]);
-    //==
-    //==                 for (int ir = 0; ir < fft_->size(); ir++) v2[ir] *= ctx_.step_function()->theta_r(ir);
-    //==
-    //==                 fft_->input(&v2[0]);
-    //==                 fft_->transform(-1);
-    //==                 fft_->output(num_gkvec(), gkvec_.index_map(), &v1[ispn][0]);
-    //==             }
-    //==         }
-    //==
-    //==         if (use_fft == 1)
-    //==         {
-    //==             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==             {
-    //==                 fft_->input(num_gkvec(), gkvec_.index_map(),
-    //==                                        &spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j1));
-    //==                 fft_->transform(1);
-    //==                 fft_->output(&v1[ispn][0]);
-    //==             }
-    //==         }
-    //==
-    //==         for (int j2 = 0; j2 < ctx_.num_bands(); j2++)
-    //==         {
-    //==             double_complex zsum(0, 0);
-    //==             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==             {
-    //==                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //==                 {
-    //==                     int offset_wf = unit_cell_.atom(ia)->offset_wf();
-    //==                     Atom_type* type = unit_cell_.atom(ia)->type();
-    //==                     Atom_symmetry_class* symmetry_class = unit_cell_.atom(ia)->symmetry_class();
-    //==
-    //==                     for (int l = 0; l <= ctx_.lmax_apw(); l++)
-    //==                     {
-    //==                         int ordmax = type->indexr().num_rf(l);
-    //==                         for (int io1 = 0; io1 < ordmax; io1++)
-    //==                         {
-    //==                             for (int io2 = 0; io2 < ordmax; io2++)
-    //==                             {
-    //==                                 for (int m = -l; m <= l; m++)
-    //==                                 {
-    //==                                     zsum += conj(spinor_wave_functions_(offset_wf +
-    //type->indexb_by_l_m_order(l, m, io1), ispn, j1)) *
-    //==                                             spinor_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m,
-    //io2), ispn, j2) *
-    //==                                             symmetry_class->o_radial_integral(l, io1, io2);
-    //==                                 }
-    //==                             }
-    //==                         }
-    //==                     }
-    //==                 }
-    //==             }
-    //==
-    //==             if (use_fft == 0)
-    //==             {
-    //==                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==                {
-    //==                    for (int ig = 0; ig < num_gkvec(); ig++)
-    //==                        zsum += conj(v1[ispn][ig]) * spinor_wave_functions_(unit_cell_.mt_basis_size() + ig,
-    //ispn, j2);
-    //==                }
-    //==             }
-    //==
-    //==             if (use_fft == 1)
-    //==             {
-    //==                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==                 {
-    //==                     fft_->input(num_gkvec(), gkvec_.index_map(),
-    //&spinor_wave_functions_(unit_cell_.mt_basis_size(), ispn, j2));
-    //==                     fft_->transform(1);
-    //==                     fft_->output(&v2[0]);
-    //==
-    //==                     for (int ir = 0; ir < fft_->size(); ir++)
-    //==                         zsum += std::conj(v1[ispn][ir]) * v2[ir] * ctx_.step_function()->theta_r(ir) /
-    //double(fft_->size());
-    //==                 }
-    //==             }
-    //==
-    //==             if (use_fft == 2)
-    //==             {
-    //==                 STOP();
-    //==                 //for (int ig1 = 0; ig1 < num_gkvec(); ig1++)
-    //==                 //{
-    //==                 //    for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
-    //==                 //    {
-    //==                 //        int ig3 = ctx_.gvec().index_g12(ig1, ig2);
-    //==                 //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-    //==                 //        {
-    //==                 //            zsum += std::conj(spinor_wave_functions_(unit_cell_.mt_basis_size() + ig1, ispn,
-    //j1)) *
-    //==                 //                    spinor_wave_functions_(unit_cell_.mt_basis_size() + ig2, ispn, j2) *
-    //==                 //                    ctx_.step_function()->theta_pw(ig3);
-    //==                 //        }
-    //==                 //    }
-    //==                 //}
-    //==             }
-    //==
-    //==             zsum = (j1 == j2) ? zsum - double_complex(1.0, 0.0) : zsum;
-    //==             maxerr = std::max(maxerr, std::abs(zsum));
-    //==         }
-    //==     }
-    //==     std :: cout << "maximum error = " << maxerr << std::endl;
-}
-
 /** The following HDF5 data structure is created:
   \verbatim
   /K_point_set/ik/vk
@@ -901,28 +777,30 @@ K_point<T>::save(std::string const& name__, int id__) const
     }
     /* wait for rank 0 */
     comm().barrier();
-    int gkvec_count  = gkvec().count();
-    int gkvec_offset = gkvec().offset();
-    std::vector<std::complex<T>> wf_tmp(num_gkvec());
+    //int gkvec_count  = gkvec().count();
+    //int gkvec_offset = gkvec().offset();
+    //std::vector<std::complex<T>> wf_tmp(num_gkvec());
 
-    std::unique_ptr<sddk::HDF5_tree> fout;
+    //std::unique_ptr<sddk::HDF5_tree> fout;
     /* rank 0 opens a file */
-    if (comm().rank() == 0) {
-        fout = std::make_unique<sddk::HDF5_tree>(name__, sddk::hdf5_access_t::read_write);
-    }
+    //if (comm().rank() == 0) {
+    //    fout = std::make_unique<sddk::HDF5_tree>(name__, sddk::hdf5_access_t::read_write);
+    //}
 
-    /* store wave-functions */
-    for (int i = 0; i < ctx_.num_bands(); i++) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* gather full column of PW coefficients on rank 0 */
-            comm().gather(&spinor_wave_functions_->pw_coeffs(ispn).prime(0, i), wf_tmp.data(), gkvec_offset,
-                          gkvec_count, 0);
-            if (comm().rank() == 0) {
-                (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", wf_tmp);
-            }
-        }
-        comm().barrier();
-    }
+    RTE_THROW("re-implement");
+
+    ///* store wave-functions */
+    //for (int i = 0; i < ctx_.num_bands(); i++) {
+    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //        /* gather full column of PW coefficients on rank 0 */
+    //        comm().gather(&spinor_wave_functions_->pw_coeffs(ispn).prime(0, i), wf_tmp.data(), gkvec_offset,
+    //                      gkvec_count, 0);
+    //        if (comm().rank() == 0) {
+    //            (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", wf_tmp);
+    //        }
+    //    }
+    //    comm().barrier();
+    //}
 }
 
 template <typename T>
@@ -1002,7 +880,7 @@ template <typename T>
 void
 K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
-        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions<T>& wf__)
+        Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
@@ -1029,7 +907,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         int iat = unit_cell_.atom(ia).type_id();
         if (wf_t[iat].size() == 0) {
             wf_t[iat] = sddk::mdarray<std::complex<T>, 2>(this->num_gkvec_loc(), indexb__(iat)->size(),
-                                                          ctx_.mem_pool(sddk::memory_t::host));
+                                                          get_memory_pool(sddk::memory_t::host));
         }
     }
 
@@ -1076,9 +954,9 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
 
         /* quickly compute phase factors without calling exp() function */
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto G  = gkvec().template gvec<sddk::index_domain_t::local>(igk_loc);
+            auto G = gkvec().template gvec<sddk::index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
@@ -1086,9 +964,10 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         int iat = unit_cell_.atom(ia).type_id();
         #pragma omp parallel
         for (int xi = 0; xi < static_cast<int>(indexb__(iat)->size()); xi++) {
-            #pragma omp for schedule(static) nowait
+            #pragma omp for nowait
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
+                wf__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(offset[ia] + xi)) = 
+                    wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }
         }
     }

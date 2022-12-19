@@ -37,8 +37,8 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
     um__.zero();
 
     double v_ij = nl.V() / ha2ev;
-    int il       = nl.l()[0];
-    int jl       = nl.l()[1];
+    int il      = nl.l()[0];
+    int jl      = nl.l()[1];
     um__.zero();
     // second term of Eq. 2
     for (int is = 0; is < ctx__.num_spins(); is++) {
@@ -142,22 +142,14 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
             for (int m1 = 0; m1 < lmax_at; m1++) {
 
                 /* dc contribution */
-                um__(m1, m1, is) += hub_wf.J() * n_updown[is] +
-                                    0.5 * (hub_wf.U() - hub_wf.J()) - hub_wf.U() * n_total;
+                um__(m1, m1, is) += hub_wf.J() * n_updown[is] + 0.5 * (hub_wf.U() - hub_wf.J()) - hub_wf.U() * n_total;
 
                 // the u contributions
                 for (int m2 = 0; m2 < lmax_at; m2++) {
                     for (int m3 = 0; m3 < lmax_at; m3++) {
                         for (int m4 = 0; m4 < lmax_at; m4++) {
-
-                            /* non-magnetic case */
-                            if (ctx__.num_mag_dims() == 0) {
-                                um__(m1, m2, is) += 2.0 * hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is);
-                            } else {
-                                /* collinear case */
-                                for (int is2 = 0; is2 < ctx__.num_spins(); is2++) {
-                                    um__(m1, m2, is) += hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is2);
-                                }
+                            for (int is2 = 0; is2 < ctx__.num_spins(); is2++) {
+                                um__(m1, m2, is) += hub_wf.hubbard_matrix(m1, m3, m2, m4) * om__(m3, m4, is2);
                             }
 
                             um__(m1, m2, is) -= hub_wf.hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is);
@@ -186,6 +178,11 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
                 hubbard_energy += v_ij_ * std::real(om__(m2, m1, is) * conj(om__(m2, m1, is)));
             }
         }
+    }
+
+    // non magnetic case
+    if (ctx__.num_spins() == 1) {
+        hubbard_energy *= 2.0;
     }
 
     return -0.5 * hubbard_energy;
@@ -248,8 +245,7 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                     hubbard_energy += sign * hub_wf.beta() * om__(m1, m1, is).real();
 
                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                        hubbard_energy +=
-                            0.5 * hub_wf.J0() * (om__(m2, m1, is) * om__(m1, m2, s_opposite)).real();
+                        hubbard_energy += 0.5 * hub_wf.J0() * (om__(m2, m1, is) * om__(m1, m2, s_opposite)).real();
                     }
                 }
             }
@@ -289,8 +285,8 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
         }
 
         hubbard_energy_dc_contribution +=
-            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) -
-                   hub_wf.J() * n_total * (0.5 * n_total - 1.0) - hub_wf.J() * magnetization * 0.5);
+            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+                   hub_wf.J() * magnetization * 0.5);
 
         /* now hubbard contribution */
 
@@ -617,19 +613,23 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
 
         for (int i = 0; i < static_cast<int>(ctx.cfg().hubbard().nonlocal().size()); i++) {
             auto nl = ctx.cfg().hubbard().nonlocal(i);
-            int il       = nl.l()[0];
-            int jl       = nl.l()[1];
+            int il  = nl.l()[0];
+            int jl  = nl.l()[1];
 
-            const auto &n1 = om__.nonlocal(i);
-            const auto &n2 = pm__.nonlocal(i);
+            const auto& n1 = om__.nonlocal(i);
+            const auto& n2 = pm__.nonlocal(i);
 
             for (int is = 0; is < ctx.num_spins(); is++) {
-              for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
-                for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                  tmp += std::conj(n2(m1, m2, is)) * n1(m1, m2, is);
+                for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
+                    for (int m1 = 0; m1 < 2 * il + 1; m1++) {
+                        tmp += std::conj(n2(m1, m2, is)) * n1(m1, m2, is);
+                    }
                 }
-              }
             }
+        }
+
+        if (ctx.num_spins() == 1) {
+            tmp *= 2.0;
         }
         return std::real(tmp);
     }

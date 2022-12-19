@@ -907,18 +907,6 @@ class config_t
             }
             dict_["/control/use_second_variation"_json_pointer] = use_second_variation__;
         }
-        /// Control the usage of the GPU memory.
-        inline auto memory_usage() const
-        {
-            return dict_.at("/control/memory_usage"_json_pointer).get<std::string>();
-        }
-        inline void memory_usage(std::string memory_usage__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/memory_usage"_json_pointer] = memory_usage__;
-        }
         /// Number of atoms in a chunk of beta-projectors.
         inline auto beta_chunk_size() const
         {
@@ -930,6 +918,30 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
+        }
+        /// Orthogonalize LAPW radial functions.
+        inline auto ortho_rf() const
+        {
+            return dict_.at("/control/ortho_rf"_json_pointer).get<bool>();
+        }
+        inline void ortho_rf(bool ortho_rf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
+        }
+        /// Type of the output stream (stdout:, file:name)
+        inline auto output() const
+        {
+            return dict_.at("/control/output"_json_pointer).get<std::string>();
+        }
+        inline void output(std::string output__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/output"_json_pointer] = output__;
         }
         /// Orthogonalize LAPW radial functions.
         inline auto ortho_rf() const
@@ -1426,7 +1438,7 @@ class config_t
             }
             dict_["/nlcg/maxiter"_json_pointer] = maxiter__;
         }
-        ///  CG restart
+        /// CG restart
         inline auto restart() const
         {
             return dict_.at("/nlcg/restart"_json_pointer).get<int>();
@@ -1491,6 +1503,115 @@ class config_t
     };
     inline auto const& nlcg() const {return nlcg_;}
     inline auto& nlcg() {return nlcg_;}
+    /// Variable cell shape stabilized quasi Newton method (VC-SQNM)
+    class vcsqnm_t
+    {
+      public:
+        vcsqnm_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Initial step size
+        inline auto initial_step_size() const
+        {
+            return dict_.at("/vcsqnm/initial_step_size"_json_pointer).get<double>();
+        }
+        inline void initial_step_size(double initial_step_size__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/initial_step_size"_json_pointer] = initial_step_size__;
+        }
+        /// Maximal number of steps that will be stored in the history list
+        inline auto nhist_max() const
+        {
+            return dict_.at("/vcsqnm/nhist_max"_json_pointer).get<int>();
+        }
+        inline void nhist_max(int nhist_max__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/nhist_max"_json_pointer] = nhist_max__;
+        }
+        /// Weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2.
+        inline auto lattice_weight() const
+        {
+            return dict_.at("/vcsqnm/lattice_weight"_json_pointer).get<double>();
+        }
+        inline void lattice_weight(double lattice_weight__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/lattice_weight"_json_pointer] = lattice_weight__;
+        }
+        /// Lower limit on the step size
+        inline auto alpha0() const
+        {
+            return dict_.at("/vcsqnm/alpha0"_json_pointer).get<double>();
+        }
+        inline void alpha0(double alpha0__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/alpha0"_json_pointer] = alpha0__;
+        }
+        /// Lower limit on linear dependencies of basis vectors in history list
+        inline auto eps_subsp() const
+        {
+            return dict_.at("/vcsqnm/eps_subsp"_json_pointer).get<double>();
+        }
+        inline void eps_subsp(double eps_subsp__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/eps_subsp"_json_pointer] = eps_subsp__;
+        }
+        /// Total error tolerance on the atomic forces
+        inline auto forces_tol() const
+        {
+            return dict_.at("/vcsqnm/forces_tol"_json_pointer).get<double>();
+        }
+        inline void forces_tol(double forces_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/forces_tol"_json_pointer] = forces_tol__;
+        }
+        /// Total error tolerance on the lattice stress
+        inline auto stress_tol() const
+        {
+            return dict_.at("/vcsqnm/stress_tol"_json_pointer).get<double>();
+        }
+        inline void stress_tol(double stress_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/stress_tol"_json_pointer] = stress_tol__;
+        }
+        /// Number of lattice relaxation steps
+        inline auto num_steps() const
+        {
+            return dict_.at("/vcsqnm/num_steps"_json_pointer).get<int>();
+        }
+        inline void num_steps(int num_steps__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/vcsqnm/num_steps"_json_pointer] = num_steps__;
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& vcsqnm() const {return vcsqnm_;}
+    inline auto& vcsqnm() {return vcsqnm_;}
     /// Hubbard U correction
     class hubbard_t
     {
@@ -1730,6 +1851,7 @@ class config_t
     control_t control_{dict_};
     parameters_t parameters_{dict_};
     nlcg_t nlcg_{dict_};
+    vcsqnm_t vcsqnm_{dict_};
     hubbard_t hubbard_{dict_};
   protected:
     nlohmann::json dict_;

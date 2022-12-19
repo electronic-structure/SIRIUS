@@ -485,7 +485,7 @@ integer, optional, target, intent(in) :: num_bands
 integer, optional, target, intent(in) :: num_mag_dims
 real(8), optional, target, intent(in) :: pw_cutoff
 real(8), optional, target, intent(in) :: gk_cutoff
-integer, optional, target, dimension(3), intent(in) :: fft_grid_size
+integer, optional, target, intent(in) :: fft_grid_size(3)
 integer, optional, target, intent(in) :: auto_rmt
 logical, optional, target, intent(in) :: gamma_point
 logical, optional, target, intent(in) :: use_symmetry
@@ -805,7 +805,7 @@ integer, optional, target, intent(out) :: num_spins
 integer, optional, target, intent(out) :: num_mag_dims
 real(8), optional, target, intent(out) :: pw_cutoff
 real(8), optional, target, intent(out) :: gk_cutoff
-integer, optional, target, dimension(3), intent(out) :: fft_grid_size
+integer, optional, target, intent(out) :: fft_grid_size(3)
 integer, optional, target, intent(out) :: auto_rmt
 logical, optional, target, intent(out) :: gamma_point
 logical, optional, target, intent(out) :: use_symmetry
@@ -1055,7 +1055,7 @@ implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ndims
-integer, target, dimension(ndims), intent(in) :: dims
+integer, target, intent(in) :: dims(ndims)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1098,9 +1098,9 @@ subroutine sirius_set_lattice_vectors(handler,a1,a2,a3,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-real(8), target, dimension(3), intent(in) :: a1
-real(8), target, dimension(3), intent(in) :: a2
-real(8), target, dimension(3), intent(in) :: a3
+real(8), target, intent(in) :: a1(3)
+real(8), target, intent(in) :: a2(3)
+real(8), target, intent(in) :: a3(3)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1274,8 +1274,8 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), optional, target, intent(in) :: f_mt
-real(8), optional, target, intent(in) :: f_rg
+real(8), optional, target, intent(in) :: f_mt(:,:,:)
+real(8), optional, target, intent(in) :: f_rg(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1332,7 +1332,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), optional, target, dimension(*), intent(in) :: f_rg
+real(8), optional, target, intent(in) :: f_rg(:)
 logical, optional, target, intent(in) :: f_rg_global
 integer, optional, target, intent(out) :: error_code
 !
@@ -1399,11 +1399,11 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), optional, target, intent(out) :: f_mt
+real(8), optional, target, intent(out) :: f_mt(:,:,:)
 integer, optional, target, intent(in) :: lmmax
 integer, optional, target, intent(in) :: max_num_mt_points
 integer, optional, target, intent(in) :: num_atoms
-real(8), optional, target, dimension(*), intent(out) :: f_rg
+real(8), optional, target, intent(out) :: f_rg(:)
 integer, optional, target, intent(in) :: num_rg_points
 integer, optional, target, intent(out) :: error_code
 !
@@ -1489,8 +1489,8 @@ implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: num_kpoints
-real(8), target, dimension(3,num_kpoints), intent(in) :: kpoints
-real(8), target, dimension(num_kpoints), intent(in) :: kpoint_weights
+real(8), target, intent(in) :: kpoints(3,num_kpoints)
+real(8), target, intent(in) :: kpoint_weights(num_kpoints)
 logical, target, intent(in) :: init_kset
 type(sirius_kpoint_set_handler), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
@@ -1553,8 +1553,8 @@ subroutine sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry,kset
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, target, dimension(3), intent(in) :: k_grid
-integer, target, dimension(3), intent(in) :: k_shift
+integer, target, intent(in) :: k_grid(3)
+integer, target, intent(in) :: k_shift(3)
 logical, target, intent(in) :: use_symmetry
 type(sirius_kpoint_set_handler), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
@@ -1646,7 +1646,7 @@ subroutine sirius_initialize_kset(ks_handler,count,error_code)
 implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
-integer, optional, target, dimension(*), intent(in) :: count
+integer, optional, target, intent(in) :: count(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -1687,9 +1687,10 @@ end subroutine sirius_initialize_kset
 !> @param [in] save_state Boolean variable indicating if we want to save the ground state.
 !> @param [out] converged Boolean variable indicating if the calculation has converged
 !> @param [out] niter Actual number of SCF iterations.
+!> @param [out] rho_min Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if SCF calculation is converged.
 !> @param [out] error_code Error code.
 subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,iter_solver_tol,&
-&initial_guess,max_niter,save_state,converged,niter,error_code)
+&initial_guess,max_niter,save_state,converged,niter,rho_min,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
@@ -1701,6 +1702,7 @@ integer, optional, target, intent(in) :: max_niter
 logical, optional, target, intent(in) :: save_state
 logical, optional, target, intent(out) :: converged
 integer, optional, target, intent(out) :: niter
+real(8), optional, target, intent(out) :: rho_min
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -1715,11 +1717,12 @@ logical(C_BOOL), target :: save_state_c_type
 type(C_PTR) :: converged_ptr
 logical(C_BOOL), target :: converged_c_type
 type(C_PTR) :: niter_ptr
+type(C_PTR) :: rho_min_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,iter_solver_tol,&
-&initial_guess,max_niter,save_state,converged,niter,error_code)&
+&initial_guess,max_niter,save_state,converged,niter,rho_min,error_code)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -1731,6 +1734,7 @@ type(C_PTR), value :: max_niter
 type(C_PTR), value :: save_state
 type(C_PTR), value :: converged
 type(C_PTR), value :: niter
+type(C_PTR), value :: rho_min
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -1771,13 +1775,17 @@ niter_ptr = C_NULL_PTR
 if (present(niter)) then
 niter_ptr = C_LOC(niter)
 endif
+rho_min_ptr = C_NULL_PTR
+if (present(rho_min)) then
+rho_min_ptr = C_LOC(rho_min)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
 &iter_solver_tol_ptr,initial_guess_ptr,max_niter_ptr,save_state_ptr,converged_ptr,&
-&niter_ptr,error_code_ptr)
+&niter_ptr,rho_min_ptr,error_code_ptr)
 if (present(initial_guess)) then
 endif
 if (present(save_state)) then
@@ -2060,7 +2068,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
-real(8), target, dimension(num_radial_points), intent(in) :: radial_points
+real(8), target, intent(in) :: radial_points(num_radial_points)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2116,7 +2124,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
-real(8), target, dimension(num_radial_points), intent(in) :: radial_points
+real(8), target, intent(in) :: radial_points(num_radial_points)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2178,7 +2186,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: atom_type
 character(*), target, intent(in) :: label
-real(8), target, dimension(num_points), intent(in) :: rf
+real(8), target, intent(in) :: rf(num_points)
 integer, target, intent(in) :: num_points
 integer, optional, target, intent(in) :: n
 integer, optional, target, intent(in) :: l
@@ -2369,7 +2377,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_beta
-real(8), target, dimension(num_beta, num_beta), intent(in) :: dion
+real(8), target, intent(in) :: dion(num_beta, num_beta)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2424,7 +2432,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, intent(in) :: core_energy
-real(8), target, dimension(num_occ), intent(in) :: occupations
+real(8), target, intent(in) :: occupations(num_occ)
 integer, target, intent(in) :: num_occ
 integer, optional, target, intent(out) :: error_code
 !
@@ -2483,8 +2491,8 @@ implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(3), intent(in) :: position
-real(8), optional, target, dimension(3), intent(in) :: vector_field
+real(8), target, intent(in) :: position(3)
+real(8), optional, target, intent(in) :: vector_field(3)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2537,7 +2545,7 @@ implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
-real(8), target, dimension(3), intent(in) :: position
+real(8), target, intent(in) :: position(3)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2585,10 +2593,10 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-complex(8), target, dimension(*), intent(in) :: pw_coeffs
+complex(8), target, intent(in) :: pw_coeffs(:)
 logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3, *), intent(in) :: gvl
+integer, optional, target, intent(in) :: gvl(:,:)
 integer, optional, target, intent(in) :: comm
 integer, optional, target, intent(out) :: error_code
 !
@@ -2669,9 +2677,9 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-complex(8), target, dimension(*), intent(in) :: pw_coeffs
+complex(8), target, intent(in) :: pw_coeffs(:)
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, dimension(3, *), intent(in) :: gvl
+integer, optional, target, intent(in) :: gvl(:,:)
 integer, optional, target, intent(in) :: comm
 integer, optional, target, intent(out) :: error_code
 !
@@ -2979,7 +2987,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, dimension(*), intent(in) :: band_occupancies
+real(8), target, intent(in) :: band_occupancies(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -3029,7 +3037,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, dimension(*), intent(out) :: band_occupancies
+real(8), target, intent(out) :: band_occupancies(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -3079,7 +3087,7 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(in) :: ispn
-real(8), target, dimension(*), intent(out) :: band_energies
+real(8), target, intent(out) :: band_energies(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -3174,7 +3182,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(3, *), intent(out) :: forces
+real(8), target, intent(out) :: forces(:,:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3221,7 +3229,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, dimension(3, 3), intent(out) :: stress_tensor
+real(8), target, intent(out) :: stress_tensor(3, 3)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3320,11 +3328,11 @@ subroutine sirius_get_wave_functions(ks_handler,vkl,spin,num_gvec_loc,gvec_loc,e
 implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
-real(8), optional, target, dimension(3), intent(in) :: vkl
+real(8), optional, target, intent(in) :: vkl(3)
 integer, optional, target, intent(in) :: spin
 integer, optional, target, intent(in) :: num_gvec_loc
-integer, optional, target, dimension(3, *), intent(in) :: gvec_loc
-complex(8), optional, target, intent(out) :: evec
+integer, optional, target, intent(in) :: gvec_loc(:,:)
+complex(8), optional, target, intent(out) :: evec(:,:)
 integer, optional, target, intent(in) :: ld
 integer, optional, target, intent(in) :: num_spin_comp
 integer, optional, target, intent(out) :: error_code
@@ -3637,7 +3645,7 @@ subroutine sirius_generate_coulomb_potential(handler,vh_el,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
-real(8), optional, target, dimension(*), intent(out) :: vh_el
+real(8), optional, target, intent(out) :: vh_el(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3859,10 +3867,10 @@ subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec,
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, optional, target, dimension(3, *), intent(in) :: gvec
-real(8), optional, target, dimension(3, *), intent(in) :: gvec_cart
-real(8), optional, target, dimension(*), intent(in) :: gvec_len
-integer, optional, target, intent(in) :: index_by_gvec
+integer, optional, target, intent(in) :: gvec(:,:)
+real(8), optional, target, intent(in) :: gvec_cart(:,:)
+real(8), optional, target, intent(in) :: gvec_len(:)
+integer, optional, target, intent(in) :: index_by_gvec(:,:,:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -3958,7 +3966,7 @@ subroutine sirius_get_fft_index(handler,fft_index,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, target, intent(out) :: fft_index
+integer, target, intent(out) :: fft_index(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -4041,11 +4049,11 @@ implicit none
 type(sirius_kpoint_set_handler), target, intent(in) :: ks_handler
 integer, target, intent(in) :: ik
 integer, target, intent(out) :: num_gkvec
-integer, target, dimension(*), intent(out) :: gvec_index
-real(8), target, dimension(3, *), intent(out) :: gkvec
-real(8), target, dimension(3, *), intent(out) :: gkvec_cart
-real(8), target, dimension(*), intent(out) :: gkvec_len
-real(8), target, dimension(2, *), intent(out) :: gkvec_tp
+integer, target, intent(out) :: gvec_index(:)
+real(8), target, intent(out) :: gkvec(:,:)
+real(8), target, intent(out) :: gkvec_cart(:,:)
+real(8), target, intent(out) :: gkvec_len(:)
+real(8), target, intent(out) :: gkvec_tp(:,:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: ks_handler_ptr
@@ -4110,8 +4118,8 @@ subroutine sirius_get_step_function(handler,cfunig,cfunrg,num_rg_points,error_co
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-complex(8), target, dimension(*), intent(out) :: cfunig
-real(8), target, dimension(*), intent(out) :: cfunrg
+complex(8), target, intent(out) :: cfunig(:)
+real(8), target, intent(out) :: cfunrg(:)
 integer, target, intent(in) :: num_rg_points
 integer, optional, target, intent(out) :: error_code
 !
@@ -4440,7 +4448,7 @@ implicit none
 type(sirius_context_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: deriv_order
-real(8), target, intent(in) :: f
+real(8), target, intent(in) :: f(:)
 integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: o
 integer, optional, target, intent(in) :: ilo
@@ -4507,7 +4515,7 @@ subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, target, dimension(*), intent(in) :: equivalent_atoms
+integer, target, intent(in) :: equivalent_atoms(:)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -4989,7 +4997,7 @@ implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
-complex(8), target, intent(out) :: fv_evec
+complex(8), target, intent(out) :: fv_evec(:,:)
 integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_fv_states
 integer, optional, target, intent(out) :: error_code
@@ -5044,7 +5052,7 @@ implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
-real(8), target, intent(out) :: fv_eval
+real(8), target, intent(out) :: fv_eval(:)
 integer, target, intent(in) :: num_fv_states
 integer, optional, target, intent(out) :: error_code
 !
@@ -5094,7 +5102,7 @@ implicit none
 !
 type(sirius_kpoint_set_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ik
-complex(8), target, intent(out) :: sv_evec
+complex(8), target, intent(out) :: sv_evec(:,:)
 integer, target, intent(in) :: num_bands
 integer, optional, target, intent(out) :: error_code
 !
@@ -5149,9 +5157,9 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-integer, target, intent(in) :: grid_dims
-integer, target, intent(in) :: local_box_origin
-integer, target, intent(in) :: local_box_size
+integer, target, intent(in) :: grid_dims(3)
+integer, target, intent(in) :: local_box_origin(:,:)
+integer, target, intent(in) :: local_box_size(:,:)
 integer, target, intent(in) :: fcomm
 real(8), target, intent(in) :: values
 logical, optional, target, intent(in) :: transform_to_pw
@@ -5235,9 +5243,9 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-integer, target, intent(in) :: grid_dims
-integer, target, intent(in) :: local_box_origin
-integer, target, intent(in) :: local_box_size
+integer, target, intent(in) :: grid_dims(3)
+integer, target, intent(in) :: local_box_origin(:,:)
+integer, target, intent(in) :: local_box_size(:,:)
 integer, target, intent(in) :: fcomm
 real(8), target, intent(out) :: values
 logical, optional, target, intent(in) :: transform_to_rg
@@ -5621,10 +5629,10 @@ subroutine sirius_add_hubbard_atom_pair(handler,atom_pair,translation,n,l,coupli
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
-integer, target, dimension(2), intent(in) :: atom_pair
-integer, target, dimension(3), intent(in) :: translation
-integer, target, dimension(2), intent(in) :: n
-integer, target, dimension(2), intent(in) :: l
+integer, target, intent(in) :: atom_pair(2)
+integer, target, intent(in) :: translation(3)
+integer, target, intent(in) :: n(2)
+integer, target, intent(in) :: l(2)
 real(8), target, intent(in) :: coupling
 integer, optional, target, intent(out) :: error_code
 !
@@ -5690,13 +5698,13 @@ subroutine sirius_linear_solver(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,psi
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
-real(8), target, dimension(3), intent(in) :: vkq
+real(8), target, intent(in) :: vkq(3)
 integer, target, intent(in) :: num_gvec_kq_loc
-integer, target, dimension(3, num_gvec_kq_loc), intent(in) :: gvec_kq_loc
-complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dpsi
-complex(8), target, dimension(ld, num_spin_comp), intent(in) :: psi
-real(8), target, dimension(*), intent(in) :: eigvals
-complex(8), target, dimension(ld, num_spin_comp), intent(inout) :: dvpsi
+integer, target, intent(in) :: gvec_kq_loc(3, num_gvec_kq_loc)
+complex(8), target, intent(inout) :: dpsi(ld, num_spin_comp)
+complex(8), target, intent(in) :: psi(ld, num_spin_comp)
+real(8), target, intent(in) :: eigvals(*)
+complex(8), target, intent(inout) :: dvpsi(ld, num_spin_comp)
 integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_spin_comp
 real(8), target, intent(in) :: alpha_pv

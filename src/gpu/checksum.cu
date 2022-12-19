@@ -22,7 +22,7 @@
  *  \brief CUDA kernel for the calculation of checksum.
  */
 
-#include "cuda_common.hpp"
+#include "acc_common.hpp"
 #include "acc_runtime.hpp"
 
 __global__ void double_complex_checksum_gpu_kernel

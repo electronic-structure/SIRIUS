@@ -82,7 +82,7 @@ double confined_polynomial(double r, double R, int p1, int p2, int dm)
                                        2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
         }
         default: {
-            TERMINATE("wrong derivative order");
+            RTE_THROW("wrong derivative order");
             return 0.0;
         }
     }
@@ -96,7 +96,7 @@ nlohmann::json try_parse(std::istream &is) {
     } catch (std::exception& e) {
         std::stringstream s;
         s << "cannot parse input JSON" << std::endl << e.what();
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return dict;
@@ -193,4 +193,11 @@ int get_proc_threads()
 
     return num_threads;
 }
+
+null_stream_t& null_stream()
+{
+    static null_stream_t null_stream__;
+    return null_stream__;
+}
+
 } // namespace utils
