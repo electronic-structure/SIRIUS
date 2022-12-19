@@ -4,6 +4,7 @@ extern "C" {
 }
 
 using namespace sirius;
+using namespace sddk;
 
 void create_supercell(cmd_args const& args__)
 {

@@ -85,7 +85,7 @@ class angular_momentum
     }
 
     /// Get twice the total angular momentum 2j = 2l +/- 1
-    inline auto j2() const
+    inline auto two_j() const
     {
         return 2 * l_ + s_;
     }
@@ -95,7 +95,7 @@ class angular_momentum
      *  m_j values in the range [-j, j] */
     inline auto subshell_size() const
     {
-        return j2() + 1;
+        return two_j() + 1;
     }
 
     /// Get spin quantum number s.
@@ -104,6 +104,16 @@ class angular_momentum
         return s_;
     }
 };
+
+inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
+{
+    if (am.s() == 0) {
+        out << "{l: " << am.l() << "}";
+    } else {
+        out << "{l: " << am.l() << ", j: " << am.j() << "}";
+    }
+    return out;
+}
 
 class radial_functions_index
 {
@@ -499,9 +509,9 @@ class radial_functions_index
      *  \f$ \nu \f$ is the order of radial function for a given \f$ \ell \f$. */
     std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
 
-    mdarray<int, 2> index_by_l_order_;
+    sddk::mdarray<int, 2> index_by_l_order_;
 
-    mdarray<int, 1> index_by_idxlo_;
+    sddk::mdarray<int, 1> index_by_idxlo_;
 
     /// Number of radial functions for each angular momentum quantum number.
     std::vector<int> num_rf_;
@@ -573,10 +583,10 @@ class radial_functions_index
             max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
         }
 
-        index_by_l_order_ = mdarray<int, 2>(lmax_ + 1, max_num_rf_);
+        index_by_l_order_ = sddk::mdarray<int, 2>(lmax_ + 1, max_num_rf_);
 
         if (lo_descriptors.size()) {
-            index_by_idxlo_ = mdarray<int, 1>(lo_descriptors.size());
+            index_by_idxlo_ = sddk::mdarray<int, 1>(lo_descriptors.size());
         }
 
         for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {

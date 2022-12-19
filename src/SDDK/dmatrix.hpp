@@ -25,17 +25,30 @@
 #ifndef __DMATRIX_HPP__
 #define __DMATRIX_HPP__
 
+#include <iomanip>
+#include <spla/spla.hpp>
+#include <costa/layout.hpp>
+#include <costa/grid2grid/transformer.hpp>
 #include "linalg/blacs_grid.hpp"
 #include "splindex.hpp"
 #include "hdf5_tree.hpp"
-#include <spla/spla.hpp>
 #include "type_definition.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
+namespace fmt {
+template <typename T>
+std::ostream& operator<<(std::ostream& out, std::complex<T> z)
+{
+    out << z.real() << " + I*" << z.imag();
+    return out;
+}
+}
+
 /// Distributed matrix.
 template <typename T>
-class dmatrix : public matrix<T>
+class dmatrix<T, matrix_distribution_t::block_cyclic> : public matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -62,8 +75,10 @@ class dmatrix : public matrix<T>
     /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
 
-    /// matrix distribution used for SPLA library functions
-    spla::MatrixDistribution spla_distri_ = spla::MatrixDistribution::create_mirror(MPI_COMM_SELF);
+    /// Matrix distribution used for SPLA library functions
+    spla::MatrixDistribution spla_dist_{spla::MatrixDistribution::create_mirror(MPI_COMM_SELF)};
+
+    costa::grid_layout<T> grid_layout_;
 
     void init()
     {
@@ -73,6 +88,12 @@ class dmatrix : public matrix<T>
                                   spl_row_.local_size());
         }
 #endif
+        if (blacs_grid_ != nullptr) {
+            grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
+                    this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
+                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                    this->blacs_grid().comm().rank());
+        }
     }
 
     /* forbid copy constructor */
@@ -171,7 +192,7 @@ class dmatrix : public matrix<T>
 
     inline spla::MatrixDistribution& spla_distribution()
     {
-        return spla_distri_;
+        return spla_dist_;
     }
 
     //void zero(int ir0__, int ic0__, int nr__, int nc__)
@@ -205,7 +226,7 @@ class dmatrix : public matrix<T>
 
     void make_real_diag(int n__);
 
-    mdarray<T, 1> get_diag(int n__);
+    sddk::mdarray<T, 1> get_diag(int n__);
 
     inline splindex<splindex_t::block_cyclic> const& spl_col() const
     {
@@ -249,14 +270,13 @@ class dmatrix : public matrix<T>
 
     inline BLACS_grid const& blacs_grid() const
     {
-        assert(blacs_grid_ != nullptr);
+        RTE_ASSERT(blacs_grid_ != nullptr);
         return *blacs_grid_;
     }
 
     void save_to_hdf5(std::string name__, int m__, int n__);
 
-    template <typename F = T, std::enable_if_t<!std::is_scalar<F>::value, bool> = true>
-    void serialize(std::string name__, int n__) const
+    sddk::mdarray<T, 2> get_full_matrix() const
     {
         mdarray<T, 2> full_mtrx(num_rows(), num_cols());
         full_mtrx.zero();
@@ -269,95 +289,91 @@ class dmatrix : public matrix<T>
         if (blacs_grid_) {
             blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
         }
-
-        // json dict;
-        // dict["mtrx_re"] = json::array();
-        // for (int i = 0; i < num_rows(); i++) {
-        //    dict["mtrx_re"].push_back(json::array());
-        //    for (int j = 0; j < num_cols(); j++) {
-        //        dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
-        //    }
-        //}
-
-        if (!blacs_grid_ || blacs_grid_->comm().rank() == 0) {
-            // std::cout << "mtrx: " << name__ << std::endl;
-            // std::cout << dict.dump(4);
-
-            std::printf("matrix label: %s\n", name__.c_str());
-            std::printf("{\n");
-            for (int i = 0; i < n__; i++) {
-                std::printf("{");
-                for (int j = 0; j < n__; j++) {
-                    std::printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
-                    if (j != n__ - 1) {
-                        std::printf(",");
-                    }
-                }
-                if (i != n__ - 1) {
-                    std::printf("},\n");
-                } else {
-                    std::printf("}\n");
-                }
-            }
-            std::printf("}\n");
-        }
-
-        // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        // ofs << dict.dump(4);
+        return full_mtrx;
     }
 
-    template <typename F = T, std::enable_if_t<std::is_scalar<F>::value, bool> = true>
-    void serialize(std::string name__, int n__) const
+    nlohmann::json serialize_to_json(int m__, int n__) const
     {
-        mdarray<T, 2> full_mtrx(num_rows(), num_cols());
-        full_mtrx.zero();
+        auto full_mtrx = get_full_matrix();
 
-        for (int j = 0; j < num_cols_local(); j++) {
-            for (int i = 0; i < num_rows_local(); i++) {
-                full_mtrx(irow(i), icol(j)) = (*this)(i, j);
+        nlohmann::json dict;
+        dict["mtrx_re"] = nlohmann::json::array();
+        for (int i = 0; i < num_rows(); i++) {
+            dict["mtrx_re"].push_back(nlohmann::json::array());
+            for (int j = 0; j < num_cols(); j++) {
+                dict["mtrx_re"][i].push_back(std::real(full_mtrx(i, j)));
             }
         }
-        blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
-
-        // json dict;
-        // dict["mtrx"] = json::array();
-        // for (int i = 0; i < num_rows(); i++) {
-        //    dict["mtrx"].push_back(json::array());
-        //    for (int j = 0; j < num_cols(); j++) {
-        //        dict["mtrx"][i].push_back(full_mtrx(i, j));
-        //    }
-        //}
-
-        // if (blacs_grid_->comm().rank() == 0) {
-        //    std::cout << "mtrx: " << name__ << std::endl;
-        //    std::cout << dict.dump(4);
-        //}
-
+        if (!std::is_scalar<T>::value) {
+            dict["mtrx_im"] = nlohmann::json::array();
+            for (int i = 0; i < num_rows(); i++) {
+                dict["mtrx_im"].push_back(nlohmann::json::array());
+                for (int j = 0; j < num_cols(); j++) {
+                    dict["mtrx_im"][i].push_back(std::imag(full_mtrx(i, j)));
+                }
+            }
+        }
+        return dict;
         // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
         // ofs << dict.dump(4);
-
-        if (blacs_grid_->comm().rank() == 0) {
-            std::printf("matrix label: %s\n", name__.c_str());
-            std::printf("{\n");
-            for (int i = 0; i < n__; i++) {
-                std::printf("{");
-                for (int j = 0; j < n__; j++) {
-                    std::printf("%18.13f", full_mtrx(i, j));
-                    if (j != n__ - 1) {
-                        std::printf(",");
-                    }
-                }
-                if (i != n__ - 1) {
-                    std::printf("},\n");
-                } else {
-                    std::printf("}\n");
-                }
-            }
-            std::printf("}\n");
-        }
     }
 
-    inline Communicator const& comm() const {
+    std::stringstream serialize(std::string name__, int m__, int n__) const
+    {
+        auto full_mtrx = get_full_matrix();
+
+        std::stringstream out;
+        using namespace fmt;
+        out << std::setprecision(12) << std::setw(24) << std::fixed;
+
+        out << "matrix label : " << name__ << std::endl;
+        out << "{" << std::endl;
+        for (int i = 0; i < m__; i++) {
+            out << "{";
+            for (int j = 0; j < n__; j++) {
+                out << full_mtrx(i, j);
+                if (j != n__ - 1) {
+                    out << ",";
+                }
+            }
+            if (i != n__ - 1) {
+                out << "}," << std::endl;
+            } else {
+                out << "}" << std::endl;
+            }
+        }
+        out << "}";
+
+        return out;
+    }
+
+    inline T checksum(int m__, int n__) const
+    {
+        T cs{0};
+
+        if (blacs_grid_ != nullptr) {
+            splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
+                                                       this->blacs_grid().rank_row(), this->bs_row());
+            splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
+                                                       this->blacs_grid().rank_col(), this->bs_col());
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                for (int j = 0; j < spl_row.local_size(); j++) {
+                    cs += (*this)(j, i);
+                }
+            }
+            this->blacs_grid().comm().allreduce(&cs, 1);
+        } else {
+            for (int i = 0; i < n__; i++) {
+                for (int j = 0; j < m__; j++) {
+                    cs += (*this)(j, i);
+                }
+            }
+        }
+        return cs;
+    }
+
+    inline Communicator const& comm() const
+    {
         if (blacs_grid_ != nullptr) {
             return blacs_grid().comm();
         } else {
@@ -365,8 +381,66 @@ class dmatrix : public matrix<T>
         }
     }
 
+    costa::grid_layout<T>& grid_layout()
+    {
+        return grid_layout_;
+    }
+
+    costa::grid_layout<T> grid_layout(int irow0__, int jcol0__, int mrow__, int ncol__)
+    {
+        return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
+                this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
+                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                this->blacs_grid().comm().rank());
+    }
+
 };
 
+/// Distributed matrix.
+template <typename T>
+class dmatrix<T, matrix_distribution_t::slab> : public matrix<T>
+{
+  private:
+    int num_rows_;
+    int num_cols_;
+    splindex<splindex_t::chunk, int> spl_row_;
+    Communicator comm_;
+    costa::grid_layout<T> grid_layout_;
+  public:
+    dmatrix(int num_rows__, int num_cols__, std::vector<int> counts__, Communicator const& comm__)
+        : matrix<T>(counts__[comm__.rank()], num_cols__)
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , comm_(comm__)
+    {
+        spl_row_ = splindex<splindex_t::chunk, int>(num_rows__, comm_.size(), comm_.rank(), counts__);
+
+        std::vector<int> rowsplit(comm_.size() + 1);
+        rowsplit[0] = 0;
+        for (int i = 0; i < comm_.size(); i++) {
+            rowsplit[i + 1] = rowsplit[i] + spl_row_.local_size(i);
+        }
+        std::vector<int> colsplit({0, num_cols_});
+        std::vector<int> owners(comm_.size());
+        for (int i = 0; i < comm_.size(); i++) {
+            owners[i] = i;
+        }
+        costa::block_t localblock;
+        localblock.data = this->at(memory_t::host);
+        localblock.ld = this->ld();
+        localblock.row = comm_.rank();
+        localblock.col = 0;
+
+        grid_layout_ = costa::custom_layout<T>(comm_.size(), 1, rowsplit.data(), colsplit.data(),
+                owners.data(), 1, &localblock, 'C');
+    }
+
+    costa::grid_layout<T>& grid_layout()
+    {
+        return grid_layout_;
+    }
+
+};
 
 } // namespace sddk
 

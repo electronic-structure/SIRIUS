@@ -12,7 +12,7 @@ int const nop_gemm = 8;
 
 double test_gemm(int M, int N, int K, int transa)
 {
-    mdarray<gemm_type, 2> a, b, c;
+    sddk::mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0) {
         imax = M;
@@ -21,9 +21,9 @@ double test_gemm(int M, int N, int K, int transa)
         imax = K;
         jmax = M;
     }
-    a = matrix<gemm_type>(imax, jmax);
-    b = matrix<gemm_type>(K, N);
-    c = matrix<gemm_type>(M, N);
+    a = sddk::matrix<gemm_type>(imax, jmax);
+    b = sddk::matrix<gemm_type>(K, N);
+    c = sddk::matrix<gemm_type>(M, N);
 
     for (int j = 0; j < jmax; j++) {
         for (int i = 0; i < imax; i++) {
@@ -45,9 +45,9 @@ double test_gemm(int M, int N, int K, int transa)
     printf("c.ld() = %i\n", c.ld());
     const char ta[] = {'N', 'T', 'C'};
     double t = -utils::wtime();
-    linalg(linalg_t::blas).gemm(ta[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
-        a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), &sddk::linalg_const<gemm_type>::zero(),
-        c.at(memory_t::host), c.ld());
+    sddk::linalg(sddk::linalg_t::blas).gemm(ta[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
+        a.at(sddk::memory_t::host), a.ld(), b.at(sddk::memory_t::host), b.ld(), &sddk::linalg_const<gemm_type>::zero(),
+        c.at(sddk::memory_t::host), c.ld());
     t += utils::wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
@@ -64,19 +64,19 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-    BLACS_grid blacs_grid(Communicator::world(), nrow, ncol);
+    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), nrow, ncol);
 
-    dmatrix<gemm_type> a, b, c;
+    sddk::dmatrix<gemm_type> a, b, c;
     if (transa == 0) {
-        a = dmatrix<gemm_type>(nullptr, M, K, blacs_grid, bs, bs);
+        a = sddk::dmatrix<gemm_type>(nullptr, M, K, blacs_grid, bs, bs);
     } else {
-        a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid, bs, bs);
+        a = sddk::dmatrix<gemm_type>(nullptr, K, M, blacs_grid, bs, bs);
     }
-    b = dmatrix<gemm_type>(nullptr, K, N, blacs_grid, bs, bs);
-    c = dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid, bs, bs);
-    a.allocate(memory_t::host);
-    b.allocate(memory_t::host);
-    c.allocate(memory_t::host);
+    b = sddk::dmatrix<gemm_type>(nullptr, K, N, blacs_grid, bs, bs);
+    c = sddk::dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid, bs, bs);
+    a.allocate(sddk::memory_t::host);
+    b.allocate(sddk::memory_t::host);
+    c.allocate(sddk::memory_t::host);
 
     for (int ic = 0; ic < a.num_cols_local(); ic++) {
         for (int ir = 0; ir < a.num_rows_local(); ir++) {
@@ -92,7 +92,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     c.zero();
 
-    if (Communicator::world().rank() == 0) {
+    if (sddk::Communicator::world().rank() == 0) {
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
@@ -100,13 +100,13 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     gemm_type one = 1;
     gemm_type zero = 0;
     const char TA [] = {'N', 'T', 'C'};
-    linalg(linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
+    sddk::linalg(sddk::linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
     t += utils::wtime();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / t / nrow / ncol;
-    if (Communicator::world().rank() == 0)
+    if (sddk::Communicator::world().rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", t);
         printf("performance    : %12.6f GFlops / rank\n", perf);
@@ -219,7 +219,7 @@ int main(int argn, char **argv)
             //    perf += test_pgemm_aHa(M, K, nrow, ncol, bs);
             //}
         }
-        if (Communicator::world().rank() == 0) {
+        if (sddk::Communicator::world().rank() == 0) {
             printf("\n");
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }

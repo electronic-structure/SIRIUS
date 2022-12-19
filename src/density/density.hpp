@@ -224,9 +224,6 @@ class Density : public Field4D
      */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
-    /// Non-zero Gaunt coefficients.
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
-
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
@@ -253,7 +250,6 @@ class Density : public Field4D
      */
     template <int num_mag_dims>
     void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<double_complex, 4> const& zdens__,
-                               Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
                                sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
@@ -322,7 +318,7 @@ class Density : public Field4D
         /* get form-factors for all G shells */
         auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
@@ -392,7 +388,7 @@ class Density : public Field4D
     void augment();
 
     /// Generate augmentation charge density.
-    mdarray<double_complex, 2> generate_rho_aug();
+    sddk::mdarray<double_complex, 2> generate_rho_aug();
 
     /// Check density at MT boundary
     void check_density_continuity_at_mt()
@@ -444,14 +440,14 @@ class Density : public Field4D
 
     void load()
     {
-        HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+        sddk::HDF5_tree fin(storage_file_name, sddk::hdf5_access_t::read_only);
 
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);
         if (ngv != ctx_.gvec().num_gvec()) {
             TERMINATE("wrong number of G-vectors");
         }
-        mdarray<int, 2> gv(3, ngv);
+        sddk::mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
 
         rho().hdf5_read(fin["density"], gv);
@@ -866,83 +862,7 @@ class Density : public Field4D
      */
     void symmetrize_density_matrix();
 
-    void print_info() const
-    {
-        auto result = this->rho().integrate();
-
-        auto total_charge = std::get<0>(result);
-        auto it_charge    = std::get<1>(result);
-        auto mt_charge    = std::get<2>(result);
-
-        auto result_mag = this->get_magnetisation();
-        auto total_mag  = std::get<0>(result_mag);
-        auto it_mag     = std::get<1>(result_mag);
-        auto mt_mag     = std::get<2>(result_mag);
-
-        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
-            std::printf("\n");
-            std::printf("Charges and magnetic moments\n");
-            for (int i = 0; i < 80; i++) {
-                std::printf("-");
-            }
-            std::printf("\n");
-            if (ctx_.full_potential()) {
-                double total_core_leakage{0.0};
-                std::printf("atom      charge    core leakage");
-                if (ctx_.num_mag_dims()) {
-                    std::printf("              moment                |moment|");
-                }
-                std::printf("\n");
-                for (int i = 0; i < 80; i++) {
-                    std::printf("-");
-                }
-                std::printf("\n");
-
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
-                    total_core_leakage += core_leakage;
-                    std::printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
-                    if (ctx_.num_mag_dims()) {
-                        vector3d<double> v(mt_mag[ia]);
-                        std::printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
-                    }
-                    std::printf("\n");
-                }
-
-                std::printf("\n");
-                std::printf("total core leakage    : %10.8e\n", total_core_leakage);
-                std::printf("interstitial charge   : %10.6f\n", it_charge);
-                if (ctx_.num_mag_dims()) {
-                    vector3d<double> v(it_mag);
-                    std::printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2],
-                           v.length());
-                }
-            } else {
-                if (ctx_.num_mag_dims()) {
-                    std::printf("atom              moment                |moment|");
-                    std::printf("\n");
-                    for (int i = 0; i < 80; i++) {
-                        std::printf("-");
-                    }
-                    std::printf("\n");
-
-                    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                        vector3d<double> v(mt_mag[ia]);
-                        std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
-                        std::printf("\n");
-                    }
-
-                    std::printf("\n");
-                }
-            }
-            std::printf("total charge          : %10.6f\n", total_charge);
-
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v(total_mag);
-                std::printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2], v.length());
-            }
-        }
-    }
+    void print_info(std::ostream& out__) const;
 
     Occupation_matrix const& occupation_matrix() const
     {
@@ -1007,7 +927,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         rho_dn->f_rg(ir) = rud.second;
     }
 
-    Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    sddk::Communicator(ctx.spfft<double>().communicator()).allreduce<double, sddk::mpi_op_t::min>(&rhomin, 1);
     if (rhomin< 0.0 && ctx.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl

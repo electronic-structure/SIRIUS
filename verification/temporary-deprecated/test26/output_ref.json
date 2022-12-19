@@ -1,0 +1,823 @@
+{
+    "comm_world_size": 1,
+    "context": {
+        "chemical_formula": "Ni2O2",
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 16,
+                "fft_mode": "serial",
+                "gen_evp_solver_name": "lapack",
+                "memory_usage": "high",
+                "mpi_grid_dims": [
+                    1,
+                    1
+                ],
+                "num_bands_to_print": 10,
+                "print_checksum": false,
+                "print_forces": true,
+                "print_hash": false,
+                "print_memory_usage": false,
+                "print_neighbors": false,
+                "print_performance": false,
+                "print_stress": false,
+                "print_timers": true,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 9.999999747378752e-05,
+                "std_evp_solver_name": "lapack",
+                "use_second_variation": true,
+                "verbosity": 0,
+                "verification": 0
+            },
+            "hubbard": {
+                "full_orthogonalization": true,
+                "local": [
+                    {
+                        "J": 0.0,
+                        "J0": 0.0,
+                        "U": 7.426899999999999,
+                        "alpha": 0.0,
+                        "atom_type": "Ni",
+                        "beta": 0.0,
+                        "l": 2,
+                        "n": 3,
+                        "total_initial_occupancy": 8.0
+                    },
+                    {
+                        "J": 0.0,
+                        "J0": 0.0,
+                        "U": 0.0,
+                        "alpha": 0.0,
+                        "atom_type": "O",
+                        "beta": 0.0,
+                        "l": 1,
+                        "n": 2,
+                        "total_initial_occupancy": 4.0
+                    }
+                ],
+                "nonlocal": [
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            0,
+                            1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            -1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            -1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            0,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            1,
+                            -1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            2
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            1,
+                            -1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            1,
+                            0,
+                            -1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            1,
+                            3
+                        ],
+                        "l": [
+                            2,
+                            1
+                        ],
+                        "n": [
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            -1,
+                            1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            1,
+                            -1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            1,
+                            -1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            1,
+                            0,
+                            -1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            2,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            -1,
+                            0,
+                            1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            -1,
+                            1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            1
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            0,
+                            1
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            0,
+                            1,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "T": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "V": 0.3653,
+                        "atom_pair": [
+                            3,
+                            0
+                        ],
+                        "l": [
+                            1,
+                            2
+                        ],
+                        "n": [
+                            2,
+                            3
+                        ]
+                    }
+                ],
+                "normalize": false,
+                "orthogonalize": true,
+                "simplified": false
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 1e-05,
+                "energy_tolerance": 0.01,
+                "extra_ortho": false,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 2,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.7,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": false
+            },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-06,
+                "electronic_structure_method": "pseudopotential",
+                "energy_tol": 1e-06,
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 8.94427190999916,
+                "hubbard_correction": true,
+                "lmax_apw": -1,
+                "lmax_pot": 4,
+                "lmax_rho": 4,
+                "molecule": false,
+                "ngridk": [
+                    2,
+                    2,
+                    2
+                ],
+                "nn_radius": -1,
+                "num_bands": 29,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 1,
+                "precision_gs": "",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
+                "pw_cutoff": 25.298221281347036,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.0005,
+                "so_correction": false,
+                "use_ibz": true,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_GGA_X_PBE_SOL",
+                    "XC_GGA_C_PBE_SOL"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    80,
+                    80,
+                    80
+                ],
+                "fp32_to_fp64_rms": 0,
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.95
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ni": "Ni.json",
+                    "O": "O.json"
+                },
+                "atom_types": [
+                    "Ni",
+                    "O"
+                ],
+                "atoms": {
+                    "Ni": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.5,
+                            0.5,
+                            -0.5
+                        ]
+                    ],
+                    "O": [
+                        [
+                            0.75,
+                            -0.25,
+                            -0.25
+                        ],
+                        [
+                            0.25,
+                            0.25,
+                            0.25
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        7.88,
+                        3.94,
+                        3.94
+                    ],
+                    [
+                        3.94,
+                        7.88,
+                        3.94
+                    ],
+                    [
+                        3.94,
+                        3.94,
+                        7.88
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            }
+        },
+        "fft_coarse_grid": [
+            60,
+            60,
+            60
+        ],
+        "mpi_grid": [
+            1,
+            1
+        ],
+        "num_atoms": 4,
+        "omega": 244.65193599999998
+    },
+    "counters": {
+        "band_evp_work_count": 1582.0653163311297,
+        "local_operator_num_applied": 10998
+    },
+    "git_hash": "28aa61eba813b08053cf5db752eae0b06533f890",
+    "ground_state": {
+        "band_gap": 0.11336972968916181,
+        "converged": true,
+        "core_leakage": 0.0,
+        "efermi": 0.5643032821003936,
+        "energy": {
+            "bxc": -0.18666450118754804,
+            "core_eval_sum": 0.0,
+            "entropy_sum": 0.0,
+            "enuc": 0.0,
+            "eval_sum": -26.41500772312791,
+            "ewald": -239.33155450435243,
+            "exc": -42.62175539972733,
+            "kin": 117.52334946848778,
+            "scf_correction": 4.514152919909975e-06,
+            "total": -384.0611361365013,
+            "veff": -143.75169269042814,
+            "vha": 245.01286532017107,
+            "vloc": -335.3851592237032,
+            "vxc": -53.37939878691614
+        },
+        "etot_history": [
+            -368.61691440516176,
+            -379.9772206856151,
+            -382.55411151139543,
+            -383.7231790329278,
+            -383.3857823953873,
+            -384.10970817866337,
+            -384.06311979760824,
+            -384.0685043197675,
+            -384.0431548115123,
+            -384.06480751050594,
+            -384.0616896433281,
+            -384.061248273479,
+            -384.0612043973337,
+            -384.06110871307794,
+            -384.0610268311706,
+            -384.0611589198479,
+            -384.0611492540313,
+            -384.06115165912337,
+            -384.06113136620377,
+            -384.0611377224378,
+            -384.06113642639616,
+            -384.0611361365013
+        ],
+        "forces": [
+            [
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                3.529303941166486e-23,
+                1.6081769742385112e-22,
+                1.7756810482034621e-22
+            ],
+            [
+                -3.529303946173904e-23,
+                -5.486964730474344e-23,
+                -7.279189390466644e-23
+            ]
+        ],
+        "num_scf_iterations": 21,
+        "rms_history": [
+            0.25269349661870877,
+            0.40533567504063345,
+            0.15119137149941309,
+            0.03868216357096875,
+            0.028301233748494813,
+            0.018900522620924617,
+            0.0059574922438834915,
+            0.005276416671851212,
+            0.0033272584776257706,
+            0.002100842015505985,
+            0.0009357887583458519,
+            9.088159457208579e-05,
+            5.22754515252514e-05,
+            4.2964424654860366e-05,
+            2.1215817938980194e-05,
+            3.8079146059939316e-05,
+            2.0966487208441948e-05,
+            9.162835772368918e-06,
+            5.009784776432517e-06,
+            1.4030472331219474e-06,
+            5.326899411455077e-07,
+            2.2285132335101093e-07
+        ],
+        "scf_time": 36.055437794
+    },
+    "task": 0,
+    "threads_per_rank": 4
+}

@@ -2,6 +2,7 @@
 #include "band/davidson.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 template <typename T>
 void init_wf(K_point<T>* kp__, Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
@@ -45,16 +46,16 @@ void
 diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__, double res_tol__,
             double eval_tol__, bool only_kin__, int subspace_size__, bool estimate_eval__, bool extra_ortho__)
 {
-    K_point<T> kp(ctx__, &vk__[0], 1.0, 0);
+    K_point<T> kp(ctx__, &vk__[0], 1.0);
     kp.initialize();
     std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_occupancy(i, 0, 2);
     }
 
-    Hamiltonian0<T> H0(pot__);
+    Hamiltonian0<T> H0(pot__, true);
     auto Hk = H0(kp);
-    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf());
+    Band(ctx__).initialize_subspace<std::complex<T>>(Hk, ctx__.unit_cell().num_ps_atomic_wf().first);
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
@@ -87,8 +88,8 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     //
     bool locking{true};
 
-    auto result = davidson<std::complex<T>, std::complex<F>>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
-            [](int i, int ispn){return 1.0;}, [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
+    auto result = davidson<std::complex<T>, std::complex<F>, davidson_evp_t::hamiltonian>(Hk, num_bands, ctx__.num_mag_dims(), kp.spinor_wave_functions(),
+            [&](int i, int ispn){return eval_tol__;}, res_tol__, 60, locking,
             subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 
     if (Communicator::world().rank() == 0 && only_kin__) {
@@ -245,7 +246,7 @@ void test_davidson(cmd_args const& args__)
     /* initialize simulation context */
     ctx.initialize();
 
-    std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
+    std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf().first << "\n";
 
     Density rho(ctx);
     rho.initial_density();

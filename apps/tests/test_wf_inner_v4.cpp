@@ -1,6 +1,7 @@
 #include <sirius.hpp>
 
 using namespace sirius;
+using namespace sddk;
 
 void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    double cutoff__,

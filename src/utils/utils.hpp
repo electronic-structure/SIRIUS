@@ -32,9 +32,10 @@
 #include <cmath>
 #include <string>
 #include <iostream>
-#include <vector>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
+#include <vector>
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
@@ -43,6 +44,19 @@
 
 /// Namespace for simple utility functions.
 namespace utils {
+
+class null_stream : public std::ostream
+{
+  public:
+    null_stream() : std::ostream(nullptr)
+    {
+    }
+    null_stream(null_stream&&) : std::ostream(nullptr)
+    {
+    };
+};
+
+extern null_stream null_stream__;
 
 /// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
@@ -77,6 +91,12 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 #define WARNING(msg) utils::warning(__FILE__, __LINE__, msg);
 
 #define STOP() TERMINATE("terminated by request")
+
+template <typename T, typename OUT>
+inline void print_checksum(std::string label__, T cs__, OUT&& out__)
+{
+    out__ << "checksum(" << label__ << ") : " << cs__ << std::endl;
+}
 
 inline void print_checksum(std::string label__, float cs__)
 {
@@ -162,6 +182,8 @@ inline double wtime()
     return double(t.tv_sec) + double(t.tv_usec) / 1e6;
 }
 
+using time_point_t = std::chrono::high_resolution_clock::time_point;
+
 inline std::chrono::high_resolution_clock::time_point time_now()
 {
     return std::chrono::high_resolution_clock::now();
@@ -237,9 +259,31 @@ inline T factorial(int n)
     return result;
 }
 
+/// Return the maximum number of blocks (with size 'block_size') needed to split the 'length' elements.
 inline int num_blocks(int length__, int block_size__)
 {
     return (length__ / block_size__) + std::min(length__ % block_size__, 1);
+}
+
+/// Split the 'length' elements into blocks with the initial block size.
+/** Return vector of block sizes that sum up to the initial 'length'. */
+inline auto split_in_blocks(int length__, int block_size__)
+{
+    int nb = num_blocks(length__, block_size__);
+    /* adjust the block size; this is done to prevent very unequal block sizes */
+    block_size__ = length__ / nb + std::min(1, length__ % nb);
+
+    std::vector<int> result(nb);
+
+    for (int i = 0; i < nb; i++) {
+        result[i] = std::min(length__, (i + 1) * block_size__) - i * block_size__;
+    }
+    /* check for correctness */
+    if (std::accumulate(result.begin(), result.end(), 0) != length__) {
+        throw std::runtime_error("error in utils::split_in_blocks()");
+    }
+
+    return result;
 }
 
 inline double round(double a__, int n__)
@@ -410,10 +454,68 @@ auto rel_diff(T a, T b)
     return std::abs(a - b) / (std::abs(a) + std::abs(b) + 1e-13);
 }
 
+class hbar {
+  private:
+    int w_;
+    char c_;
+  public:
+    hbar(int w__, char c__)
+        : w_(w__)
+        , c_(c__)
+    {
+    }
+    int w() const
+    {
+        return w_;
+    }
+    char c() const
+    {
+        return c_;
+    }
+};
+
+inline std::ostream&
+operator<<(std::ostream& out, hbar&& b)
+{
+    char prev = out.fill();
+    out << std::setfill(b.c()) << std::setw(b.w()) << b.c() << std::setfill(prev);
+    return out;
+}
+
+class ffmt {
+  private:
+    int w_;
+    int p_;
+  public:
+    ffmt(int w__, int p__)
+      : w_(w__)
+      , p_(p__)
+    {
+    }
+    int w() const
+    {
+        return w_;
+    }
+    int p() const
+    {
+        return p_;
+    }
+};
+
+inline std::ostream&
+operator<<(std::ostream& out, ffmt&& f)
+{
+    out.precision(f.p());
+    out.width(f.w());
+    out.setf(std::ios_base::fixed, std::ios_base::floatfield);
+    return out;
+}
+
 } // namespace
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
+inline std::ostream&
+operator<<(std::ostream& out, std::vector<T>& v)
 {
     if (v.size() == 0) {
         out << "{}";

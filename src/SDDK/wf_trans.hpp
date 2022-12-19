@@ -81,7 +81,7 @@ transform_mt(::spla::Context& spla_ctx__, int ispn__, real_type<F> alpha__, std:
                                     reinterpret_cast<F*>(wf_out__[iv]->mt_coeffs(s).prime().at(wf_out__[iv]->preferred_memory_t(), 0, j0__)),
                                     wf_out__[iv]->mt_coeffs(s).prime().ld(), spla_ctx__);
                 } else {
-                    spla::pgemm_sbs(0, n__, m__, alpha__, nullptr, 0, mtrx__.at(memory_t::host, 0, 0), mtrx__.ld(),
+                    spla::pgemm_sbs(0, n__, m__, alpha__, nullptr, 0, mtrx_ptr, mtrx__.ld(),
                                     irow0__, jcol0__, spla_mat_dist, beta__, nullptr, 0, spla_ctx__);
                 }
             }

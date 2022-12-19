@@ -29,8 +29,9 @@
 #include <iostream>
 #include "linalg/linalg.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "utils/env.hpp"
 #include "SDDK/gvec.hpp"
+#include "utils/env.hpp"
+#include "utils/rte.hpp"
 #include "matrix_storage.hpp"
 #include "type_definition.hpp"
 #ifdef SIRIUS_GPU
@@ -232,10 +233,6 @@ class Wave_functions
         return (num_sc_ == 1) ? 0 : ispn__;
     }
 
-    /// Compute the sum of squares of expansion coefficients.
-    /** The result is always returned in the host memory */
-    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
-
   public:
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the heap. */
@@ -248,6 +245,12 @@ class Wave_functions
 
     /// Constructor for LAPW wave-functions.
     Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
+                   memory_t preferred_memory_t__, int num_sc__ = 1);
+
+    /// Constructor for LAPW wave-functions.
+    /** Memory to store wave-function coefficients is allocated from the memory pool. */
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_atoms__,
+                   std::function<int(int)> mt_size__, int num_wf__,
                    memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Communicator of the G+k vector distribution.
@@ -329,9 +332,40 @@ class Wave_functions
 
     inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
-        zero_pw(pu__, ispn__, i0__, n__);
-        zero_mt(pu__, ispn__, i0__, n__);
+        this->zero_pw(pu__, ispn__, i0__, n__);
+        this->zero_mt(pu__, ispn__, i0__, n__);
     }
+
+    inline void zero(device_t pu__)
+    {
+        for (int is = 0; is < this->num_sc(); is++) {
+            this->zero(pu__, is, 0, this->num_wf());
+        }
+    }
+
+    // compute a dot, i.e. diag(this' * phi).
+    mdarray<std::complex<T>, 1> dot(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, int n__) const;
+
+    // compute this[:, i] = alpha * phi[:, i] + beta * this[:, i]
+    template<class Ta>
+    void axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_functions<T> const &phi, Ta beta, int n__);
+
+    // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
+    template<class Ta>
+    void xpby(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, std::vector<Ta> const &betas, int n__);
+
+    // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
+    template<class Ta>
+    void axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, int n__);
+
+    // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
+    template<class Ta>
+    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids, int n__);
+
+    /// Compute the sum of squares of expansion coefficients.
+    /** The result is always returned in the host memory */
+    mdarray<T, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
+
 
     /// Copy values from another wave-function.
     /** \param [in] pu   Type of processging unit which copies data.
@@ -422,7 +456,21 @@ class Wave_functions
 
     void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__);
 
-    void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
+    template <typename OUT>
+    void print_checksum(device_t pu__, std::string label__, int N__, int n__, OUT&& out__) const
+    {
+        for (int ispn = 0; ispn < num_sc(); ispn++) {
+            auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
+            auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
+            if (this->comm().rank() == 0) {
+                out__ << "checksum (" << label__ << "_pw_" << ispn << ") : " << cs1 << std::endl;
+                if (this->has_mt_) {
+                    out__ << "checksum (" << label__ << "_mt_" << ispn << ") : " << cs2 << std::endl;
+                }
+                out__ << "checksum (" << label__ << "_" << ispn << ") : " << cs1 + cs2 << std::endl;
+            }
+        }
+    }
 
     /// Prepare wave-functions on the device.
     void prepare(spin_range spins__, bool with_copy__, memory_pool* mp__ = nullptr)
@@ -431,7 +479,7 @@ class Wave_functions
         if (is_device_memory(preferred_memory_t_)) {
             if (mp__) {
                 if (!is_device_memory(mp__->memory_type())) {
-                    TERMINATE("not a device memory pool");
+                    RTE_THROW("not a device memory pool");
                 }
                 this->allocate(spins__, *mp__);
             } else {

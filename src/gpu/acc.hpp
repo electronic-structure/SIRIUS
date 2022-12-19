@@ -482,13 +482,15 @@ inline void unregister_host(void* ptr)
     CALL_DEVICE_API(HostUnregister, (ptr));
 }
 
-inline void check_last_error()
+inline bool check_last_error()
 {
     cudaDeviceSynchronize();
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
         std::printf("CUDA error != cudaSuccess\n");
+        return true;
     }
+    return false;
 }
 
 inline bool check_device_ptr(void const* ptr__)

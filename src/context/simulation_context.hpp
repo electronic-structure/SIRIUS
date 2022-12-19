@@ -68,29 +68,28 @@ double unit_step_function_form_factors(double R__, double g__);
 class Simulation_context : public Simulation_parameters
 {
   private:
-
     /// Communicator for this simulation.
-    Communicator const& comm_;
+    sddk::Communicator const& comm_;
 
-    Communicator comm_k_;
-    Communicator comm_band_;
+    sddk::Communicator comm_k_;
+    sddk::Communicator comm_band_;
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
-    Communicator comm_ortho_fft_coarse_;
+    sddk::Communicator comm_ortho_fft_coarse_;
 
     /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
     /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
         used to parallelize application of local Hamiltonian over bands. */
-    Communicator comm_band_ortho_fft_coarse_;
+    sddk::Communicator comm_band_ortho_fft_coarse_;
 
     /// Unit cell of the simulation.
     std::unique_ptr<Unit_cell> unit_cell_;
 
     /// MPI grid for this simulation.
-    std::unique_ptr<MPI_grid> mpi_grid_;
+    std::unique_ptr<sddk::MPI_grid> mpi_grid_;
 
     /// 2D BLACS grid for distributed linear algebra operations.
-    std::unique_ptr<BLACS_grid> blacs_grid_;
+    std::unique_ptr<sddk::BLACS_grid> blacs_grid_;
 
     /// Grid descriptor for the fine-grained FFT transform.
     sddk::FFT3D_grid fft_grid_;
@@ -117,16 +116,16 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// G-vectors within the Gmax cutoff.
-    std::unique_ptr<Gvec> gvec_;
+    std::unique_ptr<sddk::Gvec> gvec_;
 
-    std::unique_ptr<Gvec_partition> gvec_partition_;
+    std::unique_ptr<sddk::Gvec_partition> gvec_partition_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::unique_ptr<Gvec> gvec_coarse_;
+    std::unique_ptr<sddk::Gvec> gvec_coarse_;
 
-    std::unique_ptr<Gvec_partition> gvec_coarse_partition_;
+    std::unique_ptr<sddk::Gvec_partition> gvec_coarse_partition_;
 
-    std::unique_ptr<Gvec_shells> remap_gvec_;
+    std::unique_ptr<sddk::Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -179,16 +178,10 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, double, double*, int, int)> aug_ri_djl_callback_{nullptr};
 
     /// Radial integrals of atomic wave-functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<false>> atomic_wf_ri_;
+    std::unique_ptr<Radial_integrals_atomic_wf<false>> ps_atomic_wf_ri_;
 
     /// Radial integrals of atomic wave-functions with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
-
-    /// Radial integrals of hubbard wave-functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<false>> hubbard_wf_ri_;
-
-    /// Radial integrals of hubbard wave-functions with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<true>> hubbard_wf_ri_djl_;
+    std::unique_ptr<Radial_integrals_atomic_wf<true>> ps_atomic_wf_ri_djl_;
 
     /// Radial integrals of pseudo-core charge density.
     std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
@@ -200,6 +193,8 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
 
     std::function<void(int, int, double*, double*)> ps_rho_ri_callback_{nullptr};
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_callback_{nullptr};
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_djl_callback_{nullptr};
 
     /// Radial integrals of total pseudo-charge density.
     std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
@@ -235,16 +230,16 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<Eigensolver> gen_evp_solver_;
 
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
-    memory_t host_memory_t_{memory_t::none};
+    sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
     /// Type of preferred memory for wave-functions and related arrays.
-    memory_t preferred_memory_t_{memory_t::none};
+    sddk::memory_t preferred_memory_t_{sddk::memory_t::none};
 
     /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
-    memory_t aux_preferred_memory_t_{memory_t::none};
+    sddk::memory_t aux_preferred_memory_t_{sddk::memory_t::none};
 
     /// Type of BLAS linear algebra library.
-    linalg_t blas_linalg_t_{linalg_t::none};
+    sddk::linalg_t blas_linalg_t_{sddk::linalg_t::none};
 
     /// Callback function to compute band occupancies.
     std::function<void(void)> band_occ_callback_{nullptr};
@@ -252,8 +247,10 @@ class Simulation_context : public Simulation_parameters
     /// Callback function to compute effective potential.
     std::function<void(void)> veff_callback_{nullptr};
 
-    // Spla context
+    /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
+
+    std::shared_ptr<std::ostream> output_stream_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -320,16 +317,15 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-
     /// Create an empty simulation context with an explicit communicator.
-    Simulation_context(Communicator const& comm__ = Communicator::world())
+    Simulation_context(sddk::Communicator const& comm__ = sddk::Communicator::world())
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
     }
 
-    Simulation_context(Communicator const& comm__, Communicator const& comm_k__, Communicator const& comm_band__)
+    Simulation_context(sddk::Communicator const& comm__, sddk::Communicator const& comm_k__, sddk::Communicator const& comm_band__)
         : comm_(comm__)
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
@@ -338,10 +334,9 @@ class Simulation_context : public Simulation_parameters
         start();
     }
 
-
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
-        : comm_(Communicator::world())
+        : comm_(sddk::Communicator::world())
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
@@ -350,7 +345,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__, Communicator const &comm__)
+    Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
@@ -391,7 +386,7 @@ class Simulation_context : public Simulation_parameters
     {
         if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
             auto strings = ::rte::split(s.str());
-            for (auto& e: strings) {
+            for (auto& e : strings) {
                 std::cout << "[" << label__ << "] " << e << std::endl;
             }
         }
@@ -400,60 +395,60 @@ class Simulation_context : public Simulation_parameters
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update();
 
-    std::vector<std::pair<int, double>> const& atoms_to_grid_idx_map(int ia__) const
+    auto const& atoms_to_grid_idx_map(int ia__) const
     {
         return atoms_to_grid_idx_[ia__];
     };
 
-    Unit_cell& unit_cell()
+    auto& unit_cell()
     {
         return *unit_cell_;
     }
 
-    Unit_cell const& unit_cell() const
+    auto const& unit_cell() const
     {
         return *unit_cell_;
     }
 
-    Gvec const& gvec() const
+    auto const& gvec() const
     {
         return *gvec_;
     }
 
-    Gvec_partition const& gvec_partition() const
+    auto const& gvec_partition() const
     {
         return *gvec_partition_;
     }
 
-    Gvec const& gvec_coarse() const
+    auto const& gvec_coarse() const
     {
         return *gvec_coarse_;
     }
 
-    Gvec_partition const& gvec_coarse_partition() const
+    auto const& gvec_coarse_partition() const
     {
         return *gvec_coarse_partition_;
     }
 
-    Gvec_shells const& remap_gvec() const
+    auto const& remap_gvec() const
     {
         return *remap_gvec_;
     }
 
-    BLACS_grid const& blacs_grid() const
+    auto const& blacs_grid() const
     {
         return *blacs_grid_;
     }
 
     /// Total communicator of the simulation.
-    Communicator const& comm() const
+    sddk::Communicator const& comm() const
     {
         return comm_;
     }
 
     /// Communicator between k-points.
     /** This communicator is used to split k-points */
-    Communicator const& comm_k() const
+    auto const& comm_k() const
     {
         return comm_k_;
     }
@@ -461,41 +456,41 @@ class Simulation_context : public Simulation_parameters
     /// Band parallelization communicator.
     /** This communicator is used to parallelize the band problem. However it is not necessarily used
         to create the BLACS grid. Diagonalization might be sequential. */
-    Communicator const& comm_band() const
+    auto const& comm_band() const
     {
         return comm_band_;
     }
 
     /// Communicator of the dense FFT grid.
     /** This communicator is passed to the spfft::Transform constructor. */
-    Communicator const& comm_fft() const
+    auto const& comm_fft() const
     {
         /* use entire communicator of the simulation */
         return comm();
     }
 
-    Communicator const& comm_ortho_fft() const
+    auto const& comm_ortho_fft() const
     {
-        return Communicator::self();
+        return sddk::Communicator::self();
     }
 
     /// Communicator of the coarse FFT grid.
     /** This communicator is passed to the spfft::Transform constructor. */
-    Communicator const& comm_fft_coarse() const
+    auto const& comm_fft_coarse() const
     {
         if (cfg().control().fft_mode() == "serial") {
-            return Communicator::self();
+            return sddk::Communicator::self();
         } else {
             return comm_band();
         }
     }
 
-    Communicator const& comm_ortho_fft_coarse() const
+    auto const& comm_ortho_fft_coarse() const
     {
         return comm_ortho_fft_coarse_;
     }
 
-    Communicator const& comm_band_ortho_fft_coarse() const
+    auto const& comm_band_ortho_fft_coarse() const
     {
         return comm_band_ortho_fft_coarse_;
     }
@@ -507,36 +502,36 @@ class Simulation_context : public Simulation_parameters
         return start_time_tag_;
     }
 
-    inline Eigensolver& std_evp_solver()
+    inline auto& std_evp_solver()
     {
-        return* std_evp_solver_;
+        return *std_evp_solver_;
     }
 
-    inline Eigensolver const& std_evp_solver() const
+    inline auto const& std_evp_solver() const
     {
-        return* std_evp_solver_;
+        return *std_evp_solver_;
     }
 
-    inline Eigensolver& gen_evp_solver()
+    inline auto& gen_evp_solver()
     {
-        return* gen_evp_solver_;
+        return *gen_evp_solver_;
     }
 
-    inline Eigensolver const& gen_evp_solver() const
+    inline auto const& gen_evp_solver() const
     {
-        return* gen_evp_solver_;
+        return *gen_evp_solver_;
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline double_complex gvec_phase_factor(vector3d<int> G__, int ia__) const
+    inline auto gvec_phase_factor(vector3d<int> G__, int ia__) const
     {
         return phase_factors_(0, G__[0], ia__) * phase_factors_(1, G__[1], ia__) * phase_factors_(2, G__[2], ia__);
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline double_complex gvec_phase_factor(int ig__, int ia__) const
+    inline auto gvec_phase_factor(int ig__, int ia__) const
     {
-        return gvec_phase_factor(gvec().gvec(ig__), ia__);
+        return gvec_phase_factor(gvec().gvec<sddk::index_domain_t::global>(ig__), ia__);
     }
 
     inline sddk::mdarray<int, 2> const& gvec_coord() const
@@ -550,34 +545,33 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
-    void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const;
+    void generate_phase_factors(int iat__, sddk::mdarray<double_complex, 2>& phase_factors__) const;
 
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
-    template <index_domain_t index_domain, typename F>
-    inline std::vector<double_complex>
-    make_periodic_function(F&& form_factors__) const
+    template <sddk::index_domain_t index_domain, typename F>
+    inline auto make_periodic_function(F&& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
         double fourpi_omega = fourpi / unit_cell().omega();
 
-        int ngv = (index_domain == index_domain_t::local) ? gvec().count() : gvec().num_gvec();
+        int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
         std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             /* global index of G-vector */
             int ig   = gvec().offset() + igloc;
-            double g = gvec().gvec_len(ig);
+            double g = gvec().gvec_len<sddk::index_domain_t::local>(igloc);
 
-            int j = (index_domain == index_domain_t::local) ? igloc : ig;
+            int j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
             }
         }
 
-        if (index_domain == index_domain_t::global) {
+        if (index_domain == sddk::index_domain_t::global) {
             comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
         }
 
@@ -585,15 +579,14 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Make periodic out of form factors computed for G-shells.
-    template <index_domain_t index_domain>
-    inline std::vector<double_complex>
-    make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
+    template <sddk::index_domain_t index_domain>
+    inline auto make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
         double fourpi_omega = fourpi / unit_cell().omega();
 
-        int ngv = (index_domain == index_domain_t::local) ? gvec().count() : gvec().num_gvec();
+        int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
         std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
         #pragma omp parallel for schedule(static)
@@ -602,13 +595,13 @@ class Simulation_context : public Simulation_parameters
             int ig   = gvec().offset() + igloc;
             int igsh = gvec().shell(ig);
 
-            int j = (index_domain == index_domain_t::local) ? igloc : ig;
+            int j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(igsh, iat);
             }
         }
 
-        if (index_domain == index_domain_t::global) {
+        if (index_domain == sddk::index_domain_t::global) {
             comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
         }
 
@@ -619,7 +612,7 @@ class Simulation_context : public Simulation_parameters
     sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
-    matrix<double_complex> generate_gvec_ylm(int lmax__);
+    sddk::matrix<double_complex> generate_gvec_ylm(int lmax__);
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
     /// MT boundary values.
@@ -629,8 +622,8 @@ class Simulation_context : public Simulation_parameters
      *     e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
      *  \f]
      */
-    mdarray<double_complex, 2> sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarray<double, 3>& fl__,
-                                            matrix<double_complex>& gvec_ylm__);
+    sddk::mdarray<double_complex, 2> sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::mdarray<double, 3>& fl__,
+                                            sddk::matrix<double_complex>& gvec_ylm__);
 
     inline auto const& beta_ri() const
     {
@@ -652,24 +645,14 @@ class Simulation_context : public Simulation_parameters
         return *aug_ri_djl_;
     }
 
-    inline auto const& atomic_wf_ri() const
+    inline auto const& ps_atomic_wf_ri() const
     {
-        return *atomic_wf_ri_;
+        return *ps_atomic_wf_ri_;
     }
 
-    inline auto const& atomic_wf_djl() const
+    inline auto const& ps_atomic_wf_ri_djl() const
     {
-        return *atomic_wf_ri_djl_;
-    }
-
-    inline auto const& hubbard_wf_ri() const
-    {
-        return *hubbard_wf_ri_;
-    }
-
-    inline auto const& hubbard_wf_djl() const
-    {
-        return *hubbard_wf_ri_djl_;
+        return *ps_atomic_wf_ri_djl_;
     }
 
     inline auto const& ps_core_ri() const
@@ -705,7 +688,7 @@ class Simulation_context : public Simulation_parameters
      */
     double ewald_lambda() const;
 
-    mdarray<double_complex, 3> const& sym_phase_factors() const
+    auto const& sym_phase_factors() const
     {
         return sym_phase_factors_;
     }
@@ -716,7 +699,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Return plane-wave coefficient of the step function.
-    inline double_complex const& theta_pw(int ig__) const
+    inline auto const& theta_pw(int ig__) const
     {
         return theta_pw_[ig__];
     }
@@ -728,42 +711,44 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Returns a constant pointer to the augmentation operator of a given atom type.
-    inline Augmentation_operator const* augmentation_op(int iat__) const
+    inline auto const& augmentation_op(int iat__) const
     {
-        return augmentation_op_[iat__].get();
+        RTE_ASSERT(augmentation_op_[iat__] != nullptr);
+        return *augmentation_op_[iat__];
     }
 
-    inline Augmentation_operator* augmentation_op(int iat__)
+    inline auto& augmentation_op(int iat__)
     {
-        return augmentation_op_[iat__].get();
+        RTE_ASSERT(augmentation_op_[iat__] != nullptr);
+        return *augmentation_op_[iat__];
     }
 
     /// Type of the host memory for arrays used in linear algebra operations.
-    inline memory_t host_memory_t() const
+    inline auto host_memory_t() const
     {
         return host_memory_t_;
     }
 
     /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
-    inline memory_t preferred_memory_t() const
+    inline auto preferred_memory_t() const
     {
         return preferred_memory_t_;
     }
 
     /// Type of preferred memory for the storage of auxiliary wave-functions.
-    inline memory_t aux_preferred_memory_t() const
+    inline auto aux_preferred_memory_t() const
     {
         return aux_preferred_memory_t_;
     }
 
     /// Linear algebra driver for the BLAS operations.
-    linalg_t blas_linalg_t() const
+    auto blas_linalg_t() const
     {
         return blas_linalg_t_;
     }
 
     /// Split local set of G-vectors into chunks.
-    splindex<splindex_t::block> split_gvec_local() const;
+    sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;
 
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
@@ -873,6 +858,16 @@ class Simulation_context : public Simulation_parameters
         rhoc_ri_djl_callback_ = fptr__;
     }
 
+    inline void ps_atomic_wf_ri_callback(void (*fptr__)(int, double, double*, int))
+    {
+        ps_atomic_wf_ri_callback_ = fptr__;
+    }
+
+    inline void ps_atomic_wf_ri_djl_callback(void (*fptr__)(int, double, double*, int))
+    {
+        ps_atomic_wf_ri_djl_callback_ = fptr__;
+    }
+
     /// Set callback function to compute band occupations
     inline void band_occ_callback(void (*fptr__)(void))
     {
@@ -901,13 +896,23 @@ class Simulation_context : public Simulation_parameters
         dict["config"] = cfg().dict();
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(), spfft_transform_coarse_->dim_z()};
-        dict["fft_coarse_grid"] = fftgrid;
-        dict["mpi_grid"] = mpi_grid_dims();
-        dict["omega"] = unit_cell().omega();
-        dict["chemical_formula"] = unit_cell().chemical_formula();
-        dict["num_atoms"] = unit_cell().num_atoms();
+        auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
+                        spfft_transform_coarse_->dim_z()};
+        dict["fft_coarse_grid"]     = fftgrid;
+        dict["mpi_grid"]            = mpi_grid_dims();
+        dict["omega"]               = unit_cell().omega();
+        dict["chemical_formula"]    = unit_cell().chemical_formula();
+        dict["num_atoms"]           = unit_cell().num_atoms();
         return dict;
+    }
+
+    std::ostream& out() const
+    {
+        if (output_stream_ == nullptr) {
+            return std::cout;
+        } else {
+            return *output_stream_;
+        }
     }
 };
 

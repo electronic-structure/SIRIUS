@@ -1446,10 +1446,13 @@ inline void linalg::tranc<ftn_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_c
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&linalg_const<ftn_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_complex*>(&linalg_const<ftn_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1472,10 +1475,13 @@ inline void linalg::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1498,10 +1504,13 @@ inline void linalg::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
             ia++; ja++;
             ic++; jc++;
 
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
             FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             A_ptr, &ia, &ja, A.descriptor(),
                              const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+                             C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1524,9 +1533,12 @@ inline void linalg::tranc<ftn_single>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_si
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&linalg_const<ftn_single>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&linalg_const<ftn_single>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1549,9 +1561,12 @@ inline void linalg::tranu<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1574,9 +1589,12 @@ inline void linalg::tranc<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
-                            C.at(memory_t::host), &ic, &jc, C.descriptor());
+                            C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1787,32 +1805,24 @@ template <typename T>
 inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
     real_type<T> max_diff{0};
-#ifdef SIRIUS_SCALAPACK
-    dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
-    linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
-    for (int i = 0; i < tmp.num_cols_local(); i++) {
-        for (int j = 0; j < tmp.num_rows_local(); j++) {
-            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+    if (mtrx__.comm().size() != 1) {
+        dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+        linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+        for (int i = 0; i < tmp.num_cols_local(); i++) {
+            for (int j = 0; j < tmp.num_rows_local(); j++) {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+            }
+        }
+        mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
+    } else {
+        for (int i = 0; i < n__; i++) {
+            for (int j = 0; j < n__; j++) {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - std::conj(mtrx__(i, j))));
+            }
         }
     }
-    mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
-#else
-    for (int i = 0; i < n__; i++) {
-        for (int j = 0; j < n__; j++) {
-            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - std::conj(mtrx__(i, j))));
-        }
-    }
-#endif
     return max_diff;
 }
-
-// instantiate for the function of required types
-template double check_hermitian<double>(dmatrix<double>& mtrx__, int n__);
-template double check_hermitian<std::complex<double>>(dmatrix<std::complex<double>>& mtrx__, int n__);
-#ifdef USE_FP32
-template float  check_hermitian<float>(dmatrix<float>& mtrx__, int n__);
-template float  check_hermitian<std::complex<float>>(dmatrix<std::complex<float>>& mtrx__, int n__);
-#endif
 
 template <typename T>
 inline double check_identity(dmatrix<T>& mtrx__, int n__)
@@ -1858,6 +1868,44 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 
     }
     mtrx__.comm().template allreduce<double,  mpi_op_t::max>(&max_diff, 1);
     return max_diff;
+}
+
+/** Perform one of the following operations:
+ *    A <= U A U^{H} (kind = 0)
+ *    A <= U^{H} A U (kind = 1)
+ */
+template <typename T>
+inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__, int n__)
+{
+    // TODO: use memory pool to allocate tmp matrix
+    if (!(kind__ == 0 || kind__ == 1)) {
+        RTE_THROW("wrong 'kind' parameter");
+    }
+    char c1 = kind__ == 0 ? 'N' : 'C';
+    char c2 = kind__ == 0 ? 'C' : 'N';
+    if (A__.comm().size() != 1) {
+        dmatrix<T> tmp(n__, n__, A__.blacs_grid(), A__.bs_row(), A__.bs_col());
+
+        /* compute tmp <= U A or U^{H} A */
+        linalg(linalg_t::scalapack).gemm(c1, 'N', n__, n__, n__, &linalg_const<T>::one(),
+            U__, 0, 0, A__, 0, 0, &linalg_const<T>::zero(), tmp, 0, 0);
+
+        /* compute A <= tmp U^{H} or tmp U */
+        linalg(linalg_t::scalapack).gemm('N', c2, n__, n__, n__, &linalg_const<T>::one(),
+            tmp, 0, 0, U__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
+    } else {
+        dmatrix<T> tmp(n__, n__);
+
+        /* compute tmp <= U A or U^{H} A */
+        linalg(linalg_t::blas).gemm(c1, 'N', n__, n__, n__, &linalg_const<T>::one(),
+            U__.at(memory_t::host), U__.ld(), A__.at(memory_t::host), A__.ld(), &linalg_const<T>::zero(),
+            tmp.at(memory_t::host), tmp.ld());
+
+        /* compute A <= tmp U^{H} or tmp U */
+        linalg(linalg_t::blas).gemm('N', c2, n__, n__, n__, &linalg_const<T>::one(),
+            tmp.at(memory_t::host), tmp.ld(), U__.at(memory_t::host), U__.ld(), &linalg_const<T>::zero(),
+            A__.at(memory_t::host), A__.ld());
+    }
 }
 
 } // namespace sddk

@@ -3,6 +3,7 @@
 #include "SDDK/wf_ortho.hpp"
 
 using namespace sirius;
+using namespace sddk;
 
 void test1()
 {
@@ -25,7 +26,7 @@ for (int j = 0; j < gvec.count(); j++) {
     /* get global index of G-vector */
     int ig = gvec.offset() + j;
     /* get lattice coordinates */
-    auto G = gvec.gvec(ig);
+    auto G = gvec.gvec<index_domain_t::global>(ig);
     /* get index of G-vector by lattice coordinates */
     int jg = gvec.index_by_gvec(G);
     /* check for correctness */

@@ -2,6 +2,8 @@
 #include <math.h>
 #include <complex.h>
 
+using namespace sddk;
+
 /* test generation of complex spherical harmonics */
 
 

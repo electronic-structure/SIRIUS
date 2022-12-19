@@ -931,6 +931,18 @@ class config_t
             }
             dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
         }
+        /// Orthogonalize LAPW radial functions.
+        inline auto ortho_rf() const
+        {
+            return dict_.at("/control/ortho_rf"_json_pointer).get<bool>();
+        }
+        inline void ortho_rf(bool ortho_rf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
+        }
       private:
         nlohmann::json& dict_;
     };
@@ -1377,7 +1389,7 @@ class config_t
             }
             dict_["/parameters/precision_hs"_json_pointer] = precision_hs__;
         }
-        /// The final floating point precision of the ground state DFT calculation.
+        /// The final floating point precision of the ground state DFT calculation (dev options).
         inline auto precision_gs() const
         {
             return dict_.at("/parameters/precision_gs"_json_pointer).get<std::string>();
@@ -1498,6 +1510,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/hubbard/orthogonalize"_json_pointer] = orthogonalize__;
+        }
+        /// If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace
+        inline auto full_orthogonalization() const
+        {
+            return dict_.at("/hubbard/full_orthogonalization"_json_pointer).get<bool>();
+        }
+        inline void full_orthogonalization(bool full_orthogonalization__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/full_orthogonalization"_json_pointer] = full_orthogonalization__;
         }
         /// If true, normalization is applied to Hubbard orbitals.
         inline auto normalize() const
@@ -1637,6 +1661,10 @@ class config_t
             auto T() const
             {
                 return dict_.at("T").get<std::array<int, 3>>();
+            }
+            auto n() const
+            {
+                return dict_.at("n").get<std::array<int, 2>>();
             }
             auto l() const
             {

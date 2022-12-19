@@ -57,15 +57,15 @@ def grad_eta(Hij, ek, fn, T, kw, mo):
     g_eta -- gradient wrt η of the free-energy Lagrangian
     """
     kT = kb * T
-    g_eta_1 = -1/kT * diag(diag(Hij) - kw*ek) * fn * (mo-fn)
+    g_eta_1 = -1/kT * diag(diag(Hij) - kw*ek) * fn * (mo-fn) / mo
     dFdmu = np.sum(np.real(
         1/kT * einsum('i,i', (diag(Hij) - kw*ek).asarray().flatten(), fn * (mo-fn))))
-    sumfn = np.sum(kw*fn*(mo-fn))
+    sumfn = np.sum(kw*fn*(mo-fn) / mo)
     # g_eta_2 is zero if all f_i are either 0 or 1
     if np.abs(sumfn) < 1e-10:
         g_eta_2 = 0
     else:
-        g_eta_2 = diag(kw * fn * (mo-fn) / sumfn * dFdmu)
+        g_eta_2 = diag(kw * fn * (mo-fn) / mo / sumfn * dFdmu)
     # off-diagonal terms
     II = diag(ca.ones_like(fn))
     Eij = ek-ek.T + II

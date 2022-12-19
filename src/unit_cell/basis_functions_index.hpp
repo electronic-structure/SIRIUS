@@ -87,9 +87,9 @@ class basis_functions_index
   private:
     std::vector<basis_function_index_descriptor> basis_function_index_descriptors_;
 
-    mdarray<int, 2> index_by_lm_order_;
+    sddk::mdarray<int, 2> index_by_lm_order_;
 
-    mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
+    sddk::mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
 
     /// Number of augmented wave basis functions.
     int size_aw_{0};
@@ -106,7 +106,7 @@ class basis_functions_index
     {
         basis_function_index_descriptors_.clear();
 
-        index_by_idxrf_ = mdarray<int, 1>(indexr__.size());
+        index_by_idxrf_ = sddk::mdarray<int, 1>(indexr__.size());
 
         for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
             int l     = indexr__[idxrf].l;
@@ -120,7 +120,7 @@ class basis_functions_index
                     basis_function_index_descriptor(l, m, indexr__[idxrf].j, order, idxlo, idxrf));
             }
         }
-        index_by_lm_order_ = mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
+        index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
 
         for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
             int lm    = basis_function_index_descriptors_[i].lm;

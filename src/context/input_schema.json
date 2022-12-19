@@ -438,6 +438,11 @@
                      "type" : "integer",
                      "default" : 256,
                      "title" : "Number of atoms in a chunk of beta-projectors."
+                 },
+                 "ortho_rf" : {
+                     "type" : "boolean",
+                     "default" : false,
+                     "title" : "Orthogonalize LAPW radial functions."
                  }
             }
         },
@@ -656,9 +661,9 @@
                 },
                 "precision_gs" : {
                     "type" : "string",
-                    "default" : "",
-                    "enum" : ["", "fp64"],
-                    "title" : "The final floating point precision of the ground state DFT calculation."
+                    "default" : "auto",
+                    "enum" : ["auto", "fp32", "fp64"],
+                    "title" : "The final floating point precision of the ground state DFT calculation (dev options)."
                 }
             }
         },
@@ -706,6 +711,11 @@
                     "type" : "boolean",
                     "default" : false,
                     "title" : "If true, orthogonalization is applied to Hubbard orbitals."
+                },
+                "full_orthogonalization" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace"
                 },
                 "normalize" : {
                     "type" : "boolean",
@@ -792,6 +802,14 @@
                                 },
                                 "minItems" : 3,
                                 "maxItems" : 3
+                            },
+                            "n" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "integer"
+                                },
+                                "minItems" : 2,
+                                "maxItems" : 2
                             },
                             "l" : {
                                 "type" : "array",

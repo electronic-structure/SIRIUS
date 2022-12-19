@@ -23,6 +23,7 @@
  */
 
 #include "k_point.hpp"
+#include "lapw/generate_alm_block.hpp"
 
 namespace sirius {
 
@@ -35,14 +36,14 @@ void K_point<T>::generate_fv_states()
         return;
     }
 
-    mdarray<std::complex<T>, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
-    mdarray<std::complex<T>, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
+    sddk::mdarray<std::complex<T>, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), sddk::memory_t::host);
+    sddk::mdarray<std::complex<T>, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
-    if (ctx_.processing_unit() == device_t::GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
-        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(memory_t::device, 0, ctx_.num_fv_states());
-        alm.allocate(memory_t::device);
-        tmp.allocate(memory_t::device);
+    if (ctx_.processing_unit() == sddk::device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).allocate(sddk::memory_t::device);
+        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(sddk::memory_t::device, 0, ctx_.num_fv_states());
+        alm.allocate(sddk::memory_t::device);
+        tmp.allocate(sddk::memory_t::device);
     }
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -55,44 +56,44 @@ void K_point<T>::generate_fv_states()
 
         std::complex<T>* tmp_ptr_gpu{nullptr};
 
-        auto la = linalg_t::none;
-        auto mt = memory_t::none;
+        auto la = sddk::linalg_t::none;
+        auto mt = sddk::memory_t::none;
         switch (ctx_.processing_unit()) {
-            case device_t::CPU: {
-                la = linalg_t::blas;
-                mt = memory_t::host;
+            case sddk::device_t::CPU: {
+                la = sddk::linalg_t::blas;
+                mt = sddk::memory_t::host;
                 break;
             }
-            case device_t::GPU: {
-                alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
-                la = linalg_t::gpublas;
-                mt = memory_t::device;
-                tmp_ptr_gpu = tmp.at(memory_t::device);
+            case sddk::device_t::GPU: {
+                alm.copy_to(sddk::memory_t::device, 0, mt_aw_size * num_gkvec_loc());
+                la = sddk::linalg_t::gpublas;
+                mt = sddk::memory_t::device;
+                tmp_ptr_gpu = tmp.at(sddk::memory_t::device);
                 break;
             }
         }
 
-        mdarray<std::complex<T>, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
+        sddk::mdarray<std::complex<T>, 2> tmp1(tmp.at(sddk::memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-        linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-            &linalg_const<std::complex<T>>::one(), alm.at(mt), alm.ld(),
+        sddk::linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
+            &sddk::linalg_const<std::complex<T>>::one(), alm.at(mt), alm.ld(),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().at(mt),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-            &linalg_const<std::complex<T>>::zero(), tmp1.at(mt), tmp1.ld());
+            &sddk::linalg_const<std::complex<T>>::zero(), tmp1.at(mt), tmp1.ld());
 
         switch (ctx_.processing_unit()) {
-            case device_t::CPU: {
+            case sddk::device_t::CPU: {
                 break;
             }
-            case device_t::GPU: {
-                tmp1.copy_to(memory_t::host);
+            case sddk::device_t::GPU: {
+                tmp1.copy_to(sddk::memory_t::host);
                 break;
             }
         }
 
-        comm_.reduce(tmp1.at(memory_t::host), static_cast<int>(tmp1.size()), location.rank);
-
+        comm_.reduce(tmp1.at(sddk::memory_t::host), static_cast<int>(tmp1.size()), location.rank);
+// TODO: remove __PRINT_OBJECT_CHECKSUM
 #ifdef __PRINT_OBJECT_CHECKSUM
         auto z1 = tmp1.checksum();
         DUMP("checksum(tmp1): %18.10f %18.10f", std::real(z1), std::imag(z1));
@@ -103,12 +104,12 @@ void K_point<T>::generate_fv_states()
             int offset2 = fv_eigen_vectors_slab().offset_mt_coeffs(location.local_index);
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 /* aw block */
-                std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1, i),
-                            tmp1.at(memory_t::host, 0, i), mt_aw_size * sizeof(std::complex<T>));
+                std::memcpy(fv_states().mt_coeffs(0).prime().at(sddk::memory_t::host, offset1, i),
+                            tmp1.at(sddk::memory_t::host, 0, i), mt_aw_size * sizeof(std::complex<T>));
                 /* lo block */
                 if (mt_lo_size) {
-                    std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1 + mt_aw_size, i),
-                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at(memory_t::host, offset2, i),
+                    std::memcpy(fv_states().mt_coeffs(0).prime().at(sddk::memory_t::host, offset1 + mt_aw_size, i),
+                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at(sddk::memory_t::host, offset2, i),
                                 mt_lo_size * sizeof(std::complex<T>));
                 }
             }
@@ -118,13 +119,13 @@ void K_point<T>::generate_fv_states()
     #pragma omp parallel for
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         /* G+k block */
-        std::memcpy(fv_states().pw_coeffs(0).prime().at(memory_t::host, 0, i),
-                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host, 0, i),
+        std::memcpy(fv_states().pw_coeffs(0).prime().at(sddk::memory_t::host, 0, i),
+                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at(sddk::memory_t::host, 0, i),
                     num_gkvec_loc() * sizeof(std::complex<T>));
     }
 
-    if (ctx_.processing_unit() == device_t::GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
+    if (ctx_.processing_unit() == sddk::device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(sddk::memory_t::device);
     }
 }
 

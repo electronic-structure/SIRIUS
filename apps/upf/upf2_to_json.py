@@ -52,7 +52,7 @@ def parse_radial_grid(upf_dict, root):
         if np != len(rg):
             print("Wrong number of radial points")
     except KeyError:
-        print('Warning missing size field in attributes')
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['radial_grid'] = rg
 
 
@@ -70,9 +70,22 @@ def parse_non_local(upf_dict, root):
 
     for i in range(proj_num):
         node = root.findall("./PP_NONLOCAL/PP_BETA.%i" % (i + 1))[0]
-        nr = int(node.attrib['cutoff_radius_index'])
-        upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
+
+        try:
+            # cutoff_radius_index is optional
+            nr = int(node.attrib['cutoff_radius_index'])
+        except KeyError:
+            # ... and per the standard we should take the full list,
+            # but we should cut off the long tail for numerical stability
+            try:
+                # find the first value from the back bigger than...
+                nr = -next(idx for idx, val in enumerate(beta[::-1]) if val > 1e-80)
+            except StopIteration:
+                # if that fails, take the whole thing
+                nr = len(beta)
+
+        upf_dict['beta_projectors'].append({})
         upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
         if 'label' in node.attrib:
             upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
@@ -105,7 +118,7 @@ def parse_non_local(upf_dict, root):
     # ------------------------------------
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
 
-    if node.attrib['q_with_l'] != 'T':
+    if not node.attrib['q_with_l'].lower() in ['t', 'true']:
         print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
@@ -204,7 +217,10 @@ def parse_PAW(upf_dict, root):
         print('WARNING: PP_PAW has no core_energy set!')
 
     node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
-    size = int(node.attrib['size'])
+    if 'size' in node.attrib:
+        if upf_dict['header']['number_of_proj'] != int(node.attrib['size']):
+            print('WARNING: number_of_proj != size(PP_OCCUPATIONS)')
+    size = upf_dict['header']['number_of_proj']
 
     # ---- occupation
     for i in range(size):
@@ -213,8 +229,11 @@ def parse_PAW(upf_dict, root):
         ]
 
     # ---- Read AE core correction (density of core charge)
+    if 'size' in node.attrib:
+        if upf_dict['header']['mesh_size'] != int(node.attrib['size']):
+            print('WARNING: mesh_size != size(PP_AE_NLCC)')
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
-    size = int(node.attrib['size'])
+    size = upf_dict['header']['mesh_size']
 
     for i in range(size):
         upf_dict['paw_data']['ae_core_charge_density'] = [
@@ -223,7 +242,10 @@ def parse_PAW(upf_dict, root):
 
     # ---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
-    size = int(node.attrib['size'])
+    if 'size' in node.attrib:
+        if upf_dict['header']['mesh_size'] != int(node.attrib['size']):
+            print('WARNING: mesh_size != size(PP_AE_VLOC)')
+    size = upf_dict['header']['mesh_size']
 
     for i in range(size):
         upf_dict['paw_data']['ae_local_potential'] = [
@@ -311,7 +333,7 @@ def parse_upf2_from_string(upf2_str):
         if np != len(vloc):
             print("Wrong number of points")
     except KeyError:
-        print('Warning missing size field in attributes ' + str(node))
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['local_potential'] = vloc
 
     # non-local part of potential

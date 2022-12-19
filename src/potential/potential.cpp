@@ -62,11 +62,6 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    if (ctx_.full_potential()) {
-        using gc_z = Gaunt_coefficients<double_complex>;
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-    }
-
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
         xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
@@ -100,25 +95,25 @@ Potential::Potential(Simulation_context& ctx__)
         dveff_->zero();
     }
 
-    vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
+    vh_el_ = sddk::mdarray<double, 1>(unit_cell_.num_atoms());
 
     if (ctx_.full_potential()) {
-        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), memory_t::host, "gvec_ylm_");
+        gvec_ylm_ = sddk::mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), sddk::memory_t::host, "gvec_ylm_");
 
         switch (ctx_.valence_relativity()) {
             case relativity_t::iora: {
-                rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                rm2_inv_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
             }
             case relativity_t::zora: {
-                rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                rm_inv_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
             }
             default: {
-                veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                veff_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
             }
         }
     }
 
-    aux_bf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    aux_bf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     aux_bf_.zero();
 
     if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
@@ -157,10 +152,10 @@ void Potential::update()
          *
          * and use relation between Bessel and spherical Bessel functions:
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
-        sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1,
+        sbessel_mom_ = sddk::mdarray<double, 3>(ctx_.lmax_rho() + 1,
                                           ctx_.gvec().count(),
                                           unit_cell_.num_atom_types(),
-                                          memory_t::host, "sbessel_mom_");
+                                          sddk::memory_t::host, "sbessel_mom_");
         sbessel_mom_.zero();
         int ig0{0};
         if (ctx_.comm().rank() == 0) {
@@ -173,7 +168,7 @@ void Potential::update()
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             #pragma omp parallel for schedule(static)
             for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-                auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
+                auto len = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc).length();
                 for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                     sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
                                                   sbessel_mt_(l + 1, igloc, iat) / len;
@@ -184,7 +179,8 @@ void Potential::update()
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
-        gamma_factors_R_ = mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(), memory_t::host, "gamma_factors_R_");
+        gamma_factors_R_ = sddk::mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
+                sddk::memory_t::host, "gamma_factors_R_");
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                 long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
@@ -345,7 +341,7 @@ void Potential::save()
         effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
-        HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
+        sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
             if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
                 fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
@@ -357,14 +353,14 @@ void Potential::save()
 
 void Potential::load()
 {
-    HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
+    sddk::HDF5_tree fin(storage_file_name, sddk::hdf5_access_t::read_only);
 
     int ngv;
     fin.read("/parameters/num_gvec", &ngv, 1);
     if (ngv != ctx_.gvec().num_gvec()) {
         TERMINATE("wrong number of G-vectors");
     }
-    mdarray<int, 2> gv(3, ngv);
+    sddk::mdarray<int, 2> gv(3, ngv);
     fin.read("/parameters/gvec", gv);
 
     effective_potential().hdf5_read(fin["effective_potential"], gv);
@@ -378,7 +374,7 @@ void Potential::load()
     }
 
     if (!ctx_.full_potential()) {
-        HDF5_tree fout(storage_file_name, hdf5_access_t::read_only);
+        sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_only);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
             fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
         }
@@ -394,18 +390,18 @@ void Potential::update_atomic_potential()
         std::vector<double> veff(nmtp);
 
         for (int ir = 0; ir < nmtp; ir++) {
-            veff[ir] = y00 * effective_potential().f_mt<index_domain_t::global>(0, ir, ia);
+            veff[ir] = y00 * effective_potential().f_mt<sddk::index_domain_t::global>(0, ir, ia);
         }
 
         unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
     }
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        double* veff = &effective_potential().f_mt<index_domain_t::global>(0, 0, ia);
+        double* veff = &effective_potential().f_mt<sddk::index_domain_t::global>(0, 0, ia);
 
         double* beff[] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            beff[i] = &effective_magnetic_field(i).f_mt<index_domain_t::global>(0, 0, ia);
+            beff[i] = &effective_magnetic_field(i).f_mt<sddk::index_domain_t::global>(0, 0, ia);
         }
 
         unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);

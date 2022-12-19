@@ -32,7 +32,7 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
-Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
@@ -45,6 +45,48 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__)
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
         q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
+    }
+    if (ctx_.full_potential()) {
+        if (precompute_lapw__) {
+            potential_->generate_pw_coefs();
+            potential_->update_atomic_potential();
+            ctx_.unit_cell().generate_radial_functions();
+            ctx_.unit_cell().generate_radial_integrals();
+        }
+        hmt_ = std::vector<sddk::mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());
+        auto pu = ctx_.processing_unit();
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                auto& atom = ctx_.unit_cell().atom(ia);
+                auto& type = atom.type();
+
+                int nmt = type.mt_basis_size();
+
+                hmt_[ia] = sddk::mdarray<std::complex<T>, 2>(nmt, nmt, sddk::memory_t::host, "hmt");
+
+                /* compute muffin-tin Hamiltonian */
+                for (int j2 = 0; j2 < nmt; j2++) {
+                    int lm2    = type.indexb(j2).lm;
+                    int idxrf2 = type.indexb(j2).idxrf;
+                    for (int j1 = 0; j1 <= j2; j1++) {
+                        int lm1    = type.indexb(j1).lm;
+                        int idxrf1 = type.indexb(j1).idxrf;
+                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf2,
+                                                                                type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                        hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
+                    }
+                }
+                if (pu == sddk::device_t::GPU) {
+                    hmt_[ia].allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device, stream_id(tid));
+                }
+            }
+            if (pu == sddk::device_t::GPU) {
+                acc::sync_stream(stream_id(tid));
+            }
+        }
     }
 }
 
@@ -63,7 +105,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
     // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
     // available
     // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+    sddk::mdarray<std::complex<T>, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
     /* compute the muffin-tin Hamiltonian */
     for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
         int lm2    = type.indexb(j2).lm;
@@ -72,13 +114,13 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
-                                                                 potential().gaunt_coefs().gaunt_vector(lm1, lm2));
+                                                                 type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
-    linalg(linalg_t::blas)
-        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &linalg_const<std::complex<T>>::one(),
-              alm__.at(memory_t::host), alm__.ld(), hmt.at(memory_t::host), hmt.ld(),
-              &linalg_const<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
+    sddk::linalg(sddk::linalg_t::blas)
+        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &sddk::linalg_const<std::complex<T>>::one(),
+              alm__.at(sddk::memory_t::host), alm__.ld(), hmt.at(sddk::memory_t::host), hmt.ld(),
+              &sddk::linalg_const<std::complex<T>>::zero(), halm__.at(sddk::memory_t::host), halm__.ld());
 }
 
 template <typename T>
@@ -113,7 +155,7 @@ template <typename T>
 void
 Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wave_functions<T>>& bpsi__) const
 {
-    mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
+    sddk::mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
         int ia            = psi__.spl_num_atoms()[ialoc];
@@ -134,16 +176,16 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
                     int lm1    = atom.type().indexb(xi1).lm;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
 
-                    zm(xi1, xi2, i) = this->potential().gaunt_coefs().sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    zm(xi1, xi2, i) = atom.type().gaunt_coefs().sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
                 }
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        linalg(linalg_t::blas).hemm(
-            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &linalg_const<std::complex<T>>::one(),
-            zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-            psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-            bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
+        sddk::linalg(sddk::linalg_t::blas).hemm(
+            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &sddk::linalg_const<std::complex<T>>::one(),
+            zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
+            psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+            bpsi__[0].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
@@ -160,11 +202,11 @@ Hamiltonian0<T>::apply_bmt(sddk::Wave_functions<T>& psi__, std::vector<sddk::Wav
                 }
             }
 
-            linalg(linalg_t::blas).gemm(
-               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &linalg_const<std::complex<T>>::one(),
-               zm.at(memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
-               psi__.mt_coeffs(0).prime().ld(), &linalg_const<std::complex<T>>::zero(),
-               bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
+            sddk::linalg(sddk::linalg_t::blas).gemm(
+               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &sddk::linalg_const<std::complex<T>>::one(),
+               zm.at(sddk::memory_t::host), zm.ld(), psi__.mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0),
+               psi__.mt_coeffs(0).prime().ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+               bpsi__[2].mt_coeffs(0).prime().at(sddk::memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
         }
     }
 }
@@ -180,7 +222,7 @@ Hamiltonian0<T>::apply_so_correction(sddk::Wave_functions<T>& psi__, std::vector
         auto& atom = unit_cell_.atom(ia);
         int offset = psi__.offset_mt_coeffs(ialoc);
 
-        for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+        for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */
             int nrf = atom.type().indexr().num_rf(l);
 

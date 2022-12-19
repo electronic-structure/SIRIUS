@@ -49,7 +49,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
         bp.generate(icnk);
 
         /* store <beta|psi> for spin up and down */
-        matrix<T> beta_phi_chunks[2];
+        sddk::matrix<T> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kpoint__.num_occupied_bands(ispn);
@@ -71,7 +71,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
                 auto bp_base_phi_chunk = bp_base_.template inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0,
                                                                     nbnd);
 
-                splindex<splindex_t::block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
+                sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
 
                 int nbnd_loc = spl_nbnd.local_size();
 
@@ -88,7 +88,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
 
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij,
-                                       matrix<T>& beta_phi_chunk) {
+                                       sddk::matrix<T>& beta_phi_chunk) {
                         /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd[ibnd_loc];
@@ -114,7 +114,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point<real_type<T>>& kpoin
                             /* Qij exists only in the case of ultrasoft/PAW */
                             double qij{0};
                             if (unit_cell.atom(ia).type().augment()) {
-                                qij = ctx_.augmentation_op(iat)->q_mtrx(ibf, jbf);
+                                qij = ctx_.augmentation_op(iat).q_mtrx(ibf, jbf);
                             }
                             double_complex dij{0};
 
