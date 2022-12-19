@@ -1,8 +1,8 @@
-#include "utils/profiler.hpp"
 #include <sirius.hpp>
 #include <utils/json.hpp>
-#include "nlcglib/adaptor.hpp"
+#include <nlcglib/adaptor.hpp>
 #include <nlcglib/nlcglib.hpp>
+#include "utils/profiler.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -30,14 +30,13 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 
     auto& inp = ctx.cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
+        RTE_THROW("this is not a Gamma-point calculation")
     }
 
     ctx.import(args__);
 
     return ctx_ptr;
 }
-
 
 double ground_state(Simulation_context& ctx,
                     task_t              task,
