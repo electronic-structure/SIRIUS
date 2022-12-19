@@ -473,7 +473,7 @@ class Eigensolver_elpa : public Eigensolver
 class Eigensolver_elpa : public Eigensolver
 {
   public:
-    Eigensolver_elpa(int stage__);
+    Eigensolver_elpa(int stage__)
         : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
