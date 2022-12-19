@@ -49,7 +49,7 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                         dot(sym[isym].spg_op.invR, r3::vector<int>(T));
             if (!occ_mtrx_T_.count(Ttot)) {
-                occ_mtrx_T_[Ttot] = sddk::mdarray<double_complex, 3>(nhwf, nhwf, ctx_.num_mag_comp());
+                occ_mtrx_T_[Ttot] = sddk::mdarray<std::complex<double>, 3>(nhwf, nhwf, ctx_.num_mag_comp());
                 occ_mtrx_T_[Ttot].zero();
             }
         }
@@ -202,7 +202,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
             for (auto& e : this->occ_mtrx_T_) {
                 /* e^{-i k T} */
-                auto z1 = std::exp(double_complex(0, -twopi * dot(e.first, kp__.vk())));
+                auto z1 = std::exp(std::complex<double>(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
                         e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
@@ -227,7 +227,7 @@ Occupation_matrix::symmetrize()
 
     auto& sym      = ctx_.unit_cell().symmetry();
     const double f = 1.0 / sym.size();
-    std::vector<sddk::mdarray<double_complex, 3>> local_tmp;
+    std::vector<sddk::mdarray<std::complex<double>, 3>> local_tmp;
 
     local_tmp.resize(local_.size());
 
@@ -237,10 +237,10 @@ Occupation_matrix::symmetrize()
         // We can skip the symmetrization for this atomic level since it does not contribute to the Hubbard correction
         // (or U = 0)
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-            local_tmp[at_lvl] = sddk::mdarray<double_complex, 3>(local_[at_lvl].size(0), local_[at_lvl].size(1), 4);
+            local_tmp[at_lvl] = sddk::mdarray<std::complex<double>, 3>(local_[at_lvl].size(0), local_[at_lvl].size(1), 4);
             // TODO: use std::copy
             memcpy(local_tmp[at_lvl].at(sddk::memory_t::host), local_[at_lvl].at(sddk::memory_t::host),
-                   sizeof(double_complex) * local_[at_lvl].size());
+                   sizeof(std::complex<double>) * local_[at_lvl].size());
         } else {
             local_tmp[at_lvl].zero();
         }
@@ -256,7 +256,7 @@ Occupation_matrix::symmetrize()
             int il             = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
             const int lmmax_at = 2 * il + 1;
             // local_[at_lvl].zero();
-            sddk::mdarray<double_complex, 3> dm_ia(lmmax_at, lmmax_at, 4);
+            sddk::mdarray<std::complex<double>, 3> dm_ia(lmmax_at, lmmax_at, 4);
             for (int isym = 0; isym < sym.size(); isym++) {
                 int pr            = sym[isym].spg_op.proper;
                 auto eang         = sym[isym].spg_op.euler_angles;
@@ -299,7 +299,7 @@ Occupation_matrix::symmetrize()
 
                         for (int m1 = 0; m1 < lmmax_at; m1++) {
                             for (int m2 = 0; m2 < lmmax_at; m2++) {
-                                double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
+                                std::complex<double> dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
 
                                 for (int s1p = 0; s1p < 2; s1p++) {
                                     for (int s2p = 0; s2p < 2; s2p++) {
@@ -317,8 +317,8 @@ Occupation_matrix::symmetrize()
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
                         for (int m2 = 0; m2 < lmmax_at; m2++) {
 
-                            double_complex dm[2][2];
-                            double_complex dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+                            std::complex<double> dm[2][2];
+                            std::complex<double> dm1[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                                 for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                                     dm[s1][s2] = dm_ia(m1, m2, s_idx[s1][s2]);
@@ -387,7 +387,7 @@ Occupation_matrix::symmetrize()
             int at2_lvl    = find_orbital_index(jap, n2, jl);
             auto& occ_mtrx = occ_mtrx_T_[Ttot];
 
-            sddk::mdarray<double_complex, 3> dm_ia_ja(2 * il + 1, 2 * jl + 1, ctx_.num_spins());
+            sddk::mdarray<std::complex<double>, 3> dm_ia_ja(2 * il + 1, 2 * jl + 1, ctx_.num_spins());
             dm_ia_ja.zero();
             /* apply spatial rotation */
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -419,7 +419,7 @@ Occupation_matrix::symmetrize()
 
                     for (int m1 = 0; m1 < ib; m1++) {
                         for (int m2 = 0; m2 < jb; m2++) {
-                            double_complex dm[2][2] = {{dm_ia_ja(m1, m2, 0), 0}, {0, dm_ia_ja(m1, m2, 1)}};
+                            std::complex<double> dm[2][2] = {{dm_ia_ja(m1, m2, 0), 0}, {0, dm_ia_ja(m1, m2, 1)}};
 
                             for (int s1p = 0; s1p < 2; s1p++) {
                                 for (int s2p = 0; s2p < 2; s2p++) {
@@ -495,9 +495,9 @@ Occupation_matrix::init()
                         // double c1, s1;
                         // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
                         double c1 = atom.vector_field()[2];
-                        double_complex cs =
-                            double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
-                        double_complex ns[4];
+                        std::complex<double> cs =
+                            std::complex<double>(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        std::complex<double> ns[4];
 
                         if (charge > (lmax_at)) {
                             ns[majs] = 1.0;

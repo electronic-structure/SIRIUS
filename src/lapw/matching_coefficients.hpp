@@ -62,10 +62,10 @@ class Matching_coefficients // TODO: compute on GPU
     std::vector<double> gkvec_len_;
 
     /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
-    sddk::mdarray<double_complex, 2> gkvec_ylm_;
+    sddk::mdarray<std::complex<double>, 2> gkvec_ylm_;
 
     /// Precomputed values for the linear equations for matching coefficients.
-    sddk::mdarray<double_complex, 4> alm_b_;
+    sddk::mdarray<std::complex<double>, 4> alm_b_;
 
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk           Number of G+k vectors.
@@ -78,10 +78,10 @@ class Matching_coefficients // TODO: compute on GPU
      *  \param [out] alm          Pointer to alm coefficients.
      */
     template <int N, bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
-    inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
-                         r3::matrix<double> const& A, T* alm) const
+    inline void generate(int ngk, std::vector<std::complex<double>> const& phase_factors__, int iat, int l, int lm,
+            int nu, r3::matrix<double> const& A, T* alm) const
     {
-        double_complex zt;
+        std::complex<double> zt;
 
         for (int igk = 0; igk < ngk; igk++) {
             switch (N) {
@@ -116,13 +116,13 @@ class Matching_coefficients // TODO: compute on GPU
         int lmax_apw  = unit_cell__.lmax_apw();
         int lmmax_apw = utils::lmmax(lmax_apw);
 
-        gkvec_ylm_ = sddk::mdarray<double_complex, 2>(gkvec_.count(), lmmax_apw);
+        gkvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(gkvec_.count(), lmmax_apw);
         gkvec_len_.resize(gkvec_.count());
 
         /* get length and Ylm harmonics of G+k vectors */
         #pragma omp parallel
         {
-            std::vector<double_complex> ylm(lmmax_apw);
+            std::vector<std::complex<double>> ylm(lmmax_apw);
 
             #pragma omp for
             for (int i = 0; i < gkvec_.count(); i++) {
@@ -140,7 +140,7 @@ class Matching_coefficients // TODO: compute on GPU
             }
         }
 
-        alm_b_ = sddk::mdarray<double_complex, 4>(3, gkvec_.count(), lmax_apw + 1, unit_cell_.num_atom_types());
+        alm_b_ = sddk::mdarray<std::complex<double>, 4>(3, gkvec_.count(), lmax_apw + 1, unit_cell_.num_atom_types());
         alm_b_.zero();
 
         #pragma omp parallel
@@ -174,7 +174,7 @@ class Matching_coefficients // TODO: compute on GPU
                     }
 
                     for (int l = 0; l <= lmax_apw; l++) {
-                        double_complex z       = std::pow(double_complex(0, 1), l);
+                        std::complex<double> z       = std::pow(std::complex<double>(0, 1), l);
                         double f               = fourpi / std::sqrt(unit_cell_.omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0);
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);
@@ -198,10 +198,10 @@ class Matching_coefficients // TODO: compute on GPU
 
         int iat = type.id();
 
-        std::vector<double_complex> phase_factors(gkvec_.count());
+        std::vector<std::complex<double>> phase_factors(gkvec_.count());
         for (int i = 0; i < gkvec_.count(); i++) {
             double phase     = twopi * dot(gkvec_.template gkvec<sddk::index_domain_t::local>(i), atom__.position());
-            phase_factors[i] = std::exp(double_complex(0, phase));
+            phase_factors[i] = std::exp(std::complex<double>(0, phase));
         }
 
         const double eps{0.1};

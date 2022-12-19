@@ -33,8 +33,8 @@ class Hubbard_matrix
 {
   protected:
     Simulation_context& ctx_;
-    std::vector<sddk::mdarray<double_complex, 3>> local_;
-    std::vector<sddk::mdarray<double_complex, 3>> nonlocal_;
+    std::vector<sddk::mdarray<std::complex<double>, 3>> local_;
+    std::vector<sddk::mdarray<std::complex<double>, 3>> nonlocal_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
 
@@ -57,7 +57,7 @@ class Hubbard_matrix
      * \param [inout] occ  Pointer to external occupancy tensor.
      * \param [in]    ld   Leading dimension of the outside tensor.
      * \return return the occupancy matrix if the first parameter is set to "get". */
-    void access(std::string const& what__, double_complex* ptr__, int ld__);
+    void access(std::string const& what__, std::complex<double>* ptr__, int ld__);
 
     void print_local(int ia__, std::ostream& out__) const;
 
@@ -65,7 +65,7 @@ class Hubbard_matrix
 
     void zero();
 
-    sddk::mdarray<double_complex, 3>& local(int ia__)
+    sddk::mdarray<std::complex<double>, 3>& local(int ia__)
     {
         return local_[ia__];
     }
@@ -90,7 +90,7 @@ class Hubbard_matrix
         return offset_;
     }
 
-    sddk::mdarray<double_complex, 3> const& local(int ia__) const
+    sddk::mdarray<std::complex<double>, 3> const& local(int ia__) const
     {
         return local_[ia__];
     }
@@ -106,12 +106,12 @@ class Hubbard_matrix
         return nonlocal_;
     }
 
-    sddk::mdarray<double_complex, 3>& nonlocal(int idx__)
+    auto& nonlocal(int idx__)
     {
         return nonlocal_[idx__];
     }
 
-    sddk::mdarray<double_complex, 3> const& nonlocal(int idx__) const
+    auto const& nonlocal(int idx__) const
     {
         return nonlocal_[idx__];
     }

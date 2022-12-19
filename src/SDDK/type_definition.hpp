@@ -9,8 +9,6 @@
 #include <type_traits>
 #include <complex>
 
-using double_complex = std::complex<double>;
-
 // define type traits that return real type
 // general case for real type
 template <typename T>

@@ -36,7 +36,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
             // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
             auto phase        = twopi * dot(kp__.gkvec().gkvec<sddk::index_domain_t::local>(igkloc),
                                             ctx__.unit_cell().atom(ia).position());
-            auto phase_factor = std::exp(double_complex(0.0, phase));
+            auto phase_factor = std::exp(std::complex<double>(0.0, phase));
             for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
                 /*  orbital quantum  number of this atomic orbital */
                 int l = atom_type.indexb_wfs().l(xi);
@@ -46,7 +46,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
                 int idxrf = atom_type.indexb_wfs().idxrf(xi);
                 int offset_in_wf = num_ps_atomic_wf.second[ia] + xi;
 
-                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx__.unit_cell().omega());
+                auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(ctx__.unit_cell().omega());
 
                 /* case |G+k| = 0 */
                 if (gvs[0] < 1e-10) {

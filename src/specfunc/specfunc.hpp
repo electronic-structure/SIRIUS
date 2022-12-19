@@ -230,7 +230,7 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
         Assumptions -> {0 <= t <= Pi}]]], {l, 0, 4}, {m, 0, l}]
     \endverbatim
  */
-inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_complex* ylm)
+inline void spherical_harmonics_ref(int lmax, double theta, double phi, std::complex<double>* ylm)
 {
     double x = std::cos(theta);
 
@@ -242,7 +242,7 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_c
     }
 
     for (int m = 1; m <= lmax; m++) {
-        double_complex z = std::exp(double_complex(0.0, m * phi)) * std::pow(-1, m);
+        std::complex<double> z = std::exp(std::complex<double>(0.0, m * phi)) * std::pow(-1, m);
         for (int l = m; l <= lmax; l++) {
             ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] * z;
             if (m % 2) {
@@ -255,7 +255,7 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_c
 }
 
 /// Optimized implementation of complex spherical harmonics.
-inline void spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
+inline void spherical_harmonics(int lmax, double theta, double phi, std::complex<double>* ylm)
 {
     double x = std::cos(theta);
 
@@ -279,8 +279,8 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double_compl
         for (int l = m; l <= lmax; l++) {
             double p = std::real(ylm[utils::lm(l, m)]);
             double p1 = p * phase;
-            ylm[utils::lm(l, m)] = double_complex(p * c, p * s);
-            ylm[utils::lm(l, -m)] = double_complex(p1 * c, -p1 * s);
+            ylm[utils::lm(l, m)] = std::complex<double>(p * c, p * s);
+            ylm[utils::lm(l, -m)] = std::complex<double>(p1 * c, -p1 * s);
         }
         phase = -phase;
     }
@@ -336,7 +336,7 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* 
     /* reference code */
     int lmmax = (lmax + 1) * (lmax + 1);
 
-    std::vector<double_complex> ylm(lmmax);
+    std::vector<std::complex<double>> ylm(lmmax);
     sf::spherical_harmonics_ref(lmax, theta, phi, &ylm[0]);
 
     double const t = std::sqrt(2.0);

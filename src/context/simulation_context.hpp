@@ -41,7 +41,7 @@
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
-                                           double const* atom_pos__, double_complex* phase_factors__);
+                                           double const* atom_pos__, std::complex<double>* phase_factors__);
 #endif
 
 namespace sirius {
@@ -166,13 +166,13 @@ class Simulation_context : public Simulation_parameters
     std::string start_time_tag_;
 
     /// 1D phase factors for each atom coordinate and G-vector index.
-    sddk::mdarray<double_complex, 3> phase_factors_;
+    sddk::mdarray<std::complex<double>, 3> phase_factors_;
 
     /// 1D phase factors of the symmetry operations.
-    sddk::mdarray<double_complex, 3> sym_phase_factors_;
+    sddk::mdarray<std::complex<double>, 3> sym_phase_factors_;
 
     /// Phase factors for atom types.
-    sddk::mdarray<double_complex, 2> phase_factors_t_;
+    sddk::mdarray<std::complex<double>, 2> phase_factors_t_;
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     sddk::mdarray<int, 2> gvec_coord_;
@@ -246,7 +246,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Plane wave expansion coefficients of the step function.
-    sddk::mdarray<double_complex, 1> theta_pw_;
+    sddk::mdarray<std::complex<double>, 1> theta_pw_;
 
     /// Step function on the real-space grid.
     sddk::mdarray<double, 1> theta_;
@@ -573,7 +573,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
-    void generate_phase_factors(int iat__, sddk::mdarray<double_complex, 2>& phase_factors__) const;
+    void generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const;
 
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
@@ -585,7 +585,7 @@ class Simulation_context : public Simulation_parameters
         double fourpi_omega = fourpi / unit_cell().omega();
 
         int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
+        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
 
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -615,7 +615,7 @@ class Simulation_context : public Simulation_parameters
         double fourpi_omega = fourpi / unit_cell().omega();
 
         int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
+        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
 
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -640,7 +640,7 @@ class Simulation_context : public Simulation_parameters
     sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
-    sddk::matrix<double_complex> generate_gvec_ylm(int lmax__);
+    sddk::matrix<std::complex<double>> generate_gvec_ylm(int lmax__);
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
     /// MT boundary values.
@@ -650,8 +650,8 @@ class Simulation_context : public Simulation_parameters
      *     e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
      *  \f]
      */
-    sddk::mdarray<double_complex, 2> sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                            sddk::matrix<double_complex>& gvec_ylm__);
+    sddk::mdarray<std::complex<double>, 2> sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
+                                            sddk::matrix<std::complex<double>>& gvec_ylm__);
 
     inline auto const& beta_ri() const
     {

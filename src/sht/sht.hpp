@@ -68,7 +68,7 @@ ClebschGordan(const int l, const double j, const double mj, const int spin);
 
 // mj is normally half integer from -j to j but to avoid computation
 // error it is considered as integer so mj = 2 mj
-double_complex
+std::complex<double>
 calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
 
 }
@@ -102,10 +102,10 @@ class SHT // TODO: better name
     std::vector<double> w_;
 
     /// Backward transformation from Ylm to spherical coordinates.
-    sddk::mdarray<double_complex, 2> ylm_backward_;
+    sddk::mdarray<std::complex<double>, 2> ylm_backward_;
 
     /// Forward transformation from spherical coordinates to Ylm.
-    sddk::mdarray<double_complex, 2> ylm_forward_;
+    sddk::mdarray<std::complex<double>, 2> ylm_forward_;
 
     /// Backward transformation from Rlm to spherical coordinates.
     sddk::mdarray<double, 2> rlm_backward_;
@@ -162,9 +162,9 @@ class SHT // TODO: better name
             }
         }
 
-        ylm_backward_ = sddk::mdarray<double_complex, 2>(lmmax_, num_points_);
+        ylm_backward_ = sddk::mdarray<std::complex<double>, 2>(lmmax_, num_points_);
 
-        ylm_forward_ = sddk::mdarray<double_complex, 2>(num_points_, lmmax_);
+        ylm_forward_ = sddk::mdarray<std::complex<double>, 2>(num_points_, lmmax_);
 
         rlm_backward_ = sddk::mdarray<double, 2>(lmmax_, num_points_);
 
@@ -261,7 +261,7 @@ class SHT // TODO: better name
     void forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm) const;
 
     /// Convert form Rlm to Ylm representation.
-    static void convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__)
+    static void convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__)
     {
         int lm = 0;
         for (int l = 0; l <= lmax__; l++) {
@@ -278,7 +278,7 @@ class SHT // TODO: better name
     }
 
     /// Convert from Ylm to Rlm representation.
-    static void convert(int lmax__, double_complex const* f_ylm__, double* f_rlm__)
+    static void convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
     {
         int lm = 0;
         for (int l = 0; l <= lmax__; l++) {
@@ -388,36 +388,36 @@ class SHT // TODO: better name
         Rlm[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
         \endverbatim
      */
-    static inline double_complex ylm_dot_rlm(int l, int m1, int m2)
+    static inline std::complex<double> ylm_dot_rlm(int l, int m1, int m2)
     {
         double const isqrt2 = 1.0 / std::sqrt(2);
 
         assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
 
         if (!((m1 == m2) || (m1 == -m2))) {
-            return double_complex(0, 0);
+            return std::complex<double>(0, 0);
         }
 
         if (m1 == 0) {
-            return double_complex(1, 0);
+            return std::complex<double>(1, 0);
         }
 
         if (m1 < 0) {
             if (m2 < 0) {
-                return -double_complex(0, isqrt2);
+                return -std::complex<double>(0, isqrt2);
             } else {
-                return std::pow(-1.0, m2) * double_complex(isqrt2, 0);
+                return std::pow(-1.0, m2) * std::complex<double>(isqrt2, 0);
             }
         } else {
             if (m2 < 0) {
-                return std::pow(-1.0, m1) * double_complex(0, isqrt2);
+                return std::pow(-1.0, m1) * std::complex<double>(0, isqrt2);
             } else {
-                return double_complex(isqrt2, 0);
+                return std::complex<double>(isqrt2, 0);
             }
         }
     }
 
-    static inline double_complex rlm_dot_ylm(int l, int m1, int m2)
+    static inline std::complex<double> rlm_dot_ylm(int l, int m1, int m2)
     {
         return std::conj(ylm_dot_rlm(l, m2, m1));
     }
@@ -503,7 +503,7 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double_complex gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
+    static std::complex<double> gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         assert(l1 >= 0);
         assert(l2 >= 0);
@@ -513,7 +513,7 @@ class SHT // TODO: better name
         assert(m3 >= -l3 && m3 <= l3);
 
         if (m2 == 0) {
-            return double_complex(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
+            return std::complex<double>(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
         } else {
             return (ylm_dot_rlm(l2, m2, m2) * gaunt_yyy(l1, l2, l3, m1, m2, m3) +
                     ylm_dot_rlm(l2, -m2, m2) * gaunt_yyy(l1, l2, l3, m1, -m2, m3));

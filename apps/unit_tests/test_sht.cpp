@@ -35,13 +35,13 @@ double test1_angular_radial_complex(int lmax__)
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
-    Spheric_function<function_domain_t::spectral, double_complex> f1(lmmax, r);
+    Spheric_function<function_domain_t::spectral, std::complex<double>> f1(lmmax, r);
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int l = 0; l <= lmax__; l++) {
             f1(utils::lm(l, 0), ir) = utils::random<double>();
             for (int m = 1; m <= l; m++) {
-                f1(utils::lm(l, m), ir) = utils::random<double_complex>();
+                f1(utils::lm(l, m), ir) = utils::random<std::complex<double>>();
                 f1(utils::lm(l, -m), ir) = std::pow(-1, m) * std::conj(f1(utils::lm(l, m), ir));
             }
         }

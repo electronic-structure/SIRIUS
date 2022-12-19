@@ -94,7 +94,7 @@ int run_test_impl(cmd_args& args)
 int run_test(cmd_args& args)
 {
     int result = run_test_impl<double>(args);
-    result += run_test_impl<double_complex>(args);
+    result += run_test_impl<std::complex<double>>(args);
     return result;
 }
 

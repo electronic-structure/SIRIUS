@@ -37,7 +37,7 @@ namespace sirius {
 /** This class works in conjugation with SHT class which provides the transformation between spherical
     harmonics and spherical coordinates and also a conversion between real and complex spherical harmonics.
  */
-template <function_domain_t domain_t, typename T = double_complex>
+template <function_domain_t domain_t, typename T = std::complex<double>>
 class Spheric_function: public sddk::mdarray<T, 2>
 {
   private:
@@ -201,7 +201,7 @@ class Spheric_function: public sddk::mdarray<T, 2>
 };
 
 /// 3D vector function.
-template <function_domain_t domain_t, typename T = double_complex>
+template <function_domain_t domain_t, typename T = std::complex<double>>
 class Spheric_vector_function : public std::array<Spheric_function<domain_t, T>, 3>
 {
   private:
@@ -424,14 +424,14 @@ laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
 }
 
 /// Convert from Ylm to Rlm representation.
-inline void convert(Spheric_function<function_domain_t::spectral, double_complex> const& f__,
+inline void convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__,
                     Spheric_function<function_domain_t::spectral, double>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
-    std::vector<double_complex> tpp(f__.angular_domain_size());
-    std::vector<double_complex> tpm(f__.angular_domain_size());
+    std::vector<std::complex<double>> tpp(f__.angular_domain_size());
+    std::vector<std::complex<double>> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
             int lm = utils::lm(l, m);
@@ -457,7 +457,7 @@ inline void convert(Spheric_function<function_domain_t::spectral, double_complex
 }
 
 /// Convert from Ylm to Rlm representation.
-inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_function<function_domain_t::spectral, double_complex> const& f__)
+inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__)
 {
     Spheric_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
@@ -466,13 +466,13 @@ inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_fun
 
 /// Convert from Rlm to Ylm representation.
 inline void convert(Spheric_function<function_domain_t::spectral, double> const& f__,
-                    Spheric_function<function_domain_t::spectral, double_complex>& g__)
+                    Spheric_function<function_domain_t::spectral, std::complex<double>>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
-    std::vector<double_complex> tpp(f__.angular_domain_size());
-    std::vector<double_complex> tpm(f__.angular_domain_size());
+    std::vector<std::complex<double>> tpp(f__.angular_domain_size());
+    std::vector<std::complex<double>> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
             int lm = utils::lm(l, m);
@@ -498,9 +498,9 @@ inline void convert(Spheric_function<function_domain_t::spectral, double> const&
 }
 
 /// Convert from Rlm to Ylm representation.
-inline Spheric_function<function_domain_t::spectral, double_complex> convert(Spheric_function<function_domain_t::spectral, double> const& f__)
+inline Spheric_function<function_domain_t::spectral, std::complex<double>> convert(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
-    Spheric_function<function_domain_t::spectral, double_complex> g(f__.angular_domain_size(), f__.radial_grid());
+    Spheric_function<function_domain_t::spectral, std::complex<double>> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
     return g;
 }
@@ -539,9 +539,9 @@ inline Spheric_function<function_domain_t::spectral, T> transform(SHT const& sht
 }
 
 /// Gradient of the function in complex spherical harmonics.
-inline Spheric_vector_function<function_domain_t::spectral, double_complex> gradient(Spheric_function<function_domain_t::spectral, double_complex> const& f)
+inline Spheric_vector_function<function_domain_t::spectral, std::complex<double>> gradient(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f)
 {
-    Spheric_vector_function<function_domain_t::spectral, double_complex> g(f.angular_domain_size(), f.radial_grid());
+    Spheric_vector_function<function_domain_t::spectral, std::complex<double>> g(f.angular_domain_size(), f.radial_grid());
     for (int i = 0; i < 3; i++) {
         g[i].zero();
     }
@@ -577,13 +577,13 @@ inline Spheric_vector_function<function_domain_t::spectral, double_complex> grad
         }
     }
 
-    double_complex d1(1.0 / std::sqrt(2.0), 0);
-    double_complex d2(0, 1.0 / std::sqrt(2.0));
+    std::complex<double> d1(1.0 / std::sqrt(2.0), 0);
+    std::complex<double> d2(0, 1.0 / std::sqrt(2.0));
 
     for (int ir = 0; ir < f.radial_grid().num_points(); ir++) {
         for (int lm = 0; lm < f.angular_domain_size(); lm++) {
-            double_complex g_p = g[0](lm, ir);
-            double_complex g_m = g[1](lm, ir);
+            std::complex<double> g_p = g[0](lm, ir);
+            std::complex<double> g_m = g[1](lm, ir);
             g[0](lm, ir) = d1 * (g_m - g_p);
             g[1](lm, ir) = d2 * (g_m + g_p);
         }
@@ -607,9 +607,9 @@ inline Spheric_vector_function<function_domain_t::spectral, double> gradient(Sph
 }
 
 /// Divergence of the vector function in complex spherical harmonics.
-inline Spheric_function<function_domain_t::spectral, double_complex> divergence(Spheric_vector_function<function_domain_t::spectral, double_complex> const& vf__)
+inline Spheric_function<function_domain_t::spectral, std::complex<double>> divergence(Spheric_vector_function<function_domain_t::spectral, std::complex<double>> const& vf__)
 {
-    Spheric_function<function_domain_t::spectral, double_complex> g(vf__.angular_domain_size(), vf__.radial_grid());
+    Spheric_function<function_domain_t::spectral, std::complex<double>> g(vf__.angular_domain_size(), vf__.radial_grid());
     g.zero();
 
     for (int x: {0, 1, 2}) {

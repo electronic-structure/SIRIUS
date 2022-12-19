@@ -159,7 +159,7 @@ class K_point
     std::vector<std::vector<int>> atom_lo_rows_;
 
     /// Imaginary unit to the power of l.
-    std::vector<double_complex> zil_;
+    std::vector<std::complex<double>> zil_;
 
     /// Mapping between lm and l.
     std::vector<int> l_by_lm_;

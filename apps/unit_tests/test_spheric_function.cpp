@@ -72,7 +72,7 @@ int test3(int lmax, int nr)
     SHT sht(sddk::device_t::CPU, lmax);
 
     Spheric_function<function_domain_t::spectral, double> f1(lmmax, r);
-    Spheric_function<function_domain_t::spatial, double_complex> f3(sht.num_points(), r);
+    Spheric_function<function_domain_t::spatial, std::complex<double>> f3(sht.num_points(), r);
 
     /* real Rlm coefficients */
     for (int ir = 0; ir < nr; ir++) {
@@ -124,12 +124,12 @@ int test3(int lmax, int nr)
 */
 int test4()
 {
-    r3::vector<double_complex> ref_v(0.00106237, double_complex(0, -0.650989), 0);
+    r3::vector<std::complex<double>> ref_v(0.00106237, std::complex<double>(0, -0.650989), 0);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
     int lmmax = 64;
-    Spheric_function<function_domain_t::spectral, double_complex> f(lmmax, r);
+    Spheric_function<function_domain_t::spectral, std::complex<double>> f(lmmax, r);
     f.zero();
 
     for (int ir = 0; ir < 1000; ir++) {
@@ -140,7 +140,7 @@ int test4()
 
     auto grad_f = gradient(f);
 
-    r3::vector<double_complex> v;
+    r3::vector<std::complex<double>> v;
     for (int x = 0; x < 3; x++) {
         v[x] = inner(f, grad_f[x]);
     }
@@ -365,7 +365,7 @@ int main(int argn, char** argv)
 
     err += call_test("Rlm -> Ylm -> Rlm conversion", [](){return test1<double>();});
     err += call_test("Rlm -> (t,p) -> Rlm transformation", [](){return test2<double>(10, 1000);});
-    err += call_test("Ylm -> (t,p) -> Ylm transformation", [](){return test2<double_complex>(10, 1000);});
+    err += call_test("Ylm -> (t,p) -> Ylm transformation", [](){return test2<std::complex<double>>(10, 1000);});
     err += call_test("Rlm -> (t,p) -> Ylm -> Rlm transformation", [](){return test3(10, 1000);});
     err += call_test("Gradient", test4);
     err += call_test("Many gradients", test5);

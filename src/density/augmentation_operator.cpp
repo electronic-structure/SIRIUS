@@ -28,7 +28,7 @@ namespace sirius {
 
 #if defined(SIRIUS_GPU)
 extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
-                                     double_complex const* zilm__, int const* l_by_lm__, int lmmax__,
+                                     std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__,
                                      double const* gc__, int ld0__, int ld1__,
                                      double const* gvec_rlm__, int ld2__,
                                      double const* ri_values__, int ld3__, int ld4__,
@@ -59,10 +59,10 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     auto l_by_lm = utils::l_by_lm(2 * lmax_beta);
 
-    sddk::mdarray<double_complex, 1> zilm(lmmax);
+    sddk::mdarray<std::complex<double>, 1> zilm(lmmax);
     for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
         for (int m = -l; m <= l; m++, lm++) {
-            zilm[lm] = std::pow(double_complex(0, 1), l);
+            zilm[lm] = std::pow(std::complex<double>(0, 1), l);
         }
     }
 
@@ -140,7 +140,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         case sddk::device_t::CPU: {
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
-                std::vector<double_complex> v(lmmax);
+                std::vector<std::complex<double>> v(lmmax);
                 for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++) {
                     int lm1     = idx(0, idx12);
                     int lm2     = idx(1, idx12);
@@ -149,7 +149,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
                         v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) *
                             ri_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc));
                     }
-                    double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                    std::complex<double> z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
                     q_pw_(idx12, 2 * igloc + 1) = z.imag();
                 }
@@ -373,10 +373,10 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
 
     auto l_by_lm = utils::l_by_lm(lmax_q);
 
-    sddk::mdarray<double_complex, 1> zilm(lmmax);
+    sddk::mdarray<std::complex<double>, 1> zilm(lmmax);
     for (int l = 0, lm = 0; l <= lmax_q; l++) {
         for (int m = -l; m <= l; m++, lm++) {
-            zilm[lm] = std::pow(double_complex(0, 1), l);
+            zilm[lm] = std::pow(std::complex<double>(0, 1), l);
         }
     }
 
@@ -392,7 +392,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 /* index of the G-vector shell */
                 int igsh = gvec_.gvec_shell_idx_local(igloc);
-                std::vector<double_complex> v(lmmax);
+                std::vector<std::complex<double>> v(lmmax);
                 double gvc_nu = gvec_cart_(nu__, igloc);
                 for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++) {
                     int lm1     = idx_(0, idx12);
@@ -404,7 +404,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
                             (rlm_dg_(lm3, nu__, igloc) * ri_values_(l, idxrf12, igsh) +
                              rlm_g_(lm3, igloc) * ri_dg_values_(l, idxrf12, igsh) * gvc_nu);
                     }
-                    double_complex z = fourpi * gaunt_coefs_->sum_L3_gaunt(lm2, lm1, &v[0]);
+                    std::complex<double> z = fourpi * gaunt_coefs_->sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
                     q_pw_(idx12, 2 * igloc + 1) = z.imag();
                 }

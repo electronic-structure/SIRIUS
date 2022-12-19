@@ -47,14 +47,14 @@ update_density_rg_1_complex_gpu_float(int size__, std::complex<float> const* psi
                                            float* density_rg__);
 
 void
-update_density_rg_1_complex_gpu_double(int size__, double_complex const* psi_rg__, double wt__, double* density_rg__);
+update_density_rg_1_complex_gpu_double(int size__, std::complex<double> const* psi_rg__, double wt__, double* density_rg__);
 
 void
 update_density_rg_2_gpu_float(int size__, std::complex<float> const* psi_rg_up__, std::complex<float> const* psi_rg_dn__,
                                    float wt__, float* density_x_rg__, float* density_y_rg__);
 
 void
-update_density_rg_2_gpu_double(int size__, double_complex const* psi_rg_up__, double_complex const* psi_rg_dn__,
+update_density_rg_2_gpu_double(int size__, std::complex<double> const* psi_rg_up__, std::complex<double> const* psi_rg_dn__,
                                     double wt__, double* density_x_rg__, double* density_y_rg__);
 
 void
@@ -64,7 +64,7 @@ generate_dm_pw_gpu(int num_atoms__, int num_gvec_loc__, int num_beta__, double c
 
 void
 sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, double const* dm_pw__,
-                        double const* sym_weight__, double_complex* rho_pw__, int stream_id__);
+                        double const* sym_weight__, std::complex<double>* rho_pw__, int stream_id__);
 
 }
 #endif
@@ -182,7 +182,7 @@ class Density : public Field4D
 
     /// Density matrix for all atoms.
     /** This is a global matrix, meaning that each MPI rank holds the full copy. This simplifies the symmetrization. */
-    sddk::mdarray<double_complex, 4> density_matrix_;
+    sddk::mdarray<std::complex<double>, 4> density_matrix_;
 
     /// Local fraction of atoms with PAW correction.
     paw_density paw_density_;
@@ -212,7 +212,7 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density,
+                                 Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, paw_density,
                                  Hubbard_matrix>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
@@ -230,7 +230,7 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<double_complex, 4> const& zdens__,
+    void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<std::complex<double>, 4> const& zdens__,
                                sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
@@ -262,7 +262,7 @@ class Density : public Field4D
         \tparam F  Type of the wave-functions inner product (used in pp-pw).
      */
     template <typename T, typename F>
-    void add_k_point_contribution_dm(K_point<T>& kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point<T>& kp__, sddk::mdarray<std::complex<double>, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
@@ -366,7 +366,7 @@ class Density : public Field4D
     void augment();
 
     /// Generate augmentation charge density.
-    sddk::mdarray<double_complex, 2> generate_rho_aug();
+    sddk::mdarray<std::complex<double>, 2> generate_rho_aug();
 
     /// Check density at MT boundary
     void check_density_continuity_at_mt()
@@ -391,7 +391,7 @@ class Density : public Field4D
 //            {
 //                double vgc[3];
 //                ctx_.get_coordinates<cartesian, reciprocal>(ctx_.gvec(ig), vgc);
-//                val_it += real(rho_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
+//                val_it += real(rho_->f_pw(ig) * exp(std::complex<double>(0.0, Utils::scalar_product(vc, vgc))));
 //            }
 //
 //            double val_mt = 0.0;
@@ -656,19 +656,19 @@ class Density : public Field4D
     /// Mix new density.
     double mix();
 
-    sddk::mdarray<double_complex, 4> const& density_matrix() const
+    sddk::mdarray<std::complex<double>, 4> const& density_matrix() const
     {
         return density_matrix_;
     }
 
-    sddk::mdarray<double_complex, 4>& density_matrix()
+    sddk::mdarray<std::complex<double>, 4>& density_matrix()
     {
         return density_matrix_;
     }
 
     /// Return density matrix in auxiliary form.
     sddk::mdarray<double, 3>
-    density_matrix_aux(sddk::mdarray<double_complex, 4> const& dm__, int iat__) const;
+    density_matrix_aux(sddk::mdarray<std::complex<double>, 4> const& dm__, int iat__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
     sddk::mdarray<double, 2>

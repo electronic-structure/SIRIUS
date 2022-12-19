@@ -127,7 +127,7 @@ Stress::calc_stress_hubbard()
 
     auto nhwf = ctx_.unit_cell().num_hubbard_wf().first;
 
-    sddk::mdarray<double_complex, 4> dn(nhwf, nhwf, 2, 9);
+    sddk::mdarray<std::complex<double>, 4> dn(nhwf, nhwf, 2, 9);
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         dn.allocate(ctx_.processing_unit_memory_t());
     }
@@ -185,7 +185,7 @@ Stress::calc_stress_hubbard()
                     int jn  = nl.n()[1];
                     auto Tr = nl.T();
 
-                    auto z1           = std::exp(double_complex(0, -twopi * dot(r3::vector<int>(Tr), kp->vk())));
+                    auto z1           = std::exp(std::complex<double>(0, -twopi * dot(r3::vector<int>(Tr), kp->vk())));
                     const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia, in, il);
                     const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
                     const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
@@ -420,7 +420,7 @@ Stress::calc_stress_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
-        sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+        sddk::mdarray<std::complex<double>, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
                                                        get_memory_pool(sddk::memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
@@ -511,7 +511,7 @@ Stress::calc_stress_ewald()
         double g2       = std::pow(G.length(), 2);
         double g2lambda = g2 / 4.0 / lambda;
 
-        double_complex rho(0, 0);
+        std::complex<double> rho(0, 0);
 
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(uc.atom(ia).zn());
