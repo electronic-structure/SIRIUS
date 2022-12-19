@@ -36,7 +36,7 @@ void test2()
     f["node1"].write("md1", md1);
     f["node1"].write(0, md1);
 
-    sddk::mdarray<double_complex, 2> md2(2, 4);
+    sddk::mdarray<std::complex<double>, 2> md2(2, 4);
     md2.zero();
     f["node1"].write("md2", md2);
     f["node1"].write(1, md2);
@@ -55,7 +55,7 @@ void test3()
     f["node1"].read("md1", md1);
     f["node1"].read(0, md1);
 
-    sddk::mdarray<double_complex, 2> md2(2, 4);
+    sddk::mdarray<std::complex<double>, 2> md2(2, 4);
     md2.zero();
     f["node1"].read("md2", md2);
     f["node1"].read(1, md2);

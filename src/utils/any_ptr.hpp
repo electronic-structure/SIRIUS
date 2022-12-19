@@ -25,6 +25,8 @@
 #ifndef __ANY_PTR_HPP__
 #define __ANY_PTR_HPP__
 
+#include <functional>
+
 namespace utils {
 
 /// Handle deallocation of a poiniter to an object of any type.

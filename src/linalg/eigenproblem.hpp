@@ -30,10 +30,6 @@
 #include "SDDK/omp.hpp"
 #include "eigensolver.hpp"
 
-#if defined(SIRIUS_ELPA)
-#include "elpa.hpp"
-#endif
-
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
 #include "gpu/magma.hpp"
 #endif
@@ -56,7 +52,7 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__){
+    int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__){
         PROFILE("Eigensolver_lapack|zheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
@@ -66,7 +62,7 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, sddk::dmatrix<float_complex>& A__, float* eval__, sddk::dmatrix<float_complex>& Z__){
+    int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<float>>& A__, float* eval__, sddk::dmatrix<std::complex<float>>& Z__){
         PROFILE("Eigensolver_lapack|cheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
@@ -131,7 +127,7 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__){
         PROFILE("Eigensolver_lapack|zheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
@@ -141,7 +137,7 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float_complex>& A__, float* eval__, sddk::dmatrix<float_complex>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<float>>& A__, float* eval__, sddk::dmatrix<std::complex<float>>& Z__){
         PROFILE("Eigensolver_lapack|cheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
@@ -260,8 +256,8 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, sddk::dmatrix<double_complex>& B__, double* eval__,
-              sddk::dmatrix<double_complex>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__, double* eval__,
+              sddk::dmatrix<std::complex<double>>& Z__){
         PROFILE("Eigensolver_lapack|zhegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
@@ -272,8 +268,8 @@ class Eigensolver_lapack : public Eigensolver
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float_complex>& A__, sddk::dmatrix<float_complex>& B__, float* eval__,
-              sddk::dmatrix<float_complex>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<float>>& A__, sddk::dmatrix<std::complex<float>>& B__, float* eval__,
+              sddk::dmatrix<std::complex<float>>& Z__){
         PROFILE("Eigensolver_lapack|chegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
@@ -442,349 +438,42 @@ class Eigensolver_elpa : public Eigensolver
 
     //}
   public:
-    Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
-        , stage_(stage__)
-    {
-        if (!(stage_ == 1 || stage_ == 2)) {
-            TERMINATE("wrong type of ELPA solver");
-        }
-    }
+    Eigensolver_elpa(int stage__);
+    static void initialize();
 
+    static void finalize();
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__,
-              double* eval__, sddk::dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_elpa|solve_gen");
-
-        int nt = omp_get_max_threads();
-
-        if (A__.num_cols_local() != Z__.num_cols_local()) {
-            TERMINATE("number of columns in A and Z don't match");
-        }
-
-        PROFILE_START("Eigensolver_elpa|solve_gen|setup");
-
-        int bs = A__.bs_row();
-
-        int error;
-        elpa_t handle;
-
-        handle = elpa_allocate(&error);
-        if (error != ELPA_OK) {
-            return 1;
-        }
-        elpa_set_integer(handle, "na", matrix_size__, &error);
-        elpa_set_integer(handle, "nev", nev__, &error);
-        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-        elpa_set_integer(handle, "nblk", bs, &error);
-        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
-        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_set_integer(handle, "omp_threads", nt, &error);
-        //if (error != ELPA_OK) {
-        //    TERMINATE("can't set elpa threads");
-        //}
-        if (acc::num_devices() != 0) {
-            elpa_set_integer(handle, "gpu", 1, &error);
-        }
-        if (stage_ == 1) {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-        } else {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-        }
-        elpa_setup(handle);
-        PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
-
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-
-        auto w = mph.get_unique_ptr<double>(matrix_size__);
-
-        elpa_generalized_eigenvectors_d(handle, A__.at(sddk::memory_t::host), B__.at(sddk::memory_t::host),
-            w.get(), Z__.at(sddk::memory_t::host), 0, &error);
-
-        if (error != ELPA_OK) {
-            elpa_deallocate(handle, &error);
-            return 1;
-        }
-
-        elpa_deallocate(handle, &error);
-
-        std::copy(w.get(), w.get() + nev__, eval__);
-
-        if (nt != omp_get_max_threads()) {
-            std::stringstream s;
-            s << "number of OMP threads was changed by elpa" << std::endl
-              << "  initial number of threads : " << nt << std::endl
-              << "  new number of threads : " <<  omp_get_max_threads();
-            TERMINATE(s);
-        }
-
-        return 0;
-
-        //to_std(matrix_size__, A__, B__, Z__);
-
-        ///* solve a standard problem */
-        //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-        //if (result) {
-        //    return result;
-        //}
-
-        //bt(matrix_size__, nev__, A__, B__, Z__);
-        //return 0;
-    }
+              double* eval__, sddk::dmatrix<double>& Z__);
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, sddk::dmatrix<double_complex>& B__,
-              double* eval__, sddk::dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_elpa|solve_gen");
-
-        int nt = omp_get_max_threads();
-
-        if (A__.num_cols_local() != Z__.num_cols_local()) {
-            TERMINATE("number of columns in A and Z don't match");
-        }
-
-        PROFILE_START("Eigensolver_elpa|solve_gen|setup");
-
-        int bs = A__.bs_row();
-
-        int error;
-        elpa_t handle;
-
-        handle = elpa_allocate(&error);
-        if (error != ELPA_OK) {
-            return 1;
-        }
-        elpa_set_integer(handle, "na", matrix_size__, &error);
-        elpa_set_integer(handle, "nev", nev__, &error);
-        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-        elpa_set_integer(handle, "nblk", bs, &error);
-        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
-        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_set_integer(handle, "omp_threads", nt, &error);
-        //if (error != ELPA_OK) {
-        //    TERMINATE("can't set elpa threads");
-        //}
-        if (acc::num_devices() != 0) {
-            elpa_set_integer(handle, "gpu", 1, &error);
-        }
-        if (stage_ == 1) {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-        } else {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-        }
-        elpa_setup(handle);
-        PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
-
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-
-        auto w = mph.get_unique_ptr<double>(matrix_size__);
-
-        using CT = double _Complex;
-        elpa_generalized_eigenvectors_dc(handle, (CT*)A__.at(sddk::memory_t::host), (CT*)B__.at(sddk::memory_t::host),
-            w.get(), (CT*)Z__.at(sddk::memory_t::host), 0, &error);
-
-        if (error != ELPA_OK) {
-            elpa_deallocate(handle, &error);
-            return 1;
-        }
-
-        elpa_deallocate(handle, &error);
-
-        std::copy(w.get(), w.get() + nev__, eval__);
-
-        if (nt != omp_get_max_threads()) {
-            std::stringstream s;
-            s << "number of OMP threads was changed by elpa" << std::endl
-              << "  initial number of threads : " << nt << std::endl
-              << "  new number of threads : " <<  omp_get_max_threads();
-            TERMINATE(s);
-        }
-
-        return 0;
-        //to_std(matrix_size__, A__, B__, Z__);
-
-        ///* solve a standard problem */
-        //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-        //if (result) {
-        //    return result;
-        //}
-
-        //bt(matrix_size__, nev__, A__, B__, Z__);
-        //return 0;
-    }
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__,
+              double* eval__, sddk::dmatrix<std::complex<double>>& Z__);
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__, double* eval__, sddk::dmatrix<double>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
-    }
+    int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__, double* eval__, sddk::dmatrix<double>& Z__);
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, sddk::dmatrix<double_complex>& A__, sddk::dmatrix<double_complex>& B__, double* eval__,
-              sddk::dmatrix<double_complex>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
-    }
+    int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__, double* eval__,
+              sddk::dmatrix<std::complex<double>>& Z__);
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
-    {
-        PROFILE("Eigensolver_elpa|solve_std");
-
-        int nt = omp_get_max_threads();
-
-        if (A__.num_cols_local() != Z__.num_cols_local()) {
-            TERMINATE("number of columns in A and Z don't match");
-        }
-
-        PROFILE_START("Eigensolver_elpa|solve_std|setup");
-
-        int bs = A__.bs_row();
-
-        int error;
-        elpa_t handle;
-
-        handle = elpa_allocate(&error);
-        if (error != ELPA_OK) {
-            return 1;
-        }
-        elpa_set_integer(handle, "na", matrix_size__, &error);
-        elpa_set_integer(handle, "nev", nev__, &error);
-        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-        elpa_set_integer(handle, "nblk", bs, &error);
-        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
-        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_set_integer(handle, "omp_threads", nt, &error);
-        //if (error != ELPA_OK) {
-        //    TERMINATE("can't set elpa threads");
-        //}
-        if (acc::num_devices() != 0) {
-            elpa_set_integer(handle, "gpu", 1, &error);
-        }
-        if (stage_ == 1) {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-        } else {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-        }
-        elpa_setup(handle);
-        PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
-
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto w = mph.get_unique_ptr<double>(matrix_size__);
-
-        elpa_eigenvectors_a_h_a_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
-
-        elpa_deallocate(handle, &error);
-
-        std::copy(w.get(), w.get() + nev__, eval__);
-        if (nt != omp_get_max_threads()) {
-            std::stringstream s;
-            s << "number of OMP threads was changed by elpa" << std::endl
-              << "  initial number of threads : " << nt << std::endl
-              << "  new number of threads : " <<  omp_get_max_threads();
-            TERMINATE(s);
-        }
-        return 0;
-    }
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__);
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, double* eval__,
-              sddk::dmatrix<double_complex>& Z__)
-    {
-        PROFILE("Eigensolver_elpa|solve_std");
-
-        int nt = omp_get_max_threads();
-
-        if (A__.num_cols_local() != Z__.num_cols_local()) {
-            TERMINATE("number of columns in A and Z don't match");
-        }
-
-        PROFILE_START("Eigensolver_elpa|solve_std|setup");
-
-        int bs = A__.bs_row();
-
-        int error;
-        elpa_t handle;
-
-        handle = elpa_allocate(&error);
-        if (error != ELPA_OK) {
-            return 1;
-        }
-        elpa_set_integer(handle, "na", matrix_size__, &error);
-        elpa_set_integer(handle, "nev", nev__, &error);
-        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-        elpa_set_integer(handle, "nblk", bs, &error);
-        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
-        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_set_integer(handle, "omp_threads", nt, &error);
-        //if (error != ELPA_OK) {
-        //    TERMINATE("can't set elpa threads");
-        //}
-        if (acc::num_devices() != 0) {
-            elpa_set_integer(handle, "gpu", 1, &error);
-        }
-        if (stage_ == 1) {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-        } else {
-            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-        }
-        elpa_setup(handle);
-        PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
-
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto w = mph.get_unique_ptr<double>(matrix_size__);
-
-        using CT = double _Complex;
-        auto A_ptr = A__.size_local() ? (CT*)A__.at(sddk::memory_t::host) : nullptr;
-        auto Z_ptr = Z__.size_local() ? (CT*)Z__.at(sddk::memory_t::host) : nullptr;
-        elpa_eigenvectors_a_h_a_dc(handle, A_ptr, w.get(), Z_ptr, &error);
-
-        elpa_deallocate(handle, &error);
-
-        std::copy(w.get(), w.get() + nev__, eval__);
-
-        if (nt != omp_get_max_threads()) {
-            std::stringstream s;
-            s << "number of OMP threads was changed by elpa" << std::endl
-              << "  initial number of threads : " << nt << std::endl
-              << "  new number of threads : " <<  omp_get_max_threads();
-            TERMINATE(s);
-        }
-
-        return 0;
-    }
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__,
+              sddk::dmatrix<std::complex<double>>& Z__);
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
-    }
-
+    int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__);
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
-    }
+    int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__);
 };
 #else
 class Eigensolver_elpa : public Eigensolver
 {
   public:
-    Eigensolver_elpa(int stage__)
+    Eigensolver_elpa(int stage__);
         : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
     {
     }
@@ -1531,8 +1220,8 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, sddk::dmatrix<double_complex>& B__,
-              double* eval__, sddk::dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__,
+              double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
     {
         PROFILE("Eigensolver_magma|zhegvdx");
 
@@ -1552,7 +1241,7 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto h_work = mphp.get_unique_ptr<std::complex<double>>(lwork);
         auto rwork = mphp.get_unique_ptr<double>(lrwork);
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
@@ -1633,7 +1322,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
     {
         PROFILE("Eigensolver_magma|zheevdx");
 
@@ -1650,7 +1339,7 @@ class Eigensolver_magma: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto h_work = mphp.get_unique_ptr<std::complex<double>>(lwork);
         auto rwork = mphp.get_unique_ptr<double>(lrwork);
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
@@ -1736,8 +1425,8 @@ class Eigensolver_magma_gpu: public Eigensolver
     //}
 
     ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    //int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, sddk::dmatrix<double_complex>& B__,
-    //          double* eval__, sddk::dmatrix<double_complex>& Z__)
+    //int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__,
+    //          double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
     //{
     //    int nt = omp_get_max_threads();
     //    int result{-1};
@@ -1754,7 +1443,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     //    int liwork;
     //    magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-    //    auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
+    //    auto h_work = mp_hp_.get_unique_ptr<std::complex<double>>(lwork);
     //    auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
     //    auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
 
@@ -1827,7 +1516,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     //}
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double_complex>& A__, double* eval__, sddk::dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
     {
         PROFILE("Eigensolver_magma_gpu|zheevdx");
 
@@ -1845,9 +1534,9 @@ class Eigensolver_magma_gpu: public Eigensolver
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
         int llda = matrix_size__ + 32;
-        auto z_work = mphp.get_unique_ptr<double_complex>(llda * matrix_size__);
+        auto z_work = mphp.get_unique_ptr<std::complex<double>>(llda * matrix_size__);
 
-        auto h_work = mphp.get_unique_ptr<double_complex>(lwork);
+        auto h_work = mphp.get_unique_ptr<std::complex<double>>(lwork);
         auto rwork = mphp.get_unique_ptr<double>(lrwork);
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
@@ -2154,7 +1843,7 @@ class Eigensolver_cuda: public Eigensolver
 //==         }
 //==
 //==         #ifdef __PLASMA
-//==         void solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t
+//==         void solve(int32_t matrix_size, std::complex<double>* A, int32_t lda, double* eval, std::complex<double>* Z, int32_t
 //ldz) const
 //==         {
 //==             //plasma_set_num_threads(1);

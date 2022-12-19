@@ -350,13 +350,13 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
 }
 
 double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
-                                           sddk::mdarray<double_complex, 4> const& density_matrix,
+                                           sddk::mdarray<std::complex<double>, 4> const& density_matrix,
                                            sddk::mdarray<double, 4> const& paw_dij) const
 {
     int ia      = pdd.ia;
     int paw_ind = pdd.ia_paw;
 
-    double_complex energy = 0.0;
+    std::complex<double> energy = 0.0;
 
     for (int ib2 = 0; ib2 < pdd.atom_->mt_lo_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 < pdd.atom_->mt_lo_basis_size(); ib1++) {

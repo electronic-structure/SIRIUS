@@ -11,7 +11,7 @@ void test1()
         double r = utils::random<double>();
         a[i] = {r, r, r};
     }
-    std::vector<double_complex> phase(N, 0);
+    std::vector<std::complex<double>> phase(N, 0);
     double t1{0};
     double t2{0};
 
@@ -19,14 +19,14 @@ void test1()
         double t = -omp_get_wtime();
         #pragma omp parallel for
         for (int i = 0; i < N; i++) {
-            phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
+            phase[i] = std::exp(std::complex<double>(0, dot(a[i], a[i])));
         }
         t1 += (t + omp_get_wtime());
 
         t = -omp_get_wtime();
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < N; i++) {
-            phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
+            phase[i] = std::exp(std::complex<double>(0, dot(a[i], a[i])));
         }
         t2 += (t + omp_get_wtime());
     }

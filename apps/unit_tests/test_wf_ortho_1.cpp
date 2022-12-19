@@ -28,7 +28,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
 
     sirius::randomize(phi);
 
-    sddk::dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
+    sddk::dmatrix<std::complex<double>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
 
     sddk::memory_t mem{sddk::memory_t::host};
     if (pu == sddk::device_t::GPU) {

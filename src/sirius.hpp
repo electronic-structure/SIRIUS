@@ -35,7 +35,7 @@
 #endif
 #include "linalg/linalg_spla.hpp"
 #if defined(SIRIUS_ELPA)
-#include "linalg/elpa.hpp"
+//#include <elpa/elpa.h>
 #endif
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
@@ -53,6 +53,7 @@ using json = nlohmann::json;
 #include "hdf5_tree.hpp"
 #include "band/band.hpp"
 #include "dft/dft_ground_state.hpp"
+#include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"
 
 #if defined(__PLASMA)
@@ -145,9 +146,10 @@ inline void initialize(bool call_mpi_init__ = true)
     libsci_acc_init();
 #endif
 #if defined(SIRIUS_ELPA)
-    if (elpa_init(20170403) != ELPA_OK) {
-        TERMINATE("ELPA API version not supported");
-    }
+    Eigensolver_elpa::initialize();
+    //if (elpa_init(20170403) != ELPA_OK) {
+    //    TERMINATE("ELPA API version not supported");
+    //}
 #endif
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
@@ -217,8 +219,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         sddk::Communicator::finalize();
     }
 #if defined(SIRIUS_ELPA)
-    int ierr;
-    elpa_uninit(&ierr);
+    Eigensolver_elpa::finalize();
+    //int ierr;
+    //elpa_uninit(&ierr);
 #endif
 
     is_initialized() = false;

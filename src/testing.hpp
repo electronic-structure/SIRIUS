@@ -261,7 +261,7 @@ randomize(wf::Wave_functions<T>& wf__)
         for (int s = 0; s < wf__.num_sc().get(); s++) {
             auto ptr = wf__.at(sddk::memory_t::host, 0, wf::spin_index(s), wf::band_index(i));
             for (int j = 0; j < wf__.ld(); j++) {
-                ptr[j] = utils::random<double_complex>();
+                ptr[j] = utils::random<std::complex<double>>();
             }
         }
     }

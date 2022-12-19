@@ -34,8 +34,6 @@
 #include <map>
 #include <algorithm>
 
-using double_complex = std::complex<double>;
-
 /// Spin-blocks of the Hamiltonian.
 enum class spin_block_t
 {
