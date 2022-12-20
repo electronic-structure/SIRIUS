@@ -28,9 +28,7 @@
 #include "communicator.hpp"
 #include "utils/utils.hpp"
 
-namespace sddk {
-
-// TODO: template over number of dimensions
+namespace mpi {
 
 /// MPI grid interface
 /** The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
@@ -145,6 +143,6 @@ class MPI_grid
     }
 };
 
-} // namespace sddk
+} // namespace mpi
 
 #endif // __MPI_GRID_HPP__

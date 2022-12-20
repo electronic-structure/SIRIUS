@@ -7,7 +7,7 @@ using namespace sirius;
 void test_wf_fft()
 {
     //sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
-    sddk::MPI_grid mpi_grid({1, 1}, sddk::Communicator::world());
+    mpi::MPI_grid mpi_grid({1, 1}, mpi::Communicator::world());
 
     /* creation of simple G+k vector set */
     auto gkvec = sddk::gkvec_factory(8.0, mpi_grid.communicator());

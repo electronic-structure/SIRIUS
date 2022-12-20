@@ -4,6 +4,7 @@
 
 using namespace sirius;
 using namespace sddk;
+using namespace mpi;
 
 template <typename T>
 int test_fft_complex(cmd_args& args, device_t fft_pu__)
@@ -48,7 +49,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
         diff = std::max(diff, static_cast<double>(std::abs(f[ig] - g[ig])));
     }
-    Communicator::world().allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+    Communicator::world().allreduce<double, mpi::op_t::max>(&diff, 1);
 
     if (diff > eps) {
         return 1;

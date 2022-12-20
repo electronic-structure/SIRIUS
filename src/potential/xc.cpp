@@ -66,7 +66,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce<double, sddk::mpi_op_t::min>(&rhomin, 1);
+    mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce<double, mpi::op_t::min>(&rhomin, 1);
     /* even a small negative density is a sign of something bing wrong; don't remove this check */
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;

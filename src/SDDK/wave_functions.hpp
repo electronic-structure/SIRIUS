@@ -523,14 +523,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
 {
   protected:
     /// Communicator that is used to split atoms between MPI ranks.
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
     /// Total number of atoms.
     int num_atoms_{0};
     /// Distribution of atoms between MPI ranks.
     sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
     /// Local size of muffin-tin coefficients for each rank.
     /** Each rank stores local fraction of atoms. Each atom has a set of MT coefficients. */
-    sddk::block_data_descriptor mt_coeffs_distr_;
+    mpi::block_data_descriptor mt_coeffs_distr_;
     /// Local offset in the block of MT coefficients for current rank.
     /** The size of the vector is equal to the local number of atoms for the current rank. */
     std::vector<int> offset_in_local_mt_coeffs_;
@@ -539,7 +539,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Calculate the local number of muffin-tin coefficients.
     /** Compute the local fraction of atoms and then sum the muffin-tin coefficients for this fraction. */
-    static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, sddk::Communicator const& comm__)
+    static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, mpi::Communicator const& comm__)
     {
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
         sddk::splindex<sddk::splindex_t::block> spl_atoms(num_atoms, comm__.size(), comm__.rank());
@@ -549,7 +549,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
     /// Construct without muffin-tin part.
-    Wave_functions_mt(sddk::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
+    Wave_functions_mt(mpi::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
             sddk::memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
         , comm_{comm__}
@@ -564,7 +564,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
     /// Constructor.
-    Wave_functions_mt(sddk::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
+    Wave_functions_mt(mpi::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__, int num_pw__ = 0)
         : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_md__, num_wf__,
                                  default_mem__)
@@ -573,7 +573,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
         , spl_num_atoms_{sddk::splindex<sddk::splindex_t::block>(num_atoms_, comm_.size(), comm_.rank())}
         , num_mt_coeffs_{num_mt_coeffs__}
     {
-        mt_coeffs_distr_ = sddk::block_data_descriptor(comm_.size());
+        mt_coeffs_distr_ = mpi::block_data_descriptor(comm_.size());
 
         for (int ia = 0; ia < num_atoms_; ia++) {
             int rank = spl_num_atoms_.local_rank(ia);
@@ -934,7 +934,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             int n_loc = spl_num_wf_.local_size();
 
             /* send and receive dimensions */
-            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];
                 rd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
@@ -1011,7 +1011,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
                 }
             }
             /* send and receive dimensions */
-            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
                 rd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];

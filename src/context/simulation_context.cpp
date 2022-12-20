@@ -364,7 +364,7 @@ Simulation_context::initialize()
     auto print_mpi_layout = env::print_mpi_layout();
 
     if (verbosity() >= 3 || print_mpi_layout) {
-        sddk::pstdout pout(comm());
+        mpi::pstdout pout(comm());
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << "------------------" << std::endl;
@@ -373,7 +373,7 @@ Simulation_context::initialize()
              << ", comm_band_rank: " << comm_band().rank()
              << ", comm_k_rank: " << comm_k().rank()
              << ", hostname: " << utils::hostname()
-             << ", mpi processor name: " << sddk::Communicator::processor_name() << std::endl;
+             << ", mpi processor name: " << mpi::Communicator::processor_name() << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
@@ -596,7 +596,7 @@ Simulation_context::initialize()
     if (std_solver.is_parallel()) {
         blacs_grid_ = std::make_unique<sddk::BLACS_grid>(comm_band(), npr, npc);
     } else {
-        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(sddk::Communicator::self(), 1, 1);
+        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     }
 
     /* setup the cyclic block size */
@@ -675,7 +675,7 @@ Simulation_context::print_info(std::ostream& out__) const
             os << std::endl;
         }
         os << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
-           << "number of MPI ranks per node  : " << sddk::num_ranks_per_node() << std::endl
+           << "number of MPI ranks per node  : " << mpi::num_ranks_per_node() << std::endl
            << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
            << "number of pages               : " << utils::get_num_pages() << std::endl
            << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
@@ -685,7 +685,7 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::ostream os(out__, "fft");
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
-        sddk::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
+        mpi::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
         sddk::FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
         sddk::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
@@ -1167,7 +1167,7 @@ Simulation_context::update()
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len<sddk::index_domain_t::local>(igloc));
         }
-        gvec().comm().allreduce<double, sddk::mpi_op_t::max>(&new_pw_cutoff, 1);
+        gvec().comm().allreduce<double, mpi::op_t::max>(&new_pw_cutoff, 1);
         /* estimate new G+k-vectors cutoff */
         double new_gk_cutoff = this->gk_cutoff();
         if (new_pw_cutoff > this->pw_cutoff()) {
@@ -1468,7 +1468,7 @@ Simulation_context::init_step_function()
         vit += theta_[i];
     }
     vit *= (unit_cell().omega() / fft_grid().num_points());
-    sddk::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
+    mpi::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
 
     if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
         std::stringstream s;
@@ -1481,7 +1481,7 @@ Simulation_context::init_step_function()
     if (cfg().control().print_checksum()) {
         auto z1 = theta_pw_.checksum();
         auto d1 = theta_.checksum();
-        sddk::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
+        mpi::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
         utils::print_checksum("theta", d1, this->out());
         utils::print_checksum("theta_pw", z1, this->out());
     }
@@ -1522,12 +1522,12 @@ Simulation_context::init_comm()
     }
 
     /* setup MPI grid */
-    mpi_grid_ = std::make_unique<sddk::MPI_grid>(std::vector<int>({npc, npr}), comm_band_);
+    mpi_grid_ = std::make_unique<mpi::MPI_grid>(std::vector<int>({npc, npr}), comm_band_);
 
     /* here we know the number of ranks for band parallelization */
 
     /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
-    if ((npr == npb) || (sddk::num_ranks_per_node() > acc::num_devices() && comm_band().size() > 1)) {
+    if ((npr == npb) || (mpi::num_ranks_per_node() > acc::num_devices() && comm_band().size() > 1)) {
         cfg().control().fft_mode("parallel");
     }
 

@@ -93,7 +93,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test_lapw_xc(args);
-    int rank = Communicator::world().rank();
+    int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (!rank) {
         const auto timing_result = ::utils::global_rtgraph_timer.process();

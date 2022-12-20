@@ -223,7 +223,7 @@ inline size_t spfft_grid_size_local(T const& spfft__)
     return spfft__.local_slice_size();
 }
 
-inline auto split_fft_z(int size_z__, sddk::Communicator const& comm_fft__)
+inline auto split_fft_z(int size_z__, mpi::Communicator const& comm_fft__)
 {
     return sddk::splindex<sddk::splindex_t::block>(size_z__, comm_fft__.size(), comm_fft__.rank());
 }

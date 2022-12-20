@@ -143,7 +143,7 @@ class Atom
      *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
      *  \f]
      */
-    inline void generate_radial_integrals(sddk::device_t pu__, sddk::Communicator const& comm__)
+    inline void generate_radial_integrals(sddk::device_t pu__, mpi::Communicator const& comm__)
     {
         PROFILE("sirius::Atom::generate_radial_integrals");
 
@@ -385,7 +385,7 @@ class Atom
         }
     }
 
-    inline void sync_radial_integrals(sddk::Communicator const& comm__, int const rank__)
+    inline void sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
     {
         comm__.bcast(h_radial_integrals_.at(sddk::memory_t::host), (int)h_radial_integrals_.size(), rank__);
         if (type().parameters().num_mag_dims()) {
@@ -393,7 +393,7 @@ class Atom
         }
     }
 
-    inline void sync_occupation_matrix(sddk::Communicator const& comm__, int const rank__)
+    inline void sync_occupation_matrix(mpi::Communicator const& comm__, int const rank__)
     {
         comm__.bcast(occupation_matrix_.at(sddk::memory_t::host), (int)occupation_matrix_.size(), rank__);
     }

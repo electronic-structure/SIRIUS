@@ -54,7 +54,7 @@ class Potential : public Field4D
 
     Unit_cell& unit_cell_;
 
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// Hartree potential.
     std::unique_ptr<Periodic_function<double>> hartree_potential_;

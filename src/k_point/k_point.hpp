@@ -56,7 +56,7 @@ class K_point
 
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// List of G-vectors with |G+k| < cutoff.
     std::shared_ptr<sddk::Gvec> gkvec_;
@@ -191,10 +191,10 @@ class K_point
     sddk::mdarray<std::complex<T>, 3> p_mtrx_;
 
     /// Communicator between(!!) rows.
-    sddk::Communicator const& comm_row_;
+    mpi::Communicator const& comm_row_;
 
     /// Communicator between(!!) columns.
-    sddk::Communicator const& comm_col_;
+    mpi::Communicator const& comm_col_;
 
     std::array<int, 2> ispn_map_{0, -1};
 

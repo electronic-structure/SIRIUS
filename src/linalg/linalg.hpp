@@ -44,7 +44,7 @@ namespace _local {
 /// check if device id has been set properly
 inline bool is_set_device_id()
 {
-    return acc::get_device_id() == sddk::get_device_id(acc::num_devices());
+    return acc::get_device_id() == mpi::get_device_id(acc::num_devices());
 }
 }
 
@@ -1813,7 +1813,7 @@ inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
                 max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
             }
         }
-        mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
+        mtrx__.blacs_grid().comm().template allreduce<real_type<T>, mpi::op_t::max>(&max_diff, 1);
     } else {
         for (int i = 0; i < n__; i++) {
             for (int j = 0; j < n__; j++) {
@@ -1843,7 +1843,7 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
             }
         }
     }
-    mtrx__.comm().template allreduce<real_type<T>, mpi_op_t::max>(&max_diff, 1);
+    mtrx__.comm().template allreduce<real_type<T>, mpi::op_t::max>(&max_diff, 1);
     return max_diff;
 }
 
@@ -1866,7 +1866,7 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 
             }
         }
     }
-    mtrx__.comm().template allreduce<double,  mpi_op_t::max>(&max_diff, 1);
+    mtrx__.comm().template allreduce<double,  mpi::op_t::max>(&max_diff, 1);
     return max_diff;
 }
 

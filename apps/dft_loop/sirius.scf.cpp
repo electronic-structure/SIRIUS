@@ -25,7 +25,7 @@ struct task_t
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    dict__["comm_world_size"] = sddk::Communicator::world().size();
+    dict__["comm_world_size"] = mpi::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
@@ -72,7 +72,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
     auto json = preprocess_json_input(fname__);
 
-    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
+    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), mpi::Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.cfg().parameters();
@@ -360,7 +360,7 @@ void run_tasks(cmd_args const& args)
     }
 
     if (!fs::exists(fpath)) {
-        if (Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;
@@ -508,7 +508,7 @@ void run_tasks(cmd_args const& args)
         band.solve<double, double>(ks, H0, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
-        if (Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
             dict["header"]["x_axis"] = x_axis;
@@ -587,7 +587,7 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    int my_rank = Communicator::world().rank();
+    int my_rank = mpi::Communicator::world().rank();
 
     sirius::finalize(1);
 

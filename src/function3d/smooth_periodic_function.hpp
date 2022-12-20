@@ -268,7 +268,7 @@ class Smooth_periodic_function
     inline T checksum_rg() const
     {
         T cs = this->f_rg_.checksum();
-        sddk::Communicator(this->spfft_->communicator()).allreduce(&cs, 1);
+        mpi::Communicator(this->spfft_->communicator()).allreduce(&cs, 1);
         return cs;
     }
 
@@ -293,7 +293,7 @@ class Smooth_periodic_function
 
     inline uint64_t hash_f_rg() const
     {
-        auto comm = sddk::Communicator(spfft_->communicator());
+        auto comm = mpi::Communicator(spfft_->communicator());
 
         uint64_t h;
         for (int r = 0; r < comm.size(); r++) {
@@ -455,7 +455,7 @@ inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const&
     PROFILE("sirius::inner");
 
     T result_rg = inner_local(f__, g__, std::forward<F>(theta__));
-    sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
+    mpi::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
 
     return result_rg;
 }

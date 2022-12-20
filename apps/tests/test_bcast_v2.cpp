@@ -9,11 +9,11 @@ int test1(int size)
     sddk::mdarray<char, 1> buf(size);
     buf.zero();
 
-    for (int r = 0; r < Communicator::world().size(); r++) {
-        Communicator::world().bcast(buf.at(memory_t::host), size, r);
+    for (int r = 0; r < mpi::Communicator::world().size(); r++) {
+        mpi::Communicator::world().bcast(buf.at(memory_t::host), size, r);
     }
     t += utils::wtime();
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("time : %f sec.\n", t);
     }
     return 0;
