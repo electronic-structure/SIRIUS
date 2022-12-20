@@ -34,9 +34,6 @@
 #include "gpu/cusolver.hpp"
 #endif
 #include "linalg/linalg_spla.hpp"
-#if defined(SIRIUS_ELPA)
-//#include <elpa/elpa.h>
-#endif
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"
@@ -58,11 +55,6 @@ using json = nlohmann::json;
 
 #if defined(__PLASMA)
 extern "C" void plasma_init(int num_cores);
-#endif
-
-#if defined(__LIBSCI_ACC)
-extern "C" void libsci_acc_init();
-extern "C" void libsci_acc_finalize();
 #endif
 
 /// Namespace of the SIRIUS library.
@@ -142,14 +134,8 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__PLASMA)
     plasma_init(omp_get_max_threads());
 #endif
-#if defined(__LIBSCI_ACC)
-    libsci_acc_init();
-#endif
 #if defined(SIRIUS_ELPA)
     Eigensolver_elpa::initialize();
-    //if (elpa_init(20170403) != ELPA_OK) {
-    //    TERMINATE("ELPA API version not supported");
-    //}
 #endif
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
@@ -168,11 +154,8 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(SIRIUS_MAGMA)
     magma::finalize();
 #endif
-#if defined(__LIBSCI_ACC)
-    libsci_acc_finalize();
-#endif
 
-    // must be called before device is reset
+    /* must be called before device is reset */
     splablas::reset_handle();
 
     sddk::get_memory_pool(sddk::memory_t::host).clear();
@@ -193,7 +176,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         }
     }
 
-    //utils::stop_global_timer();
 #if defined(__APEX)
     apex::finalize();
 #endif
@@ -220,8 +202,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
 #if defined(SIRIUS_ELPA)
     Eigensolver_elpa::finalize();
-    //int ierr;
-    //elpa_uninit(&ierr);
 #endif
 
     is_initialized() = false;
