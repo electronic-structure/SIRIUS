@@ -1,6 +1,8 @@
 #FROM nvcr.io/nvidia/nvhpc:22.9-devel-cuda_multi-ubuntu22.04 as builder
 FROM ubuntu:22.04 as builder
 
+ARG CUDA_ARCH=80
+
 ENV DEBIAN_FRONTEND noninteractive
 
 ENV FORCE_UNSAFE_CONFIGURE 1
@@ -44,7 +46,7 @@ RUN spack install mpich@${MPICH_VERSION} %gcc
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop%gcc build_type=Release +fortran +tests +scalapack +cuda cuda_arch=80 ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spla+cuda ^spfft+cuda cuda_arch=80"
+ENV SPEC="sirius@develop%gcc build_type=Release +fortran +tests +scalapack +cuda cuda_arch=${CUDA_ARCH} ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spla ^spfft+cuda cuda_arch=${CUDA_ARCH}"
 
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
