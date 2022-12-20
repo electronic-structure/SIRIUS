@@ -57,11 +57,11 @@ struct normalized_preconditioned_residuals_result
 //                                  int num_res_local__,
 //                                  int* res_idx__,
 //                                  double* eval__,
-//                                  double_complex const* hpsi__,
-//                                  double_complex const* opsi__,
+//                                  std::complex<double> const* hpsi__,
+//                                  std::complex<double> const* opsi__,
 //                                  double const* h_diag__,
 //                                  double const* o_diag__,
-//                                  double_complex* res__,
+//                                  std::complex<double>* res__,
 //                                  double* res_norm__,
 //                                  double* p_norm__,
 //                                  int gkvec_reduced__,
@@ -69,24 +69,24 @@ struct normalized_preconditioned_residuals_result
 //
 extern "C" {
 
-void compute_residuals_gpu_double(double_complex const* hpsi__, double_complex const* opsi__, double_complex* res__,
+void compute_residuals_gpu_double(std::complex<double> const* hpsi__, std::complex<double> const* opsi__, std::complex<double>* res__,
                                   int num_gvec_loc__, int num_bands__, double const* eval__);
 
 void compute_residuals_gpu_float(std::complex<float> const* hpsi__, std::complex<float> const* opsi__,
                                   std::complex<float>* res__, int num_gvec_loc__, int num_bands__, float const* eval__);
 
-void apply_preconditioner_gpu_double(double_complex* res__, int num_rows_loc__, int num_bands__, double const* eval__,
+void apply_preconditioner_gpu_double(std::complex<double>* res__, int num_rows_loc__, int num_bands__, double const* eval__,
                                       const double* h_diag__, const double* o_diag__);
 
 void apply_preconditioner_gpu_float(std::complex<float>* res__, int num_rows_loc__, int num_bands__, float const* eval__,
                                      const float* h_diag__, const float* o_diag__);
 
-void make_real_g0_gpu_double(double_complex* res__, int ld__, int n__);
+void make_real_g0_gpu_double(std::complex<double>* res__, int ld__, int n__);
 
 void make_real_g0_gpu_float(std::complex<float>* res__, int ld__, int n__);
 }
 
-inline void compute_residuals_gpu(double_complex const* hpsi__, double_complex const* opsi__, double_complex* res__,
+inline void compute_residuals_gpu(std::complex<double> const* hpsi__, std::complex<double> const* opsi__, std::complex<double>* res__,
                             int num_gvec_loc__, int num_bands__, double const* eval__)
 {
     compute_residuals_gpu_double(hpsi__, opsi__, res__, num_gvec_loc__, num_bands__, eval__);
@@ -110,7 +110,7 @@ inline void apply_preconditioner_gpu(std::complex<float>* res__, int num_rows_lo
     apply_preconditioner_gpu_float(res__, num_rows_loc__, num_bands__, eval__, h_diag__, o_diag__);
 }
 
-inline void make_real_g0_gpu(double_complex* res__,  int ld__,  int n__)
+inline void make_real_g0_gpu(std::complex<double>* res__,  int ld__,  int n__)
 {
     make_real_g0_gpu_double(res__, ld__, n__);
 }

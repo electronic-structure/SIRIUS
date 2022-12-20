@@ -24,7 +24,6 @@
 
 #include <ctype.h>
 #include <iostream>
-#include "sirius.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
@@ -33,8 +32,8 @@
 #include "nlcglib/nlcglib.hpp"
 #endif
 #include "symmetry/crystal_symmetry.hpp"
-#include "band/davidson.hpp"
 #include "multi_cg/multi_cg.hpp"
+#include "sirius.hpp"
 
 struct sirius_context_handler_t
 {
@@ -2519,7 +2518,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 sddk::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-                std::vector<double_complex> v(gs.ctx().gvec().num_gvec(), 0);
+                std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < *ngv__; i++) {
                     vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
@@ -3360,7 +3359,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                 /* send G+k copy to destination rank (where host code receives the data) */
                 auto gkvec = ks.get_gkvec(jk, dest_rank);
 
-                sddk::mdarray<double_complex, 2> wf;
+                sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
                     /* check number of G+k vectors */
                     int ngk = *num_gvec_loc__;
@@ -3375,7 +3374,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                           << *num_gvec_loc__;
                         RTE_THROW(s);
                     }
-                    wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
+                    wf = sddk::mdarray<std::complex<double>, 2>(gkvec.count(), sim_ctx.num_bands());
                 }
 
                 int ispn0{0};
@@ -3402,20 +3401,20 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                         /* receive the array with wave-functions */
                         ks.comm().recv(&wf(0, 0), count * sim_ctx.num_bands(), src_rank, tag);
 
-                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
+                        std::vector<std::complex<double>> wf_tmp(gkvec.num_gvec());
                         int offset = gkvec.offset();
-                        sddk::mdarray<double_complex, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
+                        sddk::mdarray<std::complex<double>, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
 
                         auto igmap = gvec_mapping(gkvec);
 
-                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s) {
+                        auto store_wf = [&](std::vector<std::complex<double>>& wf_tmp, int i, int s) {
                             int ispn = s;
                             if (sim_ctx.num_mag_dims() == 1) {
                                 ispn = 0;
                             }
                             for (int ig = 0; ig < *num_gvec_loc__; ig++) {
                                 int ig1 = igmap[ig];
-                                double_complex z;
+                                std::complex<double> z;
                                 if (ig1 < 0) {
                                     z = std::conj(wf_tmp[-ig1]);
                                 } else {
@@ -5986,7 +5985,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             //    auto spsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             //    auto res_wf  = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
 
-            //    Hk.apply_h_s<double_complex>(spin_range(0), 0, sctx.num_bands(), *psi_wf, hpsi_wf.get(), spsi_wf.get());
+            //    Hk.apply_h_s<std::complex<double>>(spin_range(0), 0, sctx.num_bands(), *psi_wf, hpsi_wf.get(), spsi_wf.get());
 
             //}
 

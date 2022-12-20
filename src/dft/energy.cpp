@@ -36,7 +36,7 @@ ewald_energy(const Simulation_context& ctx, const sddk::Gvec& gvec, const Unit_c
     for (int igloc = gvec.skip_g0(); igloc < gvec.count(); igloc++) {
         double g2 = std::pow(gvec.gvec_len<sddk::index_domain_t::local>(igloc), 2);
 
-        double_complex rho(0, 0);
+        std::complex<double> rho(0, 0);
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
             rho += ctx.gvec_phase_factor(gvec.gvec<sddk::index_domain_t::local>(igloc), ia) *

@@ -25,7 +25,7 @@ Do[
 
 */
 
-double_complex SphericalHarmonicY(int l, int m, double t, double p)
+std::complex<double> SphericalHarmonicY(int l, int m, double t, double p)
 {
 if (l==0 && m == 0) return 1/(2.*std::sqrt(pi));
 
@@ -269,7 +269,7 @@ if (l==10 && m == 9) return -(std::sqrt(4849845/pi)*std::cos(9*p)*std::cos(t)*st
 
 if (l==10 && m == 10) return (std::sqrt(969969/pi)*std::cos(10*p)*std::pow(std::sin(t),10))/1024. + std::complex<double>(0,0.0009765625)*std::sqrt(969969/pi)*std::sin(10*p)*std::pow(std::sin(t),10);
 
-return double_complex(0, 0);
+return std::complex<double>(0, 0);
 }
 
 using namespace sirius;
@@ -293,8 +293,8 @@ int run_test(cmd_args& args)
     tp(1, num_points - 1) = 0;
 
     int lmax{10};
-    std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
-    std::vector<double_complex> ylm_ref((lmax + 1) * (lmax + 1));
+    std::vector<std::complex<double>> ylm((lmax + 1) * (lmax + 1));
+    std::vector<std::complex<double>> ylm_ref((lmax + 1) * (lmax + 1));
 
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
@@ -303,7 +303,7 @@ int run_test(cmd_args& args)
         sf::spherical_harmonics(lmax, theta, phi, &ylm[0]);
         sf::spherical_harmonics_ref(lmax, theta, phi, &ylm_ref[0]);
 
-        double_complex val;
+        std::complex<double> val;
         double diff{0};
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {

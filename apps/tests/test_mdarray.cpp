@@ -52,8 +52,8 @@ void f3()
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
-            sddk::mdarray<double_complex, 2> a(100, 100);
-            a(0, 0) = double_complex(tid, tid);
+            sddk::mdarray<std::complex<double>, 2> a(100, 100);
+            a(0, 0) = std::complex<double>(tid, tid);
         }
     }
 }

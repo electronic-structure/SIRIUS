@@ -29,7 +29,7 @@ namespace sirius {
 #ifdef SIRIUS_GPU
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__,
-                                                double_complex const* veff__,
+                                                std::complex<double> const* veff__,
                                                 int const* gvx__,
                                                 int const* gvy__,
                                                 int const* gvz__,
@@ -122,7 +122,7 @@ void Potential::generate_D_operator_matrix()
                         /* wait for stream#1 to finish previous zgemm */
                         acc::sync_stream(stream_id(1));
                         /* copy plane wave coefficients of effective potential to GPU */
-                        sddk::mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
+                        sddk::mdarray<std::complex<double>, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
                         veff.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
 #if defined(SIRIUS_GPU)
                         mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),

@@ -69,10 +69,10 @@ class Atom
     int offset_lo_{-1}; // TODO: better name for this
 
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
-    sddk::mdarray<double_complex, 4> occupation_matrix_;
+    sddk::mdarray<std::complex<double>, 4> occupation_matrix_;
 
     /// U,J correction matrix of the L(S)DA+U method
-    sddk::mdarray<double_complex, 4> uj_correction_matrix_;
+    sddk::mdarray<std::complex<double>, 4> uj_correction_matrix_;
 
     /// True if UJ correction is applied for the current atom.
     bool apply_uj_correction_{false};
@@ -118,9 +118,9 @@ class Atom
                 b_radial_integrals_.zero();
             }
 
-            occupation_matrix_ = sddk::mdarray<double_complex, 4>(16, 16, 2, 2);
+            occupation_matrix_ = sddk::mdarray<std::complex<double>, 4>(16, 16, 2, 2);
 
-            uj_correction_matrix_ = sddk::mdarray<double_complex, 4>(16, 16, 2, 2);
+            uj_correction_matrix_ = sddk::mdarray<std::complex<double>, 4>(16, 16, 2, 2);
         }
 
         if (!type().parameters().full_potential()) {
@@ -429,10 +429,10 @@ class Atom
      *  \f]
      */
     template <spin_block_t sblock>
-    inline double_complex
-    radial_integrals_sum_L3(int idxrf1__, int idxrf2__, std::vector<gaunt_L3<double_complex>> const& gnt__) const
+    inline std::complex<double>
+    radial_integrals_sum_L3(int idxrf1__, int idxrf2__, std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
-        double_complex zsum(0, 0);
+        std::complex<double> zsum(0, 0);
 
         for (size_t i = 0; i < gnt__.size(); i++) {
             switch (sblock) {
@@ -455,13 +455,13 @@ class Atom
                 }
                 case spin_block_t::ud: {
                     /* Bx - i By */
-                    zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
                                                            -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
                 case spin_block_t::du: {
                     /* Bx + i By */
-                    zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
                                                            b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
@@ -510,21 +510,21 @@ class Atom
         return type_.mt_lo_basis_size();
     }
 
-    inline void set_occupation_matrix(const double_complex* source)
+    inline void set_occupation_matrix(const std::complex<double>* source)
     {
-        std::memcpy(occupation_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(occupation_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = false;
     }
 
-    inline void get_occupation_matrix(double_complex* destination)
+    inline void get_occupation_matrix(std::complex<double>* destination)
     {
-        std::memcpy(destination, occupation_matrix_.at(sddk::memory_t::host), 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(destination, occupation_matrix_.at(sddk::memory_t::host), 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
     }
 
-    inline void set_uj_correction_matrix(const int l, const double_complex* source)
+    inline void set_uj_correction_matrix(const int l, const std::complex<double>* source)
     {
         uj_correction_l_ = l;
-        memcpy(uj_correction_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(uj_correction_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = true;
     }
 

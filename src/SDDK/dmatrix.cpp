@@ -256,7 +256,7 @@ void dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
 
 // instantiate for required types
 template class dmatrix<double>;
-template class dmatrix<double_complex>;
+template class dmatrix<std::complex<double>>;
 #ifdef USE_FP32
 template class dmatrix<float>;
 template class dmatrix<std::complex<float>>;

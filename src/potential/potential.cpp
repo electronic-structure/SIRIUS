@@ -51,7 +51,7 @@ Potential::Potential(Simulation_context& ctx__)
         /* precompute i^l */
         zil_.resize(lmax_ + 1);
         for (int l = 0; l <= lmax_; l++) {
-            zil_[l] = std::pow(double_complex(0, 1), l);
+            zil_[l] = std::pow(std::complex<double>(0, 1), l);
         }
 
         zilm_.resize(utils::lmmax(lmax_));
@@ -98,17 +98,17 @@ Potential::Potential(Simulation_context& ctx__)
     vh_el_ = sddk::mdarray<double, 1>(unit_cell_.num_atoms());
 
     if (ctx_.full_potential()) {
-        gvec_ylm_ = sddk::mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), sddk::memory_t::host, "gvec_ylm_");
+        gvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), sddk::memory_t::host, "gvec_ylm_");
 
         switch (ctx_.valence_relativity()) {
             case relativity_t::iora: {
-                rm2_inv_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                rm2_inv_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
             }
             case relativity_t::zora: {
-                rm_inv_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                rm_inv_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
             }
             default: {
-                veff_pw_ = sddk::mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                veff_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
             }
         }
     }

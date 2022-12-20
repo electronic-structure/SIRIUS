@@ -321,7 +321,7 @@ class U_operator
             int at1_lvl = um1__.find_orbital_index(ia, nl.n()[0], il);
             int at2_lvl = um1__.find_orbital_index(ja, nl.n()[1], jl);
 
-            auto z1 = std::exp(double_complex(0, twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
+            auto z1 = std::exp(std::complex<double>(0, twopi * dot(vk_, geometry3d::vector3d<int>(Tr))));
             for (int is = 0; is < ctx_.num_spins(); is++) {
                 for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
@@ -402,7 +402,7 @@ class U_operator
 // class P_operator : public Non_local_operator<T>
 //{
 //  public:
-//    P_operator(Simulation_context const& ctx_, mdarray<double_complex, 3>& p_mtrx__)
+//    P_operator(Simulation_context const& ctx_, mdarray<std::complex<double>, 3>& p_mtrx__)
 //        : Non_local_operator<T>(ctx_)
 //    {
 //        /* Q-operator is independent of spin */
@@ -591,9 +591,9 @@ apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projectors<
         bp__.generate(mem__, ichunk);
         /* generate derived beta-projectors for a block of atoms */
         bp_strain_deriv__.generate(mem__, ichunk, comp__);
-        auto dbeta_phi = bp_strain_deriv__.inner<double_complex>(mem__, ichunk, phi__, wf::spin_index(0),
+        auto dbeta_phi = bp_strain_deriv__.inner<std::complex<double>>(mem__, ichunk, phi__, wf::spin_index(0),
                 wf::band_range(0, phi__.num_wf().get()));
-        auto beta_phi = bp__.inner<double_complex>(mem__, ichunk, phi__, wf::spin_index(0), wf::band_range(0, phi__.num_wf().get()));
+        auto beta_phi = bp__.inner<std::complex<double>>(mem__, ichunk, phi__, wf::spin_index(0), wf::band_range(0, phi__.num_wf().get()));
         q_op__.apply(mem__, ichunk, 0, ds_phi__, wf::band_range(0, ds_phi__.num_wf().get()), bp__, dbeta_phi);
         q_op__.apply(mem__, ichunk, 0, ds_phi__, wf::band_range(0, ds_phi__.num_wf().get()), bp_strain_deriv__, beta_phi);
     }
