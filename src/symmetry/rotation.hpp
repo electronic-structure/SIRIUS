@@ -26,12 +26,10 @@
 #define __ROTATION_HPP__
 
 #include "memory.hpp"
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "utils/utils.hpp"
 #include "utils/rte.hpp"
 #include "constants.hpp"
-
-using namespace geometry3d;
 
 namespace sirius {
 
@@ -59,11 +57,11 @@ rotation_matrix_su2(std::array<double, 3> u__, double theta__)
  *  See https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
  *  and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm */
 inline auto
-rotation_matrix_su2(matrix3d<double> R__)
+rotation_matrix_su2(r3::matrix<double> R__)
 {
     double det = R__.det() > 0 ? 1.0 : -1.0;
 
-    matrix3d<double> mat = R__ * det;
+    r3::matrix<double> mat = R__ * det;
 
     sddk::mdarray<std::complex<double>, 2> su2mat(2, 2);
 
@@ -88,10 +86,10 @@ rotation_matrix_su2(matrix3d<double> R__)
 }
 
 /// Get axis and angle from rotation matrix.
-inline std::pair<vector3d<double>, double>
-axis_angle(matrix3d<double> R__)
+inline std::pair<r3::vector<double>, double>
+axis_angle(r3::matrix<double> R__)
 {
-    vector3d<double> u;
+    r3::vector<double> u;
     /* make proper rotation */
     R__ = R__ * R__.det();
     u[0] = R__(2, 1) - R__(1, 2);
@@ -130,7 +128,7 @@ axis_angle(matrix3d<double> R__)
         u = u * (1.0 / u.length());
     }
 
-    return std::pair<vector3d<double>, double>(u, theta);
+    return std::pair<r3::vector<double>, double>(u, theta);
 }
 
 /// Generate rotation matrix from three Euler angles
@@ -162,13 +160,13 @@ axis_angle(matrix3d<double> R__)
  *                                \cos(\beta) \end{array} \right)
  *  \f]
  */
-inline matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__)
+inline r3::matrix<double> rot_mtrx_cart(r3::vector<double> euler_angles__)
 {
     double alpha = euler_angles__[0];
     double beta = euler_angles__[1];
     double gamma = euler_angles__[2];
 
-    matrix3d<double> rm;
+    r3::matrix<double> rm;
     rm(0, 0) = std::cos(alpha) * std::cos(beta) * std::cos(gamma) - std::sin(alpha) * std::sin(gamma);
     rm(0, 1) = -std::cos(gamma) * std::sin(alpha) - std::cos(alpha) * std::cos(beta) * std::sin(gamma);
     rm(0, 2) = std::cos(alpha) * std::sin(beta);
@@ -183,9 +181,9 @@ inline matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__)
 }
 
 /// Compute Euler angles corresponding to the proper rotation matrix.
-inline vector3d<double> euler_angles(matrix3d<double> const& rot__, double tolerance__)
+inline r3::vector<double> euler_angles(r3::matrix<double> const& rot__, double tolerance__)
 {
-    vector3d<double> angles(0, 0, 0);
+    r3::vector<double> angles(0, 0, 0);
 
     if (std::abs(rot__.det() - 1) > 1e-10) {
         std::stringstream s;

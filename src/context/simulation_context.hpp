@@ -185,7 +185,7 @@ class Simulation_context : public Simulation_parameters
     double omega0_;
 
     /// Initial lattice vectors.
-    matrix3d<double> lattice_vectors0_;
+    r3::matrix<double> lattice_vectors0_;
 
     /// Radial integrals of beta-projectors.
     std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
@@ -551,7 +551,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline auto gvec_phase_factor(vector3d<int> G__, int ia__) const
+    inline auto gvec_phase_factor(r3::vector<int> G__, int ia__) const
     {
         return phase_factors_(0, G__[0], ia__) * phase_factors_(1, G__[1], ia__) * phase_factors_(2, G__[2], ia__);
     }

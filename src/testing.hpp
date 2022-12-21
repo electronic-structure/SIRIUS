@@ -30,11 +30,11 @@
 #include <vector>
 #include <cmath>
 #include "SDDK/dmatrix.hpp"
-#include "SDDK/geometry3d.hpp"
 #include "SDDK/wave_functions.hpp"
-#include "utils/profiler.hpp"
 #include "linalg/linalg.hpp"
+#include "linalg/r3.hpp"
 #include "utils/cmd_args.hpp"
+#include "utils/profiler.hpp"
 #include "context/simulation_context.hpp"
 
 namespace sirius {
@@ -174,8 +174,8 @@ random_positive_definite(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__
 }
 
 inline auto
-create_simulation_context(nlohmann::json const& conf__, geometry3d::matrix3d<double> L__, int num_atoms__,
-std::vector<geometry3d::vector3d<double>> coord__, bool add_vloc__, bool add_dion__)
+create_simulation_context(nlohmann::json const& conf__, r3::matrix<double> L__, int num_atoms__,
+std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
 {
     auto ctx = std::make_unique<sirius::Simulation_context>(conf__);
 

@@ -63,7 +63,7 @@ Table[
 
 int test1()
 {
-    std::vector<vector3d<double>> v({{1, 2, 3}, {-2, 2, 0.12}, {2, -1, 0}, {0, 1, -5}, {-4, -4, -2}, {-2, 0, 1}});
+    std::vector<r3::vector<double>> v({{1, 2, 3}, {-2, 2, 0.12}, {2, -1, 0}, {0, 1, -5}, {-4, -4, -2}, {-2, 0, 1}});
 
     int lmax = 8;
     int lmmax = utils::lmmax(lmax);
@@ -325,7 +325,7 @@ int test1()
 
 int test2()
 {
-    std::vector<vector3d<double>> v({{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}});
+    std::vector<r3::vector<double>> v({{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}});
 
     int lmax = 8;
     int lmmax = utils::lmmax(lmax);
@@ -478,7 +478,7 @@ int test3()
     double max_diff{0};
 
     for (int i = 0; i < 300; i++) {
-        vector3d<double> v(1 + 10 * utils::random<double>(),
+        r3::vector<double> v(1 + 10 * utils::random<double>(),
                            1 + 10 * utils::random<double>(),
                            1 + 10 * utils::random<double>());
 
@@ -490,9 +490,9 @@ int test3()
 
         mdarray<double, 2> drlm(lmmax, 3);
         for (int x = 0; x < 3; x++) {
-            vector3d<double> v1 = v;
+            r3::vector<double> v1 = v;
             v1[x] += dr;
-            vector3d<double> v2 = v;
+            r3::vector<double> v2 = v;
             v2[x] -= dr;
 
             auto vs1 = SHT::spherical_coordinates(v1);

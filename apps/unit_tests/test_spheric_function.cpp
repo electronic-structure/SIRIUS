@@ -124,7 +124,7 @@ int test3(int lmax, int nr)
 */
 int test4()
 {
-    vector3d<std::complex<double>> ref_v(0.00106237, std::complex<double>(0, -0.650989), 0);
+    r3::vector<std::complex<double>> ref_v(0.00106237, std::complex<double>(0, -0.650989), 0);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
@@ -140,7 +140,7 @@ int test4()
 
     auto grad_f = gradient(f);
 
-    vector3d<std::complex<double>> v;
+    r3::vector<std::complex<double>> v;
     for (int x = 0; x < 3; x++) {
         v[x] = inner(f, grad_f[x]);
     }

@@ -26,22 +26,20 @@
 #include "lattice.hpp"
 #include "rotation.hpp"
 
-using namespace geometry3d;
-
 namespace sirius {
 
-static std::pair<std::vector<int>, std::vector<vector3d<int>>>
-find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matrix3d<int> const& R__,
-              vector3d<double> const& t__, double tolerance__, bool inverse__ = false)
+static std::pair<std::vector<int>, std::vector<r3::vector<int>>>
+find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, r3::matrix<int> const& R__,
+              r3::vector<double> const& t__, double tolerance__, bool inverse__ = false)
 {
     PROFILE("sirius::find_sym_atom");
 
     std::vector<int> sym_atom(num_atoms__);
-    std::vector<vector3d<int>> sym_atom_T(num_atoms__);
+    std::vector<r3::vector<int>> sym_atom_T(num_atoms__);
 
     for (int ia = 0; ia < num_atoms__; ia++) {
         /* position of atom ia */
-        vector3d<double> r_ia(positions__(0, ia), positions__(1, ia), positions__(2, ia));
+        r3::vector<double> r_ia(positions__(0, ia), positions__(1, ia), positions__(2, ia));
         /* apply crystal symmetry {R|t} or it's inverse */
         /* rp = {R|t}r or {R|t}^{-1}r */
         auto rp_ia = (inverse__) ? dot(inverse(R__), r_ia - t__) : dot(R__, r_ia) + t__;
@@ -49,11 +47,11 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
         bool found{false};
         /* find the transformed atom */
         for (int ja = 0; ja < num_atoms__; ja++) {
-            vector3d<double> r_ja(positions__(0, ja), positions__(1, ja), positions__(2, ja));
+            r3::vector<double> r_ja(positions__(0, ja), positions__(1, ja), positions__(2, ja));
 
             auto v = rp_ia - r_ja;
 
-            vector3d<int> T;
+            r3::vector<int> T;
             double diff{0};
             for (int x : {0, 1, 2}) {
                 T[x] = std::round(v[x]);
@@ -80,7 +78,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, matr
 }
 
 static space_group_symmetry_descriptor
-get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> const& lattice_vectors__, int num_atoms__,
+get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> const& lattice_vectors__, int num_atoms__,
     sddk::mdarray<double, 2> const& positions__, double tolerance__)
 {
     space_group_symmetry_descriptor sym_op;
@@ -88,7 +86,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
     auto inverse_lattice_vectors = inverse(lattice_vectors__);
 
     /* rotation matrix in lattice coordinates */
-    sym_op.R = matrix3d<int>(spg_dataset__->rotations[isym_spg__]);
+    sym_op.R = r3::matrix<int>(spg_dataset__->rotations[isym_spg__]);
     /* sanity check */
     int p = sym_op.R.det();
     if (!(p == 1 || p == -1)) {
@@ -99,13 +97,13 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, matrix3d<double> co
     /* inverse transpose */
     sym_op.invRT = transpose(sym_op.invR);
     /* fractional translation */
-    sym_op.t = vector3d<double>(spg_dataset__->translations[isym_spg__][0],
+    sym_op.t = r3::vector<double>(spg_dataset__->translations[isym_spg__][0],
                                 spg_dataset__->translations[isym_spg__][1],
                                 spg_dataset__->translations[isym_spg__][2]);
     /* is this proper or improper rotation */
     sym_op.proper = p;
     /* rotation in Cartesian coordinates */
-    sym_op.Rc = dot(dot(lattice_vectors__, matrix3d<double>(sym_op.R)), inverse_lattice_vectors);
+    sym_op.Rc = dot(dot(lattice_vectors__, r3::matrix<double>(sym_op.R)), inverse_lattice_vectors);
     /* proper rotation in Cartesian coordinates */
     sym_op.Rcp = sym_op.Rc * p;
     try {
@@ -156,17 +154,17 @@ get_identity_spg_sym_op(int num_atoms__)
 {
     space_group_symmetry_descriptor sym_op;
 
-    sym_op.R = matrix3d<int>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    sym_op.R = r3::matrix<int>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     /* inverse of the rotation matrix */
     sym_op.invR = inverse(sym_op.R);
     /* inverse transpose */
     sym_op.invRT = transpose(sym_op.invR);
     /* fractional translation */
-    sym_op.t = vector3d<double>(0, 0, 0);
+    sym_op.t = r3::vector<double>(0, 0, 0);
     /* is this proper or improper rotation */
     sym_op.proper = 1;
     /* rotation in Cartesian coordinates */
-    sym_op.Rcp = sym_op.Rc = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    sym_op.Rcp = sym_op.Rc = r3::matrix<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     /* get Euler angles of the rotation */
     sym_op.euler_angles = euler_angles(sym_op.Rc, 1e-10);
     /* trivial atom symmetry table */
@@ -175,12 +173,12 @@ get_identity_spg_sym_op(int num_atoms__)
     /* trivial atom symmetry table for inverse operation */
     sym_op.inv_sym_atom = std::vector<int>(num_atoms__);
     std::iota(sym_op.inv_sym_atom.begin(), sym_op.inv_sym_atom.end(), 0);
-    sym_op.inv_sym_atom_T = std::vector<vector3d<int>>(num_atoms__, vector3d<int>(0, 0, 0));
+    sym_op.inv_sym_atom_T = std::vector<r3::vector<int>>(num_atoms__, r3::vector<int>(0, 0, 0));
 
     return sym_op;
 }
 
-Crystal_symmetry::Crystal_symmetry(matrix3d<double> const& lattice_vectors__, int num_atoms__,
+Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__,
     int num_atom_types__, std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
     sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
@@ -239,7 +237,7 @@ Crystal_symmetry::Crystal_symmetry(matrix3d<double> const& lattice_vectors__, in
         auto lat_sym = find_lat_sym(lattice_vectors_, tolerance_);
         /* make a list of crystal symmetries */
         for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
-            matrix3d<int> R(spg_dataset_->rotations[isym]);
+            r3::matrix<int> R(spg_dataset_->rotations[isym]);
             for (auto& e: lat_sym) {
                 if (e == R) {
                     auto sym_op = get_spg_sym_op(isym, spg_dataset_, lattice_vectors__, num_atoms__, positions__, tolerance__);
@@ -274,8 +272,8 @@ Crystal_symmetry::Crystal_symmetry(matrix3d<double> const& lattice_vectors__, in
 
                 /* now check that vector field transforms from atom ia to atom ja */
                 /* vector field of atom is expected to be in Cartesian coordinates */
-                auto vd = dot(Rspin, vector3d<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia))) -
-                                  vector3d<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
+                auto vd = dot(Rspin, r3::vector<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia))) -
+                                  r3::vector<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
 
                 if (vd.length() < 1e-10) {
                     n++;

@@ -32,7 +32,7 @@
 #include "typedefs.hpp"
 #include "utils/utils.hpp"
 #include "SDDK/memory.hpp"
-#include "SDDK/geometry3d.hpp"
+#include "linalg/r3.hpp"
 
 /// Special functions.
 namespace sf {
@@ -469,11 +469,10 @@ inline sddk::mdarray<double, 1> sinxn(int n__, double x__)
     Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
     \endverbatim
  */
-inline void dRlm_dr(int lmax__, geometry3d::vector3d<double>& r__, sddk::mdarray<double, 2>& data__,
-                    bool divide_by_r__ = true)
+inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
     /* get spherical coordinates of the Cartesian vector */
-    auto vrs = geometry3d::spherical_coordinates(r__);
+    auto vrs = r3::spherical_coordinates(r__);
 
     if (vrs[0] < 1e-12) {
         data__.zero();
@@ -491,8 +490,8 @@ inline void dRlm_dr(int lmax__, geometry3d::vector3d<double>& r__, sddk::mdarray
     double cosp = std::cos(phi);
 
     /* nominators of angle derivatives */
-    geometry3d::vector3d<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
-    geometry3d::vector3d<double> dphi_dr({-sinp, cosp, 0});
+    r3::vector<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
+    r3::vector<double> dphi_dr({-sinp, cosp, 0});
 
 
     std::vector<double> dRlm_dt(lmmax);

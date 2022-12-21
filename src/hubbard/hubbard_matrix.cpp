@@ -204,9 +204,9 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     int jl       = nl.l()[1];
     const int jb = 2 * jl + 1;
     const int ib = 2 * il + 1;
-    vector3d<int> T(nl.T());
+    r3::vector<int> T(nl.T());
 
-    vector3d<double> r = ctx_.unit_cell().atom(ja).position() + T - ctx_.unit_cell().atom(ia).position();
+    r3::vector<double> r = ctx_.unit_cell().atom(ja).position() + T - ctx_.unit_cell().atom(ia).position();
     /* convert to Cartesian coordinates */
     auto rc = dot(ctx_.unit_cell().lattice_vectors(), r);
 

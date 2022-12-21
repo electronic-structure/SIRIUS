@@ -1148,8 +1148,8 @@ sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
-                                                    vector3d<double>(a3__));
+            sim_ctx.unit_cell().set_lattice_vectors(r3::vector<double>(a1__), r3::vector<double>(a2__),
+                                                    r3::vector<double>(a3__));
         },
         error_code__);
 }
@@ -2521,8 +2521,8 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < *ngv__; i++) {
-                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
                     // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
                     //    continue;
                     //}
@@ -2535,7 +2535,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                             if (ig == -1) {
                                 std::stringstream s;
                                 auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
-                                               vector3d<double>(G[0], G[1], G[2]));
+                                               r3::vector<double>(G[0], G[1], G[2]));
                                 s << "wrong index of G-vector" << std::endl
                                   << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])"
                                   << std::endl;
@@ -2648,9 +2648,9 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 auto v = func.at(label)->gather_f_pw();
 
                 for (int i = 0; i < *ngv__; i++) {
-                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
 
-                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
                     // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
                     //    pw_coeffs__[i] = 0;
                     //    continue;
@@ -2665,7 +2665,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                     if (ig == -1) {
                         std::stringstream s;
                         auto gvc =
-                            dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
+                            dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), r3::vector<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                         WARNING(s);
@@ -3158,7 +3158,7 @@ sirius_get_stress_tensor(void* const* handler__, char const* label__, double* st
 
             auto& stress_tensor = gs.stress();
 
-            std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
+            std::map<std::string, r3::matrix<double> (sirius::Stress::*)(void)> func = {
                 {"total", &sirius::Stress::calc_stress_total}, {"vloc", &sirius::Stress::calc_stress_vloc},
                 {"har", &sirius::Stress::calc_stress_har},     {"ewald", &sirius::Stress::calc_stress_ewald},
                 {"kin", &sirius::Stress::calc_stress_kin},     {"nonloc", &sirius::Stress::calc_stress_nonloc},
@@ -3170,9 +3170,9 @@ sirius_get_stress_tensor(void* const* handler__, char const* label__, double* st
                 RTE_THROW("wrong label (" + label + ") for the component of stress tensor");
             }
 
-            matrix3d<double> s;
+            r3::matrix<double> s;
 
-            s = ((stress_tensor.*func.at(label))());
+            s = (stress_tensor.*func.at(label))();
 
             for (int mu = 0; mu < 3; mu++) {
                 for (int nu = 0; nu < 3; nu++) {
@@ -3281,7 +3281,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
         for (int ig = 0; ig < *num_gvec_loc__; ig++) {
             ///* G vector of host code */
             // auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
-            //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
+            //               (r3::vector<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
             // if (gvc.length() > kset.ctx().gk_cutoff()) {
             //    continue;
             //}
@@ -3365,7 +3365,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                     int ngk = *num_gvec_loc__;
                     gkvec.comm().allreduce(&ngk, 1);
                     if (ngk != gkvec.num_gvec()) {
-                        vector3d<double> vkl(vkl__);
+                        r3::vector<double> vkl(vkl__);
                         std::stringstream s;
                         s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk << std::endl
                           << "expected number : " << gkvec.num_gvec() << std::endl
@@ -5853,7 +5853,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
         [&]() {
             RTE_ASSERT(*num_spin_comp__ == 1);
 
-            vector3d<double> vkq(vkq__);
+            r3::vector<double> vkq(vkq__);
 
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
@@ -5890,7 +5890,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             if (!use_qe_gvec_order) {
                 for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                    auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq_loc(0, ig)));
+                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq_loc(0, ig)));
                     if (i == -1) {
                         RTE_THROW("index of G-vector is not found for k+q");
                     }
@@ -5917,7 +5917,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 gvkq.comm().allgather(&gvec_kq(0, 0), 3 * num_gvec_kq_loc, 3 * offset);
 
                 for (int ig = 0; ig < num_gvec_kq; ig++) {
-                    auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq(0, ig)));
+                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq(0, ig)));
                     if (i == -1) {
                         RTE_THROW("index of G-vector is not found");
                     }

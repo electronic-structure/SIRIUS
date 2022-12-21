@@ -144,7 +144,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     for (int ir = 0; ir < rgrid__.num_points(); ir++) {
         /* loop over points on the sphere */
         for (int itp = 0; itp < sht__.num_points(); itp++) {
-            vector3d<double> m;
+            r3::vector<double> m;
             for (int j = 0; j < num_mag_dims__; j++) {
                 m[j] = rho_tp__[1 + j](itp, ir);
             }
@@ -261,7 +261,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
                 /* get the sign between mag and B */
                 auto s = utils::sign((rho_up_tp(itp, ir) - rho_dn_tp(itp, ir)) * bxc);
 
-                vector3d<double> m;
+                r3::vector<double> m;
                 for (int j = 0; j < num_mag_dims__; j++) {
                     m[j] = rho_tp__[1 + j](itp, ir);
                 }

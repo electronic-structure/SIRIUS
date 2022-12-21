@@ -88,7 +88,7 @@ void
 K_point_set::sync_band<float, sync_band_t::occupancy>();
 #endif
 
-void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
+void K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__)
 {
     PROFILE("sirius::K_point_set::create_k_mesh");
 
@@ -584,7 +584,7 @@ void K_point_set::load()
     //==     fin["K_point_set"][jk].read("coordinates", vk_in, 3);
     //==     for (int ik = 0; ik < num_kpoints(); ik++)
     //==     {
-    //==         vector3d<double> dvk;
+    //==         r3::vector<double> dvk;
     //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
     //==         if (dvk.length() < 1e-12)
     //==         {
@@ -651,7 +651,7 @@ void K_point_set::load()
 //==         fin["kpoints"][jk].read("coordinates", vk_in, 3);
 //==         for (int ik = 0; ik < num_kpoints(); ik++)
 //==         {
-//==             vector3d<double> dvk;
+//==             r3::vector<double> dvk;
 //==             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
 //==             if (dvk.length() < 1e-12)
 //==             {

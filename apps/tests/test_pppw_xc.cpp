@@ -32,11 +32,11 @@ void test_davidson(cmd_args const& args__)
     json_conf["control"]["mpi_grid_dims"] = mpi_grid;
 
     double p = 1.0 / N;
-    std::vector<geometry3d::vector3d<double>> coord;
+    std::vector<r3::vector<double>> coord;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             for (int k = 0; k < N; k++) {
-                coord.push_back(geometry3d::vector3d<double>(i * p, j * p, k * p));
+                coord.push_back(r3::vector<double>(i * p, j * p, k * p));
             }
         }
     }

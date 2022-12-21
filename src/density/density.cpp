@@ -368,7 +368,7 @@ Density::initial_density_full_pot()
 
     // FILE* fout = fopen("rho.dat", "w");
     // for (int i = 0; i <= 10000; i++) {
-    //    vector3d<double> v = (i / 10000.0) * vector3d<double>({10.26, 10.26, 10.26});
+    //    r3::vector<double> v = (i / 10000.0) * r3::vector<double>({10.26, 10.26, 10.26});
     //    double val = rho().value(v);
     //    fprintf(fout, "%18.12f %18.12f\n", v.length(), val);
     //}
@@ -376,7 +376,7 @@ Density::initial_density_full_pot()
 
     // FILE* fout2 = fopen("rho_rg.dat", "w");
     // for (int i = 0; i <= 10000; i++) {
-    //    vector3d<double> v = (i / 10000.0) * vector3d<double>({10.26, 10.26, 10.26});
+    //    r3::vector<double> v = (i / 10000.0) * r3::vector<double>({10.26, 10.26, 10.26});
     //    double val = rho().value_rg(v);
     //    fprintf(fout2, "%18.12f %18.12f\n", v.length(), val);
     //}
@@ -386,7 +386,7 @@ Density::initial_density_full_pot()
     if (ctx_.num_mag_dims()) {
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia             = unit_cell_.spl_num_atoms(ialoc);
-            vector3d<double> v = unit_cell_.atom(ia).vector_field();
+            r3::vector<double> v = unit_cell_.atom(ia).vector_field();
             double len         = v.length();
 
             int nmtp = unit_cell_.atom(ia).num_mt_points();
@@ -1965,7 +1965,7 @@ void Density::print_info(std::ostream& out__) const
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    auto write_vector = [&](vector3d<double> v__) {
+    auto write_vector = [&](r3::vector<double> v__) {
         out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
               << std::setprecision(5) << std::fixed << v__[1] << ", " << std::setw(9) << std::setprecision(5)
               << std::fixed << v__[2] << "]";
@@ -1987,7 +1987,7 @@ void Density::print_info(std::ostream& out__) const
             out__ << std::setw(4) << ia << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
                   << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
             if (ctx_.num_mag_dims()) {
-                vector3d<double> v(mt_mag[ia]);
+                r3::vector<double> v(mt_mag[ia]);
                 out__ << "  ";
                 write_vector(v);
                 out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
@@ -1999,7 +1999,7 @@ void Density::print_info(std::ostream& out__) const
               << std::endl
               << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
         if (ctx_.num_mag_dims()) {
-            vector3d<double> v(it_mag);
+            r3::vector<double> v(it_mag);
             out__ << "interstitial moment   : ";
             write_vector(v);
             out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
@@ -2010,7 +2010,7 @@ void Density::print_info(std::ostream& out__) const
                   << utils::hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                vector3d<double> v(mt_mag[ia]);
+                r3::vector<double> v(mt_mag[ia]);
                 out__ << std::setw(4) << ia << " ";
                 write_vector(v);
                 out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length() << std::endl;
@@ -2021,7 +2021,7 @@ void Density::print_info(std::ostream& out__) const
     out__ << "total charge          : " << std::setprecision(6) << std::fixed << total_charge << std::endl;
 
     if (ctx_.num_mag_dims()) {
-        vector3d<double> v(total_mag);
+        r3::vector<double> v(total_mag);
         out__ << "total moment          : ";
         write_vector(v);
         out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;

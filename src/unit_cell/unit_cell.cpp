@@ -315,9 +315,9 @@ Unit_cell::unit_cell_parameters()
 {
     unit_cell_parameters_descriptor d;
 
-    vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
-    vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
-    vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
+    r3::vector<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
+    r3::vector<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
+    r3::vector<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
 
     d.a = v0.length();
     d.b = v1.length();
@@ -426,7 +426,7 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
                     nnd.translation[2] = i2;
 
                     for (int ja = 0; ja < num_atoms(); ja++) {
-                        auto v1 = atom(ja).position() + vector3d<int>(nnd.translation) - atom(ia).position();
+                        auto v1 = atom(ja).position() + r3::vector<int>(nnd.translation) - atom(ia).position();
                         auto rc = get_cartesian_coordinates(v1);
 
                         nnd.atom_id = ja;
@@ -478,7 +478,7 @@ Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 }
 
 bool
-Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
+Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
     /* reduce coordinates to the primitive unit cell */
     auto vr = reduce_coordinates(get_fractional_coordinates(vc));
@@ -488,10 +488,10 @@ Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, dou
             for (int i1 = -1; i1 <= 1; i1++) {
                 for (int i2 = -1; i2 <= 1; i2++) {
                     /* atom position */
-                    vector3d<double> posf = vector3d<double>(i0, i1, i2) + atom(ia).position();
+                    r3::vector<double> posf = r3::vector<double>(i0, i1, i2) + atom(ia).position();
 
                     /* vector connecting center of atom and reduced point */
-                    vector3d<double> vf = vr.first - posf;
+                    r3::vector<double> vf = vr.first - posf;
 
                     /* convert to spherical coordinates */
                     auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));
@@ -629,7 +629,7 @@ Unit_cell::add_atom_type(const std::string label__, const std::string file_name_
 }
 
 void
-Unit_cell::add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
+Unit_cell::add_atom(const std::string label, r3::vector<double> position, r3::vector<double> vector_field)
 {
     if (atom_type_id_map_.count(label) == 0) {
         std::stringstream s;
@@ -805,11 +805,11 @@ Unit_cell::get_symmetry()
 void
 Unit_cell::import(config_t::unit_cell_t const &inp__)
 {
-    auto lv = matrix3d<double>(inp__.lattice_vectors());
+    auto lv = r3::matrix<double>(inp__.lattice_vectors());
     lv *= inp__.lattice_vectors_scale();
-    set_lattice_vectors(vector3d<double>(lv(0, 0), lv(0, 1), lv(0, 2)),
-                        vector3d<double>(lv(1, 0), lv(1, 1), lv(1, 2)),
-                        vector3d<double>(lv(2, 0), lv(2, 1), lv(2, 2)));
+    set_lattice_vectors(r3::vector<double>(lv(0, 0), lv(0, 1), lv(0, 2)),
+                        r3::vector<double>(lv(1, 0), lv(1, 1), lv(1, 2)),
+                        r3::vector<double>(lv(2, 0), lv(2, 1), lv(2, 2)));
     /* here lv are copied from the JSON dictionary as three row vectors; however
        in the code the lattice vectors are stored as three column vectors, so
        transposition is needed here */
@@ -824,10 +824,10 @@ Unit_cell::import(config_t::unit_cell_t const &inp__)
     }
     for (auto label : inp__.atom_types()) {
         for (auto v : inp__.atoms(label)) {
-            vector3d<double> p(v[0], v[1], v[2]);
-            vector3d<double> f;
+            r3::vector<double> p(v[0], v[1], v[2]);
+            r3::vector<double> f;
             if (v.size() == 6) {
-                f = vector3d<double>(v[3], v[4], v[5]);
+                f = r3::vector<double>(v[3], v[4], v[5]);
             }
             /* convert to atomic units */
             if (units == "A") {
@@ -928,7 +928,7 @@ Unit_cell::update()
 }
 
 void
-Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__)
+Unit_cell::set_lattice_vectors(r3::matrix<double> lattice_vectors__)
 {
     lattice_vectors_            = lattice_vectors__;
     inverse_lattice_vectors_    = inverse(lattice_vectors_);
@@ -937,9 +937,9 @@ Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__)
 }
 
 void
-Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
+Unit_cell::set_lattice_vectors(r3::vector<double> a0__, r3::vector<double> a1__, r3::vector<double> a2__)
 {
-    matrix3d<double> lv;
+    r3::matrix<double> lv;
     for (int x : {0, 1, 2}) {
         lv(x, 0) = a0__[x];
         lv(x, 1) = a1__[x];
@@ -949,7 +949,7 @@ Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vec
 }
 
 int
-Unit_cell::atom_id_by_position(vector3d<double> position__)
+Unit_cell::atom_id_by_position(r3::vector<double> position__)
 {
     for (int ia = 0; ia < num_atoms(); ia++) {
         auto vd = atom(ia).position() - position__;

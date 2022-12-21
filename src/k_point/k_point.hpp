@@ -49,7 +49,7 @@ class K_point
     Unit_cell const& unit_cell_;
 
     /// Fractional k-point coordinates.
-    vector3d<double> vk_;
+    r3::vector<double> vk_;
 
     /// Weight of k-point.
     double weight_{1.0};
@@ -230,7 +230,7 @@ class K_point
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, vector3d<double> vk__, double weight__)
+    K_point(Simulation_context& ctx__, r3::vector<double> vk__, double weight__)
         : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , vk_(vk__)
@@ -521,7 +521,7 @@ class K_point
         return *singular_components_;
     }
 
-    inline vector3d<double> vk() const
+    inline auto vk() const
     {
         return vk_;
     }

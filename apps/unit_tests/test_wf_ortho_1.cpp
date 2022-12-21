@@ -13,7 +13,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
 
     sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
-    geometry3d::matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     /* create G-vectors */
     auto gvec = std::make_shared<sddk::Gvec>(M, cutoff__, sddk::Communicator::world(), false);

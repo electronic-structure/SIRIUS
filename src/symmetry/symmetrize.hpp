@@ -119,7 +119,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
 
     double norm = 1 / double(sym__.size());
 
-    auto phase_factor = [&](int isym, vector3d<int> G) {
+    auto phase_factor = [&](int isym, r3::vector<int> G) {
         return sym_phase_factors__(0, G[0], isym) * sym_phase_factors__(1, G[1], isym) *
                sym_phase_factors__(2, G[2], isym);
     };
@@ -179,7 +179,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz += std::conj(z_pw[ig1]) * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += std::conj(v[0]) * phase;
                             symy += std::conj(v[1]) * phase;
                             symz += std::conj(v[2]) * phase;
@@ -198,7 +198,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz += z_pw[ig1] * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += v[0] * phase;
                             symy += v[1] * phase;
                             symz += v[2] * phase;
@@ -231,7 +231,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz1 = symz * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<std::complex<double>>({symx, symy, symz}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
                             symx1  = v[0] * phase;
                             symy1  = v[1] * phase;
                             symz1  = v[2] * phase;
