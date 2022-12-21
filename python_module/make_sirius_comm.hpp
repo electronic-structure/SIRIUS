@@ -23,7 +23,7 @@ inline auto make_sirius_comm(pybind11::object py_comm)
 }
 
 inline pybind11::handle make_pycomm(const mpi::Communicator& comm) {
-    return pybind11::handle(PyMPIComm_New(comm.mpi_comm()));
+    return pybind11::handle(PyMPIComm_New(comm.native()));
 }
 
 } // end namespace sirius
