@@ -62,7 +62,7 @@ Gvec gvec(M, Gmax, mpi::Communicator::world(), false);
 Gvec_fft gvp(gvec, mpi::Communicator::world(),
         mpi::Communicator::self());
 /* dimensions of the FFT box */
-FFT3D_grid dims({40, 40, 40});
+fft::Grid dims({40, 40, 40});
 
 /* this is how our code splits the z-dimension
  * of the FFT buffer */

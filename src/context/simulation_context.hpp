@@ -37,7 +37,7 @@
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "SDDK/fft.hpp"
+#include "fft/fft.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -124,7 +124,7 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<sddk::BLACS_grid> blacs_grid_;
 
     /// Grid descriptor for the fine-grained FFT transform.
-    sddk::FFT3D_grid fft_grid_;
+    fft::Grid fft_grid_;
 
     /// Fine-grained FFT for density and potential.
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
@@ -137,7 +137,7 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// Grid descriptor for the coarse-grained FFT transform.
-    sddk::FFT3D_grid fft_coarse_grid_;
+    fft::Grid fft_coarse_grid_;
 
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
@@ -788,22 +788,22 @@ class Simulation_context : public Simulation_parameters
     template <typename T>
     spfft_transform_type<T> const& spfft_coarse() const;
 
-    sddk::FFT3D_grid const& fft_grid() const
+    auto const& fft_grid() const
     {
         return fft_grid_;
     }
 
-    sddk::FFT3D_grid const& fft_coarse_grid() const
+    auto const& fft_coarse_grid() const
     {
         return fft_coarse_grid_;
     }
 
-    spla::Context const& spla_context() const
+    auto const& spla_context() const
     {
         return *spla_ctx_;
     }
 
-    spla::Context& spla_context()
+    auto& spla_context()
     {
         return *spla_ctx_;
     }

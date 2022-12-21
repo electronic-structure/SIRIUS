@@ -29,10 +29,10 @@
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
 
-namespace sddk {
+namespace fft {
 
-/// Handling of FFT grids.
-class FFT3D_grid : public std::array<int, 3>
+/// Helper class to create FFT grids of given sizes and compute indices in space- and frequency domains.
+class Grid : public std::array<int, 3>
 {
   private:
     /// Reciprocal space range.
@@ -68,17 +68,17 @@ class FFT3D_grid : public std::array<int, 3>
 
         for (int x = 0; x < (*this)[0]; x++) {
             if (coord_by_freq<0>(freq_by_coord<0>(x)) != x) {
-                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of x-coordinates");
+                throw std::runtime_error("fft::Grid::find_grid_size(): wrong mapping of x-coordinates");
             }
         }
         for (int x = 0; x < (*this)[1]; x++) {
             if (coord_by_freq<1>(freq_by_coord<1>(x)) != x) {
-                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of y-coordinates");
+                throw std::runtime_error("fft::Grid::find_grid_size(): wrong mapping of y-coordinates");
             }
         }
         for (int x = 0; x < (*this)[2]; x++) {
             if (coord_by_freq<2>(freq_by_coord<2>(x)) != x) {
-                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of z-coordinates");
+                throw std::runtime_error("ffr::Grid::find_grid_size(): wrong mapping of z-coordinates");
             }
         }
     }
@@ -86,12 +86,12 @@ class FFT3D_grid : public std::array<int, 3>
   public:
 
     /// Default constructor.
-    FFT3D_grid()
+    Grid()
     {
     }
 
     /// Create FFT grid with initial dimensions.
-    FFT3D_grid(std::array<int, 3> initial_dims__)
+    Grid(std::array<int, 3> initial_dims__)
     {
         find_grid_size(initial_dims__);
     }
@@ -155,11 +155,12 @@ class FFT3D_grid : public std::array<int, 3>
     }
 };
 
-inline FFT3D_grid get_min_fft_grid(double cutoff__, r3::matrix<double> M__)
+/// Get the minimum grid that circumscribes the cutoff sphere.
+inline auto get_min_grid(double cutoff__, r3::matrix<double> M__)
 {
-    return FFT3D_grid(find_translations(cutoff__, M__) + r3::vector<int>({2, 2, 2}));
+    return Grid(r3::find_translations(cutoff__, M__) + r3::vector<int>({2, 2, 2}));
 }
 
-} // namespace sddk
+} // namespace fft
 
 #endif // __FFT3D_GRID_HPP__

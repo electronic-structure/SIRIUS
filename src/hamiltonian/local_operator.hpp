@@ -26,7 +26,7 @@
 #define __LOCAL_OPERATOR_HPP__
 
 #include "SDDK/memory.hpp"
-#include "SDDK/fft.hpp"
+#include "fft/fft.hpp"
 #include "typedefs.hpp"
 #include "utils/rte.hpp"
 

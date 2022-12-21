@@ -16,7 +16,7 @@ void test_wf_fft()
     auto gkvec_fft = std::make_shared<sddk::Gvec_fft>(*gkvec, mpi_grid.communicator(1 << 0), mpi_grid.communicator(1 << 1));
 
     /* get the FFT box boundaries */
-    auto fft_grid = sddk::get_min_fft_grid(8.0, gkvec->lattice_vectors());
+    auto fft_grid = fft::get_min_grid(8.0, gkvec->lattice_vectors());
 
     std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
 

@@ -18,7 +18,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    auto fft_grid = get_min_fft_grid(cutoff, M);
+    auto fft_grid = fft::get_min_grid(cutoff, M);
 
     auto spl_z = split_fft_z(fft_grid[2], Communicator::world());
 

@@ -43,7 +43,7 @@ r3::vector<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
     return r3::vector<int>(x, y, z);
 }
 
-void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
+void sddk::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 {
     PROFILE("sddk::Gvec::find_z_columns");
 
@@ -407,7 +407,7 @@ Gvec::init_gvec_cart_local()
 }
 
 void
-Gvec::init(FFT3D_grid const& fft_grid)
+Gvec::init(fft::Grid const& fft_grid)
 {
     PROFILE("sddk::Gvec::init");
 

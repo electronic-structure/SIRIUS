@@ -120,15 +120,15 @@ Simulation_context::init_fft_grid()
     /* create FFT driver for dense mesh (density and potential) */
     auto fft_grid = cfg().settings().fft_grid_size();
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
-        fft_grid_ = sddk::get_min_fft_grid(pw_cutoff(), rlv);
+        fft_grid_ = fft::get_min_grid(pw_cutoff(), rlv);
         cfg().settings().fft_grid_size(fft_grid_);
     } else {
         /* else create a grid with user-specified dimensions */
-        fft_grid_ = sddk::FFT3D_grid(fft_grid);
+        fft_grid_ = fft::Grid(fft_grid);
     }
 
     /* create FFT grid for coarse mesh */
-    fft_coarse_grid_ = sddk::get_min_fft_grid(2 * gk_cutoff(), rlv);
+    fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
 }
 
 sddk::mdarray<double, 3>
@@ -686,7 +686,7 @@ Simulation_context::print_info(std::ostream& out__) const
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
         mpi::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
-        sddk::FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+        fft::Grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
         sddk::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
         for (int i = 0; i < 2; i++) {

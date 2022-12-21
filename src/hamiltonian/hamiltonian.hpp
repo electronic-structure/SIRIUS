@@ -32,7 +32,7 @@
 #include "SDDK/dmatrix.hpp"
 #include "typedefs.hpp"
 #include "SDDK/wave_functions.hpp"
-#include "fft.hpp"
+#include "fft/fft.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
 

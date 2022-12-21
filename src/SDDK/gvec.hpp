@@ -30,7 +30,7 @@
 #include <iostream>
 #include <type_traits>
 #include "memory.hpp"
-#include "fft3d_grid.hpp"
+#include "fft/fft3d_grid.hpp"
 #include "linalg/r3.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
@@ -223,7 +223,7 @@ class Gvec
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
-    void find_z_columns(double Gmax__, FFT3D_grid const& fft_box__);
+    void find_z_columns(double Gmax__, fft::Grid const& fft_box__);
 
     /// Distribute z-columns between MPI ranks.
     void distribute_z_columns();
@@ -240,7 +240,7 @@ class Gvec
     void init_gvec_cart_local();
 
     /// Initialize everything.
-    void init(FFT3D_grid const& fft_grid);
+    void init(fft::Grid const& fft_grid);
 
     friend void sddk::serialize(serializer& s__, Gvec const& gv__);
 
@@ -268,7 +268,7 @@ class Gvec
         , reduce_gvec_(reduce_gvec__)
         , bare_gvec_(false)
     {
-        init(get_min_fft_grid(Gmax__, M__));
+        init(fft::get_min_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
@@ -283,7 +283,7 @@ class Gvec
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
     {
-        init(get_min_fft_grid(Gmax__, M__));
+        init(fft::get_min_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
@@ -293,7 +293,7 @@ class Gvec
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
      */
-    Gvec(r3::matrix<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, mpi::Communicator const& comm__, bool reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, fft::Grid const& fft_grid__, mpi::Communicator const& comm__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -311,7 +311,7 @@ class Gvec
         , reduce_gvec_(gvec_base__.reduced())
         , gvec_base_(&gvec_base__)
     {
-        init(get_min_fft_grid(Gmax__, lattice_vectors_));
+        init(fft::get_min_grid(Gmax__, lattice_vectors_));
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
@@ -321,7 +321,7 @@ class Gvec
         , comm_(mpi::Communicator::self())
         , reduce_gvec_(reduce_gvec__)
     {
-        init(get_min_fft_grid(Gmax__, M__));
+        init(fft::get_min_grid(Gmax__, M__));
     }
 
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, int ngv_loc__, int const* gv__,

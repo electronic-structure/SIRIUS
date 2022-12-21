@@ -28,7 +28,7 @@
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
-#include "SDDK/fft.hpp"
+#include "fft/fft.hpp"
 
 namespace sirius {
 
