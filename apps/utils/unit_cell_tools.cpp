@@ -8,7 +8,7 @@ using namespace sddk;
 
 void create_supercell(cmd_args const& args__)
 {
-    matrix3d<int> scell;
+    r3::matrix<int> scell;
     std::stringstream s(args__.value<std::string>("supercell"));
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -28,7 +28,7 @@ void create_supercell(cmd_args const& args__)
 
     Simulation_context ctx("sirius.json", Communicator::self());
 
-    auto scell_lattice_vectors = dot(ctx.unit_cell().lattice_vectors(), matrix3d<double>(scell));
+    auto scell_lattice_vectors = dot(ctx.unit_cell().lattice_vectors(), r3::matrix<double>(scell));
 
     std::cout << "supercell vectors (Cartesian coordinates) : " << std::endl;
     for (int i = 0; i < 3; i++) {
@@ -39,11 +39,11 @@ void create_supercell(cmd_args const& args__)
         std::cout << std::endl;
     }
 
-    std::cout << "volume ratio : " << std::abs(matrix3d<int>(scell).det()) << std::endl;
+    std::cout << "volume ratio : " << std::abs(r3::matrix<int>(scell).det()) << std::endl;
 
     Simulation_context ctx_sc(Communicator::self());
 
-    vector3d<double> a0, a1, a2;
+    r3::vector<double> a0, a1, a2;
     for (int x = 0; x < 3; x++) {
         a0[x] = scell_lattice_vectors(x, 0);
         a1[x] = scell_lattice_vectors(x, 1);
@@ -66,9 +66,9 @@ void create_supercell(cmd_args const& args__)
             for (int i0 = -10; i0 <= 10; i0++) {
                 for (int i1 = -10; i1 <= 10; i1++) {
                     for (int i2 = -10; i2 <= 10; i2++) {
-                        vector3d<double> T(i0, i1, i2);
-                        vector3d<double> vc = ctx.unit_cell().get_cartesian_coordinates(va + T);
-                        vector3d<double> vf = ctx_sc.unit_cell().get_fractional_coordinates(vc);
+                        r3::vector<double> T(i0, i1, i2);
+                        r3::vector<double> vc = ctx.unit_cell().get_cartesian_coordinates(va + T);
+                        r3::vector<double> vf = ctx_sc.unit_cell().get_fractional_coordinates(vc);
 
                         auto vr = reduce_coordinates(vf);
                         for (int x: {0, 1, 2}) {
@@ -129,7 +129,7 @@ void find_primitive()
 
     Simulation_context ctx_new(Communicator::self());
 
-    vector3d<double> a0, a1, a2;
+    r3::vector<double> a0, a1, a2;
     for (int x = 0; x < 3; x++) {
         a0[x] = lattice[x][0];
         a1[x] = lattice[x][1];
@@ -148,7 +148,7 @@ void find_primitive()
 
         for (int i = 0; i < nat_new; i++) {
             if (types[i] == iat) {
-                vector3d<double> p(positions(0, i), positions(1, i), positions(2, i));
+                r3::vector<double> p(positions(0, i), positions(1, i), positions(2, i));
                 std::vector<double> u({p[0], p[1], p[2]});
                 ctx_new.unit_cell().add_atom(label, u);
             }

@@ -914,7 +914,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = geometry3d::spherical_coordinates(this->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igk_loc));
+        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);

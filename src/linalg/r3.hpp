@@ -17,45 +17,44 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file geometry3d.hpp
+/** \file r3.hpp
  *
- *  \brief Simple classes and functions to work with the 3D vectors and matrices of the crystal lattice.
+ *  \brief Simple classes and functions to work with vectors and matrices of the R^3 space.
  */
 
-#ifndef __GEOMETRY3D_HPP__
-#define __GEOMETRY3D_HPP__
+#ifndef __R3_HPP__
+#define __R3_HPP__
 
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <array>
 #include <vector>
 #include <ostream>
-#include <cstring>
 #include <initializer_list>
 #include <stdexcept>
 #include <sstream>
 
-namespace geometry3d {
+namespace r3 {
 
 /// Simple implementation of 3d vector.
 template <typename T>
-class vector3d : public std::array<T, 3>
+class vector : public std::array<T, 3>
 {
   public:
     /// Create zero vector
-    vector3d()
+    vector()
     {
         (*this) = {0, 0, 0};
     }
 
     /// Create arbitrary vector.
-    vector3d(T x, T y, T z)
+    vector(T x, T y, T z)
     {
         (*this) = {x, y, z};
     }
 
     /// Create from std::initializer_list.
-    vector3d(std::initializer_list<T> v__)
+    vector(std::initializer_list<T> v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -63,7 +62,7 @@ class vector3d : public std::array<T, 3>
         }
     }
 
-    vector3d& operator=(std::initializer_list<T> v__)
+    vector& operator=(std::initializer_list<T> v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -73,7 +72,7 @@ class vector3d : public std::array<T, 3>
     }
 
     /// Create from std::vector.
-    vector3d(const std::vector<T>& v__)
+    vector(std::vector<T> const& v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -81,7 +80,7 @@ class vector3d : public std::array<T, 3>
         }
     }
 
-    vector3d& operator=(const std::vector<T>& v__)
+    vector& operator=(std::vector<T> const& v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -91,7 +90,7 @@ class vector3d : public std::array<T, 3>
     }
 
     /// Create from raw pointer.
-    vector3d(T const* ptr__)
+    vector(T const* ptr__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = ptr__[x];
@@ -99,7 +98,7 @@ class vector3d : public std::array<T, 3>
     }
 
     /// Create from array.
-    vector3d(std::array<T, 3> v__)
+    vector(std::array<T, 3> v__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = v__[x];
@@ -107,7 +106,7 @@ class vector3d : public std::array<T, 3>
     }
 
     /// Copy constructor.
-    vector3d(vector3d<T> const& vec__)
+    vector(vector<T> const& vec__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = vec__[x];
@@ -132,7 +131,7 @@ class vector3d : public std::array<T, 3>
         return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
     }
 
-    inline vector3d<T>& operator+=(vector3d<T> const& b)
+    inline vector<T>& operator+=(vector<T> const& b)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] += b[x];
@@ -140,7 +139,7 @@ class vector3d : public std::array<T, 3>
         return *this;
     }
 
-    inline vector3d<T>& operator-=(vector3d<T> const& b)
+    inline vector<T>& operator-=(vector<T> const& b)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] -= b[x];
@@ -151,10 +150,10 @@ class vector3d : public std::array<T, 3>
 };
 
 template <typename T, typename U>
-inline vector3d<decltype(T{} + U{})>
-operator+(vector3d<T> const& a, vector3d<U> const& b)
+inline vector<decltype(T{} + U{})>
+operator+(vector<T> const& a, vector<U> const& b)
 {
-    vector3d<decltype(T{} + U{})> c;
+    vector<decltype(T{} + U{})> c;
     for (int x : {0, 1, 2}) {
         c[x] = a[x] + b[x];
     }
@@ -162,10 +161,10 @@ operator+(vector3d<T> const& a, vector3d<U> const& b)
 }
 
 template <typename T, typename U>
-inline vector3d<decltype(T{} - U{})>
-operator-(vector3d<T> const& a, vector3d<U> const& b)
+inline vector<decltype(T{} - U{})>
+operator-(vector<T> const& a, vector<U> const& b)
 {
-    vector3d<decltype(T{} - U{})> c;
+    vector<decltype(T{} - U{})> c;
     for (int x : {0, 1, 2}) {
         c[x] = a[x] - b[x];
     }
@@ -173,10 +172,10 @@ operator-(vector3d<T> const& a, vector3d<U> const& b)
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
-operator*(vector3d<T> const& vec, U p)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
+operator*(vector<T> const& vec, U p)
 {
-    vector3d<decltype(T{} * U{})> a;
+    vector<decltype(T{} * U{})> a;
     for (int x : {0, 1, 2}) {
         a[x] = vec[x] * p;
     }
@@ -184,17 +183,17 @@ operator*(vector3d<T> const& vec, U p)
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
-operator*(U p, vector3d<T> const& vec)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
+operator*(U p, vector<T> const& vec)
 {
     return vec * p;
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector3d<decltype(T{} * U{})>>
-operator/(vector3d<T> const& vec, U p)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
+operator/(vector<T> const& vec, U p)
 {
-    vector3d<decltype(T{} * U{})> a;
+    vector<decltype(T{} * U{})> a;
     for (int x : {0, 1, 2}) {
         a[x] = vec[x] / p;
     }
@@ -202,15 +201,15 @@ operator/(vector3d<T> const& vec, U p)
 }
 
 template <typename T, typename U>
-inline auto dot(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})
+inline auto dot(vector<T> const a, vector<U> const b) -> decltype(T{} * U{})
 {
     return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }
 
 template <typename T>
-inline vector3d<T> cross(vector3d<T> const a, vector3d<T> const b)
+inline auto cross(vector<T> const a, vector<T> const b)
 {
-    vector3d<T> res;
+    vector<T> res;
     res[0] = a[1] * b[2] - a[2] * b[1];
     res[1] = a[2] * b[0] - a[0] * b[2];
     res[2] = a[0] * b[1] - a[1] * b[0];
@@ -218,7 +217,7 @@ inline vector3d<T> cross(vector3d<T> const a, vector3d<T> const b)
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, vector3d<T> const& v)
+std::ostream& operator<<(std::ostream& out, r3::vector<T> const& v)
 {
     out << "{" << v[0] << ", " << v[1] << ", " << v[2] << "}";
     return out;
@@ -226,7 +225,7 @@ std::ostream& operator<<(std::ostream& out, vector3d<T> const& v)
 
 /// Handling of a 3x3 matrix of numerical data types.
 template <typename T>
-class matrix3d
+class matrix
 {
   private:
     /// Store matrix \f$ M_{ij} \f$ as <tt>mtrx[i][j]</tt>.
@@ -234,22 +233,26 @@ class matrix3d
 
   public:
     template <typename U>
-    friend class matrix3d;
+    friend class matrix;
 
     /// Construct a zero matrix.
-    matrix3d()
+    matrix()
     {
-        std::memset(&mtrx_[0][0], 0, 9 * sizeof(T));
+        this->zero();
     }
 
     /// Construct matrix form plain 3x3 array.
-    matrix3d(T mtrx__[3][3])
+    matrix(T mtrx__[3][3])
     {
-        std::memcpy(&mtrx_[0][0], &mtrx__[0][0], 9 * sizeof(T));
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                mtrx_[i][j] = mtrx__[i][j];
+            }
+        }
     }
 
     /// Construct matrix from std::vector.
-    matrix3d(std::vector<std::vector<T>> src__)
+    matrix(std::vector<std::vector<T>> src__)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -258,7 +261,7 @@ class matrix3d
         }
     }
 
-    matrix3d(std::array<std::array<T, 3>, 3> src__)
+    matrix(std::array<std::array<T, 3>, 3> src__)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -269,7 +272,7 @@ class matrix3d
 
     /// Copy constructor.
     template <typename U>
-    matrix3d(matrix3d<U> const& src__)
+    matrix(matrix<U> const& src__)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -279,7 +282,7 @@ class matrix3d
     }
 
     /// Construct matrix form std::initializer_list.
-    matrix3d(std::initializer_list<std::initializer_list<T>> mtrx__)
+    matrix(std::initializer_list<std::initializer_list<T>> mtrx__)
     {
         for (int i : {0, 1, 2}) {
             for (int j : {0, 1, 2}) {
@@ -289,10 +292,14 @@ class matrix3d
     }
 
     /// Assignment operator.
-    matrix3d<T>& operator=(matrix3d<T> const& rhs)
+    matrix<T>& operator=(matrix<T> const& rhs)
     {
         if (this != &rhs) {
-            std::memcpy(&this->mtrx_[0][0], &rhs.mtrx_[0][0], 9 * sizeof(T));
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    this->mtrx_[i][j] = rhs.mtrx_[i][j];
+                }
+            }
         }
         return *this;
     }
@@ -309,9 +316,9 @@ class matrix3d
 
     /// Sum of two matrices.
     template <typename U>
-    inline matrix3d<decltype(T{} + U{})> operator+(matrix3d<U> const& b) const
+    inline auto operator+(matrix<U> const& b) const
     {
-        matrix3d<decltype(T{} + U{})> a;
+        matrix<decltype(T{} + U{})> a;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 a(i, j) = (*this)(i, j) + b(i, j);
@@ -322,7 +329,7 @@ class matrix3d
 
     /// += operator
     template <typename U>
-    inline matrix3d<T> operator+=(matrix3d<U> const& b)
+    inline auto& operator+=(matrix<U> const& b)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -334,7 +341,7 @@ class matrix3d
 
     /// Multiply matrix by a scalar number.
     template <typename U>
-    inline matrix3d<T>& operator*=(U p)
+    inline auto& operator*=(U p)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -360,9 +367,9 @@ class matrix3d
 
 /// Multiply matrix by a scalar number.
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>> operator*(matrix3d<T> const& a__, U p__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(matrix<T> const& a__, U p__)
 {
-    matrix3d<decltype(T{} * U{})> c;
+    matrix<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             c(i, j) = a__(i, j) * p__;
@@ -372,12 +379,12 @@ inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>>
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix3d<decltype(T{} * U{})>> operator*(U p__, matrix3d<T> const& a__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(U p__, matrix<T> const& a__)
 {
     return a__ * p__;
 }
 
-inline bool operator==(matrix3d<int> const& a__, matrix3d<int> const& b__)
+inline bool operator==(matrix<int> const& a__, matrix<int> const& b__)
 {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -391,9 +398,9 @@ inline bool operator==(matrix3d<int> const& a__, matrix3d<int> const& b__)
 
 /// Multiply two matrices.
 template <typename T, typename U>
-inline matrix3d<decltype(T{} * U{})> dot(matrix3d<T> const& a__, matrix3d<U> const& b__)
+inline auto dot(matrix<T> const& a__, matrix<U> const& b__)
 {
-    matrix3d<decltype(T{} * U{})> c;
+    matrix<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             for (int k = 0; k < 3; k++) {
@@ -406,9 +413,9 @@ inline matrix3d<decltype(T{} * U{})> dot(matrix3d<T> const& a__, matrix3d<U> con
 
 /// Matrix-vector multiplication.
 template <typename T, typename U>
-inline vector3d<decltype(T{} * U{})> dot(matrix3d<T> const& m__, vector3d<U> const& b__)
+inline auto dot(matrix<T> const& m__, vector<U> const& b__)
 {
-    vector3d<decltype(T{} * U{})> a;
+    vector<decltype(T{} * U{})> a;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             a[i] += m__(i, j) * b__[j];
@@ -419,9 +426,9 @@ inline vector3d<decltype(T{} * U{})> dot(matrix3d<T> const& m__, vector3d<U> con
 
 /// Vector-matrix multiplication.
 template <typename T, typename U>
-inline vector3d<decltype(T{} * U{})> dot(vector3d<U> const& b__, matrix3d<T> const& m__)
+inline auto dot(vector<U> const& b__, matrix<T> const& m__)
 {
-    vector3d<decltype(T{} * U{})> a;
+    vector<decltype(T{} * U{})> a;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             a[i] += b__[j] * m__(j, i);
@@ -432,9 +439,9 @@ inline vector3d<decltype(T{} * U{})> dot(vector3d<U> const& b__, matrix3d<T> con
 
 /// Return transpose of the matrix.
 template <typename T>
-inline matrix3d<T> transpose(matrix3d<T> src)
+inline auto transpose(matrix<T> src)
 {
-    matrix3d<T> mtrx;
+    matrix<T> mtrx;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             mtrx(i, j) = src(j, i);
@@ -444,9 +451,9 @@ inline matrix3d<T> transpose(matrix3d<T> src)
 }
 
 template <typename T>
-inline matrix3d<T> inverse_aux(matrix3d<T> src)
+inline auto inverse_aux(matrix<T> src)
 {
-    matrix3d<T> mtrx;
+    matrix<T> mtrx;
 
     mtrx(0, 0) = (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
     mtrx(0, 1) = (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
@@ -462,7 +469,7 @@ inline matrix3d<T> inverse_aux(matrix3d<T> src)
 }
 
 /// Return inverse of the integer matrix
-inline matrix3d<int> inverse(matrix3d<int> src)
+inline auto inverse(matrix<int> src)
 {
     int t1 = src.det();
     if (std::abs(t1) != 1) {
@@ -473,7 +480,7 @@ inline matrix3d<int> inverse(matrix3d<int> src)
 
 /// Return inverse of the matrix.
 template <typename T>
-inline matrix3d<T> inverse(matrix3d<T> src)
+inline auto inverse(matrix<T> src)
 {
     T t1 = src.det();
 
@@ -485,7 +492,7 @@ inline matrix3d<T> inverse(matrix3d<T> src)
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& out, matrix3d<T> const& v)
+inline std::ostream& operator<<(std::ostream& out, matrix<T> const& v)
 {
     out << "{";
     for (int i = 0; i < 3; i++) {
@@ -509,12 +516,12 @@ inline std::ostream& operator<<(std::ostream& out, matrix3d<T> const& v)
 /// Reduce the coordinates to the first unit cell.
 /** Split the input vector in lattice coordinates to the sum r0 + T, where T is the lattice translation
  *  vector (three integers) and r0 is the vector within the first unit cell with coordinates in [0, 1) range. */
-inline std::pair<vector3d<double>, vector3d<int>>
-reduce_coordinates(vector3d<double> coord__)
+inline auto
+reduce_coordinates(vector<double> coord__)
 {
     const double eps{1e-9};
 
-    std::pair<vector3d<double>, vector3d<int>> v;
+    std::pair<vector<double>, vector<int>> v;
 
     v.first = coord__;
     for (int i = 0; i < 3; i++) {
@@ -559,27 +566,27 @@ reduce_coordinates(vector3d<double> coord__)
  *  by equating the expressions for the volume of the supercell:
  *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3|
  *   Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
-inline vector3d<int> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
+inline auto find_translations(double radius__, matrix<double> const& lattice_vectors__)
 {
-    vector3d<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
-    vector3d<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
-    vector3d<double> a2(lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2));
+    vector<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
+    vector<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
+    vector<double> a2(lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2));
 
     double det = std::abs(lattice_vectors__.det());
 
-    vector3d<int> limits;
+    vector<int> limits;
 
     limits[0] = static_cast<int>(2 * radius__ * cross(a1, a2).length() / det) + 1;
     limits[1] = static_cast<int>(2 * radius__ * cross(a0, a2).length() / det) + 1;
     limits[2] = static_cast<int>(2 * radius__ * cross(a0, a1).length() / det) + 1;
 
-    return {limits[0], limits[1], limits[2]};
+    return limits;
 }
 
 /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-inline vector3d<double> spherical_coordinates(vector3d<double> vc)
+inline auto spherical_coordinates(vector<double> vc)
 {
-    geometry3d::vector3d<double> vs;
+    r3::vector<double> vs;
 
     const double eps{1e-12};
 
@@ -606,6 +613,6 @@ inline vector3d<double> spherical_coordinates(vector3d<double> vc)
     return vs;
 }
 
-} // namespace geometry3d
+} // namespace r3
 
-#endif // __GEOMETRY3D_HPP__
+#endif // __R3_HPP__

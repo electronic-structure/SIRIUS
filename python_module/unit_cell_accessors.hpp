@@ -90,7 +90,7 @@ void set_lattice_vectors(Unit_cell& unit_cell,
 
                            double* ptr = static_cast<double*>(info.ptr);
                            int stride = info.strides[0] / sizeof(double);
-                           return vector3d<double>({ptr[0], ptr[stride], ptr[2*stride]});
+                           return r3::vector<double>({ptr[0], ptr[stride], ptr[2*stride]});
                        };
 
     auto l1 = to_vector(l1buf);

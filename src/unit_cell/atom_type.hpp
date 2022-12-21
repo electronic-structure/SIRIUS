@@ -26,7 +26,7 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "radial/radial_solver.hpp"
 #include "context/simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
@@ -226,11 +226,11 @@ class Atom_type
 
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
-    sddk::matrix<double_complex> p_mtrx_;
+    sddk::matrix<std::complex<double>> p_mtrx_;
 
     /// f_coefficients defined in doi:10.1103/PhysRevB.71.115106 Eq.9 only
     /// valid when SO interactions are on
-    sddk::mdarray<double_complex, 4> f_coefficients_;
+    sddk::mdarray<std::complex<double>, 4> f_coefficients_;
 
     /// List of atom indices (global) for a given type.
     std::vector<int> atom_id_;
@@ -244,7 +244,7 @@ class Atom_type
     mutable sddk::mdarray<double, 3> vrf_coef_;
 
     /// Non-zero Gaunt coefficients.
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
+    std::unique_ptr<Gaunt_coefficients<std::complex<double>>> gaunt_coefs_{nullptr};
 
     /// Maximul orbital quantum number of LAPW basis functions.
     int lmax_apw_{-1};

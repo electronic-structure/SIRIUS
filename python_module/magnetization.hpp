@@ -44,7 +44,7 @@ std::string sprint_magnetization(K_point_set& kset, const Density& density)
         sstream << buffer;
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            vector3d<double> v(mt_mag[ia]);
+            r3::vector<double> v(mt_mag[ia]);
             std::sprintf(buffer, "%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
             sstream << buffer;
             std::sprintf(buffer, "\n");

@@ -6,12 +6,12 @@ using namespace sddk;
 void test1()
 {
     int N = 400;
-    sddk::matrix<double_complex> A(N, N);
-    sddk::matrix<double_complex> B(N, N);
-    sddk::matrix<double_complex> C(N, N);
+    sddk::matrix<std::complex<double>> A(N, N);
+    sddk::matrix<std::complex<double>> B(N, N);
+    sddk::matrix<std::complex<double>> C(N, N);
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) B(j, i) = utils::random<double_complex>();
+        for (int j = 0; j < N; j++) B(j, i) = utils::random<std::complex<double>>();
     }
 
     for (int i = 0; i < N; i++)
@@ -21,27 +21,27 @@ void test1()
     A >> B;
 
     linalg(linalg_t::lapack).syinv(N, A);
-    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0),
-                                 B.ld(), &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
+    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<std::complex<double>>::one(), &A(0, 0), A.ld(), &B(0, 0),
+                                 B.ld(), &linalg_const<std::complex<double>>::zero(), &C(0, 0), C.ld());
 
     int err = 0;
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
         {
-            double_complex z = C(i, j);
+            std::complex<double> z = C(i, j);
             if (i == j) z -= 1.0;
             if (std::abs(z) > 1e-10) err++;
         }
     }
 
-    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
-                                 &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
+    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<std::complex<double>>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
+                                 &linalg_const<std::complex<double>>::zero(), &C(0, 0), C.ld());
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
         {
-            double_complex z = C(i, j);
+            std::complex<double> z = C(i, j);
             if (i == j) z -= 1.0;
             if (std::abs(z) > 1e-10) err++;
         }
@@ -157,9 +157,9 @@ int main(int argn, char** argv)
     sirius::initialize(1);
     test1();
     test2<double>();
-    test2<double_complex>();
+    test2<std::complex<double>>();
     //#ifdef SIRIUS_SCALAPACK
-    //test3<double_complex>();
+    //test3<std::complex<double>>();
     //#endif
     sirius::finalize();
     return 0;

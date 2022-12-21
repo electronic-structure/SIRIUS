@@ -117,7 +117,7 @@ int main(int argn, char** argv)
         json_conf["parameters"]["gamma_point"] = reduce_gvec;
 
         auto ctx = sirius::create_simulation_context(json_conf, {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}}, 0,
-            std::vector<geometry3d::vector3d<double>>(), false, false);
+            std::vector<r3::vector<double>>(), false, false);
         for (int i = 0; i < repeat; i++) {
             if (fp32) {
 #if defined(USE_FP32)

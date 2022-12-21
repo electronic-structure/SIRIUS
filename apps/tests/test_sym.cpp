@@ -20,9 +20,9 @@ void test_sym(cmd_args const& args__)
     json_conf["parameters"]["num_bands"] = 1;
     //ctx.so_correction(true);
 
-    std::vector<geometry3d::vector3d<double>> coord;
-    coord.push_back(geometry3d::vector3d<double>({1.0/2, 1.0/2, 0}));
-    coord.push_back(geometry3d::vector3d<double>({1.0/3, 1.0/3, 0}));
+    std::vector<r3::vector<double>> coord;
+    coord.push_back(r3::vector<double>({1.0/2, 1.0/2, 0}));
+    coord.push_back(r3::vector<double>({1.0/3, 1.0/3, 0}));
     //ctx.unit_cell().add_atom("Cu", {0.113500, 0.613500, 0.886500});
     //ctx.unit_cell().add_atom("Cu", {0.613500, 0.886500, 0.113500});
     //ctx.unit_cell().add_atom("Cu", {0.886500, 0.113500, 0.613500});
@@ -33,8 +33,8 @@ void test_sym(cmd_args const& args__)
             coord, false, false);
     Simulation_context& ctx = *ctx_ptr;
 
-    vector3d<int> k_grid(4, 4, 1);
-    vector3d<int> k_shift(0, 0, 0);
+    r3::vector<int> k_grid(4, 4, 1);
+    r3::vector<int> k_shift(0, 0, 0);
 
     K_point_set kset_sym(ctx, k_grid, k_shift, true);
     K_point_set kset_nosym(ctx, k_grid, k_shift, false);
@@ -79,12 +79,12 @@ void test_sym(cmd_args const& args__)
 
             auto rotm = sht::rotation_matrix<double>(2, eang, pr);
 
-            auto vk1 = geometry3d::reduce_coordinates(dot(R, kset_sym.get<double>(ik)->vk())).first;
+            auto vk1 = r3::reduce_coordinates(dot(R, kset_sym.get<double>(ik)->vk())).first;
 
             std::cout << "isym: " << isym << " k: " << kset_sym.get<double>(ik)->vk() << " k1: " << vk1 << std::endl;
 
             /* compute <phi|G+k>w<G+k|phi> using k1 from the irreducible set */
-            sddk::mdarray<double_complex, 3> dm(5, 5, na);
+            sddk::mdarray<std::complex<double>, 3> dm(5, 5, na);
             dm.zero();
 
             int ik1 = kset_nosym.find_kpoint(vk1);
@@ -112,10 +112,10 @@ void test_sym(cmd_args const& args__)
                 int ja = sym[isym].spg_op.sym_atom[ia];
 
                 double phase = twopi * dot(kset_sym.get<double>(ik)->vk(), ctx.unit_cell().atom(ia).position());
-                auto dephase_k = std::exp(double_complex(0.0, phase));
+                auto dephase_k = std::exp(std::complex<double>(0.0, phase));
 
                 phase = twopi * dot(kset_sym.get<double>(ik)->vk(), ctx.unit_cell().atom(ja).position());
-                auto phase_k = std::exp(double_complex(0.0, phase));
+                auto phase_k = std::exp(std::complex<double>(0.0, phase));
 
                 std::cout << "ia : " << ia << " -> " << ja << std::endl;
 
@@ -126,7 +126,7 @@ void test_sym(cmd_args const& args__)
                 int jb = type_j.indexb_wfs().offset(2) + nawf.second[ja];
 
                 for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {
-                    sddk::mdarray<double_complex, 1> v1(5);
+                    sddk::mdarray<std::complex<double>, 1> v1(5);
                     v1.zero();
                     for (int m = 0; m < 5; m++) {
                         for (int mp = 0; mp < 5; mp++) {
@@ -139,7 +139,7 @@ void test_sym(cmd_args const& args__)
                 }
             }
 
-            sddk::mdarray<double_complex, 3> dm1(5, 5, na);
+            sddk::mdarray<std::complex<double>, 3> dm1(5, 5, na);
             dm1.zero();
 
             for (int ia = 0; ia < na; ia++) {

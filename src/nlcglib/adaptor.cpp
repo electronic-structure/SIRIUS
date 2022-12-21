@@ -341,7 +341,7 @@ Energy::print_info() const
         std::printf("\n");
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            vector3d<double> v(mt_mag[ia]);
+            r3::vector<double> v(mt_mag[ia]);
             std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
             std::printf("\n");
         }

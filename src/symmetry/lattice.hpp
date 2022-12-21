@@ -22,7 +22,7 @@
  *  \brief Crystal lattice functions.
  */
 
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "utils/rte.hpp"
 
 #ifndef __LATTICE_HPP__
@@ -30,18 +30,16 @@
 
 namespace sirius {
 
-using namespace geometry3d;
-
 /// Compute a metric tensor.
-inline matrix3d<double>
-metric_tensor(matrix3d<double> const& lat_vec__)
+inline auto
+metric_tensor(r3::matrix<double> const& lat_vec__)
 {
     return dot(transpose(lat_vec__), lat_vec__);
 }
 
 /// Compute error of the symmetry-transformed metric tensor.
 inline double
-metric_tensor_error(matrix3d<double> const& lat_vec__, matrix3d<int> const& R__)
+metric_tensor_error(r3::matrix<double> const& lat_vec__, r3::matrix<int> const& R__)
 {
     auto mt = metric_tensor(lat_vec__);
 
@@ -55,10 +53,10 @@ metric_tensor_error(matrix3d<double> const& lat_vec__, matrix3d<int> const& R__)
     return diff;
 }
 
-inline std::vector<matrix3d<int>>
-find_lat_sym(matrix3d<double> const& lat_vec__, double tol__)
+inline auto
+find_lat_sym(r3::matrix<double> const& lat_vec__, double tol__)
 {
-    std::vector<matrix3d<int>> lat_sym;
+    std::vector<r3::matrix<int>> lat_sym;
 
     auto r = {-1, 0, 1};
 
@@ -72,7 +70,7 @@ find_lat_sym(matrix3d<double> const& lat_vec__, double tol__)
             for (int i21: r) {
             for (int i22: r) {
                 /* build a trial symmetry operation */
-                matrix3d<int> R({{i00, i01, i02}, {i10, i11, i12}, {i20, i21, i22}});
+                r3::matrix<int> R({{i00, i01, i02}, {i10, i11, i12}, {i20, i21, i22}});
                 /* valid symmetry operation has a determinant of +/- 1 */
                 if (std::abs(R.det()) == 1) {
                     /* metric tensor should be invariant under symmetry operation */

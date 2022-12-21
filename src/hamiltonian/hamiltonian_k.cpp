@@ -685,7 +685,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatr
             auto gkvec_row_cart = kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(ig_row);
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
-            double t1 = 0.5 * geometry3d::dot(gkvec_row_cart, gkvec_col_cart);
+            double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);
 
             h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);
@@ -713,7 +713,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatr
 }
 
 //== template <spin_block_t sblock>
-//== void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
+//== void Band::apply_uj_correction(mdarray<std::complex<double>, 2>& fv_states, mdarray<std::complex<double>, 3>& hpsi)
 //== {
 //==     Timer t("sirius::Band::apply_uj_correction");
 //==
@@ -743,7 +743,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatr
 //==                             for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
 //==                             {
 //==                                 int idx1 = type->indexb_by_lm_order(lm1, order1);
-//==                                 double_complex z1 = fv_states(offset + idx1, ist) * ori;
+//==                                 std::complex<double> z1 = fv_states(offset + idx1, ist) * ori;
 //==
 //==                                 if (sblock == uu)
 //==                                 {
@@ -1444,13 +1444,13 @@ template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_pw<double, 3>() const;
 
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 1>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 1>() const;
 
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 2>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 2>() const;
 
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double_complex, 3>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 3>() const;
 
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<1>() const;

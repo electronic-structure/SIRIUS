@@ -64,7 +64,7 @@ class K_point_set
     K_point_set(K_point_set& src) = delete;
 
     /// Create regular grid of k-points.
-    void create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__);
+    void create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__);
 
     bool initialized_{false};
 
@@ -83,7 +83,7 @@ class K_point_set
     }
 
     /// Create a regular mesh of k-points.
-    K_point_set(Simulation_context& ctx__, vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
+    K_point_set(Simulation_context& ctx__, r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__)
         : ctx_(ctx__)
     {
         create_k_mesh(k_grid__, k_shift__, use_symmetry__);
@@ -170,7 +170,7 @@ class K_point_set
     }
 
     /// Add k-point to the set.
-    void add_kpoint(vector3d<double> vk__, double weight__)
+    void add_kpoint(r3::vector<double> vk__, double weight__)
     {
         kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__)));
 #ifdef USE_FP32
@@ -217,7 +217,7 @@ class K_point_set
     }
 
     /// Find index of k-point.
-    inline int find_kpoint(vector3d<double> vk__)
+    inline int find_kpoint(r3::vector<double> vk__)
     {
         for (int ik = 0; ik < num_kpoints(); ik++) {
             if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {

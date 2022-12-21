@@ -12,7 +12,7 @@ if (Communicator::world().rank() == 0) {
 }
 /* reciprocal lattice vectors in
    inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in
@@ -47,7 +47,7 @@ if (Communicator::world().rank() == 0) {
 }
 /* reciprocal lattice vectors in 
     inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in
@@ -86,9 +86,9 @@ spfft_transform_type<double> spfft(
 
 /* create data buffer with local number of G-vectors
    and fill with random numbers */
-mdarray<double_complex, 1> f(gvp.gvec_count_fft());
+mdarray<std::complex<double>, 1> f(gvp.gvec_count_fft());
 f = [](int64_t){
-  return utils::random<double_complex>();
+  return utils::random<std::complex<double>>();
 };
 /* transform to real space */
 spfft.backward(reinterpret_cast<double const*>(
@@ -119,7 +119,7 @@ spla::Context spla_ctx(SPLA_PU_HOST);
 
 /* reciprocal lattice vectors in 
    inverse atomic units */
-matrix3d<double> M = {{1, 0, 0},
+r3::matrix<double> M = {{1, 0, 0},
                       {0, 1, 0},
                       {0, 0, 1}};
 /* G-vector cutoff radius in
@@ -138,7 +138,7 @@ wf::Wave_functions<double> wf(gvec, wf::num_mag_dims(0), wf::num_bands(N), memor
 for (int i = 0; i < N; i++) {
     for (int j = 0; j < gvec->count(); j++) {
         wf.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) =
-            utils::random<double_complex>();
+            utils::random<std::complex<double>>();
     }
 }
 /* create a 2x2 BLACS grid */
@@ -146,7 +146,7 @@ BLACS_grid grid(Communicator::world(), 2, 2);
 /* cyclic block size */
 int bs = 16;
 /* create a distributed overlap matrix */
-dmatrix<double_complex> o(N, N, grid, bs, bs);
+dmatrix<std::complex<double>> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
 wf::Wave_functions<double> tmp(gvec, wf::num_mag_dims(0), wf::num_bands(N), memory_t::host);
 /* orthogonalize wave-functions */

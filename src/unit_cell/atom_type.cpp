@@ -203,7 +203,7 @@ Atom_type::init(int offset_lo__)
     }
 
     if (parameters_.full_potential()) {
-        using gc_z   = Gaunt_coefficients<double_complex>;
+        using gc_z   = Gaunt_coefficients<std::complex<double>>;
         gaunt_coefs_ = std::make_unique<gc_z>(std::max(this->lmax_apw(), this->lmax_lo()),
                                               std::max(parameters_.lmax_rho(), parameters_.lmax_pot()),
                                               std::max(this->lmax_apw(), this->lmax_lo()), SHT::gaunt_hybrid);
@@ -728,7 +728,7 @@ Atom_type::generate_f_coefficients()
 
     // number of beta projectors
     int nbf         = this->mt_basis_size();
-    f_coefficients_ = sddk::mdarray<double_complex, 4>(nbf, nbf, 2, 2);
+    f_coefficients_ = sddk::mdarray<std::complex<double>, 4>(nbf, nbf, 2, 2);
     f_coefficients_.zero();
 
     for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -744,7 +744,7 @@ Atom_type::generate_f_coefficients()
                 // take beta projectors with same l and j
                 for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
                     for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
-                        double_complex coef = {0.0, 0.0};
+                        std::complex<double> coef = {0.0, 0.0};
 
                         // yes dirty but loop over double is worst.
                         // since mj is only important for the rotation

@@ -15,7 +15,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
         eps = 1e-6;
     }
 
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     auto fft_grid = get_min_fft_grid(cutoff, M);
 

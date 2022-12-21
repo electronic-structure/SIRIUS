@@ -5,7 +5,7 @@
 typedef double gemm_type;
 int const nop_gemm = 2;
 #else
-typedef double_complex gemm_type;
+typedef std::complex<double> gemm_type;
 int const nop_gemm = 8;
 #endif
 

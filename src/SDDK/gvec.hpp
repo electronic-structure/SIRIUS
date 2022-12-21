@@ -31,13 +31,11 @@
 #include <type_traits>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
-
-using namespace geometry3d;
 
 namespace sddk {
 
@@ -114,13 +112,13 @@ class Gvec
 {
   private:
     /// k-vector of G+k.
-    vector3d<double> vk_{0, 0, 0};
+    r3::vector<double> vk_{0, 0, 0};
 
     /// Cutoff for |G+k| vectors.
     double Gmax_{0};
 
     /// Reciprocal lattice vectors.
-    matrix3d<double> lattice_vectors_;
+    r3::matrix<double> lattice_vectors_;
 
     /// Total communicator which is used to distribute G or G+k vectors.
     Communicator comm_;
@@ -220,7 +218,7 @@ class Gvec
     int num_zcol_local_{-1};
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    vector3d<int> gvec_by_full_index(uint32_t idx__) const;
+    r3::vector<int> gvec_by_full_index(uint32_t idx__) const;
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
@@ -261,7 +259,7 @@ class Gvec
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
      */
-    Gvec(vector3d<double> vk__, matrix3d<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
+    Gvec(r3::vector<double> vk__, r3::matrix<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
         , Gmax_(Gmax__)
         , lattice_vectors_(M__)
@@ -278,7 +276,7 @@ class Gvec
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
      */
-    Gvec(matrix3d<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -294,7 +292,7 @@ class Gvec
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
      */
-    Gvec(matrix3d<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, Communicator const& comm__, bool reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, Communicator const& comm__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -316,7 +314,7 @@ class Gvec
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
-    Gvec(matrix3d<double> M__, double Gmax__, bool reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(Communicator::self())
@@ -325,7 +323,7 @@ class Gvec
         init(get_min_fft_grid(Gmax__, M__));
     }
 
-    Gvec(vector3d<double> vk__, matrix3d<double> M__, int ngv_loc__, int const* gv__, Communicator const& comm__, bool reduce_gvec__)
+    Gvec(r3::vector<double> vk__, r3::matrix<double> M__, int ngv_loc__, int const* gv__, Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -408,7 +406,7 @@ class Gvec
     /// Set the new reciprocal lattice vectors.
     /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
-    inline auto const& lattice_vectors(matrix3d<double> lattice_vectors__)
+    inline auto const& lattice_vectors(r3::matrix<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
         find_gvec_shells();
@@ -417,7 +415,7 @@ class Gvec
     }
 
     /// Retrn a const reference to the reciprocal lattice vectors.
-    inline matrix3d<double> const& lattice_vectors() const
+    inline r3::matrix<double> const& lattice_vectors() const
     {
         return lattice_vectors_;
     }
@@ -491,12 +489,12 @@ class Gvec
 
     /// Return G vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<int>
+    inline r3::vector<int>
     gvec(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
-                return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+                return r3::vector<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
                 break;
             }
             case index_domain_t::global: {
@@ -508,12 +506,12 @@ class Gvec
 
     /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<double>
+    inline r3::vector<double>
     gkvec(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
-                return vector3d<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
+                return r3::vector<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
                 break;
             }
             case index_domain_t::global: {
@@ -525,12 +523,12 @@ class Gvec
 
     /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<double>
+    inline r3::vector<double>
     gvec_cart(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
-                return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+                return r3::vector<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
                 break;
             }
             case index_domain_t::global: {
@@ -543,12 +541,12 @@ class Gvec
 
     /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<double>
+    inline r3::vector<double>
     gkvec_cart(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
-                return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+                return r3::vector<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
                 break;
             }
             case index_domain_t::global: {
@@ -565,7 +563,7 @@ class Gvec
         return gvec_shell_(ig__);
     }
 
-    inline int shell(vector3d<int> const& G__) const
+    inline int shell(r3::vector<int> const& G__) const
     {
         return this->shell(index_by_gvec(G__));
     }
@@ -603,7 +601,7 @@ class Gvec
         }
     }
 
-    inline int index_g12(vector3d<int> const& g1__, vector3d<int> const& g2__) const
+    inline int index_g12(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
@@ -612,7 +610,7 @@ class Gvec
         return idx;
     }
 
-    std::pair<int, bool> index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const;
+    std::pair<int, bool> index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const;
 
     //inline int index_g12_safe(int ig1__, int ig2__) const
     //{
@@ -627,7 +625,7 @@ class Gvec
      *  a given x and y. This information is used to compute the offset which is added to the starting index
      *  in order to get a full G-vector index. Check find_z_columns() to see how the z-columns are found and
      *  added to the list of columns. */
-    int index_by_gvec(vector3d<int> const& G__) const;
+    int index_by_gvec(r3::vector<int> const& G__) const;
 
     inline bool reduced() const
     {
@@ -782,7 +780,7 @@ class Gvec_fft
 
     inline auto gkvec_cart(int igloc__) const
     {
-        return vector3d<double>(&gkvec_cart_array_(0, igloc__));
+        return r3::vector<double>(&gkvec_cart_array_(0, igloc__));
     }
 
     inline auto const& gvec_array() const
@@ -826,7 +824,7 @@ class Gvec_fft
     void update_gkvec_cart()
     {
         for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
-            auto G = vector3d<int>(&gvec_array_(0, ig));
+            auto G = r3::vector<int>(&gvec_array_(0, ig));
             auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
             for (int x : {0, 1, 2}) {
                 gkvec_cart_array_(x, ig) = Gkc[x];
@@ -864,7 +862,7 @@ class Gvec_shells
     Gvec const& gvec_;
 
     /// A mapping between G-vector and it's local index in the new distribution.
-    std::map<vector3d<int>, int> idx_gvec_;
+    std::map<r3::vector<int>, int> idx_gvec_;
 
   public:
 
@@ -895,13 +893,13 @@ class Gvec_shells
     }
 
     /// G-vector by local index (in the remapped set).
-    vector3d<int> gvec_remapped(int igloc__) const
+    r3::vector<int> gvec_remapped(int igloc__) const
     {
-        return vector3d<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
+        return r3::vector<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
     }
 
     /// Return local index of the G-vector in the remapped set.
-    int index_by_gvec(vector3d<int> G__) const
+    int index_by_gvec(r3::vector<int> G__) const
     {
         if (idx_gvec_.count(G__)) {
             return idx_gvec_.at(G__);
@@ -969,12 +967,12 @@ class Gvec_shells
 inline std::shared_ptr<Gvec>
 gkvec_factory(double gk_cutoff__, sddk::Communicator const& comm__)
 {
-    auto M = matrix3d<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
-    return std::make_shared<Gvec>(vector3d<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
+    auto M = r3::matrix<double>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    return std::make_shared<Gvec>(r3::vector<double>({0, 0, 0}), M, gk_cutoff__, comm__, false);
 }
 
 inline std::shared_ptr<Gvec>
-gkvec_factory(vector3d<double> vk__, matrix3d<double> reciprocal_lattice_vectors__, double gk_cutoff__,
+gkvec_factory(r3::vector<double> vk__, r3::matrix<double> reciprocal_lattice_vectors__, double gk_cutoff__,
               Communicator const& comm__ = sddk::Communicator::self(), bool gamma__ = false)
 {
     return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);

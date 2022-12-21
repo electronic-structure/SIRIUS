@@ -148,12 +148,12 @@ Simulation_context::generate_sbessel_mt(int lmax__) const
     return sbessel_mt;
 }
 
-sddk::matrix<double_complex>
+sddk::matrix<std::complex<double>>
 Simulation_context::generate_gvec_ylm(int lmax__)
 {
     PROFILE("sirius::Simulation_context::generate_gvec_ylm");
 
-    sddk::matrix<double_complex> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
+    sddk::matrix<std::complex<double>> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
@@ -162,9 +162,9 @@ Simulation_context::generate_gvec_ylm(int lmax__)
     return gvec_ylm;
 }
 
-sddk::mdarray<double_complex, 2>
-Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                 sddk::matrix<double_complex>& gvec_ylm__)
+sddk::mdarray<std::complex<double>, 2>
+Simulation_context::sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
+                                 sddk::matrix<std::complex<double>>& gvec_ylm__)
 {
     PROFILE("sirius::Simulation_context::sum_fg_fl_yg");
 
@@ -177,36 +177,36 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::
 
     int lmmax = utils::lmmax(lmax__);
     /* resuling matrix */
-    sddk::mdarray<double_complex, 2> flm(lmmax, unit_cell().num_atoms());
+    sddk::mdarray<std::complex<double>, 2> flm(lmmax, unit_cell().num_atoms());
 
-    sddk::matrix<double_complex> phase_factors;
-    sddk::matrix<double_complex> zm;
-    sddk::matrix<double_complex> tmp;
+    sddk::matrix<std::complex<double>> phase_factors;
+    sddk::matrix<std::complex<double>> zm;
+    sddk::matrix<std::complex<double>> tmp;
 
     switch (processing_unit()) {
         case sddk::device_t::CPU: {
             auto& mp      = get_memory_pool(sddk::memory_t::host);
-            phase_factors = sddk::matrix<double_complex>(ngv_loc, na_max, mp);
-            zm            = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
-            tmp           = sddk::matrix<double_complex>(lmmax, na_max, mp);
+            phase_factors = sddk::matrix<std::complex<double>>(ngv_loc, na_max, mp);
+            zm            = sddk::matrix<std::complex<double>>(lmmax, ngv_loc, mp);
+            tmp           = sddk::matrix<std::complex<double>>(lmmax, na_max, mp);
             break;
         }
         case sddk::device_t::GPU: {
             auto& mp      = get_memory_pool(sddk::memory_t::host);
             auto& mpd     = get_memory_pool(sddk::memory_t::device);
-            phase_factors = sddk::matrix<double_complex>(nullptr, ngv_loc, na_max);
+            phase_factors = sddk::matrix<std::complex<double>>(nullptr, ngv_loc, na_max);
             phase_factors.allocate(mpd);
-            zm = sddk::matrix<double_complex>(lmmax, ngv_loc, mp);
+            zm = sddk::matrix<std::complex<double>>(lmmax, ngv_loc, mp);
             zm.allocate(mpd);
-            tmp = sddk::matrix<double_complex>(lmmax, na_max, mp);
+            tmp = sddk::matrix<std::complex<double>>(lmmax, na_max, mp);
             tmp.allocate(mpd);
             break;
         }
     }
 
-    std::vector<double_complex> zil(lmax__ + 1);
+    std::vector<std::complex<double>> zil(lmax__ + 1);
     for (int l = 0; l <= lmax__; l++) {
-        zil[l] = std::pow(double_complex(0, 1), l);
+        zil[l] = std::pow(std::complex<double>(0, 1), l);
     }
 
     for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
@@ -216,7 +216,7 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             for (int l = 0, lm = 0; l <= lmax__; l++) {
-                double_complex z = fourpi * fl__(l, igloc, iat) * zil[l] * fpw__[igloc];
+                std::complex<double> z = fourpi * fl__(l, igloc, iat) * zil[l] * fpw__[igloc];
                 for (int m = -l; m <= l; m++, lm++) {
                     zm(lm, igloc) = z * std::conj(gvec_ylm__(lm, igloc));
                 }
@@ -227,17 +227,17 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::
         switch (processing_unit()) {
             case sddk::device_t::CPU: {
                 sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<double_complex>::one(), zm.at(sddk::memory_t::host),
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
                           zm.ld(), phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                          &sddk::linalg_const<double_complex>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
+                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
                 break;
             }
             case sddk::device_t::GPU: {
                 zm.copy_to(sddk::memory_t::device);
                 sddk::linalg(sddk::linalg_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<double_complex>::one(), zm.at(sddk::memory_t::device),
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
                           zm.ld(), phase_factors.at(sddk::memory_t::device), phase_factors.ld(),
-                          &sddk::linalg_const<double_complex>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
+                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
                 tmp.copy_to(sddk::memory_t::host);
                 break;
             }
@@ -293,7 +293,7 @@ Simulation_context::split_gvec_local() const
         ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
     }
     /* limit the size of relevant array to ~1Gb */
-    int ngv_b = (1 << 30) / sizeof(double_complex) / ld;
+    int ngv_b = (1 << 30) / sizeof(std::complex<double>) / ld;
     ngv_b     = std::max(1, std::min(ngv_loc, ngv_b));
     /* number of blocks of G-vectors */
     int nb = ngv_loc / ngv_b;
@@ -421,7 +421,7 @@ Simulation_context::initialize()
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
-        auto lv = matrix3d<double>(unit_cell().lattice_vectors());
+        auto lv = r3::matrix<double>(unit_cell().lattice_vectors());
 
         auto lat_sym = find_lat_sym(lv, cfg().control().spglib_tolerance());
 
@@ -895,7 +895,7 @@ Simulation_context::print_info(std::ostream& out__) const
         */
         size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
                            num_bands() * num_sc + num_bands()) *
-                          ngk * sizeof(double_complex);
+                          ngk * sizeof(std::complex<double>);
         os << "approximate memory consumption of Davidson solver: "
            << static_cast<int>((tot_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
@@ -909,20 +909,20 @@ Simulation_context::print_info(std::ostream& out__) const
                will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
                operator */
             // TODO: optimize generated_rho_aug() for less memory consumption
-            size_t size_aug = nb * ngloc * sizeof(double_complex);
+            size_t size_aug = nb * ngloc * sizeof(std::complex<double>);
             if (unit_cell().num_atom_types() > 1) {
                 size_aug *= 2;
             }
 
             /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
-            size_t size1 = nb * ngloc * sizeof(double_complex);
+            size_t size1 = nb * ngloc * sizeof(std::complex<double>);
             size1        = std::min(size1, static_cast<size_t>(1 << 30));
 
             int max_atoms{0};
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
             }
-            size_t size2 = max_atoms * ngloc * sizeof(double_complex);
+            size_t size2 = max_atoms * ngloc * sizeof(std::complex<double>);
             size2        = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
@@ -1101,25 +1101,25 @@ Simulation_context::update()
     }
 
     /* recompute phase factors for atoms */
-    phase_factors_ = sddk::mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), sddk::memory_t::host, "phase_factors_");
+    phase_factors_ = sddk::mdarray<std::complex<double>, 3>(3, limits, unit_cell().num_atoms(), sddk::memory_t::host, "phase_factors_");
     #pragma omp parallel for
     for (int i = limits.first; i <= limits.second; i++) {
         for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
             auto pos = unit_cell().atom(ia).position();
             for (int x : {0, 1, 2}) {
-                phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+                phase_factors_(x, i, ia) = std::exp(std::complex<double>(0.0, twopi * (i * pos[x])));
             }
         }
     }
 
     /* recompute phase factors for atom types */
-    phase_factors_t_ = sddk::mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+    phase_factors_t_ = sddk::mdarray<std::complex<double>, 2>(gvec().count(), unit_cell().num_atom_types());
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         /* global index of G-vector */
         int ig = gvec().offset() + igloc;
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-            double_complex z(0, 0);
+            std::complex<double> z(0, 0);
             for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
                 z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
             }
@@ -1128,14 +1128,14 @@ Simulation_context::update()
     }
 
     if (use_symmetry()) {
-        sym_phase_factors_ = sddk::mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().size());
+        sym_phase_factors_ = sddk::mdarray<std::complex<double>, 3>(3, limits, unit_cell().symmetry().size());
 
         #pragma omp parallel for
         for (int i = limits.first; i <= limits.second; i++) {
             for (int isym = 0; isym < unit_cell().symmetry().size(); isym++) {
                 auto t = unit_cell().symmetry()[isym].spg_op.t;
                 for (int x : {0, 1, 2}) {
-                    sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
+                    sym_phase_factors_(x, i, isym) = std::exp(std::complex<double>(0.0, twopi * (i * t[x])));
                 }
             }
         }
@@ -1329,7 +1329,7 @@ Simulation_context::create_storage_file() const
 }
 
 void
-Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<double_complex, 2>& phase_factors__) const
+Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const
 {
     PROFILE("sirius::Simulation_context::generate_phase_factors");
     int na = unit_cell().atom_type(iat__).num_atoms();
@@ -1372,27 +1372,27 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 
     atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
-    vector3d<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
+    r3::vector<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
 
     int z_off = spfft<double>().local_z_offset();
-    vector3d<int> grid_beg(0, 0, z_off);
-    vector3d<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
-    std::vector<vector3d<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
+    r3::vector<int> grid_beg(0, 0, z_off);
+    r3::vector<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
+    std::vector<r3::vector<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
                                              {-R, -R, R},  {R, -R, R},  {-R, R, R},  {R, R, R}};
 
-    auto bounds_box = [&](vector3d<double> pos) {
-        std::vector<vector3d<double>> verts;
+    auto bounds_box = [&](r3::vector<double> pos) {
+        std::vector<r3::vector<double>> verts;
 
         /* pos is a position of atom */
         for (auto v : verts_cart) {
             verts.push_back(pos + unit_cell().get_fractional_coordinates(v));
         }
 
-        std::pair<vector3d<int>, vector3d<int>> bounds_ind;
+        std::pair<r3::vector<int>, r3::vector<int>> bounds_ind;
 
         for (int x : {0, 1, 2}) {
             std::sort(verts.begin(), verts.end(),
-                      [x](vector3d<double>& a, vector3d<double>& b) { return a[x] < b[x]; });
+                      [x](r3::vector<double>& a, r3::vector<double>& b) { return a[x] < b[x]; });
             bounds_ind.first[x]  = std::max(static_cast<int>(verts[0][x] / delta[x]) - 1, grid_beg[x]);
             bounds_ind.second[x] = std::min(static_cast<int>(verts[5][x] / delta[x]) + 1, grid_end[x]);
         }
@@ -1408,7 +1408,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
         for (int t0 = -1; t0 <= 1; t0++) {
             for (int t1 = -1; t1 <= 1; t1++) {
                 for (int t2 = -1; t2 <= 1; t2++) {
-                    auto pos = unit_cell().atom(ia).position() + vector3d<double>(t0, t1, t2);
+                    auto pos = unit_cell().atom(ia).position() + r3::vector<double>(t0, t1, t2);
 
                     /* find the small box around this atom */
                     auto box = bounds_box(pos);
@@ -1416,7 +1416,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
                     for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
                         for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
-                                auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
+                                auto v = pos - r3::vector<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r = unit_cell().get_cartesian_coordinates(v).length();
                                 if (r < Rmt[unit_cell().atom(ia).type_id()]) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
@@ -1442,7 +1442,7 @@ Simulation_context::init_step_function()
     });
 
     theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
-    theta_pw_ = sddk::mdarray<double_complex, 1>(gvec().num_gvec());
+    theta_pw_ = sddk::mdarray<std::complex<double>, 1>(gvec().num_gvec());
 
     try {
         for (int ig = 0; ig < gvec().num_gvec(); ig++) {
@@ -1450,7 +1450,7 @@ Simulation_context::init_step_function()
         }
         theta_pw_[0] += 1.0;
 
-        std::vector<double_complex> ftmp(gvec_fft().gvec_count_fft());
+        std::vector<std::complex<double>> ftmp(gvec_fft().gvec_count_fft());
         this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
@@ -1479,8 +1479,8 @@ Simulation_context::init_step_function()
         }
     }
     if (cfg().control().print_checksum()) {
-        double_complex z1 = theta_pw_.checksum();
-        double d1         = theta_.checksum();
+        auto z1 = theta_pw_.checksum();
+        auto d1 = theta_.checksum();
         sddk::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
         utils::print_checksum("theta", d1, this->out());
         utils::print_checksum("theta_pw", z1, this->out());
