@@ -27,7 +27,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
-                           SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                           SPFFT_PU_HOST, -1, Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 

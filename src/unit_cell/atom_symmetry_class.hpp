@@ -27,6 +27,7 @@
 
 #include "atom_type.hpp"
 #include "linalg/eigensolver.hpp"
+#include "mpi/pstdout.hpp"
 
 namespace sirius {
 

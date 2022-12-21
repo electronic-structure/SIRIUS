@@ -4,7 +4,7 @@ using namespace sirius;
 
 void test_grid(std::vector<int> grid__)
 {
-    mpi::MPI_grid mpi_grid(grid__, mpi::Communicator::world());
+    mpi::Grid mpi_grid(grid__, mpi::Communicator::world());
 
     mpi::pstdout pout(mpi::Communicator::world());
 

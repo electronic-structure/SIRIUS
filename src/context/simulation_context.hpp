@@ -118,7 +118,7 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<Unit_cell> unit_cell_;
 
     /// MPI grid for this simulation.
-    std::unique_ptr<mpi::MPI_grid> mpi_grid_;
+    std::unique_ptr<mpi::Grid> mpi_grid_;
 
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<sddk::BLACS_grid> blacs_grid_;

@@ -36,6 +36,7 @@
 #include "splindex.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
+#include "mpi/pstdout.hpp"
 
 namespace sddk {
 

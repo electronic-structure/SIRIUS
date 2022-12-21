@@ -917,7 +917,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_out = this->grid_layout(b__.size());
 
             costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
             /*
              * old implementation (to be removed when performance of COSTA is understood)
@@ -984,7 +984,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_out = wf_->grid_layout_pw(sp, b__);
 
             costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
 
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
@@ -1582,7 +1582,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     }
 
     auto spla_mat_dist = wf_i__.comm().size() > result__.comm().size()
-                       ? spla::MatrixDistribution::create_mirror(wf_i__.comm().mpi_comm())
+                       ? spla::MatrixDistribution::create_mirror(wf_i__.comm().native())
                        : result__.spla_distribution();
 
     auto ld = wf_i__.ld();

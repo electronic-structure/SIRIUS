@@ -669,7 +669,7 @@ Simulation_context::print_info(std::ostream& out__) const
            << "number of MPI ranks           : " << this->comm().size() << std::endl;
         if (mpi_grid_) {
             os << "MPI grid                      :";
-            for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
+            for (int i : {0, 1}) {
                 os << " " << mpi_grid_->communicator(1 << i).size();
             }
             os << std::endl;
@@ -972,11 +972,11 @@ Simulation_context::update()
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::make_unique<spfft::Grid>(fft_coarse_grid_[0], fft_coarse_grid_[1],
                 fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
-                spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
 #ifdef USE_FP32
         spfft_grid_coarse_float_ = std::make_unique<spfft::GridFloat>(fft_coarse_grid_[0], fft_coarse_grid_[1],
                 fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
 #endif
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -1009,11 +1009,11 @@ Simulation_context::update()
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
                             gvec_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
-                            comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+                            comm_fft().native(), SPFFT_EXCH_DEFAULT));
 #if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
             new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count_fft(),
-                                 spl_z.local_size(), spfft_pu, -1, comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+                                 spl_z.local_size(), spfft_pu, -1, comm_fft().native(), SPFFT_EXCH_DEFAULT));
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
@@ -1522,7 +1522,7 @@ Simulation_context::init_comm()
     }
 
     /* setup MPI grid */
-    mpi_grid_ = std::make_unique<mpi::MPI_grid>(std::vector<int>({npc, npr}), comm_band_);
+    mpi_grid_ = std::make_unique<mpi::Grid>(std::vector<int>({npr, npc}), comm_band_);
 
     /* here we know the number of ranks for band parallelization */
 

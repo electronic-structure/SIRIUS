@@ -3690,7 +3690,7 @@ sirius_get_kpoint_inter_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().native());
         },
         error_code__);
 }
@@ -3720,7 +3720,7 @@ sirius_get_kpoint_inner_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().native());
         },
         error_code__);
 }
@@ -3750,7 +3750,7 @@ sirius_get_fft_comm(void* const* handler__, int* fcomm__, int* error_code__)
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().native());
         },
         error_code__);
 }

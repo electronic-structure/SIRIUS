@@ -30,7 +30,7 @@ int test_fft(cmd_args& args, device_t pu__)
     auto spfft_pu = (pu__ == device_t::CPU) ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
     spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
-                           spfft_pu, -1, mpi::Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                           spfft_pu, -1, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = SPFFT_TRANS_C2C;
 

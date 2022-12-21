@@ -72,7 +72,7 @@ auto spl_z = split_fft_z(dims[2],
 /* create SpFFT grid object */
 spfft_grid_type<double> spfft_grid(dims[0], dims[1],
         dims[2], gvp.zcol_count_fft(), spl_z.local_size(),
-        SPFFT_PU_HOST, -1, mpi::Communicator::world().mpi_comm(),
+        SPFFT_PU_HOST, -1, mpi::Communicator::world().native(),
         SPFFT_EXCH_DEFAULT);
 
 auto const& gv = gvp.gvec_array();

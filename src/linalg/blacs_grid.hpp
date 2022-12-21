@@ -37,7 +37,7 @@ class BLACS_grid
   private:
     mpi::Communicator const& comm_;
 
-    std::unique_ptr<mpi::MPI_grid> mpi_grid_;
+    std::unique_ptr<mpi::Grid> mpi_grid_;
 
 
 #ifdef SIRIUS_SCALAPACK
@@ -57,12 +57,12 @@ class BLACS_grid
     BLACS_grid(mpi::Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
         : comm_(comm__)
     {
-        mpi_grid_ = std::make_unique<mpi::MPI_grid>(std::vector<int>({num_ranks_row__, num_ranks_col__}), comm_);
+        mpi_grid_ = std::make_unique<mpi::Grid>(std::vector<int>({num_ranks_row__, num_ranks_col__}), comm_);
         rank_map_.resize(num_ranks_row__ * num_ranks_col__);
 
 #ifdef SIRIUS_SCALAPACK
         /* create handler first */
-        blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
+        blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().native());
 
         for (int j = 0; j < num_ranks_col__; j++) {
             for (int i = 0; i < num_ranks_row__; i++) {

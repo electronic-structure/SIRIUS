@@ -82,7 +82,7 @@ void K_point<T>::generate_fv_states()
 
     auto layout_in = alm_fv.grid_layout(0, 0, uc.mt_aw_basis_size(), ctx_.num_fv_states());
     auto layout_out = alm_fv_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
-    costa::transform(layout_in, layout_out, 'N', one, zero, this->comm().mpi_comm());
+    costa::transform(layout_in, layout_out, 'N', one, zero, this->comm().native());
 
     #pragma omp parallel for
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
