@@ -156,7 +156,7 @@ Simulation_context::generate_gvec_ylm(int lmax__)
     sddk::matrix<std::complex<double>> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
+        auto rtp = r3::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
         sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
@@ -1145,7 +1145,7 @@ Simulation_context::update()
     gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, sddk::memory_t::host, "gvec_tp_");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp           = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
+        auto rtp           = r3::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
         gvec_tp_(igloc, 0) = rtp[1];
         gvec_tp_(igloc, 1) = rtp[2];
     }

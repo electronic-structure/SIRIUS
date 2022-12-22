@@ -128,7 +128,7 @@ class Matching_coefficients // TODO: compute on GPU
             for (int i = 0; i < gkvec_.count(); i++) {
                 auto gkvec_cart = gkvec_.gkvec_cart<sddk::index_domain_t::local>(i);
                 /* get r, theta, phi */
-                auto vs = SHT::spherical_coordinates(gkvec_cart);
+                auto vs = r3::spherical_coordinates(gkvec_cart);
                 gkvec_len_[i] = vs[0];
 
                 /* get spherical harmonics */

@@ -482,7 +482,7 @@ int test3()
                            1 + 10 * utils::random<double>(),
                            1 + 10 * utils::random<double>());
 
-        auto rtp = SHT::spherical_coordinates(v);
+        auto rtp = r3::spherical_coordinates(v);
 
         double dr = 1e-5 * rtp[0];
 
@@ -495,8 +495,8 @@ int test3()
             r3::vector<double> v2 = v;
             v2[x] -= dr;
 
-            auto vs1 = SHT::spherical_coordinates(v1);
-            auto vs2 = SHT::spherical_coordinates(v2);
+            auto vs1 = r3::spherical_coordinates(v1);
+            auto vs2 = r3::spherical_coordinates(v2);
             std::vector<double> rlm1(lmmax);
             std::vector<double> rlm2(lmmax);
 

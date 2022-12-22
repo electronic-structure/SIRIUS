@@ -17,7 +17,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         /* Cartesian coordinats of G-vector */
         auto gvc = kp__.gkvec().gkvec_cart<sddk::index_domain_t::local>(igkloc);
         /* vs = {r, theta, phi} */
-        auto gvs = SHT::spherical_coordinates(gvc);
+        auto gvs = r3::spherical_coordinates(gvc);
 
         std::vector<sddk::mdarray<double, 1>> ri_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {

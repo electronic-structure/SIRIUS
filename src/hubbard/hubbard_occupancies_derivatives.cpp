@@ -393,7 +393,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* gvs = {r, theta, phi} */
         auto gvc = kp__.gkvec().gkvec_cart<sddk::index_domain_t::local>(igkloc);
-        auto rtp = SHT::spherical_coordinates(gvc);
+        auto rtp = r3::spherical_coordinates(gvc);
 
         sf::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
         sddk::mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
@@ -401,9 +401,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     }
 
     /* atomic wave functions  */
-    auto& phi_atomic    = kp__.atomic_wave_functions();
-    auto& phi_atomic_S  = kp__.atomic_wave_functions_S();
-    auto& phi_hub_S     = kp__.hubbard_wave_functions_S();
+    auto& phi_atomic   = kp__.atomic_wave_functions();
+    auto& phi_atomic_S = kp__.atomic_wave_functions_S();
+    auto& phi_hub_S    = kp__.hubbard_wave_functions_S();
 
     auto num_ps_atomic_wf = ctx_.unit_cell().num_ps_atomic_wf();
     auto num_hubbard_wf   = ctx_.unit_cell().num_hubbard_wf();

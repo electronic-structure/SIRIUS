@@ -494,7 +494,7 @@ Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, d
                     r3::vector<double> vf = vr.first - posf;
 
                     /* convert to spherical coordinates */
-                    auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));
+                    auto vs = r3::spherical_coordinates(get_cartesian_coordinates(vf));
 
                     if (vs[0] < atom(ia).mt_radius()) {
                         ja    = ia;
