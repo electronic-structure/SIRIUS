@@ -44,7 +44,7 @@ extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const*
 #endif
 
 void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
-    sddk::mdarray<double, 2> const& tp__, sddk::memory_pool& mp__, sddk::memory_pool* mpd__)
+    sddk::mdarray<double, 2> const& tp__)
 {
     if (!atom_type_.augment()) {
         return;
@@ -76,7 +76,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     sddk::mdarray<double, 2> gvec_rlm;
     switch (atom_type_.parameters().processing_unit()) {
         case sddk::device_t::CPU: {
-            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, mp__);
+            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, sddk::get_memory_pool(sddk::memory_t::host));
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 sf::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
@@ -84,7 +84,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             break;
         }
         case sddk::device_t::GPU: {
-            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, *mpd__);
+            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, sddk::get_memory_pool(sddk::memory_t::device));
 #if defined(SIRIUS_GPU)
             spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp__.at(sddk::memory_t::device),
                 gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
@@ -96,7 +96,8 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     /* number of beta- radial functions */
     int nbrf = atom_type_.mt_radial_basis_size();
 
-    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp__);
+    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(),
+            sddk::get_memory_pool(sddk::memory_t::host));
     #pragma omp parallel for
     for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
         auto ri = radial_integrals__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
@@ -113,7 +114,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     int idxmax = nbf * (nbf + 1) / 2;
 
     /* flatten the indices */
-    sddk::mdarray<int, 2> idx(3, idxmax, mp__);
+    sddk::mdarray<int, 2> idx(3, idxmax, sddk::get_memory_pool(sddk::memory_t::host));
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         int lm2    = atom_type_.indexb(xi2).lm;
         int idxrf2 = atom_type_.indexb(xi2).idxrf;
@@ -134,7 +135,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     }
 
     /* array of plane-wave coefficients */
-    q_pw_ = sddk::mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_");
+    q_pw_ = sddk::mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
 
     switch (atom_type_.parameters().processing_unit()) {
         case sddk::device_t::CPU: {
@@ -157,25 +158,26 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             break;
         }
         case sddk::device_t::GPU: {
-            sddk::mdarray<int, 1> gvec_shell(gvec_count, mp__);
+            sddk::mdarray<int, 1> gvec_shell(gvec_count, sddk::get_memory_pool(sddk::memory_t::host));
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 gvec_shell(igloc) = gvec_.gvec_shell_idx_local(igloc);
             }
-            gvec_shell.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
+            gvec_shell.allocate(mpd).copy_to(sddk::memory_t::device);
 
-            idx.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            idx.allocate(mpd).copy_to(sddk::memory_t::device);
 
-            zilm.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            zilm.allocate(mpd).copy_to(sddk::memory_t::device);
 
             sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
-            l_by_lm_d.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            l_by_lm_d.allocate(mpd).copy_to(sddk::memory_t::device);
 
             auto gc = gaunt_coefs.get_full_set_L3();
-            gc.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            gc.allocate(mpd).copy_to(sddk::memory_t::device);
 
-            ri_values.allocate(*mpd__).copy_to(sddk::memory_t::device);
+            ri_values.allocate(mpd).copy_to(sddk::memory_t::device);
 
-            q_pw_.allocate(*mpd__);
+            q_pw_.allocate(mpd);
 
 #if defined(SIRIUS_GPU)
             int ld0 = static_cast<int>(gc.size(0));
@@ -192,7 +194,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         }
     }
 
-    sym_weight_ = sddk::mdarray<double, 1>(nbf * (nbf + 1) / 2, mp__, "sym_weight_");
+    sym_weight_ = sddk::mdarray<double, 1>(nbf * (nbf + 1) / 2, sddk::get_memory_pool(sddk::memory_t::host), "sym_weight_");
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         for (int xi1 = 0; xi1 <= xi2; xi1++) {
             /* packed orbital index */

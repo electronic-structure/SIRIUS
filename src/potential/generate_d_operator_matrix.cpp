@@ -46,7 +46,7 @@ void Potential::generate_D_operator_matrix()
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
     if (ctx_.unit_cell().atom_type(0).augment()) {
-        ctx_.augmentation_op(0).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
+        ctx_.augmentation_op(0).prepare(stream_id(0));
     }
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -56,7 +56,7 @@ void Potential::generate_D_operator_matrix()
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
 

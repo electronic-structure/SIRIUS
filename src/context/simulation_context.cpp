@@ -1241,24 +1241,24 @@ Simulation_context::update()
                 new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_djl_callback_));
         }
 
-        /* update augmentation operator */
-        sddk::memory_pool* mp{nullptr};
-        sddk::memory_pool* mpd{nullptr};
-        switch (this->processing_unit()) {
-            case sddk::device_t::CPU: {
-                mp = &get_memory_pool(sddk::memory_t::host);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                mp  = &get_memory_pool(sddk::memory_t::host_pinned);
-                mpd = &get_memory_pool(sddk::memory_t::device);
-                break;
-            }
-        }
+        ///* update augmentation operator */
+        //sddk::memory_pool* mp{nullptr};
+        //sddk::memory_pool* mpd{nullptr};
+        //switch (this->processing_unit()) {
+        //    case sddk::device_t::CPU: {
+        //        mp = &get_memory_pool(sddk::memory_t::host);
+        //        break;
+        //    }
+        //    case sddk::device_t::GPU: {
+        //        mp  = &get_memory_pool(sddk::memory_t::host_pinned);
+        //        mpd = &get_memory_pool(sddk::memory_t::device);
+        //        break;
+        //    }
+        //}
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
                 augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec());
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_);
             } else {
                 augmentation_op_[iat] = nullptr;
             }

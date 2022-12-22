@@ -53,19 +53,18 @@ class Augmentation_operator
     {
     }
 
-    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, sddk::mdarray<double, 2> const& tp__,
-        sddk::memory_pool& mp__, sddk::memory_pool* mpd__);
+    /// Generate plane-wave coefficients
+    /** \param [in] radial_integrals Radial integrals of the Q(r) with spherical Bessel functions.
+     *  \param [in] tp               Theta- and Phi- angles of the G-vectors.
+     */
+    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
+            sddk::mdarray<double, 2> const& tp__);
 
-    void prepare(stream_id sid, sddk::memory_pool* mp__) const
+    void prepare(stream_id sid) const // TODO: q_pw is too big; must be handeled differently
     {
         if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU && atom_type_.augment()) {
-            if (mp__) {
-                sym_weight_.allocate(*mp__);
-                q_pw_.allocate(*mp__);
-            } else {
-                sym_weight_.allocate(sddk::memory_t::device);
-                q_pw_.allocate(sddk::memory_t::device);
-            }
+            sym_weight_.allocate(sddk::get_memory_pool(sddk::memory_t::device));
+            q_pw_.allocate(sddk::get_memory_pool(sddk::memory_t::device));
             sym_weight_.copy_to(sddk::memory_t::device, sid);
             q_pw_.copy_to(sddk::memory_t::device, sid);
         }
@@ -132,7 +131,7 @@ class Augmentation_operator
 class Augmentation_operator_gvec_deriv
 {
   private:
-      sddk::Gvec const& gvec_;
+    sddk::Gvec const& gvec_;
 
     sddk::mdarray<double, 2> q_pw_;
 

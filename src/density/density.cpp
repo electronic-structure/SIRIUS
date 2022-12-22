@@ -1376,7 +1376,7 @@ Density::generate_rho_aug()
     //       overlap transfer of Q(G) for two consequtive blocks within one atom type
 
     if (ctx_.unit_cell().atom_type(0).augment()) {
-        ctx_.augmentation_op(0).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
+        ctx_.augmentation_op(0).prepare(stream_id(0));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -1385,7 +1385,7 @@ Density::generate_rho_aug()
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
 
