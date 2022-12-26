@@ -60,12 +60,12 @@ void Augmentation_operator::generate_pw_coeffs()
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
-
+    /* only half of Q_{xi,xi'}(G) matrix is stored */
+    int nqlm = nbf * (nbf + 1) / 2;
     /* local number of G-vectors */
     int gvec_count  = gvec_.count();
-
     /* array of plane-wave coefficients */
-    q_pw_ = sddk::mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
+    q_pw_ = sddk::mdarray<double, 2>(nqlm, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
 
     switch (atom_type_.parameters().processing_unit()) {
         case sddk::device_t::CPU: {
@@ -76,7 +76,7 @@ void Augmentation_operator::generate_pw_coeffs()
                 std::vector<double> rlm(lmmax);
                 sf::spherical_harmonics(2 * lmax_beta, tp(igloc, 0), tp(igloc, 1), rlm.data());
                 std::vector<std::complex<double>> v(lmmax);
-                for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++) {
+                for (int idx12 = 0; idx12 < nqlm; idx12++) {
                     int lm1     = idx_(0, idx12);
                     int lm2     = idx_(1, idx12);
                     int idxrf12 = idx_(2, idx12);
@@ -98,7 +98,7 @@ void Augmentation_operator::generate_pw_coeffs()
             /* allocate buffer for Rlm on GPUs */
             sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
             /* allocate buffer for Q(G) on GPUs */
-            sddk::mdarray<double, 2> qpw(nbf * (nbf + 1) / 2, 2 * spl_ngv_loc[0], mpd, "qpw");
+            sddk::mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
 
             int g_begin{0};
             /* loop over blocks of G-vectors */
@@ -110,12 +110,12 @@ void Augmentation_operator::generate_pw_coeffs()
                 int ld0 = static_cast<int>(gaunt_coefs_.size(0));
                 int ld1 = static_cast<int>(gaunt_coefs_.size(1));
                 aug_op_pw_coeffs_gpu(ng, gvec_shell_.at(sddk::memory_t::device, g_begin), idx_.at(sddk::memory_t::device),
-                    nbf * (nbf + 1) / 2, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
+                    nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
                     gaunt_coefs_.at(sddk::memory_t::device), ld0, ld1, gvec_rlm.at(sddk::memory_t::device), lmmax,
                     ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
                     static_cast<int>(ri_values_.size(1)), qpw.at(sddk::memory_t::device), static_cast<int>(qpw.size(0)),
                     fourpi_omega);
-                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng);
+                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
                 g_begin += ng;
             }
 #endif
