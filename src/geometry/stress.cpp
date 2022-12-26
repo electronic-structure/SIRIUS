@@ -386,7 +386,7 @@ Stress::calc_stress_us()
 
     potential_.fft_transform(-1);
 
-    Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
+    Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec());
 
     sddk::linalg_t la{sddk::linalg_t::none};
     sddk::memory_t qmem{sddk::memory_t::none};

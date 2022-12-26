@@ -50,7 +50,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
         if (precompute_lapw__) {
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
-            ctx_.unit_cell().generate_radial_functions();
+            ctx_.unit_cell().generate_radial_functions(ctx_.out());
             ctx_.unit_cell().generate_radial_integrals();
         }
         hmt_ = std::vector<sddk::mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());

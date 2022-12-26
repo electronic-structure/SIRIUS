@@ -43,8 +43,7 @@ extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__,
 extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__);
 #endif
 
-void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
-    sddk::mdarray<double, 2> const& tp__)
+void Augmentation_operator::generate_pw_coeffs()
 {
     if (!atom_type_.augment()) {
         return;
@@ -53,102 +52,37 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     double fourpi_omega = fourpi / gvec_.omega();
 
+    auto const& tp = gvec_.gvec_tp();
+
     /* maximum l of beta-projectors */
     int lmax_beta = atom_type_.indexr().lmax();
     int lmmax     = utils::lmmax(2 * lmax_beta);
 
-    auto l_by_lm = utils::l_by_lm(2 * lmax_beta);
-
-    sddk::mdarray<std::complex<double>, 1> zilm(lmmax);
-    for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
-        for (int m = -l; m <= l; m++, lm++) {
-            zilm[lm] = std::pow(std::complex<double>(0, 1), l);
-        }
-    }
-
-    /* Gaunt coefficients of three real spherical harmonics */
-    Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
-
-    /* split G-vectors between ranks */
-    int gvec_count  = gvec_.count();
-
-    /* array of real spherical harmonics for each G-vector */
-    sddk::mdarray<double, 2> gvec_rlm;
-    switch (atom_type_.parameters().processing_unit()) {
-        case sddk::device_t::CPU: {
-            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, sddk::get_memory_pool(sddk::memory_t::host));
-            #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                sf::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
-            }
-            break;
-        }
-        case sddk::device_t::GPU: {
-            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, sddk::get_memory_pool(sddk::memory_t::device));
-#if defined(SIRIUS_GPU)
-            spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp__.at(sddk::memory_t::device),
-                gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-#endif
-            break;
-        }
-    }
-
-    /* number of beta- radial functions */
-    int nbrf = atom_type_.mt_radial_basis_size();
-
-    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(),
-            sddk::get_memory_pool(sddk::memory_t::host));
-    #pragma omp parallel for
-    for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
-        auto ri = radial_integrals__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
-        for (int l = 0; l <= 2 * lmax_beta; l++) {
-            for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
-                ri_values(i, l, j) = ri(i, l);
-            }
-        }
-    }
-
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
 
-    int idxmax = nbf * (nbf + 1) / 2;
-
-    /* flatten the indices */
-    sddk::mdarray<int, 2> idx(3, idxmax, sddk::get_memory_pool(sddk::memory_t::host));
-    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        int lm2    = atom_type_.indexb(xi2).lm;
-        int idxrf2 = atom_type_.indexb(xi2).idxrf;
-
-        for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            int lm1    = atom_type_.indexb(xi1).lm;
-            int idxrf1 = atom_type_.indexb(xi1).idxrf;
-
-            /* packed orbital index */
-            int idx12 = utils::packed_index(xi1, xi2);
-            /* packed radial-function index */
-            int idxrf12 = utils::packed_index(idxrf1, idxrf2);
-
-            idx(0, idx12) = lm1;
-            idx(1, idx12) = lm2;
-            idx(2, idx12) = idxrf12;
-        }
-    }
+    /* local number of G-vectors */
+    int gvec_count  = gvec_.count();
 
     /* array of plane-wave coefficients */
     q_pw_ = sddk::mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
 
     switch (atom_type_.parameters().processing_unit()) {
         case sddk::device_t::CPU: {
-            #pragma omp parallel for schedule(static)
+            /* Gaunt coefficients of three real spherical harmonics */
+            Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
+            #pragma omp parallel for
             for (int igloc = 0; igloc < gvec_count; igloc++) {
+                std::vector<double> rlm(lmmax);
+                sf::spherical_harmonics(2 * lmax_beta, tp(igloc, 0), tp(igloc, 1), rlm.data());
                 std::vector<std::complex<double>> v(lmmax);
                 for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++) {
-                    int lm1     = idx(0, idx12);
-                    int lm2     = idx(1, idx12);
-                    int idxrf12 = idx(2, idx12);
+                    int lm1     = idx_(0, idx12);
+                    int lm2     = idx_(1, idx12);
+                    int idxrf12 = idx_(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                        v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) *
-                            ri_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc));
+                        v[lm3] = std::conj(zilm_[lm3]) * rlm[lm3] *
+                            ri_values_(idxrf12, l_by_lm_[lm3], gvec_.gvec_shell_idx_local(igloc));
                     }
                     std::complex<double> z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
@@ -158,39 +92,34 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             break;
         }
         case sddk::device_t::GPU: {
-            sddk::mdarray<int, 1> gvec_shell(gvec_count, sddk::get_memory_pool(sddk::memory_t::host));
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                gvec_shell(igloc) = gvec_.gvec_shell_idx_local(igloc);
-            }
-            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
-            gvec_shell.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            idx.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            zilm.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
-            l_by_lm_d.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            auto gc = gaunt_coefs.get_full_set_L3();
-            gc.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            ri_values.allocate(mpd).copy_to(sddk::memory_t::device);
-
-            q_pw_.allocate(mpd);
-
 #if defined(SIRIUS_GPU)
-            int ld0 = static_cast<int>(gc.size(0));
-            int ld1 = static_cast<int>(gc.size(1));
-            aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(sddk::memory_t::device), idx.at(sddk::memory_t::device),
-                idxmax, zilm.at(sddk::memory_t::device), l_by_lm_d.at(sddk::memory_t::device), lmmax,
-                gc.at(sddk::memory_t::device), ld0, ld1, gvec_rlm.at(sddk::memory_t::device), lmmax,
-                ri_values.at(sddk::memory_t::device), static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)),
-                q_pw_.at(sddk::memory_t::device), static_cast<int>(q_pw_.size(0)), fourpi_omega);
-#endif
-            q_pw_.copy_to(sddk::memory_t::host);
+            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, 10000);
+            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
+            /* allocate buffer for Rlm on GPUs */
+            sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
+            /* allocate buffer for Q(G) on GPUs */
+            sddk::mdarray<double, 2> qpw(nbf * (nbf + 1) / 2, 2 * spl_ngv_loc[0], mpd, "qpw");
 
-            q_pw_.deallocate(sddk::memory_t::device);
+            int g_begin{0};
+            /* loop over blocks of G-vectors */
+            for (auto ng : spl_ngv_loc) {
+                /* generate Rlm spherical harmonics */
+                spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
+                    gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
+                /* generate Q(G) */
+                int ld0 = static_cast<int>(gaunt_coefs_.size(0));
+                int ld1 = static_cast<int>(gaunt_coefs_.size(1));
+                aug_op_pw_coeffs_gpu(ng, gvec_shell_.at(sddk::memory_t::device, g_begin), idx_.at(sddk::memory_t::device),
+                    nbf * (nbf + 1) / 2, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
+                    gaunt_coefs_.at(sddk::memory_t::device), ld0, ld1, gvec_rlm.at(sddk::memory_t::device), lmmax,
+                    ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
+                    static_cast<int>(ri_values_.size(1)), qpw.at(sddk::memory_t::device), static_cast<int>(qpw.size(0)),
+                    fourpi_omega);
+                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng);
+                g_begin += ng;
+            }
+#endif
+            break;
         }
     }
 
@@ -230,12 +159,14 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 }
 
 Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__,
-    sddk::Gvec const& gvec__, sddk::mdarray<double, 2> const& tp__)
+    sddk::Gvec const& gvec__)
     : gvec_(gvec__)
 {
     PROFILE("sirius::Augmentation_operator_gvec_deriv");
 
     int lmmax = utils::lmmax(2 * lmax__);
+
+    auto& tp = gvec__.gvec_tp();
 
     /* Gaunt coefficients of three real spherical harmonics */
     gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double>>(
@@ -251,7 +182,7 @@ Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_pa
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec_count; igloc++) {
         /* compute Rlm */
-        sf::spherical_harmonics(2 * lmax__, tp__(igloc, 0), tp__(igloc, 1), &rlm_g_(0, igloc));
+        sf::spherical_harmonics(2 * lmax__, tp(igloc, 0), tp(igloc, 1), &rlm_g_(0, igloc));
         /* compute dRlm/dG */
         sddk::mdarray<double, 2> tmp(&rlm_dg_(0, 0, igloc), lmmax, 3);
         auto gv = gvec__.gvec_cart<sddk::index_domain_t::local>(igloc);

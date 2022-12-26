@@ -1141,21 +1141,12 @@ Simulation_context::update()
         }
     }
 
-    /* precompute some G-vector related arrays */
-    gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, sddk::memory_t::host, "gvec_tp_");
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp           = r3::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
-        gvec_tp_(igloc, 0) = rtp[1];
-        gvec_tp_(igloc, 1) = rtp[2];
-    }
-
     switch (this->processing_unit()) {
         case sddk::device_t::CPU: {
             break;
         }
         case sddk::device_t::GPU: {
-            gvec_tp_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+            gvec_->gvec_tp().allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
             break;
         }
     }
@@ -1241,24 +1232,10 @@ Simulation_context::update()
                 new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_djl_callback_));
         }
 
-        ///* update augmentation operator */
-        //sddk::memory_pool* mp{nullptr};
-        //sddk::memory_pool* mpd{nullptr};
-        //switch (this->processing_unit()) {
-        //    case sddk::device_t::CPU: {
-        //        mp = &get_memory_pool(sddk::memory_t::host);
-        //        break;
-        //    }
-        //    case sddk::device_t::GPU: {
-        //        mp  = &get_memory_pool(sddk::memory_t::host_pinned);
-        //        mpd = &get_memory_pool(sddk::memory_t::device);
-        //        break;
-        //    }
-        //}
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
-                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec());
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_);
+                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec(), aug_ri());
+                augmentation_op_[iat]->generate_pw_coeffs();
             } else {
                 augmentation_op_[iat] = nullptr;
             }

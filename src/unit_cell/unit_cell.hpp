@@ -258,7 +258,7 @@ class Unit_cell
 
     bool is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, double tp[2]) const;
 
-    void generate_radial_functions();
+    void generate_radial_functions(std::ostream& out__);
 
     void generate_radial_integrals();
 

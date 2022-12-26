@@ -1454,9 +1454,10 @@ Density::generate_rho_aug()
                             std::complex<double> zsum(0, 0);
                             /* get contribution from non-diagonal terms */
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                                std::complex<double> z1 = std::complex<double>(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-                                                                   ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
-                                std::complex<double> z2(dm_pw(i, 2 * (igloc - g_begin)), dm_pw(i, 2 * (igloc - g_begin) + 1));
+                                std::complex<double> z1(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
+                                                        ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
+                                std::complex<double> z2(dm_pw(i, 2 * (igloc - g_begin)),
+                                                        dm_pw(i, 2 * (igloc - g_begin) + 1));
 
                                 zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
                             }

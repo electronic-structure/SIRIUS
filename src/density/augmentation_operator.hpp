@@ -46,19 +46,108 @@ class Augmentation_operator
 
     mutable sddk::mdarray<double, 1> sym_weight_;
 
+    sddk::mdarray<std::complex<double>, 1> zilm_;
+
+    sddk::mdarray<double, 3> ri_values_;
+
+    sddk::mdarray<int, 2> idx_;
+
+    sddk::mdarray<int, 1> gvec_shell_;
+
+    sddk::mdarray<int, 1> l_by_lm_;
+
+    sddk::mdarray<double, 3> gaunt_coefs_;
+
   public:
-    Augmentation_operator(Atom_type const& atom_type__, sddk::Gvec const& gvec__)
+
+    /// Constructor.
+    /**\param [in] atom_type        Atom type instance.
+     * \param [in] gvec             G-vector instance.
+     * \param [in] radial_integrals Radial integrals of the Q(r) with spherical Bessel functions.
+     */
+    Augmentation_operator(Atom_type const& atom_type__, sddk::Gvec const& gvec__,
+        Radial_integrals_aug<false> const& radial_integrals__)
         : atom_type_(atom_type__)
         , gvec_(gvec__)
     {
+        int lmax_beta = atom_type_.indexr().lmax();
+        int lmax      = 2 * lmax_beta;
+        int lmmax     = utils::lmmax(lmax);
+
+        /* compute l of lm index */
+        auto l_by_lm = utils::l_by_lm(lmax);
+        l_by_lm_ = sddk::mdarray<int, 1>(lmmax);
+        std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
+
+        /* compute i^l array */
+        zilm_ = sddk::mdarray<std::complex<double>, 1>(lmmax);
+        for (int l = 0, lm = 0; l <= lmax; l++) {
+            for (int m = -l; m <= l; m++, lm++) {
+                zilm_[lm] = std::pow(std::complex<double>(0, 1), l);
+            }
+        }
+
+        /* Gaunt coefficients of three real spherical harmonics */
+        gaunt_coefs_ = Gaunt_coefficients<double>(lmax_beta, lmax, lmax_beta, SHT::gaunt_rrr).get_full_set_L3();
+
+        /* number of beta-projectors */
+        int nbf = atom_type_.mt_basis_size();
+        /* number of beta-projector radial functions */
+        int nbrf = atom_type__.mt_radial_basis_size();
+
+        int idxmax = nbf * (nbf + 1) / 2;
+
+        /* flatten the indices */
+        idx_ = sddk::mdarray<int, 2>(3, idxmax);
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            int lm2    = atom_type_.indexb(xi2).lm;
+            int idxrf2 = atom_type_.indexb(xi2).idxrf;
+
+            for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                int lm1    = atom_type_.indexb(xi1).lm;
+                int idxrf1 = atom_type_.indexb(xi1).idxrf;
+
+                /* packed orbital index */
+                int idx12 = utils::packed_index(xi1, xi2);
+                /* packed radial-function index */
+                int idxrf12 = utils::packed_index(idxrf1, idxrf2);
+
+                idx_(0, idx12) = lm1;
+                idx_(1, idx12) = lm2;
+                idx_(2, idx12) = idxrf12;
+            }
+        }
+
+        /* local number of G-vectors for each rank */
+        int gvec_count  = gvec_.count();
+
+        gvec_shell_ = sddk::mdarray<int, 1>(gvec_count);
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
+        }
+
+        ri_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
+        #pragma omp parallel for
+        for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
+            auto ri = radial_integrals__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
+            for (int l = 0; l <= lmax; l++) {
+                for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
+                    ri_values_(i, l, j) = ri(i, l);
+                }
+            }
+        }
+        if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU) {
+            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
+            l_by_lm_.allocate(mpd).copy_to(sddk::memory_t::device);
+            zilm_.allocate(mpd).copy_to(sddk::memory_t::device);
+            gaunt_coefs_.allocate(mpd).copy_to(sddk::memory_t::device);
+            idx_.allocate(mpd).copy_to(sddk::memory_t::device);
+            gvec_shell_.allocate(mpd).copy_to(sddk::memory_t::device);
+            ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
+        }
     }
 
-    /// Generate plane-wave coefficients
-    /** \param [in] radial_integrals Radial integrals of the Q(r) with spherical Bessel functions.
-     *  \param [in] tp               Theta- and Phi- angles of the G-vectors.
-     */
-    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
-            sddk::mdarray<double, 2> const& tp__);
+    void generate_pw_coeffs();
 
     void prepare(stream_id sid) const // TODO: q_pw is too big; must be handeled differently
     {
@@ -154,8 +243,7 @@ class Augmentation_operator_gvec_deriv
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, sddk::Gvec const& gvec__,
-        sddk::mdarray<double, 2> const& tp__);
+    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, sddk::Gvec const& gvec__);
 
     void generate_pw_coeffs(Atom_type const& atom_type__, int nu__);
 

@@ -2768,7 +2768,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 gs.potential().update_atomic_potential();
             }
             if (precompute_rf__ && *precompute_rf__) {
-                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
+                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
             }
             if (precompute_ri__ && *precompute_ri__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();

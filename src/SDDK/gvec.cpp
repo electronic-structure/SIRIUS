@@ -389,6 +389,10 @@ Gvec::init_gvec_cart_local()
 {
     gvec_cart_  = mdarray<double, 2>(3, count(), memory_t::host, "gvec_cart_");
     gkvec_cart_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_cart_");
+    /* this arrays are allocated with GPU- friendly data layout */
+    gvec_tp_    = mdarray<double, 2>(count(), 2, memory_t::host, "gvec_tp_");
+    gkvec_tp_   = mdarray<double, 2>(count(), 2, memory_t::host, "gvec_tp_");
+
     if (bare_gvec_) {
         gvec_len_ = mdarray<double, 1>(count(), memory_t::host, "gvec_len_");
     }
@@ -403,6 +407,13 @@ Gvec::init_gvec_cart_local()
         if (bare_gvec_) {
             gvec_len_(igloc) = gvec_shell_len_(gvec_shell_(this->offset() + igloc));
         }
+        auto gs = r3::spherical_coordinates(gc);
+        gvec_tp_(igloc, 0) = gs[1];
+        gvec_tp_(igloc, 1) = gs[2];
+
+        auto gks = r3::spherical_coordinates(gkc);
+        gkvec_tp_(igloc, 0) = gks[1];
+        gkvec_tp_(igloc, 1) = gks[2];
     }
 }
 
