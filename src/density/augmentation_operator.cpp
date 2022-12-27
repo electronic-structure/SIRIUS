@@ -26,27 +26,6 @@
 
 namespace sirius {
 
-#if defined(SIRIUS_GPU)
-extern "C" {
-
-void
-aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
-        std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__, double const* gc__, int ld0__,
-        int ld1__, double const* gvec_rlm__, int ld2__, double const* ri_values__, int ld3__, int ld4__,
-        double* q_pw__, int ld5__, double fourpi_omega__);
-
-void
-aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__, int const* idx__,
-        int idxmax__, double const* gc__, int ld0__, int ld1__, double const* rlm__, double const* rlm_dg__, int ld2__,
-        double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__, double* q_pw__, int ld5__,
-        double fourpi__, int nu__, int lmax_q__);
-
-void
-spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double const* phi__, double* rlm__, int ld__);
-
-}
-#endif
-
 void Augmentation_operator::generate_pw_coeffs()
 {
     if (!atom_type_.augment()) {
@@ -67,7 +46,7 @@ void Augmentation_operator::generate_pw_coeffs()
     /* only half of Q_{xi,xi'}(G) matrix is stored */
     int nqlm = nbf * (nbf + 1) / 2;
     /* local number of G-vectors */
-    int gvec_count  = gvec_.count();
+    int gvec_count = gvec_.count();
     /* array of plane-wave coefficients */
     q_pw_ = sddk::mdarray<double, 2>(nqlm, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
 
@@ -110,15 +89,7 @@ void Augmentation_operator::generate_pw_coeffs()
                 /* generate Rlm spherical harmonics */
                 spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
                         tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-                /* generate Q(G) */
-                int ld0 = static_cast<int>(gaunt_coefs_.size(0));
-                int ld1 = static_cast<int>(gaunt_coefs_.size(1));
-                aug_op_pw_coeffs_gpu(ng, gvec_shell_.at(sddk::memory_t::device, g_begin), idx_.at(sddk::memory_t::device),
-                    nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
-                    gaunt_coefs_.at(sddk::memory_t::device), ld0, ld1, gvec_rlm.at(sddk::memory_t::device), lmmax,
-                    ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
-                    static_cast<int>(ri_values_.size(1)), qpw.at(sddk::memory_t::device), static_cast<int>(qpw.size(0)),
-                    fourpi_omega);
+                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm, qpw);
                 acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
                 g_begin += ng;
             }

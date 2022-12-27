@@ -28,6 +28,28 @@
 #include "radial/radial_integrals.hpp"
 #include "SDDK/gvec.hpp"
 
+#if defined(SIRIUS_GPU)
+extern "C" {
+
+void
+aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
+        std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__, double const* gc__, int ld0__,
+        int ld1__, double const* gvec_rlm__, int ld2__, double const* ri_values__, int ld3__, int ld4__,
+        double* q_pw__, int ld5__, double fourpi_omega__);
+
+void
+aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__, int const* idx__,
+        int idxmax__, double const* gc__, int ld0__, int ld1__, double const* rlm__, double const* rlm_dg__, int ld2__,
+        double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__, double* q_pw__, int ld5__,
+        double fourpi__, int nu__, int lmax_q__);
+
+void
+spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double const* phi__, double* rlm__, int ld__);
+
+}
+#endif
+
+
 namespace sirius {
 
 /// Augmentation charge operator Q(r) of the ultrasoft pseudopotential formalism.
@@ -119,7 +141,7 @@ class Augmentation_operator
         }
 
         /* local number of G-vectors for each rank */
-        int gvec_count  = gvec_.count();
+        int gvec_count = gvec_.count();
 
         gvec_shell_ = sddk::mdarray<int, 1>(gvec_count);
         for (int igloc = 0; igloc < gvec_count; igloc++) {
@@ -145,6 +167,28 @@ class Augmentation_operator
             gvec_shell_.allocate(mpd).copy_to(sddk::memory_t::device);
             ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
         }
+    }
+
+    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, sddk::mdarray<double, 2> const& gvec_rlm__,
+            sddk::mdarray<double, 2>& qpw__) const
+    {
+        double fourpi_omega = fourpi / gvec_.omega();
+
+        /* maximum l of beta-projectors */
+        int lmax_beta = atom_type_.indexr().lmax();
+        int lmmax     = utils::lmmax(2 * lmax_beta);
+        /* number of beta-projectors */
+        int nbf = atom_type_.mt_basis_size();
+        /* only half of Q_{xi,xi'}(G) matrix is stored */
+        int nqlm = nbf * (nbf + 1) / 2;
+        /* generate Q(G) */
+        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(sddk::memory_t::device, g_begin__), idx_.at(sddk::memory_t::device),
+            nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
+            gaunt_coefs_.at(sddk::memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
+            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__.at(sddk::memory_t::device), lmmax,
+            ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
+            static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
+            fourpi_omega);
     }
 
     void generate_pw_coeffs();
