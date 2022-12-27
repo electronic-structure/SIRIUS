@@ -27,20 +27,24 @@
 namespace sirius {
 
 #if defined(SIRIUS_GPU)
-extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
-                                     std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__,
-                                     double const* gc__, int ld0__, int ld1__,
-                                     double const* gvec_rlm__, int ld2__,
-                                     double const* ri_values__, int ld3__, int ld4__,
-                                     double* q_pw__, int ld5__, double fourpi_omega__);
-extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__,
-                                           int const* idx__, int idxmax__,
-                                           double const* gc__, int ld0__, int ld1__,
-                                           double const* rlm__, double const* rlm_dg__, int ld2__,
-                                           double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__,
-                                           double* q_pw__, int ld5__, double fourpi__, int nu__, int lmax_q__);
+extern "C" {
 
-extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__);
+void
+aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
+        std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__, double const* gc__, int ld0__,
+        int ld1__, double const* gvec_rlm__, int ld2__, double const* ri_values__, int ld3__, int ld4__,
+        double* q_pw__, int ld5__, double fourpi_omega__);
+
+void
+aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__, int const* idx__,
+        int idxmax__, double const* gc__, int ld0__, int ld1__, double const* rlm__, double const* rlm_dg__, int ld2__,
+        double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__, double* q_pw__, int ld5__,
+        double fourpi__, int nu__, int lmax_q__);
+
+void
+spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double const* phi__, double* rlm__, int ld__);
+
+}
 #endif
 
 void Augmentation_operator::generate_pw_coeffs()
@@ -105,7 +109,7 @@ void Augmentation_operator::generate_pw_coeffs()
             for (auto ng : spl_ngv_loc) {
                 /* generate Rlm spherical harmonics */
                 spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
-                    gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
+                        tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
                 /* generate Q(G) */
                 int ld0 = static_cast<int>(gaunt_coefs_.size(0));
                 int ld1 = static_cast<int>(gaunt_coefs_.size(1));
