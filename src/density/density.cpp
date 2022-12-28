@@ -1497,9 +1497,8 @@ Density::generate_rho_aug()
                                            ctx_.augmentation_op(iat).sym_weight().at(sddk::memory_t::device),
                                            rho_aug.at(sddk::memory_t::device, g_begin, iv), 1);
                     }
+                    acc::sync_stream(stream_id(1));
 #endif
-
-
                     break;
                 }
             } // switch (pu)
