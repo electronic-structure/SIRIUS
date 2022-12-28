@@ -1370,7 +1370,7 @@ Density::generate_rho_aug()
     sddk::mdarray<std::complex<double>, 2> rho_aug(gvec_count, ctx_.num_mag_dims() + 1, mph);
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            rho_aug.zero(sddk::memory_t::host); // TODO: is zero() needed?
+            rho_aug.zero(sddk::memory_t::host);
             break;
         }
         case sddk::device_t::GPU: {
@@ -1465,7 +1465,8 @@ Density::generate_rho_aug()
 
                                 zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
                             }
-                            rho_aug(igloc, iv) = zsum;
+                            /* add contribution from atoms of a given type */
+                            rho_aug(igloc, iv) += zsum;
                         }
                         PROFILE_STOP("sirius::Density::generate_rho_aug|sum");
                     }

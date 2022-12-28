@@ -172,6 +172,7 @@ class Augmentation_operator
     void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, sddk::mdarray<double, 2> const& gvec_rlm__,
             sddk::mdarray<double, 2>& qpw__) const
     {
+#if defined(SIRIUS_GPU)
         double fourpi_omega = fourpi / gvec_.omega();
 
         /* maximum l of beta-projectors */
@@ -189,6 +190,7 @@ class Augmentation_operator
             ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
             static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
             fourpi_omega);
+#endif
     }
 
     void generate_pw_coeffs();
