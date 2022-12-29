@@ -158,6 +158,16 @@ class Augmentation_operator
                 }
             }
         }
+
+        sym_weight_ = sddk::mdarray<double, 1>(idxmax);
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                /* packed orbital index */
+                int idx12          = utils::packed_index(xi1, xi2);
+                sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
+            }
+        }
+
         if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU) {
             auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
             l_by_lm_.allocate(mpd).copy_to(sddk::memory_t::device);
@@ -166,6 +176,7 @@ class Augmentation_operator
             idx_.allocate(mpd).copy_to(sddk::memory_t::device);
             gvec_shell_.allocate(mpd).copy_to(sddk::memory_t::device);
             ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
+            sym_weight_.allocate(mpd).copy_to(sddk::memory_t::device);
         }
     }
 

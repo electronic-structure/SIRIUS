@@ -98,15 +98,6 @@ void Augmentation_operator::generate_pw_coeffs()
         }
     }
 
-    sym_weight_ = sddk::mdarray<double, 1>(nbf * (nbf + 1) / 2, sddk::get_memory_pool(sddk::memory_t::host), "sym_weight_");
-    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            /* packed orbital index */
-            int idx12          = utils::packed_index(xi1, xi2);
-            sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
-        }
-    }
-
     q_mtrx_ = sddk::mdarray<double, 2>(nbf, nbf);
     q_mtrx_.zero();
 
