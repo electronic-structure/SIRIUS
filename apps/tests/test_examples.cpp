@@ -7,7 +7,7 @@ using namespace sddk;
 
 void test1()
 {
-if (Communicator::world().rank() == 0) {
+if (mpi::Communicator::world().rank() == 0) {
     std::cout << "test1" << std::endl;
 }
 /* reciprocal lattice vectors in
@@ -22,7 +22,7 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, Communicator::world(), false);
+Gvec gvec(M, Gmax, mpi::Communicator::world(), false);
 /* loop over local number of G-vectors
    for current MPI rank */
 for (int j = 0; j < gvec.count(); j++) {
@@ -42,7 +42,7 @@ for (int j = 0; j < gvec.count(); j++) {
 
 void test2()
 {
-if (Communicator::world().rank() == 0) {
+if (mpi::Communicator::world().rank() == 0) {
     std::cout << "test2" << std::endl;
 }
 /* reciprocal lattice vectors in 
@@ -57,22 +57,22 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, Communicator::world(), false);
+Gvec gvec(M, Gmax, mpi::Communicator::world(), false);
 /* FFT-friendly distribution */
-Gvec_fft gvp(gvec, Communicator::world(),
-        Communicator::self());
+Gvec_fft gvp(gvec, mpi::Communicator::world(),
+        mpi::Communicator::self());
 /* dimensions of the FFT box */
 FFT3D_grid dims({40, 40, 40});
 
 /* this is how our code splits the z-dimension
  * of the FFT buffer */
 auto spl_z = split_fft_z(dims[2],
-        Communicator::world());
+        mpi::Communicator::world());
 
 /* create SpFFT grid object */
 spfft_grid_type<double> spfft_grid(dims[0], dims[1],
         dims[2], gvp.zcol_count_fft(), spl_z.local_size(),
-        SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(),
+        SPFFT_PU_HOST, -1, mpi::Communicator::world().native(),
         SPFFT_EXCH_DEFAULT);
 
 auto const& gv = gvp.gvec_array();
@@ -112,7 +112,7 @@ for (int j0 = 0; j0 < dims[0]; j0++) {
 
 void test3()
 {
-if (Communicator::world().rank() == 0) {
+if (mpi::Communicator::world().rank() == 0) {
     std::cout << "test3" << std::endl;
 }
 spla::Context spla_ctx(SPLA_PU_HOST);
@@ -129,7 +129,7 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-auto gvec = std::make_shared<Gvec>(M, Gmax, Communicator::world(), false);
+auto gvec = std::make_shared<Gvec>(M, Gmax, mpi::Communicator::world(), false);
 /* number of wave-functions */
 int N = 100;
 /* create scalar wave-functions for N bands */
@@ -142,7 +142,7 @@ for (int i = 0; i < N; i++) {
     }
 }
 /* create a 2x2 BLACS grid */
-BLACS_grid grid(Communicator::world(), 2, 2);
+BLACS_grid grid(mpi::Communicator::world(), 2, 2);
 /* cyclic block size */
 int bs = 16;
 /* create a distributed overlap matrix */

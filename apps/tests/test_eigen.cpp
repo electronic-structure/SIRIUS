@@ -117,7 +117,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
             }
         }
     }
-    blacs_grid__.comm().template allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+    blacs_grid__.comm().template allreduce<double, mpi::op_t::max>(&diff, 1);
     if (blacs_grid__.comm().rank() == 0) {
         printf("maximum difference: %22.18f\n", diff);
     }
@@ -191,7 +191,7 @@ void call_test(std::vector<int> mpi_grid__,
                int type__)
 {
     auto solver = Eigensolver_factory(name__);
-    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
+    sddk::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;
         for (int i = 0; i < repeat__; i++) {

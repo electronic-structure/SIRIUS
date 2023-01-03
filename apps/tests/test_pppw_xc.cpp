@@ -75,7 +75,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test_davidson(args);
-    int rank = Communicator::world().rank();
+    int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();

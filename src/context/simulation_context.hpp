@@ -58,7 +58,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     utils::get_proc_status(&VmHWM, &VmRSS);
 
     std::stringstream s;
-    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    s << "rank" << std::setfill('0') << std::setw(4) << mpi::Communicator::world().rank();
     out__ << "[" << s.str() << " at " << file_and_line__ << "] "
           << "VmHWM: " << (VmHWM >> 20) << " Mb, "
           << "VmRSS: " << (VmRSS >> 20) << " Mb";
@@ -101,24 +101,24 @@ class Simulation_context : public Simulation_parameters
 {
   private:
     /// Communicator for this simulation.
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
-    sddk::Communicator comm_k_;
-    sddk::Communicator comm_band_;
+    mpi::Communicator comm_k_;
+    mpi::Communicator comm_band_;
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
-    sddk::Communicator comm_ortho_fft_coarse_;
+    mpi::Communicator comm_ortho_fft_coarse_;
 
     /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
     /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
         used to parallelize application of local Hamiltonian over bands. */
-    sddk::Communicator comm_band_ortho_fft_coarse_;
+    mpi::Communicator comm_band_ortho_fft_coarse_;
 
     /// Unit cell of the simulation.
     std::unique_ptr<Unit_cell> unit_cell_;
 
     /// MPI grid for this simulation.
-    std::unique_ptr<sddk::MPI_grid> mpi_grid_;
+    std::unique_ptr<mpi::Grid> mpi_grid_;
 
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<sddk::BLACS_grid> blacs_grid_;
@@ -342,14 +342,14 @@ class Simulation_context : public Simulation_parameters
 
   public:
     /// Create an empty simulation context with an explicit communicator.
-    Simulation_context(sddk::Communicator const& comm__ = sddk::Communicator::world())
+    Simulation_context(mpi::Communicator const& comm__ = mpi::Communicator::world())
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
     }
 
-    Simulation_context(sddk::Communicator const& comm__, sddk::Communicator const& comm_k__, sddk::Communicator const& comm_band__)
+    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__, mpi::Communicator const& comm_band__)
         : comm_(comm__)
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
@@ -360,7 +360,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
-        : comm_(sddk::Communicator::world())
+        : comm_(mpi::Communicator::world())
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
@@ -369,7 +369,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     explicit Simulation_context(nlohmann::json const& dict__)
-        : comm_(sddk::Communicator::world())
+        : comm_(mpi::Communicator::world())
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
@@ -378,7 +378,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
+    Simulation_context(std::string const& str__, mpi::Communicator const& comm__)
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
@@ -469,7 +469,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Total communicator of the simulation.
-    sddk::Communicator const& comm() const
+    mpi::Communicator const& comm() const
     {
         return comm_;
     }
@@ -499,7 +499,7 @@ class Simulation_context : public Simulation_parameters
 
     auto const& comm_ortho_fft() const
     {
-        return sddk::Communicator::self();
+        return mpi::Communicator::self();
     }
 
     /// Communicator of the coarse FFT grid.
@@ -507,7 +507,7 @@ class Simulation_context : public Simulation_parameters
     auto const& comm_fft_coarse() const
     {
         if (cfg().control().fft_mode() == "serial") {
-            return sddk::Communicator::self();
+            return mpi::Communicator::self();
         } else {
             return comm_band();
         }

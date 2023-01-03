@@ -206,7 +206,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     auto layout_out = kp.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx_.num_bands()));
 
     costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().mpi_comm());
+            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().native());
 }
 
 template <typename T>

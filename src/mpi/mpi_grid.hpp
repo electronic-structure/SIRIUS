@@ -28,9 +28,7 @@
 #include "communicator.hpp"
 #include "utils/utils.hpp"
 
-namespace sddk {
-
-// TODO: template over number of dimensions
+namespace mpi {
 
 /// MPI grid interface
 /** The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
@@ -43,7 +41,7 @@ namespace sddk {
  *  In the provided example the corresponding communicator is MPI_grid::communicator(1 << d0), where d0 is the integer
  *   index of dimension.
  */
-class MPI_grid
+class Grid
 {
   private:
     /// Dimensions of the grid.
@@ -120,12 +118,12 @@ class MPI_grid
     }
 
     /* forbid copy constructor */
-    MPI_grid(MPI_grid const& src) = delete;
+    Grid(Grid const& src) = delete;
     /* forbid assignment operator */
-    MPI_grid& operator=(MPI_grid const& src) = delete;
+    Grid& operator=(Grid const& src) = delete;
 
   public:
-    MPI_grid(std::vector<int> dimensions__, Communicator const& parent_communicator__)
+    Grid(std::vector<int> dimensions__, Communicator const& parent_communicator__)
         : dimensions_(dimensions__)
         , parent_communicator_(parent_communicator__)
     {
@@ -138,13 +136,13 @@ class MPI_grid
         return static_cast<int>(dimensions_.size());
     }
 
-    inline Communicator const& communicator(int directions__ = 0xFF) const
+    inline auto const& communicator(int directions__ = 0xFF) const
     {
         assert(communicators_.size() != 0);
         return communicators_[valid_directions(directions__)];
     }
 };
 
-} // namespace sddk
+} // namespace mpi
 
 #endif // __MPI_GRID_HPP__

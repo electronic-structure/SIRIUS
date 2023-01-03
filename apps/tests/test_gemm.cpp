@@ -64,7 +64,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), nrow, ncol);
+    sddk::BLACS_grid blacs_grid(mpi::Communicator::world(), nrow, ncol);
 
     sddk::dmatrix<gemm_type> a, b, c;
     if (transa == 0) {
@@ -92,7 +92,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     c.zero();
 
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
@@ -106,7 +106,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== #endif
     t += utils::wtime();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / t / nrow / ncol;
-    if (sddk::Communicator::world().rank() == 0)
+    if (mpi::Communicator::world().rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", t);
         printf("performance    : %12.6f GFlops / rank\n", perf);
@@ -219,7 +219,7 @@ int main(int argn, char **argv)
             //    perf += test_pgemm_aHa(M, K, nrow, ncol, bs);
             //}
         }
-        if (sddk::Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             printf("\n");
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }

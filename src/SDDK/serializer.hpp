@@ -57,7 +57,7 @@ class serializer
         pos_ += nbytes__;
     }
 
-    void send_recv(Communicator const& comm__, int source__, int dest__)
+    void send_recv(mpi::Communicator const& comm__, int source__, int dest__)
     {
         if (source__ == dest__) {
             return;
@@ -65,9 +65,9 @@ class serializer
 
         size_t sz;
 
-        Request r1, r2;
+        mpi::Request r1, r2;
 
-        int tag = Communicator::get_tag(source__, dest__);
+        int tag = mpi::Communicator::get_tag(source__, dest__);
 
         if (comm__.rank() == source__) {
             sz = stream_.size();
@@ -163,7 +163,7 @@ void deserialize(serializer& s__, mdarray<T, N>& array__)
 }
 
 /// Serialize block data descriptor.
-inline void serialize(serializer& s__, block_data_descriptor const& dd__)
+inline void serialize(serializer& s__, mpi::block_data_descriptor const& dd__)
 {
     serialize(s__, dd__.num_ranks);
     serialize(s__, dd__.counts);
@@ -171,7 +171,7 @@ inline void serialize(serializer& s__, block_data_descriptor const& dd__)
 }
 
 /// Deserialize block data descriptor.
-inline void deserialize(serializer& s__, block_data_descriptor& dd__)
+inline void deserialize(serializer& s__, mpi::block_data_descriptor& dd__)
 {
     deserialize(s__, dd__.num_ranks);
     deserialize(s__, dd__.counts);

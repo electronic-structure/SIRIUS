@@ -182,8 +182,8 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
 
 void Gvec::distribute_z_columns()
 {
-    gvec_distr_ = block_data_descriptor(comm().size());
-    zcol_distr_ = block_data_descriptor(comm().size());
+    gvec_distr_ = mpi::block_data_descriptor(comm().size());
+    zcol_distr_ = mpi::block_data_descriptor(comm().size());
     /* local number of z-columns for each rank */
     std::vector<std::vector<z_column_descriptor>> zcols_local(comm().size());
 
@@ -543,7 +543,7 @@ int Gvec::index_by_gvec(r3::vector<int> const& G__) const
     return ig;
 }
 
-Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
+Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
     serializer s;
 
@@ -564,7 +564,7 @@ Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, i
 void Gvec_fft::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
-    gvec_distr_fft_ = block_data_descriptor(comm_fft().size());
+    gvec_distr_fft_ = mpi::block_data_descriptor(comm_fft().size());
 
     for (int rank = 0; rank < comm_fft().size(); rank++) {
         for (int i = 0; i < comm_ortho_fft().size(); i++) {
@@ -597,7 +597,7 @@ void Gvec_fft::pile_gvec()
      *
      * i.e. we will make G-vector slabs more fat (pile-of-slabs) and at the same time reshulffle wave-functions
      * between columns of the 2D MPI grid */
-    gvec_fft_slab_ = block_data_descriptor(comm_ortho_fft_.size());
+    gvec_fft_slab_ = mpi::block_data_descriptor(comm_ortho_fft_.size());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(comm_fft_.rank(), i));
     }
@@ -625,7 +625,7 @@ void Gvec_fft::pile_gvec()
     update_gkvec_cart();
 }
 
-Gvec_fft::Gvec_fft(Gvec const& gvec__, Communicator const& comm_fft__, Communicator const& comm_ortho_fft__)
+Gvec_fft::Gvec_fft(Gvec const& gvec__, mpi::Communicator const& comm_fft__, mpi::Communicator const& comm_ortho_fft__)
     : gvec_(gvec__)
     , comm_fft_(comm_fft__)
     , comm_ortho_fft_(comm_ortho_fft__)
@@ -655,8 +655,8 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
 {
     PROFILE("sddk::Gvec_shells");
 
-    a2a_send_ = block_data_descriptor(comm_.size());
-    a2a_recv_ = block_data_descriptor(comm_.size());
+    a2a_send_ = mpi::block_data_descriptor(comm_.size());
+    a2a_recv_ = mpi::block_data_descriptor(comm_.size());
 
     /* split G-vector shells between ranks in cyclic order */
     spl_num_gsh_ = splindex<splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);

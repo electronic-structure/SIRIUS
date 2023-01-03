@@ -247,7 +247,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
@@ -291,7 +291,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
@@ -402,7 +402,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());

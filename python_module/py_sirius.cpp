@@ -187,11 +187,11 @@ PYBIND11_MODULE(py_sirius, m)
 
     m.def("num_devices", &acc::num_devices);
 
-    py::class_<sddk::Communicator>(m, "Communicator");
+    py::class_<mpi::Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
         .def(py::init<std::string const&>())
-        .def(py::init<std::string const&, sddk::Communicator const&>(), py::keep_alive<1, 3>())
+        .def(py::init<std::string const&, mpi::Communicator const&>(), py::keep_alive<1, 3>())
         .def("initialize", &Simulation_context::initialize)
         .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))

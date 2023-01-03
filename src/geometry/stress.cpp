@@ -359,7 +359,7 @@ Stress::calc_stress_xc()
                 }
             }
         }
-        sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
+        mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
         t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
