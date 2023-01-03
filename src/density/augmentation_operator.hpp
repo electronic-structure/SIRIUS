@@ -52,6 +52,130 @@ spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double
 
 namespace sirius {
 
+class Augmentation_operator_new
+{
+  private:
+    Unit_cell const& unit_cell_;
+
+    sddk::Gvec const& gvec_;
+
+    sddk::mdarray<int, 1> l_by_lm_;
+
+    sddk::mdarray<std::complex<double>, 1> zilm_;
+
+    std::vector<sddk::mdarray<double, 3>> gaunt_coefs_;
+
+    std::vector<sddk::mdarray<int, 2>> idx_;
+
+    std::vector<sddk::mdarray<double, 3>> ri_values_;
+
+    sddk::mdarray<int, 1> gvec_shell_;
+
+    std::vector<sddk::mdarray<double, 2>> q_pw_;
+    std::vector<sddk::mdarray<double, 1>> sym_weight_;
+  public:
+    Augmentation_operator_new(Unit_cell const& unit_cell__, sddk::Gvec const& gvec__,
+            Radial_integrals_aug<false> const& radial_integrals__)
+        : unit_cell_{unit_cell__}
+        , gvec_{gvec__}
+    {
+        auto lmax_beta = unit_cell_.lmax();
+        auto lmax      = 2 * lmax_beta;
+        auto lmmax     = utils::lmmax(lmax);
+
+        /* local number of G-vectors */
+        auto gvec_count = gvec_.count();
+
+        /* compute l of lm index */
+        auto l_by_lm = utils::l_by_lm(lmax);
+        l_by_lm_ = sddk::mdarray<int, 1>(lmmax);
+        std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
+
+        /* compute i^l array */
+        zilm_ = sddk::mdarray<std::complex<double>, 1>(lmmax);
+        for (int l = 0, lm = 0; l <= lmax; l++) {
+            for (int m = -l; m <= l; m++, lm++) {
+                zilm_[lm] = std::pow(std::complex<double>(0, 1), l);
+            }
+        }
+
+        /* number of atom types */
+        auto nat = unit_cell_.num_atom_types();
+
+        gaunt_coefs_.resize(nat);
+        idx_.resize(nat);
+        ri_values_.resize(nat);
+        sym_weight_.resize(nat);
+        q_pw_.resize(nat);
+        for (int iat = 0; iat < nat; iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            if (!atom_type.augment() || atom_type.num_atoms() == 0) {
+                continue;
+            }
+            auto lmax_t = atom_type.indexr().lmax();
+            /* Gaunt coefficients of three real spherical harmonics */
+            gaunt_coefs_[iat] = Gaunt_coefficients<double>(lmax_t, 2 * lmax_t, lmax_t, SHT::gaunt_rrr).get_full_set_L3();
+
+            /* number of beta-projectors */
+            auto nbf = atom_type.mt_basis_size();
+            /* number of beta-projector radial functions */
+            auto nbrf = atom_type.mt_radial_basis_size();
+
+            auto idxmax = nbf * (nbf + 1) / 2;
+            idx_[iat] = sddk::mdarray<int, 2>(3, idxmax);
+
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                int lm2    = atom_type.indexb(xi2).lm;
+                int idxrf2 = atom_type.indexb(xi2).idxrf;
+
+                for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                    int lm1    = atom_type.indexb(xi1).lm;
+                    int idxrf1 = atom_type.indexb(xi1).idxrf;
+
+                    /* packed orbital index */
+                    int idx12 = utils::packed_index(xi1, xi2);
+                    /* packed radial-function index */
+                    int idxrf12 = utils::packed_index(idxrf1, idxrf2);
+
+                    idx_[iat](0, idx12) = lm1;
+                    idx_[iat](1, idx12) = lm2;
+                    idx_[iat](2, idx12) = idxrf12;
+                }
+            }
+
+            sym_weight_[iat] = sddk::mdarray<double, 1>(idxmax);
+            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                    /* packed orbital index */
+                    int idx12          = utils::packed_index(xi1, xi2);
+                    sym_weight_[iat](idx12) = (xi1 == xi2) ? 1 : 2;
+                }
+            }
+
+            ri_values_[iat] = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, 2 * lmax_t + 1, gvec_.num_gvec_shells_local());
+            #pragma omp parallel for
+            for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
+                auto ri = radial_integrals__.values(iat, gvec_.gvec_shell_len_local(j));
+                for (int l = 0; l <= lmax_t; l++) {
+                    for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
+                        ri_values_[iat](i, l, j) = ri(i, l);
+                    }
+                }
+            }
+
+            q_pw_[iat] = sddk::mdarray<double, 2>(idxmax, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
+
+        } // iat
+
+        gvec_shell_ = sddk::mdarray<int, 1>(gvec_count);
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
+        }
+    }
+
+
+};
+
 /// Augmentation charge operator Q(r) of the ultrasoft pseudopotential formalism.
 /** This class generates and stores the plane-wave coefficients of the augmentation charge operator for
     a given atom type. */
@@ -209,9 +333,9 @@ class Augmentation_operator
     void prepare(stream_id sid) const // TODO: q_pw is too big; must be handeled differently
     {
         if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU && atom_type_.augment()) {
-            sym_weight_.allocate(sddk::get_memory_pool(sddk::memory_t::device));
+            //sym_weight_.allocate(sddk::get_memory_pool(sddk::memory_t::device));
             q_pw_.allocate(sddk::get_memory_pool(sddk::memory_t::device));
-            sym_weight_.copy_to(sddk::memory_t::device, sid);
+            //sym_weight_.copy_to(sddk::memory_t::device, sid);
             q_pw_.copy_to(sddk::memory_t::device, sid);
         }
     }
@@ -220,7 +344,7 @@ class Augmentation_operator
     {
         if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU && atom_type_.augment()) {
             q_pw_.deallocate(sddk::memory_t::device);
-            sym_weight_.deallocate(sddk::memory_t::device);
+            //sym_weight_.deallocate(sddk::memory_t::device);
         }
     }
 
