@@ -1155,7 +1155,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                                 ctx.blacs_grid(), bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
-            costa::transform(layout_in, h_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.mpi_comm());
+            costa::transform(layout_in, h_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.native());
         }
         if (ophi__) {
             apply_omt_apw_lo(tmp);
@@ -1163,7 +1163,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                                 ctx.blacs_grid(), bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
-            costa::transform(layout_in, o_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.mpi_comm());
+            costa::transform(layout_in, o_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.native());
         }
     }
 
@@ -1267,7 +1267,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 {
                     auto layout_in = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, b__.size());
                     auto layout_out = alm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
-                    costa::transform(layout_in, layout_out, 'N', one, zero, comm.mpi_comm());
+                    costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
                 }
 
                 {
@@ -1279,7 +1279,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 {
                     auto layout_in = halm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
                     auto layout_out = halm_phi.grid_layout();
-                    costa::transform(layout_in, layout_out, 'N', one, zero, comm.mpi_comm());
+                    costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
                 }
 
                 /* APW-APW contribution to hphi */
@@ -1355,7 +1355,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         {
             auto layout_in = alm_phi.grid_layout();
             auto layout_out = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
-            costa::transform(layout_in, layout_out, 'N', one, zero, comm.mpi_comm());
+            costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
         }
 
         if (ophi__) {

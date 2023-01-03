@@ -96,13 +96,13 @@ inline void initialize(bool call_mpi_init__ = true)
     energy_acc() = -utils::power::device_energy();
 #endif
     if (call_mpi_init__) {
-        sddk::Communicator::initialize(MPI_THREAD_MULTIPLE);
+        mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
 
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
                sirius::revision(), sirius::git_hash().c_str());
 #if !defined(NDEBUG)
@@ -110,9 +110,9 @@ inline void initialize(bool call_mpi_init__ = true)
 #endif
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
-    sddk::num_ranks_per_node();
+    mpi::num_ranks_per_node();
     if (acc::num_devices() > 0) {
-        int devid = sddk::get_device_id(acc::num_devices());
+        int devid = mpi::get_device_id(acc::num_devices());
         acc::set_device_id(devid);
         /* create extensive amount of streams */
         /* some parts of the code rely on the number of streams not related to the
@@ -182,13 +182,13 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(SIRIUS_USE_POWER_COUNTER)
     double e = energy() + utils::power::energy();
     double e_acc = energy_acc() + utils::power::device_energy();
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("=== Energy consumption (root MPI rank) ===\n");
         printf("energy     : %9.2f Joules\n", e);
         printf("energy_acc : %9.2f Joules\n", e_acc);
     }
-    sddk::Communicator::world().allreduce(&e, 1);
-    sddk::Communicator::world().allreduce(&e_acc, 1);
+    mpi::Communicator::world().allreduce(&e, 1);
+    mpi::Communicator::world().allreduce(&e_acc, 1);
     int nn = utils::power::num_nodes();
     if (Communicator::world().rank() == 0 && nn > 0) {
         printf("=== Energy consumption (all nodes) ===\n");
@@ -196,9 +196,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
     }
 #endif
-    auto rank = sddk::Communicator::world().rank();
+    auto rank = mpi::Communicator::world().rank();
     if (call_mpi_fin__) {
-        sddk::Communicator::finalize();
+        mpi::Communicator::finalize();
     }
 #if defined(SIRIUS_ELPA)
     Eigensolver_elpa::finalize();

@@ -576,7 +576,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
 }
 
 void
-Atom_symmetry_class::sync_radial_functions(sddk::Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_radial_functions(mpi::Communicator const& comm__, int const rank__)
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
@@ -586,7 +586,7 @@ Atom_symmetry_class::sync_radial_functions(sddk::Communicator const& comm__, int
 }
 
 void
-Atom_symmetry_class::sync_radial_integrals(sddk::Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
 {
     comm__.bcast(h_spherical_integrals_.at(sddk::memory_t::host), (int)h_spherical_integrals_.size(), rank__);
     comm__.bcast(o_radial_integrals_.at(sddk::memory_t::host), (int)o_radial_integrals_.size(), rank__);
@@ -597,7 +597,7 @@ Atom_symmetry_class::sync_radial_integrals(sddk::Communicator const& comm__, int
 }
 
 void
-Atom_symmetry_class::sync_core_charge_density(sddk::Communicator const& comm__, int const rank__)
+Atom_symmetry_class::sync_core_charge_density(mpi::Communicator const& comm__, int const rank__)
 {
     RTE_ASSERT(ae_core_charge_density_.size() != 0);
 
@@ -732,7 +732,7 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
 }
 
 void
-Atom_symmetry_class::write_enu(sddk::pstdout& pout) const
+Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
 {
     pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
     pout << "augmented waves" << std::endl;

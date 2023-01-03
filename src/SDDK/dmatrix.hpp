@@ -405,12 +405,12 @@ class dmatrix: public matrix<T>
         return cs;
     }
 
-    inline Communicator const& comm() const
+    inline auto const& comm() const
     {
         if (blacs_grid_ != nullptr) {
             return blacs_grid().comm();
         } else {
-            return Communicator::self();
+            return mpi::Communicator::self();
         }
     }
 

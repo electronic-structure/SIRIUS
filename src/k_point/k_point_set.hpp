@@ -165,7 +165,7 @@ class K_point_set
             auto ik       = spl_num_kpoints_[ikloc];
             max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
         }
-        comm().allreduce<int, sddk::mpi_op_t::max>(&max_num_gkvec, 1);
+        comm().allreduce<int, mpi::op_t::max>(&max_num_gkvec, 1);
         return max_num_gkvec;
     }
 

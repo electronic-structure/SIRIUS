@@ -238,8 +238,8 @@ static inline void
 sirius_exit(int error_code__, std::string msg__ = "")
 {
     sirius_print_error(error_code__, msg__);
-    if (!sddk::Communicator::is_finalized()) {
-        sddk::Communicator::world().abort(error_code__);
+    if (!mpi::Communicator::is_finalized()) {
+        mpi::Communicator::world().abort(error_code__);
     } else {
         std::exit(error_code__);
     }
@@ -578,10 +578,10 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
 {
     call_sirius(
         [&]() {
-            auto& comm                 = sddk::Communicator::map_fcomm(fcomm__);
-            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator();
+            auto& comm                 = mpi::Communicator::map_fcomm(fcomm__);
+            auto& comm_k = (fcomm_k__) ? mpi::Communicator::map_fcomm(*fcomm_k__) : mpi::Communicator();
             auto const& comm_band =
-                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator();
+                (fcomm_band__) ? mpi::Communicator::map_fcomm(*fcomm_band__) : mpi::Communicator();
             *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
@@ -2515,7 +2515,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 assert(gvl__ != nullptr);
                 assert(comm__ != nullptr);
 
-                sddk::Communicator comm(MPI_Comm_f2c(*comm__));
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
                 std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
@@ -2630,7 +2630,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 assert(gvl__ != NULL);
                 assert(comm__ != NULL);
 
-                sddk::Communicator comm(MPI_Comm_f2c(*comm__));
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
@@ -3385,8 +3385,8 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                 }
                 /* send wave-functions for each spin channel */
                 for (int s = ispn0; s <= ispn1; s++) {
-                    int tag = sddk::Communicator::get_tag(src_rank, dest_rank) + s;
-                    sddk::Request req;
+                    int tag = mpi::Communicator::get_tag(src_rank, dest_rank) + s;
+                    mpi::Request req;
 
                     /* send wave-functions */
                     if (ks.comm().rank() == src_rank) {
@@ -3690,7 +3690,7 @@ sirius_get_kpoint_inter_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().native());
         },
         error_code__);
 }
@@ -3720,7 +3720,7 @@ sirius_get_kpoint_inner_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().native());
         },
         error_code__);
 }
@@ -3750,7 +3750,7 @@ sirius_get_fft_comm(void* const* handler__, int* fcomm__, int* error_code__)
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().native());
         },
         error_code__);
 }
@@ -4104,7 +4104,7 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
                 }
             }
             if (!is_local_rg) {
-                sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
+                mpi::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
             }
         },
         error_code__);
@@ -5139,7 +5139,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
 
             auto& f = func.at(label);
 
-            auto& comm = sddk::Communicator::map_fcomm(*fcomm__);
+            auto& comm = mpi::Communicator::map_fcomm(*fcomm__);
 
             sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
             sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
@@ -5266,7 +5266,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             auto& f = func.at(label);
 
-            auto& comm = sddk::Communicator::map_fcomm(*fcomm__);
+            auto& comm = mpi::Communicator::map_fcomm(*fcomm__);
 
             if (transform_to_rg__ && *transform_to_rg__) {
                 f->fft_transform(1);
@@ -5898,7 +5898,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             }
 
             /* collect local G+k+q vector sizes across all ranks */
-            sddk::block_data_descriptor gkq_in_distr(gvkq.comm().size());
+            mpi::block_data_descriptor gkq_in_distr(gvkq.comm().size());
             gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
             gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
             gkq_in_distr.calc_offsets();

@@ -1310,7 +1310,7 @@ Density::generate_valence(K_point_set const& ks__)
         /* print checksum if needed */
         if (ctx_.cfg().control().print_checksum()) {
             auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
-            sddk::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
+            mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
             utils::print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
         }
         /* transform to PW domain */
@@ -1852,7 +1852,7 @@ Density::compute_atomic_mag_mom() const
             mmom(j, ia) *= (unit_cell_.omega() / spfft_grid_size(ctx_.spfft<double>()));
         }
     }
-    sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+    mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
     return mmom;
 }
 

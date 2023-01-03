@@ -905,7 +905,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         rho_dn->f_rg(ir) = rud.second;
     }
 
-    sddk::Communicator(ctx.spfft<double>().communicator()).allreduce<double, sddk::mpi_op_t::min>(&rhomin, 1);
+    mpi::Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi::op_t::min>(&rhomin, 1);
     if (rhomin< 0.0 && ctx.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl

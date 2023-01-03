@@ -26,7 +26,7 @@ void create_supercell(cmd_args const& args__)
         std::cout << std::endl;
     }
 
-    Simulation_context ctx("sirius.json", Communicator::self());
+    Simulation_context ctx("sirius.json", mpi::Communicator::self());
 
     auto scell_lattice_vectors = dot(ctx.unit_cell().lattice_vectors(), r3::matrix<double>(scell));
 
@@ -41,7 +41,7 @@ void create_supercell(cmd_args const& args__)
 
     std::cout << "volume ratio : " << std::abs(r3::matrix<int>(scell).det()) << std::endl;
 
-    Simulation_context ctx_sc(Communicator::self());
+    Simulation_context ctx_sc(mpi::Communicator::self());
 
     r3::vector<double> a0, a1, a2;
     for (int x = 0; x < 3; x++) {
@@ -96,7 +96,7 @@ void create_supercell(cmd_args const& args__)
     ctx_sc.unit_cell().write_cif();
     json dict;
     dict["unit_cell"] = ctx_sc.unit_cell().serialize();
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
     }
@@ -104,7 +104,7 @@ void create_supercell(cmd_args const& args__)
 
 void find_primitive()
 {
-    Simulation_context ctx("sirius.json", Communicator::self());
+    Simulation_context ctx("sirius.json", mpi::Communicator::self());
 
     double lattice[3][3];
     for (int i: {0, 1, 2}) {
@@ -127,7 +127,7 @@ void find_primitive()
                                        1, 0, ctx.cfg().control().spglib_tolerance());
     std::printf("new number of atoms: %i\n", nat_new);
 
-    Simulation_context ctx_new(Communicator::self());
+    Simulation_context ctx_new(mpi::Communicator::self());
 
     r3::vector<double> a0, a1, a2;
     for (int x = 0; x < 3; x++) {
@@ -157,7 +157,7 @@ void find_primitive()
 
     json dict;
     dict["unit_cell"] = ctx_new.unit_cell().serialize();
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
     }
@@ -166,7 +166,7 @@ void find_primitive()
 
 void create_qe_input(cmd_args const& args__)
 {
-    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), mpi::Communicator::self());
 
     FILE* fout = fopen("pw.in", "w");
     fprintf(fout, "&control\n"
@@ -221,7 +221,7 @@ void create_qe_input(cmd_args const& args__)
 
 void create_exciting_input(cmd_args const& args__)
 {
-    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), mpi::Communicator::self());
 
     FILE* fout = fopen("input.xml", "w");
 
@@ -257,12 +257,12 @@ void create_exciting_input(cmd_args const& args__)
 
 void convert_to_mol(cmd_args& args__)
 {
-    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), mpi::Communicator::self());
 
     json dict;
     dict["unit_cell"] = ctx.unit_cell().serialize(true);
     dict["unit_cell"]["atom_coordinate_units"] = "au";
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
     }
@@ -271,7 +271,7 @@ void convert_to_mol(cmd_args& args__)
 
 void scale_lattice(cmd_args& args__)
 {
-    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), mpi::Communicator::self());
     //ctx.unit_cell().get_symmetry();
     //ctx.unit_cell().print_symmetry_info(5);
 
@@ -298,7 +298,7 @@ void scale_lattice(cmd_args& args__)
             }
         }
     }
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
     }
@@ -337,7 +337,7 @@ int main(int argn, char** argv)
         create_exciting_input(args);
     }
     if (args.exist("cif")) {
-        Simulation_context ctx(args.value<std::string>("input", "sirius.json"), Communicator::self());
+        Simulation_context ctx(args.value<std::string>("input", "sirius.json"), mpi::Communicator::self());
         ctx.unit_cell().write_cif();
         ctx.unit_cell().find_nearest_neighbours(20);
         std::printf("minimum bond length: %20.12f\n", ctx.unit_cell().min_bond_length());
