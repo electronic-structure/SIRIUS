@@ -70,7 +70,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
             wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
             60, locking, subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 
-    if (sddk::Communicator::world().rank() == 0 && only_kin__) {
+    if (mpi::Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {
             ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(i).length2();
@@ -85,7 +85,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
         printf("maximum eigen-value difference: %20.16e\n", max_diff);
     }
 
-    if (sddk::Communicator::world().rank() == 0 && !only_kin__) {
+    if (mpi::Communicator::world().rank() == 0 && !only_kin__) {
         std::cout << "Converged eigen-values" << std::endl;
         for (int i = 0; i < ctx__.num_bands(); i++) {
             printf("e[%i] = %20.16f\n", i, result.eval(i, 0));
@@ -134,12 +134,12 @@ void test_davidson(cmd_args const& args__)
         json_conf["parameters"]["num_bands"] = num_bands;
     }
 
-    std::vector<geometry3d::vector3d<double>> coord;
+    std::vector<r3::vector<double>> coord;
     double p = 1.0 / N;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             for (int k = 0; k < N; k++) {
-                coord.push_back(geometry3d::vector3d<double>(i * p, j * p, k * p));
+                coord.push_back(r3::vector<double>(i * p, j * p, k * p));
             }
         }
     }
@@ -212,7 +212,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test_davidson(args);
-    int rank = sddk::Communicator::world().rank();
+    int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();

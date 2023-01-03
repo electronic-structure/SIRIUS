@@ -42,7 +42,7 @@ make_vector(const std::vector<wfc_ptr_t>& wfct, const Simulation_context& ctx, c
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             auto& array   = wfct[i]->pw_coeffs(wf::spin_index(ispn));
             int lda       = array.size(0);
-            MPI_Comm comm = wfct[i]->comm().mpi_comm();
+            MPI_Comm comm = wfct[i]->comm().native();
             // check that wfct has been allocated
             if (is_device_memory(target_memory)) {
                 // make sure that array is on device
@@ -57,7 +57,7 @@ make_vector(const std::vector<wfc_ptr_t>& wfct, const Simulation_context& ctx, c
                               memtype.at(target_memory), comm /* mpi communicator */);
         }
     }
-    return std::make_shared<Matrix>(std::move(data), std::move(kpoint_indices), kset.comm().mpi_comm());
+    return std::make_shared<Matrix>(std::move(data), std::move(kpoint_indices), kset.comm().native());
 }
 
 
@@ -218,7 +218,7 @@ Energy::get_fn()
             kindices.emplace_back(gidk, ispn);
         }
     }
-    return std::make_shared<Array1d>(fn, kindices, kset.comm().mpi_comm());
+    return std::make_shared<Array1d>(fn, kindices, kset.comm().native());
 }
 
 void
@@ -268,7 +268,7 @@ Energy::get_ek()
             kindices.emplace_back(gidk, ispn);
         }
     }
-    return std::make_shared<Array1d>(ek, kindices, kset.comm().mpi_comm());
+    return std::make_shared<Array1d>(ek, kindices, kset.comm().native());
 }
 
 std::shared_ptr<nlcglib::VectorBaseZ>
@@ -293,7 +293,7 @@ Energy::get_gkvec_ekin()
             kindices.emplace_back(gidk, ispn);
         }
     }
-    return std::make_shared<Array1d>(gkvec_cart, kindices, kset.comm().mpi_comm());
+    return std::make_shared<Array1d>(gkvec_cart, kindices, kset.comm().native());
 }
 
 std::shared_ptr<nlcglib::ScalarBaseZ>
@@ -314,7 +314,7 @@ Energy::get_kpoint_weights()
             kindices.emplace_back(gidk, ispn);
         }
     }
-    return std::make_shared<Scalar>(weights, kindices, kset.comm().mpi_comm());
+    return std::make_shared<Scalar>(weights, kindices, kset.comm().native());
 }
 
 double
@@ -341,7 +341,7 @@ Energy::print_info() const
         std::printf("\n");
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            vector3d<double> v(mt_mag[ia]);
+            r3::vector<double> v(mt_mag[ia]);
             std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
             std::printf("\n");
         }

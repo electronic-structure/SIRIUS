@@ -22,7 +22,7 @@
  *  \brief Contains implementation of sirius::Stress class.
  */
 
-#include "SDDK/geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "k_point/k_point.hpp"
 #include "stress.hpp"
 #include "non_local_functor.hpp"
@@ -31,8 +31,6 @@
 #include "symmetry/crystal_symmetry.hpp"
 
 namespace sirius {
-
-using namespace geometry3d;
 
 template <typename T, typename F>
 void
@@ -64,7 +62,7 @@ Stress::calc_stress_nonloc_aux()
 
     #pragma omp parallel
     {
-        matrix3d<double> tmp_stress; // TODO: test pragma omp parallel for reduction(+:stress)
+        r3::matrix<double> tmp_stress; // TODO: test pragma omp parallel for reduction(+:stress)
 
         #pragma omp for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -86,7 +84,7 @@ Stress::calc_stress_nonloc_aux()
     symmetrize(stress_nonloc_);
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_total()
 {
     calc_stress_kin();
@@ -113,7 +111,7 @@ Stress::calc_stress_total()
     return stress_total_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
@@ -129,7 +127,7 @@ Stress::calc_stress_hubbard()
 
     auto nhwf = ctx_.unit_cell().num_hubbard_wf().first;
 
-    sddk::mdarray<double_complex, 4> dn(nhwf, nhwf, 2, 9);
+    sddk::mdarray<std::complex<double>, 4> dn(nhwf, nhwf, 2, 9);
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         dn.allocate(ctx_.processing_unit_memory_t());
     }
@@ -187,7 +185,7 @@ Stress::calc_stress_hubbard()
                     int jn  = nl.n()[1];
                     auto Tr = nl.T();
 
-                    auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp->vk())));
+                    auto z1           = std::exp(std::complex<double>(0, -twopi * dot(r3::vector<int>(Tr), kp->vk())));
                     const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia, in, il);
                     const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
                     const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
@@ -218,7 +216,7 @@ Stress::calc_stress_hubbard()
     return stress_hubbard_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_core()
 {
     stress_core_.zero();
@@ -284,7 +282,7 @@ Stress::calc_stress_core()
     return stress_core_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_xc()
 {
     stress_xc_.zero();
@@ -298,7 +296,7 @@ Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        matrix3d<double> t;
+        r3::matrix<double> t;
 
         /* factor 2 in the expression for gradient correction comes from the
            derivative of sigm (which is grad(rho) * grad(rho)) */
@@ -361,7 +359,7 @@ Stress::calc_stress_xc()
                 }
             }
         }
-        sddk::Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
+        mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&t(0, 0), 9);
         t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
@@ -371,7 +369,7 @@ Stress::calc_stress_xc()
     return stress_xc_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_us()
 {
     PROFILE("sirius::Stress|us");
@@ -422,7 +420,7 @@ Stress::calc_stress_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
 
-        sddk::mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+        sddk::mdarray<std::complex<double>, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
                                                        get_memory_pool(sddk::memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
@@ -494,7 +492,7 @@ Stress::calc_stress_us()
     return stress_us_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_ewald()
 {
     PROFILE("sirius::Stress|ewald");
@@ -513,7 +511,7 @@ Stress::calc_stress_ewald()
         double g2       = std::pow(G.length(), 2);
         double g2lambda = g2 / 4.0 / lambda;
 
-        double_complex rho(0, 0);
+        std::complex<double> rho(0, 0);
 
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(uc.atom(ia).zn());
@@ -568,7 +566,7 @@ Stress::calc_stress_ewald()
 void
 Stress::print_info(std::ostream& out__, int verbosity__) const
 {
-    auto print_stress = [&](std::string label__, matrix3d<double> const& s) {
+    auto print_stress = [&](std::string label__, r3::matrix<double> const& s) {
         out__ << "=== " << label__ << " ===" << std::endl;
         for (int mu : {0, 1, 2}) {
            out__ << utils::ffmt(12, 6) << s(mu, 0)
@@ -617,7 +615,7 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
     print_stress("stress_total", stress_total);
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_har()
 {
     PROFILE("sirius::Stress|har");
@@ -667,7 +665,7 @@ Stress::calc_stress_kin_aux()
 
         #pragma omp parallel
         {
-            matrix3d<double> tmp;
+            r3::matrix<double> tmp;
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                 #pragma omp for
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
@@ -697,7 +695,7 @@ Stress::calc_stress_kin_aux()
     symmetrize(stress_kin_);
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_kin()
 {
     PROFILE("sirius::Stress|kin");
@@ -712,13 +710,13 @@ Stress::calc_stress_kin()
 }
 
 void
-Stress::symmetrize(matrix3d<double>& mtrx__) const
+Stress::symmetrize(r3::matrix<double>& mtrx__) const
 {
     if (!ctx_.use_symmetry()) {
         return;
     }
 
-    matrix3d<double> result;
+    r3::matrix<double> result;
 
     for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
         auto R = ctx_.unit_cell().symmetry()[i].spg_op.Rcp;
@@ -733,7 +731,7 @@ Stress::symmetrize(matrix3d<double>& mtrx__) const
     }
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_vloc()
 {
     PROFILE("sirius::Stress|vloc");
@@ -783,7 +781,7 @@ Stress::calc_stress_vloc()
     return stress_vloc_;
 }
 
-matrix3d<double>
+r3::matrix<double>
 Stress::calc_stress_nonloc()
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {

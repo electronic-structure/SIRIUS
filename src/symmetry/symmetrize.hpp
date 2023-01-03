@@ -95,23 +95,23 @@ namespace sirius {
  */
 inline void
 symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__,
-           sddk::mdarray<double_complex, 3> const& sym_phase_factors__, double_complex* f_pw__, double_complex* x_pw__,
-           double_complex* y_pw__, double_complex* z_pw__)
+           sddk::mdarray<std::complex<double>, 3> const& sym_phase_factors__, std::complex<double>* f_pw__, std::complex<double>* x_pw__,
+           std::complex<double>* y_pw__, std::complex<double>* z_pw__)
 {
     PROFILE("sirius::symmetrize|fpw");
 
-    auto f_pw = f_pw__ ? gvec_shells__.remap_forward(f_pw__) : std::vector<double_complex>();
-    auto x_pw = x_pw__ ? gvec_shells__.remap_forward(x_pw__) : std::vector<double_complex>();
-    auto y_pw = y_pw__ ? gvec_shells__.remap_forward(y_pw__) : std::vector<double_complex>();
-    auto z_pw = z_pw__ ? gvec_shells__.remap_forward(z_pw__) : std::vector<double_complex>();
+    auto f_pw = f_pw__ ? gvec_shells__.remap_forward(f_pw__) : std::vector<std::complex<double>>();
+    auto x_pw = x_pw__ ? gvec_shells__.remap_forward(x_pw__) : std::vector<std::complex<double>>();
+    auto y_pw = y_pw__ ? gvec_shells__.remap_forward(y_pw__) : std::vector<std::complex<double>>();
+    auto z_pw = z_pw__ ? gvec_shells__.remap_forward(z_pw__) : std::vector<std::complex<double>>();
 
     /* local number of G-vectors in a distribution with complete G-vector shells */
     int ngv = gvec_shells__.gvec_count_remapped();
 
-    auto sym_f_pw = f_pw__ ? std::vector<double_complex>(ngv, 0) : std::vector<double_complex>();
-    auto sym_x_pw = x_pw__ ? std::vector<double_complex>(ngv, 0) : std::vector<double_complex>();
-    auto sym_y_pw = y_pw__ ? std::vector<double_complex>(ngv, 0) : std::vector<double_complex>();
-    auto sym_z_pw = z_pw__ ? std::vector<double_complex>(ngv, 0) : std::vector<double_complex>();
+    auto sym_f_pw = f_pw__ ? std::vector<std::complex<double>>(ngv, 0) : std::vector<std::complex<double>>();
+    auto sym_x_pw = x_pw__ ? std::vector<std::complex<double>>(ngv, 0) : std::vector<std::complex<double>>();
+    auto sym_y_pw = y_pw__ ? std::vector<std::complex<double>>(ngv, 0) : std::vector<std::complex<double>>();
+    auto sym_z_pw = z_pw__ ? std::vector<std::complex<double>>(ngv, 0) : std::vector<std::complex<double>>();
 
     bool is_non_collin = ((x_pw__ != nullptr) && (y_pw__ != nullptr) && (z_pw__ != nullptr));
 
@@ -119,7 +119,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
 
     double norm = 1 / double(sym__.size());
 
-    auto phase_factor = [&](int isym, vector3d<int> G) {
+    auto phase_factor = [&](int isym, r3::vector<int> G) {
         return sym_phase_factors__(0, G[0], isym) * sym_phase_factors__(1, G[1], isym) *
                sym_phase_factors__(2, G[2], isym);
     };
@@ -146,10 +146,10 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
             /* each thread is working on full shell of G-vectors */
             if (igsh % nt == tid && !is_done[igloc]) {
 
-                double_complex symf(0, 0);
-                double_complex symx(0, 0);
-                double_complex symy(0, 0);
-                double_complex symz(0, 0);
+                std::complex<double> symf(0, 0);
+                std::complex<double> symx(0, 0);
+                std::complex<double> symy(0, 0);
+                std::complex<double> symz(0, 0);
 
                 /* find the symmetrized PW coefficient */
 
@@ -179,7 +179,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz += std::conj(z_pw[ig1]) * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<double_complex>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += std::conj(v[0]) * phase;
                             symy += std::conj(v[1]) * phase;
                             symz += std::conj(v[2]) * phase;
@@ -198,7 +198,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz += z_pw[ig1] * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<double_complex>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += v[0] * phase;
                             symy += v[1] * phase;
                             symz += v[2] * phase;
@@ -223,7 +223,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                     if (ig1 != -1) {
                         assert(ig1 >= 0 && ig1 < ngv);
                         auto phase = std::conj(phase_factor(isym, G1));
-                        double_complex symf1, symx1, symy1, symz1;
+                        std::complex<double> symf1, symx1, symy1, symz1;
                         if (f_pw__) {
                             symf1 = symf * phase;
                         }
@@ -231,7 +231,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
                             symz1 = symz * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, vector3d<double_complex>({symx, symy, symz}));
+                            auto v = dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
                             symx1  = v[0] * phase;
                             symy1  = v[1] * phase;
                             symz1  = v[2] * phase;
@@ -296,7 +296,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
             auto gv_rot = dot(sym__[isym].spg_op.invRT, G);
             /* index of a rotated G-vector */
             int ig_rot           = gvec_shells__.index_by_gvec(gv_rot);
-            double_complex phase = std::conj(phase_factor(isym, gv_rot));
+            std::complex<double> phase = std::conj(phase_factor(isym, gv_rot));
 
             if (f_pw__ && ig_rot != -1) {
                 if (utils::abs_diff(sym_f_pw[ig_rot], sym_f_pw[igloc] * phase) > eps) {
@@ -333,7 +333,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
 }
 
 inline void
-symmetrize_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& frlm__)
+symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -375,7 +375,7 @@ symmetrize_function(Crystal_symmetry const& sym__, sddk::Communicator const& com
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vz_rlm__)
+symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vzlm");
 
@@ -421,7 +421,7 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator con
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vx_rlm__,
+symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& vx_rlm__,
                            sddk::mdarray<double, 3>& vy_rlm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vlm");
@@ -486,18 +486,18 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator con
 
 /* we compute \f[ Oc = (R_l\cross R_s) . O . (R_l\cross R_s)^\dagger \f] */
 
-// inline void apply_symmetry(const mdarray<double_complex, 3> &dm_,
+// inline void apply_symmetry(const mdarray<std::complex<double>, 3> &dm_,
 //                           const mdarray<double, 2> &rot,
-//                           const mdarray<double_complex, 2> &spin_rot_su2,
+//                           const mdarray<std::complex<double>, 2> &spin_rot_su2,
 //                           const int num_mag_dims_,
 //                           const int l,
-//                           mdarray<double_complex, 3> &res_)
+//                           mdarray<std::complex<double>, 3> &res_)
 //{
 //    res_.zero();
 //    for (int lm1 = 0; lm1 <= 2 * l + 1; lm1++) {
 //        for (int lm2 = 0; lm2 <= 2 * l + 1; lm2++) {
 //            res_.zero();
-//            double_complex dm_rot_spatial[3];
+//            std::complex<double> dm_rot_spatial[3];
 //
 //            for (int j = 0; j < num_mag_dims_; j++) {
 //                // this is a matrix-matrix multiplication P A P ^-1
@@ -515,7 +515,7 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator con
 //                }
 //            else {
 //                // full non collinear magnetism
-//                double_complex spin_dm[2][2] = {
+//                std::complex<double> spin_dm[2][2] = {
 //                    {dm_rot_spatial[0], dm_rot_spatial[2]},
 //                    {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
 //
@@ -546,9 +546,9 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator con
  *  radial integrals over the total angular momentum
  */
 inline void
-symmetrize(const sddk::mdarray<double_complex, 4>& ns_, basis_functions_index const& indexb, const int ia, const int ja,
-           const int ndm, sddk::mdarray<double, 2> const& rotm, sddk::mdarray<double_complex, 2> const& spin_rot_su2,
-           sddk::mdarray<double_complex, 4>& dm_, const bool hubbard_)
+symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_index const& indexb, const int ia, const int ja,
+           const int ndm, sddk::mdarray<double, 2> const& rotm, sddk::mdarray<std::complex<double>, 2> const& spin_rot_su2,
+           sddk::mdarray<std::complex<double>, 4>& dm_, const bool hubbard_)
 {
     for (int xi1 = 0; xi1 < indexb.size(); xi1++) {
         int l1  = indexb[xi1].l;
@@ -563,7 +563,7 @@ symmetrize(const sddk::mdarray<double_complex, 4>& ns_, basis_functions_index co
             int l2                                       = indexb[xi2].l;
             int lm2                                      = indexb[xi2].lm;
             int o2                                       = indexb[xi2].order;
-            std::array<double_complex, 3> dm_rot_spatial = {0, 0, 0};
+            std::array<std::complex<double>, 3> dm_rot_spatial = {0, 0, 0};
 
             //} the hubbard treatment when spin orbit coupling is present is
             // foundamentally wrong since we consider the full hubbard
@@ -594,7 +594,7 @@ symmetrize(const sddk::mdarray<double_complex, 4>& ns_, basis_functions_index co
             if (ndm == 1) {
                 dm_(xi1, xi2, 0, ja) += dm_rot_spatial[0];
             } else {
-                double_complex spin_dm[2][2] = {{dm_rot_spatial[0], dm_rot_spatial[2]},
+                std::complex<double> spin_dm[2][2] = {{dm_rot_spatial[0], dm_rot_spatial[2]},
                                                 {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
 
                 /* spin blocks of density matrix are: uu, dd, ud
@@ -616,7 +616,7 @@ symmetrize(const sddk::mdarray<double_complex, 4>& ns_, basis_functions_index co
 }
 
 inline void
-symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__, int num_mag_comp__,
+symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__, int num_mag_comp__,
            Crystal_symmetry const& sym__,
            std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
 {
@@ -625,11 +625,11 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__, int 
         return;
     }
 
-    std::vector<sddk::mdarray<double_complex, 3>> dmsym(sym__.num_atoms());
+    std::vector<sddk::mdarray<std::complex<double>, 3>> dmsym(sym__.num_atoms());
     for (int ia = 0; ia < sym__.num_atoms(); ia++) {
         int iat = sym__.atom_type(ia);
         if (indexb__(iat)) {
-            dmsym[ia] = sddk::mdarray<double_complex, 3>(indexb__(iat)->size(), indexb__(iat)->size(), 4);
+            dmsym[ia] = sddk::mdarray<std::complex<double>, 3>(indexb__(iat)->size(), indexb__(iat)->size(), 4);
             dmsym[ia].zero();
         }
     }
@@ -661,7 +661,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__, int 
             auto& indexr = indexb.indexr();
 
             int mmax = 2 * indexb.indexr().lmax() + 1;
-            sddk::mdarray<double_complex, 3> dm_ia(mmax, mmax, num_mag_comp__);
+            sddk::mdarray<std::complex<double>, 3> dm_ia(mmax, mmax, num_mag_comp__);
 
             /* loop over radial functions */
             for (int idxrf1 = 0; idxrf1 < indexr.size(); idxrf1++) {
@@ -705,7 +705,7 @@ symmetrize(std::function<sddk::mdarray<double_complex, 3>&(int ia__)> dm__, int 
 
                             for (int m1 = 0; m1 < ss1; m1++) {
                                 for (int m2 = 0; m2 < ss2; m2++) {
-                                    double_complex dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
+                                    std::complex<double> dm[2][2] = {{dm_ia(m1, m2, 0), 0}, {0, dm_ia(m1, m2, 1)}};
                                     if (num_mag_comp__ == 3) {
                                         dm[0][1] = dm_ia(m1, m2, 2);
                                         dm[1][0] = std::conj(dm[0][1]);

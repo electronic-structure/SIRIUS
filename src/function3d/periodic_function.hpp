@@ -55,7 +55,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     Unit_cell const& unit_cell_;
 
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// Local part of muffin-tin functions.
     sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
@@ -164,7 +164,7 @@ class Periodic_function : public Smooth_periodic_function<T>
                     f_rg__ + offs);
             }
             if (!is_local_rg__) {
-                sddk::Communicator(
+                mpi::Communicator(
                     this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
             }
         }
@@ -234,7 +234,7 @@ class Periodic_function : public Smooth_periodic_function<T>
             }
         }
         it_val *= (unit_cell_.omega() / spfft_grid_size(this->spfft()));
-        sddk::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
+        mpi::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
         T total = it_val;
 
         std::vector<T> mt_val;
@@ -299,7 +299,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         std::vector<std::complex<T>> v(gvec_.num_gvec());
         h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
-        std::map<vector3d<int>, int> local_gvec_mapping;
+        std::map<r3::vector<int>, int> local_gvec_mapping;
 
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
             auto G                = gvec_.gvec<sddk::index_domain_t::local>(igloc);
@@ -307,7 +307,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
 
         for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-            vector3d<int> G(&gvec__(0, ig));
+            r3::vector<int> G(&gvec__(0, ig));
             if (local_gvec_mapping.count(G) != 0) {
                 this->f_pw_local_[local_gvec_mapping[G]] = v[ig];
             }
@@ -342,18 +342,18 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_local_(ialoc__);
     }
 
-    T value_rg(vector3d<T> const& vc)
+    T value_rg(r3::vector<T> const& vc)
     {
         T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            vector3d<T> vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+            r3::vector<T> vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
             p += std::real(this->f_pw_local_(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);
         return p;
     }
 
-    T value(vector3d<T> const& vc)
+    T value(r3::vector<T> const& vc)
     {
         int    ja{-1}, jr{-1};
         T dr{0}, tp[2];

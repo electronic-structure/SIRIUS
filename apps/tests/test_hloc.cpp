@@ -8,7 +8,7 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     auto gvec_fft = ctx__.gvec_coarse_fft_sptr();
     auto& fft = ctx__.spfft_coarse<T>();
 
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("total number of G-vectors : %i\n", gvec->num_gvec());
         printf("local number of G-vectors : %i\n", gvec->count());
         printf("FFT grid size             : %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
@@ -59,15 +59,15 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     if (diff != diff) {
         TERMINATE("NaN");
     }
-    sddk::Communicator::world().allreduce(&diff, 1);
+    mpi::Communicator::world().allreduce(&diff, 1);
     diff = std::sqrt(diff / 4 / num_bands__ / gvec->num_gvec());
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("RMS: %18.16f\n", diff);
     }
     if (diff > 1e-12) {
         RTE_THROW("RMS is too large");
     }
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         std::cout << "number of hamiltonian applications : " << ctx__.num_loc_op_applied() << std::endl;
     }
 }
@@ -101,7 +101,7 @@ int main(int argn, char** argv)
     auto fp32 = args.exist("fp32");
 
     sirius::initialize(1);
-    int my_rank = sddk::Communicator::world().rank();
+    int my_rank = mpi::Communicator::world().rank();
 
     {
         auto json_conf = R"({
@@ -117,7 +117,7 @@ int main(int argn, char** argv)
         json_conf["parameters"]["gamma_point"] = reduce_gvec;
 
         auto ctx = sirius::create_simulation_context(json_conf, {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}}, 0,
-            std::vector<geometry3d::vector3d<double>>(), false, false);
+            std::vector<r3::vector<double>>(), false, false);
         for (int i = 0; i < repeat; i++) {
             if (fp32) {
 #if defined(USE_FP32)

@@ -5,19 +5,19 @@ using namespace sddk;
 
 void test_comm_split(int comm_size)
 {
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("sub comm size: %i\n", comm_size);
     }
 
-    auto c1 = Communicator::world().split(Communicator::world().rank() / comm_size);
-    auto c2 = Communicator::world().split(Communicator::world().rank() % comm_size);
+    auto c1 = mpi::Communicator::world().split(mpi::Communicator::world().rank() / comm_size);
+    auto c2 = mpi::Communicator::world().split(mpi::Communicator::world().rank() % comm_size);
 
     auto c3 = c1;
-    Communicator c4(c2);
+    mpi::Communicator c4(c2);
 
-    pstdout pout(Communicator::world());
+    mpi::pstdout pout(mpi::Communicator::world());
 
-    pout << "global rank: " << Communicator::world().rank() << ", c1.rank: " << c1.rank()
+    pout << "global rank: " << mpi::Communicator::world().rank() << ", c1.rank: " << c1.rank()
          << ", c2.rank: " << c2.rank() << std::endl;
     std::cout << pout.flush(0);
 }

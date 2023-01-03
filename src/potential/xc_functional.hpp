@@ -27,7 +27,7 @@
 
 #include <xc.h>
 #include <string.h>
-#include "SDDK/geometry3d.hpp"
+#include "linalg/r3.hpp"
 #include "xc_functional_base.hpp"
 #include "SDDK/fft.hpp"
 #if defined(SIRIUS_USE_VDWXC)
@@ -58,7 +58,7 @@ class XC_functional : public XC_functional_base
     public:
 
       /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
-      XC_functional(spfft::Transform const& fft__, geometry3d::matrix3d<double> const& lattice_vectors__,
+      XC_functional(spfft::Transform const& fft__, r3::matrix<double> const& lattice_vectors__,
                     const std::string libxc_name__, int num_spins__)
           : XC_functional_base(libxc_name__, num_spins__)
     {
@@ -114,7 +114,7 @@ class XC_functional : public XC_functional_base
                                     v1[0], v1[1], v1[2],
                                     v2[0], v2[1], v2[2],
                                     v3[0], v3[1], v3[2]);
-                if (sddk::Communicator(fft__.communicator()).size() == 1) {
+                if (mpi::Communicator(fft__.communicator()).size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
 #if SIRIUS_HAVE_VDWXC_MPI
@@ -202,7 +202,7 @@ class XC_functional : public XC_functional_base
 #endif
         }
 
-    void vdw_update_unit_cell(spfft::Transform const& fft__, geometry3d::matrix3d<double> const& lattice_vectors__)
+    void vdw_update_unit_cell(spfft::Transform const& fft__, r3::matrix<double> const& lattice_vectors__)
     {
         #ifdef SIRIUS_USE_VDWXC
         if(is_vdw()) {

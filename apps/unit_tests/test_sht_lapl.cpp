@@ -47,7 +47,7 @@ int main(int argn, char** argv)
 
     double diff;
 
-    if ((diff = test<double_complex>()) > 1e-12) {
+    if ((diff = test<std::complex<double>>()) > 1e-12) {
         printf("error in Ylm expansion: %18.12f\n", diff);
         return 1;
     }

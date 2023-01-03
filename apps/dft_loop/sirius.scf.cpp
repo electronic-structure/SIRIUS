@@ -25,7 +25,7 @@ struct task_t
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    dict__["comm_world_size"] = sddk::Communicator::world().size();
+    dict__["comm_world_size"] = mpi::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
@@ -72,7 +72,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
     auto json = preprocess_json_input(fname__);
 
-    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
+    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), mpi::Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.cfg().parameters();
@@ -360,7 +360,7 @@ void run_tasks(cmd_args const& args)
     }
 
     if (!fs::exists(fpath)) {
-        if (Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;
@@ -476,13 +476,13 @@ void run_tasks(cmd_args const& args)
 
         double t{0};
         for (size_t i = 0; i < vertex.size() - 1; i++) {
-            vector3d<double> v0 = vector3d<double>(vertex[i].second);
-            vector3d<double> v1 = vector3d<double>(vertex[i + 1].second);
-            vector3d<double> dv = v1 - v0;
-            vector3d<double> dv_cart = dot(ctx->unit_cell().reciprocal_lattice_vectors(), dv);
+            r3::vector<double> v0 = r3::vector<double>(vertex[i].second);
+            r3::vector<double> v1 = r3::vector<double>(vertex[i + 1].second);
+            r3::vector<double> dv = v1 - v0;
+            r3::vector<double> dv_cart = dot(ctx->unit_cell().reciprocal_lattice_vectors(), dv);
             int np = std::max(10, static_cast<int>(30 * dv_cart.length()));
             for (int j = 1; j <= np; j++) {
-                vector3d<double> v = v0 + dv * static_cast<double>(j) / np;
+                r3::vector<double> v = v0 + dv * static_cast<double>(j) / np;
                 ks.add_kpoint(&v[0], 1.0);
                 t += dv_cart.length() / np;
                 x_axis.push_back(t);
@@ -508,7 +508,7 @@ void run_tasks(cmd_args const& args)
         band.solve<double, double>(ks, H0, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
-        if (Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
             dict["header"]["x_axis"] = x_axis;
@@ -587,7 +587,7 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    int my_rank = Communicator::world().rank();
+    int my_rank = mpi::Communicator::world().rank();
 
     sirius::finalize(1);
 

@@ -7,7 +7,7 @@ using namespace sirius;
 void test_wf_fft()
 {
     //sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
-    sddk::MPI_grid mpi_grid({1, 1}, sddk::Communicator::world());
+    mpi::Grid mpi_grid({1, 1}, mpi::Communicator::world());
 
     /* creation of simple G+k vector set */
     auto gkvec = sddk::gkvec_factory(8.0, mpi_grid.communicator());
@@ -42,7 +42,7 @@ void test_wf_fft()
     /* create spfft buffer for coarse transform */
     auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
             fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count_fft(),
-            spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+            spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().native(), SPFFT_EXCH_DEFAULT));
 
     const auto fft_type = gkvec->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 

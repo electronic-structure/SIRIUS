@@ -45,9 +45,9 @@ double density_residual_hartree_energy(Density const& rho1__, Density const& rho
     return eh;
 }
 
-void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
-                                      sddk::mdarray<double_complex, 2>& qit__,
-                                      double_complex* rho_pw__)
+void Potential::poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qmt__,
+                                      sddk::mdarray<std::complex<double>, 2>& qit__,
+                                      std::complex<double>* rho_pw__)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
 
@@ -65,29 +65,29 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
         double R = unit_cell_.atom_type(iat).mt_radius();
         int na = unit_cell_.atom_type(iat).num_atoms();
 
-        sddk::mdarray<double_complex, 2> pf;
-        sddk::mdarray<double_complex, 2> qa;
-        sddk::mdarray<double_complex, 2> qapf;
+        sddk::mdarray<std::complex<double>, 2> pf;
+        sddk::mdarray<std::complex<double>, 2> qa;
+        sddk::mdarray<std::complex<double>, 2> qapf;
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
                 auto& mp = get_memory_pool(sddk::memory_t::host);
-                pf = sddk::mdarray<double_complex, 2>(ngv, na, mp);
-                qa = sddk::mdarray<double_complex, 2>(lmmax, na, mp);
-                qapf = sddk::mdarray<double_complex, 2>(lmmax, ngv, mp);
+                pf = sddk::mdarray<std::complex<double>, 2>(ngv, na, mp);
+                qa = sddk::mdarray<std::complex<double>, 2>(lmmax, na, mp);
+                qapf = sddk::mdarray<std::complex<double>, 2>(lmmax, ngv, mp);
                 break;
             }
             case sddk::device_t::GPU: {
                 auto& mp = get_memory_pool(sddk::memory_t::host);
                 auto& mpd = get_memory_pool(sddk::memory_t::device);
                 /* allocate on GPU */
-                pf = sddk::mdarray<double_complex, 2>(nullptr, ngv, na);
+                pf = sddk::mdarray<std::complex<double>, 2>(nullptr, ngv, na);
                 pf.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qa = sddk::mdarray<double_complex, 2>(lmmax, na, mp);
+                qa = sddk::mdarray<std::complex<double>, 2>(lmmax, na, mp);
                 qa.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qapf = sddk::mdarray<double_complex, 2>(lmmax, ngv, mp);
+                qapf = sddk::mdarray<std::complex<double>, 2>(lmmax, ngv, mp);
                 qapf.allocate(mpd);
                 break;
             }
@@ -105,17 +105,17 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
                 sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
-                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<double_complex>::one(),
+                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<std::complex<double>>::one(),
                     qa.at(sddk::memory_t::host), qa.ld(), pf.at(sddk::memory_t::host), pf.ld(),
-                    &sddk::linalg_const<double_complex>::zero(), qapf.at(sddk::memory_t::host), qapf.ld());
+                    &sddk::linalg_const<std::complex<double>>::zero(), qapf.at(sddk::memory_t::host), qapf.ld());
                 break;
             }
             case sddk::device_t::GPU: {
                 qa.copy_to(sddk::memory_t::device);
                 sddk::linalg(sddk::linalg_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
-                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<double_complex>::one(),
+                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<std::complex<double>>::one(),
                     qa.at(sddk::memory_t::device), qa.ld(), pf.at(sddk::memory_t::device), pf.ld(),
-                    &sddk::linalg_const<double_complex>::zero(), qapf.at(sddk::memory_t::device), qapf.ld());
+                    &sddk::linalg_const<std::complex<double>>::zero(), qapf.at(sddk::memory_t::device), qapf.ld());
                 qapf.copy_to(sddk::memory_t::host);
                 break;
             }
@@ -130,10 +130,10 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
             double gR = ctx_.gvec().gvec_len<sddk::index_domain_t::local>(igloc) * R;
             double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
 
-            double_complex rho_G(0, 0);
+            std::complex<double> rho_G(0, 0);
             /* loop over atoms of the same type */
             for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
-                double_complex zt1(0, 0);
+                std::complex<double> zt1(0, 0);
                 for (int m = -l; m <= l; m++, lm++) {
                     zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
                 }
@@ -144,7 +144,7 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
         }
         /* for G=0 case */
         if (ctx_.comm().rank() == 0) {
-            double_complex rho_G(0, 0);
+            std::complex<double> rho_G(0, 0);
             for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
                 int ia = unit_cell_.atom_type(iat).atom_id(i);
                 rho_G += fourpi_omega * y00 * (qmt__(0, ia) - qit__(0, ia));
@@ -176,7 +176,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         }
 
         /* add contribution from the pseudo-charge */
-        poisson_add_pseudo_pw(qmt, qit, const_cast<double_complex*>(&rho.f_pw_local(0)));
+        poisson_add_pseudo_pw(qmt, qit, const_cast<std::complex<double>*>(&rho.f_pw_local(0)));
 
         if (ctx_.cfg().control().verification() >= 2) {
             auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
@@ -221,7 +221,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
     }
 
     //if (ctx_.control().print_checksum_) {
-    //    auto z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+    //    auto z4 = mdarray<std::complex<double>, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
     //    if (ctx_.comm().rank() == 0) {
     //        DUMP("checksum(vh_pw): %20.14f %20.14f", z4.real(), z4.imag());
     //    }

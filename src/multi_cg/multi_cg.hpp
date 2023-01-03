@@ -202,8 +202,8 @@ struct Wave_functions_wrap {
                     *x, wf::spin_index(0), wf::band_range(0, N__));
     }
 
-    void block_xpby(Wave_functions_wrap const &y__, std::vector<double_complex> const &alphas, int N__) {
-        std::vector<double_complex> ones(N__, 1.0);
+    void block_xpby(Wave_functions_wrap const &y__, std::vector<std::complex<double>> const &alphas, int N__) {
+        std::vector<std::complex<double>> ones(N__, 1.0);
         wf::axpby(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, N__), ones.data(), y__.x, alphas.data(), x);
     }
 
@@ -214,7 +214,7 @@ struct Wave_functions_wrap {
     }
 
     void block_axpy(std::vector<std::complex<double>> const &alphas__, Wave_functions_wrap const &y__, int N__) {
-        std::vector<double_complex> ones(N__, 1.0);
+        std::vector<std::complex<double>> ones(N__, 1.0);
         wf::axpby(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x, ones.data(), x);
     }
 };
@@ -268,7 +268,7 @@ struct Linear_response_operator {
     wf::Wave_functions<double> * evq;
     wf::Wave_functions<double> * tmp;
     double alpha_pv;
-    sddk::dmatrix<double_complex> overlap;
+    sddk::dmatrix<std::complex<double>> overlap;
 
 
     Linear_response_operator(
@@ -305,7 +305,7 @@ struct Linear_response_operator {
     // where SQ is S * eigenvectors.
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
         // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<double_complex>(
+        Hk.apply_h_s<std::complex<double>>(
             wf::spin_range(0),
             wf::band_range(0, num_active),
             *x.x,

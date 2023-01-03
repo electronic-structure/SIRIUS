@@ -4,6 +4,7 @@
 
 using namespace sirius;
 using namespace sddk;
+using namespace mpi;
 
 template <typename T>
 int test_fft_complex(cmd_args& args, device_t fft_pu__)
@@ -15,7 +16,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
         eps = 1e-6;
     }
 
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     auto fft_grid = get_min_fft_grid(cutoff, M);
 
@@ -26,7 +27,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
-                           SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                           SPFFT_PU_HOST, -1, Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
@@ -48,7 +49,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
         diff = std::max(diff, static_cast<double>(std::abs(f[ig] - g[ig])));
     }
-    Communicator::world().allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+    Communicator::world().allreduce<double, mpi::op_t::max>(&diff, 1);
 
     if (diff > eps) {
         return 1;

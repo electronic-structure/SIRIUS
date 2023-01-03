@@ -58,11 +58,11 @@ Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
 
     for (int isym = 0; isym < ctx_.unit_cell().symmetry().size(); isym++) {
         auto Rc = dot(dot(ctx_.unit_cell().symmetry().lattice_vectors(),
-                          matrix3d<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
+                          r3::matrix<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
                       ctx_.unit_cell().symmetry().inverse_lattice_vectors());
 
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            vector3d<double> force_ia(&forces__(0, ia));
+            r3::vector<double> force_ia(&forces__(0, ia));
             int ja        = ctx_.unit_cell().symmetry()[isym].spg_op.sym_atom[ia];
             auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
             if (location.rank == ctx_.comm().rank()) {
@@ -148,18 +148,18 @@ Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forc
 }
 
 void
-Force::compute_dmat(K_point<double>* kp__, sddk::dmatrix<double_complex>& dm__) const
+Force::compute_dmat(K_point<double>* kp__, sddk::dmatrix<std::complex<double>>& dm__) const
 {
     dm__.zero();
 
     /* trivial case */
     if (!ctx_.need_sv()) {
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            dm__.set(i, i, double_complex(kp__->band_occupancy(i, 0), 0));
+            dm__.set(i, i, std::complex<double>(kp__->band_occupancy(i, 0), 0));
         }
     } else {
         if (ctx_.num_mag_dims() != 3) {
-            sddk::dmatrix<double_complex> ev1(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+            sddk::dmatrix<std::complex<double>> ev1(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
                                         ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -174,11 +174,11 @@ Force::compute_dmat(K_point<double>* kp__, sddk::dmatrix<double_complex>& dm__) 
 
                 sddk::linalg(sddk::linalg_t::scalapack)
                     .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &sddk::linalg_const<double_complex>::one(), ev1, 0, 0, ev, 0, 0,
-                          &sddk::linalg_const<double_complex>::one(), dm__, 0, 0);
+                          &sddk::linalg_const<std::complex<double>>::one(), ev1, 0, 0, ev, 0, 0,
+                          &sddk::linalg_const<std::complex<double>>::one(), dm__, 0, 0);
             }
         } else {
-            sddk::dmatrix<double_complex> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(),
+            sddk::dmatrix<std::complex<double>> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(),
                     ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
@@ -194,8 +194,8 @@ Force::compute_dmat(K_point<double>* kp__, sddk::dmatrix<double_complex>& dm__) 
 
                 sddk::linalg(sddk::linalg_t::scalapack)
                     .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &sddk::linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
-                          &sddk::linalg_const<double_complex>::one(), dm__, 0, 0);
+                          &sddk::linalg_const<std::complex<double>>::one(), ev1, offs, 0, ev, offs, 0,
+                          &sddk::linalg_const<std::complex<double>>::one(), dm__, 0, 0);
             }
         }
     }
@@ -354,13 +354,13 @@ Force::calc_forces_ewald()
 
     int ig0 = ctx_.gvec().skip_g0();
 
-    sddk::mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
+    sddk::mdarray<std::complex<double>, 1> rho_tmp(ctx_.gvec().count());
     rho_tmp.zero();
     #pragma omp parallel for schedule(static)
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         int ig = ctx_.gvec().offset() + igloc;
 
-        double_complex rho(0, 0);
+        std::complex<double> rho(0, 0);
 
         for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
             rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
@@ -400,7 +400,7 @@ Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            auto t = dot(unit_cell.lattice_vectors(), vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation));
+            auto t = dot(unit_cell.lattice_vectors(), r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation));
 
             double scalar_part =
                 static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
@@ -479,7 +479,7 @@ Force::calc_forces_us()
                          * but in formula we have   i * G * exp[-iGRn] Veff*(G)
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
-                        auto z = double_complex(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
+                        auto z = std::complex<double>(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
                                  potential_.component(ispin).f_pw_local(igloc);
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
@@ -551,7 +551,7 @@ Force::calc_forces_scf_corr()
             auto gvec_cart = gvec.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z =
+            std::complex<double> z =
                 fact * fourpi * ff(igsh, iat) * std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -611,7 +611,7 @@ Force::calc_forces_core()
             auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z =
+            std::complex<double> z =
                 fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -633,7 +633,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
 {
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
-    sddk::mdarray<double_complex, 5> dn(r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms());
+    sddk::mdarray<std::complex<double>, 5> dn(r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms());
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
 
@@ -641,7 +641,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         /* compute the derivative of the occupancies numbers */
         for (int dir = 0; dir < 3; dir++) {
-            double_complex d{0.0};
+            std::complex<double> d{0.0};
             for (int at_lvl = 0; at_lvl < static_cast<int>(potential_.hubbard_potential().local().size()); at_lvl++) {
                 const int ia1    = potential_.hubbard_potential().atomic_orbitals(at_lvl).first;
                 const auto& atom = ctx_.unit_cell().atom(ia1);
@@ -671,7 +671,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                 int jn  = nl.n()[1];
                 auto Tr = nl.T();
 
-                auto z1           = std::exp(double_complex(0, -twopi * dot(vector3d<int>(Tr), kp__.vk())));
+                auto z1           = std::exp(std::complex<double>(0, -twopi * dot(r3::vector<int>(Tr), kp__.vk())));
                 const int at_lvl1 = potential_.hubbard_potential().find_orbital_index(ia1, in, il);
                 const int at_lvl2 = potential_.hubbard_potential().find_orbital_index(ja, jn, jl);
                 const int offset1 = potential_.hubbard_potential().offset(at_lvl1);
@@ -729,7 +729,7 @@ Force::calc_forces_vloc()
             auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            double_complex z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.f_pw_local(igloc)) *
+            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.f_pw_local(igloc)) *
                                std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */
@@ -779,24 +779,24 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
     auto ngklo = kp__->gklo_basis_size();
 
     /* compute density matrix for a k-point */
-    sddk::dmatrix<double_complex> dm(nfv, nfv, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> dm(nfv, nfv, bg, bs, bs);
     compute_dmat(kp__, dm);
 
     /* first-variational eigen-vectors in scalapack distribution */
     auto& fv_evec = kp__->fv_eigen_vectors();
 
-    sddk::dmatrix<double_complex> h(ngklo, ngklo, bg, bs, bs);
-    sddk::dmatrix<double_complex> o(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> h(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> o(ngklo, ngklo, bg, bs, bs);
 
-    sddk::dmatrix<double_complex> h1(ngklo, ngklo, bg, bs, bs);
-    sddk::dmatrix<double_complex> o1(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> h1(ngklo, ngklo, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> o1(ngklo, ngklo, bg, bs, bs);
 
-    sddk::dmatrix<double_complex> zm1(ngklo, nfv, bg, bs, bs);
-    sddk::dmatrix<double_complex> zf(nfv, nfv, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> zm1(ngklo, nfv, bg, bs, bs);
+    sddk::dmatrix<std::complex<double>> zf(nfv, nfv, bg, bs, bs);
 
-    sddk::mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
-    sddk::mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
-    sddk::mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<std::complex<double>, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<std::complex<double>, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    sddk::mdarray<std::complex<double>, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
 
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         h.zero();
@@ -818,15 +818,15 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
         /* apw-apw block of the overlap matrix */
         sddk::linalg(sddk::linalg_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &sddk::linalg_const<double_complex>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
-                  alm_col.at(sddk::memory_t::host), alm_col.ld(), &sddk::linalg_const<double_complex>::zero(),
+                  &sddk::linalg_const<std::complex<double>>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
+                  alm_col.at(sddk::memory_t::host), alm_col.ld(), &sddk::linalg_const<std::complex<double>>::zero(),
                   o.at(sddk::memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
         sddk::linalg(sddk::linalg_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &sddk::linalg_const<double_complex>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
-                  halm_col.at(sddk::memory_t::host), halm_col.ld(), &sddk::linalg_const<double_complex>::zero(),
+                  &sddk::linalg_const<std::complex<double>>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
+                  halm_col.at(sddk::memory_t::host), halm_col.ld(), &sddk::linalg_const<std::complex<double>>::zero(),
                   h.at(sddk::memory_t::host), h.ld());
 
         int iat = type.id();
@@ -861,9 +861,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
                     /* get G-G' */
                     auto vg = ctx_.gvec().gvec_cart<sddk::index_domain_t::global>(ig12);
                     /* multiply by i(G-G') */
-                    h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
+                    h1(igk_row, igk_col) = std::complex<double>(0.0, vg[x]) * h(igk_row, igk_col);
                     /* multiply by i(G-G') */
-                    o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
+                    o1(igk_row, igk_col) = std::complex<double>(0.0, vg[x]) * o(igk_row, igk_col);
                 }
             }
 
@@ -872,10 +872,10 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
                     auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
                     /* multiply by i(G+k) */
                     h1(igk_row, icol + kp__->num_gkvec_col()) =
-                        double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
+                        std::complex<double>(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
                     /* multiply by i(G+k) */
                     o1(igk_row, icol + kp__->num_gkvec_col()) =
-                        double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
+                        std::complex<double>(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                 }
             }
 
@@ -884,17 +884,17 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
                     auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
                     /* multiply by i(G+k) */
                     h1(irow + kp__->num_gkvec_row(), igk_col) =
-                        double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
+                        std::complex<double>(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
                     /* multiply by i(G+k) */
                     o1(irow + kp__->num_gkvec_row(), igk_col) =
-                        double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
+                        std::complex<double>(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
                 }
             }
 
             /* zm1 = dO * V */
             sddk::linalg(sddk::linalg_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), o1, 0, 0, fv_evec, 0, 0,
-                      &sddk::linalg_const<double_complex>::zero(), zm1, 0, 0);
+                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<std::complex<double>>::one(), o1, 0, 0, fv_evec, 0, 0,
+                      &sddk::linalg_const<std::complex<double>>::zero(), zm1, 0, 0);
             /* multiply by energy: zm1 = E * (dO * V)  */
             for (int i = 0; i < zm1.num_cols_local(); i++) {
                 int ist = zm1.icol(i);
@@ -904,13 +904,13 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
             }
             /* compute zm1 = dH * V - E * (dO * V) */
             sddk::linalg(sddk::linalg_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), h1, 0, 0, fv_evec, 0, 0,
-                      &sddk::linalg_const<double_complex>::m_one(), zm1, 0, 0);
+                .gemm('N', 'N', ngklo, nfv, ngklo, &sddk::linalg_const<std::complex<double>>::one(), h1, 0, 0, fv_evec, 0, 0,
+                      &sddk::linalg_const<std::complex<double>>::m_one(), zm1, 0, 0);
 
             /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
             sddk::linalg(sddk::linalg_t::scalapack)
-                .gemm('C', 'N', nfv, nfv, ngklo, &sddk::linalg_const<double_complex>::one(), fv_evec, 0, 0, zm1, 0, 0,
-                      &sddk::linalg_const<double_complex>::zero(), zf, 0, 0);
+                .gemm('C', 'N', nfv, nfv, ngklo, &sddk::linalg_const<std::complex<double>>::one(), fv_evec, 0, 0, zm1, 0, 0,
+                      &sddk::linalg_const<std::complex<double>>::zero(), zf, 0, 0);
 
             for (int i = 0; i < dm.num_cols_local(); i++) {
                 for (int j = 0; j < dm.num_rows_local(); j++) {

@@ -29,7 +29,7 @@
 
 namespace sddk {
 
-vector3d<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
+r3::vector<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
 {
     /* index of the z coordinate of G-vector: first 12 bits */
     uint32_t j = idx__ & 0xFFF;
@@ -40,7 +40,7 @@ vector3d<int> sddk::Gvec::gvec_by_full_index(uint32_t idx__) const
     int x = z_columns_[i].x;
     int y = z_columns_[i].y;
     int z = z_columns_[i].z[j];
-    return vector3d<int>(x, y, z);
+    return r3::vector<int>(x, y, z);
 }
 
 void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
@@ -71,7 +71,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
             /* get z-coordinate of G-vector */
             int k = fft_box__.freq_by_coord<2>(iz);
             /* take G+k */
-            auto vgk = dot(lattice_vectors_, (vector3d<double>(i, j, k) + vk_));
+            auto vgk = dot(lattice_vectors_, (r3::vector<double>(i, j, k) + vk_));
             /* add z-coordinate of G-vector to the list */
             if (vgk.length() <= Gmax__) {
                 zcol.push_back(k);
@@ -141,7 +141,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
             std::vector<int> z;
             for (int iz = 0; iz < static_cast<int>(z_columns_[i].z.size()); iz++) {
-                vector3d<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
+                r3::vector<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
                 bool found_for_all_sym{true};
                 for (auto& R: lat_sym) {
                     /* apply lattice symmeetry operation to a G-vector */
@@ -182,8 +182,8 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
 
 void Gvec::distribute_z_columns()
 {
-    gvec_distr_ = block_data_descriptor(comm().size());
-    zcol_distr_ = block_data_descriptor(comm().size());
+    gvec_distr_ = mpi::block_data_descriptor(comm().size());
+    zcol_distr_ = mpi::block_data_descriptor(comm().size());
     /* local number of z-columns for each rank */
     std::vector<std::vector<z_column_descriptor>> zcols_local(comm().size());
 
@@ -394,8 +394,8 @@ Gvec::init_gvec_cart_local()
     }
 
     for (int igloc = 0; igloc < count(); igloc++) {
-        auto gc  = dot(lattice_vectors_, vector3d<int>(&gvec_(0, igloc)));
-        auto gkc = dot(lattice_vectors_, vector3d<double>(&gkvec_(0, igloc)));
+        auto gc  = dot(lattice_vectors_, r3::vector<int>(&gvec_(0, igloc)));
+        auto gkc = dot(lattice_vectors_, r3::vector<double>(&gkvec_(0, igloc)));
         for (int x : {0, 1, 2}) {
             gvec_cart_(x, igloc)  = gc[x];
             gkvec_cart_(x, igloc) = gkc[x];
@@ -484,7 +484,7 @@ Gvec::init(FFT3D_grid const& fft_grid)
     init_gvec_cart_local();
 }
 
-std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const
+std::pair<int, bool> Gvec::index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
 {
     auto v  = g1__ - g2__;
     int idx = index_by_gvec(v);
@@ -505,7 +505,7 @@ std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<in
     return std::make_pair(idx, conj);
 }
 
-int Gvec::index_by_gvec(vector3d<int> const& G__) const
+int Gvec::index_by_gvec(r3::vector<int> const& G__) const
 {
     /* reduced G-vector set does not have negative z for x=y=0 */
     if (reduced() && G__[0] == 0 && G__[1] == 0 && G__[2] < 0) {
@@ -543,7 +543,7 @@ int Gvec::index_by_gvec(vector3d<int> const& G__) const
     return ig;
 }
 
-Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
+Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
     serializer s;
 
@@ -564,7 +564,7 @@ Gvec send_recv(Communicator const& comm__, Gvec const& gv_src__, int source__, i
 void Gvec_fft::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
-    gvec_distr_fft_ = block_data_descriptor(comm_fft().size());
+    gvec_distr_fft_ = mpi::block_data_descriptor(comm_fft().size());
 
     for (int rank = 0; rank < comm_fft().size(); rank++) {
         for (int i = 0; i < comm_ortho_fft().size(); i++) {
@@ -597,7 +597,7 @@ void Gvec_fft::pile_gvec()
      *
      * i.e. we will make G-vector slabs more fat (pile-of-slabs) and at the same time reshulffle wave-functions
      * between columns of the 2D MPI grid */
-    gvec_fft_slab_ = block_data_descriptor(comm_ortho_fft_.size());
+    gvec_fft_slab_ = mpi::block_data_descriptor(comm_ortho_fft_.size());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(comm_fft_.rank(), i));
     }
@@ -625,7 +625,7 @@ void Gvec_fft::pile_gvec()
     update_gkvec_cart();
 }
 
-Gvec_fft::Gvec_fft(Gvec const& gvec__, Communicator const& comm_fft__, Communicator const& comm_ortho_fft__)
+Gvec_fft::Gvec_fft(Gvec const& gvec__, mpi::Communicator const& comm_fft__, mpi::Communicator const& comm_ortho_fft__)
     : gvec_(gvec__)
     , comm_fft_(comm_fft__)
     , comm_ortho_fft_(comm_ortho_fft__)
@@ -655,8 +655,8 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
 {
     PROFILE("sddk::Gvec_shells");
 
-    a2a_send_ = block_data_descriptor(comm_.size());
-    a2a_recv_ = block_data_descriptor(comm_.size());
+    a2a_send_ = mpi::block_data_descriptor(comm_.size());
+    a2a_recv_ = mpi::block_data_descriptor(comm_.size());
 
     /* split G-vector shells between ranks in cyclic order */
     spl_num_gsh_ = splindex<splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);

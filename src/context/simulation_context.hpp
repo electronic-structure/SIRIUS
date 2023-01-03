@@ -41,7 +41,7 @@
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
-                                           double const* atom_pos__, double_complex* phase_factors__);
+                                           double const* atom_pos__, std::complex<double>* phase_factors__);
 #endif
 
 namespace sirius {
@@ -58,7 +58,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     utils::get_proc_status(&VmHWM, &VmRSS);
 
     std::stringstream s;
-    s << "rank" << std::setfill('0') << std::setw(4) << sddk::Communicator::world().rank();
+    s << "rank" << std::setfill('0') << std::setw(4) << mpi::Communicator::world().rank();
     out__ << "[" << s.str() << " at " << file_and_line__ << "] "
           << "VmHWM: " << (VmHWM >> 20) << " Mb, "
           << "VmRSS: " << (VmRSS >> 20) << " Mb";
@@ -101,24 +101,24 @@ class Simulation_context : public Simulation_parameters
 {
   private:
     /// Communicator for this simulation.
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
-    sddk::Communicator comm_k_;
-    sddk::Communicator comm_band_;
+    mpi::Communicator comm_k_;
+    mpi::Communicator comm_band_;
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
-    sddk::Communicator comm_ortho_fft_coarse_;
+    mpi::Communicator comm_ortho_fft_coarse_;
 
     /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
     /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
         used to parallelize application of local Hamiltonian over bands. */
-    sddk::Communicator comm_band_ortho_fft_coarse_;
+    mpi::Communicator comm_band_ortho_fft_coarse_;
 
     /// Unit cell of the simulation.
     std::unique_ptr<Unit_cell> unit_cell_;
 
     /// MPI grid for this simulation.
-    std::unique_ptr<sddk::MPI_grid> mpi_grid_;
+    std::unique_ptr<mpi::Grid> mpi_grid_;
 
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<sddk::BLACS_grid> blacs_grid_;
@@ -166,13 +166,13 @@ class Simulation_context : public Simulation_parameters
     std::string start_time_tag_;
 
     /// 1D phase factors for each atom coordinate and G-vector index.
-    sddk::mdarray<double_complex, 3> phase_factors_;
+    sddk::mdarray<std::complex<double>, 3> phase_factors_;
 
     /// 1D phase factors of the symmetry operations.
-    sddk::mdarray<double_complex, 3> sym_phase_factors_;
+    sddk::mdarray<std::complex<double>, 3> sym_phase_factors_;
 
     /// Phase factors for atom types.
-    sddk::mdarray<double_complex, 2> phase_factors_t_;
+    sddk::mdarray<std::complex<double>, 2> phase_factors_t_;
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     sddk::mdarray<int, 2> gvec_coord_;
@@ -185,7 +185,7 @@ class Simulation_context : public Simulation_parameters
     double omega0_;
 
     /// Initial lattice vectors.
-    matrix3d<double> lattice_vectors0_;
+    r3::matrix<double> lattice_vectors0_;
 
     /// Radial integrals of beta-projectors.
     std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
@@ -246,7 +246,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Plane wave expansion coefficients of the step function.
-    sddk::mdarray<double_complex, 1> theta_pw_;
+    sddk::mdarray<std::complex<double>, 1> theta_pw_;
 
     /// Step function on the real-space grid.
     sddk::mdarray<double, 1> theta_;
@@ -342,14 +342,14 @@ class Simulation_context : public Simulation_parameters
 
   public:
     /// Create an empty simulation context with an explicit communicator.
-    Simulation_context(sddk::Communicator const& comm__ = sddk::Communicator::world())
+    Simulation_context(mpi::Communicator const& comm__ = mpi::Communicator::world())
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
     }
 
-    Simulation_context(sddk::Communicator const& comm__, sddk::Communicator const& comm_k__, sddk::Communicator const& comm_band__)
+    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__, mpi::Communicator const& comm_band__)
         : comm_(comm__)
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
@@ -360,7 +360,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
-        : comm_(sddk::Communicator::world())
+        : comm_(mpi::Communicator::world())
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
@@ -369,7 +369,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     explicit Simulation_context(nlohmann::json const& dict__)
-        : comm_(sddk::Communicator::world())
+        : comm_(mpi::Communicator::world())
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
@@ -378,7 +378,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__, sddk::Communicator const& comm__)
+    Simulation_context(std::string const& str__, mpi::Communicator const& comm__)
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
@@ -469,7 +469,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Total communicator of the simulation.
-    sddk::Communicator const& comm() const
+    mpi::Communicator const& comm() const
     {
         return comm_;
     }
@@ -499,7 +499,7 @@ class Simulation_context : public Simulation_parameters
 
     auto const& comm_ortho_fft() const
     {
-        return sddk::Communicator::self();
+        return mpi::Communicator::self();
     }
 
     /// Communicator of the coarse FFT grid.
@@ -507,7 +507,7 @@ class Simulation_context : public Simulation_parameters
     auto const& comm_fft_coarse() const
     {
         if (cfg().control().fft_mode() == "serial") {
-            return sddk::Communicator::self();
+            return mpi::Communicator::self();
         } else {
             return comm_band();
         }
@@ -551,7 +551,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline auto gvec_phase_factor(vector3d<int> G__, int ia__) const
+    inline auto gvec_phase_factor(r3::vector<int> G__, int ia__) const
     {
         return phase_factors_(0, G__[0], ia__) * phase_factors_(1, G__[1], ia__) * phase_factors_(2, G__[2], ia__);
     }
@@ -573,7 +573,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
-    void generate_phase_factors(int iat__, sddk::mdarray<double_complex, 2>& phase_factors__) const;
+    void generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const;
 
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
@@ -585,7 +585,7 @@ class Simulation_context : public Simulation_parameters
         double fourpi_omega = fourpi / unit_cell().omega();
 
         int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
+        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
 
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -615,7 +615,7 @@ class Simulation_context : public Simulation_parameters
         double fourpi_omega = fourpi / unit_cell().omega();
 
         int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
+        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
 
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -640,7 +640,7 @@ class Simulation_context : public Simulation_parameters
     sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
-    sddk::matrix<double_complex> generate_gvec_ylm(int lmax__);
+    sddk::matrix<std::complex<double>> generate_gvec_ylm(int lmax__);
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
     /// MT boundary values.
@@ -650,8 +650,8 @@ class Simulation_context : public Simulation_parameters
      *     e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
      *  \f]
      */
-    sddk::mdarray<double_complex, 2> sum_fg_fl_yg(int lmax__, double_complex const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                            sddk::matrix<double_complex>& gvec_ylm__);
+    sddk::mdarray<std::complex<double>, 2> sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
+                                            sddk::matrix<std::complex<double>>& gvec_ylm__);
 
     inline auto const& beta_ri() const
     {

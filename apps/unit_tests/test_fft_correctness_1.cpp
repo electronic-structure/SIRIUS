@@ -17,20 +17,20 @@ int test_fft(cmd_args& args, device_t pu__)
 
     double cutoff = args.value<double>("cutoff", 8);
 
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     auto fft_grid = get_min_fft_grid(cutoff, M);
 
-    auto spl_z = split_fft_z(fft_grid[2], Communicator::world());
+    auto spl_z = split_fft_z(fft_grid[2], mpi::Communicator::world());
 
-    Gvec gvec(M, cutoff, Communicator::world(), false);
+    Gvec gvec(M, cutoff, mpi::Communicator::world(), false);
 
-    Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
+    Gvec_fft gvp(gvec, mpi::Communicator::world(), mpi::Communicator::self());
 
     auto spfft_pu = (pu__ == device_t::CPU) ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
     spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
-                           spfft_pu, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+                           spfft_pu, -1, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = SPFFT_TRANS_C2C;
 
@@ -46,14 +46,14 @@ int test_fft(cmd_args& args, device_t pu__)
 
     int result{0};
 
-    if (Communicator::world().rank() == 0 && verbose) {
+    if (mpi::Communicator::world().rank() == 0 && verbose) {
         std::cout << "Number of G-vectors: " << gvec.num_gvec() << "\n"; 
         std::cout << "FFT grid: " << spfft.dim_x() << " " << spfft.dim_y() << " " << spfft.dim_z() << "\n";
     }
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec<index_domain_t::global>(ig);
-        if (Communicator::world().rank() == 0 && verbose) {
+        if (mpi::Communicator::world().rank() == 0 && verbose) {
             printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
         }
         f.zero();
@@ -70,7 +70,7 @@ int test_fft(cmd_args& args, device_t pu__)
             for (int j1 = 0; j1 < fft_grid[1]; j1++) {
                 for (int j2 = 0; j2 < spfft.local_z_length(); j2++) {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft_grid[0],
+                    auto rl = r3::vector<double>(double(j0) / fft_grid[0],
                                                double(j1) / fft_grid[1],
                                                double(spfft.local_z_offset() + j2) / fft_grid[2]);
                     int idx = fft_grid.index_by_coord(j0, j1, j2);
@@ -86,7 +86,7 @@ int test_fft(cmd_args& args, device_t pu__)
                 }
             }
         }
-        Communicator::world().allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+        mpi::Communicator::world().allreduce<double, mpi::op_t::max>(&diff, 1);
         if (diff > eps) {
             result++;
         }

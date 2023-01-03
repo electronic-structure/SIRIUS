@@ -104,25 +104,25 @@ class Stress
 
     K_point_set& kset_;
 
-    matrix3d<double> stress_kin_;
+    r3::matrix<double> stress_kin_;
 
-    matrix3d<double> stress_har_;
+    r3::matrix<double> stress_har_;
 
-    matrix3d<double> stress_ewald_;
+    r3::matrix<double> stress_ewald_;
 
-    matrix3d<double> stress_vloc_;
+    r3::matrix<double> stress_vloc_;
 
-    matrix3d<double> stress_nonloc_;
+    r3::matrix<double> stress_nonloc_;
 
-    matrix3d<double> stress_us_;
+    r3::matrix<double> stress_us_;
 
-    matrix3d<double> stress_xc_;
+    r3::matrix<double> stress_xc_;
 
-    matrix3d<double> stress_core_;
+    r3::matrix<double> stress_core_;
 
-    matrix3d<double> stress_hubbard_;
+    r3::matrix<double> stress_hubbard_;
 
-    matrix3d<double> stress_total_;
+    r3::matrix<double> stress_total_;
 
     /// Non-local contribution to stress.
     /** Energy contribution from the non-local part of pseudopotential:
@@ -218,7 +218,7 @@ class Stress
     template <typename T, typename F>
     void calc_stress_nonloc_aux();
 
-    void symmetrize(matrix3d<double>& mtrx__) const;
+    void symmetrize(r3::matrix<double>& mtrx__) const;
 
   public:
     Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
@@ -276,9 +276,9 @@ class Stress
      *   Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4}\Big)
      *  \f]
      */
-    matrix3d<double> calc_stress_vloc();
+    r3::matrix<double> calc_stress_vloc();
 
-    inline matrix3d<double> stress_vloc() const
+    inline r3::matrix<double> stress_vloc() const
     {
         return stress_vloc_;
     }
@@ -312,9 +312,9 @@ class Stress
      *  -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
      * \f]
      */
-    matrix3d<double> calc_stress_har();
+    r3::matrix<double> calc_stress_har();
 
-    inline matrix3d<double> stress_har() const
+    inline r3::matrix<double> stress_har() const
     {
         return stress_har_;
     }
@@ -359,9 +359,9 @@ class Stress
      *   = \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
      *  \f]
      */
-    matrix3d<double> calc_stress_ewald();
+    r3::matrix<double> calc_stress_ewald();
 
-    inline matrix3d<double> stress_ewald() const
+    inline r3::matrix<double> stress_ewald() const
     {
         return stress_ewald_;
     }
@@ -382,16 +382,16 @@ class Stress
     template <typename T>
     void calc_stress_kin_aux();
 
-    matrix3d<double> calc_stress_kin();
+    r3::matrix<double> calc_stress_kin();
 
-    inline matrix3d<double> stress_kin() const
+    inline r3::matrix<double> stress_kin() const
     {
         return stress_kin_;
     }
 
-    matrix3d<double> calc_stress_nonloc();
+    r3::matrix<double> calc_stress_nonloc();
 
-    inline matrix3d<double> stress_nonloc() const
+    inline r3::matrix<double> stress_nonloc() const
     {
         return stress_nonloc_;
     }
@@ -438,14 +438,14 @@ class Stress
      *  \frac{\partial j_{\ell}(Gr)}{\partial G} G_{\nu} r^2 dr \Big)
      * \f]
      */
-    matrix3d<double> calc_stress_us();
+    r3::matrix<double> calc_stress_us();
 
-    inline matrix3d<double> stress_us() const
+    inline auto stress_us() const
     {
         return stress_us_;
     }
 
-    inline matrix3d<double> stress_us_nl() const
+    inline auto stress_us_nl() const
     {
         return stress_nonloc_ + stress_us_;
     }
@@ -458,31 +458,31 @@ class Stress
      *  \rho({\bf r})\big) }{\nabla_{\mu} \rho({\bf r})} \nabla_{\nu}\rho({\bf r}) d{\bf r}
      *  \f]
      */
-    matrix3d<double> calc_stress_xc();
+    r3::matrix<double> calc_stress_xc();
 
-    inline matrix3d<double> stress_xc() const
+    inline auto stress_xc() const
     {
         return stress_xc_;
     }
 
     /// Non-linear core correction to stress tensor.
-    matrix3d<double> calc_stress_core();
+    r3::matrix<double> calc_stress_core();
 
-    inline matrix3d<double> stress_core() const
+    inline auto stress_core() const
     {
         return stress_core_;
     }
 
-    matrix3d<double> calc_stress_hubbard();
+    r3::matrix<double> calc_stress_hubbard();
 
-    inline matrix3d<double> stress_hubbard() const
+    inline auto stress_hubbard() const
     {
         return stress_hubbard_;
     }
 
-    matrix3d<double> calc_stress_total();
+    r3::matrix<double> calc_stress_total();
 
-    inline matrix3d<double> stress_total() const
+    inline auto stress_total() const
     {
         return stress_total_;
     }

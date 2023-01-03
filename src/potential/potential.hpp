@@ -54,7 +54,7 @@ class Potential : public Field4D
 
     Unit_cell& unit_cell_;
 
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// Hartree potential.
     std::unique_ptr<Periodic_function<double>> hartree_potential_;
@@ -92,13 +92,13 @@ class Potential : public Field4D
 
     int pseudo_density_order_{9};
 
-    std::vector<double_complex> zil_;
+    std::vector<std::complex<double>> zil_;
 
-    std::vector<double_complex> zilm_;
+    std::vector<std::complex<double>> zilm_;
 
     std::vector<int> l_by_lm_;
 
-    sddk::mdarray<double_complex, 2> gvec_ylm_;
+    sddk::mdarray<std::complex<double>, 2> gvec_ylm_;
 
     double energy_vha_{0};
 
@@ -109,13 +109,13 @@ class Potential : public Field4D
     std::vector<XC_functional> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
-    sddk::mdarray<double_complex, 1> veff_pw_;
+    sddk::mdarray<std::complex<double>, 1> veff_pw_;
 
     /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
-    sddk::mdarray<double_complex, 1> rm_inv_pw_;
+    sddk::mdarray<std::complex<double>, 1> rm_inv_pw_;
 
     /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
-    sddk::mdarray<double_complex, 1> rm2_inv_pw_;
+    sddk::mdarray<std::complex<double>, 1> rm2_inv_pw_;
 
     struct paw_potential_data_t
     {
@@ -173,16 +173,16 @@ class Potential : public Field4D
     double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 
     double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
-            sddk::mdarray<double_complex, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
+            sddk::mdarray<std::complex<double>, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
 
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    sddk::mdarray<double_complex,2> poisson_vmt(Periodic_function<double> const& rho__) const
+    sddk::mdarray<std::complex<double>,2> poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
-        sddk::mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        sddk::mdarray<std::complex<double>, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         qmt.zero();
 
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
@@ -199,8 +199,8 @@ class Potential : public Field4D
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
-    void poisson_add_pseudo_pw(sddk::mdarray<double_complex, 2>& qmt__,
-            sddk::mdarray<double_complex, 2>& qit__, double_complex* rho_pw__);
+    void poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qmt__,
+            sddk::mdarray<std::complex<double>, 2>& qit__, std::complex<double>* rho_pw__);
 
     /// Generate local part of pseudo potential.
     /** Total local potential is a lattice sum:
@@ -791,7 +791,7 @@ class Potential : public Field4D
         return veff_pw_(ig__);
     }
 
-    void set_veff_pw(double_complex const* veff_pw__)
+    void set_veff_pw(std::complex<double> const* veff_pw__)
     {
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(sddk::memory_t::host));
     }
@@ -801,7 +801,7 @@ class Potential : public Field4D
         return rm_inv_pw_(ig__);
     }
 
-    void set_rm_inv_pw(double_complex const* rm_inv_pw__)
+    void set_rm_inv_pw(std::complex<double> const* rm_inv_pw__)
     {
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(sddk::memory_t::host));
     }
@@ -811,7 +811,7 @@ class Potential : public Field4D
         return rm2_inv_pw_(ig__);
     }
 
-    inline void set_rm2_inv_pw(double_complex const* rm2_inv_pw__)
+    inline void set_rm2_inv_pw(std::complex<double> const* rm2_inv_pw__)
     {
         std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(sddk::memory_t::host));
     }

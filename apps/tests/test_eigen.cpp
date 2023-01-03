@@ -48,7 +48,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
         if (std::is_same<T, double>::value) {
             printf("real data type\n");
         }
-        if (std::is_same<T, double_complex>::value) {
+        if (std::is_same<T, std::complex<double>>::value) {
             printf("complex data type\n");
         }
     }
@@ -117,7 +117,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
             }
         }
     }
-    blacs_grid__.comm().template allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+    blacs_grid__.comm().template allreduce<double, mpi::op_t::max>(&diff, 1);
     if (blacs_grid__.comm().rank() == 0) {
         printf("maximum difference: %22.18f\n", diff);
     }
@@ -138,7 +138,7 @@ void test_diag2(sddk::BLACS_grid const& blacs_grid__,
 {
     auto solver = Eigensolver_factory(name__);
 
-    sddk::matrix<double_complex> full_mtrx;
+    sddk::matrix<std::complex<double>> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
         sddk::HDF5_tree h5(fname__, sddk::hdf5_access_t::read_only);
@@ -148,13 +148,13 @@ void test_diag2(sddk::BLACS_grid const& blacs_grid__,
         if (n != m) {
             TERMINATE("not a square matrix");
         }
-        full_mtrx = sddk::matrix<double_complex>(n, n);
+        full_mtrx = sddk::matrix<std::complex<double>>(n, n);
         h5.read("/mtrx", full_mtrx);
         blacs_grid__.comm().bcast(&n, 1, 0);
         blacs_grid__.comm().bcast(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     } else {
         blacs_grid__.comm().bcast(&n, 1, 0);
-        full_mtrx = sddk::matrix<double_complex>(n, n);
+        full_mtrx = sddk::matrix<std::complex<double>>(n, n);
         blacs_grid__.comm().bcast(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     }
     if (blacs_grid__.comm().rank() == 0) {
@@ -162,8 +162,8 @@ void test_diag2(sddk::BLACS_grid const& blacs_grid__,
     }
 
     std::vector<double> eval(n);
-    sddk::dmatrix<double_complex> A(n, n, blacs_grid__, bs__, bs__);
-    sddk::dmatrix<double_complex> Z(n, n, blacs_grid__, bs__, bs__);
+    sddk::dmatrix<std::complex<double>> A(n, n, blacs_grid__, bs__, bs__);
+    sddk::dmatrix<std::complex<double>> Z(n, n, blacs_grid__, bs__, bs__);
 
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
@@ -191,7 +191,7 @@ void call_test(std::vector<int> mpi_grid__,
                int type__)
 {
     auto solver = Eigensolver_factory(name__);
-    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
+    sddk::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;
         for (int i = 0; i < repeat__; i++) {
@@ -199,7 +199,7 @@ void call_test(std::vector<int> mpi_grid__,
             if (type__ == 0) {
                 t = test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             } else {
-                t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
+                t = test_diag<std::complex<double>>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             }
             /* skip first "warmup" measurment */
             if (i) {

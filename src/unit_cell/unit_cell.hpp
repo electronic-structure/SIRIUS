@@ -75,7 +75,7 @@ class Unit_cell
      *    \vec v_{C} = {\bf L} \vec v_{f}
      *  \f]
      */
-    matrix3d<double> lattice_vectors_;
+    r3::matrix<double> lattice_vectors_;
 
     /// Inverse matrix of Bravais lattice vectors.
     /** This matrix is used to find fractional coordinates by Cartesian coordinates:
@@ -83,7 +83,7 @@ class Unit_cell
      *    \vec v_{f} = {\bf L}^{-1} \vec v_{C}
      *  \f]
      */
-    matrix3d<double> inverse_lattice_vectors_;
+    r3::matrix<double> inverse_lattice_vectors_;
 
     /// Reciprocal lattice vectors in column order.
     /** The following convention is used:
@@ -95,7 +95,7 @@ class Unit_cell
      *    {\bf A} {\bf B}^{T} = 2 \pi {\bf I}
      *  \f]
      */
-    matrix3d<double> reciprocal_lattice_vectors_;
+    r3::matrix<double> reciprocal_lattice_vectors_;
 
     /// Volume \f$ \Omega \f$ of the unit cell. Volume of Brillouin zone is then \f$ (2\Pi)^3 / \Omega \f$.
     double omega_{0};
@@ -161,7 +161,7 @@ class Unit_cell
     /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
     std::vector<sddk::mdarray<double, 2>> atom_coord_;
 
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     std::pair<int, std::vector<int>> num_hubbard_wf_;
 
@@ -171,7 +171,7 @@ class Unit_cell
     int next_atom_type_id(std::string label__);
 
   public:
-    Unit_cell(Simulation_parameters const& parameters__, sddk::Communicator const& comm__);
+    Unit_cell(Simulation_parameters const& parameters__, mpi::Communicator const& comm__);
 
     ~Unit_cell();
 
@@ -190,10 +190,10 @@ class Unit_cell
     Atom_type& add_atom_type(const std::string label__, const std::string file_name__ = "");
 
     /// Add new atom to the list of atom types.
-    void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field);
+    void add_atom(const std::string label, r3::vector<double> position, r3::vector<double> vector_field);
 
     /// Add new atom without vector field to the list of atom types.
-    void add_atom(const std::string label, vector3d<double> position)
+    void add_atom(const std::string label, r3::vector<double> position)
     {
         add_atom(label, position, {0, 0, 0});
     }
@@ -248,15 +248,15 @@ class Unit_cell
     /// Set matrix of lattice vectors.
     /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
      *  unit cell volume. */
-    void set_lattice_vectors(matrix3d<double> lattice_vectors__);
+    void set_lattice_vectors(r3::matrix<double> lattice_vectors__);
 
     /// Set lattice vectors.
-    void set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__);
+    void set_lattice_vectors(r3::vector<double> a0__, r3::vector<double> a1__, r3::vector<double> a2__);
 
     /// Find the cluster of nearest neighbours around each atom
     void find_nearest_neighbours(double cluster_radius);
 
-    bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const;
+    bool is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, double tp[2]) const;
 
     void generate_radial_functions();
 
@@ -277,14 +277,14 @@ class Unit_cell
     void import(config_t::unit_cell_t const& inp__);
 
     /// Get atom ID (global index) by it's position in fractional coordinates.
-    int atom_id_by_position(vector3d<double> position__);
+    int atom_id_by_position(r3::vector<double> position__);
 
     /// Find the minimum bond length.
     /** This is useful to check the sanity of the crystal structure. */
     double min_bond_length() const;
 
     /// Return number of Hubbard wave-functions.
-    std::pair<int, std::vector<int>> const& num_hubbard_wf() const
+    auto const& num_hubbard_wf() const
     {
         return num_hubbard_wf_;
     }
@@ -294,13 +294,13 @@ class Unit_cell
 
     /// Get Cartesian coordinates of the vector by its fractional coordinates.
     template <typename T>
-    inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
+    inline auto get_cartesian_coordinates(r3::vector<T> a__) const
     {
         return dot(lattice_vectors_ , a__);
     }
 
     /// Get fractional coordinates of the vector by its Cartesian coordinates.
-    inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
+    inline auto get_fractional_coordinates(r3::vector<double> a__) const
     {
         return dot(inverse_lattice_vectors_ , a__);
     }
@@ -530,7 +530,7 @@ class Unit_cell
         return nearest_neighbours_[ia][i];
     }
 
-    inline Crystal_symmetry const& symmetry() const
+    inline auto const& symmetry() const
     {
         RTE_ASSERT(symmetry_ != nullptr);
         return *symmetry_;
@@ -554,7 +554,7 @@ class Unit_cell
     /// Return a single lattice vector.
     inline auto lattice_vector(int idx__) const
     {
-        return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
+        return r3::vector<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
     }
 
     auto const& parameters() const

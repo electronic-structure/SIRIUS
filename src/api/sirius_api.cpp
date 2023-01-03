@@ -24,7 +24,6 @@
 
 #include <ctype.h>
 #include <iostream>
-#include "sirius.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
@@ -33,8 +32,8 @@
 #include "nlcglib/nlcglib.hpp"
 #endif
 #include "symmetry/crystal_symmetry.hpp"
-#include "band/davidson.hpp"
 #include "multi_cg/multi_cg.hpp"
+#include "sirius.hpp"
 
 struct sirius_context_handler_t
 {
@@ -239,8 +238,8 @@ static inline void
 sirius_exit(int error_code__, std::string msg__ = "")
 {
     sirius_print_error(error_code__, msg__);
-    if (!sddk::Communicator::is_finalized()) {
-        sddk::Communicator::world().abort(error_code__);
+    if (!mpi::Communicator::is_finalized()) {
+        mpi::Communicator::world().abort(error_code__);
     } else {
         std::exit(error_code__);
     }
@@ -579,10 +578,10 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
 {
     call_sirius(
         [&]() {
-            auto& comm                 = sddk::Communicator::map_fcomm(fcomm__);
-            auto& comm_k = (fcomm_k__) ? sddk::Communicator::map_fcomm(*fcomm_k__) : sddk::Communicator();
+            auto& comm                 = mpi::Communicator::map_fcomm(fcomm__);
+            auto& comm_k = (fcomm_k__) ? mpi::Communicator::map_fcomm(*fcomm_k__) : mpi::Communicator();
             auto const& comm_band =
-                (fcomm_band__) ? sddk::Communicator::map_fcomm(*fcomm_band__) : sddk::Communicator();
+                (fcomm_band__) ? mpi::Communicator::map_fcomm(*fcomm_band__) : mpi::Communicator();
             *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
@@ -1149,8 +1148,8 @@ sirius_set_lattice_vectors(void* const* handler__, double const* a1__, double co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__),
-                                                    vector3d<double>(a3__));
+            sim_ctx.unit_cell().set_lattice_vectors(r3::vector<double>(a1__), r3::vector<double>(a2__),
+                                                    r3::vector<double>(a3__));
         },
         error_code__);
 }
@@ -2516,14 +2515,14 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 assert(gvl__ != nullptr);
                 assert(comm__ != nullptr);
 
-                sddk::Communicator comm(MPI_Comm_f2c(*comm__));
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-                std::vector<double_complex> v(gs.ctx().gvec().num_gvec(), 0);
+                std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < *ngv__; i++) {
-                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
                     // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
                     //    continue;
                     //}
@@ -2536,7 +2535,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                             if (ig == -1) {
                                 std::stringstream s;
                                 auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
-                                               vector3d<double>(G[0], G[1], G[2]));
+                                               r3::vector<double>(G[0], G[1], G[2]));
                                 s << "wrong index of G-vector" << std::endl
                                   << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])"
                                   << std::endl;
@@ -2631,7 +2630,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 assert(gvl__ != NULL);
                 assert(comm__ != NULL);
 
-                sddk::Communicator comm(MPI_Comm_f2c(*comm__));
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
@@ -2649,9 +2648,9 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 auto v = func.at(label)->gather_f_pw();
 
                 for (int i = 0; i < *ngv__; i++) {
-                    vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
 
-                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1],
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
                     // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
                     //    pw_coeffs__[i] = 0;
                     //    continue;
@@ -2666,7 +2665,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                     if (ig == -1) {
                         std::stringstream s;
                         auto gvc =
-                            dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), vector3d<double>(G[0], G[1], G[2]));
+                            dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), r3::vector<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
                         WARNING(s);
@@ -3159,7 +3158,7 @@ sirius_get_stress_tensor(void* const* handler__, char const* label__, double* st
 
             auto& stress_tensor = gs.stress();
 
-            std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
+            std::map<std::string, r3::matrix<double> (sirius::Stress::*)(void)> func = {
                 {"total", &sirius::Stress::calc_stress_total}, {"vloc", &sirius::Stress::calc_stress_vloc},
                 {"har", &sirius::Stress::calc_stress_har},     {"ewald", &sirius::Stress::calc_stress_ewald},
                 {"kin", &sirius::Stress::calc_stress_kin},     {"nonloc", &sirius::Stress::calc_stress_nonloc},
@@ -3171,9 +3170,9 @@ sirius_get_stress_tensor(void* const* handler__, char const* label__, double* st
                 RTE_THROW("wrong label (" + label + ") for the component of stress tensor");
             }
 
-            matrix3d<double> s;
+            r3::matrix<double> s;
 
-            s = ((stress_tensor.*func.at(label))());
+            s = (stress_tensor.*func.at(label))();
 
             for (int mu = 0; mu < 3; mu++) {
                 for (int nu = 0; nu < 3; nu++) {
@@ -3282,7 +3281,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
         for (int ig = 0; ig < *num_gvec_loc__; ig++) {
             ///* G vector of host code */
             // auto gvc = dot(kset.ctx().unit_cell().reciprocal_lattice_vectors(),
-            //               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
+            //               (r3::vector<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk()));
             // if (gvc.length() > kset.ctx().gk_cutoff()) {
             //    continue;
             //}
@@ -3360,13 +3359,13 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                 /* send G+k copy to destination rank (where host code receives the data) */
                 auto gkvec = ks.get_gkvec(jk, dest_rank);
 
-                sddk::mdarray<double_complex, 2> wf;
+                sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
                     /* check number of G+k vectors */
                     int ngk = *num_gvec_loc__;
                     gkvec.comm().allreduce(&ngk, 1);
                     if (ngk != gkvec.num_gvec()) {
-                        vector3d<double> vkl(vkl__);
+                        r3::vector<double> vkl(vkl__);
                         std::stringstream s;
                         s << "wrong number of G+k vectors for k-point " << vkl << ", jk = " << jk << std::endl
                           << "expected number : " << gkvec.num_gvec() << std::endl
@@ -3375,7 +3374,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                           << *num_gvec_loc__;
                         RTE_THROW(s);
                     }
-                    wf = sddk::mdarray<double_complex, 2>(gkvec.count(), sim_ctx.num_bands());
+                    wf = sddk::mdarray<std::complex<double>, 2>(gkvec.count(), sim_ctx.num_bands());
                 }
 
                 int ispn0{0};
@@ -3386,8 +3385,8 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                 }
                 /* send wave-functions for each spin channel */
                 for (int s = ispn0; s <= ispn1; s++) {
-                    int tag = sddk::Communicator::get_tag(src_rank, dest_rank) + s;
-                    sddk::Request req;
+                    int tag = mpi::Communicator::get_tag(src_rank, dest_rank) + s;
+                    mpi::Request req;
 
                     /* send wave-functions */
                     if (ks.comm().rank() == src_rank) {
@@ -3402,20 +3401,20 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                         /* receive the array with wave-functions */
                         ks.comm().recv(&wf(0, 0), count * sim_ctx.num_bands(), src_rank, tag);
 
-                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
+                        std::vector<std::complex<double>> wf_tmp(gkvec.num_gvec());
                         int offset = gkvec.offset();
-                        sddk::mdarray<double_complex, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
+                        sddk::mdarray<std::complex<double>, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
 
                         auto igmap = gvec_mapping(gkvec);
 
-                        auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s) {
+                        auto store_wf = [&](std::vector<std::complex<double>>& wf_tmp, int i, int s) {
                             int ispn = s;
                             if (sim_ctx.num_mag_dims() == 1) {
                                 ispn = 0;
                             }
                             for (int ig = 0; ig < *num_gvec_loc__; ig++) {
                                 int ig1 = igmap[ig];
-                                double_complex z;
+                                std::complex<double> z;
                                 if (ig1 < 0) {
                                     z = std::conj(wf_tmp[-ig1]);
                                 } else {
@@ -3691,7 +3690,7 @@ sirius_get_kpoint_inter_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_k().native());
         },
         error_code__);
 }
@@ -3721,7 +3720,7 @@ sirius_get_kpoint_inner_comm(void* const* handler__, int* fcomm__, int* error_co
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_band().native());
         },
         error_code__);
 }
@@ -3751,7 +3750,7 @@ sirius_get_fft_comm(void* const* handler__, int* fcomm__, int* error_code__)
     call_sirius(
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
-            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
+            *fcomm__      = MPI_Comm_c2f(sim_ctx.comm_fft().native());
         },
         error_code__);
 }
@@ -4105,7 +4104,7 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
                 }
             }
             if (!is_local_rg) {
-                sddk::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
+                mpi::Communicator(fft.communicator()).allgather(cfunrg__, fft.local_slice_size(), offs);
             }
         },
         error_code__);
@@ -5140,7 +5139,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
 
             auto& f = func.at(label);
 
-            auto& comm = sddk::Communicator::map_fcomm(*fcomm__);
+            auto& comm = mpi::Communicator::map_fcomm(*fcomm__);
 
             sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
             sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
@@ -5267,7 +5266,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             auto& f = func.at(label);
 
-            auto& comm = sddk::Communicator::map_fcomm(*fcomm__);
+            auto& comm = mpi::Communicator::map_fcomm(*fcomm__);
 
             if (transform_to_rg__ && *transform_to_rg__) {
                 f->fft_transform(1);
@@ -5854,7 +5853,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
         [&]() {
             RTE_ASSERT(*num_spin_comp__ == 1);
 
-            vector3d<double> vkq(vkq__);
+            r3::vector<double> vkq(vkq__);
 
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
@@ -5891,7 +5890,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             if (!use_qe_gvec_order) {
                 for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                    auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq_loc(0, ig)));
+                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq_loc(0, ig)));
                     if (i == -1) {
                         RTE_THROW("index of G-vector is not found for k+q");
                     }
@@ -5899,7 +5898,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             }
 
             /* collect local G+k+q vector sizes across all ranks */
-            sddk::block_data_descriptor gkq_in_distr(gvkq.comm().size());
+            mpi::block_data_descriptor gkq_in_distr(gvkq.comm().size());
             gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
             gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
             gkq_in_distr.calc_offsets();
@@ -5918,7 +5917,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 gvkq.comm().allgather(&gvec_kq(0, 0), 3 * num_gvec_kq_loc, 3 * offset);
 
                 for (int ig = 0; ig < num_gvec_kq; ig++) {
-                    auto i = gvkq.index_by_gvec(vector3d<int>(&gvec_kq(0, ig)));
+                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq(0, ig)));
                     if (i == -1) {
                         RTE_THROW("index of G-vector is not found");
                     }
@@ -5986,7 +5985,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             //    auto spsi_wf = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
             //    auto res_wf  = sirius::wave_function_factory<double>(sctx, kp, sctx.num_bands(), *num_spin_comp__, false);
 
-            //    Hk.apply_h_s<double_complex>(spin_range(0), 0, sctx.num_bands(), *psi_wf, hpsi_wf.get(), spsi_wf.get());
+            //    Hk.apply_h_s<std::complex<double>>(spin_range(0), 0, sctx.num_bands(), *psi_wf, hpsi_wf.get(), spsi_wf.get());
 
             //}
 

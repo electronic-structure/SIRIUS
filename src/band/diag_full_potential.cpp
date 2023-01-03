@@ -46,8 +46,8 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx_.cyclic_block_size();
 
-    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
-    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
+    sddk::dmatrix<std::complex<double>> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
+    sddk::dmatrix<std::complex<double>> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
@@ -119,14 +119,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
-            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
+            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().native());
     }
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
                 ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
-            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().mpi_comm());
+            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().native());
     }
 
     /* renormalize wave-functions */
@@ -179,9 +179,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     //    Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), &hphi, &ophi);
 
-    //    sddk::dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+    //    sddk::dmatrix<std::complex<double>> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
     //                                 ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-    //    sddk::dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+    //    sddk::dmatrix<std::complex<double>> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
     //                                 ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
     //    inner(ctx_.spla_context(), sddk::spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
@@ -242,7 +242,7 @@ void Band::get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol
     std::stringstream s;
     std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
 
-    auto result = davidson<double, double_complex, davidson_evp_t::overlap>(Hk__, wf::num_bands(ncomp), wf::num_mag_dims(0),
+    auto result = davidson<double, std::complex<double>, davidson_evp_t::overlap>(Hk__, wf::num_bands(ncomp), wf::num_mag_dims(0),
             kp.singular_components(),
             [&](int i, int ispn){ return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
             itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx_.verbosity() - 2);
@@ -393,7 +393,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     auto mem = ctx_.processing_unit_memory_t();
 
     if (ctx_.num_mag_dims() != 3) {
-        sddk::dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<std::complex<double>> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
             h.allocate(get_memory_pool(sddk::memory_t::device));
         }
@@ -422,7 +422,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         }
     } else {
         int nb = ctx_.num_bands();
-        sddk::dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
+        sddk::dmatrix<std::complex<double>> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
             h.allocate(get_memory_pool(sddk::memory_t::device));
         }
@@ -463,13 +463,13 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
 //     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
 //         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 //
-//     mdarray<double_complex, 2> h(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-//     mdarray<double_complex, 2> o(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+//     mdarray<std::complex<double>, 2> h(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+//     mdarray<std::complex<double>, 2> o(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
 //
 //     set_o(kp, o);
 //
 //     std::vector<double> eval(parameters_.num_bands());
-//     mdarray<double_complex, 2>& fd_evec = kp->fd_eigen_vectors();
+//     mdarray<std::complex<double>, 2>& fd_evec = kp->fd_eigen_vectors();
 //
 //     if (parameters_.num_mag_dims() == 0)
 //     {
@@ -487,8 +487,8 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
 //     {
 //         assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
 //
-//         mdarray<double_complex, 2> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-//         memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));
+//         mdarray<std::complex<double>, 2> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+//         memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(std::complex<double>));
 //
 //         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
 //

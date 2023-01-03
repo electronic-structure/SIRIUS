@@ -38,8 +38,8 @@ create_beta_gk_gpu_float(int num_atoms, int num_gkvec, int const* beta_desc, std
     double const* gkvec, double const* atom_pos, std::complex<float>* beta_gk);
 
 void
-create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc, double_complex const* beta_gk_t,
-    double const* gkvec, double const* atom_pos, double_complex* beta_gk);
+create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc, std::complex<double> const* beta_gk_t,
+    double const* gkvec, double const* atom_pos, std::complex<double>* beta_gk);
 
 }
 #endif

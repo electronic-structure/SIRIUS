@@ -24,7 +24,7 @@
 
 #include <array>
 #include <cassert>
-#include "geometry3d.hpp"
+#include "linalg/r3.hpp"
 
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
@@ -155,9 +155,9 @@ class FFT3D_grid : public std::array<int, 3>
     }
 };
 
-inline FFT3D_grid get_min_fft_grid(double cutoff__, geometry3d::matrix3d<double> M__)
+inline FFT3D_grid get_min_fft_grid(double cutoff__, r3::matrix<double> M__)
 {
-    return FFT3D_grid(find_translations(cutoff__, M__) + geometry3d::vector3d<int>({2, 2, 2}));
+    return FFT3D_grid(find_translations(cutoff__, M__) + r3::vector<int>({2, 2, 2}));
 }
 
 } // namespace sddk

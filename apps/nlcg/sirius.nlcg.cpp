@@ -1,8 +1,8 @@
-#include "utils/profiler.hpp"
 #include <sirius.hpp>
 #include <utils/json.hpp>
-#include "nlcglib/adaptor.hpp"
+#include <nlcglib/adaptor.hpp>
 #include <nlcglib/nlcglib.hpp>
+#include "utils/profiler.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -18,26 +18,25 @@ void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
     //dict__["build_date"] = build_date;
-    dict__["comm_world_size"] = sddk::Communicator::world().size();
+    dict__["comm_world_size"] = mpi::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
 std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, sddk::Communicator::world()));
+    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, mpi::Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
+        RTE_THROW("this is not a Gamma-point calculation")
     }
 
     ctx.import(args__);
 
     return ctx_ptr;
 }
-
 
 double ground_state(Simulation_context& ctx,
                     task_t              task,
@@ -248,7 +247,7 @@ void run_tasks(cmd_args const& args)
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!utils::file_exists(fname)) {
-        if (sddk::Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;
@@ -298,7 +297,7 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    int my_rank = sddk::Communicator::world().rank();
+    int my_rank = mpi::Communicator::world().rank();
 
     sirius::finalize(1);
 

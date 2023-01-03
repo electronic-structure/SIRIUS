@@ -51,16 +51,16 @@ wigner_d_matrix(int l, double beta)
 }
 
 template <>
-sddk::mdarray<double_complex, 2>
-rotation_matrix_l<double_complex>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+sddk::mdarray<std::complex<double>, 2>
+rotation_matrix_l<std::complex<double>>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
-    sddk::mdarray<double_complex, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
+    sddk::mdarray<std::complex<double>, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
 
     auto d_mtrx = wigner_d_matrix(l, euler_angles[1]);
 
     for (int m1 = -l; m1 <= l; m1++) {
         for (int m2 = -l; m2 <= l; m2++) {
-            rot_mtrx(m1 + l, m2 + l) = std::exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) *
+            rot_mtrx(m1 + l, m2 + l) = std::exp(std::complex<double>(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) *
                                        d_mtrx(m1 + l, m2 + l) * std::pow(proper_rotation, l);
         }
     }
@@ -70,9 +70,9 @@ rotation_matrix_l<double_complex>(int l, geometry3d::vector3d<double> euler_angl
 
 template <>
 sddk::mdarray<double, 2>
-rotation_matrix_l<double>(int l, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
-    auto rot_mtrx_ylm = rotation_matrix_l<double_complex>(l, euler_angles, proper_rotation);
+    auto rot_mtrx_ylm = rotation_matrix_l<std::complex<double>>(l, euler_angles, proper_rotation);
 
     sddk::mdarray<double, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
     rot_mtrx.zero();
@@ -100,7 +100,7 @@ rotation_matrix_l<double>(int l, geometry3d::vector3d<double> euler_angles, int 
 // the rotation must happen inside l-shells
 template <typename T>
 void
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
                 sddk::mdarray<T, 2>& rotm)
 {
     rotm.zero();
@@ -117,17 +117,17 @@ rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_
 
 template
 void
-rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
+rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
                         sddk::mdarray<double, 2>& rotm);
 
 template
 void
-rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation,
-                                sddk::mdarray<double_complex, 2>& rotm);
+rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
+                                sddk::mdarray<std::complex<double>, 2>& rotm);
 
 template <typename T>
 std::vector<sddk::mdarray<T, 2>>
-rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation)
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
 {
     std::vector<sddk::mdarray<T, 2>> result(lmax + 1);
 
@@ -139,11 +139,11 @@ rotation_matrix(int lmax, geometry3d::vector3d<double> euler_angles, int proper_
 
 template
 std::vector<sddk::mdarray<double, 2>>
-rotation_matrix<double>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 template
-std::vector<sddk::mdarray<double_complex, 2>>
-rotation_matrix<double_complex>(int lmax, geometry3d::vector3d<double> euler_angles, int proper_rotation);
+std::vector<sddk::mdarray<std::complex<double>, 2>>
+rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double
 ClebschGordan(const int l, const double j, const double mj, const int spin)
@@ -198,7 +198,7 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
 // mj is normally half integer from -j to j but to avoid computation
 // error it is considered as integer so mj = 2 mj
 
-double_complex
+std::complex<double>
 calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
 {
     if ((sigma != 0) && (sigma != 1)) {
@@ -250,14 +250,14 @@ void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmma
 }
 
 template<>
-void SHT::backward_transform<double_complex>(int ld, double_complex const *flm, int nr, int lmmax,
-                                             double_complex *ftp) const
+void SHT::backward_transform<std::complex<double>>(int ld, std::complex<double> const *flm, int nr, int lmmax,
+                                             std::complex<double> *ftp) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
     sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
-        &sddk::linalg_const<double_complex>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
-        &sddk::linalg_const<double_complex>::zero(), ftp, num_points_);
+        &sddk::linalg_const<std::complex<double>>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
+        &sddk::linalg_const<std::complex<double>>::zero(), ftp, num_points_);
 }
 
 template<>
@@ -270,13 +270,13 @@ void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld
 }
 
 template<>
-void SHT::forward_transform<double_complex>(double_complex const *ftp, int nr, int lmmax, int ld,
-                                            double_complex *flm) const
+void SHT::forward_transform<std::complex<double>>(std::complex<double> const *ftp, int nr, int lmmax, int ld,
+                                            std::complex<double> *flm) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double_complex>::one(),
-        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double_complex>::zero(), flm, ld);
+    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<std::complex<double>>::one(),
+        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<std::complex<double>>::zero(), flm, ld);
 }
 
 void SHT::check() const
@@ -286,8 +286,8 @@ void SHT::check() const
 
     for (int lm = 0; lm < lmmax_; lm++) {
         for (int lm1 = 0; lm1 < lmmax_; lm1++) {
-            double         t = 0;
-            double_complex zt(0, 0);
+            double t = 0;
+            std::complex<double> zt(0, 0);
             for (int itp = 0; itp < num_points_; itp++) {
                 zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
                 t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -25,7 +25,7 @@
 
 #include "communicator.hpp"
 
-namespace sddk {
+namespace mpi {
 
 int num_ranks_per_node()
 {
@@ -34,9 +34,9 @@ int num_ranks_per_node()
         char name[MPI_MAX_PROCESSOR_NAME];
         int len;
         CALL_MPI(MPI_Get_processor_name, (name, &len));
-        std::vector<size_t> hash(Communicator::world().size());
-        hash[Communicator::world().rank()] = std::hash<std::string>{}(std::string(name, len));
-        Communicator::world().allgather(hash.data(), 1, Communicator::world().rank());
+        std::vector<size_t> hash(mpi::Communicator::world().size());
+        hash[mpi::Communicator::world().rank()] = std::hash<std::string>{}(std::string(name, len));
+        mpi::Communicator::world().allgather(hash.data(), 1, mpi::Communicator::world().rank());
         std::sort(hash.begin(), hash.end());
 
         int n{1};
@@ -70,15 +70,15 @@ int get_device_id(int num_devices__)
     if (id == -1) {
         #pragma omp single
         {
-            int r = Communicator::world().rank();
+            int r = mpi::Communicator::world().rank();
             char name[MPI_MAX_PROCESSOR_NAME];
             int len;
             CALL_MPI(MPI_Get_processor_name, (name, &len));
-            std::vector<size_t> hash(Communicator::world().size());
+            std::vector<size_t> hash(mpi::Communicator::world().size());
             hash[r] = std::hash<std::string>{}(std::string(name, len));
-            Communicator::world().allgather(hash.data(), 1, r);
+            mpi::Communicator::world().allgather(hash.data(), 1, r);
             std::map<size_t, std::vector<int>> rank_map;
-            for (int i = 0; i < Communicator::world().size(); i++) {
+            for (int i = 0; i < mpi::Communicator::world().size(); i++) {
                 rank_map[hash[i]].push_back(i);
             }
             for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {

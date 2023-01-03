@@ -18,8 +18,8 @@ int test1()
     mdarray<double, 2> m1(4, 5);
     m1 = [](uint64_t i1, uint64_t i2){return utils::random<double>();};
 
-    vector3d<double> v1{1.1, 2.2, 3.3};
-    matrix3d<double> u1{{4.4, 5.5, 6.6}, {1.2, 2.43334, 4.56666}, {400.333, 1e14, 2.33e20}};
+    r3::vector<double> v1{1.1, 2.2, 3.3};
+    r3::matrix<double> u1{{4.4, 5.5, 6.6}, {1.2, 2.43334, 4.56666}, {400.333, 1e14, 2.33e20}};
 
     serializer s;
 
@@ -36,8 +36,8 @@ int test1()
     std::vector<std::complex<float>> c2;
     std::complex<double> d2;
     mdarray<double, 2> m2;
-    vector3d<double> v2;
-    matrix3d<double> u2;
+    r3::vector<double> v2;
+    r3::matrix<double> u2;
 
     deserialize(s, a2);
     deserialize(s, b2);

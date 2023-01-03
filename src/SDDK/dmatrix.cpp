@@ -41,7 +41,7 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
     , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
+          blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
           blacs_grid__.num_ranks_col(), bs_row__,bs_col__))
 {
     init();
@@ -63,7 +63,7 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
     , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
+          blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
           blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
 {
     init();
@@ -122,7 +122,7 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
     , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
+          blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
           blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
 {
     init();
@@ -256,7 +256,7 @@ void dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
 
 // instantiate for required types
 template class dmatrix<double>;
-template class dmatrix<double_complex>;
+template class dmatrix<std::complex<double>>;
 #ifdef USE_FP32
 template class dmatrix<float>;
 template class dmatrix<std::complex<float>>;

@@ -25,7 +25,6 @@
 using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace sirius;
-using namespace geometry3d;
 using json = nlohmann::json;
 
 using nlohmann::basic_json;
@@ -77,7 +76,7 @@ pj_convert(json& node)
 }
 
 std::string
-show_mat(const matrix3d<double>& mat)
+show_mat(const r3::matrix<double>& mat)
 {
     std::string str = "[";
     for (int i = 0; i < 2; ++i) {
@@ -91,7 +90,7 @@ show_mat(const matrix3d<double>& mat)
 
 template <class T>
 std::string
-show_vec(const vector3d<T>& vec)
+show_vec(const r3::vector<T>& vec)
 {
     std::string str = "[" + std::to_string(vec[0]) + "," + std::to_string(vec[1]) + "," + std::to_string(vec[2]) + "]";
     return str;
@@ -188,11 +187,11 @@ PYBIND11_MODULE(py_sirius, m)
 
     m.def("num_devices", &acc::num_devices);
 
-    py::class_<sddk::Communicator>(m, "Communicator");
+    py::class_<mpi::Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
         .def(py::init<std::string const&>())
-        .def(py::init<std::string const&, sddk::Communicator const&>(), py::keep_alive<1, 3>())
+        .def(py::init<std::string const&, mpi::Communicator const&>(), py::keep_alive<1, 3>())
         .def("initialize", &Simulation_context::initialize)
         .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
@@ -250,7 +249,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom_type", &Unit_cell::add_atom_type, py::return_value_policy::reference)
         .def("add_atom", [](Unit_cell& obj, std::string& label, std::array<double, 3>& v) { obj.add_atom(label, v); })
-        .def("add_atom", py::overload_cast<const std::string, vector3d<double>>(&Unit_cell::add_atom))
+        .def("add_atom", py::overload_cast<const std::string, r3::vector<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
@@ -261,7 +260,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def(
             "set_lattice_vectors",
             [](Unit_cell& obj, std::vector<double> l1, std::vector<double> l2, std::vector<double> l3) {
-                obj.set_lattice_vectors(vector3d<double>(l1), vector3d<double>(l2), vector3d<double>(l3));
+                obj.set_lattice_vectors(r3::vector<double>(l1), r3::vector<double>(l2), r3::vector<double>(l3));
             },
             "l1"_a, "l2"_a, "l3"_a)
         .def("get_symmetry", &Unit_cell::get_symmetry)
@@ -282,7 +281,7 @@ PYBIND11_MODULE(py_sirius, m)
     //     .def(py::init<int, int, std::vector<int>>());
 
     // py::class_<Gvec>(m, "Gvec")
-    //     .def(py::init<matrix3d<double>, double, bool>())
+    //     .def(py::init<r3::matrix<double>, double, bool>())
     //     .def("num_gvec", &sddk::Gvec::num_gvec)
     //     .def("count", &sddk::Gvec::count)
     //     .def("offset", &sddk::Gvec::offset)
@@ -292,13 +291,13 @@ PYBIND11_MODULE(py_sirius, m)
     //     .def("num_zcol", &sddk::Gvec::num_zcol)
     //     .def("gvec_alt",
     //          [](Gvec& obj, int idx) {
-    //              vector3d<int> vec(obj.gvec(idx));
+    //              r3::vector<int> vec(obj.gvec(idx));
     //              std::vector<int> retr = {vec[0], vec[1], vec[2]};
     //              return retr;
     //          })
     //     .def("index_by_gvec",
     //          [](Gvec& obj, std::vector<int> vec) {
-    //              vector3d<int> vec3d(vec);
+    //              r3::vector<int> vec3d(vec);
     //              return obj.index_by_gvec(vec3d);
     //          })
     //     .def("zcol",
@@ -313,12 +312,12 @@ PYBIND11_MODULE(py_sirius, m)
     //     .def_property_readonly("gvec", &Gvec_partition::gvec)
     //     .def_property_readonly("gvec_array", &Gvec_partition::get_gvec);
 
-    py::class_<vector3d<int>>(m, "vector3d_int")
+    py::class_<r3::vector<int>>(m, "r3::vector_int")
         .def(py::init<std::vector<int>>())
-        .def("__call__", [](const vector3d<int>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const vector3d<int>& vec) { return show_vec(vec); })
-        .def("__len__", &vector3d<int>::length)
-        .def("__array__", [](vector3d<int>& v3d) {
+        .def("__call__", [](const r3::vector<int>& obj, int x) { return obj[x]; })
+        .def("__repr__", [](const r3::vector<int>& vec) { return show_vec(vec); })
+        .def("__len__", &r3::vector<int>::length)
+        .def("__array__", [](r3::vector<int>& v3d) {
             py::array_t<int> x(3);
             auto r = x.mutable_unchecked<1>();
             r(0)   = v3d[0];
@@ -327,12 +326,12 @@ PYBIND11_MODULE(py_sirius, m)
             return x;
         });
 
-    py::class_<vector3d<double>>(m, "vector3d_double")
+    py::class_<r3::vector<double>>(m, "r3::vector_double")
         .def(py::init<std::vector<double>>())
-        .def("__call__", [](const vector3d<double>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const vector3d<double>& vec) { return show_vec(vec); })
+        .def("__call__", [](const r3::vector<double>& obj, int x) { return obj[x]; })
+        .def("__repr__", [](const r3::vector<double>& vec) { return show_vec(vec); })
         .def("__array__",
-             [](vector3d<double>& v3d) {
+             [](r3::vector<double>& v3d) {
                  py::array_t<double> x(3);
                  auto r = x.mutable_unchecked<1>();
                  r(0)   = v3d[0];
@@ -340,32 +339,32 @@ PYBIND11_MODULE(py_sirius, m)
                  r(2)   = v3d[2];
                  return x;
              })
-        .def("__len__", &vector3d<double>::length)
+        .def("__len__", &r3::vector<double>::length)
         .def(py::self - py::self)
         .def(py::self * float())
         .def(py::self + py::self)
-        .def(py::init<vector3d<double>>());
+        .def(py::init<r3::vector<double>>());
 
-    py::class_<matrix3d<double>>(m, "matrix3d")
+    py::class_<r3::matrix<double>>(m, "r3::matrix")
         .def(py::init<std::vector<std::vector<double>>>())
         .def(py::init<>())
-        .def("__call__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
+        .def("__call__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
         .def(
             "__array__",
-            [](const matrix3d<double>& mat) {
+            [](const r3::matrix<double>& mat) {
                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
             },
             py::return_value_policy::reference_internal)
-        // .def(py::self * py::self, [](const matrix3d<double>& m1, const matrix3d<double>& m2) { return dot(m1, m2); })
-        .def("__getitem__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
+        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1, m2); })
+        .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
         .def("__mul__",
-             [](const matrix3d<double>& obj, vector3d<double> const& b) {
-                 vector3d<double> res = dot(obj, b);
+             [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
+                 r3::vector<double> res = dot(obj, b);
                  return res;
              })
-        .def("__repr__", [](const matrix3d<double>& mat) { return show_mat(mat); })
-        .def(py::init<matrix3d<double>>())
-        .def("det", &matrix3d<double>::det);
+        .def("__repr__", [](const r3::matrix<double>& mat) { return show_mat(mat); })
+        .def(py::init<r3::matrix<double>>())
+        .def("det", &r3::matrix<double>::det);
 
     py::class_<Field4D>(m, "Field4D")
         .def(
@@ -535,7 +534,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<std::array<double, 3>>>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::initializer_list<std::array<double, 3>>>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, r3::vector<int>, r3::vector<int>, bool>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
@@ -561,7 +560,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
         .def("add_kpoint",
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
-        .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
+        .def("add_kpoint", [](K_point_set& ks, r3::vector<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
     py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
         .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())

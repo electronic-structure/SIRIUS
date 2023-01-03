@@ -49,14 +49,14 @@ class K_point
     Unit_cell const& unit_cell_;
 
     /// Fractional k-point coordinates.
-    vector3d<double> vk_;
+    r3::vector<double> vk_;
 
     /// Weight of k-point.
     double weight_{1.0};
 
     /// Communicator for parallelization inside k-point.
     /** This communicator is used to split G+k vectors and wave-functions. */
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// List of G-vectors with |G+k| < cutoff.
     std::shared_ptr<sddk::Gvec> gkvec_;
@@ -159,7 +159,7 @@ class K_point
     std::vector<std::vector<int>> atom_lo_rows_;
 
     /// Imaginary unit to the power of l.
-    std::vector<double_complex> zil_;
+    std::vector<std::complex<double>> zil_;
 
     /// Mapping between lm and l.
     std::vector<int> l_by_lm_;
@@ -191,10 +191,10 @@ class K_point
     sddk::mdarray<std::complex<T>, 3> p_mtrx_;
 
     /// Communicator between(!!) rows.
-    sddk::Communicator const& comm_row_;
+    mpi::Communicator const& comm_row_;
 
     /// Communicator between(!!) columns.
-    sddk::Communicator const& comm_col_;
+    mpi::Communicator const& comm_col_;
 
     std::array<int, 2> ispn_map_{0, -1};
 
@@ -230,7 +230,7 @@ class K_point
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, vector3d<double> vk__, double weight__)
+    K_point(Simulation_context& ctx__, r3::vector<double> vk__, double weight__)
         : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , vk_(vk__)
@@ -521,7 +521,7 @@ class K_point
         return *singular_components_;
     }
 
-    inline vector3d<double> vk() const
+    inline auto vk() const
     {
         return vk_;
     }

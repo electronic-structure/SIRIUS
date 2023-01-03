@@ -70,7 +70,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     }
 
     auto veff = Hk__.H0().potential().effective_potential().gather_f_pw();
-    std::vector<double_complex> beff;
+    std::vector<std::complex<double>> beff;
     if (ctx_.num_mag_dims() == 1) {
         beff = Hk__.H0().potential().effective_magnetic_field(0).gather_f_pw();
         for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
@@ -206,7 +206,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     auto layout_out = kp.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx_.num_bands()));
 
     costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().mpi_comm());
+            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().native());
 }
 
 template <typename T>
