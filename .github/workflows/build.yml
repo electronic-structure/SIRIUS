@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius_openmpi
     env:
-      SPEC_GCC: sirius@develop %gcc +python +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi
+      SPEC_GCC: "sirius@develop %gcc@12: +python +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi"
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
