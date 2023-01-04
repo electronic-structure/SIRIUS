@@ -68,13 +68,13 @@ struct op_wrapper;
 template <>
 struct op_wrapper<op_t::sum>
 {
-    static constexpr auto kind = MPI_SUM;
+    static constexpr MPI_Op kind = MPI_SUM;
 };
 
 template <>
 struct op_wrapper<op_t::max>
 {
-    static constexpr auto kind = MPI_MAX;
+    static constexpr MPI_Op kind = MPI_MAX;
 };
 
 template <>
