@@ -68,13 +68,13 @@ struct op_wrapper;
 template <>
 struct op_wrapper<op_t::sum>
 {
-    static constexpr MPI_Op kind = static_cast<MPI_Op>(MPI_SUM);
+    static const MPI_Op kind = static_cast<MPI_Op>(MPI_SUM);
 };
 
 template <>
 struct op_wrapper<op_t::max>
 {
-    static constexpr MPI_Op kind = MPI_MAX;
+    static const MPI_Op kind = MPI_MAX;
 };
 
 template <>
