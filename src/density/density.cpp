@@ -1433,8 +1433,10 @@ Density::generate_rho_aug()
             auto cs = dm.checksum();
             utils::print_checksum("density_matrix_aux", cs, ctx_.out());
         }
+
+        int ndm_pw = (ctx_.processing_unit() == sddk::device_t::CPU) ? 1 : ctx_.num_mag_dims() + 1;
         /* treat auxiliary array as real with x2 size */
-        sddk::mdarray<double, 2> dm_pw(nqlm, spl_ngv_loc[0] * 2, mph);
+        sddk::mdarray<double, 3> dm_pw(nqlm, spl_ngv_loc[0] * 2, ndm_pw, mph);
         sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc[0] * 2, mph);
 
         print_memory_usage(ctx_.out(), FILE_LINE);
@@ -1478,7 +1480,7 @@ Density::generate_rho_aug()
                                   dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
                                   phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
                                   &sddk::linalg_const<double>::zero(),
-                                  dm_pw.at(sddk::memory_t::host, 0, 0), dm_pw.ld());
+                                  dm_pw.at(sddk::memory_t::host, 0, 0, 0), dm_pw.ld());
                         PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
                         PROFILE_START("sirius::Density::generate_rho_aug|sum");
                         #pragma omp parallel for
@@ -1489,8 +1491,8 @@ Density::generate_rho_aug()
                             for (int i = 0; i < nqlm; i++) {
                                 std::complex<double> z1(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
                                                         ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
-                                std::complex<double> z2(dm_pw(i, 2 * g),
-                                                        dm_pw(i, 2 * g + 1));
+                                std::complex<double> z2(dm_pw(i, 2 * g, 0),
+                                                        dm_pw(i, 2 * g + 1, 0));
 
                                 zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
                             }
@@ -1513,12 +1515,14 @@ Density::generate_rho_aug()
                                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
                                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
                                            phase_factors.at(sddk::memory_t::device), dm.at(sddk::memory_t::device, 0, 0, iv),
-                                           dm_pw.at(sddk::memory_t::device), 1);
-                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(sddk::memory_t::device), dm_pw.at(sddk::memory_t::device),
+                                           dm_pw.at(sddk::memory_t::device, 0, 0, iv), 1 + iv);
+                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(sddk::memory_t::device), dm_pw.at(sddk::memory_t::device, 0, 0, iv),
                                            ctx_.augmentation_op(iat).sym_weight().at(sddk::memory_t::device),
-                                           rho_aug.at(sddk::memory_t::device, g_begin, iv), 1);
+                                           rho_aug.at(sddk::memory_t::device, g_begin, iv), 1 + iv);
                     }
-                    acc::sync_stream(stream_id(1));
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                        acc::sync_stream(stream_id(1 + iv));
+                    }
 #endif
                     break;
                 }
