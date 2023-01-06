@@ -53,7 +53,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
     elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
     elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
     elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
     elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
     elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
     elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
@@ -138,7 +138,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
     elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
     elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
     elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
     elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
     elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
     elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
@@ -234,7 +234,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
     elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
     elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
     elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
     elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
     elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
     elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
@@ -299,7 +299,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
     elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
     elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
     elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
     elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
     elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
     elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
