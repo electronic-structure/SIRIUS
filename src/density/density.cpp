@@ -1395,6 +1395,7 @@ Density::generate_rho_aug()
             break;
         }
         case sddk::device_t::GPU: {
+#if defined(SIRIUS_GPU)
             rho_aug.allocate(mpd).zero(sddk::memory_t::device);
             /* work array for Q(G) on GPUs */
             qpw = sddk::mdarray<double, 2>(max_nqlm, 2 * spl_ngv_loc[0], mpd, "qpw"); 
@@ -1403,6 +1404,7 @@ Density::generate_rho_aug()
             /* generate Rlm spherical harmonics */
             spherical_harmonics_rlm_gpu(2 * max_l, gvec_count, tp.at(sddk::memory_t::device, 0, 0),
                 tp.at(sddk::memory_t::device, 0, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
+#endif
             break;
         }
     }
