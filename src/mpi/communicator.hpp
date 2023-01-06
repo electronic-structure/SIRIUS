@@ -422,10 +422,10 @@ class Communicator
     {
         if (root__ == rank()) {
             CALL_MPI(MPI_Reduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::kind(),
-                                  op_wrapper<mpi_op__>::kind(), root__, this->native()));
+                                  op_wrapper<mpi_op__>(), root__, this->native()));
         } else {
             CALL_MPI(MPI_Reduce, (buffer__, NULL, count__, type_wrapper<T>::kind(),
-                                  op_wrapper<mpi_op__>::kind(), root__, this->native()));
+                                  op_wrapper<mpi_op__>(), root__, this->native()));
         }
     }
 
