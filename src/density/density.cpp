@@ -1357,7 +1357,6 @@ Density::generate_rho_aug()
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
-
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
     auto spl_ngv_loc = utils::split_in_blocks(gvec_count, 10000);
@@ -1367,7 +1366,29 @@ Density::generate_rho_aug()
 
     auto const& tp = ctx_.gvec().gvec_tp();
 
+    int max_l{0};
+    int max_na{0};
+    int max_nqlm{0};
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        auto& atom_type = unit_cell_.atom_type(iat);
+
+        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
+            continue;
+        }
+
+        int nqlm = atom_type.mt_basis_size() * (atom_type.mt_basis_size() + 1) / 2;
+
+        max_l    = std::max(max_l, atom_type.indexr().lmax());
+        max_na   = std::max(max_na, atom_type.num_atoms());
+        max_nqlm = std::max(max_nqlm, nqlm);
+    }
+
+    sddk::mdarray<double, 2> qpw;
+    sddk::mdarray<double, 2> gvec_rlm;
+
     sddk::mdarray<std::complex<double>, 2> rho_aug(gvec_count, ctx_.num_mag_dims() + 1, mph);
+
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
             rho_aug.zero(sddk::memory_t::host);
@@ -1375,13 +1396,18 @@ Density::generate_rho_aug()
         }
         case sddk::device_t::GPU: {
             rho_aug.allocate(mpd).zero(sddk::memory_t::device);
+            /* work array for Q(G) on GPUs */
+            qpw = sddk::mdarray<double, 2>(max_nqlm, 2 * spl_ngv_loc[0], mpd, "qpw"); 
+            /* allocate buffer for Rlm on GPUs */
+            gvec_rlm = sddk::mdarray<double, 2>(utils::lmmax(2 * max_l), gvec_count, mpd, "gvec_rlm");
+            /* generate Rlm spherical harmonics */
+            spherical_harmonics_rlm_gpu(2 * max_l, gvec_count, tp.at(sddk::memory_t::device, 0, 0),
+                tp.at(sddk::memory_t::device, 0, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
             break;
         }
     }
 
-    // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and
-    //       overlap transfer of Q(G) for two consequtive blocks within one atom type
-
+    /* add contribution to Q(G) from atoms of all types */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
 
@@ -1445,10 +1471,11 @@ Density::generate_rho_aug()
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         PROFILE_START("sirius::Density::generate_rho_aug|gemm");
-                        sddk::linalg(sddk::linalg_t::blas)
-                            .gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(),
-                                  &sddk::linalg_const<double>::one(), dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
-                                  phase_factors.at(sddk::memory_t::host), phase_factors.ld(), &sddk::linalg_const<double>::zero(),
+                        sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(),
+                                  &sddk::linalg_const<double>::one(),
+                                  dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
+                                  phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
+                                  &sddk::linalg_const<double>::zero(),
                                   dm_pw.at(sddk::memory_t::host, 0, 0), dm_pw.ld());
                         PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
                         PROFILE_START("sirius::Density::generate_rho_aug|sum");
@@ -1474,14 +1501,6 @@ Density::generate_rho_aug()
                 }
                 case sddk::device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                    /* allocate buffer for Rlm on GPUs */
-                    sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
-                    /* allocate buffer for Q(G) on GPUs */
-                    sddk::mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
-
-                    /* generate Rlm spherical harmonics */
-                    spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
-                            tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
                     ctx_.augmentation_op(iat).generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm, qpw);
 
                     // TODO : split in streams
@@ -1505,76 +1524,6 @@ Density::generate_rho_aug()
 
             g_begin += ng;
         }
-
-        //for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
-        //    int g_begin = spl_ngv_loc.global_index(0, ib);
-        //    int g_end   = g_begin + spl_ngv_loc.local_size(ib);
-
-        //    switch (ctx_.processing_unit()) {
-        //        case sddk::device_t::CPU: {
-        //            #pragma omp parallel for schedule(static)
-        //            for (int igloc = g_begin; igloc < g_end; igloc++) {
-        //                int ig = ctx_.gvec().offset() + igloc;
-        //                for (int i = 0; i < atom_type.num_atoms(); i++) {
-        //                    int ia                                      = atom_type.atom_id(i);
-        //                    std::complex<double> z                            = std::conj(ctx_.gvec_phase_factor(ig, ia));
-        //                    phase_factors(i, 2 * (igloc - g_begin))     = z.real();
-        //                    phase_factors(i, 2 * (igloc - g_begin) + 1) = z.imag();
-        //                }
-        //            }
-        //            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-        //                PROFILE_START("sirius::Density::generate_rho_aug|gemm");
-        //                sddk::linalg(sddk::linalg_t::blas)
-        //                    .gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(ib), atom_type.num_atoms(),
-        //                          &sddk::linalg_const<double>::one(), dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
-        //                          phase_factors.at(sddk::memory_t::host), phase_factors.ld(), &sddk::linalg_const<double>::zero(),
-        //                          dm_pw.at(sddk::memory_t::host, 0, 0), dm_pw.ld());
-        //                PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
-        //                PROFILE_START("sirius::Density::generate_rho_aug|sum");
-        //                #pragma omp parallel for
-        //                for (int igloc = g_begin; igloc < g_end; igloc++) {
-        //                    std::complex<double> zsum(0, 0);
-        //                    /* get contribution from non-diagonal terms */
-        //                    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-        //                        std::complex<double> z1(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-        //                                                ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
-        //                        std::complex<double> z2(dm_pw(i, 2 * (igloc - g_begin)),
-        //                                                dm_pw(i, 2 * (igloc - g_begin) + 1));
-
-        //                        zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
-        //                    }
-        //                    rho_aug(igloc, iv) += zsum;
-        //                }
-        //                PROFILE_STOP("sirius::Density::generate_rho_aug|sum");
-        //            }
-        //            break;
-        //        }
-        //        case sddk::device_t::GPU: {
-#if defined(SIRIUS_GPU)
-        //            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-        //                generate_dm_pw_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib), nbf,
-        //                                   ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
-        //                                   ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
-        //                                   ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
-        //                                   ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
-        //                                   phase_factors.at(sddk::memory_t::device), dm.at(sddk::memory_t::device, 0, 0, iv),
-        //                                   dm_pw.at(sddk::memory_t::device), 1);
-        //                sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(ib), nbf,
-        //                                   ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::device, 0, 2 * g_begin),
-        //                                   dm_pw.at(sddk::memory_t::device),
-        //                                   ctx_.augmentation_op(iat).sym_weight().at(sddk::memory_t::device),
-        //                                   rho_aug.at(sddk::memory_t::device, g_begin, iv), 1);
-        //            }
-#endif
-        //            break;
-        //        }
-        //    }
-        //}
-
-        //if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        //    acc::sync_stream(stream_id(1));
-        //    ctx_.augmentation_op(iat).dismiss();
-        //}
     }
 
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
