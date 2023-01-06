@@ -456,7 +456,7 @@ class Augmentation_operator
         }
     }
 
-    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, sddk::mdarray<double, 2> const& gvec_rlm__,
+    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
             sddk::mdarray<double, 2>& qpw__) const
     {
 #if defined(SIRIUS_GPU)
@@ -473,7 +473,7 @@ class Augmentation_operator
         aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(sddk::memory_t::device, g_begin__), idx_.at(sddk::memory_t::device),
             nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
             gaunt_coefs_.at(sddk::memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
-            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__.at(sddk::memory_t::device, 0, g_begin__), gvec_rlm__.ld(),
+            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
             ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
             static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
             fourpi_omega);

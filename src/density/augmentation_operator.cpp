@@ -89,7 +89,7 @@ void Augmentation_operator::generate_pw_coeffs()
                 /* generate Rlm spherical harmonics */
                 spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
                         tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm, qpw);
+                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld(), qpw);
                 acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
                 g_begin += ng;
             }
