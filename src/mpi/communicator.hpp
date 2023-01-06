@@ -68,19 +68,19 @@ struct op_wrapper;
 template <>
 struct op_wrapper<op_t::sum>
 {
-    static auto kind() {return MPI_SUM;}
+    operator MPI_Op() const noexcept {return MPI_SUM;}
 };
 
 template <>
 struct op_wrapper<op_t::max>
 {
-    static auto kind() {return MPI_MAX;}
+    operator MPI_Op() const noexcept {return MPI_MAX;}
 };
 
 template <>
 struct op_wrapper<op_t::min>
 {
-    static auto kind() {return MPI_MIN;}
+    operator MPI_Op() const noexcept {return MPI_MIN;}
 };
 
 template <typename T>
@@ -460,7 +460,7 @@ class Communicator
     inline void allreduce(T* buffer__, int count__) const
     {
         CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::kind(),
-                                 op_wrapper<mpi_op__>::kind(), this->native()));
+                                 op_wrapper<mpi_op__>(), this->native()));
     }
 
     /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
