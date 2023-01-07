@@ -528,7 +528,7 @@ Force::calc_forces_scf_corr()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    sddk::Gvec const& gvec = ctx_.gvec();
+    fft::Gvec const& gvec = ctx_.gvec();
 
     int gvec_count  = gvec.count();
     int gvec_offset = gvec.offset();
@@ -587,7 +587,7 @@ Force::calc_forces_core()
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
-    sddk::Gvec const& gvecs = ctx_.gvec();
+    fft::Gvec const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.count();
     int gvec_offset = gvecs.offset();

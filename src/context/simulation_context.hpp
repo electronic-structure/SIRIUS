@@ -148,16 +148,16 @@ class Simulation_context : public Simulation_parameters
 #endif
 
     /// G-vectors within the Gmax cutoff.
-    std::shared_ptr<sddk::Gvec> gvec_;
+    std::shared_ptr<fft::Gvec> gvec_;
 
-    std::shared_ptr<sddk::Gvec_fft> gvec_fft_;
+    std::shared_ptr<fft::Gvec_fft> gvec_fft_;
 
     /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-    std::shared_ptr<sddk::Gvec> gvec_coarse_;
+    std::shared_ptr<fft::Gvec> gvec_coarse_;
 
-    std::shared_ptr<sddk::Gvec_fft> gvec_coarse_fft_;
+    std::shared_ptr<fft::Gvec_fft> gvec_coarse_fft_;
 
-    std::shared_ptr<sddk::Gvec_shells> remap_gvec_;
+    std::shared_ptr<fft::Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -774,19 +774,19 @@ class Simulation_context : public Simulation_parameters
     }
 
     template <typename T>
-    spfft_grid_type<T>& spfft_grid_coarse();
+    fft::spfft_grid_type<T>& spfft_grid_coarse();
 
     template <typename T>
-    spfft_transform_type<T>& spfft();
+    fft::spfft_transform_type<T>& spfft();
 
     template <typename T>
-    spfft_transform_type<T> const& spfft() const;
+    fft::spfft_transform_type<T> const& spfft() const;
 
     template <typename T>
-    spfft_transform_type<T>& spfft_coarse();
+    fft::spfft_transform_type<T>& spfft_coarse();
 
     template <typename T>
-    spfft_transform_type<T> const& spfft_coarse() const;
+    fft::spfft_transform_type<T> const& spfft_coarse() const;
 
     auto const& fft_grid() const
     {

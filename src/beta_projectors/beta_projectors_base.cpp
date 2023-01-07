@@ -102,7 +102,7 @@ void Beta_projectors_base<T>::split_in_chunks()
 }
 
 template <typename T>
-Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, sddk::Gvec const& gkvec__, int N__)
+Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, fft::Gvec const& gkvec__, int N__)
     : ctx_(ctx__)
     , gkvec_(gkvec__)
     , N_(N__)

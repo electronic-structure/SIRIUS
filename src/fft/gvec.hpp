@@ -32,13 +32,13 @@
 #include "memory.hpp"
 #include "fft/fft3d_grid.hpp"
 #include "linalg/r3.hpp"
-#include "serializer.hpp"
-#include "splindex.hpp"
+#include "SDDK/serializer.hpp"
+#include "SDDK/splindex.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
 #include "mpi/pstdout.hpp"
 
-namespace sddk {
+namespace fft {
 
 /// Descriptor of the z-column (x,y fixed, z varying) of the G-vectors.
 /** Sphere of G-vectors within a given plane-wave cutoff is represented as a set of z-columns with different lengths. */
@@ -64,7 +64,7 @@ struct z_column_descriptor
 };
 
 /// Serialize a single z-column descriptor.
-inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
+inline void serialize(sddk::serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
     serialize(s__, zcol__.y);
@@ -72,7 +72,7 @@ inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
 }
 
 /// Deserialize a single z-column descriptor.
-inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
+inline void deserialize(sddk::serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
     deserialize(s__, zcol__.y);
@@ -80,7 +80,7 @@ inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
 }
 
 /// Serialize a vector of z-column descriptors.
-inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
+inline void serialize(sddk::serializer& s__, std::vector<z_column_descriptor> const& zcol__)
 {
     serialize(s__, zcol__.size());
     for (auto& e: zcol__) {
@@ -89,7 +89,7 @@ inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& z
 }
 
 /// Deserialize a vector of z-column descriptors.
-inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
+inline void deserialize(sddk::serializer& s__, std::vector<z_column_descriptor>& zcol__)
 {
     size_t sz;
     deserialize(s__, sz);
@@ -101,8 +101,8 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
 
 /* forward declarations */
 class Gvec;
-void serialize(serializer& s__, Gvec const& gv__);
-void deserialize(serializer& s__, Gvec& gv__);
+void serialize(sddk::serializer& s__, Gvec const& gv__);
+void deserialize(sddk::serializer& s__, Gvec& gv__);
 Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
 
 /// A set of G-vectors for FFTs and G+k basis functions.
@@ -141,10 +141,10 @@ class Gvec
      *
      *  Limitations: size of z-dimension of FFT grid: 4096, number of z-columns: 1048576
      */
-    mdarray<uint32_t, 1> gvec_full_index_;
+    sddk::mdarray<uint32_t, 1> gvec_full_index_;
 
     /// Index of the shell to which the given G-vector belongs.
-    mdarray<int, 1> gvec_shell_;
+    sddk::mdarray<int, 1> gvec_shell_;
 
     /// Number of G-vector shells (groups of G-vectors with the same length).
     int num_gvec_shells_;
@@ -191,23 +191,23 @@ class Gvec
         }
         \endcode
     */
-    mdarray<int, 1> gvec_base_mapping_;
+    sddk::mdarray<int, 1> gvec_base_mapping_;
 
     /// Lattice coordinates of a local set of G-vectors.
     /** This are also known as Miller indices */
-    mdarray<int, 2> gvec_;
+    sddk::mdarray<int, 2> gvec_;
 
     /// Lattice coordinates of a local set of G+k-vectors.
-    mdarray<double, 2> gkvec_;
+    sddk::mdarray<double, 2> gkvec_;
 
     /// Cartiesian coordinaes of a local set of G-vectors.
-    mdarray<double, 2> gvec_cart_;
+    sddk::mdarray<double, 2> gvec_cart_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
-    mdarray<double, 2> gkvec_cart_;
+    sddk::mdarray<double, 2> gkvec_cart_;
 
     /// Length of the local fraction of G-vectors.
-    mdarray<double, 1> gvec_len_;
+    sddk::mdarray<double, 1> gvec_len_;
 
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
@@ -242,9 +242,9 @@ class Gvec
     /// Initialize everything.
     void init(fft::Grid const& fft_grid);
 
-    friend void sddk::serialize(serializer& s__, Gvec const& gv__);
+    friend void serialize(sddk::serializer& s__, Gvec const& gv__);
 
-    friend void sddk::deserialize(serializer& s__, Gvec& gv__);
+    friend void deserialize(sddk::serializer& s__, Gvec& gv__);
 
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;
@@ -335,8 +335,8 @@ class Gvec
     {
         sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
 
-        gvec_  = mdarray<int, 2>(3, count(), memory_t::host, "gvec_");
-        gkvec_ = mdarray<double, 2>(3, count(), memory_t::host, "gkvec_");
+        gvec_  = sddk::mdarray<int, 2>(3, count(), sddk::memory_t::host, "gvec_");
+        gkvec_ = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gkvec_");
 
         /* do a first pass: determine boundaries of the grid */
         int xmin{0}, xmax{0};
@@ -352,7 +352,7 @@ class Gvec
         comm_.allreduce<int, mpi::op_t::max>(&xmax, 1);
         comm_.allreduce<int, mpi::op_t::max>(&ymax, 1);
 
-        sddk::mdarray<int, 2> zcol(mdarray_index_descriptor(xmin, xmax), mdarray_index_descriptor(ymin, ymax));
+        sddk::mdarray<int, 2> zcol(sddk::mdarray_index_descriptor(xmin, xmax), sddk::mdarray_index_descriptor(ymin, ymax));
         zcol.zero();
         for (int ig = 0; ig < ngv_loc__; ig++) {
             zcol(G(0, ig), G(1, ig))++;
@@ -490,16 +490,16 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    template <index_domain_t idx_t>
+    template <sddk::index_domain_t idx_t>
     inline r3::vector<int>
     gvec(int ig__) const
     {
         switch (idx_t) {
-            case index_domain_t::local: {
+            case sddk::index_domain_t::local: {
                 return r3::vector<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
                 break;
             }
-            case index_domain_t::global: {
+            case sddk::index_domain_t::global: {
                 return gvec_by_full_index(gvec_full_index_(ig__));
                 break;
             }
@@ -507,16 +507,16 @@ class Gvec
     }
 
     /// Return G+k vector in fractional coordinates.
-    template <index_domain_t idx_t>
+    template <sddk::index_domain_t idx_t>
     inline r3::vector<double>
     gkvec(int ig__) const
     {
         switch (idx_t) {
-            case index_domain_t::local: {
+            case sddk::index_domain_t::local: {
                 return r3::vector<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
                 break;
             }
-            case index_domain_t::global: {
+            case sddk::index_domain_t::global: {
                 return this->gvec<idx_t>(ig__) + vk_;
                 break;
             }
@@ -524,16 +524,16 @@ class Gvec
     }
 
     /// Return G vector in Cartesian coordinates.
-    template <index_domain_t idx_t>
+    template <sddk::index_domain_t idx_t>
     inline r3::vector<double>
     gvec_cart(int ig__) const
     {
         switch (idx_t) {
-            case index_domain_t::local: {
+            case sddk::index_domain_t::local: {
                 return r3::vector<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
                 break;
             }
-            case index_domain_t::global: {
+            case sddk::index_domain_t::global: {
                 auto G = this->gvec<idx_t>(ig__);
                 return dot(lattice_vectors_, G);
                 break;
@@ -542,16 +542,16 @@ class Gvec
     }
 
     /// Return G+k vector in fractional coordinates.
-    template <index_domain_t idx_t>
+    template <sddk::index_domain_t idx_t>
     inline r3::vector<double>
     gkvec_cart(int ig__) const
     {
         switch (idx_t) {
-            case index_domain_t::local: {
+            case sddk::index_domain_t::local: {
                 return r3::vector<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
                 break;
             }
-            case index_domain_t::global: {
+            case sddk::index_domain_t::global: {
                 auto Gk = this->gvec<idx_t>(ig__) + vk_;
                 return dot(lattice_vectors_, Gk);
                 break;
@@ -587,16 +587,16 @@ class Gvec
     }
 
     /// Return length of the G-vector.
-    template <index_domain_t idx_t>
+    template <sddk::index_domain_t idx_t>
     inline double
     gvec_len(int ig__) const
     {
         switch (idx_t) {
-            case index_domain_t::local: {
+            case sddk::index_domain_t::local: {
                 return gvec_len_(ig__);
                 break;
             }
-            case index_domain_t::global: {
+            case sddk::index_domain_t::global: {
                 return gvec_shell_len_(gvec_shell_(ig__));
                 break;
             }
@@ -689,7 +689,7 @@ class Gvec
     {
         int ngv = this->count();
         this->comm().bcast(&ngv, 1, rank__);
-        mdarray<int, 2> result(3, ngv);
+        sddk::mdarray<int, 2> result(3, ngv);
         if (this->comm().rank() == rank__) {
             RTE_ASSERT(ngv == this->count());
             copy(this->gvec_, result);
@@ -725,14 +725,14 @@ class Gvec_fft
     mpi::block_data_descriptor gvec_fft_slab_;
 
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
-    mdarray<int, 2> rank_map_;
+    sddk::mdarray<int, 2> rank_map_;
 
     /// Lattice coordinates of a local set of G-vectors.
     /** These are also known as Miller indices */
-    mdarray<int, 2> gvec_array_;
+    sddk::mdarray<int, 2> gvec_array_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
-    mdarray<double, 2> gkvec_cart_array_;
+    sddk::mdarray<double, 2> gkvec_cart_array_;
 
     void build_fft_distr();
 
@@ -850,7 +850,7 @@ class Gvec_shells
     mpi::block_data_descriptor a2a_recv_;
 
     /// Split global index of G-shells between MPI ranks.
-    splindex<splindex_t::block_cyclic> spl_num_gsh_;
+    sddk::splindex<sddk::splindex_t::block_cyclic> spl_num_gsh_;
 
     /// List of G-vectors in the remapped storage.
     sddk::mdarray<int, 2> gvec_remapped_;

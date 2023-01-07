@@ -20,19 +20,19 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     auto fft_grid = fft::get_min_grid(cutoff, M);
 
-    auto spl_z = split_fft_z(fft_grid[2], Communicator::world());
+    auto spl_z = fft::split_fft_z(fft_grid[2], Communicator::world());
 
-    Gvec gvec(M, cutoff, Communicator::world(), false);
+    fft::Gvec gvec(M, cutoff, Communicator::world(), false);
 
-    Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
+    fft::Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
-    spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
+    fft::spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
                            SPFFT_PU_HOST, -1, Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
     auto const& gv = gvp.gvec_array();
-     spfft_transform_type<T> spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+    fft::spfft_transform_type<T> spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host)));
 

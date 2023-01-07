@@ -25,10 +25,12 @@
 #ifndef __FFT_HPP__
 #define __FFT_HPP__
 
-#include "splindex.hpp"
-#include "mpi/communicator.hpp"
-#include "spfft/spfft.hpp"
+#include <spfft/spfft.hpp>
+#include "SDDK/splindex.hpp"
 #include "SDDK/type_definition.hpp"
+#include "mpi/communicator.hpp"
+
+namespace fft {
 
 // type traits to handle Spfft grid for different precision type
 template <typename T>
@@ -227,6 +229,8 @@ inline auto split_fft_z(int size_z__, mpi::Communicator const& comm_fft__)
 {
     return sddk::splindex<sddk::splindex_t::block>(size_z__, comm_fft__.size(), comm_fft__.rank());
 }
+
+} // namespace fft
 
 #endif // __FFT_HPP__
 

@@ -4,6 +4,7 @@
 
 using namespace sirius;
 using namespace sddk;
+using namespace fft;
 
 void test1()
 {

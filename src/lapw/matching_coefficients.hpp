@@ -27,7 +27,7 @@
 
 #include <gsl/gsl_sf_bessel.h>
 #include "unit_cell/unit_cell.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 
 namespace sirius {
 
@@ -57,7 +57,7 @@ class Matching_coefficients // TODO: compute on GPU
     Unit_cell const& unit_cell_;
 
     /// Description of the G+k vectors.
-    sddk::Gvec const& gkvec_;
+    fft::Gvec const& gkvec_;
 
     std::vector<double> gkvec_len_;
 
@@ -109,7 +109,7 @@ class Matching_coefficients // TODO: compute on GPU
 
   public:
     /// Constructor
-    Matching_coefficients(Unit_cell const& unit_cell__, sddk::Gvec const& gkvec__)
+    Matching_coefficients(Unit_cell const& unit_cell__, fft::Gvec const& gkvec__)
         : unit_cell_(unit_cell__)
         , gkvec_(gkvec__)
     {

@@ -63,7 +63,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Global muffin-tin array
     sddk::mdarray<T, 3> f_mt_;
 
-    sddk::Gvec const& gvec_;
+    fft::Gvec const& gvec_;
 
     /// Size of the muffin-tin functions angular domain size.
     int angular_domain_size_;
@@ -233,7 +233,7 @@ class Periodic_function : public Smooth_periodic_function<T>
                 it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
             }
         }
-        it_val *= (unit_cell_.omega() / spfft_grid_size(this->spfft()));
+        it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->spfft()));
         mpi::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
         T total = it_val;
 

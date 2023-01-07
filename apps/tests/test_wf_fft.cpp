@@ -10,10 +10,10 @@ void test_wf_fft()
     mpi::Grid mpi_grid({1, 1}, mpi::Communicator::world());
 
     /* creation of simple G+k vector set */
-    auto gkvec = sddk::gkvec_factory(8.0, mpi_grid.communicator());
+    auto gkvec = fft::gkvec_factory(8.0, mpi_grid.communicator());
     std::cout << "num_gvec=" << gkvec->num_gvec() << std::endl;
     /* creation of G+k set for FFTt */
-    auto gkvec_fft = std::make_shared<sddk::Gvec_fft>(*gkvec, mpi_grid.communicator(1 << 0), mpi_grid.communicator(1 << 1));
+    auto gkvec_fft = std::make_shared<fft::Gvec_fft>(*gkvec, mpi_grid.communicator(1 << 0), mpi_grid.communicator(1 << 1));
 
     /* get the FFT box boundaries */
     auto fft_grid = fft::get_min_grid(8.0, gkvec->lattice_vectors());
@@ -37,7 +37,7 @@ void test_wf_fft()
     auto pu = sddk::device_t::CPU;
 
     auto spfft_pu = pu == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
-    auto spl_z = split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
+    auto spl_z = fft::split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
 
     /* create spfft buffer for coarse transform */
     auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
