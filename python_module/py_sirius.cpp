@@ -672,18 +672,16 @@ PYBIND11_MODULE(py_sirius, m)
                                                arr.at(sddk::memory_t::host), obj);
         });
 
-    // py::class_<dmatrix<complex_double>, mdarray<complex_double, 2>>(m, "dmatrix");
-
-    // py::class_<mdarray<double, 2>>(m, "mdarray2")
-    //     .def("on_device", &mdarray<double, 2>::on_device)
-    //     .def("copy_to_host", [](mdarray<double, 2>& mdarray) { mdarray.copy_to(memory_t::host, 0, mdarray.size(1));
-    //     }) .def("__array__", [](py::object& obj) {
-    //         mdarray<double, 2>& arr = obj.cast<mdarray<double, 2>&>();
-    //         int nrows               = arr.size(0);
-    //         int ncols               = arr.size(1);
-    //         return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
-    //                                    arr.at(memory_t::host), obj);
-    //     });
+    py::class_<sddk::mdarray<double, 2>>(m, "mdarray2")
+        .def("on_device", &sddk::mdarray<double, 2>::on_device)
+        .def("copy_to_host", [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1));
+        }) .def("__array__", [](py::object& obj) {
+            sddk::mdarray<double, 2>& arr = obj.cast<sddk::mdarray<double, 2>&>();
+            int nrows               = arr.size(0);
+            int ncols               = arr.size(1);
+            return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
+                                       arr.at(sddk::memory_t::host), obj);
+        });
 
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
