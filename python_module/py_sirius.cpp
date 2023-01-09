@@ -621,10 +621,10 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
 
-    py::class_<sddk::FFT3D_grid>(m, "FFT3D_grid")
-        .def_property_readonly("num_points", py::overload_cast<>(&sddk::FFT3D_grid::num_points, py::const_))
+    py::class_<fft::Grid>(m, "FFT3D_grid")
+        .def_property_readonly("num_points", py::overload_cast<>(&fft::Grid::num_points, py::const_))
         .def_property_readonly("shape",
-                               [](const sddk::FFT3D_grid& obj) -> std::array<int, 3> {
+                               [](const fft::Grid& obj) -> std::array<int, 3> {
                                    return {obj[0], obj[1], obj[2]};
                                })
         //.def_property_readonly("grid_size", &FFT3D_grid::grid_size) // TODO: is this needed?
@@ -694,7 +694,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
-        .def(py::init<std::shared_ptr<sddk::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
+        .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)
         .def("num_wf", &wf::Wave_functions<double>::num_wf)
