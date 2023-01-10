@@ -556,7 +556,7 @@ Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source
     Gvec gv(gv_src__.comm());
 
     if (comm__.rank() == dest__) {
-        ::sddk::deserialize(s, gv);
+        ::fft::deserialize(s, gv);
     }
     return gv;
 }
