@@ -605,8 +605,8 @@ void Gvec_fft::pile_gvec()
 
     RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[comm_fft().rank()]);
 
-    gvec_array_       = sddk::mdarray<int, 2>(3, this->gvec_count_fft());
-    gkvec_cart_array_ = sddk::mdarray<double, 2>(3, this->gvec_count_fft());
+    gvec_array_       = sddk::mdarray<int, 2>(3, this->count());
+    gkvec_cart_array_ = sddk::mdarray<double, 2>(3, this->count());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         for (int j = 0; j < comm_fft_.size(); j++) {
             int r = rank_map_(j, i);

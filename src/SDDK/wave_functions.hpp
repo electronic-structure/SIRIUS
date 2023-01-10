@@ -882,7 +882,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         std::vector<int> rowsplit(comm_row.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < comm_row.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
+            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->count(i);
         }
 
         std::vector<int> colsplit(comm_col.size() + 1);
@@ -925,10 +925,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
@@ -990,10 +990,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
@@ -1067,9 +1067,9 @@ class Wave_functions_fft : public Wave_functions_base<T>
             this->num_pw_ = wf_->num_pw_;
         } else {
             /* do wave-functions swap */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get(),
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->count(), this->num_wf_.get(),
                     sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
-            this->num_pw_ = gkvec_fft__->gvec_count_fft();
+            this->num_pw_ = gkvec_fft__->count();
 
             if (shuffle_flag_ & shuffle_to::fft_layout) {
                 if (wf__.data_[sp.get()].on_device()) {

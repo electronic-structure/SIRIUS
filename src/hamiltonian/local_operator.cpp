@@ -177,7 +177,7 @@ void Local_operator<T>::prepare_k(fft::Gvec_fft const& gkvec_p__)
 {
     PROFILE("sirius::Local_operator::prepare_k");
 
-    int ngv_fft = gkvec_p__.gvec_count_fft();
+    int ngv_fft = gkvec_p__.count();
 
     /* cache kinteic energy of plane-waves */
     //if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
@@ -299,7 +299,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
     ctx_.num_loc_op_applied(br__.size());
 
     /* local number of G-vectors for the FFT transformation */
-    int ngv_fft = gkvec_fft__->gvec_count_fft();
+    int ngv_fft = gkvec_fft__->count();
 
     if (ngv_fft != spfftk__.num_local_elements()) {
         TERMINATE("wrong number of G-vectors");
@@ -532,7 +532,7 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
     /* pointer to memory where SpFFT stores real-space data */
     auto spfft_buf = spfftk__.space_domain_data(spfft_pu);
 
-    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->gvec_count_fft(), get_memory_pool(ctx_.host_memory_t()));
+    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->count(), get_memory_pool(ctx_.host_memory_t()));
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         buf_pw.allocate(get_memory_pool(sddk::memory_t::device));
     }
@@ -605,13 +605,13 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
             for (int x : {0, 1, 2}) {
                 if (is_host_memory(mem)) {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_fft__->count(); igloc++) {
                         auto gvc = gkvec_fft__->gkvec_cart(igloc);
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
                         buf_pw[igloc] = phi_fft.pw_coeffs(igloc, wf::band_index(j)) * static_cast<T>(gvc[x]);
                     }
                 } else {
-                    grad_phi_lapw_gpu(gkvec_fft__->gvec_count_fft(),
+                    grad_phi_lapw_gpu(gkvec_fft__->count(),
                             phi_fft.at(mem, 0, wf::band_index(j)),
                             gkvec_cart_.at(mem, 0, x), buf_pw.at(mem));
                 }
@@ -639,13 +639,13 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
                 spfftk__.forward(spfft_pu, reinterpret_cast<T*>(buf_pw.at(mem)), SPFFT_FULL_SCALING);
                 if (is_host_memory(mem)) {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_fft__->count(); igloc++) {
                         auto gvc = gkvec_fft__->gkvec_cart(igloc);
                         map_wf_fft[hphi__].pw_coeffs(igloc, wf::band_index(j)) += buf_pw[igloc] *
                             static_cast<T>(0.5 * gvc[x]);
                     }
                 } else {
-                    add_to_hphi_lapw_gpu(gkvec_fft__->gvec_count_fft(), buf_pw.at(sddk::memory_t::device),
+                    add_to_hphi_lapw_gpu(gkvec_fft__->count(), buf_pw.at(sddk::memory_t::device),
                             gkvec_cart_.at(sddk::memory_t::device, 0, x),
                             map_wf_fft[hphi__].at(sddk::memory_t::device, 0, wf::band_index(j)));
                 }

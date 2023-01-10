@@ -37,11 +37,11 @@ void test_wf_fft()
     auto pu = sddk::device_t::CPU;
 
     auto spfft_pu = pu == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
-    auto spl_z = fft::split_fft_z(fft_grid[2], gkvec_fft->comm_fft());
+    auto spl_z = fft::split_z_dimension(fft_grid[2], gkvec_fft->comm_fft());
 
     /* create spfft buffer for coarse transform */
     auto spfft_grid = std::unique_ptr<spfft::Grid>(new spfft::Grid(
-            fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count_fft(),
+            fft_grid[0], fft_grid[1], fft_grid[2], gkvec_fft->zcol_count(),
             spl_z.local_size(), spfft_pu, -1, gkvec_fft->comm_fft().native(), SPFFT_EXCH_DEFAULT));
 
     const auto fft_type = gkvec->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -49,7 +49,7 @@ void test_wf_fft()
     /* create actual transform object */
     auto spfft_transform = std::make_unique<spfft::Transform>(spfft_grid->create_transform(
         spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
-        spl_z.local_size(), gkvec_fft->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        spl_z.local_size(), gkvec_fft->count(), SPFFT_INDEX_TRIPLETS,
         gkvec_fft->gvec_array().at(sddk::memory_t::host)));
 
     std::array<wf::Wave_functions_fft<double>, 2> wf1;

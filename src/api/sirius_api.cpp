@@ -5273,7 +5273,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             auto& fft_comm = gs.ctx().comm_fft();
-            auto spl_z     = fft::split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
+            auto spl_z     = fft::split_z_dimension(gs.ctx().fft_grid()[2], fft_comm);
 
             sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
             sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());

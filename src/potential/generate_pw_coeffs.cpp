@@ -32,7 +32,7 @@ void Potential::generate_pw_coefs()
 
     double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
 
-    int gv_count  = ctx_.gvec_fft().gvec_count_fft();
+    int gv_count  = ctx_.gvec_fft().count();
 
     auto& fft = ctx_.spfft<double>();
 

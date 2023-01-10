@@ -748,43 +748,49 @@ class Gvec_fft
         return comm_fft_;
     }
 
+    /// Return a communicator that is orthogonal to the FFT communicator.
     inline mpi::Communicator const& comm_ortho_fft() const
     {
         return comm_ortho_fft_;
     }
 
-    inline int gvec_count_fft(int rank__) const
+    /// Local number of G-vectors in the FFT distribution for a given rank.
+    inline int count(int rank__) const
     {
         return gvec_distr_fft_.counts[rank__];
     }
 
-    /// Local number of G-vectors for FFT-friendly distribution.
-    inline int gvec_count_fft() const
+    /// Local number of G-vectors for FFT-friendly distribution for this rank.
+    inline int count() const
     {
-        return gvec_count_fft(comm_fft().rank());
+        return this->count(comm_fft().rank());
     }
 
     /// Return local number of z-columns.
-    inline int zcol_count_fft() const
+    inline int zcol_count() const
     {
         return num_zcol_local_;
     }
 
-    inline auto const& gvec_fft_slab() const
+    /// Represents a "fat" slab of G-vectors in the FFT-friendly distribution.
+    inline auto const& gvec_slab() const
     {
         return gvec_fft_slab_;
     }
 
+    /// Return the original (not reshuffled) G-vector class.
     inline Gvec const& gvec() const
     {
         return gvec_;
     }
 
+    /// Return the Cartesian coordinates of the local G-vector.
     inline auto gkvec_cart(int igloc__) const
     {
         return r3::vector<double>(&gkvec_cart_array_(0, igloc__));
     }
 
+    /// Return the full array of the local G-vector Cartesian coodinates.
     inline auto const& gvec_array() const
     {
         return gvec_array_;
@@ -795,8 +801,8 @@ class Gvec_fft
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
-        comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_fft_slab().counts.data(),
-                                   gvec_fft_slab().offsets.data());
+        comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_slab().counts.data(),
+                                   gvec_slab().offsets.data());
 
     }
 
@@ -805,7 +811,7 @@ class Gvec_fft
     {
         for (int ig = 0; ig < gvec().count(); ig++) {
             /* position inside fft buffer */
-            int ig1                             = gvec_fft_slab().offsets[comm_ortho_fft().rank()] + ig;
+            int ig1                             = gvec_slab().offsets[comm_ortho_fft().rank()] + ig;
             f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
         }
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
@@ -823,9 +829,10 @@ class Gvec_fft
         }
     }
 
+    /// Update Cartesian coordinates after a change in lattice vectors.
     void update_gkvec_cart()
     {
-        for (int ig = 0; ig < this->gvec_count_fft(); ig++) {
+        for (int ig = 0; ig < this->count(); ig++) {
             auto G = r3::vector<int>(&gvec_array_(0, ig));
             auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
             for (int x : {0, 1, 2}) {
