@@ -31,8 +31,8 @@ void Eigensolver_elpa::finalize()
 }
 
 /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__,
-          double* eval__, sddk::dmatrix<double>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, la::dmatrix<double>& B__,
+          double* eval__, la::dmatrix<double>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_gen");
 
@@ -116,8 +116,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
 }
 
 /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__,
-          double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__, la::dmatrix<std::complex<double>>& B__,
+          double* eval__, la::dmatrix<std::complex<double>>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_gen");
 
@@ -200,20 +200,20 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
 }
 
 /// Solve a generalized eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__, double* eval__, sddk::dmatrix<double>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, la::dmatrix<double>& B__, double* eval__, la::dmatrix<double>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
 }
 
 /// Solve a generalized eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__, double* eval__,
-          sddk::dmatrix<std::complex<double>>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, la::dmatrix<std::complex<double>>& B__, double* eval__,
+          la::dmatrix<std::complex<double>>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
 }
 
 /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, double* eval__, la::dmatrix<double>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_std");
 
@@ -277,8 +277,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
 }
 
 /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__,
-          sddk::dmatrix<std::complex<double>>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__, double* eval__,
+          la::dmatrix<std::complex<double>>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_std");
 
@@ -346,13 +346,13 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<
 }
 
 /// Solve a standard eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, double* eval__, la::dmatrix<double>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
 }
 
 /// Solve a standard eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
+int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, double* eval__, la::dmatrix<std::complex<double>>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
 }

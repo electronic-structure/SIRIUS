@@ -19,7 +19,7 @@
 
 /** \file dmatrix.hpp
  *
- *  \brief Contains definition and implementation of sddk::dmatrix class.
+ *  \brief Contains definition and implementation of distributed matrix class.
  */
 
 #ifndef __DMATRIX_HPP__
