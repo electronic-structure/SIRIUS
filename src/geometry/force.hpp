@@ -91,7 +91,7 @@ class Force
      *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
      *  \f]
      */
-    void compute_dmat(K_point<double>* kp__, sddk::dmatrix<std::complex<double>>& dm__) const;
+    void compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm__) const;
 
     /** Compute the forces for the simplex LDA+U method not the fully rotationally invariant one.
      *  It can not be used for LDA+U+SO either.

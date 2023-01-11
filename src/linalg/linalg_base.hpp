@@ -28,38 +28,38 @@
 #include "blas_lapack.h"
 #include "scalapack.h"
 
-namespace sddk {
+namespace la {
 
 template <typename T>
-struct linalg_const
+struct constant
 {
-    static T const& one()
+    static T const& one() noexcept
     {
         static const T a = 1;
         return a;
     }
 
-    static T const& two()
+    static T const& two() noexcept
     {
         static const T a = 2;
         return a;
     }
 
-    static T const& m_one()
+    static T const& m_one() noexcept
     {
         static const T a = -1;
         return a;
     }
 
-    static T const& zero()
+    static T const& zero() noexcept
     {
         static const T a = 0;
         return a;
     }
 };
 
-/// Type of linear algebra backend.
-enum class linalg_t
+/// Type of linear algebra backend library.
+enum class lib_t
 {
     /// None
     none,
@@ -79,18 +79,18 @@ enum class linalg_t
     spla
 };
 
-inline linalg_t get_linalg_t(std::string name__)
+inline auto get_lib_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
-    static const std::map<std::string, linalg_t> map_to_type = {
-        {"blas",      linalg_t::blas},
-        {"lapack",    linalg_t::lapack},
-        {"scalapack", linalg_t::scalapack},
-        {"cublas",    linalg_t::gpublas},
-        {"gpublas",   linalg_t::gpublas},
-        {"cublasxt",  linalg_t::cublasxt},
-        {"magma",     linalg_t::magma},
+    static const std::map<std::string, lib_t> map_to_type = {
+        {"blas",      lib_t::blas},
+        {"lapack",    lib_t::lapack},
+        {"scalapack", lib_t::scalapack},
+        {"cublas",    lib_t::gpublas},
+        {"gpublas",   lib_t::gpublas},
+        {"cublasxt",  lib_t::cublasxt},
+        {"magma",     lib_t::magma},
     };
 
     if (map_to_type.count(name__) == 0) {
@@ -102,38 +102,38 @@ inline linalg_t get_linalg_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-inline std::string to_string(linalg_t la__)
+inline std::string to_string(lib_t la__)
 {
     switch (la__) {
-        case linalg_t::none: {
+        case lib_t::none: {
             return "none";
             break;
         }
-        case linalg_t::blas: {
+        case lib_t::blas: {
             return "blas";
             break;
         }
-        case linalg_t::lapack: {
+        case lib_t::lapack: {
             return "lapack";
             break;
         }
-        case linalg_t::scalapack: {
+        case lib_t::scalapack: {
             return "scalapack";
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
             return "gpublas";
             break;
         }
-        case linalg_t::cublasxt: {
+        case lib_t::cublasxt: {
             return "cublasxt";
             break;
         }
-        case linalg_t::magma: {
+        case lib_t::magma: {
             return "magma";
             break;
         }
-        case linalg_t::spla: {
+        case lib_t::spla: {
             return "spla";
             break;
         }
@@ -304,6 +304,6 @@ class linalg_base
 #endif
 };
 
-} // namespace sddk
+} // namespace
 
 #endif // __LINALG_BASE_HPP__

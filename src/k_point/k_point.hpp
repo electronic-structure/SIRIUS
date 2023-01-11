@@ -74,7 +74,7 @@ class K_point
     sddk::mdarray<double, 1> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
-    sddk::dmatrix<std::complex<T>> fv_eigen_vectors_;
+    la::dmatrix<std::complex<T>> fv_eigen_vectors_;
 
     /// First-variational eigen vectors, distributed in slabs.
     std::unique_ptr<wf::Wave_functions<T>> fv_eigen_vectors_slab_;
@@ -86,7 +86,7 @@ class K_point
     /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
      *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
      *  matrix in case of general non-collinear magnetism. */
-    std::array<sddk::dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
+    std::array<la::dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
 
     /// Full-diagonalization eigen vectors.
     sddk::mdarray<std::complex<T>, 2> fd_eigen_vectors_;

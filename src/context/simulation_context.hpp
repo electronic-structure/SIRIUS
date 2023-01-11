@@ -121,7 +121,7 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<mpi::Grid> mpi_grid_;
 
     /// 2D BLACS grid for distributed linear algebra operations.
-    std::unique_ptr<sddk::BLACS_grid> blacs_grid_;
+    std::unique_ptr<la::BLACS_grid> blacs_grid_;
 
     /// Grid descriptor for the fine-grained FFT transform.
     sddk::FFT3D_grid fft_grid_;
@@ -256,10 +256,10 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::unique_ptr<Augmentation_operator>> augmentation_op_;
 
     /// Standard eigen-value problem solver.
-    std::unique_ptr<Eigensolver> std_evp_solver_;
+    std::unique_ptr<la::Eigensolver> std_evp_solver_;
 
     /// Generalized eigen-value problem solver.
-    std::unique_ptr<Eigensolver> gen_evp_solver_;
+    std::unique_ptr<la::Eigensolver> gen_evp_solver_;
 
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};

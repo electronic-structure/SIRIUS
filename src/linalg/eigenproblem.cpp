@@ -2,6 +2,11 @@
 
 #if defined(SIRIUS_ELPA)
 #include <elpa/elpa.h>
+#endif
+
+namespace la {
+
+#if defined(SIRIUS_ELPA)
 
 Eigensolver_elpa::Eigensolver_elpa(int stage__)
     : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
@@ -351,5 +356,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<do
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
 }
+
 #endif
 
+}

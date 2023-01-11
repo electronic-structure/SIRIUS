@@ -68,11 +68,11 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     sddk::memory_t mem_host{sddk::memory_t::host};
     sddk::memory_t mem{sddk::memory_t::host};
-    sddk::linalg_t la{sddk::linalg_t::blas};
+    la::lib_t la{la::lib_t::blas};
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         mem      = sddk::memory_t::device;
         mem_host = sddk::memory_t::host_pinned;
-        la       = sddk::linalg_t::gpublas;
+        la       = la::lib_t::gpublas;
     }
 
     /* a pair of "total number, offests" for the Hubbard orbitals idexing */
@@ -89,7 +89,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     /* full non collinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm");
+        la::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
             dm.allocate(get_memory_pool(mem));
         }
@@ -97,7 +97,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
                 wf::band_range(0, nwfu), dm, 0, 0);
 
-        sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
+        la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
@@ -110,8 +110,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = std::complex<T>(kp__.weight(), 0.0);
-        sddk::linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
-                        dm1.ld(), &sddk::linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+        la::wrap(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
+                        dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
             occ_mtrx.copy_to(sddk::memory_t::host);
         }
@@ -149,7 +149,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
            have two. The inner product takes care of this case internally. */
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            sddk::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm");
+            la::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
                 dm.allocate(get_memory_pool(mem));
             }
@@ -158,7 +158,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                     wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
                     wf::band_range(0, nwfu), dm, 0, 0);
 
-            sddk::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
+            la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
@@ -174,8 +174,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
              * band occupancies. We need to compensate for it because it is taken into account in the
              * calculation of the hubbard potential */
             auto alpha = std::complex<T>(kp__.weight() / ctx_.max_occupancy(), 0.0);
-            sddk::linalg(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                            dm1.at(mem), dm1.ld(), &sddk::linalg_const<std::complex<T>>::zero(), occ_mtrx.at(mem),
+            la::wrap(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
+                            dm1.at(mem), dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem),
                             occ_mtrx.ld());
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(sddk::memory_t::host);

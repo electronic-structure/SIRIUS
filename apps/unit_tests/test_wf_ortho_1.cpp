@@ -11,7 +11,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     auto pu = use_gpu__ ? sddk::device_t::GPU : sddk::device_t::CPU;
     spla::Context spla_ctx(pu == sddk::device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
 
-    sddk::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+    la::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
@@ -28,7 +28,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
 
     sirius::randomize(phi);
 
-    sddk::dmatrix<std::complex<double>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
+    la::dmatrix<std::complex<double>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
 
     sddk::memory_t mem{sddk::memory_t::host};
     if (pu == sddk::device_t::GPU) {
@@ -44,7 +44,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     wf::inner(spla_ctx, mem, wf::spin_range(0), phi, wf::band_range(0, 2 * num_bands__),
             phi, wf::band_range(0, 2 * num_bands__), ovlp, 0, 0);
 
-    auto diff = sddk::check_identity(ovlp, 2 * num_bands__);
+    auto diff = la::check_identity(ovlp, 2 * num_bands__);
     if (diff > 1e-12) {
         printf("test_wf_ortho: wrong overlap");
         return 1;

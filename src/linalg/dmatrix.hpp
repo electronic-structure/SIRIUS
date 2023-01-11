@@ -30,12 +30,13 @@
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/blacs_grid.hpp"
-#include "splindex.hpp"
-#include "hdf5_tree.hpp"
-#include "type_definition.hpp"
+#include "SDDK/splindex.hpp"
+#include "SDDK/hdf5_tree.hpp"
+#include "SDDK/type_definition.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
 
-namespace sddk {
+namespace la {
 
 namespace fmt {
 template <typename T>
@@ -48,7 +49,7 @@ std::ostream& operator<<(std::ostream& out, std::complex<T> z)
 
 /// Distributed matrix.
 template <typename T>
-class dmatrix: public matrix<T>
+class dmatrix: public sddk::matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -67,10 +68,10 @@ class dmatrix: public matrix<T>
     BLACS_grid const* blacs_grid_{nullptr};
 
     /// Split index of matrix rows.
-    splindex<splindex_t::block_cyclic> spl_row_;
+    sddk::splindex<sddk::splindex_t::block_cyclic> spl_row_;
 
     /// Split index of matrix columns.
-    splindex<splindex_t::block_cyclic> spl_col_;
+    sddk::splindex<sddk::splindex_t::block_cyclic> spl_col_;
 
     /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
@@ -82,16 +83,14 @@ class dmatrix: public matrix<T>
 
     void init()
     {
-#ifdef SIRIUS_SCALAPACK
         if (blacs_grid_ != nullptr) {
+#ifdef SIRIUS_SCALAPACK
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
-        }
 #endif
-        if (blacs_grid_ != nullptr) {
             grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
                     this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
-                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(sddk::memory_t::host), this->ld(), 'C',
                     this->blacs_grid().comm().rank());
         }
     }
@@ -108,16 +107,16 @@ class dmatrix: public matrix<T>
     }
 
     dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
-            memory_t mem_type__ = memory_t::host);
+            sddk::memory_t mem_type__ = sddk::memory_t::host);
 
-    dmatrix(int num_rows__, int num_cols__, memory_t mem_type__ = memory_t::host);
+    dmatrix(int num_rows__, int num_cols__, sddk::memory_t mem_type__ = sddk::memory_t::host);
 
-    dmatrix(int num_rows__, int num_cols__, memory_pool& mp__, std::string const& label__ = "");
+    dmatrix(int num_rows__, int num_cols__, sddk::memory_pool& mp__, std::string const& label__ = "");
 
     dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__);
 
     dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
-            memory_pool& mp__);
+            sddk::memory_pool& mp__);
 
     dmatrix(T* ptr__, int num_rows__, int num_cols__);
 
@@ -216,17 +215,17 @@ class dmatrix: public matrix<T>
     //    }
     //}
 
-    using matrix<T>::copy_to;
+    using sddk::matrix<T>::copy_to;
 
     void copy_to(sddk::memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
     {
         int m0, m1, n0, n1;
         if (blacs_grid_ != nullptr) {
-            splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-            splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
 
-            splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-            splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
 
             m0 = spl_r0.local_size();
             m1 = spl_r1.local_size();
@@ -261,12 +260,12 @@ class dmatrix: public matrix<T>
 
     sddk::mdarray<T, 1> get_diag(int n__);
 
-    inline splindex<splindex_t::block_cyclic> const& spl_col() const
+    inline auto const& spl_col() const
     {
         return spl_col_;
     }
 
-    inline splindex<splindex_t::block_cyclic> const& spl_row() const
+    inline auto const& spl_row() const
     {
         return spl_row_;
     }
@@ -301,7 +300,7 @@ class dmatrix: public matrix<T>
         return bs_col_;
     }
 
-    inline BLACS_grid const& blacs_grid() const
+    inline auto const& blacs_grid() const
     {
         RTE_ASSERT(blacs_grid_ != nullptr);
         return *blacs_grid_;
@@ -309,9 +308,9 @@ class dmatrix: public matrix<T>
 
     void save_to_hdf5(std::string name__, int m__, int n__);
 
-    sddk::mdarray<T, 2> get_full_matrix() const
+    auto get_full_matrix() const
     {
-        mdarray<T, 2> full_mtrx(num_rows(), num_cols());
+        sddk::mdarray<T, 2> full_mtrx(num_rows(), num_cols());
         full_mtrx.zero();
 
         for (int j = 0; j < num_cols_local(); j++) {
@@ -320,7 +319,7 @@ class dmatrix: public matrix<T>
             }
         }
         if (blacs_grid_) {
-            blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
+            blacs_grid_->comm().allreduce(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()));
         }
         return full_mtrx;
     }
@@ -347,8 +346,6 @@ class dmatrix: public matrix<T>
             }
         }
         return dict;
-        // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        // ofs << dict.dump(4);
     }
 
     std::stringstream serialize(std::string name__, int m__, int n__) const
@@ -385,9 +382,9 @@ class dmatrix: public matrix<T>
         T cs{0};
 
         if (blacs_grid_ != nullptr) {
-            splindex<splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
                                                        this->blacs_grid().rank_row(), this->bs_row());
-            splindex<splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
+            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
                                                        this->blacs_grid().rank_col(), this->bs_col());
             for (int i = 0; i < spl_col.local_size(); i++) {
                 for (int j = 0; j < spl_row.local_size(); j++) {
@@ -423,12 +420,11 @@ class dmatrix: public matrix<T>
     {
         return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
                 this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
-                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
+                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(sddk::memory_t::host), this->ld(), 'C',
                 this->blacs_grid().comm().rank());
     }
-
 };
 
-} // namespace sddk
+} // namespace
 
 #endif // __DMATRIX_HPP__

@@ -47,7 +47,7 @@ enum class davidson_evp_t {
 template <typename T, typename F>
 inline void
 project_out_subspace(::spla::Context& spla_ctx__, sddk::memory_t mem__, wf::spin_range spins__, wf::Wave_functions<T>& phi__,
-                     wf::Wave_functions<T>& sphi__, int N__, int n__, sddk::dmatrix<F>& o__)
+                     wf::Wave_functions<T>& sphi__, int N__, int n__, la::dmatrix<F>& o__)
 {
     PROFILE("sirius::project_out_subspace");
 
@@ -76,7 +76,7 @@ project_out_subspace(::spla::Context& spla_ctx__, sddk::memory_t mem__, wf::spin
 //template <typename T>
 //inline int
 //remove_linearly_dependent(::spla::Context& spla_ctx__, sddk::spin_range spins__, sddk::Wave_functions<real_type<T>>& phi__,
-//                          int N__, int n__, sddk::dmatrix<T>& o__)
+//                          int N__, int n__, la::dmatrix<T>& o__)
 //
 //{
 //    PROFILE("sirius::remove_linearly_dependent");
@@ -250,9 +250,9 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     int const bs = ctx.cyclic_block_size();
 
-    sddk::dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    sddk::dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
-    sddk::dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> H(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> H_old(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> evec(num_phi, num_phi, ctx.blacs_grid(), bs, bs, mp);
 
     int const num_ortho_steps = extra_ortho__ ? 2 : 1;
 

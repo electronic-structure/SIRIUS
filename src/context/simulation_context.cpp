@@ -226,18 +226,18 @@ Simulation_context::sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, 
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case sddk::device_t::CPU: {
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
                           zm.ld(), phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
+                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
                 break;
             }
             case sddk::device_t::GPU: {
                 zm.copy_to(sddk::memory_t::device);
-                sddk::linalg(sddk::linalg_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
+                la::wrap(la::lib_t::gpublas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
                           zm.ld(), phase_factors.at(sddk::memory_t::device), phase_factors.ld(),
-                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
+                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
                 tmp.copy_to(sddk::memory_t::host);
                 break;
             }
@@ -582,8 +582,8 @@ Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name());
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name());
+    std_evp_solver_ = la::Eigensolver_factory(std_evp_solver_name());
+    gen_evp_solver_ = la::Eigensolver_factory(gen_evp_solver_name());
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -594,9 +594,9 @@ Simulation_context::initialize()
 
     /* setup BLACS grid */
     if (std_solver.is_parallel()) {
-        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(comm_band(), npr, npc);
+        blacs_grid_ = std::make_unique<la::BLACS_grid>(comm_band(), npr, npc);
     } else {
-        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(mpi::Communicator::self(), 1, 1);
+        blacs_grid_ = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     }
 
     /* setup the cyclic block size */
@@ -771,14 +771,14 @@ Simulation_context::print_info(std::ostream& out__) const
         }
 
         std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
-        ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
-        std::map<ev_solver_t, std::string> const evsm = {
-            {ev_solver_t::lapack, "LAPACK"},
-            {ev_solver_t::scalapack, "ScaLAPACK"},
-            {ev_solver_t::elpa, "ELPA"},
-            {ev_solver_t::magma, "MAGMA"},
-            {ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
-            {ev_solver_t::cusolver, "cuSOLVER"}
+        la::ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
+        std::map<la::ev_solver_t, std::string> const evsm = {
+            {la::ev_solver_t::lapack, "LAPACK"},
+            {la::ev_solver_t::scalapack, "ScaLAPACK"},
+            {la::ev_solver_t::elpa, "ELPA"},
+            {la::ev_solver_t::magma, "MAGMA"},
+            {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
+            {la::ev_solver_t::cusolver, "cuSOLVER"}
         };
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;

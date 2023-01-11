@@ -117,10 +117,10 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<s
                                                                  type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
-    sddk::linalg(sddk::linalg_t::blas)
-        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &sddk::linalg_const<std::complex<T>>::one(),
+    la::wrap(la::lib_t::blas)
+        .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), &la::constant<std::complex<T>>::one(),
               alm__.at(sddk::memory_t::host), alm__.ld(), hmt.at(sddk::memory_t::host), hmt.ld(),
-              &sddk::linalg_const<std::complex<T>>::zero(), halm__.at(sddk::memory_t::host), halm__.ld());
+              &la::constant<std::complex<T>>::zero(), halm__.at(sddk::memory_t::host), halm__.ld());
 }
 
 template <typename T>
@@ -181,10 +181,10 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        sddk::linalg(sddk::linalg_t::blas).hemm(
-            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &sddk::linalg_const<std::complex<T>>::one(),
+        la::wrap(la::lib_t::blas).hemm(
+            'L', 'U', mt_basis_size, ctx_.num_fv_states(), &la::constant<std::complex<T>>::one(),
             zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
-            psi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+            psi__.ld(), &la::constant<std::complex<T>>::zero(),
             &bpsi__[0].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
@@ -202,10 +202,10 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
                 }
             }
 
-            sddk::linalg(sddk::linalg_t::blas).gemm(
-               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &sddk::linalg_const<std::complex<T>>::one(),
+            la::wrap(la::lib_t::blas).gemm(
+               'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &la::constant<std::complex<T>>::one(),
                zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
-               psi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+               psi__.ld(), &la::constant<std::complex<T>>::zero(),
                &bpsi__[2].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());
         }
     }

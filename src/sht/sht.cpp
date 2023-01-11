@@ -245,8 +245,8 @@ void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmma
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &sddk::linalg_const<double>::one(),
-        &rlm_backward_(0, 0), lmmax_, flm, ld, &sddk::linalg_const<double>::zero(), ftp, num_points_);
+    la::wrap(la::lib_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &la::constant<double>::one(),
+        &rlm_backward_(0, 0), lmmax_, flm, ld, &la::constant<double>::zero(), ftp, num_points_);
 }
 
 template<>
@@ -255,9 +255,9 @@ void SHT::backward_transform<std::complex<double>>(int ld, std::complex<double> 
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
-        &sddk::linalg_const<std::complex<double>>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
-        &sddk::linalg_const<std::complex<double>>::zero(), ftp, num_points_);
+    la::wrap(la::lib_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
+        &la::constant<std::complex<double>>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
+        &la::constant<std::complex<double>>::zero(), ftp, num_points_);
 }
 
 template<>
@@ -265,8 +265,8 @@ void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double>::one(),
-        &rlm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double>::zero(), flm, ld);
+    la::wrap(la::lib_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &la::constant<double>::one(),
+        &rlm_forward_(0, 0), num_points_, ftp, num_points_, &la::constant<double>::zero(), flm, ld);
 }
 
 template<>
@@ -275,8 +275,8 @@ void SHT::forward_transform<std::complex<double>>(std::complex<double> const *ft
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<std::complex<double>>::one(),
-        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<std::complex<double>>::zero(), flm, ld);
+    la::wrap(la::lib_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &la::constant<std::complex<double>>::one(),
+        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &la::constant<std::complex<double>>::zero(), flm, ld);
 }
 
 void SHT::check() const

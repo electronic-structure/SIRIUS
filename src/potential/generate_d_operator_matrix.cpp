@@ -86,12 +86,12 @@ void Potential::generate_D_operator_matrix()
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
 
-            auto la = sddk::linalg_t::blas;
+            auto la = la::lib_t::blas;
             auto mem = sddk::memory_t::host;
 
             d_tmp.zero();
             if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                la = sddk::linalg_t::gpublas;
+                la = la::lib_t::gpublas;
                 mem = sddk::memory_t::device;
                 d_tmp.zero(sddk::memory_t::device);
                 veff_a.allocate(get_memory_pool(sddk::memory_t::device));
@@ -145,12 +145,12 @@ void Potential::generate_D_operator_matrix()
                     s << "Gvec_block_" << ib << "_veff_a";
                     utils::print_checksum(s.str(), cs, ctx_.out());
                 }
-                sddk::linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
-                                  &sddk::linalg_const<double>::one(),
+                la::wrap(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
+                                  &la::constant<double>::one(),
                                   ctx_.augmentation_op(iat).q_pw().at(mem, 0, 2 * g_begin),
                                   ctx_.augmentation_op(iat).q_pw().ld(),
                                   veff_a.at(mem), veff_a.ld(),
-                                  &sddk::linalg_const<double>::one(),
+                                  &la::constant<double>::one(),
                                   d_tmp.at(mem), d_tmp.ld(),
                                   stream_id(1));
             } // ib (blocks of G-vectors)

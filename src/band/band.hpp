@@ -44,7 +44,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     Unit_cell& unit_cell_;
 
     /// BLACS grid for distributed linear algebra operations.
-    sddk::BLACS_grid const& blacs_grid_;
+    la::BLACS_grid const& blacs_grid_;
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
@@ -77,8 +77,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T, typename F>
     void set_subspace_mtrx(int N__, int n__, int num_locked__, wf::Wave_functions<T>& phi__,
-                           wf::Wave_functions<T>& op_phi__, sddk::dmatrix<F>& mtrx__,
-                           sddk::dmatrix<F>* mtrx_old__ = nullptr) const
+                           wf::Wave_functions<T>& op_phi__, la::dmatrix<F>& mtrx__,
+                           la::dmatrix<F>* mtrx_old__ = nullptr) const
     {
         PROFILE("sirius::Band::set_subspace_mtrx");
 
@@ -130,7 +130,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     }
                 }
             } else {
-                sddk::linalg(sddk::linalg_t::scalapack)
+                la::wrap(la::lib_t::scalapack)
                     .tranc(n__, N__ - num_locked__, mtrx__, 0, N__ - num_locked__, mtrx__, N__ - num_locked__, 0);
             }
         }
@@ -301,9 +301,9 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 
     auto& gen_solver = ctx.gen_evp_solver();
 
-    sddk::dmatrix<F> hmlt(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
-    sddk::dmatrix<F> ovlp(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
-    sddk::dmatrix<F> evec(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> hmlt(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> ovlp(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
+    la::dmatrix<F> evec(num_phi_tot, num_phi_tot, ctx.blacs_grid(), bs, bs, mp);
 
     std::vector<real_type<F>> eval(num_bands);
 
