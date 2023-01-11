@@ -822,18 +822,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto& comm = kp().comm();
 
-    //if (!apw_only__) {
-    //    if (hphi__ != nullptr) {
-    //        /* zero the local-orbital part */
-    //        hphi__->mt_coeffs(0).zero(mem, N__, n__);
-    //    }
-    //    if (ophi__ != nullptr) {
-    //        /* zero the local-orbital part */
-    //        ophi__->mt_coeffs(0).zero(sddk::memory_t::host, N__, n__);
-    //        ophi__->mt_coeffs(0).zero(mem, N__, n__);
-    //    }
-    //}
-
     /* ophi is computed on the CPU to avoid complicated GPU implementation */
     if (is_device_memory(mem)) {
         phi__.copy_mt_to(sddk::memory_t::host, wf::spin_index(0), b__);
@@ -848,7 +836,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        H0_.local_op().apply_fplapw(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+        H0_.local_op().apply_fplapw(reinterpret_cast<fft::spfft_transform_type<T>&>(kp().spfft_transform()),
                 kp().gkvec_fft_sptr(), b__, phi__, hphi__, ophi__, nullptr, nullptr);
 
         if (pcs) {
@@ -1406,7 +1394,7 @@ Hamiltonian_k<T>::apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fun
     int nfv = H0().ctx().num_fv_states();
 
     auto bxypsi = bpsi__.size() == 2 ? nullptr : &bpsi__[2];
-    H0().local_op().apply_fplapw(reinterpret_cast<spfft_transform_type<T>&>(kp().spfft_transform()),
+    H0().local_op().apply_fplapw(reinterpret_cast<fft::spfft_transform_type<T>&>(kp().spfft_transform()),
             this->kp().gkvec_fft_sptr(), wf::band_range(0, nfv), psi__, nullptr, nullptr, &bpsi__[0], bxypsi);
     H0().apply_bmt(psi__, bpsi__);
 

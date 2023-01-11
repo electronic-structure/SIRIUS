@@ -5,6 +5,7 @@
 using namespace sirius;
 using namespace sddk;
 using namespace la;
+using namespace fft;
 
 void test1()
 {
@@ -63,16 +64,16 @@ Gvec gvec(M, Gmax, mpi::Communicator::world(), false);
 Gvec_fft gvp(gvec, mpi::Communicator::world(),
         mpi::Communicator::self());
 /* dimensions of the FFT box */
-FFT3D_grid dims({40, 40, 40});
+fft::Grid dims({40, 40, 40});
 
 /* this is how our code splits the z-dimension
  * of the FFT buffer */
-auto spl_z = split_fft_z(dims[2],
+auto spl_z = split_z_dimension(dims[2],
         mpi::Communicator::world());
 
 /* create SpFFT grid object */
 spfft_grid_type<double> spfft_grid(dims[0], dims[1],
-        dims[2], gvp.zcol_count_fft(), spl_z.local_size(),
+        dims[2], gvp.zcol_count(), spl_z.local_size(),
         SPFFT_PU_HOST, -1, mpi::Communicator::world().native(),
         SPFFT_EXCH_DEFAULT);
 
@@ -82,12 +83,12 @@ spfft_transform_type<double> spfft(
         spfft_grid.create_transform(SPFFT_PU_HOST,
             SPFFT_TRANS_C2C,
             dims[0], dims[1], dims[2], spl_z.local_size(),
-            gvp.gvec_count_fft(),
+            gvp.count(),
             SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
 /* create data buffer with local number of G-vectors
    and fill with random numbers */
-mdarray<std::complex<double>, 1> f(gvp.gvec_count_fft());
+mdarray<std::complex<double>, 1> f(gvp.count());
 f = [](int64_t){
   return utils::random<std::complex<double>>();
 };

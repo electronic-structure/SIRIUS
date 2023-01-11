@@ -23,12 +23,11 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#include "SDDK/fft.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/fft.hpp"
+#include "fft/gvec.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/type_definition.hpp"
-#include "SDDK/fft.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -49,10 +48,10 @@ class Smooth_periodic_function
 {
   protected:
     /// FFT driver.
-    spfft_transform_type<T>* spfft_{nullptr};
+    fft::spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
+    std::shared_ptr<fft::Gvec_fft> gvecp_{nullptr};
 
     /// Function on the regular real-space grid.
     sddk::mdarray<T, 1> f_rg_;
@@ -79,7 +78,7 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr)
+    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr) // TODO: get rid of mem.pool
         : spfft_(&spfft__)
         , gvecp_(gvecp__)
     {
@@ -101,10 +100,10 @@ class Smooth_periodic_function
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
             if (mp__) {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), *mp__,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), *mp__,
                                                              "Smooth_periodic_function.f_pw_fft_");
             } else {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), sddk::memory_t::host,
                                                              "Smooth_periodic_function.f_pw_fft_");
             }
             f_pw_fft_.zero();
@@ -178,19 +177,19 @@ class Smooth_periodic_function
         return z;
     }
 
-    spfft_transform_type<T>& spfft()
+    auto& spfft()
     {
         assert(spfft_ != nullptr);
         return *spfft_;
     }
 
-    spfft_transform_type<T> const& spfft() const
+    auto const& spfft() const
     {
         assert(spfft_ != nullptr);
         return *spfft_;
     }
 
-    sddk::Gvec const& gvec() const
+    auto& gvec() const
     {
         assert(gvecp_ != nullptr);
         return gvecp_->gvec();
@@ -220,16 +219,16 @@ class Smooth_periodic_function
                     gather_f_pw_fft();
                 }
                 spfft_->backward(reinterpret_cast<precision_type const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
-                spfft_output(*spfft_, frg_ptr);
+                fft::spfft_output(*spfft_, frg_ptr);
                 break;
             }
             case -1: {
-                spfft_input(*spfft_, frg_ptr);
+                fft::spfft_input(*spfft_, frg_ptr);
                 spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<precision_type*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
-                    int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
-                    int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
+                    int count  = gvecp_->gvec_slab().counts[gvecp_->comm_ortho_fft().rank()];
+                    int offset = gvecp_->gvec_slab().offsets[gvecp_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
                                 count * sizeof(std::complex<T>));
                 }
@@ -314,10 +313,10 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 {
   private:
     /// FFT driver.
-    spfft_transform_type<T>* spfft_{nullptr};
+    fft::spfft_transform_type<T>* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    std::shared_ptr<sddk::Gvec_fft> gvecp_{nullptr};
+    std::shared_ptr<fft::Gvec_fft> gvecp_{nullptr};
 
     Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
@@ -328,7 +327,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(spfft_transform_type<T>& spfft__, std::shared_ptr<sddk::Gvec_fft> gvecp__)
+    Smooth_periodic_vector_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__)
         : spfft_(&spfft__)
         , gvecp_(gvecp__)
     {
@@ -444,7 +443,7 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
         result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc) * theta__(irloc);
     }
 
-    result_rg *= (f__.gvec().omega() / spfft_grid_size(f__.spfft()));
+    result_rg *= (f__.gvec().omega() / fft::spfft_grid_size(f__.spfft()));
 
     return result_rg;
 }

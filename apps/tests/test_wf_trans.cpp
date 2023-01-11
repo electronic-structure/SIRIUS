@@ -9,7 +9,7 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     /* create G-vectors */
-    auto gvec = sddk::gkvec_factory(cutoff__, mpi::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
     if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);

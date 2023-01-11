@@ -15,7 +15,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     }
 
     /* create G-vectors */
-    auto gvec = sddk::gkvec_factory(cutoff__, mpi::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
     if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);

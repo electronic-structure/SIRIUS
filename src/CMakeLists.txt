@@ -57,7 +57,6 @@ set(_SOURSES
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
   "mpi/communicator.cpp"
-  "SDDK/gvec.cpp"
   "SDDK/memory.cpp"
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
@@ -72,6 +71,7 @@ set(_SOURSES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
+  "fft/gvec.cpp"
   )
 
 

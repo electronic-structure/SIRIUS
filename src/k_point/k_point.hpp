@@ -28,7 +28,7 @@
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
-#include "SDDK/fft.hpp"
+#include "fft/fft.hpp"
 
 namespace sirius {
 
@@ -59,16 +59,16 @@ class K_point
     mpi::Communicator const& comm_;
 
     /// List of G-vectors with |G+k| < cutoff.
-    std::shared_ptr<sddk::Gvec> gkvec_;
+    std::shared_ptr<fft::Gvec> gkvec_;
 
-    std::shared_ptr<sddk::Gvec> gkvec_row_;
+    std::shared_ptr<fft::Gvec> gkvec_row_;
 
-    std::shared_ptr<sddk::Gvec> gkvec_col_;
+    std::shared_ptr<fft::Gvec> gkvec_col_;
 
     /// G-vector distribution for the FFT transformation.
-    std::shared_ptr<sddk::Gvec_fft> gkvec_partition_;
+    std::shared_ptr<fft::Gvec_fft> gkvec_partition_;
 
-    std::unique_ptr<spfft_transform_type<T>> spfft_transform_;
+    std::unique_ptr<fft::spfft_transform_type<T>> spfft_transform_;
 
     /// First-variational eigen values
     sddk::mdarray<double, 1> fv_eigen_values_;
@@ -244,12 +244,12 @@ class K_point
         , comm_col_(ctx_.blacs_grid().comm_col())
     {
         this->init0();
-        gkvec_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
+        gkvec_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
                                         ctx_.gamma_point());
     }
 
     /// Constructor
-    K_point(Simulation_context& ctx__, std::shared_ptr<sddk::Gvec> gkvec__, double weight__)
+    K_point(Simulation_context& ctx__, std::shared_ptr<fft::Gvec> gkvec__, double weight__)
         : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
         , vk_(gkvec__->vk())

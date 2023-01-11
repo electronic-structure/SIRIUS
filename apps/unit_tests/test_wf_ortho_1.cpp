@@ -16,7 +16,7 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     /* create G-vectors */
-    auto gvec = std::make_shared<sddk::Gvec>(M, cutoff__, mpi::Communicator::world(), false);
+    auto gvec = std::make_shared<fft::Gvec>(M, cutoff__, mpi::Communicator::world(), false);
 
     int num_atoms = 100;
     std::vector<int> nmt;

@@ -26,7 +26,7 @@
 #define __SYMMETRIZE_HPP__
 
 #include "crystal_symmetry.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 #include "SDDK/omp.hpp"
 #include "typedefs.hpp"
 #include "sht/sht.hpp"
@@ -94,7 +94,7 @@ namespace sirius {
     \f]
  */
 inline void
-symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__,
+symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
            sddk::mdarray<std::complex<double>, 3> const& sym_phase_factors__, std::complex<double>* f_pw__, std::complex<double>* x_pw__,
            std::complex<double>* y_pw__, std::complex<double>* z_pw__)
 {
