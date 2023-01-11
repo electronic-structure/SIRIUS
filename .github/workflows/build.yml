@@ -36,6 +36,26 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e gcc-build-env build-env $SPEC_GCC -- ctest --output-on-failure -L cpu_serial
 
+  build_openmpi:
+    runs-on: ubuntu-latest
+    container: electronicstructure/sirius_openmpi
+    env:
+      SPEC_GCC: "sirius@develop %gcc@12: +python +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show the spec
+        run: spack --color always -e gcc-build-env spec -I $SPEC_GCC
+      - name: Configure SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          mkdir build
+          cd build
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build SIRIUS
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          spack --color always -e gcc-build-env build-env $SPEC_GCC -- make
+
   build_elpa:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius

@@ -28,7 +28,7 @@
 
 namespace sirius {
 
-Unit_cell::Unit_cell(Simulation_parameters const& parameters__, sddk::Communicator const& comm__)
+Unit_cell::Unit_cell(Simulation_parameters const& parameters__, mpi::Communicator const& comm__)
     : parameters_(parameters__)
     , comm_(comm__)
 {
@@ -542,7 +542,7 @@ Unit_cell::generate_radial_functions()
     }
 
     if (parameters_.verbosity() >= 1) {
-        sddk::pstdout pout(comm_);
+        mpi::pstdout pout(comm_);
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
             int ic = spl_num_atom_symmetry_classes(icloc);
@@ -585,7 +585,7 @@ Unit_cell::generate_radial_integrals()
     try {
         for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
             int ia = spl_num_atoms_[ialoc];
-            atom(ia).generate_radial_integrals(parameters_.processing_unit(), sddk::Communicator::self());
+            atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
         }
 
         for (int ia = 0; ia < num_atoms(); ia++) {

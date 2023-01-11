@@ -26,7 +26,7 @@
 #define __SYMMETRIZE_HPP__
 
 #include "crystal_symmetry.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 #include "SDDK/omp.hpp"
 #include "typedefs.hpp"
 #include "sht/sht.hpp"
@@ -94,7 +94,7 @@ namespace sirius {
     \f]
  */
 inline void
-symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__,
+symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
            sddk::mdarray<std::complex<double>, 3> const& sym_phase_factors__, std::complex<double>* f_pw__, std::complex<double>* x_pw__,
            std::complex<double>* y_pw__, std::complex<double>* z_pw__)
 {
@@ -333,7 +333,7 @@ symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__
 }
 
 inline void
-symmetrize_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& frlm__)
+symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -375,7 +375,7 @@ symmetrize_function(Crystal_symmetry const& sym__, sddk::Communicator const& com
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vz_rlm__)
+symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vzlm");
 
@@ -421,7 +421,7 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator con
 }
 
 inline void
-symmetrize_vector_function(Crystal_symmetry const& sym__, sddk::Communicator const& comm__, sddk::mdarray<double, 3>& vx_rlm__,
+symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, sddk::mdarray<double, 3>& vx_rlm__,
                            sddk::mdarray<double, 3>& vy_rlm__, sddk::mdarray<double, 3>& vz_rlm__)
 {
     PROFILE("sirius::symmetrize_function|vlm");

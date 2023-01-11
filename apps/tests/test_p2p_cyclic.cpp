@@ -10,19 +10,19 @@ int test1(int size)
     sddk::mdarray<char, 1> buf1(size);
     buf.zero();
 
-    for (int r = 0; r < Communicator::world().size(); r++) {
-        int rank = Communicator::world().rank();
-        int rank1 = (rank + 1) % Communicator::world().size();
-        auto req = Communicator::world().isend(buf.at(memory_t::host), size, rank1, Communicator::get_tag(rank, rank1));
+    for (int r = 0; r < mpi::Communicator::world().size(); r++) {
+        int rank = mpi::Communicator::world().rank();
+        int rank1 = (rank + 1) % mpi::Communicator::world().size();
+        auto req = mpi::Communicator::world().isend(buf.at(memory_t::host), size, rank1, mpi::Communicator::get_tag(rank, rank1));
         int rank2 = rank - 1;
         if (rank2 < 0) {
-            rank2 = Communicator::world().size() - 1;
+            rank2 = mpi::Communicator::world().size() - 1;
         }
-        Communicator::world().recv(buf1.at(memory_t::host), size, rank2, Communicator::get_tag(rank, rank2));
+        mpi::Communicator::world().recv(buf1.at(memory_t::host), size, rank2, mpi::Communicator::get_tag(rank, rank2));
         req.wait();
     }
     t += utils::wtime();
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("time : %f sec.\n", t);
     }
     return 0;

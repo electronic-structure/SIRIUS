@@ -363,16 +363,16 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    gkvec_partition_ = std::make_shared<sddk::Gvec_fft>(
+    gkvec_partition_ = std::make_shared<fft::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
     const auto spfft_pu = ctx_.processing_unit() == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto const& gv      = gkvec_partition_->gvec_array();
     /* create transformation */
-    spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
+    spfft_transform_.reset(new fft::spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
-        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
         gv.at(sddk::memory_t::host))));
 
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
@@ -401,10 +401,10 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
             }
         }
     }
-    gkvec_row_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
+    gkvec_row_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
             &gkvec_row(0, 0), comm_row(), ctx_.gamma_point());
 
-    gkvec_col_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
+    gkvec_col_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
             &gkvec_col(0, 0), comm_col(), ctx_.gamma_point());
 }
 

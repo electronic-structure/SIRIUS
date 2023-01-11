@@ -27,7 +27,7 @@
 namespace sirius {
 
 double
-ewald_energy(const Simulation_context& ctx, const sddk::Gvec& gvec, const Unit_cell& unit_cell)
+ewald_energy(const Simulation_context& ctx, const fft::Gvec& gvec, const Unit_cell& unit_cell)
 {
     double alpha{ctx.ewald_lambda()};
     double ewald_g{0};

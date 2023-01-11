@@ -215,10 +215,10 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test_sym(args);
-    int rank = sddk::Communicator::world().rank();
+    int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();
-        std::cout<< timing_result.print();
+        std::cout << timing_result.print();
     }
 }

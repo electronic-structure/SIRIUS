@@ -121,7 +121,7 @@ def einsum(expr, *operands):
 
 class CoefficientArray:
     """CoefficientArray class."""
-    def __init__(self, dtype=np.complex, ctype=np.matrix):
+    def __init__(self, dtype=np.complex128, ctype=np.matrix):
         """
         dtype -- number type
         ctype -- container type (default np.matrix)
@@ -181,9 +181,9 @@ class CoefficientArray:
         """
         """
         if is_complex(self) or is_complex(other):
-            dtype = np.complex
+            dtype = np.complex128
         else:
-            dtype = np.float
+            dtype = np.float64
 
         out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
@@ -199,9 +199,9 @@ class CoefficientArray:
 
     def __truediv__(self, other):
         if is_complex(self) or is_complex(other):
-            dtype = np.complex
+            dtype = np.complex128
         else:
-            dtype = np.float
+            dtype = np.float64
 
         out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
@@ -217,9 +217,9 @@ class CoefficientArray:
 
     def __rtruediv__(self, other):
         if is_complex(self) or is_complex(other):
-            dtype = np.complex
+            dtype = np.complex128
         else:
-            dtype = np.float
+            dtype = np.float64
 
         out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
@@ -237,9 +237,9 @@ class CoefficientArray:
         """
         """
         if is_complex(self) or is_complex(other):
-            dtype = np.complex
+            dtype = np.complex128
         else:
-            dtype = np.float
+            dtype = np.float64
         out = type(self)(dtype=dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
@@ -253,9 +253,9 @@ class CoefficientArray:
 
     def __add__(self, other):
         if is_complex(self) or is_complex(other):
-            dtype = np.complex
+            dtype = np.complex128
         else:
-            dtype = np.float
+            dtype = np.float64
 
         out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
@@ -273,7 +273,7 @@ class CoefficientArray:
         return out
 
     def abs(self):
-        out = type(self)(dtype=np.float, ctype=self.ctype)
+        out = type(self)(dtype=np.float64, ctype=self.ctype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
         return out
@@ -306,7 +306,7 @@ class CoefficientArray:
         return w, V
 
     def eig(self, **args):
-        w = type(self)(dtype=np.complex, ctype=np.array)
+        w = type(self)(dtype=np.complex128, ctype=np.array)
         V = type(self)(dtype=self.dtype, ctype=np.matrix)
         for key in self._data.keys():
             w[key], V[key] = np.linalg.eig(self[key], **args)
@@ -389,14 +389,14 @@ class CoefficientArray:
 
     @property
     def real(self):
-        out = type(self)(dtype=np.double)
+        out = type(self)(dtype=np.float64)
         for key, val in self._data.items():
             out[key] = np.real(val)
         return out
 
     @property
     def imag(self):
-        out = type(self)(dtype=np.double)
+        out = type(self)(dtype=np.float64)
         for key, val in self._data.items():
             out[key] = np.imag(val)
         return out
@@ -485,7 +485,7 @@ class CoefficientArray:
 
 
 class PwCoeffs(CoefficientArray):
-    def __init__(self, kpointset=None, dtype=np.complex, ctype=np.matrix):
+    def __init__(self, kpointset=None, dtype=np.complex128, ctype=np.matrix):
         super().__init__(dtype=dtype, ctype=ctype)
 
         # load plane-wave coefficients from kpointset

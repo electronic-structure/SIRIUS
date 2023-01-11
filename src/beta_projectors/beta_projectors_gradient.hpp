@@ -53,7 +53,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors_gradient(Simulation_context& ctx__, sddk::Gvec const& gkvec__, Beta_projectors<T>& beta__)
+    Beta_projectors_gradient(Simulation_context& ctx__, fft::Gvec const& gkvec__, Beta_projectors<T>& beta__)
         : Beta_projectors_base<T>(ctx__, gkvec__, 3)
     {
         generate_pw_coefs_t(beta__);

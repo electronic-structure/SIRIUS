@@ -31,7 +31,7 @@
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/linalg.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/rte.hpp"
 #include "type_definition.hpp"
@@ -523,14 +523,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
 {
   protected:
     /// Communicator that is used to split atoms between MPI ranks.
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
     /// Total number of atoms.
     int num_atoms_{0};
     /// Distribution of atoms between MPI ranks.
     sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
     /// Local size of muffin-tin coefficients for each rank.
     /** Each rank stores local fraction of atoms. Each atom has a set of MT coefficients. */
-    sddk::block_data_descriptor mt_coeffs_distr_;
+    mpi::block_data_descriptor mt_coeffs_distr_;
     /// Local offset in the block of MT coefficients for current rank.
     /** The size of the vector is equal to the local number of atoms for the current rank. */
     std::vector<int> offset_in_local_mt_coeffs_;
@@ -539,7 +539,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Calculate the local number of muffin-tin coefficients.
     /** Compute the local fraction of atoms and then sum the muffin-tin coefficients for this fraction. */
-    static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, sddk::Communicator const& comm__)
+    static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, mpi::Communicator const& comm__)
     {
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
         sddk::splindex<sddk::splindex_t::block> spl_atoms(num_atoms, comm__.size(), comm__.rank());
@@ -549,7 +549,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
     /// Construct without muffin-tin part.
-    Wave_functions_mt(sddk::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
+    Wave_functions_mt(mpi::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
             sddk::memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
         , comm_{comm__}
@@ -564,7 +564,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
     /// Constructor.
-    Wave_functions_mt(sddk::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
+    Wave_functions_mt(mpi::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__, int num_pw__ = 0)
         : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_md__, num_wf__,
                                  default_mem__)
@@ -573,7 +573,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
         , spl_num_atoms_{sddk::splindex<sddk::splindex_t::block>(num_atoms_, comm_.size(), comm_.rank())}
         , num_mt_coeffs_{num_mt_coeffs__}
     {
-        mt_coeffs_distr_ = sddk::block_data_descriptor(comm_.size());
+        mt_coeffs_distr_ = mpi::block_data_descriptor(comm_.size());
 
         for (int ia = 0; ia < num_atoms_; ia++) {
             int rank = spl_num_atoms_.local_rank(ia);
@@ -714,17 +714,17 @@ class Wave_functions : public Wave_functions_mt<T>
 {
   private:
     /// Pointer to G+k- vectors object.
-    std::shared_ptr<sddk::Gvec> gkvec_;
+    std::shared_ptr<fft::Gvec> gkvec_;
   public:
     /// Constructor for pure plane-wave functions.
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
+    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
     }
 
     /// Constructor for wave-functions with plane-wave and muffin-tin parts (LAPW case).
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
+    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_mt_coeffs__, num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
@@ -857,7 +857,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
 {
   private:
     /// Pointer to FFT-friendly G+k vector deistribution.
-    std::shared_ptr<sddk::Gvec_fft> gkvec_fft_;
+    std::shared_ptr<fft::Gvec_fft> gkvec_fft_;
     /// Split number of wave-functions between column communicator.
     sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
     /// Pointer to the original wave-functions.
@@ -882,7 +882,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         std::vector<int> rowsplit(comm_row.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < comm_row.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
+            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->count(i);
         }
 
         std::vector<int> colsplit(comm_col.size() + 1);
@@ -917,7 +917,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_out = this->grid_layout(b__.size());
 
             costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
             /*
              * old implementation (to be removed when performance of COSTA is understood)
@@ -925,16 +925,16 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
 
             /* send and receive dimensions */
-            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];
                 rd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
@@ -984,16 +984,16 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_out = wf_->grid_layout_pw(sp, b__);
 
             costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().mpi_comm());
+                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
 
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
@@ -1011,7 +1011,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
                 }
             }
             /* send and receive dimensions */
-            sddk::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
+            mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(comm_col.rank()) * row_distr.counts[j];
                 rd.counts[j] = spl_num_wf_.local_size(j) * row_distr.counts[comm_col.rank()];
@@ -1037,7 +1037,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     }
 
     /// Constructor.
-    Wave_functions_fft(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
+    Wave_functions_fft(std::shared_ptr<fft::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
             band_range br__, unsigned int shuffle_flag___)
         : gkvec_fft_{gkvec_fft__}
         , wf_{&wf__}
@@ -1067,9 +1067,9 @@ class Wave_functions_fft : public Wave_functions_base<T>
             this->num_pw_ = wf_->num_pw_;
         } else {
             /* do wave-functions swap */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get(),
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->count(), this->num_wf_.get(),
                     sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
-            this->num_pw_ = gkvec_fft__->gvec_count_fft();
+            this->num_pw_ = gkvec_fft__->count();
 
             if (shuffle_flag_ & shuffle_to::fft_layout) {
                 if (wf__.data_[sp.get()].on_device()) {
@@ -1582,7 +1582,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     }
 
     auto spla_mat_dist = wf_i__.comm().size() > result__.comm().size()
-                       ? spla::MatrixDistribution::create_mirror(wf_i__.comm().mpi_comm())
+                       ? spla::MatrixDistribution::create_mirror(wf_i__.comm().native())
                        : result__.spla_distribution();
 
     auto ld = wf_i__.ld();

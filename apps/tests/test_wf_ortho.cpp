@@ -10,9 +10,9 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     /* create G-vectors */
-    auto gvec = gkvec_factory(cutoff__, sddk::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);
         printf("num_mag_dims             : %i\n", num_mag_dims__);
         printf("total number of G-vectors: %i\n", gvec->num_gvec());
@@ -65,7 +65,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
             ovlp, 0, 0);
 
     auto max_diff = check_identity(ovlp, 2 * num_bands__);
-    if (Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("maximum difference: %18.12e\n", max_diff);
         if (max_diff > 1e-12) {
             printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
@@ -81,17 +81,17 @@ void call_test(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 {
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
-        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi::Communicator::self(), 1, 1));
     } else {
-        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
     for (int i = 0; i < repeat__; i++) {
-        if (Communicator::world().rank() == 0) {
+        if (mpi::Communicator::world().rank() == 0) {
             std::cout << "calling test_wf_ortho<T, std::complex<T>>()" << std::endl;
         }
         test_wf_ortho<T, std::complex<T>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
         if (!std::is_same<T, double>::value) {
-            if (Communicator::world().rank() == 0) {
+            if (mpi::Communicator::world().rank() == 0) {
                 std::cout << "calling test_wf_ortho<T, std::complex<double>>()" << std::endl;
             }
             test_wf_ortho<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__,mem__);
@@ -134,7 +134,7 @@ int main(int argn, char** argv)
         call_test<double>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
     }
 
-    int my_rank = Communicator::world().rank();
+    int my_rank = mpi::Communicator::world().rank();
 
     sirius::finalize(1);
 

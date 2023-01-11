@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2022 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,7 +19,7 @@
 
 /** \file communicator.hpp
  *
- *  \brief Contains declaration and implementation of sddk::Communicator class.
+ *  \brief Contains declaration and implementation of mpi::Communicator class.
  */
 
 #ifndef __COMMUNICATOR_HPP__
@@ -37,7 +37,14 @@
 #include <cstdio>
 #include <map>
 
-namespace sddk {
+/// MPI related functions and classes.
+namespace mpi {
+
+/// Get number of ranks per node.
+int num_ranks_per_node();
+
+/// Get GPU device id associated with the current rank.
+int get_device_id(int num_devices__);
 
 #define CALL_MPI(func__, args__)                                                     \
 {                                                                                    \
@@ -47,162 +54,114 @@ namespace sddk {
     }                                                                                \
 }
 
-enum class mpi_op_t
+/// Tyoe of MPI reduction.
+enum class op_t
 {
     sum,
     max,
     min
 };
 
-template <mpi_op_t op>
-struct mpi_op_wrapper;
+template <op_t op>
+struct op_wrapper;
 
 template <>
-struct mpi_op_wrapper<mpi_op_t::sum>
+struct op_wrapper<op_t::sum>
 {
-    static MPI_Op kind()
-    {
-        return MPI_SUM;
-    }
+    operator MPI_Op() const noexcept {return MPI_SUM;}
 };
 
 template <>
-struct mpi_op_wrapper<mpi_op_t::max>
+struct op_wrapper<op_t::max>
 {
-    static MPI_Op kind()
-    {
-        return MPI_MAX;
-    }
+    operator MPI_Op() const noexcept {return MPI_MAX;}
 };
 
 template <>
-struct mpi_op_wrapper<mpi_op_t::min>
+struct op_wrapper<op_t::min>
 {
-    static MPI_Op kind()
-    {
-        return MPI_MIN;
-    }
+    operator MPI_Op() const noexcept {return MPI_MIN;}
 };
 
 template <typename T>
-struct mpi_type_wrapper;
+struct type_wrapper;
 
 template <>
-struct mpi_type_wrapper<float>
+struct type_wrapper<float>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_FLOAT;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_FLOAT;}
 };
 
 template <>
-struct mpi_type_wrapper<std::complex<float>>
+struct type_wrapper<std::complex<float>>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_C_FLOAT_COMPLEX;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_C_FLOAT_COMPLEX;}
 };
 
 template <>
-struct mpi_type_wrapper<double>
+struct type_wrapper<double>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_DOUBLE;
-    }
-};
-
-
-template <>
-struct mpi_type_wrapper<long double>
-{
-    static MPI_Datatype kind()
-    {
-        return MPI_LONG_DOUBLE;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_DOUBLE;}
 };
 
 template <>
-struct mpi_type_wrapper<std::complex<double>>
+struct type_wrapper<std::complex<double>>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_C_DOUBLE_COMPLEX;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_C_DOUBLE_COMPLEX;}
 };
 
 template <>
-struct mpi_type_wrapper<int>
+struct type_wrapper<long double>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_INT;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_LONG_DOUBLE;}
 };
 
 template <>
-struct mpi_type_wrapper<int16_t>
+struct type_wrapper<int>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_SHORT;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_INT;}
 };
 
 template <>
-struct mpi_type_wrapper<char>
+struct type_wrapper<int16_t>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_CHAR;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_SHORT;}
 };
 
 template <>
-struct mpi_type_wrapper<unsigned char>
+struct type_wrapper<char>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_UNSIGNED_CHAR;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_CHAR;}
 };
 
 template <>
-struct mpi_type_wrapper<unsigned long long>
+struct type_wrapper<unsigned char>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_UNSIGNED_LONG_LONG;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_UNSIGNED_CHAR;}
 };
 
 template <>
-struct mpi_type_wrapper<unsigned long>
+struct type_wrapper<unsigned long long>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_UNSIGNED_LONG;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_UNSIGNED_LONG_LONG;}
 };
 
 template <>
-struct mpi_type_wrapper<bool>
+struct type_wrapper<unsigned long>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_CXX_BOOL;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_UNSIGNED_LONG;}
 };
 
 template <>
-struct mpi_type_wrapper<uint32_t>
+struct type_wrapper<bool>
 {
-    static MPI_Datatype kind()
-    {
-        return MPI_UINT32_T;
-    }
+    operator MPI_Datatype() const noexcept {return MPI_CXX_BOOL;}
+};
+
+template <>
+struct type_wrapper<uint32_t>
+{
+    operator MPI_Datatype() const noexcept {return MPI_UINT32_T;}
 };
 
 struct block_data_descriptor
@@ -355,34 +314,34 @@ class Communicator
 
     void abort(int errcode__) const
     {
-        CALL_MPI(MPI_Abort, (mpi_comm(), errcode__));
+        CALL_MPI(MPI_Abort, (this->native(), errcode__));
     }
 
     inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
     {
         auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Cart_create, (this->mpi_comm(), ndims__, dims__, periods__, 0, comm_sptr.get()));
+        CALL_MPI(MPI_Cart_create, (this->native(), ndims__, dims__, periods__, 0, comm_sptr.get()));
         return Communicator(comm_sptr);
     }
 
     inline Communicator cart_sub(int const* remain_dims__) const
     {
         auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Cart_sub, (this->mpi_comm(), remain_dims__, comm_sptr.get()));
+        CALL_MPI(MPI_Cart_sub, (this->native(), remain_dims__, comm_sptr.get()));
         return Communicator(comm_sptr);
     }
 
     inline Communicator split(int color__) const
     {
         auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Comm_split, (this->mpi_comm(), color__, rank(), comm_sptr.get()));
+        CALL_MPI(MPI_Comm_split, (this->native(), color__, rank(), comm_sptr.get()));
         return Communicator(comm_sptr);
     }
 
     inline Communicator duplicate() const
     {
         auto comm_sptr = std::shared_ptr<MPI_Comm>(new MPI_Comm, mpi_comm_deleter());
-        CALL_MPI(MPI_Comm_dup, (this->mpi_comm(), comm_sptr.get()));
+        CALL_MPI(MPI_Comm_dup, (this->native(), comm_sptr.get()));
         return Communicator(comm_sptr);
     }
 
@@ -398,8 +357,8 @@ class Communicator
         return comm;
     }
 
-    /// Return raw MPI communicator handler.
-    inline MPI_Comm mpi_comm() const // TODO: rename to mpi_comm_native or native()
+    /// Return the native raw MPI communicator handler.
+    inline MPI_Comm native() const
     {
         return mpi_comm_raw_;
     }
@@ -435,12 +394,12 @@ class Communicator
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.
     inline int cart_rank(std::vector<int> const& coords__) const
     {
-        if (mpi_comm() == MPI_COMM_SELF) {
+        if (this->native() == MPI_COMM_SELF) {
             return 0;
         }
 
         int r;
-        CALL_MPI(MPI_Cart_rank, (mpi_comm(), &coords__[0], &r));
+        CALL_MPI(MPI_Cart_rank, (this->native(), &coords__[0], &r));
         return r;
     }
 
@@ -454,71 +413,71 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Barrier");
 #endif
-        assert(mpi_comm() != MPI_COMM_NULL);
-        CALL_MPI(MPI_Barrier, (mpi_comm()));
+        assert(this->native() != MPI_COMM_NULL);
+        CALL_MPI(MPI_Barrier, (this->native()));
     }
 
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     inline void reduce(T* buffer__, int count__, int root__) const
     {
         if (root__ == rank()) {
-            CALL_MPI(MPI_Reduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
-                                  mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm()));
+            CALL_MPI(MPI_Reduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>(),
+                                  op_wrapper<mpi_op__>(), root__, this->native()));
         } else {
-            CALL_MPI(MPI_Reduce, (buffer__, NULL, count__, mpi_type_wrapper<T>::kind(),
-                                  mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm()));
+            CALL_MPI(MPI_Reduce, (buffer__, NULL, count__, type_wrapper<T>(),
+                                  op_wrapper<mpi_op__>(), root__, this->native()));
         }
     }
 
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     inline void reduce(T* buffer__, int count__, int root__, MPI_Request* req__) const
     {
         if (root__ == rank()) {
-            CALL_MPI(MPI_Ireduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
-                                   mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm(), req__));
+            CALL_MPI(MPI_Ireduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>(),
+                                   op_wrapper<mpi_op__>(), root__, this->native(), req__));
         } else {
-            CALL_MPI(MPI_Ireduce, (buffer__, NULL, count__, mpi_type_wrapper<T>::kind(),
-                                   mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm(), req__));
+            CALL_MPI(MPI_Ireduce, (buffer__, NULL, count__, type_wrapper<T>(),
+                                   op_wrapper<mpi_op__>(), root__, this->native(), req__));
         }
     }
 
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
     {
-        CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(),
-                              mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm()));
+        CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, type_wrapper<T>(),
+                              op_wrapper<mpi_op__>(), root__, this->native()));
     }
 
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__, MPI_Request* req__) const
     {
-        CALL_MPI(MPI_Ireduce, (sendbuf__, recvbuf__, count__, mpi_type_wrapper<T>::kind(),
-                               mpi_op_wrapper<mpi_op__>::kind(), root__, mpi_comm(), req__));
+        CALL_MPI(MPI_Ireduce, (sendbuf__, recvbuf__, count__, type_wrapper<T>(),
+                               op_wrapper<mpi_op__>(), root__, this->native(), req__));
     }
 
     /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     inline void allreduce(T* buffer__, int count__) const
     {
-        CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
-                                 mpi_op_wrapper<mpi_op__>::kind(), mpi_comm()));
+        CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>(),
+                                 op_wrapper<mpi_op__>(), this->native()));
     }
 
     /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
-    template <typename T, mpi_op_t op__ = mpi_op_t::sum>
+    template <typename T, op_t op__ = op_t::sum>
     inline void allreduce(std::vector<T>& buffer__) const
     {
         allreduce<T, op__>(buffer__.data(), static_cast<int>(buffer__.size()));
     }
 
-    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
+    template <typename T, op_t mpi_op__ = op_t::sum>
     inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Iallreduce");
 #endif
-        CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
-                                  mpi_op_wrapper<mpi_op__>::kind(), mpi_comm(), req__));
+        CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>(),
+                                  op_wrapper<mpi_op__>(), this->native(), req__));
     }
 
     /// Perform buffer broadcast.
@@ -528,7 +487,7 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Bcast");
 #endif
-        CALL_MPI(MPI_Bcast, (buffer__, count__, mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+        CALL_MPI(MPI_Bcast, (buffer__, count__, type_wrapper<T>(), root__, this->native()));
     }
 
     inline void bcast(std::string& str__, int root__) const
@@ -556,7 +515,7 @@ class Communicator
         PROFILE("MPI_Allgatherv");
 #endif
         CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, recvcounts__, displs__,
-                                  mpi_type_wrapper<T>::kind(), mpi_comm()));
+                                  type_wrapper<T>(), this->native()));
     }
 
     /// Out-of-place MPI_Allgatherv.
@@ -567,8 +526,8 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Allgatherv");
 #endif
-        CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
-                                  displs__, mpi_type_wrapper<T>::kind(), mpi_comm()));
+        CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, type_wrapper<T>(), recvbuf__, recvcounts__,
+                                  displs__, type_wrapper<T>(), this->native()));
     }
 
     template <typename T>
@@ -580,7 +539,7 @@ class Communicator
         v[2 * rank() + 1] = displs__;
 
         CALL_MPI(MPI_Allgather,
-                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
+                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, type_wrapper<int>(), this->native()));
 
         std::vector<int> counts(size());
         std::vector<int> displs(size());
@@ -590,8 +549,8 @@ class Communicator
             displs[i] = v[2 * i + 1];
         }
 
-        CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(),
-                                  displs.data(), mpi_type_wrapper<T>::kind(), mpi_comm()));
+        CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, type_wrapper<T>(), recvbuf__, counts.data(),
+                                  displs.data(), type_wrapper<T>(), this->native()));
     }
 
     /// In-place MPI_Allgatherv.
@@ -604,7 +563,7 @@ class Communicator
         v[2 * rank() + 1] = displs__;
 
         CALL_MPI(MPI_Allgather,
-                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
+                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, type_wrapper<int>(), this->native()));
 
         std::vector<int> counts(size());
         std::vector<int> displs(size());
@@ -622,7 +581,7 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Send");
 #endif
-        CALL_MPI(MPI_Send, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm()));
+        CALL_MPI(MPI_Send, (buffer__, count__, type_wrapper<T>(), dest__, tag__, this->native()));
     }
 
     template <typename T>
@@ -632,7 +591,7 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Isend");
 #endif
-        CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm(), &req.handler()));
+        CALL_MPI(MPI_Isend, (buffer__, count__, type_wrapper<T>(), dest__, tag__, this->native(), &req.handler()));
         return req;
     }
 
@@ -643,7 +602,7 @@ class Communicator
         PROFILE("MPI_Recv");
 #endif
         CALL_MPI(MPI_Recv,
-                 (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm(), MPI_STATUS_IGNORE));
+                 (buffer__, count__, type_wrapper<T>(), source__, tag__, this->native(), MPI_STATUS_IGNORE));
     }
 
     template <typename T>
@@ -653,7 +612,7 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Irecv");
 #endif
-        CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm(), &req.handler()));
+        CALL_MPI(MPI_Irecv, (buffer__, count__, type_wrapper<T>(), source__, tag__, this->native(), &req.handler()));
         return req;
     }
 
@@ -665,8 +624,8 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Gatherv");
 #endif
-        CALL_MPI(MPI_Gatherv, (sendbuf__, sendcount, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__, displs__,
-                               mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+        CALL_MPI(MPI_Gatherv, (sendbuf__, sendcount, type_wrapper<T>(), recvbuf__, recvcounts__, displs__,
+                               type_wrapper<T>(), root__, this->native()));
     }
 
     /// Gather data on a given rank.
@@ -682,7 +641,7 @@ class Communicator
         v[2 * rank() + 1] = offset__;
 
         CALL_MPI(MPI_Allgather,
-                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
+                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, type_wrapper<int>(), this->native()));
 
         std::vector<int> counts(size());
         std::vector<int> offsets(size());
@@ -691,8 +650,8 @@ class Communicator
             counts[i]  = v[2 * i];
             offsets[i] = v[2 * i + 1];
         }
-        CALL_MPI(MPI_Gatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(),
-                               offsets.data(), mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+        CALL_MPI(MPI_Gatherv, (sendbuf__, count__, type_wrapper<T>(), recvbuf__, counts.data(),
+                               offsets.data(), type_wrapper<T>(), root__, this->native()));
     }
 
     template <typename T>
@@ -702,8 +661,8 @@ class Communicator
         PROFILE("MPI_Scatterv");
 #endif
         int recvcount = sendcounts__[rank()];
-        CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcount,
-                                mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+        CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, type_wrapper<T>(), recvbuf__, recvcount,
+                                type_wrapper<T>(), root__, this->native()));
     }
 
     template <typename T>
@@ -712,8 +671,8 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Alltoall");
 #endif
-        CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
-                                mpi_type_wrapper<T>::kind(), mpi_comm()));
+        CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, type_wrapper<T>(), recvbuf__, recvcounts__,
+                                type_wrapper<T>(), this->native()));
     }
 
     template <typename T>
@@ -723,66 +682,11 @@ class Communicator
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Alltoallv");
 #endif
-        CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(), recvbuf__,
-                                 recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm()));
+        CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, type_wrapper<T>(), recvbuf__,
+                                 recvcounts__, rdispls__, type_wrapper<T>(), this->native()));
     }
 };
 
-/// Get number of ranks per node.
-int num_ranks_per_node();
-
-int get_device_id(int num_devices__);
-
-/// Parallel standard output.
-/** Proveides an ordered standard output from multiple MPI ranks.
- *  pstdout pout(comm);
- *  pout << "Hello from rank " << comm.rank() << std::end;
- *  // print from root rank (id=0) and flush the internal buffer
- *  std::cout << pout.flush(0);
- */
-class pstdout : public std::stringstream
-{
-  private:
-    Communicator const& comm_;
-
-  public:
-    pstdout(Communicator const& comm__)
-        : comm_(comm__)
-    {
-    }
-
-    std::string flush(int root__)
-    {
-        std::stringstream s;
-
-        std::vector<int> counts(comm_.size());
-        int count = this->str().length();
-        comm_.allgather(&count, counts.data(), 1, comm_.rank());
-
-        int offset{0};
-        for (int i = 0; i < comm_.rank(); i++) {
-            offset += counts[i];
-        }
-
-        int sz = count;
-        /* total size of the output buffer */
-        comm_.allreduce(&sz, 1);
-
-        if (sz != 0) {
-            std::vector<char> outb(sz);
-            comm_.allgather(this->str().c_str(), &outb[0], count, offset);
-            s.write(outb.data(), sz);
-        }
-        /* reset the internal string */
-        this->str("");
-        if (comm_.rank() == root__) {
-            return s.str();
-        } else {
-            return std::string("");
-        }
-    }
-};
-
-} // namespace sddk
+} // namespace mpi
 
 #endif // __COMMUNICATOR_HPP__
