@@ -29,7 +29,7 @@
 #include <string.h>
 #include "linalg/r3.hpp"
 #include "xc_functional_base.hpp"
-#include "SDDK/fft.hpp"
+#include "fft/fft.hpp"
 #if defined(SIRIUS_USE_VDWXC)
 #include <vdwxc.h>
 #if SIRIUS_HAVE_VDWXC_MPI

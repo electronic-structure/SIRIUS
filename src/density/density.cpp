@@ -571,7 +571,7 @@ Density::generate_paw_loc_density()
 /// Compute non-magnetic or up- or dn- contribution of the wave-functions to the charge density.
 template <typename T>
 static void
-add_k_point_contribution_rg_collinear(spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__, int nr__,
+add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__, int nr__,
         bool gamma__, sddk::mdarray<T, 2>& density_rg__)
 {
     /* transform to real space */
@@ -614,7 +614,7 @@ add_k_point_contribution_rg_collinear(spfft_transform_type<T>& fft__, int ispn__
 /// Compute contribution to density and megnetisation from the 2-component spinor wave-functions.
 template <typename T>
 static
-void add_k_point_contribution_rg_noncollinear(spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
+void add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
         T const* inp_wf_dn__, int nr__, sddk::mdarray<std::complex<T>, 1>& psi_r_up__, sddk::mdarray<T, 2>& density_rg__)
 {
     /* location of the real-space wave-functions psi(r) */
@@ -1766,7 +1766,7 @@ Density::compute_atomic_mag_mom() const
         }
 
         for (int j : {0, 1, 2}) {
-            mmom(j, ia) *= (unit_cell_.omega() / spfft_grid_size(ctx_.spfft<double>()));
+            mmom(j, ia) *= (unit_cell_.omega() / fft::spfft_grid_size(ctx_.spfft<double>()));
         }
     }
     mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
