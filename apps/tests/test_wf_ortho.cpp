@@ -2,6 +2,7 @@
 
 using namespace sirius;
 using namespace sddk;
+using namespace la;
 
 template <typename T, typename F>
 void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,

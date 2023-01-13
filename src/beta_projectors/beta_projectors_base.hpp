@@ -119,12 +119,12 @@ class Beta_projectors_base
      *  \tparam F  Type of the resulting inner product matrix (float, double, complex<float> or complex<double>).
      */
     template <typename F>
-    std::enable_if_t<std::is_same<T, real_type<F>>::value, sddk::dmatrix<F>>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, la::dmatrix<F>>
     inner(sddk::memory_t mem__, int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__, wf::band_range br__) const
     {
         int nbeta = chunk(chunk__).num_beta_;
 
-        sddk::dmatrix<F> result(nbeta, br__.size(), get_memory_pool(ctx_.host_memory_t()), "<beta|phi>");
+        la::dmatrix<F> result(nbeta, br__.size(), get_memory_pool(ctx_.host_memory_t()), "<beta|phi>");
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             result.allocate(get_memory_pool(sddk::memory_t::device));
         }

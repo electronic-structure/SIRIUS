@@ -104,18 +104,18 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qm
 
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
-                sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
-                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<std::complex<double>>::one(),
+                la::wrap(la::lib_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &la::constant<std::complex<double>>::one(),
                     qa.at(sddk::memory_t::host), qa.ld(), pf.at(sddk::memory_t::host), pf.ld(),
-                    &sddk::linalg_const<std::complex<double>>::zero(), qapf.at(sddk::memory_t::host), qapf.ld());
+                    &la::constant<std::complex<double>>::zero(), qapf.at(sddk::memory_t::host), qapf.ld());
                 break;
             }
             case sddk::device_t::GPU: {
                 qa.copy_to(sddk::memory_t::device);
-                sddk::linalg(sddk::linalg_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
-                    unit_cell_.atom_type(iat).num_atoms(), &sddk::linalg_const<std::complex<double>>::one(),
+                la::wrap(la::lib_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &la::constant<std::complex<double>>::one(),
                     qa.at(sddk::memory_t::device), qa.ld(), pf.at(sddk::memory_t::device), pf.ld(),
-                    &sddk::linalg_const<std::complex<double>>::zero(), qapf.at(sddk::memory_t::device), qapf.ld());
+                    &la::constant<std::complex<double>>::zero(), qapf.at(sddk::memory_t::device), qapf.ld());
                 qapf.copy_to(sddk::memory_t::host);
                 break;
             }

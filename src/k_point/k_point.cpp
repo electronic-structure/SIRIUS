@@ -84,7 +84,7 @@ K_point<T>::initialize()
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
                  */
                 for (int is = 0; is < ctx_.num_spinors(); is++) {
-                    sv_eigen_vectors_[is] = sddk::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
+                    sv_eigen_vectors_[is] = la::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
                 }
             }
 
@@ -116,11 +116,11 @@ K_point<T>::initialize()
             }
             if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
-                    fv_eigen_vectors_ = sddk::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
+                if (ctx_.gen_evp_solver().type() == la::ev_solver_t::elpa) {
+                    fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
                                                                  ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 } else {
-                    fv_eigen_vectors_ = sddk::dmatrix<std::complex<T>>(gklo_basis_size(), ctx_.num_fv_states(),
+                    fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), ctx_.num_fv_states(),
                                                                  ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 }
             } else {
@@ -255,7 +255,7 @@ K_point<T>::generate_hubbard_orbitals()
                     *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf));
 
             int BS = ctx_.cyclic_block_size();
-            sddk::dmatrix<std::complex<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
+            la::dmatrix<std::complex<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
 
             wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *atomic_wave_functions_,
                     wf::band_range(0, nwf), *atomic_wave_functions_S_, wf::band_range(0, nwf), ovlp, 0, 0);

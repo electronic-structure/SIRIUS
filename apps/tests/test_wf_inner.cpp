@@ -7,11 +7,11 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
 {
     spla::Context spla_ctx(sddk::is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
-    std::unique_ptr<sddk::BLACS_grid> blacs_grid;
+    std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
-        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(mpi::Communicator::self(), 1, 1));
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     } else {
-        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
     }
 
     /* create G-vectors */
@@ -43,7 +43,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     auto mg1 = phi1.memory_guard(mem__, wf::copy_to::device);
     auto mg2 = phi2.memory_guard(mem__, wf::copy_to::device);
 
-    sddk::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
+    la::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
 
     /* warmup call */
     wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);

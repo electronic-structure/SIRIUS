@@ -10,7 +10,7 @@ int const nop_gemm = 8;
 #endif
 
 
-double test_gemm(int M, int N, int K, int transa, sddk::linalg_t la__, sddk::memory_t memA__, sddk::memory_t memB__,
+double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t memA__, sddk::memory_t memB__,
                  sddk::memory_t memC__)
 {
     sddk::mdarray<gemm_type, 2> a, b, c;
@@ -55,9 +55,9 @@ double test_gemm(int M, int N, int K, int transa, sddk::linalg_t la__, sddk::mem
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     double t = -utils::wtime();
-    sddk::linalg(la__).gemm(TA[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
+    la::wrap(la__).gemm(TA[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
-                       &sddk::linalg_const<gemm_type>::zero(),
+                       &la::constant<gemm_type>::zero(),
                        c.at(memC__), c.ld());
     double t2 = t + utils::wtime();
     if (is_device_memory(memC__)) {
@@ -81,7 +81,7 @@ int main(int argn, char **argv)
     args.register_key("--K=", "{int} K");
     args.register_key("--opA=", "{0|1|2} 0: op(A) = A, 1: op(A) = A', 2: op(A) = conjg(A')");
     args.register_key("--repeat=", "{int} repeat test number of times");
-    args.register_key("--linalg_t=", "{string} type of the linear algebra driver");
+    args.register_key("--lib_t=", "{string} type of the linear algebra driver");
     args.register_key("--memA=", "{string} type of memory of matrix A");
     args.register_key("--memB=", "{string} type of memory of matrix B");
     args.register_key("--memC=", "{string} type of memory of matrix C");
@@ -101,7 +101,7 @@ int main(int argn, char **argv)
 
     int repeat = args.value<int>("repeat", 5);
 
-    std::string linalg_t_str = args.value<std::string>("linalg_t", "blas");
+    std::string lib_t_str = args.value<std::string>("lib_t", "blas");
     auto memA = sddk::get_memory_t(args.value<std::string>("memA", "host"));
     auto memB = sddk::get_memory_t(args.value<std::string>("memB", "host"));
     auto memC = sddk::get_memory_t(args.value<std::string>("memC", "host"));
@@ -110,7 +110,7 @@ int main(int argn, char **argv)
 
     sirius::Measurement perf;
     for (int i = 0; i < repeat; i++) {
-        perf.push_back(test_gemm(M, N, K, transa, sddk::get_linalg_t(linalg_t_str), memA, memB, memC));
+        perf.push_back(test_gemm(M, N, K, transa, la::get_lib_t(lib_t_str), memA, memB, memC));
     }
     printf("average performance: %12.6f GFlops, sigma: %12.6f\n", perf.average(), perf.sigma());
 

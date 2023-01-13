@@ -268,8 +268,7 @@ struct Linear_response_operator {
     wf::Wave_functions<double> * evq;
     wf::Wave_functions<double> * tmp;
     double alpha_pv;
-    sddk::dmatrix<std::complex<double>> overlap;
-
+    la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
         sirius::Simulation_context &ctx,

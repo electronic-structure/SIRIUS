@@ -148,10 +148,10 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
             int offs = uc.atom_type(iat).offset_lo();
 
             if (what & 1) {
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &sddk::linalg_const<std::complex<T>>::one(),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                           &beta_gk_t(0, offs), beta_gk_t.ld(), &d_sum(0, 0), d_sum.ld(),
-                          &sddk::linalg_const<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
+                          &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
                 #pragma omp parallel
                 for (int xi = 0; xi < nbf; xi++) {
                     #pragma omp for schedule(static) nowait
@@ -164,10 +164,10 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
             }
 
             if (what & 2) {
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &sddk::linalg_const<std::complex<T>>::one(),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                           &beta_gk_t(0, offs), beta_gk_t.ld(), &q_sum(0, 0), q_sum.ld(),
-                          &sddk::linalg_const<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
+                          &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
                 #pragma omp parallel
                 for (int xi = 0; xi < nbf; xi++) {
                     #pragma omp for schedule(static) nowait
@@ -304,7 +304,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o");
 
@@ -325,20 +325,20 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
     /* current processing unit */
     auto pu = H0_.ctx().processing_unit();
 
-    auto la  = sddk::linalg_t::none;
+    auto la  = la::lib_t::none;
     auto mt  = sddk::memory_t::none;
     auto mt1 = sddk::memory_t::none;
     int nb   = 0;
     switch (pu) {
         case sddk::device_t::CPU: {
-            la  = sddk::linalg_t::blas;
+            la  = la::lib_t::blas;
             mt  = sddk::memory_t::host;
             mt1 = sddk::memory_t::host;
             nb  = 1;
             break;
         }
         case sddk::device_t::GPU: {
-            la  = sddk::linalg_t::spla;
+            la  = la::lib_t::spla;
             mt  = sddk::memory_t::host_pinned;
             mt1 = sddk::memory_t::device;
             nb  = 1;
@@ -482,14 +482,14 @@ Hamiltonian_k<T>::set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<
             utils::print_checksum("halm_col", z3, H0_.ctx().out());
         }
 
-        sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
-                        &sddk::linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                        alm_col.at(mt1, 0, 0, s), alm_col.ld(), &sddk::linalg_const<std::complex<T>>::one(), o__.at(mt),
+        la::wrap(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+                        &la::constant<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                        alm_col.at(mt1, 0, 0, s), alm_col.ld(), &la::constant<std::complex<T>>::one(), o__.at(mt),
                         o__.ld());
 
-        sddk::linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
-                        &sddk::linalg_const<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                        halm_col.at(mt1, 0, 0, s), halm_col.ld(), &sddk::linalg_const<std::complex<T>>::one(), h__.at(mt),
+        la::wrap(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+                        &la::constant<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                        halm_col.at(mt1, 0, 0, s), halm_col.ld(), &la::constant<std::complex<T>>::one(), h__.at(mt),
                         h__.ld());
     }
 
@@ -620,7 +620,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_lo_lo(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_lo_lo");
 
@@ -664,7 +664,7 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(sddk::dmatrix<std::complex<T>>& h__, sddk::dm
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_it");
 
@@ -795,7 +795,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto pu = ctx.processing_unit();
 
-    auto la  = (pu == sddk::device_t::CPU) ? sddk::linalg_t::blas : sddk::linalg_t::gpublas;
+    auto la  = (pu == sddk::device_t::CPU) ? la::lib_t::blas : la::lib_t::gpublas;
     auto mem = (pu == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
 
     auto pp = env::print_performance();
@@ -871,8 +871,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* block size of scalapack distribution */
     int bs = ctx.cyclic_block_size();
 
-    auto& one = sddk::linalg_const<Tc>::one();
-    auto& zero = sddk::linalg_const<Tc>::zero();
+    auto& one = la::constant<Tc>::one();
+    auto& zero = la::constant<Tc>::zero();
 
     /* apply APW-lo part of Hamiltonian to lo- part of wave-functions */
     auto apply_hmt_apw_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T>& h_apw_lo__)
@@ -890,11 +890,11 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = this->H0_.hmt(ia);
 
-            sddk::linalg(la).gemm('N', 'N', naw, b__.size(), nlo,
-                    &sddk::linalg_const<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo,
+                    &la::constant<Tc>::one(),
                     hmt.at(mem, 0, naw), hmt.ld(),
                     phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                    &sddk::linalg_const<Tc>::zero(),
+                    &la::constant<Tc>::zero(),
                     h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
                     stream_id(tid));
         }
@@ -952,10 +952,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = H0_.hmt(ia);
 
-            sddk::linalg(la).gemm('N', 'N', nlo, b__.size(), nlo, &sddk::linalg_const<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(),
                             hmt.at(mem, naw, naw), hmt.ld(),
                             phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                            &sddk::linalg_const<Tc>::one(),
+                            &la::constant<Tc>::one(),
                             hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                             stream_id(tid));
         }
@@ -1012,10 +1012,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             auto& hmt = H0_.hmt(ia);
 
             // TODO: use in-place trmm
-            sddk::linalg(la).gemm('N', 'N', naw, b__.size(), naw,
-                    &sddk::linalg_const<Tc>::one(), hmt.at(mem), hmt.ld(),
+            la::wrap(la).gemm('N', 'N', naw, b__.size(), naw,
+                    &la::constant<Tc>::one(), hmt.at(mem), hmt.ld(),
                     alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
-                    &sddk::linalg_const<Tc>::zero(),
+                    &la::constant<Tc>::zero(),
                     halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
                     stream_id(tid));
         }
@@ -1038,10 +1038,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             // TODO: add stream_id
 
-            sddk::linalg(la).gemm('N', 'N', nlo, b__.size(), naw, &sddk::linalg_const<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(),
                     hmt.at(mem, naw, 0), hmt.ld(),
                     alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
-                    &sddk::linalg_const<Tc>::one(),
+                    &la::constant<Tc>::one(),
                     hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
                     hphi__.ld(), stream_id(tid));
         }
@@ -1123,8 +1123,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
      * |      |
      * +------+
      */
-    sddk::dmatrix<Tc> h_apw_lo_phi_lo;
-    sddk::dmatrix<Tc> o_apw_lo_phi_lo;
+    la::dmatrix<Tc> h_apw_lo_phi_lo;
+    la::dmatrix<Tc> o_apw_lo_phi_lo;
 
     std::vector<int> num_mt_apw_coeffs(ctx.unit_cell().num_atoms());
     for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
@@ -1139,7 +1139,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         if (hphi__) {
             apply_hmt_apw_lo(tmp);
 
-            h_apw_lo_phi_lo = sddk::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(),
+            h_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(),
                                                 ctx.blacs_grid(), bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
@@ -1147,7 +1147,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
         if (ophi__) {
             apply_omt_apw_lo(tmp);
-            o_apw_lo_phi_lo = sddk::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(),
+            o_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(),
                                                 ctx.blacs_grid(), bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
@@ -1179,7 +1179,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
 
     /* <A_{lm}^{\alpha}(G) | C_j(G) > for all Alm matching coefficients */
-    sddk::dmatrix<Tc> alm_phi(ctx.unit_cell().mt_aw_basis_size(), b__.size(), ctx.blacs_grid(), bs, bs);
+    la::dmatrix<Tc> alm_phi(ctx.unit_cell().mt_aw_basis_size(), b__.size(), ctx.blacs_grid(), bs, bs);
 
     /*  compute APW-APW contribution
      *                         n
@@ -1251,7 +1251,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 wf::Wave_functions_mt<T> halm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_mag_dims(0),
                         wf::num_bands(b__.size()), sddk::memory_t::host);
 
-                sddk::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), ctx.blacs_grid(), bs, bs);
+                la::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), ctx.blacs_grid(), bs, bs);
                 {
                     auto layout_in = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, b__.size());
                     auto layout_out = alm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));

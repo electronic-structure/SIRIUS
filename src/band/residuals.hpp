@@ -32,12 +32,6 @@
 #include "SDDK/type_definition.hpp"
 #include "SDDK/wave_functions.hpp"
 
-//namespace sddk {
-//template <typename T>
-//class Wave_functions;
-//class spin_range;
-//};
-
 struct residual_result
 {
   int num_consecutive_smallest_converged;
@@ -122,29 +116,6 @@ inline void make_real_g0_gpu(std::complex<float>* res__,  int ld__,  int n__)
 #endif
 
 namespace sirius {
-
-/// Compute preconditionined residuals.
-/** The residuals of wave-functions are defined as:
-    \f[
-      R_{i} = \hat H \psi_{i} - \epsilon_{i} \hat S \psi_{i}
-    \f]
- */
-//template <typename T, typename F>
-//residual_result
-//residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::spin_range ispn__,
-//          int N__, int num_bands__, int num_locked, sddk::mdarray<real_type<F>, 1>& eval__,
-//          sddk::dmatrix<F>& evec__, sddk::Wave_functions<real_type<T>>& hphi__, sddk::Wave_functions<real_type<T>>& ophi__,
-//          sddk::Wave_functions<real_type<T>>& hpsi__, sddk::Wave_functions<real_type<T>>& opsi__,
-//          sddk::Wave_functions<real_type<T>>& res__, sddk::mdarray<real_type<T>, 2> const& h_diag__,
-//          sddk::mdarray<real_type<T>, 2> const& o_diag__, bool estimate_eval__, real_type<T> norm_tolerance__,
-//          std::function<bool(int, int)> is_converged__);
-//
-//template <typename T>
-//void
-//apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::Wave_functions<T>& res__,
-//                     sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
-//                     sddk::mdarray<T, 1>& eval__);
-//
 
 /// Compute band residuals.
 /**
@@ -292,18 +263,19 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
 }
 
 /// Compute residuals from eigen-vectors.
-/**
- *
- * \tparam T Precision type of the wave-functions (float or double).
- * \tparam F Type of the subspace (float or double for Gamma-point calculation,
- *           complex<float> or complex<double> otherwise.
- *
- *
+/** \tparam T Precision type of the wave-functions (float or double).
+    \tparam F Type of the subspace (float or double for Gamma-point calculation,
+              complex<float> or complex<double> otherwise.
+
+    The residuals of wave-functions are defined as:
+    \f[
+      R_{i} = \hat H \psi_{i} - \epsilon_{i} \hat S \psi_{i}
+    \f]
  */
 template <typename T, typename F>
 residual_result
 residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
-          int N__, int num_bands__, int num_locked__, sddk::mdarray<real_type<F>, 1>& eval__, sddk::dmatrix<F>& evec__,
+          int N__, int num_bands__, int num_locked__, sddk::mdarray<real_type<F>, 1>& eval__, la::dmatrix<F>& evec__,
           wf::Wave_functions<T>& hphi__, wf::Wave_functions<T>& ophi__,
           wf::Wave_functions<T>& hpsi__, wf::Wave_functions<T>& opsi__,
           wf::Wave_functions<T>& res__, sddk::mdarray<T, 2> const& h_diag__,
@@ -316,12 +288,12 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
     RTE_ASSERT(hphi__.num_sc() == hpsi__.num_sc());
     RTE_ASSERT(ophi__.num_sc() == opsi__.num_sc());
 
-    sddk::dmatrix<F> evec_tmp;
+    la::dmatrix<F> evec_tmp;
 
     sddk::mdarray<T, 1> eval(num_bands__);
     eval = [&](size_t j) -> T { return eval__[j]; };
 
-    sddk::dmatrix<F>* evec_ptr{nullptr};
+    la::dmatrix<F>* evec_ptr{nullptr};
 
     /* total number of residuals to be computed */
     int num_residuals{0};
@@ -355,7 +327,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
         // Otherwise copy / reorder the unconverged eigenpairs
         num_residuals = static_cast<int>(ev_idx.size());
 
-        evec_tmp = sddk::dmatrix<F>(N__, num_residuals, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
+        evec_tmp = la::dmatrix<F>(N__, num_residuals, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
         evec_ptr = &evec_tmp;
 
         int num_rows_local = evec_tmp.num_rows_local();

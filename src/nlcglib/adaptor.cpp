@@ -149,7 +149,7 @@ Energy::compute()
         // compute band energies aka diag(<psi|H|psi>)
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
-                sddk::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
+                la::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
                 dmat.allocate(sddk::memory_t::device);
                 wf::band_range bandr{jj, jj + 1};
                 wf::inner(ctx.spla_context(), proc_mem_t, wf::spin_range(ispn),

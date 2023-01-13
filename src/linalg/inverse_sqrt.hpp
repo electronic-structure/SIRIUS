@@ -1,7 +1,7 @@
 #ifndef __INVERSE_SQRT_HPP__
 #define __INVERSE_SQRT_HPP__
 
-#include "SDDK/dmatrix.hpp"
+#include "linalg/dmatrix.hpp"
 #include "linalg/eigensolver.hpp"
 #include "linalg/linalg.hpp"
 #include "utils/rte.hpp"
@@ -12,18 +12,18 @@ namespace sirius {
 /** As by-product, return the eigen-vectors and the eigen-values of the matrix. */
 template <typename T>
 inline auto
-inverse_sqrt(sddk::dmatrix<T>& A__, int N__)
+inverse_sqrt(la::dmatrix<T>& A__, int N__)
 {
-    auto solver = (A__.comm().size() == 1) ? Eigensolver_factory("lapack") : Eigensolver_factory("scalapack");
+    auto solver = (A__.comm().size() == 1) ? la::Eigensolver_factory("lapack") : la::Eigensolver_factory("scalapack");
 
-    std::unique_ptr<sddk::dmatrix<T>> Z;
-    std::unique_ptr<sddk::dmatrix<T>> B;
+    std::unique_ptr<la::dmatrix<T>> Z;
+    std::unique_ptr<la::dmatrix<T>> B;
     if (A__.comm().size() == 1) {
-        Z = std::make_unique<sddk::dmatrix<T>>(A__.num_rows(), A__.num_cols());
-        B = std::make_unique<sddk::dmatrix<T>>(A__.num_rows(), A__.num_cols());
+        Z = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols());
+        B = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols());
     } else {
-        Z = std::make_unique<sddk::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
-        B = std::make_unique<sddk::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
+        Z = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
+        B = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
     }
     std::vector<real_type<T>> eval(N__);
 
@@ -40,12 +40,12 @@ inverse_sqrt(sddk::dmatrix<T>& A__, int N__)
     }
 
     if (A__.comm().size() == 1) {
-        sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', N__, N__, N__, &sddk::linalg_const<T>::one(),
-            &A__(0, 0), A__.ld(), Z->at(sddk::memory_t::host), Z->ld(), &sddk::linalg_const<T>::zero(),
+        la::wrap(la::lib_t::blas).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
+            &A__(0, 0), A__.ld(), Z->at(sddk::memory_t::host), Z->ld(), &la::constant<T>::zero(),
             B->at(sddk::memory_t::host), B->ld());
     } else {
-        sddk::linalg(sddk::linalg_t::scalapack).gemm('N', 'C', N__, N__, N__, &sddk::linalg_const<T>::one(),
-            A__, 0, 0, *Z, 0, 0, &sddk::linalg_const<T>::zero(), *B, 0, 0);
+        la::wrap(la::lib_t::scalapack).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
+            A__, 0, 0, *Z, 0, 0, &la::constant<T>::zero(), *B, 0, 0);
     }
 
     return std::make_tuple(std::move(B), std::move(Z), eval);

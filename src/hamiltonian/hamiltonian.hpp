@@ -29,26 +29,12 @@
 #include <complex>
 #include "SDDK/memory.hpp"
 #include "SDDK/type_definition.hpp"
-#include "SDDK/dmatrix.hpp"
-#include "typedefs.hpp"
 #include "SDDK/wave_functions.hpp"
+#include "linalg/dmatrix.hpp"
+#include "typedefs.hpp"
 #include "fft/fft.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
-
-//namespace sddk {
-///* forward declaration */
-//template <typename T>
-//class Wave_functions;
-//class spin_range;
-//}
-//
-//namespace wf {
-//template <typename T>
-//class Wave_functions;
-//class band_range;
-//class spin_range;
-//}
 
 namespace sirius {
 /* forward declaration */
@@ -437,13 +423,13 @@ class Hamiltonian_k
      *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
      *  \f]
      */
-    void set_fv_h_o(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const;
+    void set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap.
-    void set_fv_h_o_it(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const;
+    void set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup lo-lo block of Hamiltonian and overlap matrices.
-    void set_fv_h_o_lo_lo(sddk::dmatrix<std::complex<T>>& h__, sddk::dmatrix<std::complex<T>>& o__) const;
+    void set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup apw-lo and lo-apw blocks of LAPW Hamiltonian and overlap matrices.
     void set_fv_h_o_apw_lo(Atom const& atom, int ia, sddk::mdarray<std::complex<T>, 2>& alm_row,

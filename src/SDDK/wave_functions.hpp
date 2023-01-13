@@ -916,8 +916,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_in  = wf_->grid_layout_pw(sp, b__);
             auto layout_out = this->grid_layout(b__.size());
 
-            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
+                    la::constant<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
             /*
              * old implementation (to be removed when performance of COSTA is understood)
@@ -983,8 +983,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_in  = this->grid_layout(b__.size());
             auto layout_out = wf_->grid_layout_pw(sp, b__);
 
-            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
+                    la::constant<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
 
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
@@ -1431,7 +1431,7 @@ void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1441,7 +1441,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> co
 
     /* spla manages the resources through the context which can be updated during the call;
      * that's why the const must be removed here */
-    auto& spla_mat_dist = const_cast<sddk::dmatrix<F>&>(M__).spla_distribution();
+    auto& spla_mat_dist = const_cast<la::dmatrix<F>&>(M__).spla_distribution();
 
     /* for Gamma point case (transformation matrix is real) we treat complex wave-function coefficients as
      * a doubled list of real values */
@@ -1462,7 +1462,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> co
 
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1564,7 +1564,7 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
 template <typename F, typename W, typename T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
 inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
-      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
+      Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
@@ -1635,7 +1635,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
 inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wave_functions<T> const& wf_i__,
-        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
+        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__,
         int irow0__, int jcol0__)
 {
     if (is_device_memory(mem__)) {
@@ -1690,7 +1690,7 @@ template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, band_range br_old__,
         band_range br_new__, Wave_functions<T> const& wf_i__, Wave_functions<T> const& wf_j__,
-        std::vector<Wave_functions<T>*> wfs__, sddk::dmatrix<F>& o__, Wave_functions<T>& tmp__, bool project_out__)
+        std::vector<Wave_functions<T>*> wfs__, la::dmatrix<F>& o__, Wave_functions<T>& tmp__, bool project_out__)
 {
     PROFILE("wf::orthogonalize");
 
@@ -1750,7 +1750,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //        }
 //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 //
-//        linalg(linalg_t::scalapack).geqrf(n__, n__, o__, 0, 0);
+//        linalg(lib_t::scalapack).geqrf(n__, n__, o__, 0, 0);
 //        auto diag = o__.get_diag(n__);
 //        if (o__.comm().rank() == 0) {
 //            for (int i = 0; i < n__; i++) {
@@ -1815,24 +1815,24 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      *       - trmm is computed on GPU with wf::transform
      */
     // TODO: test magma and cuSolver
-    sddk::linalg_t la = sddk::linalg_t::lapack;
-    sddk::linalg_t la1 = sddk::linalg_t::blas;
-    sddk::memory_t mem = sddk::memory_t::host;
+    auto la = la::lib_t::lapack;
+    auto la1 = la::lib_t::blas;
+    auto mem = sddk::memory_t::host;
     if (o__.comm().size() > 1) {
-        la = sddk::linalg_t::scalapack;
+        la = la::lib_t::scalapack;
     }
     if (mem__ == sddk::memory_t::device) {
-        la1 = sddk::linalg_t::gpublas;
+        la1 = la::lib_t::gpublas;
     }
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
     PROFILE_START("wf::orthogonalize|tmtrx");
     auto o_ptr = (o__.size_local() == 0) ? nullptr : o__.at(mem);
-    if (la == sddk::linalg_t::scalapack) {
+    if (la == la::lib_t::scalapack) {
         o__.make_real_diag(n);
     }
     /* Cholesky factorization */
-    if (int info = sddk::linalg(la).potrf(n, o_ptr, o__.ld(), o__.descriptor())) {
+    if (int info = la::wrap(la).potrf(n, o_ptr, o__.ld(), o__.descriptor())) {
         std::stringstream s;
         s << "error in Cholesky factorization, info = " << info << std::endl
           << "number of existing states: " << br_old__.size() << std::endl
@@ -1840,7 +1840,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
         RTE_THROW(s);
     }
     /* inversion of triangular matrix */
-    if (sddk::linalg(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
+    if (la::wrap(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
         RTE_THROW("error in inversion");
     }
     PROFILE_STOP("wf::orthogonalize|tmtrx");
@@ -1863,11 +1863,11 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                     ld *= 2;
                 }
 
-                sddk::linalg(la1).trmm('R', 'U', 'N', ld, n, &sddk::linalg_const<F>::one(),
+                la::wrap(la1).trmm('R', 'U', 'N', ld, n, &la::constant<F>::one(),
                         o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
             }
         }
-        if (la1 == sddk::linalg_t::gpublas || la1 == sddk::linalg_t::cublasxt || la1 == sddk::linalg_t::magma) {
+        if (la1 == la::lib_t::gpublas || la1 == la::lib_t::cublasxt || la1 == la::lib_t::magma) {
             /* sync stream only if processing unit is GPU */
             for (int i = 0; i < sid; i++) {
                 acc::sync_stream(stream_id(i));

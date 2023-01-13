@@ -29,7 +29,7 @@
 #include "mpi/mpi_grid.hpp"
 #include "linalg_base.hpp"
 
-namespace sddk {
+namespace la {
 
 /// BLACS grid wrapper.
 class BLACS_grid
@@ -163,6 +163,6 @@ class BLACS_grid
     }
 };
 
-} // namespace sddk
+} // namespace
 
 #endif // __BLACS_GRID_HPP__

@@ -29,9 +29,9 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "SDDK/dmatrix.hpp"
 #include "SDDK/wave_functions.hpp"
 #include "linalg/linalg.hpp"
+#include "linalg/dmatrix.hpp"
 #include "linalg/r3.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/profiler.hpp"
@@ -108,12 +108,12 @@ class Measurement: public std::vector<double>
 
 template <typename T>
 inline auto
-random_symmetric(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__)
+random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 {
     PROFILE("random_symmetric");
 
-    sddk::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
-    sddk::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
+    la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
+    la::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
             A(i, j) = utils::random<T>();
@@ -121,7 +121,7 @@ random_symmetric(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__)
     }
 
 #ifdef SIRIUS_SCALAPACK
-    sddk::linalg(sddk::linalg_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
+    la::wrap(la::lib_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
@@ -145,13 +145,13 @@ random_symmetric(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__)
 
 template <typename T>
 inline auto
-random_positive_definite(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__)
+random_positive_definite(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 {
     PROFILE("random_positive_definite");
 
     double p = 1.0 / N__;
-    sddk::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
-    sddk::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
+    la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
+    la::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
             A(i, j) = p * utils::random<T>();
@@ -159,11 +159,11 @@ random_positive_definite(int N__, int bs__, sddk::BLACS_grid const& blacs_grid__
     }
 
 #ifdef SIRIUS_SCALAPACK
-    sddk::linalg(sddk::linalg_t::scalapack).gemm('C', 'N', N__, N__, N__, &sddk::linalg_const<T>::one(), A, 0, 0, A, 0, 0,
-        &sddk::linalg_const<T>::zero(), B, 0, 0);
+    la::wrap(la::lib_t::scalapack).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0,
+        &la::constant<T>::zero(), B, 0, 0);
 #else
-    sddk::linalg(sddk::linalg_t::blas).gemm('C', 'N', N__, N__, N__, &sddk::linalg_const<T>::one(), &A(0, 0), A.ld(),
-            &A(0, 0), A.ld(), &sddk::linalg_const<T>::zero(), &B(0, 0), B.ld());
+    la::wrap(la::lib_t::blas).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), &A(0, 0), A.ld(),
+            &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
 #endif
 
     for (int i = 0; i < N__; i++) {
