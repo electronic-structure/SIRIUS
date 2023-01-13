@@ -89,10 +89,10 @@ class Non_local_operator
         int nbeta           = beta__.chunk(chunk__).num_beta_;
 
         /* setup linear algebra parameters */
-        sddk::linalg_t la{sddk::linalg_t::blas};
+        la::lib_t la{la::lib_t::blas};
         sddk::device_t pu{sddk::device_t::CPU};
         if (is_device_memory(mem__)) {
-            la = sddk::linalg_t::gpublas;
+            la = la::lib_t::gpublas;
             pu = sddk::device_t::GPU;
         }
 
@@ -106,7 +106,7 @@ class Non_local_operator
         /* compute O * <beta|phi> for atoms in a chunk */
         #pragma omp parallel
         {
-            acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
+            acc::set_device_id(mpi::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
             #pragma omp for
             for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
@@ -116,11 +116,11 @@ class Non_local_operator
                 int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
 
                 if (nbf) {
-                    sddk::linalg(la).gemm(
-                        'N', 'N', nbf, br__.size(), nbf, &sddk::linalg_const<F>::one(),
+                    la::wrap(la).gemm(
+                        'N', 'N', nbf, br__.size(), nbf, &la::constant<F>::one(),
                         reinterpret_cast<F const*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
                         reinterpret_cast<F const*>(beta_phi__.at(mem__, offs, 0)), beta_phi__.ld(),
-                        &sddk::linalg_const<F>::zero(),
+                        &la::constant<F>::zero(),
                         reinterpret_cast<F*>(work.at(mem__, offs, 0)), nbeta, stream_id(omp_get_thread_num()));
                 }
             }
@@ -140,10 +140,10 @@ class Non_local_operator
         auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
 
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-        sddk::linalg(la)
-            .gemm('N', 'N', num_gkvec_loc * size_factor, br__.size(), nbeta, &sddk::linalg_const<F>::one(),
+        la::wrap(la)
+            .gemm('N', 'N', num_gkvec_loc * size_factor, br__.size(), nbeta, &la::constant<F>::one(),
                 reinterpret_cast<F const*>(beta_gk.at(mem__)), num_gkvec_loc * size_factor, 
-                work.at(mem__), nbeta, &sddk::linalg_const<F>::one(),
+                work.at(mem__), nbeta, &la::constant<F>::one(),
                 reinterpret_cast<F*>(op_phi__.at(mem__, 0, sp, wf::band_index(br__.begin()))),
                 op_phi__.ld() * size_factor);
 
@@ -179,25 +179,25 @@ class Non_local_operator
             return;
         }
 
-        sddk::linalg_t la{sddk::linalg_t::blas};
+        la::lib_t la{la::lib_t::blas};
         sddk::device_t pu{sddk::device_t::CPU};
         if (is_device_memory(mem__)) {
-            la = sddk::linalg_t::gpublas;
+            la = la::lib_t::gpublas;
             pu = sddk::device_t::GPU;
         }
 
         auto work = sddk::mdarray<std::complex<T>, 1>(nbf * br__.size(), get_memory_pool(mem__));
 
-        sddk::linalg(la).gemm('N', 'N', nbf, br__.size(), nbf, &sddk::linalg_const<std::complex<T>>::one(),
+        la::wrap(la).gemm('N', 'N', nbf, br__.size(), nbf, &la::constant<std::complex<T>>::one(),
                         reinterpret_cast<std::complex<T>*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
-                        beta_phi__.at(mem__, offs, 0), beta_phi__.ld(), &sddk::linalg_const<std::complex<T>>::zero(),
+                        beta_phi__.at(mem__, offs, 0), beta_phi__.ld(), &la::constant<std::complex<T>>::zero(),
                         work.at(mem__), nbf);
 
         int jspn = ispn_block__ & 1;
 
-        sddk::linalg(la)
-            .gemm('N', 'N', num_gkvec_loc, br__.size(), nbf, &sddk::linalg_const<std::complex<T>>::one(),
-                    beta_gk.at(mem__, 0, offs), num_gkvec_loc, work.at(mem__), nbf, &sddk::linalg_const<std::complex<T>>::one(),
+        la::wrap(la)
+            .gemm('N', 'N', num_gkvec_loc, br__.size(), nbf, &la::constant<std::complex<T>>::one(),
+                    beta_gk.at(mem__, 0, offs), num_gkvec_loc, work.at(mem__), nbf, &la::constant<std::complex<T>>::one(),
                   op_phi__.at(mem__, 0, wf::spin_index(jspn), wf::band_index(br__.begin())),
                   op_phi__.ld());
 
@@ -267,7 +267,7 @@ class U_operator
   private:
     Simulation_context const& ctx_;
     //sddk::mdarray<std::complex<T>, 3> um_;
-    std::array<sddk::dmatrix<std::complex<T>>, 4> um_;
+    std::array<la::dmatrix<std::complex<T>>, 4> um_;
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
@@ -287,7 +287,7 @@ class U_operator
         this->offset_          = um1__.offset();
         this->atomic_orbitals_ = um1__.atomic_orbitals();
         for (int j = 0; j <  ctx_.num_mag_dims() + 1; j++) {
-            um_[j] = sddk::dmatrix<std::complex<T>>(r.first, r.first);
+            um_[j] = la::dmatrix<std::complex<T>>(r.first, r.first);
             um_[j].zero();
         }
 
@@ -518,12 +518,12 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
         return;
     }
 
-    sddk::dmatrix<std::complex<T>> dm(hub_wf__.num_wf().get(), br__.size());
+    la::dmatrix<std::complex<T>> dm(hub_wf__.num_wf().get(), br__.size());
 
     auto mt = ctx__.processing_unit_memory_t();
-    auto la = sddk::linalg_t::blas;
+    auto la = la::lib_t::blas;
     if (is_device_memory(mt)) {
-        la = sddk::linalg_t::gpublas;
+        la = la::lib_t::gpublas;
         dm.allocate(mt);
     }
 
@@ -531,7 +531,7 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
        dm(i, n) = <phi_i| S |psi_{nk}> */
     wf::inner(ctx__.spla_context(), mt, spins__, hub_wf__, wf::band_range(0, hub_wf__.num_wf().get()), phi__, br__, dm, 0, 0);
 
-    sddk::dmatrix<std::complex<T>> Up(hub_wf__.num_wf().get(), br__.size());
+    la::dmatrix<std::complex<T>> Up(hub_wf__.num_wf().get(), br__.size());
     if (is_device_memory(mt)) {
         Up.allocate(mt);
     }
@@ -565,9 +565,9 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
             }
         }
     } else {
-        sddk::linalg(la).gemm('N', 'N', um__.nhwf(), br__.size(), um__.nhwf(),
-                &sddk::linalg_const<std::complex<T>>::one(), um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(),
-                dm.at(mt, 0, 0), dm.ld(), &sddk::linalg_const<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
+        la::wrap(la).gemm('N', 'N', um__.nhwf(), br__.size(), um__.nhwf(),
+                &la::constant<std::complex<T>>::one(), um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(),
+                dm.at(mt, 0, 0), dm.ld(), &la::constant<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
         if (is_device_memory(mt)) {
             Up.copy_to(sddk::memory_t::host);
         }

@@ -144,7 +144,7 @@ class Anderson : public Mixer<FUNCS...>
                 );
             }
 
-            bool invertible = sddk::linalg(sddk::linalg_t::lapack).sysolve(history_size, this->S_factorized_, h);
+            bool invertible = la::wrap(la::lib_t::lapack).sysolve(history_size, this->S_factorized_, h);
 
             if (invertible) {
                 // - beta * (delta F) * h

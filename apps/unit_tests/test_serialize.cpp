@@ -7,7 +7,7 @@ int test1()
 {
     int a1{100};
     double b1{200.88};
-    
+
     std::vector<std::complex<float>> c1;
     c1.push_back(std::complex<float>(1.2f, 2.3f));
     c1.push_back(std::complex<float>(3.5f, 4.6f));
@@ -21,6 +21,9 @@ int test1()
     r3::vector<double> v1{1.1, 2.2, 3.3};
     r3::matrix<double> u1{{4.4, 5.5, 6.6}, {1.2, 2.43334, 4.56666}, {400.333, 1e14, 2.33e20}};
 
+    r3::matrix<double> M1({{2, 0, 0}, {3, 2, 1}, {0, 0, 10}});
+    fft::Gvec g1(M1, 10.0, mpi::Communicator::world(), true);
+
     serializer s;
 
     serialize(s, a1);
@@ -30,6 +33,8 @@ int test1()
     serialize(s, m1);
     serialize(s, v1);
     serialize(s, u1);
+    serialize(s, M1);
+    serialize(s, g1);
 
     int a2;
     double b2;
@@ -38,6 +43,8 @@ int test1()
     mdarray<double, 2> m2;
     r3::vector<double> v2;
     r3::matrix<double> u2;
+    r3::matrix<double> M2;
+    fft::Gvec g2(g1.comm());
 
     deserialize(s, a2);
     deserialize(s, b2);
@@ -46,6 +53,8 @@ int test1()
     deserialize(s, m2);
     deserialize(s, v2);
     deserialize(s, u2);
+    deserialize(s, M2);
+    deserialize(s, g2);
 
     if (a1 != a2) {
         return 1;
@@ -72,6 +81,15 @@ int test1()
                 return 1;
             }
         }
+    }
+    if (!(M1 == M2)) {
+        return 1;
+    }
+    if (g1.comm().rank() != g2.comm().rank()) {
+        return 1;
+    }
+    if (g1.comm().size() != g2.comm().size()) {
+        return 1;
     }
 
     return 0;

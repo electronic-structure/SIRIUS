@@ -17,8 +17,8 @@ int run_test(cmd_args& args)
     M(0, 2) = 0.2;
     M(2, 0) = 0.3;
 
-    sddk::Gvec gvec(M, cutoff, sddk::Communicator::world(), false);
-    sddk::Gvec gvec_r(M, cutoff, sddk::Communicator::world(), true);
+    fft::Gvec gvec(M, cutoff, mpi::Communicator::world(), false);
+    fft::Gvec gvec_r(M, cutoff, mpi::Communicator::world(), true);
 
     if (gvec_r.num_gvec() * 2 != gvec.num_gvec() + 1) {
         return 1;

@@ -311,8 +311,8 @@ void K_point_set::find_band_occupancies()
             emax = std::max(emax, this->get<T>(ik)->band_energy(ctx_.num_bands() - 1, ispn));
         }
     }
-    comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
-    comm().allreduce<double, sddk::mpi_op_t::max>(&emax, 1);
+    comm().allreduce<double, mpi::op_t::min>(&emin, 1);
+    comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
     sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
@@ -517,7 +517,7 @@ double K_point_set::entropy_sum() const
 
 void K_point_set::print_info()
 {
-    sddk::pstdout pout(this->comm());
+    mpi::pstdout pout(this->comm());
 
     if (ctx_.comm().rank() == 0) {
         pout << std::endl;

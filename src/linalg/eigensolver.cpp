@@ -25,6 +25,8 @@
 #include "eigensolver.hpp"
 #include "eigenproblem.hpp"
 
+namespace la {
+
 std::unique_ptr<Eigensolver>
 Eigensolver_factory(std::string name__)
 {
@@ -73,5 +75,7 @@ Eigensolver_factory(std::string name__)
         }
     }
     return std::unique_ptr<Eigensolver>(ptr);
+}
+
 }
 

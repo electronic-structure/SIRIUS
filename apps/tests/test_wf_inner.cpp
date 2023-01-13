@@ -7,17 +7,17 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
 {
     spla::Context spla_ctx(sddk::is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
-    std::unique_ptr<sddk::BLACS_grid> blacs_grid;
+    std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
-        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::self(), 1, 1));
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     } else {
-        blacs_grid = std::unique_ptr<sddk::BLACS_grid>(new sddk::BLACS_grid(sddk::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
     }
 
     /* create G-vectors */
-    auto gvec = gkvec_factory(cutoff__, sddk::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);
         printf("total number of G-vectors: %i\n", gvec->num_gvec());
         printf("local number of G-vectors: %i\n", gvec->count());
@@ -43,19 +43,19 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     auto mg1 = phi1.memory_guard(mem__, wf::copy_to::device);
     auto mg2 = phi2.memory_guard(mem__, wf::copy_to::device);
 
-    sddk::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
+    la::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
 
     /* warmup call */
     wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
-    sddk::Communicator::world().barrier();
+    mpi::Communicator::world().barrier();
 
     double t = -utils::wtime();
     wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
-    sddk::Communicator::world().barrier();
+    mpi::Communicator::world().barrier();
     t += utils::wtime();
 
     double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
-    if (sddk::Communicator::world().rank() == 0) {
+    if (mpi::Communicator::world().rank() == 0) {
         printf("execution time (sec) : %12.6f\n", t);
         printf("performance (GFlops) : %12.6f\n", perf);
     }
@@ -70,8 +70,8 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
             max_diff = std::max(max_diff, std::abs(z));
         }
     }
-    sddk::Communicator::world().reduce<double, sddk::mpi_op_t::max>(&max_diff, 1, 0);
-    if (sddk::Communicator::world().rank() == 0) {
+    mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
+    if (mpi::Communicator::world().rank() == 0) {
         printf("maximum difference: %18.12f\n", max_diff);
         if (max_diff > 1e-10) {
             printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
@@ -92,7 +92,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     //        wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
     //wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
     //max_diff = sddk::check_identity(ovlp, num_bands__);
-    //if (sddk::Communicator::world().rank() == 0) {
+    //if (mpi::Communicator::world().rank() == 0) {
     //    printf("checking identity\n");
     //    printf("maximum difference: %18.12f\n", max_diff);
     //    if (max_diff > 1e-10) {
@@ -128,8 +128,8 @@ int main(int argn, char** argv)
 
     test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_memory_t(memory_t_str));
 
-    sddk::Communicator::world().barrier();
-    int my_rank = sddk::Communicator::world().rank();
+    mpi::Communicator::world().barrier();
+    int my_rank = mpi::Communicator::world().rank();
 
     sirius::finalize(1);
 

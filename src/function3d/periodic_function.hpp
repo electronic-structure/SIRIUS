@@ -55,7 +55,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     Unit_cell const& unit_cell_;
 
-    sddk::Communicator const& comm_;
+    mpi::Communicator const& comm_;
 
     /// Local part of muffin-tin functions.
     sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
@@ -63,7 +63,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Global muffin-tin array
     sddk::mdarray<T, 3> f_mt_;
 
-    sddk::Gvec const& gvec_;
+    fft::Gvec const& gvec_;
 
     /// Size of the muffin-tin functions angular domain size.
     int angular_domain_size_;
@@ -164,7 +164,7 @@ class Periodic_function : public Smooth_periodic_function<T>
                     f_rg__ + offs);
             }
             if (!is_local_rg__) {
-                sddk::Communicator(
+                mpi::Communicator(
                     this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
             }
         }
@@ -233,8 +233,8 @@ class Periodic_function : public Smooth_periodic_function<T>
                 it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
             }
         }
-        it_val *= (unit_cell_.omega() / spfft_grid_size(this->spfft()));
-        sddk::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
+        it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->spfft()));
+        mpi::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
         T total = it_val;
 
         std::vector<T> mt_val;

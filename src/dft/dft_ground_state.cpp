@@ -380,7 +380,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             rho_min = std::min(rho_min, density_.rho().f_rg(ir));
         }
         dict["rho_min"] = rho_min;
-        ctx_.comm().allreduce<double, sddk::mpi_op_t::min>(&rho_min, 1);
+        ctx_.comm().allreduce<double, mpi::op_t::min>(&rho_min, 1);
     }
 
     dict["scf_time"]     = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();

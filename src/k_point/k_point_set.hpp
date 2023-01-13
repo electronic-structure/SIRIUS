@@ -165,7 +165,7 @@ class K_point_set
             auto ik       = spl_num_kpoints_[ikloc];
             max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
         }
-        comm().allreduce<int, sddk::mpi_op_t::max>(&max_num_gkvec, 1);
+        comm().allreduce<int, mpi::op_t::max>(&max_num_gkvec, 1);
         return max_num_gkvec;
     }
 
@@ -239,7 +239,7 @@ class K_point_set
 
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
-    inline sddk::Gvec get_gkvec(int jk__, int rank__)
+    inline fft::Gvec get_gkvec(int jk__, int rank__)
     {
         /* rank in the k-point communicator */
         int my_rank = comm().rank();
@@ -248,9 +248,9 @@ class K_point_set
         int jrank = spl_num_kpoints().local_rank(jk__);
 
         /* need this to pass communicator */
-        sddk::Gvec gkvec(ctx_.comm_band());
+        fft::Gvec gkvec(ctx_.comm_band());
 
-        sddk::Gvec const* gvptr{nullptr};
+        fft::Gvec const* gvptr{nullptr};
         /* if this rank stores the k-point, then send it */
         if (my_rank == jrank) {
             gvptr = &kpoints_[jk__].get()->gkvec();
