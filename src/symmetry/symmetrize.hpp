@@ -26,7 +26,7 @@
 #define __SYMMETRIZE_HPP__
 
 #include "crystal_symmetry.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 #include "SDDK/omp.hpp"
 #include "typedefs.hpp"
 #include "sht/sht.hpp"
@@ -94,7 +94,7 @@ namespace sirius {
     \f]
  */
 inline void
-symmetrize(Crystal_symmetry const& sym__, sddk::Gvec_shells const& gvec_shells__,
+symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
            sddk::mdarray<std::complex<double>, 3> const& sym_phase_factors__, std::complex<double>* f_pw__, std::complex<double>* x_pw__,
            std::complex<double>* y_pw__, std::complex<double>* z_pw__)
 {
@@ -363,9 +363,9 @@ symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm
         for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
             int ia = spl_atoms[ialoc];
             int ja = sym__[i].spg_op.inv_sym_atom[ia];
-            sddk::linalg(sddk::linalg_t::blas)
+            la::wrap(la::lib_t::blas)
                 .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(sddk::memory_t::host), rotm.ld(),
-                      frlm__.at(sddk::memory_t::host, 0, 0, ja), frlm__.ld(), &sddk::linalg_const<double>::one(),
+                      frlm__.at(sddk::memory_t::host, 0, 0, ja), frlm__.ld(), &la::constant<double>::one(),
                       fsym.at(sddk::memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
@@ -408,9 +408,9 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator cons
             int ia   = spl_atoms[ialoc];
             int ja   = sym__[i].spg_op.inv_sym_atom[ia];
             double a = alpha * S(2, 2);
-            sddk::linalg(sddk::linalg_t::blas)
+            la::wrap(la::lib_t::blas)
                 .gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(sddk::memory_t::host), rotm.ld(),
-                      vz_rlm__.at(sddk::memory_t::host, 0, 0, ja), vz_rlm__.ld(), &sddk::linalg_const<double>::one(),
+                      vz_rlm__.at(sddk::memory_t::host, 0, 0, ja), vz_rlm__.ld(), &la::constant<double>::one(),
                       fsym.at(sddk::memory_t::host, 0, 0, ialoc), fsym.ld());
         }
     }
@@ -455,9 +455,9 @@ symmetrize_vector_function(Crystal_symmetry const& sym__, mpi::Communicator cons
             int ia = spl_atoms[ialoc];
             int ja = sym__[i].spg_op.inv_sym_atom[ia];
             for (int k : {0, 1, 2}) {
-                sddk::linalg(sddk::linalg_t::blas)
+                la::wrap(la::lib_t::blas)
                     .gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(sddk::memory_t::host), rotm.ld(),
-                          vrlm[k]->at(sddk::memory_t::host, 0, 0, ja), vrlm[k]->ld(), &sddk::linalg_const<double>::zero(),
+                          vrlm[k]->at(sddk::memory_t::host, 0, 0, ja), vrlm[k]->ld(), &la::constant<double>::zero(),
                           vtmp.at(sddk::memory_t::host, 0, 0, k), vtmp.ld());
             }
             #pragma omp parallel

@@ -132,7 +132,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors_strain_deriv(Simulation_context& ctx__, sddk::Gvec const& gkvec__)
+    Beta_projectors_strain_deriv(Simulation_context& ctx__, fft::Gvec const& gkvec__)
         : Beta_projectors_base<T>(ctx__, gkvec__, 9)
     {
         generate_pw_coefs_t();

@@ -571,7 +571,7 @@ Density::generate_paw_loc_density()
 /// Compute non-magnetic or up- or dn- contribution of the wave-functions to the charge density.
 template <typename T>
 static void
-add_k_point_contribution_rg_collinear(spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__, int nr__,
+add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__, int nr__,
         bool gamma__, sddk::mdarray<T, 2>& density_rg__)
 {
     /* transform to real space */
@@ -614,7 +614,7 @@ add_k_point_contribution_rg_collinear(spfft_transform_type<T>& fft__, int ispn__
 /// Compute contribution to density and megnetisation from the 2-component spinor wave-functions.
 template <typename T>
 static
-void add_k_point_contribution_rg_noncollinear(spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
+void add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
         T const* inp_wf_dn__, int nr__, sddk::mdarray<std::complex<T>, 1>& psi_r_up__, sddk::mdarray<T, 2>& density_rg__)
 {
     /* location of the real-space wave-functions psi(r) */
@@ -782,7 +782,7 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
     sddk::mdarray<std::complex<double>, 3> wf1(uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins());
     sddk::mdarray<std::complex<double>, 3> wf2(uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins());
 
-    auto one = sddk::linalg_const<std::complex<double>>::one();
+    auto one = la::constant<std::complex<double>>::one();
 
     /* add |psi_j> n_j <psi_j| to density matrix */
 
@@ -803,13 +803,13 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
         /* compute diagonal terms */
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
-            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size,
+            la::wrap(la::lib_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size,
                 kp__.num_occupied_bands(ispn), &one, &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), &one,
                 density_matrix__.at(sddk::memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
         }
         /* offdiagonal term */
         if (ctx__.num_mag_dims() == 3) {
-            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(),
+            la::wrap(la::lib_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(),
                 &one, &wf1(0, 0, 0), wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one,
                 density_matrix__.at(sddk::memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
         }
@@ -860,10 +860,10 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_po
                     }
                 }
 
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'T', nbf, nbf, nbnd_loc, &sddk::linalg_const<std::complex<double>>::one(),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'T', nbf, nbf, nbnd_loc, &la::constant<std::complex<double>>::one(),
                           &bp1(0, 0), bp1.ld(), &bp2(0, 0), bp2.ld(),
-                          &sddk::linalg_const<std::complex<double>>::one(), &density_matrix__(0, 0, ispn, ja),
+                          &la::constant<std::complex<double>>::one(), &density_matrix__(0, 0, ispn, ja),
                           density_matrix__.ld());
             }
         }
@@ -988,16 +988,16 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
             int ja   = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::ia, ia);
             /* compute diagonal spin blocks */
             for (int ispn = 0; ispn < 2; ispn++) {
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'T', nbf, nbf, nbnd_loc, &sddk::linalg_const<std::complex<double>>::one(),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'T', nbf, nbf, nbnd_loc, &la::constant<std::complex<double>>::one(),
                           &bp1(offs, 0, ispn), bp1.ld(), &bp2(offs, 0, ispn), bp2.ld(),
-                          &sddk::linalg_const<std::complex<double>>::one(), &density_matrix__(0, 0, ispn, ja),
+                          &la::constant<std::complex<double>>::one(), &density_matrix__(0, 0, ispn, ja),
                           density_matrix__.ld());
             }
             /* off-diagonal spin block */
-            sddk::linalg(sddk::linalg_t::blas)
-                .gemm('N', 'T', nbf, nbf, nbnd_loc, &sddk::linalg_const<std::complex<double>>::one(), &bp1(offs, 0, 0),
-                      bp1.ld(), &bp2(offs, 0, 1), bp2.ld(), &sddk::linalg_const<std::complex<double>>::one(),
+            la::wrap(la::lib_t::blas)
+                .gemm('N', 'T', nbf, nbf, nbnd_loc, &la::constant<std::complex<double>>::one(), &bp1(offs, 0, 0),
+                      bp1.ld(), &bp2(offs, 0, 1), bp2.ld(), &la::constant<std::complex<double>>::one(),
                       &density_matrix__(0, 0, 2, ja), density_matrix__.ld());
         }
     }
@@ -1475,11 +1475,11 @@ Density::generate_rho_aug()
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         PROFILE_START("sirius::Density::generate_rho_aug|gemm");
-                        sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(),
-                                  &sddk::linalg_const<double>::one(),
+                        la::wrap(la::lib_t::blas).gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(),
+                                  &la::constant<double>::one(),
                                   dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
                                   phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                                  &sddk::linalg_const<double>::zero(),
+                                  &la::constant<double>::zero(),
                                   dm_pw.at(sddk::memory_t::host, 0, 0, 0), dm_pw.ld());
                         PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
                         PROFILE_START("sirius::Density::generate_rho_aug|sum");
@@ -1701,10 +1701,10 @@ Density::generate_valence_mt()
             }
         }
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            sddk::linalg(sddk::linalg_t::blas)
-                .gemm('N', 'T', ctx_.lmmax_rho(), nmtp, num_rf_pairs, &sddk::linalg_const<double>::one(),
+            la::wrap(la::lib_t::blas)
+                .gemm('N', 'T', ctx_.lmmax_rho(), nmtp, num_rf_pairs, &la::constant<double>::one(),
                       &mt_density_matrix(0, 0, j), mt_density_matrix.ld(), &rf_pairs(0, 0), rf_pairs.ld(),
-                      &sddk::linalg_const<double>::zero(), &dlm(0, 0, j), dlm.ld());
+                      &la::constant<double>::zero(), &dlm(0, 0, j), dlm.ld());
         }
 
         int sz = static_cast<int>(ctx_.lmmax_rho() * nmtp * sizeof(double));
@@ -1805,7 +1805,7 @@ Density::compute_atomic_mag_mom() const
         }
 
         for (int j : {0, 1, 2}) {
-            mmom(j, ia) *= (unit_cell_.omega() / spfft_grid_size(ctx_.spfft<double>()));
+            mmom(j, ia) *= (unit_cell_.omega() / fft::spfft_grid_size(ctx_.spfft<double>()));
         }
     }
     mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));

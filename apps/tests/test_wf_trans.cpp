@@ -3,13 +3,13 @@
 using namespace sirius;
 
 template <typename T, typename F>
-void test_wf_trans(sddk::BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
+void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
                    sddk::memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     /* create G-vectors */
-    auto gvec = sddk::gkvec_factory(cutoff__, mpi::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
     if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);
@@ -46,7 +46,7 @@ void test_wf_trans(sddk::BLACS_grid const& blacs_grid__, double cutoff__, int nu
         }
     }
 
-    sddk::dmatrix<F> tmtrx(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
+    la::dmatrix<F> tmtrx(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
     tmtrx.zero();
     for (int i = 0; i < num_bands__; i++) {
         tmtrx.set(i, num_bands__ - i - 1, 1.0);
@@ -103,11 +103,11 @@ template <typename T>
 void call_test(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
                sddk::memory_t mem__, int repeat__)
 {
-    std::unique_ptr<sddk::BLACS_grid> blacs_grid;
+    std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
-        blacs_grid = std::make_unique<sddk::BLACS_grid>(mpi::Communicator::self(), 1, 1);
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     } else {
-        blacs_grid = std::make_unique<sddk::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
     }
     for (int i = 0; i < repeat__; i++) {
         test_wf_trans<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);

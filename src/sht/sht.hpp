@@ -210,8 +210,8 @@ class SHT // TODO: better name
         }
 
         if (mesh_type_ == 1) {
-            sddk::linalg(sddk::linalg_t::lapack).geinv(lmmax_, ylm_forward_);
-            sddk::linalg(sddk::linalg_t::lapack).geinv(lmmax_, rlm_forward_);
+            la::wrap(la::lib_t::lapack).geinv(lmmax_, ylm_forward_);
+            la::wrap(la::lib_t::lapack).geinv(lmmax_, rlm_forward_);
         }
 
         switch (pu_) {

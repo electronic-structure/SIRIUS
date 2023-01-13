@@ -30,8 +30,8 @@
 namespace sirius {
 
 template <typename T>
-Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transform_type<T>& fft_coarse__,
-                                  std::shared_ptr<sddk::Gvec_fft> gvec_coarse_p__, Potential* potential__)
+Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
+                                  std::shared_ptr<fft::Gvec_fft> gvec_coarse_p__, Potential* potential__)
     : ctx_(ctx__)
     , fft_coarse_(fft_coarse__)
     , gvec_coarse_p_(gvec_coarse_p__)
@@ -173,11 +173,11 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, spfft_transfo
 }
 
 template <typename T>
-void Local_operator<T>::prepare_k(sddk::Gvec_fft const& gkvec_p__)
+void Local_operator<T>::prepare_k(fft::Gvec_fft const& gkvec_p__)
 {
     PROFILE("sirius::Local_operator::prepare_k");
 
-    int ngv_fft = gkvec_p__.gvec_count_fft();
+    int ngv_fft = gkvec_p__.count();
 
     /* cache kinteic energy of plane-waves */
     //if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
@@ -210,7 +210,7 @@ void Local_operator<T>::prepare_k(sddk::Gvec_fft const& gkvec_p__)
 /// Multiply FFT buffer by the effective potential.
 template <typename T>
 static inline void
-mul_by_veff(spfft_transform_type<T>& spfftk__, T const* in__,
+mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> const& veff_vec__, int idx_veff__, T* out__)
 {
     PROFILE("sirius::mul_by_veff");
@@ -285,7 +285,7 @@ mul_by_veff(spfft_transform_type<T>& spfftk__, T const* in__,
 
 template <typename T>
 void
-Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
+Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__,
     wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__, wf::band_range br__)
 {
     PROFILE("sirius::Local_operator::apply_h");
@@ -299,7 +299,7 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
     ctx_.num_loc_op_applied(br__.size());
 
     /* local number of G-vectors for the FFT transformation */
-    int ngv_fft = gkvec_fft__->gvec_count_fft();
+    int ngv_fft = gkvec_fft__->count();
 
     if (ngv_fft != spfftk__.num_local_elements()) {
         TERMINATE("wrong number of G-vectors");
@@ -320,7 +320,7 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
 
     /* assume the location of data on the current processing unit */
     auto spfft_pu = spfftk__.processing_unit();
-    auto spfft_mem = spfft_memory_t.at(spfft_pu);
+    auto spfft_mem = fft::spfft_memory_t.at(spfft_pu);
 
     /* number of real-space points in the local part of FFT buffer */
     int nr = spfftk__.local_slice_size();
@@ -482,7 +482,7 @@ Local_operator<T>::apply_h(spfft_transform_type<T>& spfftk__, std::shared_ptr<sd
 // This is full-potential case. Only C2C FFT transformation is considered here.
 // TODO: document the data location on input/output
 template <typename T>
-void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::shared_ptr<sddk::Gvec_fft> gkvec_fft__,
+void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__,
         wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__, 
         wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__)
 {
@@ -493,7 +493,7 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
     /* assume the location of data on the current processing unit */
     auto spfft_pu = spfftk__.processing_unit();
 
-    auto spfft_mem = spfft_memory_t.at(spfft_pu);
+    auto spfft_mem = fft::spfft_memory_t.at(spfft_pu);
 
     auto s0 = wf::spin_index(0);
 
@@ -532,7 +532,7 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
     /* pointer to memory where SpFFT stores real-space data */
     auto spfft_buf = spfftk__.space_domain_data(spfft_pu);
 
-    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->gvec_count_fft(), get_memory_pool(ctx_.host_memory_t()));
+    sddk::mdarray<std::complex<T>, 1> buf_pw(gkvec_fft__->count(), get_memory_pool(ctx_.host_memory_t()));
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
         buf_pw.allocate(get_memory_pool(sddk::memory_t::device));
     }
@@ -605,13 +605,13 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
             for (int x : {0, 1, 2}) {
                 if (is_host_memory(mem)) {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_fft__->count(); igloc++) {
                         auto gvc = gkvec_fft__->gkvec_cart(igloc);
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
                         buf_pw[igloc] = phi_fft.pw_coeffs(igloc, wf::band_index(j)) * static_cast<T>(gvc[x]);
                     }
                 } else {
-                    grad_phi_lapw_gpu(gkvec_fft__->gvec_count_fft(),
+                    grad_phi_lapw_gpu(gkvec_fft__->count(),
                             phi_fft.at(mem, 0, wf::band_index(j)),
                             gkvec_cart_.at(mem, 0, x), buf_pw.at(mem));
                 }
@@ -639,13 +639,13 @@ void Local_operator<T>::apply_fplapw(spfft_transform_type<T>& spfftk__, std::sha
                 spfftk__.forward(spfft_pu, reinterpret_cast<T*>(buf_pw.at(mem)), SPFFT_FULL_SCALING);
                 if (is_host_memory(mem)) {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gkvec_fft__->gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_fft__->count(); igloc++) {
                         auto gvc = gkvec_fft__->gkvec_cart(igloc);
                         map_wf_fft[hphi__].pw_coeffs(igloc, wf::band_index(j)) += buf_pw[igloc] *
                             static_cast<T>(0.5 * gvc[x]);
                     }
                 } else {
-                    add_to_hphi_lapw_gpu(gkvec_fft__->gvec_count_fft(), buf_pw.at(sddk::memory_t::device),
+                    add_to_hphi_lapw_gpu(gkvec_fft__->count(), buf_pw.at(sddk::memory_t::device),
                             gkvec_cart_.at(sddk::memory_t::device, 0, x),
                             map_wf_fft[hphi__].at(sddk::memory_t::device, 0, wf::band_index(j)));
                 }

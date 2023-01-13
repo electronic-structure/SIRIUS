@@ -120,15 +120,15 @@ Simulation_context::init_fft_grid()
     /* create FFT driver for dense mesh (density and potential) */
     auto fft_grid = cfg().settings().fft_grid_size();
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
-        fft_grid_ = sddk::get_min_fft_grid(pw_cutoff(), rlv);
+        fft_grid_ = fft::get_min_grid(pw_cutoff(), rlv);
         cfg().settings().fft_grid_size(fft_grid_);
     } else {
         /* else create a grid with user-specified dimensions */
-        fft_grid_ = sddk::FFT3D_grid(fft_grid);
+        fft_grid_ = fft::Grid(fft_grid);
     }
 
     /* create FFT grid for coarse mesh */
-    fft_coarse_grid_ = sddk::get_min_fft_grid(2 * gk_cutoff(), rlv);
+    fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
 }
 
 sddk::mdarray<double, 3>
@@ -226,18 +226,18 @@ Simulation_context::sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, 
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case sddk::device_t::CPU: {
-                sddk::linalg(sddk::linalg_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
+                la::wrap(la::lib_t::blas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
                           zm.ld(), phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
+                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
                 break;
             }
             case sddk::device_t::GPU: {
                 zm.copy_to(sddk::memory_t::device);
-                sddk::linalg(sddk::linalg_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &sddk::linalg_const<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
+                la::wrap(la::lib_t::gpublas)
+                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
                           zm.ld(), phase_factors.at(sddk::memory_t::device), phase_factors.ld(),
-                          &sddk::linalg_const<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
+                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
                 tmp.copy_to(sddk::memory_t::host);
                 break;
             }
@@ -582,8 +582,8 @@ Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name());
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name());
+    std_evp_solver_ = la::Eigensolver_factory(std_evp_solver_name());
+    gen_evp_solver_ = la::Eigensolver_factory(gen_evp_solver_name());
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -594,9 +594,9 @@ Simulation_context::initialize()
 
     /* setup BLACS grid */
     if (std_solver.is_parallel()) {
-        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(comm_band(), npr, npc);
+        blacs_grid_ = std::make_unique<la::BLACS_grid>(comm_band(), npr, npc);
     } else {
-        blacs_grid_ = std::make_unique<sddk::BLACS_grid>(mpi::Communicator::self(), 1, 1);
+        blacs_grid_ = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     }
 
     /* setup the cyclic block size */
@@ -686,8 +686,8 @@ Simulation_context::print_info(std::ostream& out__) const
         std::string headers[]       = {"FFT context for density and potential", "FFT context for coarse grid"};
         double cutoffs[]            = {pw_cutoff(), 2 * gk_cutoff()};
         mpi::Communicator const* comms[] = {&comm_fft(), &comm_fft_coarse()};
-        sddk::FFT3D_grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
-        sddk::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
+        fft::Grid fft_grids[]      = {this->fft_grid_, this->fft_coarse_grid_};
+        fft::Gvec const* gvecs[]         = {&gvec(), &gvec_coarse()};
 
         for (int i = 0; i < 2; i++) {
             os << headers[i] << std::endl
@@ -771,14 +771,14 @@ Simulation_context::print_info(std::ostream& out__) const
         }
 
         std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
-        ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
-        std::map<ev_solver_t, std::string> const evsm = {
-            {ev_solver_t::lapack, "LAPACK"},
-            {ev_solver_t::scalapack, "ScaLAPACK"},
-            {ev_solver_t::elpa, "ELPA"},
-            {ev_solver_t::magma, "MAGMA"},
-            {ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
-            {ev_solver_t::cusolver, "cuSOLVER"}
+        la::ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
+        std::map<la::ev_solver_t, std::string> const evsm = {
+            {la::ev_solver_t::lapack, "LAPACK"},
+            {la::ev_solver_t::scalapack, "ScaLAPACK"},
+            {la::ev_solver_t::elpa, "ELPA"},
+            {la::ev_solver_t::magma, "MAGMA"},
+            {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
+            {la::ev_solver_t::cusolver, "cuSOLVER"}
         };
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;
@@ -962,20 +962,20 @@ Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::make_unique<sddk::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
+        gvec_coarse_ = std::make_unique<fft::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
         /* create FFT friendly partiton */
-        gvec_coarse_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
+        gvec_coarse_fft_ = std::make_shared<fft::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
                 comm_ortho_fft_coarse());
 
-        auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
+        auto spl_z = fft::split_z_dimension(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::make_unique<spfft::Grid>(fft_coarse_grid_[0], fft_coarse_grid_[1],
-                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(),
+                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(),
                 spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
 #ifdef USE_FP32
         spfft_grid_coarse_float_ = std::make_unique<spfft::GridFloat>(fft_coarse_grid_[0], fft_coarse_grid_[1],
-                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(), spl_z.local_size(), spfft_pu, -1,
                 comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
 #endif
         /* create spfft transformations */
@@ -986,12 +986,12 @@ Simulation_context::update()
         /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #ifdef USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
-            spl_z.local_size(), gvec_coarse_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
 #endif
     } else {
@@ -1000,19 +1000,19 @@ Simulation_context::update()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
-        gvec_     = std::make_shared<sddk::Gvec>(pw_cutoff(), *gvec_coarse_);
-        gvec_fft_ = std::make_shared<sddk::Gvec_fft>(*gvec_, comm_fft(), comm_ortho_fft());
+        gvec_     = std::make_shared<fft::Gvec>(pw_cutoff(), *gvec_coarse_);
+        gvec_fft_ = std::make_shared<fft::Gvec_fft>(*gvec_, comm_fft(), comm_ortho_fft());
 
-        auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
+        auto spl_z = fft::split_z_dimension(fft_grid_[2], comm_fft());
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
-                            gvec_fft_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
+                            gvec_fft_->zcol_count(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().native(), SPFFT_EXCH_DEFAULT));
 #if defined(USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
-            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count_fft(),
+            new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count(),
                                  spl_z.local_size(), spfft_pu, -1, comm_fft().native(), SPFFT_EXCH_DEFAULT));
 #endif
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
@@ -1021,11 +1021,11 @@ Simulation_context::update()
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            spl_z.local_size(), gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #if defined(USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_fft_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
@@ -1054,7 +1054,7 @@ Simulation_context::update()
     /* After each update of the lattice vectors we might get a different set of G-vector shells.
      * Always update the mapping between the canonical FFT distribution and "local G-shells"
      * distribution which is used in symmetriezation of lattice periodic functions. */
-    remap_gvec_ = std::make_unique<sddk::Gvec_shells>(gvec());
+    remap_gvec_ = std::make_unique<fft::Gvec_shells>(gvec());
 
     /* check symmetry of G-vectors */
     if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {
@@ -1427,16 +1427,16 @@ Simulation_context::init_step_function()
         }
         theta_pw_[0] += 1.0;
 
-        std::vector<std::complex<double>> ftmp(gvec_fft().gvec_count_fft());
+        std::vector<std::complex<double>> ftmp(gvec_fft().count());
         this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
         spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
         double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
-        spfft_output(spfft<double>(), theta_ptr);
+        fft::spfft_output(spfft<double>(), theta_ptr);
     } catch (...) {
         std::stringstream s;
         s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
           << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-          << "gvec_fft().gvec_count_fft() = " << gvec_fft().gvec_count_fft();
+          << "gvec_fft().count() = " << gvec_fft().count();
         RTE_THROW(s);
     }
 

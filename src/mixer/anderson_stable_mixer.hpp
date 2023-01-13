@@ -194,7 +194,7 @@ class Anderson_stable : public Mixer<FUNCS...>
         if (this->history_size_ == this->max_history_ - 1) {
             // Restore [R12; R22] to upper triangular
             for (int row = 1; row <= history_size - 1; ++row) {
-                auto rotation = sddk::linalg(sddk::linalg_t::lapack).lartg(this->R_(row - 1, row), this->R_(row, row));
+                auto rotation = la::wrap(la::lib_t::lapack).lartg(this->R_(row - 1, row), this->R_(row, row));
                 auto c = std::get<0>(rotation);
                 auto s = std::get<1>(rotation);
                 auto nrm = std::get<2>(rotation);

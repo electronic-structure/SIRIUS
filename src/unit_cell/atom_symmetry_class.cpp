@@ -221,7 +221,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         double b[]    = {0, 0, 0};
         b[num_rs - 1] = 1.0;
 
-        int info = sddk::linalg(sddk::linalg_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
+        int info = la::wrap(la::lib_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
         if (info) {
             std::stringstream s;
@@ -353,7 +353,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     int nmtp = atom_type_.num_mt_points();
 
     Spline<double>  s(atom_type_.radial_grid());
-    sddk::dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
+    la::dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
 
@@ -376,10 +376,10 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     sddk::mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
-    auto stdevp = Eigensolver_factory("lapack");
+    auto stdevp = la::Eigensolver_factory("lapack");
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    sddk::dmatrix<double> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    la::dmatrix<double> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
     stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
@@ -415,8 +415,8 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
         }
 
         std::vector<double> eval(ilo.size());
-        sddk::dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
-        sddk::dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        la::dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        la::dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
         for (int j1 = 0; j1 < (int)ilo.size(); j1++) {
             for (int j2 = 0; j2 < (int)ilo.size(); j2++) {
                 tmp(j1, j2) = ovlp(ilo[j1], ilo[j2]);

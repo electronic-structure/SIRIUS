@@ -2,6 +2,7 @@
 
 using namespace sirius;
 using namespace sddk;
+using namespace la;
 
 template <typename T, typename F>
 void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
@@ -10,7 +11,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     /* create G-vectors */
-    auto gvec = gkvec_factory(cutoff__, mpi::Communicator::world());
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
 
     if (mpi::Communicator::world().rank() == 0) {
         printf("number of bands          : %i\n", num_bands__);

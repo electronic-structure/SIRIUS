@@ -39,7 +39,7 @@ void K_point<T>::generate_fv_states()
     auto const& uc = ctx_.unit_cell();
 
     auto bs = ctx_.cyclic_block_size();
-    sddk::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(),
+    la::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(),
             ctx_.blacs_grid(), bs, bs);
 
     int atom_begin{0};
@@ -77,8 +77,8 @@ void K_point<T>::generate_fv_states()
     wf::Wave_functions_mt<T> alm_fv_slab(this->comm(), num_mt_apw_coeffs, wf::num_mag_dims(0),
             wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
 
-    auto& one = sddk::linalg_const<std::complex<T>>::one();
-    auto& zero = sddk::linalg_const<std::complex<T>>::zero();
+    auto& one = la::constant<std::complex<T>>::one();
+    auto& zero = la::constant<std::complex<T>>::zero();
 
     auto layout_in = alm_fv.grid_layout(0, 0, uc.mt_aw_basis_size(), ctx_.num_fv_states());
     auto layout_out = alm_fv_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));

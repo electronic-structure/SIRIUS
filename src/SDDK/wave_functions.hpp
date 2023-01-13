@@ -31,7 +31,7 @@
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/linalg.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/rte.hpp"
 #include "type_definition.hpp"
@@ -714,17 +714,17 @@ class Wave_functions : public Wave_functions_mt<T>
 {
   private:
     /// Pointer to G+k- vectors object.
-    std::shared_ptr<sddk::Gvec> gkvec_;
+    std::shared_ptr<fft::Gvec> gkvec_;
   public:
     /// Constructor for pure plane-wave functions.
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
+    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
     }
 
     /// Constructor for wave-functions with plane-wave and muffin-tin parts (LAPW case).
-    Wave_functions(std::shared_ptr<sddk::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
+    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
             num_bands num_wf__, sddk::memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_mt_coeffs__, num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
@@ -857,7 +857,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
 {
   private:
     /// Pointer to FFT-friendly G+k vector deistribution.
-    std::shared_ptr<sddk::Gvec_fft> gkvec_fft_;
+    std::shared_ptr<fft::Gvec_fft> gkvec_fft_;
     /// Split number of wave-functions between column communicator.
     sddk::splindex<sddk::splindex_t::block> spl_num_wf_;
     /// Pointer to the original wave-functions.
@@ -882,7 +882,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         std::vector<int> rowsplit(comm_row.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < comm_row.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->gvec_count_fft(i);
+            rowsplit[i + 1] = rowsplit[i] + gkvec_fft_->count(i);
         }
 
         std::vector<int> colsplit(comm_col.size() + 1);
@@ -916,8 +916,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_in  = wf_->grid_layout_pw(sp, b__);
             auto layout_out = this->grid_layout(b__.size());
 
-            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
+                    la::constant<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
             /*
              * old implementation (to be removed when performance of COSTA is understood)
@@ -925,10 +925,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
@@ -983,17 +983,17 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto layout_in  = this->grid_layout(b__.size());
             auto layout_out = wf_->grid_layout_pw(sp, b__);
 
-            costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-                    sddk::linalg_const<std::complex<T>>::zero(), wf_->gkvec().comm().native());
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
+                    la::constant<std::complex<T>>::zero(), wf_->gkvec().comm().native());
         } else {
 
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
             auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->gvec_count_fft() * ncol;
+            size_t sz = gkvec_fft_->count() * ncol;
             sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
 
-            auto& row_distr = gkvec_fft_->gvec_fft_slab();
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
@@ -1037,7 +1037,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     }
 
     /// Constructor.
-    Wave_functions_fft(std::shared_ptr<sddk::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
+    Wave_functions_fft(std::shared_ptr<fft::Gvec_fft> gkvec_fft__, Wave_functions<T>& wf__, spin_index s__,
             band_range br__, unsigned int shuffle_flag___)
         : gkvec_fft_{gkvec_fft__}
         , wf_{&wf__}
@@ -1067,9 +1067,9 @@ class Wave_functions_fft : public Wave_functions_base<T>
             this->num_pw_ = wf_->num_pw_;
         } else {
             /* do wave-functions swap */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->gvec_count_fft(), this->num_wf_.get(),
+            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->count(), this->num_wf_.get(),
                     sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
-            this->num_pw_ = gkvec_fft__->gvec_count_fft();
+            this->num_pw_ = gkvec_fft__->count();
 
             if (shuffle_flag_ & shuffle_to::fft_layout) {
                 if (wf__.data_[sp.get()].on_device()) {
@@ -1431,7 +1431,7 @@ void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1441,7 +1441,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> co
 
     /* spla manages the resources through the context which can be updated during the call;
      * that's why the const must be removed here */
-    auto& spla_mat_dist = const_cast<sddk::dmatrix<F>&>(M__).spla_distribution();
+    auto& spla_mat_dist = const_cast<la::dmatrix<F>&>(M__).spla_distribution();
 
     /* for Gamma point case (transformation matrix is real) we treat complex wave-function coefficients as
      * a doubled list of real values */
@@ -1462,7 +1462,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> co
 
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, sddk::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1564,7 +1564,7 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
 template <typename F, typename W, typename T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
 inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
-      Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__, int irow0__, int jcol0__)
+      Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
 
@@ -1635,7 +1635,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
 inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wave_functions<T> const& wf_i__,
-        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, sddk::dmatrix<F>& result__,
+        band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__,
         int irow0__, int jcol0__)
 {
     if (is_device_memory(mem__)) {
@@ -1690,7 +1690,7 @@ template <typename T, typename F>
 int
 orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, band_range br_old__,
         band_range br_new__, Wave_functions<T> const& wf_i__, Wave_functions<T> const& wf_j__,
-        std::vector<Wave_functions<T>*> wfs__, sddk::dmatrix<F>& o__, Wave_functions<T>& tmp__, bool project_out__)
+        std::vector<Wave_functions<T>*> wfs__, la::dmatrix<F>& o__, Wave_functions<T>& tmp__, bool project_out__)
 {
     PROFILE("wf::orthogonalize");
 
@@ -1750,7 +1750,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //        }
 //        inner(spla_ctx__, spins__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 //
-//        linalg(linalg_t::scalapack).geqrf(n__, n__, o__, 0, 0);
+//        linalg(lib_t::scalapack).geqrf(n__, n__, o__, 0, 0);
 //        auto diag = o__.get_diag(n__);
 //        if (o__.comm().rank() == 0) {
 //            for (int i = 0; i < n__; i++) {
@@ -1815,24 +1815,24 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      *       - trmm is computed on GPU with wf::transform
      */
     // TODO: test magma and cuSolver
-    sddk::linalg_t la = sddk::linalg_t::lapack;
-    sddk::linalg_t la1 = sddk::linalg_t::blas;
-    sddk::memory_t mem = sddk::memory_t::host;
+    auto la = la::lib_t::lapack;
+    auto la1 = la::lib_t::blas;
+    auto mem = sddk::memory_t::host;
     if (o__.comm().size() > 1) {
-        la = sddk::linalg_t::scalapack;
+        la = la::lib_t::scalapack;
     }
     if (mem__ == sddk::memory_t::device) {
-        la1 = sddk::linalg_t::gpublas;
+        la1 = la::lib_t::gpublas;
     }
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
     PROFILE_START("wf::orthogonalize|tmtrx");
     auto o_ptr = (o__.size_local() == 0) ? nullptr : o__.at(mem);
-    if (la == sddk::linalg_t::scalapack) {
+    if (la == la::lib_t::scalapack) {
         o__.make_real_diag(n);
     }
     /* Cholesky factorization */
-    if (int info = sddk::linalg(la).potrf(n, o_ptr, o__.ld(), o__.descriptor())) {
+    if (int info = la::wrap(la).potrf(n, o_ptr, o__.ld(), o__.descriptor())) {
         std::stringstream s;
         s << "error in Cholesky factorization, info = " << info << std::endl
           << "number of existing states: " << br_old__.size() << std::endl
@@ -1840,7 +1840,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
         RTE_THROW(s);
     }
     /* inversion of triangular matrix */
-    if (sddk::linalg(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
+    if (la::wrap(la).trtri(n, o_ptr, o__.ld(), o__.descriptor())) {
         RTE_THROW("error in inversion");
     }
     PROFILE_STOP("wf::orthogonalize|tmtrx");
@@ -1863,11 +1863,11 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                     ld *= 2;
                 }
 
-                sddk::linalg(la1).trmm('R', 'U', 'N', ld, n, &sddk::linalg_const<F>::one(),
+                la::wrap(la1).trmm('R', 'U', 'N', ld, n, &la::constant<F>::one(),
                         o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
             }
         }
-        if (la1 == sddk::linalg_t::gpublas || la1 == sddk::linalg_t::cublasxt || la1 == sddk::linalg_t::magma) {
+        if (la1 == la::lib_t::gpublas || la1 == la::lib_t::cublasxt || la1 == la::lib_t::magma) {
             /* sync stream only if processing unit is GPU */
             for (int i = 0; i < sid; i++) {
                 acc::sync_stream(stream_id(i));

@@ -86,7 +86,7 @@ class Beta_projectors : public Beta_projectors_base<T>
     }
 
   public:
-    Beta_projectors(Simulation_context& ctx__, sddk::Gvec const& gkvec__)
+    Beta_projectors(Simulation_context& ctx__, fft::Gvec const& gkvec__)
         : Beta_projectors_base<T>(ctx__, gkvec__, 1)
     {
         PROFILE("sirius::Beta_projectors");

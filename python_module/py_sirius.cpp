@@ -621,10 +621,10 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
 
-    py::class_<sddk::FFT3D_grid>(m, "FFT3D_grid")
-        .def_property_readonly("num_points", py::overload_cast<>(&sddk::FFT3D_grid::num_points, py::const_))
+    py::class_<fft::Grid>(m, "FFT3D_grid")
+        .def_property_readonly("num_points", py::overload_cast<>(&fft::Grid::num_points, py::const_))
         .def_property_readonly("shape",
-                               [](const sddk::FFT3D_grid& obj) -> std::array<int, 3> {
+                               [](const fft::Grid& obj) -> std::array<int, 3> {
                                    return {obj[0], obj[1], obj[2]};
                                })
         //.def_property_readonly("grid_size", &FFT3D_grid::grid_size) // TODO: is this needed?
@@ -672,18 +672,16 @@ PYBIND11_MODULE(py_sirius, m)
                                                arr.at(sddk::memory_t::host), obj);
         });
 
-    // py::class_<dmatrix<complex_double>, mdarray<complex_double, 2>>(m, "dmatrix");
-
-    // py::class_<mdarray<double, 2>>(m, "mdarray2")
-    //     .def("on_device", &mdarray<double, 2>::on_device)
-    //     .def("copy_to_host", [](mdarray<double, 2>& mdarray) { mdarray.copy_to(memory_t::host, 0, mdarray.size(1));
-    //     }) .def("__array__", [](py::object& obj) {
-    //         mdarray<double, 2>& arr = obj.cast<mdarray<double, 2>&>();
-    //         int nrows               = arr.size(0);
-    //         int ncols               = arr.size(1);
-    //         return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
-    //                                    arr.at(memory_t::host), obj);
-    //     });
+    py::class_<sddk::mdarray<double, 2>>(m, "mdarray2")
+        .def("on_device", &sddk::mdarray<double, 2>::on_device)
+        .def("copy_to_host", [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1));
+        }) .def("__array__", [](py::object& obj) {
+            sddk::mdarray<double, 2>& arr = obj.cast<sddk::mdarray<double, 2>&>();
+            int nrows               = arr.size(0);
+            int ncols               = arr.size(1);
+            return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
+                                       arr.at(sddk::memory_t::host), obj);
+        });
 
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
@@ -694,7 +692,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
-        .def(py::init<std::shared_ptr<sddk::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
+        .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)
         .def("num_wf", &wf::Wave_functions<double>::num_wf)

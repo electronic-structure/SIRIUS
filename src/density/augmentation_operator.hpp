@@ -26,7 +26,7 @@
 #define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial/radial_integrals.hpp"
-#include "SDDK/gvec.hpp"
+#include "fft/gvec.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -336,7 +336,7 @@ class Augmentation_operator
   private:
     Atom_type const& atom_type_;
 
-    sddk::Gvec const& gvec_;
+    fft::Gvec const& gvec_;
 
     sddk::mdarray<double, 2> q_mtrx_;
 
@@ -357,13 +357,12 @@ class Augmentation_operator
     sddk::mdarray<double, 3> gaunt_coefs_;
 
   public:
-
     /// Constructor.
     /**\param [in] atom_type        Atom type instance.
      * \param [in] gvec             G-vector instance.
      * \param [in] radial_integrals Radial integrals of the Q(r) with spherical Bessel functions.
      */
-    Augmentation_operator(Atom_type const& atom_type__, sddk::Gvec const& gvec__,
+    Augmentation_operator(Atom_type const& atom_type__, fft::Gvec const& gvec__,
         Radial_integrals_aug<false> const& radial_integrals__)
         : atom_type_(atom_type__)
         , gvec_(gvec__)
@@ -550,7 +549,7 @@ class Augmentation_operator
 class Augmentation_operator_gvec_deriv
 {
   private:
-    sddk::Gvec const& gvec_;
+    fft::Gvec const& gvec_;
 
     sddk::mdarray<double, 2> q_pw_;
 
@@ -573,7 +572,7 @@ class Augmentation_operator_gvec_deriv
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, sddk::Gvec const& gvec__);
+    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, fft::Gvec const& gvec__);
 
     void generate_pw_coeffs(Atom_type const& atom_type__, int nu__);
 

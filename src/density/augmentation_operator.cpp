@@ -125,7 +125,7 @@ void Augmentation_operator::generate_pw_coeffs()
 }
 
 Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__,
-    sddk::Gvec const& gvec__)
+    fft::Gvec const& gvec__)
     : gvec_(gvec__)
 {
     PROFILE("sirius::Augmentation_operator_gvec_deriv");

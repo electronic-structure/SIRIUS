@@ -26,7 +26,9 @@
 #define __EIGENSOLVER_HPP__
 
 #include "SDDK/memory.hpp"
-#include "SDDK/dmatrix.hpp"
+#include "linalg/dmatrix.hpp"
+
+namespace la {
 
 /// Type of eigen-value solver.
 enum class ev_solver_t
@@ -87,7 +89,7 @@ class Eigensolver
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
     /// Type of input data memory.
     /** CPU solvers start from host memory, MAGMA can start from host or device memory, cuSolver starts from
-     *  devide memoryi. */
+     *  device memory. */
     sddk::memory_t data_memory_t_{sddk::memory_t::none};
 
   public:
@@ -107,122 +109,122 @@ class Eigensolver
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, double* eval__,
-                      sddk::dmatrix<std::complex<double>>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__,
+                      dmatrix<std::complex<double>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float>& A__, float* eval__, sddk::dmatrix<float>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<float>>& A__, float* eval__,
-                      sddk::dmatrix<std::complex<float>>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__,
+                      dmatrix<std::complex<float>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, double* eval__, sddk::dmatrix<double>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float>& A__, float* eval__, sddk::dmatrix<float>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<float>>& A__, float* eval__, sddk::dmatrix<std::complex<float>>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__, double* eval__,
-                      sddk::dmatrix<double>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+                      dmatrix<double>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<double>>& A__, sddk::dmatrix<std::complex<double>>& B__,
-                      double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
+                      double* eval__, dmatrix<std::complex<double>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<float>& A__, sddk::dmatrix<float>& B__, float* eval__,
-                      sddk::dmatrix<float>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
+                      dmatrix<float>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, sddk::dmatrix<std::complex<float>>& A__, sddk::dmatrix<std::complex<float>>& B__,
-                      float* eval__, sddk::dmatrix<std::complex<float>>& Z__)
+    virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
+                      float* eval__, dmatrix<std::complex<float>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__,
-                      double* eval__, sddk::dmatrix<double>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__,
+                      double* eval__, dmatrix<double>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<double>>& A__,
-                      sddk::dmatrix<std::complex<double>>& B__, double* eval__, sddk::dmatrix<std::complex<double>>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__,
+                      dmatrix<std::complex<double>>& B__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<float>& A__, sddk::dmatrix<float>& B__,
-                      float* eval__, sddk::dmatrix<float>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__,
+                      float* eval__, dmatrix<float>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<std::complex<float>>& A__,
-                      sddk::dmatrix<std::complex<float>>& B__, float* eval__, sddk::dmatrix<std::complex<float>>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__,
+                      dmatrix<std::complex<float>>& B__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
         TERMINATE(error_msg_not_implemented);
         return -1;
@@ -255,5 +257,7 @@ class Eigensolver
 
 std::unique_ptr<Eigensolver>
 Eigensolver_factory(std::string name__);
+
+} // namespace
 
 #endif

@@ -20,9 +20,9 @@ void test1()
     }
     A >> B;
 
-    linalg(linalg_t::lapack).syinv(N, A);
-    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<std::complex<double>>::one(), &A(0, 0), A.ld(), &B(0, 0),
-                                 B.ld(), &linalg_const<std::complex<double>>::zero(), &C(0, 0), C.ld());
+    la::wrap(la::lib_t::lapack).syinv(N, A);
+    la::wrap(la::lib_t::blas).hemm('L', 'U', N, N, &la::constant<std::complex<double>>::one(),
+            &A(0, 0), A.ld(), &B(0, 0), B.ld(), &la::constant<std::complex<double>>::zero(), &C(0, 0), C.ld());
 
     int err = 0;
     for (int i = 0; i < N; i++)
@@ -35,8 +35,8 @@ void test1()
         }
     }
 
-    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<std::complex<double>>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
-                                 &linalg_const<std::complex<double>>::zero(), &C(0, 0), C.ld());
+    la::wrap(la::lib_t::blas).hemm('L', 'U', N, N, &la::constant<std::complex<double>>::one(),
+            &A(0, 0), A.ld(), &B(0, 0), B.ld(), &la::constant<std::complex<double>>::zero(), &C(0, 0), C.ld());
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
@@ -72,9 +72,9 @@ void test2()
     }
     A >> B;
 
-    linalg(linalg_t::lapack).geinv(N, A);
-    linalg(linalg_t::blas).gemm('N', 'N', N, N, N, &linalg_const<T>::one(), A.at(memory_t::host), A.ld(),
-        B.at(memory_t::host), B.ld(), &linalg_const<T>::zero(), C.at(memory_t::host), C.ld());
+    la::wrap(la::lib_t::lapack).geinv(N, A);
+    la::wrap(la::lib_t::blas).gemm('N', 'N', N, N, N, &la::constant<T>::one(), A.at(memory_t::host), A.ld(),
+        B.at(memory_t::host), B.ld(), &la::constant<T>::zero(), C.at(memory_t::host), C.ld());
 
     int err = 0;
     for (int i = 0; i < N; i++) {
@@ -125,9 +125,9 @@ void test2()
 //    T alpha = 1.0;
 //    T beta = 0.0;
 //
-//    linalg(linalg_t::scalapack).geinv(N, A);
+//    linalg(lib_t::scalapack).geinv(N, A);
 //
-//    linalg(linalg_t::scalapack).gemm('N', 'N', N, N, N, &alpha, A, 0, 0, B, 0, 0, &beta, C, 0, 0);
+//    linalg(lib_t::scalapack).gemm('N', 'N', N, N, N, &alpha, A, 0, 0, B, 0, 0, &beta, C, 0, 0);
 //
 //    int err = 0;
 //    for (int i = 0; i < C.num_cols_local(); i++)

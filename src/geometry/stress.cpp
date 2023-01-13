@@ -388,20 +388,20 @@ Stress::calc_stress_us()
 
     Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec());
 
-    sddk::linalg_t la{sddk::linalg_t::none};
+    la::lib_t la{la::lib_t::none};
     sddk::memory_t qmem{sddk::memory_t::none};
 
     sddk::memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
             mp   = &get_memory_pool(sddk::memory_t::host);
-            la   = sddk::linalg_t::blas;
+            la   = la::lib_t::blas;
             qmem = sddk::memory_t::host;
             break;
         }
         case sddk::device_t::GPU: {
             mp   = &get_memory_pool(sddk::memory_t::host_pinned);
-            la   = sddk::linalg_t::spla;
+            la   = la::lib_t::spla;
             qmem = sddk::memory_t::device;
             break;
         }
@@ -464,9 +464,9 @@ Stress::calc_stress_us()
                     PROFILE_STOP("sirius::Stress|us|prepare");
 
                     PROFILE_START("sirius::Stress|us|gemm");
-                    sddk::linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                    &sddk::linalg_const<double>::one(), q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
-                                    v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &sddk::linalg_const<double>::zero(),
+                    la::wrap(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                    &la::constant<double>::one(), q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
+                                    v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
                                     tmp.at(sddk::memory_t::host), tmp.ld());
                     PROFILE_STOP("sirius::Stress|us|gemm");
 

@@ -84,7 +84,7 @@ K_point<T>::initialize()
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
                  */
                 for (int is = 0; is < ctx_.num_spinors(); is++) {
-                    sv_eigen_vectors_[is] = sddk::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
+                    sv_eigen_vectors_[is] = la::dmatrix<std::complex<T>>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
                 }
             }
 
@@ -116,11 +116,11 @@ K_point<T>::initialize()
             }
             if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
-                    fv_eigen_vectors_ = sddk::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
+                if (ctx_.gen_evp_solver().type() == la::ev_solver_t::elpa) {
+                    fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
                                                                  ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 } else {
-                    fv_eigen_vectors_ = sddk::dmatrix<std::complex<T>>(gklo_basis_size(), ctx_.num_fv_states(),
+                    fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), ctx_.num_fv_states(),
                                                                  ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 }
             } else {
@@ -255,7 +255,7 @@ K_point<T>::generate_hubbard_orbitals()
                     *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf));
 
             int BS = ctx_.cyclic_block_size();
-            sddk::dmatrix<std::complex<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
+            la::dmatrix<std::complex<T>> ovlp(nwf, nwf, ctx_.blacs_grid(), BS, BS);
 
             wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *atomic_wave_functions_,
                     wf::band_range(0, nwf), *atomic_wave_functions_S_, wf::band_range(0, nwf), ovlp, 0, 0);
@@ -363,16 +363,16 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         TERMINATE(s);
     }
 
-    gkvec_partition_ = std::make_shared<sddk::Gvec_fft>(
+    gkvec_partition_ = std::make_shared<fft::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
     const auto spfft_pu = ctx_.processing_unit() == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto const& gv      = gkvec_partition_->gvec_array();
     /* create transformation */
-    spfft_transform_.reset(new spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
+    spfft_transform_.reset(new fft::spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
-        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
         gv.at(sddk::memory_t::host))));
 
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
@@ -401,10 +401,10 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
             }
         }
     }
-    gkvec_row_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
+    gkvec_row_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_row_,
             &gkvec_row(0, 0), comm_row(), ctx_.gamma_point());
 
-    gkvec_col_ = std::make_shared<sddk::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
+    gkvec_col_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), num_gkvec_col_,
             &gkvec_col(0, 0), comm_col(), ctx_.gamma_point());
 }
 

@@ -46,13 +46,13 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx_.cyclic_block_size();
 
-    sddk::dmatrix<std::complex<double>> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
-    sddk::dmatrix<std::complex<double>> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
+    la::dmatrix<std::complex<double>> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
+    la::dmatrix<std::complex<double>> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
 
-    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+    if (ctx_.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
         auto& mpd = get_memory_pool(sddk::memory_t::device);
         h.allocate(mpd);
         o.allocate(mpd);
@@ -93,7 +93,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     }
     print_memory_usage(ctx_.out(), FILE_LINE);
 
-    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+    if (ctx_.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
         h.deallocate(sddk::memory_t::device);
         o.deallocate(sddk::memory_t::device);
         kp.fv_eigen_vectors().deallocate(sddk::memory_t::device);
@@ -118,15 +118,15 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
-        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
-            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().native());
+        costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
+            la::constant<std::complex<double>>::zero(), kp.comm().native());
     }
     {
         auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
                 ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
-        costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<double>>::one(),
-            sddk::linalg_const<std::complex<double>>::zero(), kp.comm().native());
+        costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
+            la::constant<std::complex<double>>::zero(), kp.comm().native());
     }
 
     /* renormalize wave-functions */
@@ -179,9 +179,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     //    Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), &hphi, &ophi);
 
-    //    sddk::dmatrix<std::complex<double>> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+    //    la::dmatrix<std::complex<double>> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
     //                                 ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-    //    sddk::dmatrix<std::complex<double>> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+    //    la::dmatrix<std::complex<double>> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
     //                                 ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
     //    inner(ctx_.spla_context(), sddk::spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
@@ -393,7 +393,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     auto mem = ctx_.processing_unit_memory_t();
 
     if (ctx_.num_mag_dims() != 3) {
-        sddk::dmatrix<std::complex<double>> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
+        la::dmatrix<std::complex<double>> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
             h.allocate(get_memory_pool(sddk::memory_t::device));
         }
@@ -422,7 +422,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
         }
     } else {
         int nb = ctx_.num_bands();
-        sddk::dmatrix<std::complex<double>> h(nb, nb, ctx_.blacs_grid(), bs, bs);
+        la::dmatrix<std::complex<double>> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == sddk::device_t::GPU) {
             h.allocate(get_memory_pool(sddk::memory_t::device));
         }
@@ -440,7 +440,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
                 }
             }
         } else {
-            sddk::linalg(sddk::linalg_t::scalapack).tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
+            la::wrap(la::lib_t::scalapack).tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
         }
 
         for (int i = 0; i < nfv; i++) {

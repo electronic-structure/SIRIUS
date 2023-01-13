@@ -1470,9 +1470,9 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                     RTE_THROW("missing 'num_rg_points' argument");
                 }
                 bool is_local_rg;
-                if (*num_rg_points__ == static_cast<int>(spfft_grid_size(gs.ctx().spfft<double>()))) {
+                if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size(gs.ctx().spfft<double>()))) {
                     is_local_rg = false;
-                } else if (*num_rg_points__ == static_cast<int>(spfft_grid_size_local(gs.ctx().spfft<double>()))) {
+                } else if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size_local(gs.ctx().spfft<double>()))) {
                     is_local_rg = true;
                 } else {
                     RTE_THROW("wrong number of regular grid points");
@@ -3272,7 +3272,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
 
     // TODO: refactor this part; use QE order of G-vectors
 
-    auto gvec_mapping = [&](sddk::Gvec const& gkvec) {
+    auto gvec_mapping = [&](fft::Gvec const& gkvec) {
         std::vector<int> igm(*num_gvec_loc__);
 
         sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
@@ -4089,9 +4089,9 @@ sirius_get_step_function(void* const* handler__, std::complex<double>* cfunig__,
             auto& fft = sim_ctx.spfft<double>();
 
             bool is_local_rg;
-            if (*num_rg_points__ == static_cast<int>(spfft_grid_size(fft))) {
+            if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size(fft))) {
                 is_local_rg = false;
-            } else if (*num_rg_points__ == static_cast<int>(spfft_grid_size_local(fft))) {
+            } else if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size_local(fft))) {
                 is_local_rg = true;
             } else {
                 RTE_THROW("wrong number of real space points");
@@ -5273,7 +5273,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             auto& fft_comm = gs.ctx().comm_fft();
-            auto spl_z     = split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
+            auto spl_z     = fft::split_z_dimension(gs.ctx().fft_grid()[2], fft_comm);
 
             sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
             sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
@@ -5860,12 +5860,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             bool use_qe_gvec_order{true};
 
-            std::shared_ptr<sddk::Gvec> gvkq_in;
+            std::shared_ptr<fft::Gvec> gvkq_in;
             if (use_qe_gvec_order) {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
                         *num_gvec_kq_loc__, gvec_kq_loc__, sctx.comm_band(), false);
             } else {
-                gvkq_in = std::make_shared<sddk::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+                gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
                         sctx.gk_cutoff(), sctx.comm_k(), false);
             }
 

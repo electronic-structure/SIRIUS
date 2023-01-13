@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(SIRIUS VERSION 7.4.1)
+project(SIRIUS VERSION 7.4.3)
 
 # user variables
 set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")

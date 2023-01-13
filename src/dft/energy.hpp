@@ -110,7 +110,7 @@ namespace sirius {
  *      \frac{N_{el}^2}{4 \lambda}
  *  \f]
  */
-double ewald_energy(const Simulation_context& ctx, const sddk::Gvec& gvec, const Unit_cell& unit_cell);
+double ewald_energy(const Simulation_context& ctx, const fft::Gvec& gvec, const Unit_cell& unit_cell);
 
 /// Returns exchange correlation potential.
 double energy_vxc(Density const& density, Potential const& potential);
