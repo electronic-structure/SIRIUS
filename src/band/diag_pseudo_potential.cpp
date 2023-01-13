@@ -54,9 +54,9 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     }
 
     const int bs = ctx_.cyclic_block_size();
-    sddk::dmatrix<F> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    sddk::dmatrix<F> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-    sddk::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    la::dmatrix<F> hmlt(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    la::dmatrix<F> ovlp(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    la::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
     std::vector<real_type<F>> eval(kp.num_gkvec());
 
     hmlt.zero();
@@ -137,21 +137,21 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
                 }
             }
             /* compute <G+k|beta> D */
-            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                &sddk::linalg_const<F>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
-                &sddk::linalg_const<F>::zero(), &btmp(0, 0), btmp.ld());
+            la::wrap(la::lib_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+                &la::constant<F>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
+                &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
-            sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                &sddk::linalg_const<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                &sddk::linalg_const<F>::one(), &hmlt(0, 0), hmlt.ld());
+            la::wrap(la::lib_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+                &la::constant<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                &la::constant<F>::one(), &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
-                sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
-                    &sddk::linalg_const<F>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
-                    &sddk::linalg_const<F>::zero(), &btmp(0, 0), btmp.ld());
-                sddk::linalg(sddk::linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
-                    &sddk::linalg_const<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
-                    &sddk::linalg_const<F>::one(), &ovlp(0, 0), ovlp.ld());
+                la::wrap(la::lib_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+                    &la::constant<F>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
+                    &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
+                la::wrap(la::lib_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+                    &la::constant<F>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
+                    &la::constant<F>::one(), &ovlp(0, 0), ovlp.ld());
             }
         } // i (atoms in chunk)
     }
@@ -175,14 +175,14 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     if (ctx_.cfg().control().verification() >= 2) {
         RTE_OUT(ctx_.out()) << "checking eigen-values of S-matrix\n";
 
-        sddk::dmatrix<F> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
-        sddk::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        la::dmatrix<F> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
+        la::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
 
         ovlp >> ovlp1;
 
         std::vector<real_type<F>> eo(kp.num_gkvec());
 
-        auto solver = Eigensolver_factory("scalapack");
+        auto solver = la::Eigensolver_factory("scalapack");
         solver->solve(kp.num_gkvec(), ovlp1, eo.data(), evec);
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
@@ -205,8 +205,8 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
     auto layout_in  = evec.grid_layout(0, 0, kp.num_gkvec(), ctx_.num_bands());
     auto layout_out = kp.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx_.num_bands()));
 
-    costa::transform(layout_in, layout_out, 'N', sddk::linalg_const<std::complex<T>>::one(),
-            sddk::linalg_const<std::complex<T>>::zero(), kp.gkvec().comm().mpi_comm());
+    costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
+            la::constant<std::complex<T>>::zero(), kp.gkvec().comm().native());
 }
 
 template <typename T>

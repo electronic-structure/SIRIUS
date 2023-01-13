@@ -5,20 +5,20 @@ using namespace sirius;
 
 template <typename T>
 double
-test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__, std::string name__,
-          Eigensolver& solver)
+test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__, std::string name__,
+          la::Eigensolver& solver)
 {
     auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
-    sddk::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+    la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
     A_ref >> A;
 
-    sddk::dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+    la::dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
 
-    sddk::dmatrix<T> B;
-    sddk::dmatrix<T> B_ref;
+    la::dmatrix<T> B;
+    la::dmatrix<T> B_ref;
     if (test_gen__) {
         B_ref = random_positive_definite<T>(N__, bs__, blacs_grid__);
-        B = sddk::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+        B = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
         B_ref >> B;
     }
 
@@ -92,22 +92,22 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
     if (test_gen__) {
         /* lambda * B * Z */
 #if defined(SIRIUS_SCALAPACK)
-        sddk::linalg(sddk::linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &sddk::linalg_const<T>::one(),
-                B_ref, 0, 0, A, 0, 0, &sddk::linalg_const<T>::zero(), B, 0, 0);
+        la::wrap(la::lib_t::scalapack).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
+                B_ref, 0, 0, A, 0, 0, &la::constant<T>::zero(), B, 0, 0);
 #else
-        sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', n__, nev__, n__, &sddk::linalg_const<T>::one(),
-                &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(), &sddk::linalg_const<T>::zero(), &B(0, 0), B.ld());
+        la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
+                &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
 #endif
         B >> A;
     }
 
     /* A * Z - lambda * B * Z */
 #if defined(SIRIUS_SCALAPACK)
-    sddk::linalg(sddk::linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &sddk::linalg_const<T>::one(), A_ref, 0, 0, Z, 0, 0,
-        &sddk::linalg_const<T>::m_one(), A, 0, 0);
+    la::wrap(la::lib_t::scalapack).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), A_ref, 0, 0, Z, 0, 0,
+        &la::constant<T>::m_one(), A, 0, 0);
 #else
-    sddk::linalg(sddk::linalg_t::blas).gemm('N', 'N', n__, nev__, n__, &sddk::linalg_const<T>::one(), &A_ref(0, 0), A_ref.ld(),
-            &Z(0, 0), Z.ld(), &sddk::linalg_const<T>::m_one(), &A(0, 0), A.ld());
+    la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), &A_ref(0, 0), A_ref.ld(),
+            &Z(0, 0), Z.ld(), &la::constant<T>::m_one(), &A(0, 0), A.ld());
 #endif
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {
@@ -117,7 +117,7 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
             }
         }
     }
-    blacs_grid__.comm().template allreduce<double, sddk::mpi_op_t::max>(&diff, 1);
+    blacs_grid__.comm().template allreduce<double, mpi::op_t::max>(&diff, 1);
     if (blacs_grid__.comm().rank() == 0) {
         printf("maximum difference: %22.18f\n", diff);
     }
@@ -131,12 +131,12 @@ test_diag(sddk::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int
     return t;
 }
 
-void test_diag2(sddk::BLACS_grid const& blacs_grid__,
+void test_diag2(la::BLACS_grid const& blacs_grid__,
                 int bs__,
                 std::string name__,
                 std::string fname__)
 {
-    auto solver = Eigensolver_factory(name__);
+    auto solver = la::Eigensolver_factory(name__);
 
     sddk::matrix<std::complex<double>> full_mtrx;
     int n;
@@ -162,8 +162,8 @@ void test_diag2(sddk::BLACS_grid const& blacs_grid__,
     }
 
     std::vector<double> eval(n);
-    sddk::dmatrix<std::complex<double>> A(n, n, blacs_grid__, bs__, bs__);
-    sddk::dmatrix<std::complex<double>> Z(n, n, blacs_grid__, bs__, bs__);
+    la::dmatrix<std::complex<double>> A(n, n, blacs_grid__, bs__, bs__);
+    la::dmatrix<std::complex<double>> Z(n, n, blacs_grid__, bs__, bs__);
 
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
@@ -190,8 +190,8 @@ void call_test(std::vector<int> mpi_grid__,
                int repeat__,
                int type__)
 {
-    auto solver = Eigensolver_factory(name__);
-    sddk::BLACS_grid blacs_grid(sddk::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
+    auto solver = la::Eigensolver_factory(name__);
+    la::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;
         for (int i = 0; i < repeat__; i++) {

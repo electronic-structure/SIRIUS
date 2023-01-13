@@ -39,28 +39,28 @@
 namespace sirius {
 
 static void
-update_density_matrix_deriv(sddk::linalg_t la__, sddk::memory_t mt__, int nwfh__, int nbnd__, std::complex<double>* alpha__,
-    sddk::dmatrix<std::complex<double>> const& phi_hub_s_psi_deriv__, sddk::dmatrix<std::complex<double>> const& psi_s_phi_hub__,
+update_density_matrix_deriv(la::lib_t la__, sddk::memory_t mt__, int nwfh__, int nbnd__, std::complex<double>* alpha__,
+    la::dmatrix<std::complex<double>> const& phi_hub_s_psi_deriv__, la::dmatrix<std::complex<double>> const& psi_s_phi_hub__,
     std::complex<double>* dn__, int ld__)
 {
-    sddk::linalg(la__).gemm('N', 'N', nwfh__, nwfh__, nbnd__, alpha__,
+    la::wrap(la__).gemm('N', 'N', nwfh__, nwfh__, nbnd__, alpha__,
                       phi_hub_s_psi_deriv__.at(mt__, 0, 0), phi_hub_s_psi_deriv__.ld(),
                       psi_s_phi_hub__.at(mt__, 0, 0), psi_s_phi_hub__.ld(),
-                      &sddk::linalg_const<std::complex<double>>::one(), dn__, ld__);
+                      &la::constant<std::complex<double>>::one(), dn__, ld__);
 
-    sddk::linalg(la__).gemm('C', 'C', nwfh__, nwfh__, nbnd__, alpha__,
+    la::wrap(la__).gemm('C', 'C', nwfh__, nwfh__, nbnd__, alpha__,
                       psi_s_phi_hub__.at(mt__, 0, 0), psi_s_phi_hub__.ld(),
                       phi_hub_s_psi_deriv__.at(mt__, 0, 0), phi_hub_s_psi_deriv__.ld(),
-                      &sddk::linalg_const<std::complex<double>>::one(), dn__, ld__);
+                      &la::constant<std::complex<double>>::one(), dn__, ld__);
 }
 
 static void
 build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf__,
-        sddk::dmatrix<std::complex<double>> const& ovlp__, sddk::dmatrix<std::complex<double>> const& inv_sqrt_O__,
-        sddk::dmatrix<std::complex<double>> const& phi_atomic_s_psi__,
-        sddk::dmatrix<std::complex<double>> const& phi_atomic_ds_psi__,
+        la::dmatrix<std::complex<double>> const& ovlp__, la::dmatrix<std::complex<double>> const& inv_sqrt_O__,
+        la::dmatrix<std::complex<double>> const& phi_atomic_s_psi__,
+        la::dmatrix<std::complex<double>> const& phi_atomic_ds_psi__,
         std::vector<int> const& atomic_wf_offset__, std::vector<int> const& hubbard_wf_offset__,
-        sddk::dmatrix<std::complex<double>>& phi_hub_s_psi_deriv__)
+        la::dmatrix<std::complex<double>>& phi_hub_s_psi_deriv__)
 {
     phi_hub_s_psi_deriv__.zero();
 
@@ -80,18 +80,18 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
 
                 if (ctx__.cfg().hubbard().full_orthogonalization()) {
                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */
-                    sddk::linalg(sddk::linalg_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
-                        &sddk::linalg_const<std::complex<double>>::one(),
+                    la::wrap(la::lib_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
+                        &la::constant<std::complex<double>>::one(),
                         ovlp__.at(sddk::memory_t::host, 0, offset_in_wf), ovlp__.ld(),
                         phi_atomic_s_psi__.at(sddk::memory_t::host), phi_atomic_s_psi__.ld(),
-                        &sddk::linalg_const<std::complex<double>>::one(),
+                        &la::constant<std::complex<double>>::one(),
                         phi_hub_s_psi_deriv__.at(sddk::memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
 
-                    sddk::linalg(sddk::linalg_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
-                        &sddk::linalg_const<std::complex<double>>::one(),
+                    la::wrap(la::lib_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
+                        &la::constant<std::complex<double>>::one(),
                         inv_sqrt_O__.at(sddk::memory_t::host, 0, offset_in_wf), inv_sqrt_O__.ld(),
                         phi_atomic_ds_psi__.at(sddk::memory_t::host), phi_atomic_ds_psi__.ld(),
-                        &sddk::linalg_const<std::complex<double>>::one(),
+                        &la::constant<std::complex<double>>::one(),
                         phi_hub_s_psi_deriv__.at(sddk::memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
                 } else {
                     /* just copy part of the matrix elements in the order in which
@@ -108,7 +108,7 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
 }
 
 static void
-compute_inv_sqrt_O_deriv(sddk::dmatrix<std::complex<double>>& O_deriv__, sddk::dmatrix<std::complex<double>>& evec_O__,
+compute_inv_sqrt_O_deriv(la::dmatrix<std::complex<double>>& O_deriv__, la::dmatrix<std::complex<double>>& evec_O__,
         std::vector<double>& eval_O__, int nawf__)
 {
     /* compute \tilde O' = U^{H}O'U */
@@ -129,16 +129,16 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 {
     PROFILE("sirius::Hubbard::compute_occupancies_derivatives");
 
-    auto la = sddk::linalg_t::none;
+    auto la = la::lib_t::none;
     auto mt = sddk::memory_t::none;
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            la = sddk::linalg_t::blas;
+            la = la::lib_t::blas;
             mt = sddk::memory_t::host;
             break;
         }
         case sddk::device_t::GPU: {
-            la = sddk::linalg_t::gpublas;
+            la = la::lib_t::gpublas;
             mt = sddk::memory_t::device;
             break;
         }
@@ -167,12 +167,12 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     }
 
     /* compute overlap matrix */
-    sddk::dmatrix<std::complex<double>> ovlp;
-    std::unique_ptr<sddk::dmatrix<std::complex<double>>> inv_sqrt_O;
-    std::unique_ptr<sddk::dmatrix<std::complex<double>>> evec_O;
+    la::dmatrix<std::complex<double>> ovlp;
+    std::unique_ptr<la::dmatrix<std::complex<double>>> inv_sqrt_O;
+    std::unique_ptr<la::dmatrix<std::complex<double>>> evec_O;
     std::vector<double> eval_O;
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
-        ovlp = sddk::dmatrix<std::complex<double>>(nawf, nawf);
+        ovlp = la::dmatrix<std::complex<double>>(nawf, nawf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf),
                 phi_atomic_S, wf::band_range(0, nawf), ovlp, 0, 0);
 
@@ -185,9 +185,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 
     /* compute < psi_{ik} | S | phi_hub > */
     /* this is used in the final expression for the occupation matrix derivative */
-    std::array<sddk::dmatrix<std::complex<double>>, 2> psi_s_phi_hub;
+    std::array<la::dmatrix<std::complex<double>>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        psi_s_phi_hub[ispn] = sddk::dmatrix<std::complex<double>>(kp__.num_occupied_bands(ispn), nhwf);
+        psi_s_phi_hub[ispn] = la::dmatrix<std::complex<double>>(kp__.num_occupied_bands(ispn), nhwf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions(),
             wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
             wf::band_range(0, nhwf), psi_s_phi_hub[ispn], 0, 0);
@@ -200,8 +200,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     auto mg2 = s_phi_atomic_tmp->memory_guard(mt);
 
     /* compute < d phi_atomic / d r_{j} | S | psi_{ik} > and < d phi_atomic / d r_{j} | S | phi_atomic > */
-    std::array<std::array<sddk::dmatrix<std::complex<double>>, 2>, 3> grad_phi_atomic_s_psi;
-    std::array<sddk::dmatrix<std::complex<double>>, 3> grad_phi_atomic_s_phi_atomic;
+    std::array<std::array<la::dmatrix<std::complex<double>>, 2>, 3> grad_phi_atomic_s_psi;
+    std::array<la::dmatrix<std::complex<double>>, 3> grad_phi_atomic_s_phi_atomic;
 
     for (int x = 0; x < 3; x++) {
         /* compute |phi_atomic_tmp> = |d phi_atomic / d r_{alpha} > for all atoms */
@@ -224,14 +224,14 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         /* compute < d phi_atomic / d r_{alpha} | S | phi_atomic >
          * used to compute derivative of the inverse square root of the overlap matrix */
         if (ctx_.cfg().hubbard().full_orthogonalization()) {
-            grad_phi_atomic_s_phi_atomic[x] = sddk::dmatrix<std::complex<double>>(nawf, nawf);
+            grad_phi_atomic_s_phi_atomic[x] = la::dmatrix<std::complex<double>>(nawf, nawf);
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), *s_phi_atomic_tmp,
                     wf::band_range(0, nawf), phi_atomic, wf::band_range(0, nawf), grad_phi_atomic_s_phi_atomic[x], 0, 0);
         }
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate space */
-            grad_phi_atomic_s_psi[x][ispn] = sddk::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
+            grad_phi_atomic_s_psi[x][ispn] = la::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < d phi_atomic / d r_{j} | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *s_phi_atomic_tmp,
                     wf::band_range(0, nawf), kp__.spinor_wave_functions(),
@@ -240,10 +240,10 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     }
 
     /* compute <phi_atomic | S | psi_{ik} > */
-    std::array<sddk::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
+    std::array<la::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            phi_atomic_s_psi[ispn] = sddk::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
+            phi_atomic_s_psi[ispn] = la::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), phi_atomic_S,
                     wf::band_range(0, nawf), kp__.spinor_wave_functions(),
@@ -309,7 +309,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* compute <phi_atomic | dS/dr_j | psi_{ik}> */
-                    sddk::dmatrix<std::complex<double>> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
+                    la::dmatrix<std::complex<double>> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
                     wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *phi_atomic_tmp,
                             wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                             wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_ds_psi, 0, 0);
@@ -323,7 +323,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                     }
 
                     /* build the full d <phi_hub | S | psi_ik> / d r_{alpha} matrix */
-                    sddk::dmatrix<std::complex<double>> phi_hub_s_psi_deriv(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
+                    la::dmatrix<std::complex<double>> phi_hub_s_psi_deriv(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
 
                     build_phi_hub_s_psi_deriv(ctx_, kp__.num_occupied_bands(ispn), nawf, ovlp, *inv_sqrt_O,
                             phi_atomic_s_psi[ispn], phi_atomic_ds_psi, num_ps_atomic_wf.second, num_hubbard_wf.second,
@@ -362,16 +362,16 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
 {
     PROFILE("sirius::Hubbard::compute_occupancies_stress_derivatives");
 
-    auto la = sddk::linalg_t::none;
+    auto la = la::lib_t::none;
     auto mt = sddk::memory_t::none;
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            la = sddk::linalg_t::blas;
+            la = la::lib_t::blas;
             mt = sddk::memory_t::host;
             break;
         }
         case sddk::device_t::GPU: {
-            la = sddk::linalg_t::gpublas;
+            la = la::lib_t::gpublas;
             mt = sddk::memory_t::device;
             break;
         }
@@ -423,21 +423,21 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
 
     /* compute < psi_{ik} | S | phi_hub > */
     /* this is used in the final expression for the occupation matrix derivative */
-    std::array<sddk::dmatrix<std::complex<double>>, 2> psi_s_phi_hub;
+    std::array<la::dmatrix<std::complex<double>>, 2> psi_s_phi_hub;
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        psi_s_phi_hub[ispn] = sddk::dmatrix<std::complex<double>>(kp__.num_occupied_bands(ispn), nhwf);
+        psi_s_phi_hub[ispn] = la::dmatrix<std::complex<double>>(kp__.num_occupied_bands(ispn), nhwf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), kp__.spinor_wave_functions(),
                 wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_hub_S, wf::band_range(0, nhwf),
                 psi_s_phi_hub[ispn], 0, 0);
     }
 
     /* compute overlap matrix */
-    sddk::dmatrix<std::complex<double>> ovlp;
-    std::unique_ptr<sddk::dmatrix<std::complex<double>>> inv_sqrt_O;
-    std::unique_ptr<sddk::dmatrix<std::complex<double>>> evec_O;
+    la::dmatrix<std::complex<double>> ovlp;
+    std::unique_ptr<la::dmatrix<std::complex<double>>> inv_sqrt_O;
+    std::unique_ptr<la::dmatrix<std::complex<double>>> evec_O;
     std::vector<double> eval_O;
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
-        ovlp = sddk::dmatrix<std::complex<double>>(nawf, nawf);
+        ovlp = la::dmatrix<std::complex<double>>(nawf, nawf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf),
                 phi_atomic_S, wf::band_range(0, nawf), ovlp, 0, 0);
 
@@ -449,10 +449,10 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     }
 
     /* compute <phi_atomic | S | psi_{ik} > */
-    std::array<sddk::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
+    std::array<la::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            phi_atomic_s_psi[ispn] = sddk::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
+            phi_atomic_s_psi[ispn] = la::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), phi_atomic_S,
                     wf::band_range(0, nawf), kp__.spinor_wave_functions(),
@@ -486,7 +486,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                         wf::band_range(0, nawf), *ds_phi_atomic, wf::band_range(0, nawf), ovlp, 0, 0);
 
                 /* compute <d phi_atomic / d epsilon | S | phi_atomic > */
-                sddk::dmatrix<std::complex<double>> tmp(nawf, nawf);
+                la::dmatrix<std::complex<double>> tmp(nawf, nawf);
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), *s_dphi_atomic,
                         wf::band_range(0, nawf), phi_atomic, wf::band_range(0, nawf), tmp, 0, 0);
 
@@ -499,12 +499,12 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             }
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                sddk::dmatrix<std::complex<double>> dphi_atomic_s_psi(nawf, kp__.num_occupied_bands(ispn));
+                la::dmatrix<std::complex<double>> dphi_atomic_s_psi(nawf, kp__.num_occupied_bands(ispn));
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *s_dphi_atomic,
                         wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                         wf::band_range(0, kp__.num_occupied_bands(ispn)), dphi_atomic_s_psi, 0, 0);
 
-                sddk::dmatrix<std::complex<double>> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
+                la::dmatrix<std::complex<double>> phi_atomic_ds_psi(nawf, kp__.num_occupied_bands(ispn));
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(ispn), *ds_phi_atomic,
                         wf::band_range(0, nawf), kp__.spinor_wave_functions(),
                         wf::band_range(0, kp__.num_occupied_bands(ispn)), phi_atomic_ds_psi, 0, 0);
@@ -516,7 +516,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                 }
 
                 /* build the full d <phi_hub | S | psi_ik> / d epsilon_{mu,nu} matrix */
-                sddk::dmatrix<std::complex<double>> phi_hub_s_psi_deriv(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
+                la::dmatrix<std::complex<double>> phi_hub_s_psi_deriv(num_hubbard_wf.first, kp__.num_occupied_bands(ispn));
                 build_phi_hub_s_psi_deriv(ctx_, kp__.num_occupied_bands(ispn), nawf, ovlp, *inv_sqrt_O,
                         phi_atomic_s_psi[ispn], phi_atomic_ds_psi, num_ps_atomic_wf.second, num_hubbard_wf.second,
                         phi_hub_s_psi_deriv);
