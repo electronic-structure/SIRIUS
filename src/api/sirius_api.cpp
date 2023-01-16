@@ -6054,6 +6054,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
             auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
+            // TODO: allocate all wave-functions on device (if processing_unit == sdk::memory_t::GPU)
+
             sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
                 Hk,
@@ -6064,7 +6066,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 tmp_wf.get(),
                 *alpha_pv__ / 2); // rydberg/hartree factor
 
-            // CG state vectors.
+            // CG state vectors
+            // TODO: pass memory type parameter to the constructor
+            // auto mt = sctx.processing_unit_memory_t();
+            //auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mt};
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get()};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get()};
             auto U_wrap = sirius::lr::Wave_functions_wrap{U.get()};
