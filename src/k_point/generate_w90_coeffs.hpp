@@ -5,6 +5,16 @@
 
 /// Generate the necessary data for the W90 input.
 /** Wave-functions:
+ * \f[
+ *  \psi_{n{\bf k}} ({\bf r}) = \sum_{\bf G} e^{i({\bf G+k}){\bf r}} C_{n{\bf k}}({\bf G})
+ * \f]
+ *
+ *  Matrix elements:
+ *  \f[
+ *  M_{nn'} = \int e^{-i{\bf qr}}  \psi_{n{\bf k}}^{*} ({\bf r})  \psi_{n'{\bf k+q}} ({\bf r}) d{\bf r}
+ *  \f]
+ *
+ *
  *
  */
 void generate_w90_coeffs(K_point_set const& k_set__)
