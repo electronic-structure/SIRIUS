@@ -52,6 +52,60 @@ spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double
 
 namespace sirius {
 
+template <typename F>
+inline void iterate_aug_atom_types(Unit_cell const& uc__, F&& f__)
+{
+    for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
+        auto& atom_type = uc__.atom_type(iat);
+
+        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
+            continue;
+        }
+        f__(atom_type);
+    }
+}
+
+inline auto max_l_aug(Unit_cell const& uc__)
+{
+    int l{0};
+
+    iterate_aug_atom_types(uc__,
+        [&l](Atom_type const& type__)
+        {
+            l = std::max(l, type__.indexr().lmax());
+        });
+
+    return l;
+}
+
+inline auto max_na_aug(Unit_cell const& uc__)
+{
+    int na{0};
+
+    iterate_aug_atom_types(uc__,
+        [&na](Atom_type const& type__)
+        {
+            na = std::max(na, type__.num_atoms());
+        });
+
+    return na;
+
+}
+
+inline auto max_nb_aug(Unit_cell const& uc__)
+{
+    int nb{0};
+
+    iterate_aug_atom_types(uc__,
+        [&nb](Atom_type const& type__)
+        {
+            nb = std::max(nb, type__.mt_basis_size());
+        });
+
+    return nb;
+}
+
+
 //class Augmentation_operator_new
 //{
 //  private:

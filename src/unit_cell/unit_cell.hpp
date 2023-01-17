@@ -153,9 +153,6 @@ class Unit_cell
     /// Maximum muffin-tin radius.
     double max_mt_radius_{0};
 
-    /// Maximum orbital quantum number of radial functions between all atom types.
-    int lmax_{-1};
-
     std::unique_ptr<Crystal_symmetry> symmetry_;
 
     /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
@@ -470,6 +467,16 @@ class Unit_cell
         return max_mt_lo_basis_size_;
     }
 
+    /// Maximum number of atoms across all atom types.
+    inline auto max_num_atoms() const
+    {
+        int max_na{0};
+        for (int iat = 0; iat < this->num_atom_types(); iat++) {
+            max_na = std::max(max_na, this->atom_type(iat).num_atoms());
+        }
+        return max_na;
+    }
+
     void set_equivalent_atoms(int const* equivalent_atoms__)
     {
         equivalent_atoms_.resize(num_atoms());
@@ -506,9 +513,14 @@ class Unit_cell
         return volume_it_;
     }
 
+    /// Maximum orbital quantum number of radial functions between all atom types.
     inline int lmax() const
     {
-        return lmax_;
+        int l{-1};
+        for (int iat = 0; iat < this->num_atom_types(); iat++) {
+            l = std::max(l, this->atom_type(iat).indexr().lmax());
+        }
+        return l;
     }
 
     inline int lmax_apw() const

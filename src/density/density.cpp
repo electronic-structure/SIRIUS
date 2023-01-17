@@ -1366,23 +1366,9 @@ Density::generate_rho_aug()
 
     auto const& tp = ctx_.gvec().gvec_tp();
 
-    int max_l{0};
-    int max_na{0};
-    int max_nqlm{0};
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-
-        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
-            continue;
-        }
-
-        int nqlm = atom_type.mt_basis_size() * (atom_type.mt_basis_size() + 1) / 2;
-
-        max_l    = std::max(max_l, atom_type.indexr().lmax());
-        max_na   = std::max(max_na, atom_type.num_atoms());
-        max_nqlm = std::max(max_nqlm, nqlm);
-    }
+    auto max_l = max_l_aug(unit_cell_);
+    auto max_nb = max_nb_aug(unit_cell_);
+    int max_nqlm = max_nb * (max_nb + 1) / 2;
 
     sddk::mdarray<double, 2> qpw;
     sddk::mdarray<double, 2> gvec_rlm;
@@ -1416,10 +1402,6 @@ Density::generate_rho_aug()
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             continue;
         }
-
-        /* maximum l of beta-projectors */
-        int lmax_beta = atom_type.indexr().lmax();
-        int lmmax     = utils::lmmax(2 * lmax_beta);
 
         /* number of beta-projector functions */
         int nbf = atom_type.mt_basis_size();
