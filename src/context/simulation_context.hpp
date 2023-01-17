@@ -765,7 +765,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Split local set of G-vectors into chunks.
-    sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;
+    sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;// TODO: remove
 
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)

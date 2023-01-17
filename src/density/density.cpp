@@ -1490,7 +1490,6 @@ Density::generate_rho_aug()
                     ctx_.augmentation_op(iat).generate_pw_coeffs_chunk_gpu(g_begin, ng,
                             gvec_rlm.at(sddk::memory_t::device, 0, g_begin), gvec_rlm.ld(), qpw);
 
-                    // TODO : split in streams
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(), ng, nbf,
                                            ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
