@@ -63,7 +63,7 @@ generate_dm_pw_gpu(int num_atoms__, int num_gvec_loc__, int num_beta__, double c
                         double const* dm__, double* dm_pw__, int stream_id__);
 
 void
-sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, double const* dm_pw__,
+sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, int ldq__, double const* dm_pw__, int ldd__,
                         double const* sym_weight__, std::complex<double>* rho_pw__, int stream_id__);
 
 }

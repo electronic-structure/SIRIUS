@@ -1517,7 +1517,8 @@ Density::generate_rho_aug()
                                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
                                            phase_factors.at(sddk::memory_t::device), dm.at(sddk::memory_t::device, 0, 0, iv),
                                            dm_pw.at(sddk::memory_t::device, 0, 0, iv), 1 + iv);
-                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(sddk::memory_t::device), dm_pw.at(sddk::memory_t::device, 0, 0, iv),
+                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(sddk::memory_t::device), qpw.ld(),
+                                           dm_pw.at(sddk::memory_t::device, 0, 0, iv), dm_pw.ld(),
                                            ctx_.augmentation_op(iat).sym_weight().at(sddk::memory_t::device),
                                            rho_aug.at(sddk::memory_t::device, g_begin, iv), 1 + iv);
                     }
