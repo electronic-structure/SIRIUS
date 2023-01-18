@@ -198,7 +198,7 @@ void Potential::generate_D_operator_matrix()
             if (ctx_.gvec().reduced()) {
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
-                        for (int j = 0; nqlm; j++) {
+                        for (int j = 0; j < nqlm; j++) {
                             d_tmp(j, i, iv) = 2 * d_tmp(j, i, iv) - component(iv).f_pw_local(0).real() *
                                 ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
