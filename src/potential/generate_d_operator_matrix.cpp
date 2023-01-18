@@ -45,7 +45,7 @@ void Potential::generate_D_operator_matrix()
 
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
-    auto spl_ngv_loc = utils::split_in_blocks(gvec_count, 10000);
+    auto spl_ngv_loc = utils::split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
     auto& mpd = get_memory_pool(sddk::memory_t::device);

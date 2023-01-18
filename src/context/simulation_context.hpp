@@ -764,9 +764,6 @@ class Simulation_context : public Simulation_parameters
         return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
     }
 
-    /// Split local set of G-vectors into chunks.
-    sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;// TODO: remove
-
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {

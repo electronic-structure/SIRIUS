@@ -76,7 +76,7 @@ void Augmentation_operator::generate_pw_coeffs()
         }
         case sddk::device_t::GPU: {
 #if defined(SIRIUS_GPU)
-            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, 10000);
+            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, atom_type_.parameters().cfg().control().gvec_chunk_size());
             auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
             /* allocate buffer for Rlm on GPUs */
             sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");

@@ -279,28 +279,6 @@ Simulation_context::ewald_lambda() const
     return lambda;
 }
 
-sddk::splindex<sddk::splindex_t::block>
-Simulation_context::split_gvec_local() const
-{
-    /* local number of G-vectors for this MPI rank */
-    int ngv_loc = gvec().count();
-    /* estimate number of G-vectors in a block */
-    int ld{-1};
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        int nat = unit_cell().atom_type(iat).num_atoms();
-        int nbf = unit_cell().atom_type(iat).mt_basis_size();
-
-        ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
-    }
-    /* limit the size of relevant array to ~1Gb */
-    int ngv_b = (1 << 30) / sizeof(std::complex<double>) / ld;
-    ngv_b     = std::max(1, std::min(ngv_loc, ngv_b));
-    /* number of blocks of G-vectors */
-    int nb = ngv_loc / ngv_b;
-    /* split local number of G-vectors between blocks */
-    return sddk::splindex<sddk::splindex_t::block>(ngv_loc, nb, 0);
-}
-
 void
 Simulation_context::initialize()
 {
@@ -709,7 +687,6 @@ Simulation_context::print_info(std::ostream& out__) const
                << "  number of G-shells                    : " << gvecs[i]->num_shells() << std::endl
                << std::endl;
         }
-        os << "number of local G-vector blocks: " << split_gvec_local().num_ranks() << std::endl;
         os << std::endl;
     }
     {
