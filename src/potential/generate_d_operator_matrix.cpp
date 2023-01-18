@@ -110,7 +110,7 @@ void Potential::generate_D_operator_matrix()
                 break;
             }
             case sddk::device_t::GPU: {
-                d_tmp.allocate(mpd).zero(sddk::memory_t::host);
+                d_tmp.allocate(mpd).zero(sddk::memory_t::device);
                 veff_a.allocate(mpd);
                 break;
             }
@@ -172,7 +172,7 @@ void Potential::generate_D_operator_matrix()
                                   stream_id(1));
                         acc::sync_stream(stream_id(1));
 #endif
-                    }
+                    } // iv
                     break;
                 }
             }
