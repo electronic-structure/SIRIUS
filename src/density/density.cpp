@@ -1364,14 +1364,14 @@ Density::generate_rho_aug()
     auto& mph = get_memory_pool(sddk::memory_t::host);
     auto& mpd = get_memory_pool(sddk::memory_t::device);
 
-    auto const& tp = ctx_.gvec().gvec_tp();
+    //auto const& tp = ctx_.gvec().gvec_tp();
 
-    auto max_l = max_l_aug(unit_cell_);
-    auto max_nb = max_nb_aug(unit_cell_);
-    int max_nqlm = max_nb * (max_nb + 1) / 2;
+    //auto max_l = max_l_aug(unit_cell_);
+    //auto max_nb = max_nb_aug(unit_cell_);
+    //int max_nqlm = max_nb * (max_nb + 1) / 2;
 
-    sddk::mdarray<double, 2> qpw;
-    sddk::mdarray<double, 2> gvec_rlm;
+    //sddk::mdarray<double, 2> qpw;
+    //sddk::mdarray<double, 2> gvec_rlm;
 
     sddk::mdarray<std::complex<double>, 2> rho_aug(gvec_count, ctx_.num_mag_dims() + 1, mph);
 
@@ -1384,12 +1384,12 @@ Density::generate_rho_aug()
 #if defined(SIRIUS_GPU)
             rho_aug.allocate(mpd).zero(sddk::memory_t::device);
             /* work array for Q(G) on GPUs */
-            qpw = sddk::mdarray<double, 2>(max_nqlm, 2 * spl_ngv_loc[0], mpd, "qpw"); 
+            //qpw = sddk::mdarray<double, 2>(max_nqlm, 2 * spl_ngv_loc[0], mpd, "qpw"); 
             /* allocate buffer for Rlm on GPUs */
-            gvec_rlm = sddk::mdarray<double, 2>(utils::lmmax(2 * max_l), gvec_count, mpd, "gvec_rlm");
-            /* generate Rlm spherical harmonics */
-            spherical_harmonics_rlm_gpu(2 * max_l, gvec_count, tp.at(sddk::memory_t::device, 0, 0),
-                tp.at(sddk::memory_t::device, 0, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
+            //gvec_rlm = sddk::mdarray<double, 2>(utils::lmmax(2 * max_l), gvec_count, mpd, "gvec_rlm");
+            ///* generate Rlm spherical harmonics */
+            //spherical_harmonics_rlm_gpu(2 * max_l, gvec_count, tp.at(sddk::memory_t::device, 0, 0),
+            //    tp.at(sddk::memory_t::device, 0, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
 #endif
             break;
         }
@@ -1436,6 +1436,9 @@ Density::generate_rho_aug()
         }
 
         print_memory_usage(ctx_.out(), FILE_LINE);
+
+        auto qpw = (ctx_.processing_unit() ==  sddk::device_t::CPU) ? sddk::mdarray<double, 2>() :
+            sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
 
         int g_begin{0};
         /* loop over blocks of G-vectors */
@@ -1487,8 +1490,10 @@ Density::generate_rho_aug()
                 }
                 case sddk::device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                    ctx_.augmentation_op(iat).generate_pw_coeffs_chunk_gpu(g_begin, ng,
-                            gvec_rlm.at(sddk::memory_t::device, 0, g_begin), gvec_rlm.ld(), qpw);
+                    acc::copyin(qpw.at(sddk::memory_t::device),
+                            ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
+                    //ctx_.augmentation_op(iat).generate_pw_coeffs_chunk_gpu(g_begin, ng,
+                    //        gvec_rlm.at(sddk::memory_t::device, 0, g_begin), gvec_rlm.ld(), qpw);
 
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(), ng, nbf,

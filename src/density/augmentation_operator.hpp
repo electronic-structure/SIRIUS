@@ -117,9 +117,9 @@ class Augmentation_operator
 
     sddk::mdarray<double, 2> q_mtrx_;
 
-    mutable sddk::mdarray<double, 2> q_pw_;
+    sddk::mdarray<double, 2> q_pw_;
 
-    mutable sddk::mdarray<double, 1> sym_weight_;
+    sddk::mdarray<double, 1> sym_weight_;
 
     sddk::mdarray<std::complex<double>, 1> zilm_;
 
@@ -127,11 +127,11 @@ class Augmentation_operator
 
     sddk::mdarray<int, 2> idx_;
 
-    sddk::mdarray<int, 1> gvec_shell_;
+    //sddk::mdarray<int, 1> gvec_shell_;
 
     sddk::mdarray<int, 1> l_by_lm_;
 
-    sddk::mdarray<double, 3> gaunt_coefs_;
+    //sddk::mdarray<double, 3> gaunt_coefs_;
 
   public:
     /// Constructor.
@@ -161,8 +161,8 @@ class Augmentation_operator
             }
         }
 
-        /* Gaunt coefficients of three real spherical harmonics */
-        gaunt_coefs_ = Gaunt_coefficients<double>(lmax_beta, lmax, lmax_beta, SHT::gaunt_rrr).get_full_set_L3();
+        ///* Gaunt coefficients of three real spherical harmonics */
+        //gaunt_coefs_ = Gaunt_coefficients<double>(lmax_beta, lmax, lmax_beta, SHT::gaunt_rrr).get_full_set_L3();
 
         /* number of beta-projectors */
         int nbf = atom_type_.mt_basis_size();
@@ -193,12 +193,12 @@ class Augmentation_operator
         }
 
         /* local number of G-vectors for each rank */
-        int gvec_count = gvec_.count();
+        //int gvec_count = gvec_.count();
 
-        gvec_shell_ = sddk::mdarray<int, 1>(gvec_count);
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
-            gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
-        }
+        //gvec_shell_ = sddk::mdarray<int, 1>(gvec_count);
+        //for (int igloc = 0; igloc < gvec_count; igloc++) {
+        //    gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
+        //}
 
         ri_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
         #pragma omp parallel for
@@ -222,39 +222,39 @@ class Augmentation_operator
 
         if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU) {
             auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
-            l_by_lm_.allocate(mpd).copy_to(sddk::memory_t::device);
-            zilm_.allocate(mpd).copy_to(sddk::memory_t::device);
-            gaunt_coefs_.allocate(mpd).copy_to(sddk::memory_t::device);
-            idx_.allocate(mpd).copy_to(sddk::memory_t::device);
-            gvec_shell_.allocate(mpd).copy_to(sddk::memory_t::device);
-            ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //l_by_lm_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //zilm_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //gaunt_coefs_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //idx_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //gvec_shell_.allocate(mpd).copy_to(sddk::memory_t::device);
+            //ri_values_.allocate(mpd).copy_to(sddk::memory_t::device);
             sym_weight_.allocate(mpd).copy_to(sddk::memory_t::device);
         }
     }
 
-    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
-            sddk::mdarray<double, 2>& qpw__) const
-    {
-#if defined(SIRIUS_GPU)
-        double fourpi_omega = fourpi / gvec_.omega();
-
-        /* maximum l of beta-projectors */
-        int lmax_beta = atom_type_.indexr().lmax();
-        int lmmax     = utils::lmmax(2 * lmax_beta);
-        /* number of beta-projectors */
-        int nbf = atom_type_.mt_basis_size();
-        /* only half of Q_{xi,xi'}(G) matrix is stored */
-        int nqlm = nbf * (nbf + 1) / 2;
-        /* generate Q(G) */
-        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(sddk::memory_t::device, g_begin__), idx_.at(sddk::memory_t::device),
-            nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
-            gaunt_coefs_.at(sddk::memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
-            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
-            ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
-            static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
-            fourpi_omega);
-#endif
-    }
+//    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
+//            sddk::mdarray<double, 2>& qpw__) const
+//    {
+//#if defined(SIRIUS_GPU)
+//        double fourpi_omega = fourpi / gvec_.omega();
+//
+//        /* maximum l of beta-projectors */
+//        int lmax_beta = atom_type_.indexr().lmax();
+//        int lmmax     = utils::lmmax(2 * lmax_beta);
+//        /* number of beta-projectors */
+//        int nbf = atom_type_.mt_basis_size();
+//        /* only half of Q_{xi,xi'}(G) matrix is stored */
+//        int nqlm = nbf * (nbf + 1) / 2;
+//        /* generate Q(G) */
+//        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(sddk::memory_t::device, g_begin__), idx_.at(sddk::memory_t::device),
+//            nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
+//            gaunt_coefs_.at(sddk::memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
+//            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
+//            ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
+//            static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
+//            fourpi_omega);
+//#endif
+//    }
 
     void generate_pw_coeffs();
 

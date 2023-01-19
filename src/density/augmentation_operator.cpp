@@ -48,10 +48,20 @@ void Augmentation_operator::generate_pw_coeffs()
     /* local number of G-vectors */
     int gvec_count = gvec_.count();
     /* array of plane-wave coefficients */
-    q_pw_ = sddk::mdarray<double, 2>(nqlm, 2 * gvec_count, sddk::get_memory_pool(sddk::memory_t::host), "q_pw_");
+    auto mt = (atom_type_.parameters().processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host :
+        sddk::memory_t::host_pinned;
 
+    q_pw_ = sddk::mdarray<double, 2>(nqlm, 2 * gvec_count, sddk::get_memory_pool(mt), "q_pw_");
+
+    /* Info:
+     *   After some tests, the current GPU implementation of generating aug. operator turns out to be slower than CPU.
+     *   The reason is probaly the memory access pattern of G, lm and, idxrf indices.
+     *   The current decision is to compute aug. operator on CPU once during the initialization and
+     *   then copy the chunks of Q(G) to GPU when computing D-operator and augment charge density.
+     */
     switch (atom_type_.parameters().processing_unit()) {
-        case sddk::device_t::CPU: {
+        case sddk::device_t::CPU:
+        case sddk::device_t::GPU: {
             /* Gaunt coefficients of three real spherical harmonics */
             Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
             #pragma omp parallel for
@@ -74,28 +84,28 @@ void Augmentation_operator::generate_pw_coeffs()
             }
             break;
         }
-        case sddk::device_t::GPU: {
-#if defined(SIRIUS_GPU)
-            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, atom_type_.parameters().cfg().control().gvec_chunk_size());
-            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
-            /* allocate buffer for Rlm on GPUs */
-            sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
-            /* allocate buffer for Q(G) on GPUs */
-            sddk::mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
-
-            int g_begin{0};
-            /* loop over blocks of G-vectors */
-            for (auto ng : spl_ngv_loc) {
-                /* generate Rlm spherical harmonics */
-                spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
-                        tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld(), qpw);
-                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
-                g_begin += ng;
-            }
-#endif
-            break;
-        }
+//        case sddk::device_t::GPU: {
+//#if defined(SIRIUS_GPU)
+//            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, atom_type_.parameters().cfg().control().gvec_chunk_size());
+//            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
+//            /* allocate buffer for Rlm on GPUs */
+//            sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
+//            /* allocate buffer for Q(G) on GPUs */
+//            sddk::mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
+//
+//            int g_begin{0};
+//            /* loop over blocks of G-vectors */
+//            for (auto ng : spl_ngv_loc) {
+//                /* generate Rlm spherical harmonics */
+//                spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
+//                        tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
+//                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld(), qpw);
+//                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
+//                g_begin += ng;
+//            }
+//#endif
+//            break;
+//        }
     }
 
     q_mtrx_ = sddk::mdarray<double, 2>(nbf, nbf);
@@ -286,6 +296,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
     int gvec_count  = gvec_.count();
 
     switch (atom_type__.parameters().processing_unit()) {
+        case sddk::device_t::GPU:
         case sddk::device_t::CPU: {
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
@@ -310,23 +321,23 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             }
             break;
         }
-        case sddk::device_t::GPU: {
-            auto& mpd = get_memory_pool(sddk::memory_t::device);
-
-            auto gc = gaunt_coefs_->get_full_set_L3();
-            gc.allocate(mpd).copy_to(sddk::memory_t::device);
-
-#if defined(SIRIUS_GPU)
-            aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(sddk::memory_t::device), gvec_cart_.at(sddk::memory_t::device),
-                idx_.at(sddk::memory_t::device), static_cast<int>(idx_.size(1)),
-                gc.at(sddk::memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
-                rlm_g_.at(sddk::memory_t::device), rlm_dg_.at(sddk::memory_t::device), static_cast<int>(rlm_g_.size(0)),
-                ri_values_.at(sddk::memory_t::device), ri_dg_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
-                static_cast<int>(ri_values_.size(1)), q_pw_.at(sddk::memory_t::device), static_cast<int>(q_pw_.size(0)),
-                fourpi, nu__, lmax_q);
-#endif
-            break;
-        }
+//        case sddk::device_t::GPU: {
+//            auto& mpd = get_memory_pool(sddk::memory_t::device);
+//
+//            auto gc = gaunt_coefs_->get_full_set_L3();
+//            gc.allocate(mpd).copy_to(sddk::memory_t::device);
+//
+//#if defined(SIRIUS_GPU)
+//            aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(sddk::memory_t::device), gvec_cart_.at(sddk::memory_t::device),
+//                idx_.at(sddk::memory_t::device), static_cast<int>(idx_.size(1)),
+//                gc.at(sddk::memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
+//                rlm_g_.at(sddk::memory_t::device), rlm_dg_.at(sddk::memory_t::device), static_cast<int>(rlm_g_.size(0)),
+//                ri_values_.at(sddk::memory_t::device), ri_dg_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
+//                static_cast<int>(ri_values_.size(1)), q_pw_.at(sddk::memory_t::device), static_cast<int>(q_pw_.size(0)),
+//                fourpi, nu__, lmax_q);
+//#endif
+//            break;
+//        }
     }
 }
 
