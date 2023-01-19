@@ -111,11 +111,12 @@ find_lat_sym(r3::matrix<double> const& lat_vec__, double tol__, double* mt_error
                 std::stringstream s;
                 s << "lattice symmetries do not form a group" << std::endl;
                 for (auto& R: lat_sym) {
-                    s << " sym.op : " << R << std::endl;
+                    s << " sym.op : " << R << ", metric tensor error : " << metric_tensor_error(lat_vec__, R) << std::endl;
                 }
                 s << "R1 : " << R1 << std::endl;
                 s << "R2 : " << R2 << std::endl;
-                s << "R1 * R2 : " << R3 << " not in group" << std::endl;
+                s << "R1 * R2 : " << R3 << " is not in group" << std::endl;
+                s << "metric tensor tolerance : " << tol__;
                 RTE_THROW(s);
             }
         }
