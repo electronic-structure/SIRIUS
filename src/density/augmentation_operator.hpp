@@ -194,7 +194,7 @@ class Augmentation_operator
             for (int l = 0; l <= lmax; l++) {
                 for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
                     ri_values_(i, l, j) = ri(i, l);
-                    ri_dq_values_(l, i, j) = ri_dq(i, l);
+                    ri_dq_values_(i, l, j) = ri_dq(i, l);
                 }
             }
         }
