@@ -173,8 +173,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                     int idxrf12 = idx_(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
                         int l = l_by_lm_[lm3];
-                        v[lm3] = std::conj(zilm_[lm3]) *
-                            (rlm_dq(lm3, nu__) * ri_values_(idxrf12, l, igsh) +
+                        v[lm3] = std::conj(zilm_[lm3]) * (rlm_dq(lm3, nu__) * ri_values_(idxrf12, l, igsh) +
                              rlm[lm3] * ri_dq_values_(idxrf12, l, igsh) * gvc_nu);
                     }
                     std::complex<double> z = fourpi * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
