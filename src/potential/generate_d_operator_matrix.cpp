@@ -50,32 +50,24 @@ void Potential::generate_D_operator_matrix()
     auto& mph = get_memory_pool(sddk::memory_t::host);
     auto& mpd = get_memory_pool(sddk::memory_t::device);
 
-//    auto const& tp = ctx_.gvec().gvec_tp();
+    int n_mag_comp;
 
-//    auto max_l = max_l_aug(unit_cell_);
-//    auto max_nb = max_nb_aug(unit_cell_);
-//    int max_nqlm = max_nb * (max_nb + 1) / 2;
-
-//    //sddk::mdarray<double, 2> qpw;
-//    //sddk::mdarray<double, 2> gvec_rlm;
-//
-//    switch (ctx_.processing_unit()) {
-//        case sddk::device_t::CPU: {
-//            break;
-//        }
-//        case sddk::device_t::GPU: {
-//#if defined(SIRIUS_GPU)
-//            /* work array for Q(G) on GPUs */
-//            qpw = sddk::mdarray<double, 2>(max_nqlm, 2 * spl_ngv_loc[0], mpd, "qpw"); 
-//            /* allocate buffer for Rlm on GPUs */
-//            gvec_rlm = sddk::mdarray<double, 2>(utils::lmmax(2 * max_l), gvec_count, mpd, "gvec_rlm");
-//            /* generate Rlm spherical harmonics */
-//            spherical_harmonics_rlm_gpu(2 * max_l, gvec_count, tp.at(sddk::memory_t::device, 0, 0),
-//                tp.at(sddk::memory_t::device, 0, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-//#endif
-//            break;
-//        }
-//    }
+    sddk::mdarray<std::complex<double>, 2> veff;
+    switch (ctx_.processing_unit()) {
+        case sddk::device_t::CPU: {
+            n_mag_comp = 1;
+            break;
+        }
+        case sddk::device_t::GPU: {
+            n_mag_comp = ctx_.num_mag_dims() + 1;
+            veff = sddk::mdarray<std::complex<double>, 2>(gvec_count, n_mag_comp, mph);
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                std::copy(&component(j).f_pw_local(0), &component(j).f_pw_local(0) + gvec_count, &veff(0, j));
+            }
+            veff.allocate(mpd).copy_to(sddk::memory_t::device);
+            break;
+        }
+    }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -103,7 +95,9 @@ void Potential::generate_D_operator_matrix()
         }
 
         sddk::mdarray<double, 3> d_tmp(nqlm, atom_type.num_atoms(), ctx_.num_mag_dims() + 1, mph);
-        sddk::mdarray<double, 2> veff_a(spl_ngv_loc[0] * 2, atom_type.num_atoms(), mph);
+        sddk::mdarray<double, 3> veff_a(spl_ngv_loc[0] * 2, atom_type.num_atoms(), n_mag_comp, mph);
+        sddk::mdarray<double, 2> qpw;
+
         switch (ctx_.processing_unit()) {
             case sddk::device_t::CPU: {
                 d_tmp.zero();
@@ -112,14 +106,12 @@ void Potential::generate_D_operator_matrix()
             case sddk::device_t::GPU: {
                 d_tmp.allocate(mpd).zero(sddk::memory_t::device);
                 veff_a.allocate(mpd);
+                qpw = sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
                 break;
             }
         }
 
         print_memory_usage(ctx_.out(), FILE_LINE);
-
-        auto qpw = (ctx_.processing_unit() ==  sddk::device_t::CPU) ? sddk::mdarray<double, 2>() :
-            sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
 
         int g_begin{0};
         /* loop over blocks of G-vectors */
@@ -137,8 +129,8 @@ void Potential::generate_D_operator_matrix()
                                 int ig = ctx_.gvec().offset() + g_begin + g;
                                 /* V(G) * exp(i * G * r_{alpha}) */
                                 auto z = component(iv).f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
-                                veff_a(2 * g,     i) = z.real();
-                                veff_a(2 * g + 1, i) = z.imag();
+                                veff_a(2 * g,     i, 0) = z.real();
+                                veff_a(2 * g + 1, i, 0) = z.imag();
                             }
                         }
                         la::wrap(la::lib_t::blas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
@@ -154,30 +146,27 @@ void Potential::generate_D_operator_matrix()
                 case sddk::device_t::GPU: {
                     acc::copyin(qpw.at(sddk::memory_t::device),
                             ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
-                    //ctx_.augmentation_op(iat).generate_pw_coeffs_chunk_gpu(g_begin, ng,
-                    //        gvec_rlm.at(sddk::memory_t::device, 0, g_begin), gvec_rlm.ld(), qpw);
-                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) { // TODO: use streams
-                        /* copy plane wave coefficients of effective potential to GPU */
-                        sddk::mdarray<std::complex<double>, 1> veff(&component(iv).f_pw_local(g_begin), ng);
-                        veff.allocate(mpd).copy_to(sddk::memory_t::device);
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
 #if defined(SIRIUS_GPU)
-                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(sddk::memory_t::device),
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(sddk::memory_t::device, 0, iv),
                             ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
                             ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
                             ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
                             ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
-                            veff_a.at(sddk::memory_t::device), ng, 1);
+                            veff_a.at(sddk::memory_t::device, 0, 0, iv), ng, 1 + iv);
 
                         la::wrap(la::lib_t::gpublas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
                                   &la::constant<double>::one(),
                                   qpw.at(sddk::memory_t::device), qpw.ld(),
-                                  veff_a.at(sddk::memory_t::device), veff_a.ld(),
+                                  veff_a.at(sddk::memory_t::device, 0, 0, iv), veff_a.ld(),
                                   &la::constant<double>::one(),
                                   d_tmp.at(sddk::memory_t::device, 0, 0, iv), d_tmp.ld(),
-                                  stream_id(1));
-                        acc::sync_stream(stream_id(1));
+                                  stream_id(1 + iv));
 #endif
                     } // iv
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                        acc::sync_stream(stream_id(1 + iv));
+                    }
                     break;
                 }
             }

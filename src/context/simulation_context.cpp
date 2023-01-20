@@ -1211,7 +1211,7 @@ Simulation_context::update()
 
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
-                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec(), aug_ri());
+                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec(), aug_ri(), aug_ri_djl());
                 augmentation_op_[iat]->generate_pw_coeffs();
             } else {
                 augmentation_op_[iat] = nullptr;
