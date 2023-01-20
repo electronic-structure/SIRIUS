@@ -381,12 +381,7 @@ Stress::calc_stress_us()
         return stress_us_;
     }
 
-    auto& ri    = ctx_.aug_ri();
-    auto& ri_dq = ctx_.aug_ri_djl();
-
     potential_.fft_transform(-1);
-
-    //Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec());
 
     la::lib_t la{la::lib_t::none};
     sddk::memory_t qmem{sddk::memory_t::none};
