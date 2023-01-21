@@ -29,7 +29,7 @@
 
 namespace fft {
 
-r3::vector<int> fft::Gvec::gvec_by_full_index(uint32_t idx__) const
+r3::vector<int> Gvec::gvec_by_full_index(uint32_t idx__) const
 {
     /* index of the z coordinate of G-vector: first 12 bits */
     uint32_t j = idx__ & 0xFFF;
@@ -43,7 +43,7 @@ r3::vector<int> fft::Gvec::gvec_by_full_index(uint32_t idx__) const
     return r3::vector<int>(x, y, z);
 }
 
-void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
+void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 {
     PROFILE("fft::Gvec::find_z_columns");
 
@@ -126,7 +126,7 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     PROFILE_START("fft::Gvec::find_z_columns|sym");
     /* now we have to remove edge G-vectors that don't form a complete shell */
     if (bare_gvec_) {
-        auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
+        auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
         std::fill(non_zero_columns.at(sddk::memory_t::host), non_zero_columns.at(sddk::memory_t::host) + non_zero_columns.size(), -1);
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
@@ -278,7 +278,7 @@ void Gvec::find_gvec_shells()
 
     PROFILE("fft::Gvec::find_gvec_shells");
 
-    auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
+    auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
     num_gvec_shells_ = 0;
     gvec_shell_      = sddk::mdarray<int, 1>(num_gvec_, sddk::memory_t::host, "gvec_shell_");
@@ -287,10 +287,11 @@ void Gvec::find_gvec_shells()
 
     /* find G-vector shells using symmetry consideration */
     for (int ig = 0; ig < num_gvec_; ig++) {
+        /* if the shell for this vector is not yet found */
         if (gvec_shell_[ig] == -1) {
             auto G = gvec<sddk::index_domain_t::global>(ig);
             for (auto& R: lat_sym) {
-                auto G1 = dot(R, G);
+                auto G1 = r3::dot(G, R);
                 auto ig1 = index_by_gvec(G1);
                 if (ig1 == -1) {
                     G1 = G1 * (-1);
@@ -299,7 +300,24 @@ void Gvec::find_gvec_shells()
                         RTE_THROW("symmetry-related G-vector is not found");
                     }
                 }
-                gvec_shell_[ig1] = num_gvec_shells_;
+                if (gvec_shell_[ig1] == -1) {
+                    gvec_shell_[ig1] = num_gvec_shells_;
+                } else {
+                    if (gvec_shell_[ig1] != num_gvec_shells_) {
+                        auto gc  = r3::dot(lattice_vectors_, G);
+                        auto gc1  = r3::dot(lattice_vectors_, G1);
+                        std::stringstream s;
+                        s << "Error in G-vector shell index" << std::endl
+                          << "  G : " << G << std::endl
+                          << "  rotated G : " << G1 << std::endl
+                          << "  current shell index : " << num_gvec_shells_ << std::endl
+                          << "  rotated G shell index : " << gvec_shell_[ig1] << std::endl
+                          << "  length of G : " << gc.length() << std::endl
+                          << "  length of rotated G : " << gc1.length() << std::endl
+                          << "  length difference : " << std::abs(gc.length() - gc1.length());
+                        RTE_THROW(s);
+                    }
+                }
             }
             num_gvec_shells_++;
         }
@@ -311,62 +329,19 @@ void Gvec::find_gvec_shells()
     }
 
     gvec_shell_len_ = sddk::mdarray<double, 1>(num_gvec_shells_, sddk::memory_t::host, "gvec_shell_len_");
-    std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, -1);
+    std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, 0);
+
+    std::vector<int> ngv_sh(num_gvec_shells_, 0);
 
     for (int ig = 0; ig < num_gvec_; ig++) {
         auto g   = gvec_cart<sddk::index_domain_t::global>(ig).length();
         int igsh = gvec_shell_[ig];
-        if (gvec_shell_len_[igsh] < 0) {
-            gvec_shell_len_[igsh] = g;
-        } else {
-            /* lattice symmetries were found with 1e-6 tolererance for the metric tensor,
-               so tolerance on length should be square root of that */
-            if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
-                std::stringstream s;
-                s << "wrong G-vector length" << std::endl
-                  << "  length of G-vector : " << g << std::endl
-                  << "  length of G-shell : " << gvec_shell_len_[igsh] << std::endl
-                  << "  index of G-vector : " << ig << std::endl
-                  << "  index of G-shell : " << igsh << std::endl
-                  << "  length difference : " << std::abs(gvec_shell_len_[igsh] - g) << std::endl;
-                RTE_THROW(s);
-            }
-        }
+        gvec_shell_len_[igsh] += g;
+        ngv_sh[igsh]++;
     }
-
-    // TODO: maybe, make an average G-shell length.
-
-    /* list of pairs (length, index of G-vector) */
-    std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < num_gvec(); ig++) {
-        /* make some reasonable roundoff */
-        uint64_t len = static_cast<uint64_t>(gvec_shell_len_[gvec_shell_[ig]] * 1e10);
-        tmp[ig]      = std::make_pair(len, ig);
+    for (int i = 0; i < num_gvec_shells_; i++) {
+        gvec_shell_len_[i] /= ngv_sh[i];
     }
-    /* sort by first element in pair (length) */
-    std::sort(tmp.begin(), tmp.end());
-
-    /* index of the first shell */
-    gvec_shell_(tmp[0].second) = 0;
-    num_gvec_shells_           = 1;
-    /* temporary vector to store G-shell radius */
-    std::vector<double> tmp_len;
-    /* radius of the first shell */
-    tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
-    for (int ig = 1; ig < num_gvec_; ig++) {
-        /* if this G-vector has a different length */
-        if (tmp[ig].first != tmp[ig - 1].first) {
-            /* increment number of shells */
-            num_gvec_shells_++;
-            /* save the radius of the new shell */
-            tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
-        }
-        /* assign the index of the current shell */
-        gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
-    }
-    gvec_shell_len_ = sddk::mdarray<double, 1>(num_gvec_shells_, sddk::memory_t::host, "gvec_shell_len_");
-    std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(sddk::memory_t::host));
 
     /* map from global index of G-shell to a list of local G-vectors */
     std::map<int, std::vector<int>> gshmap;
