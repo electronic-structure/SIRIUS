@@ -71,7 +71,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
             /* get z-coordinate of G-vector */
             int k = fft_box__.freq_by_coord<2>(iz);
             /* take G+k */
-            auto vgk = dot(lattice_vectors_, (r3::vector<double>(i, j, k) + vk_));
+            auto vgk = r3::dot(lattice_vectors_, (r3::vector<double>(i, j, k) + vk_));
             /* add z-coordinate of G-vector to the list */
             if (vgk.length() <= Gmax__) {
                 zcol.push_back(k);
@@ -151,7 +151,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
                     r3::vector<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
                     for (auto& R: lat_sym) {
                         /* apply lattice symmeetry operation to a G-vector */
-                        auto G1 = dot(R, G);
+                        auto G1 = r3::dot(G, R);
                         if (reduce_gvec_) {
                             if (G1[0] == 0 && G1[1] == 0) {
                                 G1[2] = std::abs(G1[2]);
@@ -395,8 +395,8 @@ Gvec::init_gvec_cart_local()
     }
 
     for (int igloc = 0; igloc < count(); igloc++) {
-        auto gc  = dot(lattice_vectors_, r3::vector<int>(&gvec_(0, igloc)));
-        auto gkc = dot(lattice_vectors_, r3::vector<double>(&gkvec_(0, igloc)));
+        auto gc  = r3::dot(lattice_vectors_, r3::vector<int>(&gvec_(0, igloc)));
+        auto gkc = r3::dot(lattice_vectors_, r3::vector<double>(&gkvec_(0, igloc)));
         for (int x : {0, 1, 2}) {
             gvec_cart_(x, igloc)  = gc[x];
             gkvec_cart_(x, igloc) = gkc[x];
