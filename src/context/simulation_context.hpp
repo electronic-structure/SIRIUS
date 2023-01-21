@@ -506,8 +506,8 @@ class Simulation_context : public Simulation_parameters
         if (cfg().control().fft_mode() == "serial") {
             return mpi::Communicator::self();
         } else {
-            //return comm_band();
-            return this->mpi_grid_->communicator(1);
+            return comm_band();
+            //return this->mpi_grid_->communicator(1);
         }
     }
 
