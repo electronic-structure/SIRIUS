@@ -177,9 +177,6 @@ class Simulation_context : public Simulation_parameters
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     sddk::mdarray<int, 2> gvec_coord_;
 
-    /// Theta and phi angles of G-vectors in GPU-friendly ordering.
-    //sddk::mdarray<double, 2> gvec_tp_;
-
     /// Volume of the initial unit cell.
     /** This is needed to estimate the new cutoff for radial integrals. */
     double omega0_;
