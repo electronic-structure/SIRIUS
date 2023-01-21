@@ -50,12 +50,11 @@ void Potential::generate_D_operator_matrix()
     auto& mph = get_memory_pool(sddk::memory_t::host);
     auto& mpd = get_memory_pool(sddk::memory_t::device);
 
-    int n_mag_comp;
+    int n_mag_comp{1};
 
     sddk::mdarray<std::complex<double>, 2> veff;
     switch (ctx_.processing_unit()) {
         case sddk::device_t::CPU: {
-            n_mag_comp = 1;
             break;
         }
         case sddk::device_t::GPU: {
