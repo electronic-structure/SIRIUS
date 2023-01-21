@@ -962,7 +962,8 @@ Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::make_unique<fft::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
+        gvec_coarse_ = std::make_unique<fft::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec(),
+                cfg().control().spglib_tolerance());
         /* create FFT friendly partiton */
         gvec_coarse_fft_ = std::make_shared<fft::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
                 comm_ortho_fft_coarse());

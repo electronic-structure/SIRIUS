@@ -218,6 +218,9 @@ class Gvec
     /// Local number of z-columns.
     int num_zcol_local_{-1};
 
+    /// Symmetry tolerance of the real-space lattice.
+    double sym_tol_{1e-6};
+
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     r3::vector<int> gvec_by_full_index(uint32_t idx__) const;
 
@@ -255,49 +258,58 @@ class Gvec
   public:
     /// Constructor for G+k vectors.
     /** \param [in] vk          K-point vector of G+k
-     *  \param [in] M           Reciprocal lattice vecotors in comumn order
+     *  \param [in] M           Reciprocal lattice vectors in column order
      *  \param [in] Gmax        Cutoff for G+k vectors
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
-    Gvec(r3::vector<double> vk__, r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__, bool reduce_gvec__)
-        : vk_(vk__)
-        , Gmax_(Gmax__)
-        , lattice_vectors_(M__)
-        , comm_(comm__)
-        , reduce_gvec_(reduce_gvec__)
-        , bare_gvec_(false)
+    Gvec(r3::vector<double> vk__, r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__,
+            bool reduce_gvec__, double sym_tol__ = 1e-6)
+        : vk_{vk__}
+        , Gmax_{Gmax__}
+        , lattice_vectors_{M__}
+        , comm_{comm__}
+        , reduce_gvec_{reduce_gvec__}
+        , bare_gvec_{false}
+        , sym_tol_{sym_tol__}
     {
         init(fft::get_min_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
-    /** \param [in] M           Reciprocal lattice vecotors in comumn order
+    /** \param [in] M           Reciprocal lattice vectors in column order
      *  \param [in] Gmax        Cutoff for G+k vectors
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
-    Gvec(r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__, bool reduce_gvec__)
-        : Gmax_(Gmax__)
-        , lattice_vectors_(M__)
-        , comm_(comm__)
-        , reduce_gvec_(reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__, bool reduce_gvec__,
+            double sym_tol__ = 1e-6)
+        : Gmax_{Gmax__}
+        , lattice_vectors_{M__}
+        , comm_{comm__}
+        , reduce_gvec_{reduce_gvec__}
+        , sym_tol_{sym_tol__}
     {
         init(fft::get_min_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
-    /** \param [in] M           Reciprocal lattice vecotors in comumn order
+    /** \param [in] M           Reciprocal lattice vectors in column order
      *  \param [in] Gmax        Cutoff for G+k vectors
      *  \param [in] fft_grid    Provide explicit boundaries for the G-vector min and max frequencies.
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
-    Gvec(r3::matrix<double> M__, double Gmax__, fft::Grid const& fft_grid__, mpi::Communicator const& comm__, bool reduce_gvec__)
-        : Gmax_(Gmax__)
-        , lattice_vectors_(M__)
-        , comm_(comm__)
-        , reduce_gvec_(reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, fft::Grid const& fft_grid__, mpi::Communicator const& comm__,
+            bool reduce_gvec__, double sym_tol__ = 1e-6)
+        : Gmax_{Gmax__}
+        , lattice_vectors_{M__}
+        , comm_{comm__}
+        , reduce_gvec_{reduce_gvec__}
+        , sym_tol_{sym_tol__}
     {
         init(fft_grid__);
     }
@@ -305,25 +317,28 @@ class Gvec
     /// Constructor for G-vector distribution based on a previous set.
     /** Previous set of G-vectors must be a subset of the current set. */
     Gvec(double Gmax__, Gvec const& gvec_base__)
-        : Gmax_(Gmax__)
-        , lattice_vectors_(gvec_base__.lattice_vectors())
-        , comm_(gvec_base__.comm())
-        , reduce_gvec_(gvec_base__.reduced())
-        , gvec_base_(&gvec_base__)
+        : Gmax_{Gmax__}
+        , lattice_vectors_{gvec_base__.lattice_vectors_}
+        , comm_{gvec_base__.comm()}
+        , reduce_gvec_{gvec_base__.reduced()}
+        , gvec_base_{&gvec_base__}
+        , sym_tol_{gvec_base__.sym_tol_}
     {
         init(fft::get_min_grid(Gmax__, lattice_vectors_));
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
-    Gvec(r3::matrix<double> M__, double Gmax__, bool reduce_gvec__)
-        : Gmax_(Gmax__)
-        , lattice_vectors_(M__)
-        , comm_(mpi::Communicator::self())
-        , reduce_gvec_(reduce_gvec__)
+    Gvec(r3::matrix<double> M__, double Gmax__, bool reduce_gvec__, double sym_tol__ = 1e-6)
+        : Gmax_{Gmax__}
+        , lattice_vectors_{M__}
+        , comm_{mpi::Communicator::self()}
+        , reduce_gvec_{reduce_gvec__}
+        , sym_tol_{sym_tol__}
     {
         init(fft::get_min_grid(Gmax__, M__));
     }
 
+    /// Construct with the defined order of G-vectors.
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, int ngv_loc__, int const* gv__,
             mpi::Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
@@ -408,7 +423,7 @@ class Gvec
     /// Set the new reciprocal lattice vectors.
     /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
-    inline r3::matrix<double> const& lattice_vectors(r3::matrix<double> lattice_vectors__)
+    inline auto const& lattice_vectors(r3::matrix<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
         find_gvec_shells();
@@ -417,9 +432,16 @@ class Gvec
     }
 
     /// Retrn a const reference to the reciprocal lattice vectors.
-    inline r3::matrix<double> const& lattice_vectors() const
+    inline auto const& lattice_vectors() const
     {
         return lattice_vectors_;
+    }
+
+    inline auto const unit_cell_lattice_vectors() const
+    {
+        double const twopi = 6.2831853071795864769;
+        auto r = r3::transpose(r3::inverse(lattice_vectors_)) * twopi;
+        return r;
     }
 
     /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
@@ -987,6 +1009,44 @@ gkvec_factory(r3::vector<double> vk__, r3::matrix<double> reciprocal_lattice_vec
     return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
 }
 
+inline void print(std::ostream& out__, Gvec const& gvec__)
+{
+    std::map<int, std::vector<int>> gsh_map;
+    for (int i = 0; i < gvec__.num_gvec(); i++) {
+        int igsh = gvec__.shell(i);
+        if (gsh_map.count(igsh) == 0) {
+            gsh_map[igsh] = std::vector<int>();
+        }
+        gsh_map[igsh].push_back(i);
+    }
+
+    out__ << "num_gvec : " << gvec__.num_gvec() << std::endl;
+    out__ << "num_gvec_shells : " << gvec__.num_shells() << std::endl;
+
+    for (int igsh = 0; igsh < gvec__.num_shells(); igsh++) {
+        auto len = gvec__.shell_len(igsh);
+        out__ << "shell : " << igsh << ", length : " << len << std::endl;
+        for (auto ig : gsh_map[igsh]) {
+            auto G = gvec__.gvec<sddk::index_domain_t::global>(ig);
+            auto Gc = gvec__.gvec_cart<sddk::index_domain_t::global>(ig);
+            out__ << "  ig : " << ig << ", G = " << G << ", length diff : " << std::abs(Gc.length() - len) << std::endl;
+        }
+    }
+    //mpi::pstdout pout(gvec__.comm());
+    //pout << "rank: " << gvec_.comm().rank() << std::endl;
+    //pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
+    //for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
+    //    auto G = gvec_remapped(igloc);
+
+    //    int igsh = gvec_shell_remapped(igloc);
+    //    pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
+    //}
+    //pout << "-- reverse list --" << std::endl;
+    //for (auto const& e: idx_gvec_) {
+    //    pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
+    //}
+    //out__ << pout.flush(0);
+}
 } // namespace sddk
 
 #endif //__GVEC_HPP__
