@@ -518,6 +518,7 @@ class Simulation_context : public Simulation_parameters
 
     auto const& comm_band_ortho_fft_coarse() const
     {
+        //return this->mpi_grid_->communicator(2);
         return comm_band_ortho_fft_coarse_;
     }
 

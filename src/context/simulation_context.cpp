@@ -339,22 +339,6 @@ Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    auto print_mpi_layout = env::print_mpi_layout();
-
-    if (verbosity() >= 3 || print_mpi_layout) {
-        mpi::pstdout pout(comm());
-        if (comm().rank() == 0) {
-            pout << "MPI rank placement" << std::endl;
-            pout << "------------------" << std::endl;
-        }
-        pout << "rank: " << comm().rank()
-             << ", comm_band_rank: " << comm_band().rank()
-             << ", comm_k_rank: " << comm_k().rank()
-             << ", hostname: " << utils::hostname()
-             << ", mpi processor name: " << mpi::Communicator::processor_name() << std::endl;
-        rte::ostream(this->out(), "info") << pout.flush(0);
-    }
-
     switch (processing_unit()) {
         case sddk::device_t::CPU: {
             host_memory_t_ = sddk::memory_t::host;
@@ -551,6 +535,7 @@ Simulation_context::initialize()
         }
     }
 
+    /* environment variable has a highest priority */
     auto ev_str = env::get_ev_solver();
     if (ev_str.size()) {
         evsn[0] = ev_str;
@@ -623,6 +608,33 @@ Simulation_context::initialize()
     if (pcs) {
         this->cfg().control().print_checksum(true);
     }
+
+    auto print_mpi_layout = env::print_mpi_layout();
+
+    if (verbosity() >= 3 || print_mpi_layout) {
+        mpi::pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout << "MPI rank placement" << std::endl;
+            pout << utils::hbar(136, '-') << std::endl;
+            pout << "comm | comm_band | comm_k | comm_fft_coarse | comm_band_ortho_fft_coarse | mpi_grid(0) | mpi_grid(1) | blacs_grid(row) | blacs_grid(col)" << std::endl;
+        }
+        pout << std::setw(4) << comm().rank()
+             << std::setw(12) << comm_band().rank()
+             << std::setw(9) << comm_k().rank()
+             << std::setw(18) << comm_fft_coarse().rank()
+             << std::setw(29) << comm_band_ortho_fft_coarse().rank()
+             << std::setw(13) << mpi_grid_->communicator(1 << 0).rank()
+             << std::setw(14) << mpi_grid_->communicator(1 << 1).rank()
+             << std::setw(17) << blacs_grid().comm_row().rank()
+             << std::setw(18) << blacs_grid().comm_col().rank() << std::endl;
+
+        //     << ", comm_band_rank: " << comm_band().rank()
+        //     << ", comm_k_rank: " << comm_k().rank()
+        //     << ", hostname: " << utils::hostname()
+        //     << ", mpi processor name: " << mpi::Communicator::processor_name() << std::endl;
+        rte::ostream(this->out(), "info") << pout.flush(0);
+    }
+
 
     initialized_ = true;
     cfg().lock();
@@ -1492,4 +1504,5 @@ Simulation_context::init_comm()
     /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
     comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
+
 } // namespace sirius
