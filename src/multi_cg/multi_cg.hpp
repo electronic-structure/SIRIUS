@@ -165,6 +165,7 @@ namespace lr {
 
 struct Wave_functions_wrap {
     wf::Wave_functions<double> *x;
+    sddk::memory_t mem{sddk::memory_t::host}; // hard-code host memory for now
 
     typedef std::complex<double> value_type;
 
