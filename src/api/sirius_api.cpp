@@ -6055,6 +6055,16 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
             // TODO: allocate all wave-functions on device (if processing_unit == sdk::memory_t::GPU)
+            if (sctx.processing_unit() == sddk::device_t::GPU){
+
+                sddk::memory_t mem = sctx.processing_unit_memory_t();
+
+                auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device)
+                auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host)
+                auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device)
+                auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device)
+
+            }
 
             sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
@@ -6068,12 +6078,15 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             // CG state vectors
             // TODO: pass memory type parameter to the constructor
-            // auto mt = sctx.processing_unit_memory_t();
-            //auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mt};
-            auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get()};
-            auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get()};
-            auto U_wrap = sirius::lr::Wave_functions_wrap{U.get()};
-            auto C_wrap = sirius::lr::Wave_functions_wrap{C.get()};
+            sddk::memory_t mem = sctx.processing_unit_memory_t(); // auto mem should do as well
+
+            // memory type given in to the constructor as 2nd argument
+// >>>>>>>> CHANGE CONSTRUCTOR TO ACCEPT A 2ND ARGUMENT
+            auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
+            auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
+            auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
+            auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
+            auto C_wrap = sirius::lr::Wave_functions_wrap{C.get(), mem};
 
             // Set up the diagonal preconditioner
             auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>();
@@ -6098,6 +6111,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 100, // iters
                 1e-13 // tol
             );
+// >>>>>>  DESTROY THE memory_guard to bring back dpsi_wf (it is needed below)
 
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
