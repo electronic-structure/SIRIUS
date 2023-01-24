@@ -6059,10 +6059,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
                 sddk::memory_t mem = sctx.processing_unit_memory_t();
 
-                auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device)
-                auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host)
-                auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device)
-                auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device)
+                auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device);
+                auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host);
+                auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device);
+                auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device);
 
             }
 
@@ -6082,7 +6082,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             // memory type given in to the constructor as 2nd argument
 // >>>>>>>> CHANGE CONSTRUCTOR TO ACCEPT A 2ND ARGUMENT
-            auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
             auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
