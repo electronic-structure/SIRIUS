@@ -5929,7 +5929,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             int num_gvec_kq_loc = *num_gvec_kq_loc__;
             int num_gvec_kq = num_gvec_kq_loc;
-            sctx.comm_k().allreduce(&num_gvec_kq, 1);
+            sctx.comm_band().allreduce(&num_gvec_kq, 1);
 
             if (num_gvec_kq != gvkq_in->num_gvec()) {
                 RTE_THROW("wrong number of G+k vectors for k");
