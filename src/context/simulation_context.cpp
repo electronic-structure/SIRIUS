@@ -1497,9 +1497,6 @@ Simulation_context::init_comm()
 
     /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
-
-    /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
-    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
 
 } // namespace sirius
