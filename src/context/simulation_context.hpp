@@ -509,7 +509,8 @@ class Simulation_context : public Simulation_parameters
         if (cfg().control().fft_mode() == "serial") {
             return mpi::Communicator::self();
         } else {
-            return comm_band();
+            //return comm_band();
+            return mpi_grid_->communicator(1 << 0);
         }
     }
 
@@ -520,7 +521,12 @@ class Simulation_context : public Simulation_parameters
 
     auto const& comm_band_ortho_fft_coarse() const
     {
-        return comm_band_ortho_fft_coarse_;
+        if (cfg().control().fft_mode() == "serial") {
+            return comm_band();
+        } else {
+            return mpi_grid_->communicator(1 << 1);
+        }
+        //return comm_band_ortho_fft_coarse_;
     }
 
     void create_storage_file() const;

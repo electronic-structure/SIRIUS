@@ -912,7 +912,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
 
         auto sp = wf_->actual_spin_index(ispn__);
         auto t0 = utils::time_now();
-        if (false) {
+        if (true) {
             auto layout_in  = wf_->grid_layout_pw(sp, b__);
             auto layout_out = this->grid_layout(b__.size());
 
@@ -979,7 +979,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         auto pp = env::print_performance();
 
         auto t0 = utils::time_now();
-        if (false) {
+        if (true) {
             auto layout_in  = this->grid_layout(b__.size());
             auto layout_out = wf_->grid_layout_pw(sp, b__);
 
