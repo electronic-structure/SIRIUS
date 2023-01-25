@@ -616,25 +616,22 @@ Simulation_context::initialize()
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << utils::hbar(136, '-') << std::endl;
-            pout << "comm | comm_band | comm_k | comm_fft_coarse | comm_band_ortho_fft_coarse | mpi_grid(0) | mpi_grid(1) | blacs_grid(row) | blacs_grid(col)" << std::endl;
+            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col" << std::endl;
         }
-        pout << std::setw(4) << comm().rank()
-             << std::setw(12) << comm_band().rank()
-             << std::setw(9) << comm_k().rank()
-             << std::setw(18) << comm_fft_coarse().rank()
-             << std::setw(29) << comm_band_ortho_fft_coarse().rank()
-             << std::setw(13) << mpi_grid_->communicator(1 << 0).rank()
-             << std::setw(14) << mpi_grid_->communicator(1 << 1).rank()
-             << std::setw(17) << blacs_grid().comm_row().rank()
-             << std::setw(18) << blacs_grid().comm_col().rank() << std::endl;
-
-        //     << ", comm_band_rank: " << comm_band().rank()
-        //     << ", comm_k_rank: " << comm_k().rank()
-        //     << ", hostname: " << utils::hostname()
-        //     << ", mpi processor name: " << mpi::Communicator::processor_name() << std::endl;
+        pout << std::setw(12) << utils::hostname() << " | "
+             << std::setw(6) << comm().rank()
+             << std::setw(6) << comm_band().rank()
+             << std::setw(6) << comm_k().rank() << " | "
+             << std::setw(6) << comm_fft_coarse().rank()
+             << std::setw(6) << comm_band_ortho_fft_coarse().rank() << "    |   "
+             << std::setw(6) << mpi_grid_->communicator(3).rank()
+             << std::setw(6) << mpi_grid_->communicator(1 << 0).rank()
+             << std::setw(6) << mpi_grid_->communicator(1 << 1).rank() << "   | "
+             << std::setw(6) << blacs_grid().comm().rank()
+             << std::setw(6) << blacs_grid().comm_row().rank()
+             << std::setw(6) << blacs_grid().comm_col().rank() << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
-
 
     initialized_ = true;
     cfg().lock();
