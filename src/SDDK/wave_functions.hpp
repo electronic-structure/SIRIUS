@@ -912,7 +912,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
 
         auto sp = wf_->actual_spin_index(ispn__);
         auto t0 = utils::time_now();
-        if (true) {
+        if (false) {
             auto layout_in  = wf_->grid_layout_pw(sp, b__);
             auto layout_out = this->grid_layout(b__.size());
 
@@ -924,14 +924,30 @@ class Wave_functions_fft : public Wave_functions_base<T>
              */
             auto& comm_col = gkvec_fft_->comm_ortho_fft();
 
-            auto ncol = sddk::splindex_base<int>::block_size(b__.size(), comm_col.size());
-            size_t sz = gkvec_fft_->count() * ncol;
-            sddk::mdarray<std::complex<T>, 1> send_recv_buf(sz, sddk::get_memory_pool(sddk::memory_t::host), "send_recv_buf");
+            /* in full-potential case leading dimenstion is larger than the number of plane-wave
+             * coefficients, so we have to copy data into temporary storage with necessary leading
+             * dimension */
+            sddk::mdarray<std::complex<T>, 2> wf_tmp;
+            if (wf_->ld() == wf_->num_pw_) { /* pure plane-wave coeffs */
+                auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
+                wf_tmp = sddk::mdarray<std::complex<T>, 2>(ptr, wf_->num_pw_, b__.size());
+            } else {
+                wf_tmp = sddk::mdarray<std::complex<T>, 2>(wf_->num_pw_, b__.size(), sddk::get_memory_pool(sddk::memory_t::host));
+                for (int i = 0; i < b__.size(); i++) {
+                    auto in_ptr = wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin() + i);
+                    std::copy(in_ptr, in_ptr + wf_->num_pw_, wf_tmp.at(sddk::memory_t::host, 0, i));
+                }
+            }
 
-            auto& row_distr = gkvec_fft_->gvec_slab();
+            auto* send_buf = (wf_tmp.ld() == 0) ? nullptr : wf_tmp.at(sddk::memory_t::host);
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
+
+            sddk::mdarray<std::complex<T>, 1> recv_buf(gkvec_fft_->count() * n_loc,
+                    sddk::get_memory_pool(sddk::memory_t::host), "recv_buf");
+
+            auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* send and receive dimensions */
             mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
@@ -942,12 +958,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             sd.calc_offsets();
             rd.calc_offsets();
 
-            auto send_buf = (this->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
-
-            {
-                comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf.at(sddk::memory_t::host),
-                                  rd.counts.data(), rd.offsets.data());
-            }
+            comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), recv_buf.at(sddk::memory_t::host),
+                              rd.counts.data(), rd.offsets.data());
 
             /* reorder received blocks */
             #pragma omp parallel for
@@ -956,7 +968,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
                     int offset = row_distr.offsets[j];
                     int count  = row_distr.counts[j];
                     if (count) {
-                        auto from = &send_recv_buf[offset * n_loc + count * i];
+                        auto from = &recv_buf[offset * n_loc + count * i];
                         std::copy(from, from + count, this->data_[0].at(sddk::memory_t::host, offset, i));
                     }
                 }
