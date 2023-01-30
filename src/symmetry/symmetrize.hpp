@@ -32,6 +32,7 @@
 #include "sht/sht.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
+#include "function3d/spheric_function_set.hpp"
 
 namespace sirius {
 
@@ -395,6 +396,60 @@ symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm
     double* sbuf = spl_atoms.local_size() ? fsym.at(sddk::memory_t::host) : nullptr;
     comm__.allgather(sbuf, frlm__.at(sddk::memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
                      lmmax * nrmax * spl_atoms.global_offset());
+}
+
+inline void
+symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, Spheric_function_set<double>& frlm__)
+{
+    PROFILE("sirius::symmetrize_function|flm");
+
+    int lmmax{0};
+    for (auto ia : frlm__.atoms()) {
+        lmmax = std::max(lmmax, frlm__[ia].angular_domain_size());
+    }
+    int lmax = utils::lmax(lmmax);
+
+    sddk::splindex<sddk::splindex_t::block> spl_atoms(frlm__.atoms().size(), comm__.size(), comm__.rank());
+
+    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
+
+    sddk::mdarray<double, 3> fsym(lmmax, frlm__.unit_cell().max_num_mt_points(), spl_atoms.local_size());
+    fsym.zero();
+
+    double alpha = 1.0 / double(sym__.size());
+
+    for (int i = 0; i < sym__.size(); i++) {
+        /* full space-group symmetry operation is {R|t} */
+        int pr    = sym__[i].spg_op.proper;
+        auto eang = sym__[i].spg_op.euler_angles;
+        sht::rotation_matrix(lmax, eang, pr, rotm);
+
+        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+            int ia = spl_atoms[ialoc];
+            int lmmax_ia = frlm__[ia].angular_domain_size();
+            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            la::wrap(la::lib_t::blas)
+                .gemm('N', 'N', lmmax_ia, frlm__.unit_cell().atom(ia).num_mt_points(), lmmax_ia, &alpha,
+                    rotm.at(sddk::memory_t::host), rotm.ld(),
+                      frlm__[ja].at(sddk::memory_t::host), frlm__[ja].ld(), &la::constant<double>::one(),
+                      fsym.at(sddk::memory_t::host, 0, 0, ialoc), fsym.ld());
+        }
+    }
+    double* sbuf = spl_atoms.local_size() ? fsym.at(sddk::memory_t::host) : nullptr;
+    auto ld = static_cast<int>(fsym.size(0) * fsym.size(1));
+
+    sddk::mdarray<double, 3> fsym_glob(lmmax, frlm__.unit_cell().max_num_mt_points(), frlm__.atoms().size(),
+            sddk::get_memory_pool(sddk::memory_t::host));
+    comm__.allgather(sbuf, fsym_glob.at(sddk::memory_t::host), ld * spl_atoms.local_size(),
+            ld * spl_atoms.global_offset());
+    for (int i = 0; i < static_cast<int>(frlm__.atoms().size()); i++) {
+        int ia = frlm__.atoms()[i];
+        for (int ir = 0; ir < frlm__.unit_cell().atom(ia).num_mt_points(); ir++) {
+            for (int lm = 0; lm < frlm__[ia].angular_domain_size(); lm++) {
+                frlm__[ia](lm, ir) = fsym_glob(lm, ir, i);
+            }
+        }
+    }
 }
 
 inline void
