@@ -109,11 +109,6 @@ class Simulation_context : public Simulation_parameters
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     mpi::Communicator comm_ortho_fft_coarse_;
 
-    /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
-    /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
-        used to parallelize application of local Hamiltonian over bands. */
-    mpi::Communicator comm_band_ortho_fft_coarse_;
-
     /// Unit cell of the simulation.
     std::unique_ptr<Unit_cell> unit_cell_;
 
@@ -509,18 +504,25 @@ class Simulation_context : public Simulation_parameters
         if (cfg().control().fft_mode() == "serial") {
             return mpi::Communicator::self();
         } else {
+            return mpi_grid_->communicator(1 << 0);
+        }
+    }
+
+    /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
+    /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
+        used to parallelize application of local Hamiltonian over bands. */
+    auto const& comm_band_ortho_fft_coarse() const
+    {
+        if (cfg().control().fft_mode() == "serial") {
             return comm_band();
+        } else {
+            return mpi_grid_->communicator(1 << 1);
         }
     }
 
     auto const& comm_ortho_fft_coarse() const
     {
         return comm_ortho_fft_coarse_;
-    }
-
-    auto const& comm_band_ortho_fft_coarse() const
-    {
-        return comm_band_ortho_fft_coarse_;
     }
 
     void create_storage_file() const;

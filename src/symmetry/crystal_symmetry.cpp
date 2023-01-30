@@ -325,7 +325,10 @@ void
 Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
 {
     if (this->spg_dataset_ && (this->spg_dataset_->n_operations != this->num_spg_sym())) {
-        out__ << "space group found by spglib is defferent" << std::endl;
+        out__ << "space group found by spglib is different" << std::endl
+              << "  num. sym. spglib : " << this->spg_dataset_->n_operations << std::endl
+              << "  num. sym. actual : " << this->num_spg_sym() << std::endl
+              << "  tolerance : " << this->tolerance_ << std::endl;
     } else {
         out__ << "space group number   : " << this->spacegroup_number() << std::endl
               << "international symbol : " << this->international_symbol() << std::endl
