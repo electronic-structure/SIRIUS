@@ -43,24 +43,40 @@ void Potential::generate_D_operator_matrix()
 {
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
-    auto spl_ngv_loc = ctx_.split_gvec_local();
+    /* local number of G-vectors */
+    int gvec_count = ctx_.gvec().count();
+    auto spl_ngv_loc = utils::split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
-    if (ctx_.unit_cell().atom_type(0).augment()) {
-        ctx_.augmentation_op(0).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
+    auto& mph = get_memory_pool(sddk::memory_t::host);
+    auto& mpd = get_memory_pool(sddk::memory_t::device);
+
+    int n_mag_comp{1};
+
+    sddk::mdarray<std::complex<double>, 2> veff;
+    switch (ctx_.processing_unit()) {
+        case sddk::device_t::CPU: {
+            break;
+        }
+        case sddk::device_t::GPU: {
+            n_mag_comp = ctx_.num_mag_dims() + 1;
+            veff = sddk::mdarray<std::complex<double>, 2>(gvec_count, n_mag_comp, mph);
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                std::copy(&component(j).f_pw_local(0), &component(j).f_pw_local(0) + gvec_count, &veff(0, j));
+            }
+            veff.allocate(mpd).copy_to(sddk::memory_t::device);
+            break;
+        }
     }
+
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        int nbf         = atom_type.mt_basis_size();
-
-        /* start copy of Q(G) for the next atom type */
-        if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            acc::sync_stream(stream_id(0));
-            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment()) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0), &get_memory_pool(sddk::memory_t::device));
-            }
-        }
+        /* number of beta-projector functions */
+        int nbf = atom_type.mt_basis_size();
+        /* number of Q_{xi,xi'} components for each G */
+        int nqlm = nbf * (nbf + 1) / 2;
 
         /* trivial case */
+        /* in absence of augmentation charge D-matrix is zero */
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -76,117 +92,130 @@ void Potential::generate_D_operator_matrix()
             }
             continue;
         }
-        sddk::matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
-        if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            d_tmp.allocate(get_memory_pool(sddk::memory_t::device));
+
+        sddk::mdarray<double, 3> d_tmp(nqlm, atom_type.num_atoms(), ctx_.num_mag_dims() + 1, mph);
+        sddk::mdarray<double, 3> veff_a(spl_ngv_loc[0] * 2, atom_type.num_atoms(), n_mag_comp, mph);
+        sddk::mdarray<double, 2> qpw;
+
+        switch (ctx_.processing_unit()) {
+            case sddk::device_t::CPU: {
+                d_tmp.zero();
+                break;
+            }
+            case sddk::device_t::GPU: {
+                d_tmp.allocate(mpd).zero(sddk::memory_t::device);
+                veff_a.allocate(mpd);
+                qpw = sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
+                break;
+            }
         }
 
         print_memory_usage(ctx_.out(), FILE_LINE);
 
-        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            sddk::matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), get_memory_pool(sddk::memory_t::host));
-
-            auto la = la::lib_t::blas;
-            auto mem = sddk::memory_t::host;
-
-            d_tmp.zero();
-            if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                la = la::lib_t::gpublas;
-                mem = sddk::memory_t::device;
-                d_tmp.zero(sddk::memory_t::device);
-                veff_a.allocate(get_memory_pool(sddk::memory_t::device));
-            }
-
-            /* split a large loop over G-vectors into blocks */
-            for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
-                int g_begin = spl_ngv_loc.global_index(0, ib);
-                int g_end = g_begin + spl_ngv_loc.local_size(ib);
-
-                switch (ctx_.processing_unit()) {
-                    case sddk::device_t::CPU: {
-                        #pragma omp parallel for schedule(static)
+        int g_begin{0};
+        /* loop over blocks of G-vectors */
+        for (auto ng : spl_ngv_loc) {
+            /* work on the block of the local G-vectors */
+            switch (ctx_.processing_unit()) {
+                case sddk::device_t::CPU: {
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                        /* multiply Veff(G) with the phase factors */
+                        #pragma omp parallel for
                         for (int i = 0; i < atom_type.num_atoms(); i++) {
                             int ia = atom_type.atom_id(i);
 
-                            for (int igloc = g_begin; igloc < g_end; igloc++) {
-                                int ig = ctx_.gvec().offset() + igloc;
+                            for (int g = 0; g < ng; g++) {
+                                int ig = ctx_.gvec().offset() + g_begin + g;
                                 /* V(G) * exp(i * G * r_{alpha}) */
-                                auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
-                                veff_a(2 * (igloc - g_begin),     i) = z.real();
-                                veff_a(2 * (igloc - g_begin) + 1, i) = z.imag();
+                                auto z = component(iv).f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
+                                veff_a(2 * g,     i, 0) = z.real();
+                                veff_a(2 * g + 1, i, 0) = z.imag();
                             }
                         }
-                        break;
-                    }
-                    case sddk::device_t::GPU: {
-                        /* wait for stream#1 to finish previous zgemm */
-                        acc::sync_stream(stream_id(1));
-                        /* copy plane wave coefficients of effective potential to GPU */
-                        sddk::mdarray<std::complex<double>, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
-                        veff.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-#if defined(SIRIUS_GPU)
-                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
-                                                        veff.at(sddk::memory_t::device),
-                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
-                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
-                                                        ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
-                                                        ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
-                                                        veff_a.at(sddk::memory_t::device), spl_ngv_loc.local_size(), 1);
-#endif
-                        break;
-                    }
-                }
-                if (ctx_.cfg().control().print_checksum()) {
-                    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                        veff_a.copy_to(sddk::memory_t::host);
-                    }
-                    auto cs = veff_a.checksum();
-                    std::stringstream s;
-                    s << "Gvec_block_" << ib << "_veff_a";
-                    utils::print_checksum(s.str(), cs, ctx_.out());
-                }
-                la::wrap(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
+                        la::wrap(la::lib_t::blas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
                                   &la::constant<double>::one(),
-                                  ctx_.augmentation_op(iat).q_pw().at(mem, 0, 2 * g_begin),
+                                  ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin),
                                   ctx_.augmentation_op(iat).q_pw().ld(),
-                                  veff_a.at(mem), veff_a.ld(),
+                                  veff_a.at(sddk::memory_t::host), veff_a.ld(),
                                   &la::constant<double>::one(),
-                                  d_tmp.at(mem), d_tmp.ld(),
-                                  stream_id(1));
-            } // ib (blocks of G-vectors)
+                                  d_tmp.at(sddk::memory_t::host, 0, 0, iv), d_tmp.ld());
+                    } // iv
+                    break;
+                }
+                case sddk::device_t::GPU: {
+                    acc::copyin(qpw.at(sddk::memory_t::device),
+                            ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+#if defined(SIRIUS_GPU)
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(sddk::memory_t::device, 0, iv),
+                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
+                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
+                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
+                            ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
+                            veff_a.at(sddk::memory_t::device, 0, 0, iv), ng, 1 + iv);
 
-            if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                d_tmp.copy_to(sddk::memory_t::host);
+                        la::wrap(la::lib_t::gpublas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
+                                  &la::constant<double>::one(),
+                                  qpw.at(sddk::memory_t::device), qpw.ld(),
+                                  veff_a.at(sddk::memory_t::device, 0, 0, iv), veff_a.ld(),
+                                  &la::constant<double>::one(),
+                                  d_tmp.at(sddk::memory_t::device, 0, 0, iv), d_tmp.ld(),
+                                  stream_id(1 + iv));
+#endif
+                    } // iv
+                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                        acc::sync_stream(stream_id(1 + iv));
+                    }
+                    break;
+                }
             }
 
+            g_begin += ng;
+        }
+
+        if (ctx_.processing_unit() == sddk::device_t::GPU) {
+            d_tmp.copy_to(sddk::memory_t::host);
+        }
+
+        //if (ctx_.cfg().control().print_checksum()) {
+        //    if (ctx_.processing_unit() == sddk::device_t::GPU) {
+        //        veff_a.copy_to(sddk::memory_t::host);
+        //    }
+        //    auto cs = veff_a.checksum();
+        //    std::stringstream s;
+        //    s << "Gvec_block_" << ib << "_veff_a";
+        //    utils::print_checksum(s.str(), cs, ctx_.out());
+        //}
+
+        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             if (ctx_.gvec().reduced()) {
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
-                        for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
-                            d_tmp(j, i) = 2 * d_tmp(j, i) - component(iv).f_pw_local(0).real() *
+                        for (int j = 0; j < nqlm; j++) {
+                            d_tmp(j, i, iv) = 2 * d_tmp(j, i, iv) - component(iv).f_pw_local(0).real() *
                                 ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
-                        for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
-                            d_tmp(j, i) *= 2;
+                        for (int j = 0; j < nqlm; j++) {
+                            d_tmp(j, i, iv) *= 2;
                         }
                     }
                 }
             }
 
             /* sum from all ranks */
-            comm_.allreduce(d_tmp.at(sddk::memory_t::host), static_cast<int>(d_tmp.size()));
+            comm_.allreduce(d_tmp.at(sddk::memory_t::host, 0, 0, iv), nqlm * atom_type.num_atoms());
 
-            if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
-                for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    std::stringstream s;
-                    s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
-                    auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    utils::print_checksum(s.str(), cs, ctx_.out());
-                }
-            }
+            //if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
+            //    for (int i = 0; i < atom_type.num_atoms(); i++) {
+            //        std::stringstream s;
+            //        s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
+            //        auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
+            //        utils::print_checksum(s.str(), cs, ctx_.out());
+            //    }
+            //}
 
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -197,13 +226,12 @@ void Potential::generate_D_operator_matrix()
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         /* D-matix is symmetric */
-                        atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i) * unit_cell_.omega();
+                        atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i, iv) * unit_cell_.omega();
                     }
                 }
             }
-        }
-        ctx_.augmentation_op(iat).dismiss();
-    }
+        } // iv
+    } // iat
 }
 
 } // namespace sirius

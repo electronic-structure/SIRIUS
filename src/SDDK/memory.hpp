@@ -678,7 +678,7 @@ sddk::memory_pool& get_memory_pool(sddk::memory_t M__);
     {                                                                             \
         if (!(condition__)) {                                                     \
             std::stringstream _s;                                                 \
-            _s << "Assertion (" <<  #condition__ << ") failed "                   \
+            _s << "Assertion (" << #condition__ << ") failed "                    \
                << "at line " << __LINE__ << " of file " << __FILE__ << std::endl  \
                << "array label: " << label_ << std::endl;                         \
             for (int i = 0; i < N; i++) {                                         \
@@ -754,6 +754,20 @@ class mdarray_index_descriptor
     inline size_t size() const
     {
         return size_;
+    }
+
+    inline bool check_range(index_type i__) const
+    {
+#ifdef NDEBUG
+        return true;
+#else
+        if (i__ < begin_ || i__ > end_) {
+            std::cout << "index " << i__ << " out of range [" << begin_ << ", " << end_ << "]" << std::endl;
+            return false;
+        } else {
+            return true;
+        }
+#endif
     }
 };
 
@@ -833,7 +847,8 @@ class mdarray
         std::array<index_type, N> i = {args...};
 
         for (int j = 0; j < N; j++) {
-            mdarray_assert(i[j] >= dims_[j].begin() && i[j] <= dims_[j].end());
+            //mdarray_assert(dims_[j].check_range(i[j]) && i[j] >= dims_[j].begin() && i[j] <= dims_[j].end());
+            mdarray_assert(dims_[j].check_range(i[j]));
         }
 
         size_t idx = offsets_[0] + i[0];

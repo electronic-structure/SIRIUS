@@ -411,36 +411,41 @@
                     "type" : "boolean",
                     "default" : false,
                     "title" : "If true then the atomic forces are printed at the end of SCF run."
-                 },
-                 "print_timers" : {
-                     "type" : "boolean",
-                     "default" : true,
-                     "title" : "If true then the timer statistics is printed at the end of SCF run."
-                 },
-                 "print_neighbors" : {
-                     "type" : "boolean",
-                     "default" : false,
-                     "title" : "If true then the list of nearest neighbours for each atom is printed to the standard output."
-                 },
-                 "use_second_variation" : {
-                     "type" : "boolean",
-                     "default" : true,
-                     "title" : "True if second-variational diagonalization is used in LAPW method."
-                 },
-                 "beta_chunk_size" : {
-                     "type" : "integer",
-                     "default" : 256,
-                     "title" : "Number of atoms in a chunk of beta-projectors."
-                 },
-                 "ortho_rf" : {
-                     "type" : "boolean",
-                     "default" : false,
-                     "title" : "Orthogonalize LAPW radial functions."
-                 },
-                 "output" : {
-                     "type" : "string",
-                     "default" : "stdout:",
-                     "title" : "Type of the output stream (stdout:, file:name)"
+                },
+                "print_timers" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "If true then the timer statistics is printed at the end of SCF run."
+                },
+                "print_neighbors" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then the list of nearest neighbours for each atom is printed to the standard output."
+                },
+                "use_second_variation" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "True if second-variational diagonalization is used in LAPW method."
+                },
+                "beta_chunk_size" : {
+                    "type" : "integer",
+                    "default" : 256,
+                    "title" : "Number of atoms in a chunk of beta-projectors."
+                },
+                "ortho_rf" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "Orthogonalize LAPW radial functions."
+                },
+                "output" : {
+                    "type" : "string",
+                    "default" : "stdout:",
+                    "title" : "Type of the output stream (stdout:, file:name)"
+                },
+                "gvec_chunk_size" : {
+                    "type" : "integer",
+                    "default" : 500000,
+                    "title" : "Split local G-vectors in chunks to reduce the GPU memory consumption of augmentation operator."
                 }
             }
         },

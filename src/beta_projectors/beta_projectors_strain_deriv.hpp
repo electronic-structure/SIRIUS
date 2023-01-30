@@ -55,7 +55,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
             auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
-            auto rtp = SHT::spherical_coordinates(gvc);
+            auto rtp = r3::spherical_coordinates(gvc);
 
             double theta = rtp[1];
             double phi   = rtp[2];
@@ -70,7 +70,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
             auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
             /* vs = {r, theta, phi} */
-            auto gvs = SHT::spherical_coordinates(gvc);
+            auto gvs = r3::spherical_coordinates(gvc);
 
             /* |G+k|=0 case */
             if (gvs[0] < 1e-10) {

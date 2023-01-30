@@ -51,8 +51,6 @@ Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
         return;
     }
 
-    PROFILE("sirius::Force::symmetrize");
-
     sddk::mdarray<double, 2> sym_forces(3, ctx_.unit_cell().spl_num_atoms().local_size());
     sym_forces.zero();
 

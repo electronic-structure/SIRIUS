@@ -61,9 +61,7 @@ find_lat_sym(r3::matrix<double> const& lat_vec__, double tol__, double* mt_error
 
     auto r = {-1, 0, 1};
 
-    if (mt_error__) {
-        *mt_error__ = 0;
-    }
+    double mt_error_max{0};
 
     for (int i00: r) {
     for (int i01: r) {
@@ -79,12 +77,10 @@ find_lat_sym(r3::matrix<double> const& lat_vec__, double tol__, double* mt_error
                 /* valid symmetry operation has a determinant of +/- 1 */
                 if (std::abs(R.det()) == 1) {
                     auto mt_error = metric_tensor_error(lat_vec__, R);
+                    mt_error_max = std::max(mt_error_max, mt_error);
                     /* metric tensor should be invariant under symmetry operation */
                     if (mt_error < tol__) {
                         lat_sym.push_back(R);
-                        if (mt_error__) {
-                            *mt_error__ = std::max(*mt_error__, mt_error);
-                        }
                     }
                 }
             }
@@ -97,9 +93,16 @@ find_lat_sym(r3::matrix<double> const& lat_vec__, double tol__, double* mt_error
     }
     }
 
+    if (mt_error__) {
+        *mt_error__ = mt_error_max;
+    }
+
     if (lat_sym.size() == 0 || lat_sym.size() > 48) {
         std::stringstream s;
-        s << "wrong number of lattice symmetries: " << lat_sym.size();
+        s << "wrong number of lattice symmetries: " << lat_sym.size() << std::endl
+          << "  lattice vectors : " << lat_vec__ << std::endl
+          << "  tolerance : " << tol__ << std::endl
+          << "  metric tensor error : " << mt_error_max;
         RTE_THROW(s);
     }
 

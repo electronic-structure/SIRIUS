@@ -201,7 +201,8 @@ class Gaunt_coefficients
         return gaunt_packed_L3_(lm1, lm2);
     }
 
-    inline sddk::mdarray<T, 3> get_full_set_L3() const
+    /// Return the full tensor of Gaunt coefficients <R_{L1}|R_{L3}|R_{L2}> with a (L3, L1, L2) order of indices.
+    inline auto get_full_set_L3() const
     {
         sddk::mdarray<T, 3> gc(lmmax3_, lmmax1_, lmmax2_);
         gc.zero();

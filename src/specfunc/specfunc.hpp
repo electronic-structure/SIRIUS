@@ -493,7 +493,6 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2
     r3::vector<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
     r3::vector<double> dphi_dr({-sinp, cosp, 0});
 
-
     std::vector<double> dRlm_dt(lmmax);
     std::vector<double> dRlm_dp_sin_t(lmmax);
 

@@ -209,6 +209,12 @@ class Gvec
     /// Length of the local fraction of G-vectors.
     sddk::mdarray<double, 1> gvec_len_;
 
+    // Theta- and phi- angles of G-vectors.
+    sddk::mdarray<double, 2> gvec_tp_;
+
+    // Theta- and phi- angles of G+k-vectors.
+    sddk::mdarray<double, 2> gkvec_tp_;
+
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
 
@@ -718,6 +724,26 @@ class Gvec
         }
         this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
         return result;
+    }
+
+    inline auto& gvec_tp()
+    {
+        return gvec_tp_;
+    }
+
+    inline auto const& gvec_tp() const
+    {
+        return gvec_tp_;
+    }
+
+    inline auto& gkvec_tp()
+    {
+        return gkvec_tp_;
+    }
+
+    inline auto const& gkvec_tp() const
+    {
+        return gkvec_tp_;
     }
 };
 
