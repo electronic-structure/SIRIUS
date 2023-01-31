@@ -104,10 +104,6 @@ Density::Density(Simulation_context& ctx__)
         occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
     }
 
-    if (unit_cell_.num_paw_atoms()) {
-        paw_density_ = paw_density(ctx_);
-    }
-
     update();
 }
 

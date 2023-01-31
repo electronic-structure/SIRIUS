@@ -110,35 +110,44 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     }
 }
 
-sirius::Field4D::Field4D(Simulation_context& ctx__, int lmmax__)
+Field4D::Field4D(Simulation_context& ctx__, int lmmax__)
     : lmmax_(lmmax__)
     , ctx_(ctx__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        components_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, lmmax__));
-        /* allocate global MT array */
-        components_[i]->allocate_mt(true);
+        if (ctx_.full_potential()) {
+            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, lmmax__);
+            /* allocate global MT array */
+            components_[i]->allocate_mt(true);
+        } else {
+            if (ctx_.unit_cell().num_paw_atoms()) {
+                components_[i] = std::make_unique<Periodic_function<double>>(ctx_, ctx_.unit_cell().paw_atoms(),
+                    [this](int ia){ return 2 * this->ctx_.unit_cell().atom(ia).type().indexr().lmax();});
+            } else {
+                components_[i] = std::make_unique<Periodic_function<double>>(ctx_);
+            }
+        }
     }
 }
 
-Periodic_function<double> &sirius::Field4D::scalar() 
+Periodic_function<double>& Field4D::scalar()
 {
     return *(components_[0]);
 }
 
-const Periodic_function<double> &sirius::Field4D::scalar() const
+Periodic_function<double> const& Field4D::scalar() const
 {
     return *(components_[0]);
 }
 
-void sirius::Field4D::zero()
+void Field4D::zero()
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         component(i).zero();
     }
 }
 
-void sirius::Field4D::fft_transform(int direction__)
+void Field4D::fft_transform(int direction__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         component(i).fft_transform(direction__);

@@ -28,6 +28,7 @@
 #include "context/simulation_context.hpp"
 #include "spheric_function.hpp"
 #include "smooth_periodic_function.hpp"
+#include "spheric_function_set.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {
@@ -60,6 +61,8 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Local part of muffin-tin functions.
     sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
 
+    Spheric_function_set<T> f_mt1_;
+
     /// Global muffin-tin array
     sddk::mdarray<T, 3> f_mt_;
 
@@ -67,6 +70,8 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     /// Size of the muffin-tin functions angular domain size.
     int angular_domain_size_;
+
+    bool new_mt_{false};
 
     /// Set pointer to local part of muffin-tin functions
     void set_local_mt_ptr()
@@ -98,6 +103,32 @@ class Periodic_function : public Smooth_periodic_function<T>
             f_mt_local_ = sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
         }
     }
+
+    /// Constructor for regular grid FFT part.
+    Periodic_function(Simulation_context& ctx__)
+        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , comm_(ctx__.comm())
+        , gvec_(ctx__.gvec())
+        , new_mt_{true}
+    {
+    }
+
+    /// Constructor for regular grid and muffin-tin parts.
+    Periodic_function(Simulation_context& ctx__, std::vector<int> atoms__, std::function<int(int)> lmax__)
+        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , comm_(ctx__.comm())
+        , f_mt1_(ctx__.unit_cell(), atoms__, lmax__)
+        , gvec_(ctx__.gvec())
+        , new_mt_{true}
+    {
+    }
+
+
+
 
     Periodic_function(Simulation_context& ctx__, int angular_domain_size__, bool allocate_global__)
         : Periodic_function(ctx__, angular_domain_size__)

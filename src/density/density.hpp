@@ -28,6 +28,7 @@
 #include <iomanip>
 #include "function3d/field4d.hpp"
 #include "function3d/periodic_function.hpp"
+#include "function3d/spheric_function_set.hpp"
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "paw_density.hpp"
