@@ -38,6 +38,8 @@ void K_point<T>::generate_fv_states()
 
     auto const& uc = ctx_.unit_cell();
 
+    auto pcs = env::print_checksum();
+
     auto bs = ctx_.cyclic_block_size();
     la::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(),
             ctx_.blacs_grid(), bs, bs);
@@ -57,6 +59,10 @@ void K_point<T>::generate_fv_states()
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
         auto alm = generate_alm_block<false, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
+        auto cs = alm.checksum();
+        if (pcs) {
+            utils::print_checksum("alm", cs, RTE_OUT(this->out(0)));
+        }
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
         spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
@@ -105,6 +111,13 @@ void K_point<T>::generate_fv_states()
                     fv_eigen_vectors_slab().mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
             }
         }
+    }
+    if (pcs) {
+        auto z1 = fv_states_->checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto z2 = fv_states_->checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        utils::print_checksum("fv_states_pw", z1, RTE_OUT(this->out(0)));
+        utils::print_checksum("fv_states_mt", z2, RTE_OUT(this->out(0)));
+
     }
 }
 

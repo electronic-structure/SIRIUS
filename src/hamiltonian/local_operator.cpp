@@ -499,18 +499,18 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
 
     wf::Wave_functions_fft<T> phi_fft(gkvec_fft__, phi__, s0, b__, wf::shuffle_to::fft_layout);
 
-    std::map<wf::Wave_functions<T>*, wf::Wave_functions_fft<T>> map_wf_fft;
+    std::array<wf::Wave_functions_fft<T>, 4> wf_fft;
     if (hphi__) {
-        map_wf_fft[hphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *hphi__, s0, b__, wf::shuffle_to::wf_layout);
+        wf_fft[0] = wf::Wave_functions_fft<T>(gkvec_fft__, *hphi__, s0, b__, wf::shuffle_to::wf_layout);
     }
     if (ophi__) {
-        map_wf_fft[ophi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *ophi__, s0, b__, wf::shuffle_to::wf_layout);
+        wf_fft[1] = wf::Wave_functions_fft<T>(gkvec_fft__, *ophi__, s0, b__, wf::shuffle_to::wf_layout);
     }
     if (bzphi__) {
-        map_wf_fft[bzphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *bzphi__, s0, b__, wf::shuffle_to::wf_layout);
+        wf_fft[2] = wf::Wave_functions_fft<T>(gkvec_fft__, *bzphi__, s0, b__, wf::shuffle_to::wf_layout);
     }
     if (bxyphi__) {
-        map_wf_fft[bxyphi__] = wf::Wave_functions_fft<T>(gkvec_fft__, *bxyphi__, s0, b__, wf::shuffle_to::wf_layout);
+        wf_fft[3] = wf::Wave_functions_fft<T>(gkvec_fft__, *bxyphi__, s0, b__, wf::shuffle_to::wf_layout);
     }
 
     auto pcs = env::print_checksum();
@@ -565,40 +565,40 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
             /* multiply phi(r) by step function */
             mul_by_veff(spfftk__, reinterpret_cast<T*>(phi_r), veff_vec_, v_local_index_t::theta, spfft_buf);
 
-            auto mem = map_wf_fft[ophi__].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto mem = wf_fft[1].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
 
             /* phi(r) * Theta(r) -> ophi(G) */
-            spfftk__.forward(spfft_pu, map_wf_fft[ophi__].pw_coeffs_spfft(mem, wf::band_index(j)),
+            spfftk__.forward(spfft_pu, wf_fft[1].pw_coeffs_spfft(mem, wf::band_index(j)),
                     SPFFT_FULL_SCALING);
         }
 
         if (bzphi__) {
             mul_by_veff(spfftk__, reinterpret_cast<T*>(phi_r), veff_vec_, v_local_index_t::v1, spfft_buf);
 
-            auto mem = map_wf_fft[bzphi__].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto mem = wf_fft[2].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
 
             /* phi(r) * Bz(r) -> bzphi(G) */
-            spfftk__.forward(spfft_pu, map_wf_fft[bzphi__].pw_coeffs_spfft(mem, wf::band_index(j)),
+            spfftk__.forward(spfft_pu, wf_fft[2].pw_coeffs_spfft(mem, wf::band_index(j)),
                     SPFFT_FULL_SCALING);
         }
 
         if (bxyphi__) {
             mul_by_veff(spfftk__, reinterpret_cast<T*>(phi_r), veff_vec_, 2, spfft_buf);
 
-            auto mem = map_wf_fft[bxyphi__].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto mem = wf_fft[3].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
 
             /* phi(r) * (Bx(r) - iBy(r)) -> bxyphi(G) */
-            spfftk__.forward(spfft_pu, map_wf_fft[bxyphi__].pw_coeffs_spfft(mem, wf::band_index(j)),
+            spfftk__.forward(spfft_pu, wf_fft[3].pw_coeffs_spfft(mem, wf::band_index(j)),
                     SPFFT_FULL_SCALING);
         }
 
         if (hphi__) {
             mul_by_veff(spfftk__, reinterpret_cast<T*>(phi_r), veff_vec_, v_local_index_t::v0, spfft_buf);
 
-            auto mem = map_wf_fft[hphi__].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto mem = wf_fft[0].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
 
             /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-            spfftk__.forward(spfft_pu, map_wf_fft[hphi__].pw_coeffs_spfft(mem, wf::band_index(j)),
+            spfftk__.forward(spfft_pu, wf_fft[0].pw_coeffs_spfft(mem, wf::band_index(j)),
                     SPFFT_FULL_SCALING);
 
             /* add kinetic energy */
@@ -641,13 +641,13 @@ void Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std
                     #pragma omp parallel for
                     for (int igloc = 0; igloc < gkvec_fft__->count(); igloc++) {
                         auto gvc = gkvec_fft__->gkvec_cart(igloc);
-                        map_wf_fft[hphi__].pw_coeffs(igloc, wf::band_index(j)) += buf_pw[igloc] *
+                        wf_fft[0].pw_coeffs(igloc, wf::band_index(j)) += buf_pw[igloc] *
                             static_cast<T>(0.5 * gvc[x]);
                     }
                 } else {
                     add_to_hphi_lapw_gpu(gkvec_fft__->count(), buf_pw.at(sddk::memory_t::device),
                             gkvec_cart_.at(sddk::memory_t::device, 0, x),
-                            map_wf_fft[hphi__].at(sddk::memory_t::device, 0, wf::band_index(j)));
+                            wf_fft[0].at(sddk::memory_t::device, 0, wf::band_index(j)));
                 }
             } // x
         }

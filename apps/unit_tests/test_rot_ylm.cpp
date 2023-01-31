@@ -44,10 +44,10 @@ int run_test_impl(cmd_args& args)
 
             /* random Cartesian vector */
             r3::vector<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
-            auto scoord = SHT::spherical_coordinates(coord);
+            auto scoord = r3::spherical_coordinates(coord);
             /* rotated coordinates */
             auto coord2 = dot(Rc, coord);
-            auto scoord2 = SHT::spherical_coordinates(coord2);
+            auto scoord2 = r3::spherical_coordinates(coord2);
 
             int lmax{10};
             sddk::mdarray<T, 1> ylm(utils::lmmax(lmax));

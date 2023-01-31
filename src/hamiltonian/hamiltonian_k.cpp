@@ -842,7 +842,11 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         if (pcs) {
             if (hphi__) {
                 auto cs = hphi__->checksum(mem, wf::spin_index(0), b__);
+                auto cs_pw = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                auto cs_mt = hphi__->checksum_mt(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
+                    utils::print_checksum("hloc_phi_pw", cs_pw, RTE_OUT(std::cout));
+                    utils::print_checksum("hloc_phi_mt", cs_mt, RTE_OUT(std::cout));
                     utils::print_checksum("hloc_phi", cs, RTE_OUT(std::cout));
                 }
             }

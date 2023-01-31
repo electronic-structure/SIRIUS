@@ -29,7 +29,7 @@
 
 namespace fft {
 
-r3::vector<int> fft::Gvec::gvec_by_full_index(uint32_t idx__) const
+r3::vector<int> Gvec::gvec_by_full_index(uint32_t idx__) const
 {
     /* index of the z coordinate of G-vector: first 12 bits */
     uint32_t j = idx__ & 0xFFF;
@@ -43,7 +43,7 @@ r3::vector<int> fft::Gvec::gvec_by_full_index(uint32_t idx__) const
     return r3::vector<int>(x, y, z);
 }
 
-void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
+void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 {
     PROFILE("fft::Gvec::find_z_columns");
 
@@ -71,7 +71,7 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
             /* get z-coordinate of G-vector */
             int k = fft_box__.freq_by_coord<2>(iz);
             /* take G+k */
-            auto vgk = dot(lattice_vectors_, (r3::vector<double>(i, j, k) + vk_));
+            auto vgk = r3::dot(lattice_vectors_, (r3::vector<double>(i, j, k) + vk_));
             /* add z-coordinate of G-vector to the list */
             if (vgk.length() <= Gmax__) {
                 zcol.push_back(k);
@@ -95,6 +95,7 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
         }
     };
 
+    PROFILE_START("fft::Gvec::find_z_columns|add");
     /* copy column order from previous G-vector set */
     if (gvec_base_) {
         for (int icol = 0; icol < gvec_base_->num_zcol(); icol++) {
@@ -110,6 +111,7 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
             add_new_column(i, j);
         }
     }
+    PROFILE_STOP("fft::Gvec::find_z_columns|add");
 
     if (!gvec_base_) {
         /* put column with {x, y} = {0, 0} to the beginning */
@@ -121,14 +123,10 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
         }
     }
 
-    /* sort z-columns starting from the second or skip num_zcol of base distribution */
-    int n = (gvec_base_) ? gvec_base_->num_zcol() : 1;
-    std::sort(z_columns_.begin() + n, z_columns_.end(),
-              [](z_column_descriptor const& a, z_column_descriptor const& b) { return a.z.size() > b.z.size(); });
-
+    PROFILE_START("fft::Gvec::find_z_columns|sym");
     /* now we have to remove edge G-vectors that don't form a complete shell */
     if (bare_gvec_) {
-        auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
+        auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
         std::fill(non_zero_columns.at(sddk::memory_t::host), non_zero_columns.at(sddk::memory_t::host) + non_zero_columns.size(), -1);
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
@@ -137,47 +135,72 @@ void fft::Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 
         std::vector<z_column_descriptor> z_columns_tmp;
 
-        num_gvec_ = 0;
-        for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
+        auto remove_incomplete = [this, &z_columns_tmp, &lat_sym, &non_zero_columns](int i) // i - index of column
+        {
+            int z_min = (2 << 20);
+            int z_max = -(2 << 20);
+            for (int iz = 0; iz < static_cast<int>(z_columns_[i].z.size()); iz++) {
+                z_min = std::min(z_min, z_columns_[i].z[iz]);
+                z_max = std::max(z_max, z_columns_[i].z[iz]);
+            }
             std::vector<int> z;
             for (int iz = 0; iz < static_cast<int>(z_columns_[i].z.size()); iz++) {
-                r3::vector<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
                 bool found_for_all_sym{true};
-                for (auto& R: lat_sym) {
-                    /* apply lattice symmeetry operation to a G-vector */
-                    auto G1 = dot(R, G);
-                    if (reduce_gvec_) {
-                        if (G1[0] == 0 && G1[1] == 0) {
-                            G1[2] = std::abs(G1[2]);
+                /* check only first or last z coordinate inside z column */
+                if (z_columns_[i].z[iz] == z_min || z_columns_[i].z[iz] == z_max) {
+                    r3::vector<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
+                    for (auto& R: lat_sym) {
+                        /* apply lattice symmeetry operation to a G-vector */
+                        auto G1 = r3::dot(G, R);
+                        if (reduce_gvec_) {
+                            if (G1[0] == 0 && G1[1] == 0) {
+                                G1[2] = std::abs(G1[2]);
+                            }
                         }
-                    }
-                    int i1 = non_zero_columns(G1[0], G1[1]);
-                    if (i1 == -1) {
-                        G1 = G1 * (-1);
-                        i1 = non_zero_columns(G1[0], G1[1]);
+                        int i1 = non_zero_columns(G1[0], G1[1]);
                         if (i1 == -1) {
-                            std::stringstream s;
-                            s << "index of z-column is not found" << std::endl
-                              << "  G : " << G << std::endl
-                              << "  G1 : " << G1;
-                            RTE_THROW(s);
+                            G1 = G1 * (-1);
+                            i1 = non_zero_columns(G1[0], G1[1]);
+                            if (i1 == -1) {
+                                std::stringstream s;
+                                s << "index of z-column is not found" << std::endl
+                                  << "  G : " << G << std::endl
+                                  << "  G1 : " << G1;
+                                RTE_THROW(s);
+                            }
                         }
-                    }
 
-                    bool found = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) != std::end(z_columns_[i1].z));
-                    found_for_all_sym = found_for_all_sym && found;
-                } // R
+                        bool found = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) != std::end(z_columns_[i1].z));
+                        found_for_all_sym = found_for_all_sym && found;
+                    } // R
+                }
                 if (found_for_all_sym) {
                     z.push_back(z_columns_[i].z[iz]);
                 }
             } // iz
             if (z.size()) {
                 z_columns_tmp.push_back(z_column_descriptor(z_columns_[i].x, z_columns_[i].y, z));
-                num_gvec_ += static_cast<int>(z.size());
             }
+        };
+
+        for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
+            remove_incomplete(i);
         }
         z_columns_ = z_columns_tmp;
+
+        num_gvec_ = 0;
+        for (auto& zc : z_columns_) {
+            num_gvec_ += static_cast<int>(zc.z.size());
+        }
     }
+    PROFILE_STOP("fft::Gvec::find_z_columns|sym");
+
+    PROFILE_START("fft::Gvec::find_z_columns|sort");
+    /* sort z-columns starting from the second or skip num_zcol of base distribution */
+    int n = (gvec_base_) ? gvec_base_->num_zcol() : 1;
+    std::sort(z_columns_.begin() + n, z_columns_.end(),
+              [](z_column_descriptor const& a, z_column_descriptor const& b) { return a.z.size() > b.z.size(); });
+    PROFILE_STOP("fft::Gvec::find_z_columns|sort");
 }
 
 void Gvec::distribute_z_columns()
@@ -255,7 +278,7 @@ void Gvec::find_gvec_shells()
 
     PROFILE("fft::Gvec::find_gvec_shells");
 
-    auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
+    auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
     num_gvec_shells_ = 0;
     gvec_shell_      = sddk::mdarray<int, 1>(num_gvec_, sddk::memory_t::host, "gvec_shell_");
@@ -264,10 +287,11 @@ void Gvec::find_gvec_shells()
 
     /* find G-vector shells using symmetry consideration */
     for (int ig = 0; ig < num_gvec_; ig++) {
+        /* if the shell for this vector is not yet found */
         if (gvec_shell_[ig] == -1) {
             auto G = gvec<sddk::index_domain_t::global>(ig);
             for (auto& R: lat_sym) {
-                auto G1 = dot(R, G);
+                auto G1 = r3::dot(G, R);
                 auto ig1 = index_by_gvec(G1);
                 if (ig1 == -1) {
                     G1 = G1 * (-1);
@@ -276,7 +300,24 @@ void Gvec::find_gvec_shells()
                         RTE_THROW("symmetry-related G-vector is not found");
                     }
                 }
-                gvec_shell_[ig1] = num_gvec_shells_;
+                if (gvec_shell_[ig1] == -1) {
+                    gvec_shell_[ig1] = num_gvec_shells_;
+                } else {
+                    if (gvec_shell_[ig1] != num_gvec_shells_) {
+                        auto gc  = r3::dot(lattice_vectors_, G);
+                        auto gc1  = r3::dot(lattice_vectors_, G1);
+                        std::stringstream s;
+                        s << "Error in G-vector shell index" << std::endl
+                          << "  G : " << G << std::endl
+                          << "  rotated G : " << G1 << std::endl
+                          << "  current shell index : " << num_gvec_shells_ << std::endl
+                          << "  rotated G shell index : " << gvec_shell_[ig1] << std::endl
+                          << "  length of G : " << gc.length() << std::endl
+                          << "  length of rotated G : " << gc1.length() << std::endl
+                          << "  length difference : " << std::abs(gc.length() - gc1.length());
+                        RTE_THROW(s);
+                    }
+                }
             }
             num_gvec_shells_++;
         }
@@ -288,62 +329,19 @@ void Gvec::find_gvec_shells()
     }
 
     gvec_shell_len_ = sddk::mdarray<double, 1>(num_gvec_shells_, sddk::memory_t::host, "gvec_shell_len_");
-    std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, -1);
+    std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, 0);
+
+    std::vector<int> ngv_sh(num_gvec_shells_, 0);
 
     for (int ig = 0; ig < num_gvec_; ig++) {
         auto g   = gvec_cart<sddk::index_domain_t::global>(ig).length();
         int igsh = gvec_shell_[ig];
-        if (gvec_shell_len_[igsh] < 0) {
-            gvec_shell_len_[igsh] = g;
-        } else {
-            /* lattice symmetries were found with 1e-6 tolererance for the metric tensor,
-               so tolerance on length should be square root of that */
-            if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
-                std::stringstream s;
-                s << "wrong G-vector length" << std::endl
-                  << "  length of G-vector : " << g << std::endl
-                  << "  length of G-shell : " << gvec_shell_len_[igsh] << std::endl
-                  << "  index of G-vector : " << ig << std::endl
-                  << "  index of G-shell : " << igsh << std::endl
-                  << "  length difference : " << std::abs(gvec_shell_len_[igsh] - g) << std::endl;
-                RTE_THROW(s);
-            }
-        }
+        gvec_shell_len_[igsh] += g;
+        ngv_sh[igsh]++;
     }
-
-    // TODO: maybe, make an average G-shell length.
-
-    /* list of pairs (length, index of G-vector) */
-    std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < num_gvec(); ig++) {
-        /* make some reasonable roundoff */
-        uint64_t len = static_cast<uint64_t>(gvec_shell_len_[gvec_shell_[ig]] * 1e10);
-        tmp[ig]      = std::make_pair(len, ig);
+    for (int i = 0; i < num_gvec_shells_; i++) {
+        gvec_shell_len_[i] /= ngv_sh[i];
     }
-    /* sort by first element in pair (length) */
-    std::sort(tmp.begin(), tmp.end());
-
-    /* index of the first shell */
-    gvec_shell_(tmp[0].second) = 0;
-    num_gvec_shells_           = 1;
-    /* temporary vector to store G-shell radius */
-    std::vector<double> tmp_len;
-    /* radius of the first shell */
-    tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
-    for (int ig = 1; ig < num_gvec_; ig++) {
-        /* if this G-vector has a different length */
-        if (tmp[ig].first != tmp[ig - 1].first) {
-            /* increment number of shells */
-            num_gvec_shells_++;
-            /* save the radius of the new shell */
-            tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
-        }
-        /* assign the index of the current shell */
-        gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
-    }
-    gvec_shell_len_ = sddk::mdarray<double, 1>(num_gvec_shells_, sddk::memory_t::host, "gvec_shell_len_");
-    std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(sddk::memory_t::host));
 
     /* map from global index of G-shell to a list of local G-vectors */
     std::map<int, std::vector<int>> gshmap;
@@ -389,13 +387,16 @@ Gvec::init_gvec_cart_local()
 {
     gvec_cart_  = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gvec_cart_");
     gkvec_cart_ = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gkvec_cart_");
+    /* this arrays are allocated with GPU- friendly data layout */
+    gvec_tp_    = sddk::mdarray<double, 2>(count(), 2, sddk::memory_t::host, "gvec_tp_");
+    gkvec_tp_   = sddk::mdarray<double, 2>(count(), 2, sddk::memory_t::host, "gvec_tp_");
     if (bare_gvec_) {
         gvec_len_ = sddk::mdarray<double, 1>(count(), sddk::memory_t::host, "gvec_len_");
     }
 
     for (int igloc = 0; igloc < count(); igloc++) {
-        auto gc  = dot(lattice_vectors_, r3::vector<int>(&gvec_(0, igloc)));
-        auto gkc = dot(lattice_vectors_, r3::vector<double>(&gkvec_(0, igloc)));
+        auto gc  = r3::dot(lattice_vectors_, r3::vector<int>(&gvec_(0, igloc)));
+        auto gkc = r3::dot(lattice_vectors_, r3::vector<double>(&gkvec_(0, igloc)));
         for (int x : {0, 1, 2}) {
             gvec_cart_(x, igloc)  = gc[x];
             gkvec_cart_(x, igloc) = gkc[x];
@@ -403,6 +404,13 @@ Gvec::init_gvec_cart_local()
         if (bare_gvec_) {
             gvec_len_(igloc) = gvec_shell_len_(gvec_shell_(this->offset() + igloc));
         }
+        auto gs = r3::spherical_coordinates(gc);
+        gvec_tp_(igloc, 0) = gs[1];
+        gvec_tp_(igloc, 1) = gs[2];
+
+        auto gks = r3::spherical_coordinates(gkc);
+        gkvec_tp_(igloc, 0) = gks[1];
+        gkvec_tp_(igloc, 1) = gks[2];
     }
 }
 

@@ -252,6 +252,9 @@ inline auto split_in_blocks(int length__, int block_size__)
 {
     int nb = num_blocks(length__, block_size__);
     /* adjust the block size; this is done to prevent very unequal block sizes */
+    /* Take, for example, 21 elements and initial block size of 15. Number of blocks equals 2.
+     * Final block size is 21 / 2 + min(1, 21 % 2) = 11. Thus 21 elements will be split in two blocks
+     * of 11 and 10 elements. */
     block_size__ = length__ / nb + std::min(1, length__ % nb);
 
     std::vector<int> result(nb);

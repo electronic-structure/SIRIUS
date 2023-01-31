@@ -89,14 +89,14 @@ extern "C" void spherical_harmonics_ylm_gpu(int lmax__, int ntp__, double const*
 }
 
 
-__global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double const* tp__,
+__global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double const* theta__, double const* phi__,
                                                    double* rlm__, int ld__)
 {
     int itp = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (itp < ntp__) {
-        double theta = tp__[itp];
-        double phi   = tp__[ntp__ + itp];
+        double theta = theta__[itp];
+        double phi   = phi__[itp];
         double sint = sin(theta);
         double cost = cos(theta);
 
@@ -146,10 +146,11 @@ __global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double
     }
 }
 
-extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__)
+extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double const* phi__,
+        double* rlm__, int ld__)
 {
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(ntp__, grid_t.x));
     accLaunchKernel((spherical_harmonics_rlm_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
-        lmax__, ntp__, tp__, rlm__, ld__);
+        lmax__, ntp__, theta__, phi__, rlm__, ld__);
 }

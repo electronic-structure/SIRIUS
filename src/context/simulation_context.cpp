@@ -156,7 +156,7 @@ Simulation_context::generate_gvec_ylm(int lmax__)
     sddk::matrix<std::complex<double>> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
+        auto rtp = r3::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
         sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
@@ -279,28 +279,6 @@ Simulation_context::ewald_lambda() const
     return lambda;
 }
 
-sddk::splindex<sddk::splindex_t::block>
-Simulation_context::split_gvec_local() const
-{
-    /* local number of G-vectors for this MPI rank */
-    int ngv_loc = gvec().count();
-    /* estimate number of G-vectors in a block */
-    int ld{-1};
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        int nat = unit_cell().atom_type(iat).num_atoms();
-        int nbf = unit_cell().atom_type(iat).mt_basis_size();
-
-        ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
-    }
-    /* limit the size of relevant array to ~1Gb */
-    int ngv_b = (1 << 30) / sizeof(std::complex<double>) / ld;
-    ngv_b     = std::max(1, std::min(ngv_loc, ngv_b));
-    /* number of blocks of G-vectors */
-    int nb = ngv_loc / ngv_b;
-    /* split local number of G-vectors between blocks */
-    return sddk::splindex<sddk::splindex_t::block>(ngv_loc, nb, 0);
-}
-
 void
 Simulation_context::initialize()
 {
@@ -360,22 +338,6 @@ Simulation_context::initialize()
 
     /* initialize MPI communicators */
     init_comm();
-
-    auto print_mpi_layout = env::print_mpi_layout();
-
-    if (verbosity() >= 3 || print_mpi_layout) {
-        mpi::pstdout pout(comm());
-        if (comm().rank() == 0) {
-            pout << "MPI rank placement" << std::endl;
-            pout << "------------------" << std::endl;
-        }
-        pout << "rank: " << comm().rank()
-             << ", comm_band_rank: " << comm_band().rank()
-             << ", comm_k_rank: " << comm_k().rank()
-             << ", hostname: " << utils::hostname()
-             << ", mpi processor name: " << mpi::Communicator::processor_name() << std::endl;
-        rte::ostream(this->out(), "info") << pout.flush(0);
-    }
 
     switch (processing_unit()) {
         case sddk::device_t::CPU: {
@@ -573,6 +535,7 @@ Simulation_context::initialize()
         }
     }
 
+    /* environment variable has a highest priority */
     auto ev_str = env::get_ev_solver();
     if (ev_str.size()) {
         evsn[0] = ev_str;
@@ -646,6 +609,30 @@ Simulation_context::initialize()
         this->cfg().control().print_checksum(true);
     }
 
+    auto print_mpi_layout = env::print_mpi_layout();
+
+    if (verbosity() >= 3 || print_mpi_layout) {
+        mpi::pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout << "MPI rank placement" << std::endl;
+            pout << utils::hbar(136, '-') << std::endl;
+            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col" << std::endl;
+        }
+        pout << std::setw(12) << utils::hostname() << " | "
+             << std::setw(6) << comm().rank()
+             << std::setw(6) << comm_band().rank()
+             << std::setw(6) << comm_k().rank() << " | "
+             << std::setw(6) << comm_fft_coarse().rank()
+             << std::setw(6) << comm_band_ortho_fft_coarse().rank() << "    |   "
+             << std::setw(6) << mpi_grid_->communicator(3).rank()
+             << std::setw(6) << mpi_grid_->communicator(1 << 0).rank()
+             << std::setw(6) << mpi_grid_->communicator(1 << 1).rank() << "   | "
+             << std::setw(6) << blacs_grid().comm().rank()
+             << std::setw(6) << blacs_grid().comm_row().rank()
+             << std::setw(6) << blacs_grid().comm_col().rank() << std::endl;
+        rte::ostream(this->out(), "info") << pout.flush(0);
+    }
+
     initialized_ = true;
     cfg().lock();
 }
@@ -709,7 +696,6 @@ Simulation_context::print_info(std::ostream& out__) const
                << "  number of G-shells                    : " << gvecs[i]->num_shells() << std::endl
                << std::endl;
         }
-        os << "number of local G-vector blocks: " << split_gvec_local().num_ranks() << std::endl;
         os << std::endl;
     }
     {
@@ -962,7 +948,8 @@ Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::make_unique<fft::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec());
+        gvec_coarse_ = std::make_unique<fft::Gvec>(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec(),
+                cfg().control().spglib_tolerance());
         /* create FFT friendly partiton */
         gvec_coarse_fft_ = std::make_shared<fft::Gvec_fft>(*gvec_coarse_, comm_fft_coarse(),
                 comm_ortho_fft_coarse());
@@ -1141,21 +1128,12 @@ Simulation_context::update()
         }
     }
 
-    /* precompute some G-vector related arrays */
-    gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, sddk::memory_t::host, "gvec_tp_");
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp           = SHT::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
-        gvec_tp_(igloc, 0) = rtp[1];
-        gvec_tp_(igloc, 1) = rtp[2];
-    }
-
     switch (this->processing_unit()) {
         case sddk::device_t::CPU: {
             break;
         }
         case sddk::device_t::GPU: {
-            gvec_tp_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+            gvec_->gvec_tp().allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
             break;
         }
     }
@@ -1241,24 +1219,10 @@ Simulation_context::update()
                 new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf, ps_atomic_wf_ri_djl_callback_));
         }
 
-        /* update augmentation operator */
-        sddk::memory_pool* mp{nullptr};
-        sddk::memory_pool* mpd{nullptr};
-        switch (this->processing_unit()) {
-            case sddk::device_t::CPU: {
-                mp = &get_memory_pool(sddk::memory_t::host);
-                break;
-            }
-            case sddk::device_t::GPU: {
-                mp  = &get_memory_pool(sddk::memory_t::host_pinned);
-                mpd = &get_memory_pool(sddk::memory_t::device);
-                break;
-            }
-        }
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
-                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec());
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
+                augmentation_op_[iat] = std::make_unique<Augmentation_operator>(unit_cell().atom_type(iat), gvec(), aug_ri(), aug_ri_djl());
+                augmentation_op_[iat]->generate_pw_coeffs();
             } else {
                 augmentation_op_[iat] = nullptr;
             }
@@ -1533,8 +1497,6 @@ Simulation_context::init_comm()
 
     /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
-
-    /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
-    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
+
 } // namespace sirius

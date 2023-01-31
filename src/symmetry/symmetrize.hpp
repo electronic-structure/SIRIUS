@@ -31,6 +31,7 @@
 #include "typedefs.hpp"
 #include "sht/sht.hpp"
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 
 namespace sirius {
 
@@ -140,7 +141,12 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
 
 #if !defined(NDEBUG)
             if (igsh != gvec_shells__.gvec().shell(G)) {
-                throw std::runtime_error("wrong index of G-shell");
+                std::stringstream s;
+                s << "wrong index of G-shell" << std::endl
+                  << "  G-vector : " << G << std::endl
+                  << "  igsh in the remapped set : " << igsh << std::endl
+                  << "  igsh in the original set : " << gvec_shells__.gvec().shell(G);
+                RTE_THROW(s);
             }
 #endif
             /* each thread is working on full shell of G-vectors */
@@ -154,7 +160,7 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                 /* find the symmetrized PW coefficient */
 
                 for (int i = 0; i < sym__.size(); i++) {
-                    auto G1 = dot(G, sym__[i].spg_op.R);
+                    auto G1 = r3::dot(G, sym__[i].spg_op.R);
 
                     auto S = sym__[i].spin_rotation;
 
@@ -163,15 +169,24 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                     /* local index of a rotated G-vector */
                     int ig1 = gvec_shells__.index_by_gvec(G1);
 
+                    /* check the reduced G-vector */
                     if (ig1 == -1) {
                         G1 = G1 * (-1);
 #if !defined(NDEBUG)
                         if (igsh != gvec_shells__.gvec().shell(G1)) {
-                            throw std::runtime_error("wrong index of G-shell");
+                            std::stringstream s;
+                            s << "wrong index of G-shell" << std::endl
+                              << "  index of G-shell : " << igsh << std::endl
+                              << "  symmetry operation : " << sym__[i].spg_op.R << std::endl
+                              << "  G-vector : " << G << std::endl
+                              << "  rotated G-vector : " << G1 << std::endl
+                              << "  G-vector index : " << gvec_shells__.index_by_gvec(G1) << std::endl
+                              << "  index of rotated G-vector shell : " << gvec_shells__.gvec().shell(G1);
+                            RTE_THROW(s);
                         }
 #endif
                         ig1 = gvec_shells__.index_by_gvec(G1);
-                        assert(ig1 >= 0 && ig1 < ngv);
+                        RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
                         if (f_pw__) {
                             symf += std::conj(f_pw[ig1]) * phase;
                         }
@@ -179,7 +194,7 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                             symz += std::conj(z_pw[ig1]) * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = r3::dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += std::conj(v[0]) * phase;
                             symy += std::conj(v[1]) * phase;
                             symz += std::conj(v[2]) * phase;
@@ -187,10 +202,18 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                     } else {
 #if !defined(NDEBUG)
                         if (igsh != gvec_shells__.gvec().shell(G1)) {
-                            throw std::runtime_error("wrong index of G-shell");
+                            std::stringstream s;
+                            s << "wrong index of G-shell" << std::endl
+                              << "  index of G-shell : " << igsh << std::endl
+                              << "  symmetry operation : " << sym__[i].spg_op.R << std::endl
+                              << "  G-vector : " << G << std::endl
+                              << "  rotated G-vector : " << G1 << std::endl
+                              << "  G-vector index : " << gvec_shells__.index_by_gvec(G1) << std::endl
+                              << "  index of rotated G-vector shell : " << gvec_shells__.gvec().shell(G1);
+                            RTE_THROW(s);
                         }
 #endif
-                        assert(ig1 >= 0 && ig1 < ngv);
+                        RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
                         if (f_pw__) {
                             symf += f_pw[ig1] * phase;
                         }
@@ -198,7 +221,7 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                             symz += z_pw[ig1] * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
+                            auto v = r3::dot(S, r3::vector<std::complex<double>>({x_pw[ig1], y_pw[ig1], z_pw[ig1]}));
                             symx += v[0] * phase;
                             symy += v[1] * phase;
                             symz += v[2] * phase;
@@ -216,12 +239,12 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                 for (int isym = 0; isym < sym__.size(); isym++) {
                     auto S = sym__[isym].spin_rotation;
 
-                    auto G1 = dot(sym__[isym].spg_op.invRT, G);
+                    auto G1 = r3::dot(sym__[isym].spg_op.invRT, G);
                     /* index of a rotated G-vector */
                     int ig1 = gvec_shells__.index_by_gvec(G1);
 
                     if (ig1 != -1) {
-                        assert(ig1 >= 0 && ig1 < ngv);
+                        RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
                         auto phase = std::conj(phase_factor(isym, G1));
                         std::complex<double> symf1, symx1, symy1, symz1;
                         if (f_pw__) {
@@ -231,7 +254,7 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
                             symz1 = symz * phase * S(2, 2);
                         }
                         if (is_non_collin) {
-                            auto v = dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
+                            auto v = r3::dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
                             symx1  = v[0] * phase;
                             symy1  = v[1] * phase;
                             symz1  = v[2] * phase;
@@ -293,7 +316,7 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
         auto G = gvec_shells__.gvec_remapped(igloc);
         for (int isym = 0; isym < sym__.size(); isym++) {
             auto S      = sym__[isym].spin_rotation;
-            auto gv_rot = dot(sym__[isym].spg_op.invRT, G);
+            auto gv_rot = r3::dot(sym__[isym].spg_op.invRT, G);
             /* index of a rotated G-vector */
             int ig_rot           = gvec_shells__.index_by_gvec(gv_rot);
             std::complex<double> phase = std::conj(phase_factor(isym, gv_rot));

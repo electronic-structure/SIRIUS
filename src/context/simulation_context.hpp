@@ -109,11 +109,6 @@ class Simulation_context : public Simulation_parameters
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     mpi::Communicator comm_ortho_fft_coarse_;
 
-    /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
-    /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
-        used to parallelize application of local Hamiltonian over bands. */
-    mpi::Communicator comm_band_ortho_fft_coarse_;
-
     /// Unit cell of the simulation.
     std::unique_ptr<Unit_cell> unit_cell_;
 
@@ -176,9 +171,6 @@ class Simulation_context : public Simulation_parameters
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     sddk::mdarray<int, 2> gvec_coord_;
-
-    /// Theta and phi angles of G-vectors in GPU-friendly ordering.
-    sddk::mdarray<double, 2> gvec_tp_;
 
     /// Volume of the initial unit cell.
     /** This is needed to estimate the new cutoff for radial integrals. */
@@ -509,18 +501,25 @@ class Simulation_context : public Simulation_parameters
         if (cfg().control().fft_mode() == "serial") {
             return mpi::Communicator::self();
         } else {
+            return mpi_grid_->communicator(1 << 0);
+        }
+    }
+
+    /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
+    /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
+        used to parallelize application of local Hamiltonian over bands. */
+    auto const& comm_band_ortho_fft_coarse() const
+    {
+        if (cfg().control().fft_mode() == "serial") {
             return comm_band();
+        } else {
+            return mpi_grid_->communicator(1 << 1);
         }
     }
 
     auto const& comm_ortho_fft_coarse() const
     {
         return comm_ortho_fft_coarse_;
-    }
-
-    auto const& comm_band_ortho_fft_coarse() const
-    {
-        return comm_band_ortho_fft_coarse_;
     }
 
     void create_storage_file() const;
@@ -562,14 +561,9 @@ class Simulation_context : public Simulation_parameters
         return gvec_phase_factor(gvec().gvec<sddk::index_domain_t::global>(ig__), ia__);
     }
 
-    inline sddk::mdarray<int, 2> const& gvec_coord() const
+    inline auto const& gvec_coord() const
     {
         return gvec_coord_;
-    }
-
-    inline sddk::mdarray<double, 2> const& gvec_tp() const
-    {
-        return gvec_tp_;
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
@@ -763,9 +757,6 @@ class Simulation_context : public Simulation_parameters
     {
         return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
     }
-
-    /// Split local set of G-vectors into chunks.
-    sddk::splindex<sddk::splindex_t::block> split_gvec_local() const;
 
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
