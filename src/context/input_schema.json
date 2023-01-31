@@ -362,7 +362,7 @@
                 },
                 "spglib_tolerance" : {
                     "type" : "number",
-                    "default" : 1e-4,
+                    "default" : 1e-6,
                     "title" : "Tolerance of the spglib in finding crystal symmetries"
                 },
                 "verbosity" : {
