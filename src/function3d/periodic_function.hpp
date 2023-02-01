@@ -415,6 +415,11 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_;
     }
 
+    auto& f_mt1(int ia__)
+    {
+        return f_mt1_[ia__];
+    }
+
     inline auto const& ctx() const
     {
         return ctx_;

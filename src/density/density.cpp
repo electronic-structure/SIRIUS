@@ -471,9 +471,9 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(int idx__)
+Density::generate_paw_atom_density(int ialoc__)
 {
-    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(idx__);
+    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     int ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
@@ -485,8 +485,9 @@ Density::generate_paw_atom_density(int idx__)
                                   atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        paw_density_.ae_density(i, idx__).zero();
-        paw_density_.ps_density(i, idx__).zero();
+        paw_density_.ae_density(i, ialoc__).zero();
+        paw_density_.ps_density(i, ialoc__).zero();
+        this->component(i).f_mt1(ia).zero();
     }
 
     /* get radial grid to divide density over r^2 */
@@ -527,8 +528,8 @@ Density::generate_paw_atom_density(int idx__)
             }
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                auto& ae_dens = paw_density_.ae_density(imagn, idx__);
-                auto& ps_dens = paw_density_.ps_density(imagn, idx__);
+                auto& ae_dens = paw_density_.ae_density(imagn, ialoc__);
+                auto& ps_dens = paw_density_.ps_density(imagn, ialoc__);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -562,9 +563,11 @@ Density::generate_paw_loc_density()
         return;
     }
 
+    PROFILE("sirius::Density::generate_paw_loc_density");
+
     #pragma omp parallel for
-    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        generate_paw_atom_density(i);
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_paw_atoms().local_size(); ialoc++) {
+        generate_paw_atom_density(ialoc);
     }
 }
 
