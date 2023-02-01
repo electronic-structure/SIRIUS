@@ -6054,17 +6054,23 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
             auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
+            sddk::memory_t mem = sctx.processing_unit_memory_t(); // "auto mem" should do as well
+
             // TODO: allocate all wave-functions on device (if processing_unit == sdk::memory_t::GPU)
-            if (sctx.processing_unit() == sddk::device_t::GPU){
+//          if (sctx.processing_unit() == sddk::device_t::GPU){
+            { // START scope of memory guards
 
-                sddk::memory_t mem = sctx.processing_unit_memory_t();
+            auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device);
+            auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host);
+            auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device);
+            auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device);
 
-                auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device);
-                auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host);
-                auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device);
-                auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device);
-
-            }
+            auto mg5 = U->memory_guard(mem, wf::copy_to::device);
+            auto mg6 = C->memory_guard(mem, wf::copy_to::device);
+            auto mg7 = Hphi_wf->memory_guard(mem, wf::copy_to::device);
+            auto mg8 = Sphi_wf->memory_guard(mem, wf::copy_to::device);
+            std::cout << "AFTER MEMORY GUARDS" << std::endl;
+//          }
 
             sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
@@ -6074,14 +6080,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 Sphi_wf.get(),
                 psi_wf.get(),
                 tmp_wf.get(),
-                *alpha_pv__ / 2); // rydberg/hartree factor
-
+                *alpha_pv__ / 2,
+                mem); // rydberg/hartree factor
             // CG state vectors
-            // TODO: pass memory type parameter to the constructor
-            sddk::memory_t mem = sctx.processing_unit_memory_t(); // auto mem should do as well
-
-            // memory type given in to the constructor as 2nd argument
-// >>>>>>>> CHANGE CONSTRUCTOR TO ACCEPT A 2ND ARGUMENT
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
             auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
@@ -6098,7 +6099,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
               std::move(h_o_diag.first),
               std::move(h_o_diag.second),
               std::move(eigvals_mdarray),
-              sctx.num_bands()
+              sctx.num_bands(),
+              mem
             };
 
             // Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
@@ -6110,7 +6112,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 100, // iters
                 1e-13 // tol
             );
-// >>>>>>  DESTROY THE memory_guard to bring back dpsi_wf (it is needed below)
+            }  // END scope of memory guards
 
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
