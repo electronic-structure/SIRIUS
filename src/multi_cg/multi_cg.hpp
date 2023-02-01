@@ -203,19 +203,19 @@ struct Wave_functions_wrap {
                     *x, wf::spin_index(0), wf::band_range(0, N__));
     }
 
-    void block_xpby(Wave_functions_wrap const &y__, std::vector<std::complex<double>> const &alphas, int N__) {
-        std::vector<std::complex<double>> ones(N__, 1.0);
+    void block_xpby(Wave_functions_wrap const &y__, std::vector<value_type> const &alphas, int N__) {
+        std::vector<value_type> ones(N__, 1.0);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), ones.data(), y__.x, alphas.data(), x);
     }
 
-    void block_axpy_scatter(std::vector<std::complex<double>> const& alphas__, Wave_functions_wrap const &y__,
+    void block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const &y__,
             std::vector<int> const &idx__, int n__)
     {
-        wf::axpy_scatter<double, std::complex<double>>(sddk::memory_t::host, wf::spin_range(0), alphas__, y__.x, idx__, x, n__);
+        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__, y__.x, idx__, x, n__);
     }
 
-    void block_axpy(std::vector<std::complex<double>> const &alphas__, Wave_functions_wrap const &y__, int N__) {
-        std::vector<std::complex<double>> ones(N__, 1.0);
+    void block_axpy(std::vector<value_type> const &alphas__, Wave_functions_wrap const &y__, int N__) {
+        std::vector<value_type> ones(N__, 1.0);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x, ones.data(), x);
     }
 };
