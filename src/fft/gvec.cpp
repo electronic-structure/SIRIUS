@@ -525,6 +525,10 @@ int Gvec::index_by_gvec(r3::vector<int> const& G__) const
     }
     /* index of the column */
     int icol = gvec_index_by_xy_(1, G__[0], G__[1]) & 0xFFFFF;
+    /* quick exit if z is out of bounds */
+    if (G__[2] <  z_columns_[icol].z_min || G__[2] >  z_columns_[icol].z_max) {
+        return -1;
+    }
     /* size of the column */
     int col_size = gvec_index_by_xy_(1, G__[0], G__[1]) >> 20;
 
