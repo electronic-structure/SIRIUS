@@ -494,7 +494,7 @@ Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, d
                     r3::vector<double> vf = vr.first - posf;
 
                     /* convert to spherical coordinates */
-                    auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));
+                    auto vs = r3::spherical_coordinates(get_cartesian_coordinates(vf));
 
                     if (vs[0] < atom(ia).mt_radius()) {
                         ja    = ia;
@@ -527,7 +527,7 @@ Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, d
 }
 
 void
-Unit_cell::generate_radial_functions()
+Unit_cell::generate_radial_functions(std::ostream& out__)
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
 
@@ -543,16 +543,15 @@ Unit_cell::generate_radial_functions()
 
     if (parameters_.verbosity() >= 1) {
         mpi::pstdout pout(comm_);
+        if (comm_.rank() == 0) {
+            pout << std::endl << "Linearization energies" << std::endl;
+        }
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
             int ic = spl_num_atom_symmetry_classes(icloc);
             atom_symmetry_class(ic).write_enu(pout);
         }
-
-        if (comm_.rank() == 0) {
-            std::printf("\n");
-            std::printf("Linearization energies\n");
-        }
+        RTE_OUT(out__) << pout.flush(0);
     }
     if (parameters_.verbosity() >= 4 && comm_.rank() == 0) {
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
@@ -677,7 +676,6 @@ Unit_cell::initialize()
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
         max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
         max_mt_lo_basis_size_     = std::max(max_mt_lo_basis_size_, atom_type(iat).mt_lo_basis_size());
-        lmax_                     = std::max(lmax_, atom_type(iat).indexr().lmax());
         offs_lo += atom_type(iat).mt_lo_basis_size();
     }
 

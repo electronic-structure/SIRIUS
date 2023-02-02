@@ -7,7 +7,7 @@ using namespace sirius;
 void test_wf_fft()
 {
     //sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
-    mpi::Grid mpi_grid({1, 1}, mpi::Communicator::world());
+    mpi::Grid mpi_grid({2, 2}, mpi::Communicator::world());
 
     /* creation of simple G+k vector set */
     auto gkvec = fft::gkvec_factory(8.0, mpi_grid.communicator());
@@ -18,7 +18,8 @@ void test_wf_fft()
     /* get the FFT box boundaries */
     auto fft_grid = fft::get_min_grid(8.0, gkvec->lattice_vectors());
 
-    std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
+    //std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
+    std::vector<int> num_mt_coeffs({1});
 
     wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
     wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
@@ -32,7 +33,7 @@ void test_wf_fft()
             }
         }
     }
-    auto mg = wf.memory_guard(sddk::memory_t::device, wf::copy_to::device);
+    //auto mg = wf.memory_guard(sddk::memory_t::device, wf::copy_to::device);
 
     auto pu = sddk::device_t::CPU;
 
@@ -61,10 +62,10 @@ void test_wf_fft()
     for (int ispn = 0; ispn < 2; ispn++) {
 
         wf::Wave_functions_fft<double> wf_fft(gkvec_fft, wf, wf::spin_index(ispn), wf::band_range(0,10),
-                wf::shuffle_to::fft_layout | wf::shuffle_to::wf_layout);
+                wf::shuffle_to::wf_layout);
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-            spfft_transform->backward(wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
+            spfft_transform->backward(wf1[ispn].pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
             spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
     }

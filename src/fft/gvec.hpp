@@ -28,6 +28,7 @@
 #include <numeric>
 #include <map>
 #include <iostream>
+#include <limits>
 #include <type_traits>
 #include "memory.hpp"
 #include "fft/fft3d_grid.hpp"
@@ -48,6 +49,10 @@ struct z_column_descriptor
     int x;
     /// Y-coordinate (can be negative and positive).
     int y;
+    /// Minimum z-coordinate.
+    int z_min;
+    /// Maximum z-coordinate.
+    int z_max;
     /// List of the Z-coordinates of the column.
     std::vector<int> z;
     /// Constructor.
@@ -56,6 +61,12 @@ struct z_column_descriptor
         , y(y__)
         , z(z__)
     {
+        z_min = std::numeric_limits<int>::max();
+        z_max = std::numeric_limits<int>::min();
+        for (auto e : z__) {
+            z_min = std::min(z_min, e);
+            z_max = std::max(z_max, e);
+        }
     }
     /// Default constructor.
     z_column_descriptor()
@@ -68,6 +79,8 @@ inline void serialize(sddk::serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
     serialize(s__, zcol__.y);
+    serialize(s__, zcol__.z_min);
+    serialize(s__, zcol__.z_max);
     serialize(s__, zcol__.z);
 }
 
@@ -76,6 +89,8 @@ inline void deserialize(sddk::serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
     deserialize(s__, zcol__.y);
+    deserialize(s__, zcol__.z_min);
+    deserialize(s__, zcol__.z_max);
     deserialize(s__, zcol__.z);
 }
 
@@ -208,6 +223,12 @@ class Gvec
 
     /// Length of the local fraction of G-vectors.
     sddk::mdarray<double, 1> gvec_len_;
+
+    // Theta- and phi- angles of G-vectors.
+    sddk::mdarray<double, 2> gvec_tp_;
+
+    // Theta- and phi- angles of G+k-vectors.
+    sddk::mdarray<double, 2> gkvec_tp_;
 
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
@@ -718,6 +739,26 @@ class Gvec
         }
         this->comm().bcast(&result(0, 0), 3 * ngv, rank__);
         return result;
+    }
+
+    inline auto& gvec_tp()
+    {
+        return gvec_tp_;
+    }
+
+    inline auto const& gvec_tp() const
+    {
+        return gvec_tp_;
+    }
+
+    inline auto& gkvec_tp()
+    {
+        return gkvec_tp_;
+    }
+
+    inline auto const& gkvec_tp() const
+    {
+        return gkvec_tp_;
     }
 };
 

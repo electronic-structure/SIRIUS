@@ -381,12 +381,7 @@ Stress::calc_stress_us()
         return stress_us_;
     }
 
-    auto& ri    = ctx_.aug_ri();
-    auto& ri_dq = ctx_.aug_ri_djl();
-
     potential_.fft_transform(-1);
-
-    Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
 
     la::lib_t la{la::lib_t::none};
     sddk::memory_t qmem{sddk::memory_t::none};
@@ -402,7 +397,7 @@ Stress::calc_stress_us()
         case sddk::device_t::GPU: {
             mp   = &get_memory_pool(sddk::memory_t::host_pinned);
             la   = la::lib_t::spla;
-            qmem = sddk::memory_t::device;
+            qmem = sddk::memory_t::host;
             break;
         }
     }
@@ -413,9 +408,9 @@ Stress::calc_stress_us()
             continue;
         }
 
-        q_deriv.prepare(atom_type, ri, ri_dq);
+        Augmentation_operator q_deriv(ctx_.unit_cell().atom_type(iat), ctx_.gvec(), ctx_.aug_ri(), ctx_.aug_ri_djl());
 
-        int nbf = atom_type.mt_basis_size();
+        auto nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
@@ -424,7 +419,7 @@ Stress::calc_stress_us()
                                                        get_memory_pool(sddk::memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
             for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -436,10 +431,10 @@ Stress::calc_stress_us()
         sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
         sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
         /* over spin components, can be from 1 to 4 */
-        for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
-            for (int nu = 0; nu < 3; nu++) {
-                q_deriv.generate_pw_coeffs(atom_type, nu);
-
+        for (int nu = 0; nu < 3; nu++) {
+            /* generate dQ(G)/dG */
+            q_deriv.generate_pw_coeffs_gvec_deriv(nu);
+            for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
                 for (int mu = 0; mu < 3; mu++) {
                     PROFILE_START("sirius::Stress|us|prepare");
                     int igloc0{0};
@@ -449,7 +444,7 @@ Stress::calc_stress_us()
                         }
                         igloc0 = 1;
                     }
-                    #pragma omp parallel for schedule(static)
+                    #pragma omp parallel for
                     for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
                         auto gvc = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
                         double g = gvc.length();

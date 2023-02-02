@@ -46,6 +46,8 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx_.cyclic_block_size();
 
+    auto pcs = env::print_checksum();
+
     la::dmatrix<std::complex<double>> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
     la::dmatrix<std::complex<double>> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, get_memory_pool(solver.host_memory_t()));
 
@@ -76,7 +78,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         }
     }
 
-    if (ctx_.print_checksum()) {
+    if (pcs) {
         auto z1 = h.checksum(ngklo, ngklo);
         auto z2 = o.checksum(ngklo, ngklo);
         utils::print_checksum("h_lapw", z1, ctx_.out());
@@ -107,11 +109,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         }
     }
 
-    if (ctx_.print_checksum()) {
+    if (pcs) {
         auto z1 = kp.fv_eigen_vectors().checksum(kp.gklo_basis_size(), ctx_.num_fv_states());
-        if (kp.comm().rank() == 0) {
-            utils::print_checksum("fv_eigen_vectors", z1, kp.out(1));
-        }
+        utils::print_checksum("fv_eigen_vectors", z1, kp.out(1));
     }
 
     /* remap to slab */
@@ -127,6 +127,12 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
             la::constant<std::complex<double>>::zero(), kp.comm().native());
+    }
+
+    if (pcs) {
+        auto z1 = kp.fv_eigen_vectors_slab().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto z2 = kp.fv_eigen_vectors_slab().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        utils::print_checksum("fv_eigen_vectors_slab", z1 + z2, kp.out(1));
     }
 
     /* renormalize wave-functions */

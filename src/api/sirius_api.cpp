@@ -2768,7 +2768,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 gs.potential().update_atomic_potential();
             }
             if (precompute_rf__ && *precompute_rf__) {
-                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions();
+                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
             }
             if (precompute_ri__ && *precompute_ri__) {
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
@@ -4033,7 +4033,7 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
                         gkvec(x, igk)      = kp->gkvec().template gkvec<sddk::index_domain_t::global>(igk)[x];
                         gkvec_cart(x, igk) = gkc[x];
                     }
-                    auto rtp         = sirius::SHT::spherical_coordinates(gkc);
+                    auto rtp         = r3::spherical_coordinates(gkc);
                     gkvec_len[igk]   = rtp[0];
                     gkvec_tp(0, igk) = rtp[1];
                     gkvec_tp(1, igk) = rtp[2];

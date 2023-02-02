@@ -276,8 +276,9 @@ class Communicator
         MPI_Init_thread(NULL, NULL, required__, &provided);
 
         MPI_Query_thread(&provided);
-        if (provided < required__) {
-            std::printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
+        if ((provided < required__) && (Communicator::world().rank() == 0)) {
+            std::printf("Warning! Required level of thread support is not provided.\n");
+            std::printf("provided: %d \nrequired: %d\n", provided, required__);
         }
     }
 

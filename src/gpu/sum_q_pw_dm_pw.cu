@@ -29,14 +29,9 @@
 #include "gpu/cuda_timer.hpp"
 #endif
 
-__global__ void sum_q_pw_dm_pw_gpu_kernel
-(
-    int nbf__,
-    double const* q_pw__,
-    double const* dm_pw__,
-    double const* sym_weight__,
-    acc_complex_double_t* rho_pw__
-)
+__global__ void
+sum_q_pw_dm_pw_gpu_kernel(int nbf__, double const* q_pw__, int ldq__, double const* dm_pw__, int ldd__,
+    double const* sym_weight__, acc_complex_double_t* rho_pw__)
 {
     ACC_DYNAMIC_SHARED( char, sdata_ptr)
     double* rho_re = (double*)&sdata_ptr[0];
@@ -54,10 +49,10 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
     for (int n = 0; n < N; n++) {
         int i = n * blockDim.x + threadIdx.x;
         if (i < ld) {
-            double qx =  q_pw__[array2D_offset(i, 2 * igloc,     ld)];
-            double qy =  q_pw__[array2D_offset(i, 2 * igloc + 1, ld)];
-            double dx = dm_pw__[array2D_offset(i, 2 * igloc,     ld)];
-            double dy = dm_pw__[array2D_offset(i, 2 * igloc + 1, ld)];
+            double qx =  q_pw__[array2D_offset(i, 2 * igloc,     ldq__)];
+            double qy =  q_pw__[array2D_offset(i, 2 * igloc + 1, ldq__)];
+            double dx = dm_pw__[array2D_offset(i, 2 * igloc,     ldd__)];
+            double dy = dm_pw__[array2D_offset(i, 2 * igloc + 1, ldd__)];
 
             rho_re[threadIdx.x] += sym_weight__[i] * (dx * qx - dy * qy);
             rho_im[threadIdx.x] += sym_weight__[i] * (dy * qx + dx * qy);
@@ -77,13 +72,9 @@ __global__ void sum_q_pw_dm_pw_gpu_kernel
     }
 }
 
-extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
-                                   int nbf__,
-                                   double const* q_pw__,
-                                   double const* dm_pw__,
-                                   double const* sym_weight__,
-                                   acc_complex_double_t* rho_pw__,
-                                   int stream_id__)
+extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, int ldq__,
+                                   double const* dm_pw__, int ldd__, double const* sym_weight__,
+                                   acc_complex_double_t* rho_pw__, int stream_id__)
 {
 #ifdef SIRIUS_CUDA
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
@@ -93,14 +84,9 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
 
     dim3 grid_t(64);
     dim3 grid_b(num_gvec_loc__);
-    
+
     accLaunchKernel((sum_q_pw_dm_pw_gpu_kernel), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), stream, 
-        nbf__, 
-        q_pw__, 
-        dm_pw__,
-        sym_weight__,
-        rho_pw__
-    );
+        nbf__, q_pw__, ldq__, dm_pw__, ldd__, sym_weight__, rho_pw__);
 }
 
 

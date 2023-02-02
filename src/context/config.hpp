@@ -943,6 +943,18 @@ class config_t
             }
             dict_["/control/output"_json_pointer] = output__;
         }
+        /// Split local G-vectors in chunks to reduce the GPU memory consumption of augmentation operator.
+        inline auto gvec_chunk_size() const
+        {
+            return dict_.at("/control/gvec_chunk_size"_json_pointer).get<int>();
+        }
+        inline void gvec_chunk_size(int gvec_chunk_size__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/gvec_chunk_size"_json_pointer] = gvec_chunk_size__;
+        }
       private:
         nlohmann::json& dict_;
     };

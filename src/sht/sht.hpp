@@ -329,34 +329,6 @@ class SHT // TODO: better name
     //    }
     //}
 
-    /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-    static r3::vector<double> spherical_coordinates(r3::vector<double> vc)
-    {
-        r3::vector<double> vs;
-
-        const double eps{1e-12};
-
-        vs[0] = vc.length();
-
-        if (vs[0] <= eps) {
-            vs[1] = 0.0;
-            vs[2] = 0.0;
-        } else {
-            vs[1] = std::acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
-
-            if (std::abs(vc[0]) > eps || std::abs(vc[1]) > eps) {
-                vs[2] = std::atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
-                if (vs[2] < 0.0) {
-                    vs[2] += twopi;
-                }
-            } else {
-                vs[2] = 0.0;
-            }
-        }
-
-        return vs;
-    }
-
     /// Compute element of the transformation matrix from complex to real spherical harmonics.
     /** Real spherical harmonic can be written as a linear combination of complex harmonics:
         \f[
