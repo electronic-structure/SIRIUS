@@ -5970,17 +5970,17 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             // TODO: allocate all wave-functions on device (if processing_unit == sdk::memory_t::GPU)
 //          if (sctx.processing_unit() == sddk::device_t::GPU){
-            { // START scope of memory guards
+            std::vector<wf::device_memory_guard> mg;
 
-            auto mg1 = psi_wf->memory_guard(mem, wf::copy_to::device);
-            auto mg2 = dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host);
-            auto mg3 = dvpsi_wf->memory_guard(mem, wf::copy_to::device);
-            auto mg4 = tmp_wf->memory_guard(mem, wf::copy_to::device);
+            mg.emplace_back(psi_wf->memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
+            mg.emplace_back(dvpsi_wf->memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(tmp_wf->memory_guard(mem, wf::copy_to::device));
 
-            auto mg5 = U->memory_guard(mem, wf::copy_to::device);
-            auto mg6 = C->memory_guard(mem, wf::copy_to::device);
-            auto mg7 = Hphi_wf->memory_guard(mem, wf::copy_to::device);
-            auto mg8 = Sphi_wf->memory_guard(mem, wf::copy_to::device);
+            mg.emplace_back(U->memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(C->memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
+            mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
             std::cout << "AFTER MEMORY GUARDS" << std::endl;
 //          }
 
@@ -6024,7 +6024,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 100, // iters
                 1e-13 // tol
             );
-            }  // END scope of memory guards
+            mg.clear();
 
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
