@@ -116,12 +116,13 @@ class Periodic_function : public Smooth_periodic_function<T>
     }
 
     /// Constructor for regular grid and muffin-tin parts.
-    Periodic_function(Simulation_context& ctx__, std::vector<int> atoms__, std::function<int(int)> lmax__)
+    Periodic_function(Simulation_context& ctx__, std::vector<int> atoms__, std::function<int(int)> lmax__,
+            sddk::splindex<sddk::splindex_t::block>* spl_atoms__ = nullptr)
         : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
-        , f_mt1_(ctx__.unit_cell(), atoms__, lmax__)
+        , f_mt1_(ctx__.unit_cell(), atoms__, lmax__, spl_atoms__)
         , gvec_(ctx__.gvec())
         , new_mt_{true}
     {

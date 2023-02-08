@@ -59,7 +59,7 @@ class Config : public config_t
 class Simulation_parameters
 {
   private:
-    /// All user-provided paramters are stored here.
+    /// All user-provided parameters are stored here.
     Config cfg_;
 
   public:
