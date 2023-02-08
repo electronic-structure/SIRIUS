@@ -98,7 +98,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
     /* calculate xc and hartree for atoms */
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        calc_PAW_local_potential(paw_potential_data_[i], density.paw_ae_density(i), density.paw_ps_density(i));
+        int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
+        calc_PAW_local_potential(paw_potential_data_[i], density.paw_ae_density(ia), density.paw_ps_density(ia));
     }
 
     /* calculate PAW Dij matrix */

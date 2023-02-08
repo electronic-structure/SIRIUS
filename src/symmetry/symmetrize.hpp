@@ -398,6 +398,10 @@ symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm
                      lmmax * nrmax * spl_atoms.global_offset());
 }
 
+
+/// Symmetrize the set of spheric functions.
+/** frlm must be a global function
+ */
 inline void
 symmetrize_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, Spheric_function_set<double>& frlm__)
 {

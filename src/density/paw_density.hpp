@@ -27,80 +27,67 @@
 
 namespace sirius {
 
+template <typename T>
 class paw_density
 {
   private:
-    Simulation_context* ctx_{nullptr};
-    sddk::mdarray<Spheric_function<function_domain_t::spectral, double>, 2> ae_density_;
-    sddk::mdarray<Spheric_function<function_domain_t::spectral, double>, 2> ps_density_;
-    std::vector<int> atoms_;
+    Unit_cell const* uc_{nullptr};
+    std::array<Spheric_function_set<T>, 4> ae_density_;
+    std::array<Spheric_function_set<T>, 4> ps_density_;
 
+    /* copy constructor is forbidden */
     paw_density(paw_density const& src__) = delete;
+    /* copy assignment operator is forbidden */
     paw_density& operator=(paw_density const& src__) = delete;
 
   public:
-    paw_density()
-    {
-    }
 
-    paw_density(Simulation_context& ctx__)
-        : ctx_(&ctx__)
+    paw_density(Unit_cell const& uc__)
+        : uc_{&uc__}
     {
-        auto& uc = ctx__.unit_cell();
-        if (!uc.num_paw_atoms()) {
+        if (!uc__.num_paw_atoms()) {
             return;
         }
 
-        using sf = Spheric_function<function_domain_t::spectral, double>;
-
-        ae_density_ = sddk::mdarray<sf, 2>(ctx__.num_mag_dims() + 1, uc.spl_num_paw_atoms().local_size());
-        ps_density_ = sddk::mdarray<sf, 2>(ctx__.num_mag_dims() + 1, uc.spl_num_paw_atoms().local_size());
-
-        for (int i = 0; i < uc.spl_num_paw_atoms().local_size(); i++) {
-            int ia_paw      = uc.spl_num_paw_atoms(i);
-            int ia          = uc.paw_atom_index(ia_paw);
-            auto& atom      = uc.atom(ia);
-            auto& atom_type = atom.type();
-
-            int l_max      = 2 * atom_type.indexr().lmax_lo();
-            int lm_max_rho = utils::lmmax(l_max);
-
-            atoms_.push_back(ia);
-
-            /* allocate density arrays */
-            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++) {
-                ae_density_(j, i) = sf(lm_max_rho, atom.radial_grid());
-                ps_density_(j, i) = sf(lm_max_rho, atom.radial_grid());
-            }
+        for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
+            ae_density_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
+                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, &uc__.spl_num_paw_atoms());
+            ps_density_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
+                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, &uc__.spl_num_paw_atoms());
         }
     }
 
-    paw_density(paw_density&& src__) = default;
-    paw_density& operator=(paw_density&& src__) = default;
-
-    Spheric_function<function_domain_t::spectral, double>& ae_density(int i, int j)
+    void zero(int ia__)
     {
-        return ae_density_(i, j);
+        for (int j = 0; j < uc_->parameters().num_mag_dims() + 1; j++) {
+            ae_density_[j][ia__].zero(sddk::memory_t::host);
+            ps_density_[j][ia__].zero(sddk::memory_t::host);
+        }
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& ae_density(int i, int j) const
+    auto& ae_density(int i__, int ja__)
     {
-        return ae_density_(i, j);
+        return ae_density_[i__][ja__];
     }
 
-    Spheric_function<function_domain_t::spectral, double>& ps_density(int i, int j)
+    auto const& ae_density(int i__, int ja__) const
     {
-        return ps_density_(i, j);
+        return ae_density_[i__][ja__];
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& ps_density(int i, int j) const
+    auto& ps_density(int i__, int ja__)
     {
-        return ps_density_(i, j);
+        return ps_density_[i__][ja__];
     }
 
-    Simulation_context const& ctx() const
+    auto const& ps_density(int i__, int ja__) const
     {
-        return *ctx_;
+        return ps_density_[i__][ja__];
+    }
+
+    auto const& unit_cell() const
+    {
+        return *uc_;
     }
 };
 
