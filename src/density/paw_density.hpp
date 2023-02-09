@@ -57,7 +57,6 @@ class PAW_field4D
             ps_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
                     [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, ptr);
         }
-
     }
 
     void zero(int ia__)
