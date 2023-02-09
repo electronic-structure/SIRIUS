@@ -641,8 +641,4 @@ void axpy_scatter_gpu_double_double(int N_unconverged,
                      0, 0, alpha__, x__, ld1__, idx__, y__, ld2__, ngv_loc__);
 }
 
-
-
-
-
-
+} // end extern "C"
