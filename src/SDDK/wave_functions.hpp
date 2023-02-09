@@ -76,6 +76,13 @@ void
 axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
         void const* beta__, void* y__, int ld2__, int ngv_loc__);
 
+void
+axpy_scatter_gpu_double_complex_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
+        void const* idx__, void* y__, int ld2__, int ngv_loc__);
+
+void
+axpy_scatter_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
+        void const* idx__, void* y__, int ld2__, int ngv_loc__);
 }
 #endif
 
@@ -1377,9 +1384,9 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
     }
 }
 
-template <typename T, typename F>
-void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, std::vector<F> const &alphas__,
-        Wave_functions<T> const* x__, std::vector<int> const& idx__, Wave_functions<T>* y__, int n__)
+template <typename T, typename F, typename G>
+void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas__,
+        Wave_functions<T> const* x__, G const* idx__, Wave_functions<T>* y__, int n__)
 {
     if (is_host_memory(mem__)) {
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
@@ -1398,7 +1405,33 @@ void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, std::vector<F> c
             }
         }
     } else {
-        RTE_THROW("implement wf::axpy_scatter() on GPUs");
+#if defined(SIRIUS_GPU)
+        for (auto s = spins__.begin(); s != spins__.end(); s++) {
+            auto spy = y__->actual_spin_index(s);
+            auto spx = x__ ? x__->actual_spin_index(s) : spy;
+
+            auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(idx__[0]));
+            auto ptr_x = x__->at(mem__, 0, spx, wf::band_index(0));
+
+            sddk::mdarray<F, 1> alpha(const_cast<F*>(alphas__), n__);
+            alpha.allocate(mem__).copy_to(mem__);
+
+            sddk::mdarray<G, 1> idx(const_cast<G*>(idx__), n__);
+            idx.allocate(mem__).copy_to(mem__);
+
+            if (std::is_same<T, double>::value) {
+                if (std::is_same<F, double>::value) {
+                    axpy_scatter_gpu_double_double(
+                        n__, alpha.at(mem__), ptr_x, x__->ld(), idx.at(mem__), ptr_y, y__->ld(), y__->ld());
+                }
+                if (std::is_same<F, std::complex<double>>::value) {
+                    axpy_scatter_gpu_double_complex_double(
+                        n__, alpha.at(mem__), ptr_x, x__->ld(), idx.at(mem__), ptr_y, y__->ld(), y__->ld());
+                }
+            }
+            if (std::is_same<T, float>::value) {RTE_THROW("[wf::axpy_scatter] implement GPU kernel for float");}
+        }
+#endif
     }
 }
 
