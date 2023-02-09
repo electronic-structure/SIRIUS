@@ -211,7 +211,7 @@ struct Wave_functions_wrap {
     void block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const &y__,
             std::vector<int> const &idx__, int n__)
     {
-        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__, y__.x, idx__, x, n__);
+        wf::axpy_scatter<double, value_type, int>(mem, wf::spin_range(0), alphas__.data(), y__.x, idx__.data(), x, n__);
     }
 
     void block_axpy(std::vector<value_type> const &alphas__, Wave_functions_wrap const &y__, int N__) {

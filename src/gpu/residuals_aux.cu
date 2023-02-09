@@ -568,6 +568,26 @@ __global__ void axpby_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x_
     }
 }
 
+template <typename T, typename F>
+__global__ void axpy_scatter_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x__, int ld1__,
+        int const* idx__, gpu_complex_type<T>* y__, int ld2__, int ngv_loc__)
+        {
+            /* index of wave-function coefficient */
+            int j = blockIdx.x * blockDim.x + threadIdx.x;
+            /* index of unconverged vector */
+            int j_unconv = blockIdx.y;
+
+            int jj = idx__[j_unconv];
+            auto alpha = alpha__[j_unconv];
+            if  (j < ngv_loc__) { // for all valid wf coefficients
+
+                int k1 = array2D_offset(j, j_unconv, ld1__);
+                int k2 = array2D_offset(j, jj, ld2__);
+
+                y__[k2] = add_accNumbers(mul_accNumbers(alpha, x__[k1]), y__[k2]);
+            }
+        }
+
 extern "C" {
 
 void axpby_gpu_double_complex_double(int nwf__, gpu_complex_type<double> const* alpha__, gpu_complex_type<double> const* x__, int ld1__,
@@ -601,11 +621,25 @@ void axpby_gpu_double_double(int nwf__, double const* alpha__, gpu_complex_type<
     }
 }
 
-
-
-
+void axpy_scatter_gpu_double_complex_double(int N_unconverged,
+    gpu_complex_type<double> const* alpha__, gpu_complex_type<double> const* x__, int ld1__, int const* idx__,
+    gpu_complex_type<double>* y__, int ld2__, int ngv_loc__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(ngv_loc__, grid_t.x), N_unconverged);
+    accLaunchKernel((axpy_scatter_gpu_kernel<double, gpu_complex_type<double>>), dim3(grid_b), dim3(grid_t),
+                     0, 0, alpha__, x__, ld1__, idx__, y__, ld2__, ngv_loc__);
 }
 
+void axpy_scatter_gpu_double_double(int N_unconverged,
+    double const* alpha__, gpu_complex_type<double> const* x__, int ld1__, int const* idx__,
+    gpu_complex_type<double>* y__, int ld2__, int ngv_loc__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(ngv_loc__, grid_t.x), N_unconverged);
+    accLaunchKernel((axpy_scatter_gpu_kernel<double, double>), dim3(grid_b), dim3(grid_t),
+                     0, 0, alpha__, x__, ld1__, idx__, y__, ld2__, ngv_loc__);
+}
 
 
 
