@@ -6006,6 +6006,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
                 return eigvals_vec[i];
             };
+            // allocate and copy eigvals_mdarray to GPU if running on GPU
+            if (is_device_memory(mem)) {
+                eigvals_mdarray.allocate(mem).copy_to(mem);
+            }
 
             sirius::lr::Smoothed_diagonal_preconditioner preconditioner{
               std::move(h_o_diag.first),
