@@ -54,8 +54,8 @@ void Potential::init_PAW()
 
         /* allocate potential arrays */
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            ppd.ae_potential_.push_back(sf(lm_max_rho, ppd.atom_->radial_grid()));
-            ppd.ps_potential_.push_back(sf(lm_max_rho, ppd.atom_->radial_grid()));
+            ppd.ae_potential_.push_back(Flm(lm_max_rho, ppd.atom_->radial_grid()));
+            ppd.ps_potential_.push_back(Flm(lm_max_rho, ppd.atom_->radial_grid()));
         }
 
         ppd.core_energy_ = atom_type.paw_core_energy();
@@ -68,6 +68,8 @@ void Potential::init_PAW()
         int bs              = unit_cell_.atom(ia).mt_basis_size();
         max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
+
+    paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, true);
 
     /* initialize dij matrix */
     paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
@@ -99,7 +101,7 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     /* calculate xc and hartree for atoms */
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
-        calc_PAW_local_potential(paw_potential_data_[i], density.paw_ae_density(ia), density.paw_ps_density(ia));
+        calc_PAW_local_potential(ia, paw_potential_data_[i], density.paw_ae_density(ia), density.paw_ps_density(ia));
     }
 
     /* calculate PAW Dij matrix */
@@ -177,45 +179,34 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     return inner(exclm, rho0);
 }
 
-double Potential::calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential)
+double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm& v_tot__)
 {
-    int lmsize_rho = static_cast<int>(full_density.size(0));
+    auto lmmax = rho__.angular_domain_size();
 
-    auto& grid = full_density.radial_grid();
+    auto& grid = rho__.radial_grid();
 
     /* array passed to poisson solver */
-    Spheric_function<function_domain_t::spectral, double> atom_pot_sf(lmsize_rho, grid);
-    atom_pot_sf.zero();
+    Flm v_ha(lmmax, grid);
+    v_ha.zero();
 
-    poisson_vmt<true>(atom, full_density, atom_pot_sf);
+    poisson_vmt<true>(atom__, rho__, v_ha);
 
     /* add hartree contribution */
-    full_potential += atom_pot_sf;
-
-    /* calculate energy */
-
-    auto l_by_lm = utils::l_by_lm(utils::lmax(lmsize_rho));
+    v_tot__ += v_ha;
 
     /* create array for integration */
-    std::vector<double> intdata(grid.num_points(), 0);
+    std::vector<double> f(grid.num_points(), 0);
 
-    double hartree_energy{0};
-
-    for (int lm = 0; lm < lmsize_rho; lm++) {
-        /* fill data to integrate */
-        for (int irad = 0; irad < grid.num_points(); irad++) {
-            intdata[irad] = full_density(lm, irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
+    for (int ir = 0; ir < grid.num_points(); ir++) {
+        auto r2 = grid[ir] * grid[ir];
+        for (int lm = 0; lm < lmmax; lm++) {
+            f[ir] = rho__(lm, ir) * v_ha(lm, ir) * r2;
         }
-
-        /* create spline from the data */
-        Spline<double> h_spl(grid, intdata);
-        hartree_energy += 0.5 * h_spl.integrate(0);
     }
-
-    return hartree_energy;
+    return 0.5 * Spline<double>(grid, f).integrate(0);
 }
 
-void Potential::calc_PAW_local_potential(paw_potential_data_t& ppd,
+void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
 {

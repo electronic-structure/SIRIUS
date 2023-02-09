@@ -49,9 +49,6 @@ class Potential : public Field4D
 {
   private:
 
-    /* Alias for spherical functions */
-    using sf = Spheric_function<function_domain_t::spectral, double>;
-
     Unit_cell& unit_cell_;
 
     mpi::Communicator const& comm_;
@@ -125,8 +122,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<sf> ae_potential_;
-        std::vector<sf> ps_potential_;
+        std::vector<Flm> ae_potential_;
+        std::vector<Flm> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
@@ -143,6 +140,8 @@ class Potential : public Field4D
     double paw_total_core_energy_{0.0};
 
     std::vector<paw_potential_data_t> paw_potential_data_;
+
+    std::unique_ptr<PAW_field4D<double>> paw_potential_;
 
     sddk::mdarray<double, 4> paw_dij_;
 
@@ -165,12 +164,12 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
-                                  std::vector<sf const*> ps_density);
+    void calc_PAW_local_potential(int ia, paw_potential_data_t& pdd, std::vector<Flm const*> ae_density,
+                                  std::vector<Flm const*> ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
 
-    double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
+    double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
     double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
             sddk::mdarray<std::complex<double>, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
@@ -178,7 +177,7 @@ class Potential : public Field4D
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    sddk::mdarray<std::complex<double>,2> poisson_vmt(Periodic_function<double> const& rho__) const
+    auto poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
