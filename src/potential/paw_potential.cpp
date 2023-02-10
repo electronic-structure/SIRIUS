@@ -41,9 +41,6 @@ void Potential::init_PAW()
 
         auto& atom_type = atom.type();
 
-        int l_max      = 2 * atom_type.indexr().lmax_lo();
-        int lm_max_rho = utils::lmmax(l_max);
-
         paw_potential_data_t ppd;
 
         ppd.atom_ = &atom;
@@ -51,12 +48,6 @@ void Potential::init_PAW()
         ppd.ia = ia;
 
         ppd.ia_paw = ia_paw;
-
-        /* allocate potential arrays */
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            ppd.ae_potential_.push_back(Flm(lm_max_rho, ppd.atom_->radial_grid()));
-            ppd.ps_potential_.push_back(Flm(lm_max_rho, ppd.atom_->radial_grid()));
-        }
 
         ppd.core_energy_ = atom_type.paw_core_energy();
 
@@ -110,8 +101,6 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         calc_PAW_local_Dij(paw_potential_data_[i], paw_dij_);
-
-        //calc_PAW_one_elec_energy(paw_potential_data_[i], density.density_matrix(), paw_dij_);
     }
 
     // collect Dij and add to atom d_mtrx
@@ -131,7 +120,6 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     for (int ia = 0; ia < unit_cell_.spl_num_paw_atoms().local_size(); ia++) {
         energies[0] += paw_potential_data_[ia].hartree_energy_;
         energies[1] += paw_potential_data_[ia].xc_energy_;
-        //energies[2] += paw_potential_data_[ia].one_elec_energy_;
         energies[3] += paw_potential_data_[ia].core_energy_; // it is light operation
     }
 
@@ -139,7 +127,6 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
     paw_hartree_total_energy_ = energies[0];
     paw_xc_total_energy_      = energies[1];
-    //paw_one_elec_energy_      = energies[2];
     paw_total_core_energy_    = energies[3];
 }
 
@@ -203,17 +190,9 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
 {
-    /* calculation of Hartree potential */
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        ppd.ae_potential_[i].zero();
-        ppd.ps_potential_[i].zero();
-    }
+    double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], paw_potential_->ae_component(0)[ia]);
 
-    double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], ppd.ae_potential_[0]);
-    double ae_hartree_energy1 = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], paw_potential_->ae_component(0)[ia]);
-
-    double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], ppd.ps_potential_[0]);
-    double ps_hartree_energy1 = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], paw_potential_->ps_component(0)[ia]);
+    double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], paw_potential_->ps_component(0)[ia]);
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
@@ -232,7 +211,6 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     auto ae_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density,
                                           ae_core, vxc);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        ppd.ae_potential_[i] += vxc[i];
         paw_potential_->ae_component(i)[ia] += vxc[i];
     }
 
@@ -240,7 +218,6 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
                                           ps_core, vxc);
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        ppd.ps_potential_[i] += vxc[i];
         paw_potential_->ps_component(i)[ia] += vxc[i];
     }
 
@@ -313,7 +290,7 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
             int irb2 = atom_type.indexb(ib2).idxrf;
 
             /* common index */
-            int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
+            int iqij = utils::packed_index(irb1, irb2);
 
             /* get num of non-zero GC */
             int num_non_zero_gk = GC.num_gaunt(lm1, lm2);
