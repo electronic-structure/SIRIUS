@@ -95,17 +95,26 @@ class Spheric_function_set
     {
         return *unit_cell_;
     }
-};
 
-template <typename T>
-void scale(T alpha__, Spheric_function_set<T>& f__)
-{
-    for (auto ia : f__.atoms()) {
-        if (f__[ia].size()) {
-            f__[ia] *= alpha__;
+    void zero()
+    {
+        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) {
+            if (func_[ia].size()) {
+                func_[ia].zero();
+            }
         }
     }
-}
+};
+
+//template <typename T>
+//void scale(T alpha__, Spheric_function_set<T>& f__)
+//{
+//    for (auto ia : f__.atoms()) {
+//        if (f__[ia].size()) {
+//            f__[ia] *= alpha__;
+//        }
+//    }
+//}
 
 }
 
