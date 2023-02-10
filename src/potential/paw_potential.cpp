@@ -196,16 +196,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm
     /* add hartree contribution */
     v_tot__ += v_ha;
 
-    /* create array for integration */
-    std::vector<double> f(grid.num_points(), 0);
-
-    for (int ir = 0; ir < grid.num_points(); ir++) {
-        for (int lm = 0; lm < lmmax; lm++) {
-            f[ir] += rho__(lm, ir) * v_ha(lm, ir);
-        }
-        f[ir] *= std::pow(grid[ir], 2);
-    }
-    return 0.5 * Spline<double>(grid, f).integrate(0);
+    return 0.5 * inner(rho__, v_ha);
 }
 
 void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
@@ -242,6 +233,7 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
                                           ae_core, vxc);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         ppd.ae_potential_[i] += vxc[i];
+        paw_potential_->ae_component(i)[ia] += vxc[i];
     }
 
     auto ps_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density,
@@ -249,6 +241,7 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         ppd.ps_potential_[i] += vxc[i];
+        paw_potential_->ps_component(i)[ia] += vxc[i];
     }
 
     /* save xc energy in pdd structure */
@@ -258,6 +251,7 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
 void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
 {
     int paw_ind = pdd.ia_paw;
+    int ia = unit_cell_.paw_atom_index(paw_ind);
 
     auto& atom_type = pdd.atom_->type();
 
@@ -265,32 +259,31 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
     auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
 
     /* get lm size for density */
-    int lmax       = atom_type.indexr().lmax_lo();
-    int lmsize_rho = utils::lmmax(2 * lmax);
+    int lmax  = atom_type.indexr().lmax();
+    int lmmax = utils::lmmax(2 * lmax);
 
     auto l_by_lm = utils::l_by_lm(2 * lmax);
 
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 
+    auto nbrf = atom_type.num_beta_radial_functions();
+
     /* store integrals here */
-    sddk::mdarray<double, 3> integrals(
-        lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
-        ctx_.num_mag_dims() + 1);
+    sddk::mdarray<double, 3> integrals(lmmax, nbrf * (nbrf + 1) / 2, ctx_.num_mag_dims() + 1);
 
     auto& rgrid = atom_type.radial_grid();
 
     for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-        auto& ae_atom_pot = pdd.ae_potential_[imagn];
-        auto& ps_atom_pot = pdd.ps_potential_[imagn];
+        auto& ae_atom_pot = paw_potential_->ae_component(imagn)[ia];
+        auto& ps_atom_pot = paw_potential_->ps_component(imagn)[ia];
 
-        for (int irb2 = 0; irb2 < atom_type.num_beta_radial_functions(); irb2++) {
+        for (int irb2 = 0; irb2 < nbrf; irb2++) {
             for (int irb1 = 0; irb1 <= irb2; irb1++) {
-                int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
                 /* create array for integration */
                 std::vector<double> intdata(rgrid.num_points());
 
-                for (int lm3 = 0; lm3 < lmsize_rho; lm3++) {
+                for (int lm3 = 0; lm3 < lmmax; lm3++) {
                     /* fill array */
                     for (int irad = 0; irad < rgrid.num_points(); irad++) {
                         double ae_part = paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
@@ -300,11 +293,8 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
                         intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
                     }
 
-                    /* create spline from data arrays */
-                    Spline<double> dij_spl(rgrid, intdata);
-
                     /* integrate */
-                    integrals(lm3, iqij, imagn) = dij_spl.integrate(0);
+                    integrals(lm3, utils::packed_index(irb1, irb2), imagn) = Spline<double>(rgrid, intdata).integrate(0);
                 }
             }
         }
