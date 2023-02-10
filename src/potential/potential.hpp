@@ -122,8 +122,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<Flm> ae_potential_;
-        std::vector<Flm> ps_potential_;
+        //std::vector<Flm> ae_potential_;
+        //std::vector<Flm> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
