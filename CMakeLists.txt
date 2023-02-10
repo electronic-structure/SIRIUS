@@ -22,6 +22,7 @@ set(USE_OPENMP              ON  CACHE BOOL "use OpenMP")
 set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
 set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
+set(USE_WANNIER90           ON  CACHE BOOL "enabling wannier90 library")#gcc
 set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
 set(CUDA_ARCH               OFF CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
@@ -182,6 +183,14 @@ else()
   endif()
 endif()
 
+
+if(USE_WANNIER90)
+    target_link_libraries(sirius::filesystem INTERFACE ifcore)
+    find_library(LIB_TO_INCLUDE wannier /home/gcistaro/codes/q-e-qe-7.1/wannier90-3.1.0/)
+    target_link_libraries(sirius::filesystem INTERFACE ${LIB_TO_INCLUDE})
+endif(USE_WANNIER90)
+
+
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
 endif(USE_ELPA)
@@ -213,6 +222,10 @@ if(USE_ROCM)
   endif()
   find_package(HIP MODULE REQUIRED)
 endif()
+
+
+
+
 
 # check if git command exists
 find_program(GIT_EXE NAMES git)

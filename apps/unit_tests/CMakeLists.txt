@@ -7,6 +7,8 @@ test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr")
 
 foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")
+
+
   target_link_libraries(${name} PRIVATE sirius)
   install(TARGETS ${name} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
   add_test(NAME ${name} COMMAND ${name})

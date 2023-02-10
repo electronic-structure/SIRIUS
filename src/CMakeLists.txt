@@ -11,6 +11,8 @@ if(USE_CUDA OR USE_ROCM)
   set(_CUSOURCES "${CUFILES}")
 endif()
 
+
+
 set(_SOURSES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
@@ -94,6 +96,14 @@ endif()
 
 set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
 
+if(USE_WANNIER90)
+    target_link_libraries(sirius PUBLIC ifcore)
+    find_library(LIB_TO_INCLUDE wannier /home/gcistaro/codes/q-e-qe-7.1/wannier90-3.1.0/)
+    target_link_libraries(sirius PUBLIC ${LIB_TO_INCLUDE})
+endif(USE_WANNIER90)
+
+
+
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
                                     ${GSL_LIBRARY}
@@ -117,10 +127,13 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
                                     )
 
+
+
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
+
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:SIRIUS_SCALAPACK>
