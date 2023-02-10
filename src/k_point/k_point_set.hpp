@@ -68,6 +68,7 @@ class K_point_set
 
     bool initialized_{false};
 
+
     /// Return sum of valence eigen-values store in Kpoint<T>.
     template <typename T>
     double valence_eval_sum() const;
@@ -124,6 +125,7 @@ class K_point_set
 
     void load();
 
+    void generate_w90_coeffs();//sirius::K_point_set& k_set__)
     /// Return sum of valence eigen-values.
     double valence_eval_sum() const;
 

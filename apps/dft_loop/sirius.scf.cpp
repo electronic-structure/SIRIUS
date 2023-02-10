@@ -5,6 +5,12 @@
 #include "utils/json.hpp"
 #include "dft/lattice_relaxation.hpp"
 
+#include "../src/k_point/generate_w90_coeffs.hpp"
+
+
+
+
+
 using namespace sirius;
 using json = nlohmann::json;
 using namespace sddk;
@@ -252,6 +258,11 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
+
+
+    kset.generate_w90_coeffs();
+    //generate_w90_coeffs(kset);
+
 
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
