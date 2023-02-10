@@ -39,6 +39,7 @@ else()
 endif()
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 14)
 
 # This ensures that -std=c++14 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.
@@ -55,13 +56,6 @@ if(USE_CUDA AND USE_ROCM)
 endif()
 
 add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
-
-# if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
-#   message(FATAL_ERROR "Unsupported compiler")
-# endif()
-
-set_property(CACHE CUDA_ARCH PROPERTY STRINGS OFF "30" "32" "35" "37"
-  "50" "52" "53" "60" "61" "62" "70" "72" "75" "80")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
