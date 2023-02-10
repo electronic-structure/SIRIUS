@@ -191,8 +191,6 @@ void Beta_projectors_base<T>::generate(sddk::memory_t mem__, int ichunk__, int j
 template <typename T>
 void Beta_projectors_base<T>::prepare()
 {
-    PROFILE("sirius::Beta_projectors_base::prepare");
-
     if (max_num_beta() == 0) {
         return;
     }
@@ -218,8 +216,6 @@ void Beta_projectors_base<T>::prepare()
 template <typename T>
 void Beta_projectors_base<T>::dismiss()
 {
-    PROFILE("sirius::Beta_projectors_base::dismiss");
-
     if (ctx_.processing_unit() == sddk::device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
         pw_coeffs_t_.deallocate(sddk::memory_t::device);
     }
