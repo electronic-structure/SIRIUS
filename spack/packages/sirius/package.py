@@ -387,9 +387,10 @@ class Sirius(CMakePackage, CudaPackage):
                     )
 
                 # Make SIRIUS handle it
-                else:
+                elif "@6:7.3" in spec:
                     args.append(self.define("CUDA_ARCH", ";".join(cuda_arch)))
-
+                else:
+                    args.append(self.define("CMAKE_CUDA_ARCHITECTURES", ";".join(cuda_arch)))
         if "+rocm" in spec:
             archs = ",".join(self.spec.variants["amdgpu_target"].value)
             args.extend(
