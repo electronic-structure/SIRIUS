@@ -98,6 +98,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     /* zero Dij */
     paw_dij_.zero();
 
+    paw_potential_->zero();
+
     /* calculate xc and hartree for atoms */
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
@@ -198,10 +200,10 @@ double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm
     std::vector<double> f(grid.num_points(), 0);
 
     for (int ir = 0; ir < grid.num_points(); ir++) {
-        auto r2 = grid[ir] * grid[ir];
         for (int lm = 0; lm < lmmax; lm++) {
-            f[ir] = rho__(lm, ir) * v_ha(lm, ir) * r2;
+            f[ir] += rho__(lm, ir) * v_ha(lm, ir);
         }
+        f[ir] *= std::pow(grid[ir], 2);
     }
     return 0.5 * Spline<double>(grid, f).integrate(0);
 }
@@ -217,8 +219,10 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     }
 
     double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], ppd.ae_potential_[0]);
+    double ae_hartree_energy1 = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], paw_potential_->ae_component(0)[ia]);
 
     double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], ppd.ps_potential_[0]);
+    double ps_hartree_energy1 = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], paw_potential_->ps_component(0)[ia]);
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
