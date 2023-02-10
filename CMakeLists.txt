@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 
 project(SIRIUS VERSION 7.4.4)
 
@@ -197,15 +197,9 @@ if(USE_CUDA)
 endif(USE_CUDA)
 
 if(USE_ROCM)
-  find_package(hip CONFIG REQUIRED)
+  enable_language(HIP)
   find_package(rocblas CONFIG REQUIRED)
-
-  # FindHIP module provides compilation command for GPU code
-  if(NOT HIP_HCC_FLAGS)
-    message(STATUS "Using default AMD gpu targets: gfx803, gfx900, gfx906. Set HIP_HCC_FLAGS to override.")
-    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906)
-  endif()
-  find_package(HIP MODULE REQUIRED)
+  set(CMAKE_HIP_STANDARD 14)
 endif()
 
 # check if git command exists

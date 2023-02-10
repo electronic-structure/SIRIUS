@@ -11,7 +11,7 @@ if(USE_CUDA OR USE_ROCM)
   set(_CUSOURCES "${CUFILES}")
 endif()
 
-set(_SOURSES
+set(_SOURCES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
@@ -76,21 +76,9 @@ set(_SOURSES
 
 
 # create library with .cpp, .cu and .f90 sources
+add_library(sirius "${_SOURCES};${_CUSOURCES};${_FSOURCES}")
 
-if(USE_ROCM)
-  # required for linking with compiler other than hcc
-  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc)
-  # Dependency generation of FindHIP module creates a lot of warnings - disable for release mode
-  set(HIP_HCC_FLAGS_RELEASE ${HIP_HCC_FLAGS_RELEASE} -Wno-everything)
-  # FindHIP does not account for C++ standard
-  if(CMAKE_CXX_STANDARD)
-    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -std=gnu++${CMAKE_CXX_STANDARD})
-  endif()
-  # macro from FindHIP package, which compiles all .cu files with hcc and cpp files with the set c++ compiler
-  HIP_ADD_LIBRARY(sirius SHARED "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-else()
-  add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-endif()
+set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP LINKER_LANGUAGE HIP)
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
