@@ -23,7 +23,6 @@ set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with 
 set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
 set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
 set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
-set(CUDA_ARCH               OFF CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
 set(USE_VCSQNM              OFF CACHE BOOL "use variable cell stabilized quasi Newton method")
@@ -55,13 +54,6 @@ if(USE_CUDA AND USE_ROCM)
 endif()
 
 add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
-
-# if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
-#   message(FATAL_ERROR "Unsupported compiler")
-# endif()
-
-set_property(CACHE CUDA_ARCH PROPERTY STRINGS OFF "30" "32" "35" "37"
-  "50" "52" "53" "60" "61" "62" "70" "72" "75" "80")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
@@ -198,6 +190,7 @@ find_package(costa CONFIG REQUIRED)
 
 if(USE_CUDA)
   enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 14)
   find_package(CUDA)
   include(cmake/cudalibs_target.cmake)
 endif(USE_CUDA)

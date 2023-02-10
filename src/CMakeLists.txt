@@ -92,8 +92,6 @@ else()
   add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 endif()
 
-set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
-
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
                                     ${GSL_LIBRARY}
