@@ -6056,8 +6056,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             sddk::memory_t mem = sctx.processing_unit_memory_t(); // "auto mem" should do as well
 
-            // TODO: allocate all wave-functions on device (if processing_unit == sdk::memory_t::GPU)
-//          if (sctx.processing_unit() == sddk::device_t::GPU){
             std::vector<wf::device_memory_guard> mg;
 
             mg.emplace_back(psi_wf->memory_guard(mem, wf::copy_to::device));
@@ -6069,8 +6067,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             mg.emplace_back(C->memory_guard(mem, wf::copy_to::device));
             mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
             mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
-            std::cout << "AFTER MEMORY GUARDS" << std::endl;
-//          }
 
             sirius::lr::Linear_response_operator linear_operator(
                 const_cast<sirius::Simulation_context&>(sctx),
