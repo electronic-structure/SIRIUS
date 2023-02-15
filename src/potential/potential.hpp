@@ -116,24 +116,16 @@ class Potential : public Field4D
 
     struct paw_potential_data_t
     {
-        Atom* atom_{nullptr};
+        //Atom* atom_{nullptr};
 
         int ia{-1};
 
         int ia_paw{-1};
 
-        //std::vector<Flm> ae_potential_;
-        //std::vector<Flm> ps_potential_;
-
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
         double core_energy_{0.0};
     };
-
-    std::vector<double> paw_hartree_energies_;
-    std::vector<double> paw_xc_energies_;
-    std::vector<double> paw_core_energies_;
-    std::vector<double> paw_one_elec_energies_;
 
     double paw_hartree_total_energy_{0.0};
     double paw_xc_total_energy_{0.0};
