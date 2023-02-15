@@ -43,7 +43,7 @@ void Potential::init_PAW()
 
         paw_potential_data_t ppd;
 
-        ppd.atom_ = &atom;
+        //ppd.atom_ = &atom;
 
         ppd.ia = ia;
 
@@ -65,12 +65,6 @@ void Potential::init_PAW()
     /* initialize dij matrix */
     paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
                                   unit_cell_.num_paw_atoms(), sddk::memory_t::host, "paw_dij_");
-
-    /* allocate PAW energy array */
-    paw_hartree_energies_.resize(unit_cell_.num_paw_atoms());
-    paw_xc_energies_.resize(unit_cell_.num_paw_atoms());
-    paw_core_energies_.resize(unit_cell_.num_paw_atoms());
-    paw_one_elec_energies_.resize(unit_cell_.num_paw_atoms());
 }
 
 void Potential::generate_PAW_effective_potential(Density const& density)
@@ -80,11 +74,6 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     if (!unit_cell_.num_paw_atoms()) {
         return;
     }
-
-    /* zero PAW arrays */
-    std::fill(paw_one_elec_energies_.begin(), paw_one_elec_energies_.end(), 0.0);
-    std::fill(paw_hartree_energies_.begin(), paw_hartree_energies_.end(), 0.0);
-    std::fill(paw_xc_energies_.begin(), paw_xc_energies_.end(), 0.0);
 
     /* zero Dij */
     paw_dij_.zero();
@@ -190,18 +179,22 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
     std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
 {
-    double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], paw_potential_->ae_component(0)[ia]);
+    auto& atom = unit_cell_.atom(ia);
 
-    double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], paw_potential_->ps_component(0)[ia]);
+    double ae_hartree_energy = calc_PAW_hartree_potential(atom, *ae_density[0],
+            paw_potential_->ae_component(0)[ia]);
+
+    double ps_hartree_energy = calc_PAW_hartree_potential(atom, *ps_density[0],
+            paw_potential_->ps_component(0)[ia]);
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
     /* calculation of XC potential */
-    auto& ps_core = ppd.atom_->type().ps_core_charge_density();
-    auto& ae_core = ppd.atom_->type().paw_ae_core_charge_density();
+    auto& ps_core = atom.type().ps_core_charge_density();
+    auto& ae_core = atom.type().paw_ae_core_charge_density();
 
-    auto& rgrid = ppd.atom_->type().radial_grid();
-    int l_max = 2 * ppd.atom_->type().indexr().lmax_lo();
+    auto& rgrid = atom.type().radial_grid();
+    int l_max = 2 * atom.type().indexr().lmax_lo();
 
     std::vector<Flm> vxc;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -230,7 +223,9 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
     int paw_ind = pdd.ia_paw;
     int ia = unit_cell_.paw_atom_index(paw_ind);
 
-    auto& atom_type = pdd.atom_->type();
+    auto& atom = unit_cell_.atom(ia);
+
+    auto& atom_type = atom.type();
 
     auto& paw_ae_wfs = atom_type.ae_paw_wfs_array();
     auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
@@ -321,8 +316,10 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
 
     std::complex<double> energy = 0.0;
 
-    for (int ib2 = 0; ib2 < pdd.atom_->mt_lo_basis_size(); ib2++) {
-        for (int ib1 = 0; ib1 < pdd.atom_->mt_lo_basis_size(); ib1++) {
+    auto& atom = unit_cell_.atom(ia);
+
+    for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
+        for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
             double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
@@ -339,7 +336,7 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
                     break;
                 }
                 default: {
-                    TERMINATE("calc_PAW_one_elec_energy FATAL ERROR!");
+                    RTE_THROW("calc_PAW_one_elec_energy FATAL ERROR!");
                     break;
                 }
             }
