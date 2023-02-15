@@ -155,7 +155,7 @@ class splindex<splindex_t::block, T> : public splindex_base<T>
     }
 
     /// Return "local index, rank" pair for a global index.
-    inline typename splindex_base<T>::location_t location(T idxglob__) const
+    inline auto location(T idxglob__) const
     {
         assert(idxglob__ < this->global_index_size_);
 

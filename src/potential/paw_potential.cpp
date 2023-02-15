@@ -23,6 +23,7 @@
  */
 
 #include "potential.hpp"
+#include "symmetry/symmetrize.hpp"
 
 namespace sirius {
 
@@ -60,7 +61,8 @@ void Potential::init_PAW()
         max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
 
-    paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, true);
+    bool const is_global{true};
+    paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, is_global);
 
     /* initialize dij matrix */
     paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
@@ -84,6 +86,15 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
         calc_PAW_local_potential(ia, paw_potential_data_[i], density.paw_ae_density(ia), density.paw_ps_density(ia));
+    }
+
+    paw_potential_->sync();
+    switch (ctx_.num_mag_dims()) {
+        case 0: {
+            symmetrize_function(unit_cell_.symmetry(), unit_cell_.comm(), paw_potential_->ae_component(0));
+            symmetrize_function(unit_cell_.symmetry(), unit_cell_.comm(), paw_potential_->ps_component(0));
+            break;
+        }
     }
 
     /* calculate PAW Dij matrix */

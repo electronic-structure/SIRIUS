@@ -104,17 +104,19 @@ class Spheric_function_set
             }
         }
     }
-};
 
-//template <typename T>
-//void scale(T alpha__, Spheric_function_set<T>& f__)
-//{
-//    for (auto ia : f__.atoms()) {
-//        if (f__[ia].size()) {
-//            f__[ia] *= alpha__;
-//        }
-//    }
-//}
+    /// Synchronize global function.
+    /** Assuming that each MPI rank was handling part of the global spherical function, broadcast data
+     *  from each rank. As a result, each rank stores a full and identical copy of global spherical function. */
+    void sync(sddk::splindex<sddk::splindex_t::block> const& spl_atoms__)
+    {
+        for (int i = 0; i < spl_atoms__.global_index_size(); i++) {
+            auto loc = spl_atoms__.location(i);
+            int ia = atoms_[i];
+            unit_cell_->comm().bcast(func_[ia].at(sddk::memory_t::host), static_cast<int>(func_[ia].size()), loc.rank);
+        }
+    }
+};
 
 }
 
