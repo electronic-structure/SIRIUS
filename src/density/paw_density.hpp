@@ -59,6 +59,14 @@ class PAW_field4D
         }
     }
 
+    void sync()
+    {
+        for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
+            ae_components_[j].sync(uc_.spl_num_paw_atoms());
+            ps_components_[j].sync(uc_.spl_num_paw_atoms());
+        }
+    }
+
     void zero(int ia__)
     {
         for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {

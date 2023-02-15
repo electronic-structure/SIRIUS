@@ -116,8 +116,6 @@ class Potential : public Field4D
 
     struct paw_potential_data_t
     {
-        //Atom* atom_{nullptr};
-
         int ia{-1};
 
         int ia_paw{-1};
