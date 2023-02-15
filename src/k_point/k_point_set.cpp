@@ -763,7 +763,6 @@ void write_Amn(sddk::mdarray<std::complex<double>,3>& Amn)
     std::ofstream writeAmn;
     writeAmn.open("sirius.amn");
     std::string line; 
-    double Ar, Ai;
     writeAmn << std::endl;
     writeAmn << std::endl;
    
@@ -783,7 +782,7 @@ void write_Amn(sddk::mdarray<std::complex<double>,3>& Amn)
 }
 
 
-void write_Mmn(sddk::mdarray<std::complex<double>,4>& Mmn,      
+void write_Mmn(sddk::mdarray<std::complex<double>,4>& M,      
     sddk::mdarray<int,2> &nnlist,                   
     sddk::mdarray<int32_t ,3> &nncell)                                
 {
@@ -791,19 +790,19 @@ void write_Mmn(sddk::mdarray<std::complex<double>,4>& Mmn,
     writeMmn.open("sirius.mmn");
     writeMmn << std::endl;
     writeMmn << std::endl;
-    for (int ik=0; ik<Mmn.size(3); ik++){
-        for (int ib=0; ib<Mmn.size(2); ib++){
+    for (int ik=0; ik<M.size(3); ik++){
+        for (int ib=0; ib<M.size(2); ib++){
 	    	writeMmn << std::setw(5) << ik+1;
 	    	writeMmn << std::setw(5) << nnlist(ik,ib);
 	    	writeMmn << std::setw(5) << nncell(0,ik,ib);
 	    	writeMmn << std::setw(5) << nncell(1,ik,ib);
 	    	writeMmn << std::setw(5) << nncell(2,ik,ib);
 	    	writeMmn << std::endl;
-	    	for (int n=0; n<Mmn.size(1); n++){
-	    	    for (int m=0; m<Mmn.size(0); m++){
-			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << Mmn(m,n,ib,ik).real();
-			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << Mmn(m,n,ib,ik).imag();
-			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(Mmn(m,n,ib,ik));
+	    	for (int n=0; n<M.size(1); n++){
+	    	    for (int m=0; m<M.size(0); m++){
+			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << M(m,n,ib,ik).real();
+			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << M(m,n,ib,ik).imag();
+			    	writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(M(m,n,ib,ik));
 			    	writeMmn << std::endl;
 				}
 	    	}
@@ -877,7 +876,10 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
 
     std::cout << "\n\n\nwannierization!!!!\n\n\n";
     
-    //parameters needed for wannier_setup_
+
+	//std::cout << "Hello from rank " << ctx().comm().rank() << " of " << ctx().comm().size() << spl_num_kpoints_.local_size() << std::endl;
+	//std::cout << "Hello from k rank " << ctx().comm_k().rank() << " of " << ctx().comm_k().size() << std::endl;
+	//parameters needed for wannier_setup_
     size_t length_seedname = 256;              //aux variable for the length of a string 
     int32_t num_kpts;                          //input        
     int32_t num_bands_tot;                     //input      
@@ -944,10 +946,10 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
     }
     //initializing atomic_symbol and atomic_cart
     for(int iat=0; iat<num_atoms; iat++){
-        std::fill(atomic_symbol[iat],atomic_symbol[iat]+3,' ');//check!!!!!!
+        std::fill(atomic_symbol[iat],atomic_symbol[iat]+3,' ');
         std::strcpy(atomic_symbol[iat], this->ctx().unit_cell().atom(iat).type().label().c_str());
         
-	//position is saved in fractional coordinates, we need cartesian for wannier_setup_
+		//position is saved in fractional coordinates, we need cartesian for wannier_setup_
         auto frac_coord = this->unit_cell().atom(iat).position();
         auto cart_coord = this->ctx().unit_cell().get_cartesian_coordinates(frac_coord);
         for (int icoor=0; icoor<3; icoor++){
@@ -993,11 +995,12 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
     //allocating memory for overlap matrices 
 
 
-    sddk::mdarray<std::complex<double>,4> Mmn(num_bands, num_bands, nntot, num_kpts);      //sirius2wannier  
-    Mmn.zero();
-    sddk::mdarray<std::complex<double>,3> Amn(num_bands, num_wann, num_kpts);              //sirius2wannier
-    Amn.zero();
-
+    sddk::mdarray<std::complex<double>,4> M(num_bands, num_bands, nntot, num_kpts);      //sirius2wannier  
+    M.zero();
+    sddk::mdarray<std::complex<double>,3> A(num_bands, num_wann, num_kpts);              //sirius2wannier
+    A.zero();
+    la::dmatrix<std::complex<double>> Mbk(num_bands,num_bands);
+	la::dmatrix<std::complex<double>> Ak(num_bands,num_wann);
 // 2nd step: compute <beta_{\xi'}^{\alpha}|  psi_{j,k+q}>; check how this is done in the Beta_projector class;
 // Q-operator can be applied here. Look how this is done in Non_local_operator::apply();
 // (look for Beta_projectors_base::inner() function; understand the "chunks" of beta-projectors
@@ -1025,13 +1028,13 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
         auto q_op = (kpoints_[ik]->unit_cell_.augment()) ? std::make_unique<Q_operator<double>>(kpoints_[ik]->ctx_) : nullptr;
 		kpoints_[ik]->beta_projectors().prepare();
 
-	Swf_k = std::make_unique<wf::Wave_functions<double>>(kpoints_[ik]->gkvec_, wf::num_mag_dims(0), 			                                                                    wf::num_bands(nwf), ctx_.host_memory_t());
+		Swf_k = std::make_unique<wf::Wave_functions<double>>(kpoints_[ik]->gkvec_, wf::num_mag_dims(0), 			                                                                    wf::num_bands(nwf), ctx_.host_memory_t());
 		apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, nwf), kpoints_[ik]->beta_projectors(),
                     (kpoints_[ik]->spinor_wave_functions()), q_op.get(), *Swf_k);
 
-		/*********************************************************************
-		 *                  Amn(k) = <psi_{mk} | w_{nk}>                     *
-		 *********************************************************************/
+		/***************************************************************************
+	 	*    Amn(k) = <psi_{mk} | S | w_{nk}> = conj(<w_{nk} | S | psi_{mk}>)      *
+		 ***************************************************************************/
 		std::cout << "Calculating Amn. ik = " << ik << std::endl;
 		//allocate space for atomic wfs, same that for hubbard
 		//we should move the following 2 lines in initialize() function of kpoint class
@@ -1068,25 +1071,31 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
         
 		kpoints_[ik]->beta_projectors().dismiss();
 
+	    wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), kpoints_[ik]->spinor_wave_functions(), wf::band_range(0, num_bands), 
+                *(kpoints_[ik]->atomic_wave_functions_S_), wf::band_range(0, num_wann), Ak, 0, 0);
+        //already in the correct way, we just copy in the bigger array. (alternative:: create dmatrix with an index as multiindex to avoid copies)
+		//note!! we need +1 to copy the last element
+		std::copy(Ak.at(sddk::memory_t::host,0,0), Ak.at(sddk::memory_t::host,num_bands-1,num_wann-1)+1, 
+						A.at(sddk::memory_t::host,0,0,ik)
+				 );
 
+    	//for(int m=0;m<nwf; m++){
+    	//    for(int n=0;n<num_wann; n++){
+    	//           for (int ig_ik=0; ig_ik<kpoints_[ik]->gkvec_.get()->num_gvec(); ig_ik++){
+    	//                A(m, n, ik)+= std::conj(
+		//					                std::conj(kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n)))*
+		//								    Swf_k->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m))
+		//									     );
+		//				                //std::conj(kpoints_[ik]->spinor_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m)))*
+    	//                                //kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
+    	//                                //kpoints_[ik]->atomic_wave_functions_S_.pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
+		//        }
+		//    }
+    	//}
 
-    	for(int m=0;m<nwf; m++){
-    	    for(int n=0;n<num_wann; n++){
-    	           for (int ig_ik=0; ig_ik<kpoints_[ik]->gkvec_.get()->num_gvec(); ig_ik++){
-    	                Amn(m, n, ik)+= std::conj(
-							                std::conj(kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n)))*
-										    Swf_k->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m))
-											     );
-						                //std::conj(kpoints_[ik]->spinor_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m)))*
-    	                                //kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
-    	                                //kpoints_[ik]->atomic_wave_functions_S_.pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
-		        }
-		    }
-    	}
-
-		/*********************************************************************
-		 *                 Mmn(k,b) = <u_{mk} | u_{n,k+b}>                   *
-		 *********************************************************************/
+		/***********************************************************************************
+		 *      Mmn(k,b) = <u_{mk} | S | u_{n,k+b}> = conj(<u_{n,k+b} | S | u_{m,k}>)      *
+		 ***********************************************************************************/
 		std::cout << "Calculating Mmn. ik = " << ik << std::endl;
 
 		for (int ib=0; ib < nntot; ib++){
@@ -1101,7 +1110,6 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
     	    //if found, store in aux_psi_kpb(ig_ik) the matrix with the wavefunction at (ig_ikpb) 
     	    //equation to use after restoring the order: C_{n, k+b}(G) = C_{n, kb} (G+\tilde{G}) where kb is the copy of k+b in the FBZ 
     	    r3::vector<int> G;
-    	    r3::vector<int> G2;
     	    for (int ig_ik=0; ig_ik<kpoints_[ik]->gkvec_.get()->num_gvec(); ig_ik++) {
     	        //compute the total vector to use to get the index in kpb
 				G  = kpoints_[ik]->gkvec_.get()->gvec<sddk::index_domain_t::local>(ig_ik);
@@ -1116,31 +1124,40 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
     	        		kpoints_[ikpb]->spinor_wave_functions().pw_coeffs(ig_ikpb, wf::spin_index(0), wf::band_index(iband));
 				}
 			}
-			for(int m=0;m<nwf; m++){
-    	        for(int n=0;n<nwf; n++){
-    	            for (int ig_ik=0; ig_ik<kpoints_[ik]->gkvec_.get()->num_gvec(); ig_ik++){
-    	                Mmn(m, n, ib, ik)+= std::conj(
-							 					std::conj(aux_psi_kpb->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n)))*
-											 	Swf_k->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m))
-											     	 );
 
-											//std::conj(kpoints_[ik]->spinor_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m)))*
-    	                                    //aux_psi_kpb->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
-    	            }
-    	        }
-		    }    
+	        wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *aux_psi_kpb,
+                wf::band_range(0, nwf), *Swf_k, wf::band_range(0, nwf), Mbk, 0, 0);
+					
+			for(int n=0; n<nwf; n++){
+				for(int m=0; m<nwf; m++){
+					M(m,n,ib,ik) = std::conj(Mbk(n,m));
+				}
+			}
+			//for(int m=0;m<nwf; m++){
+    	    //    for(int n=0;n<nwf; n++){
+    	    //        for (int ig_ik=0; ig_ik<kpoints_[ik]->gkvec_.get()->num_gvec(); ig_ik++){
+    	    //            M(m, n, ib, ik)+= std::conj(
+			//				 					std::conj(aux_psi_kpb->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n)))*
+			//								 	Swf_k->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m))
+			//								     	 );
+//
+			//								//std::conj(kpoints_[ik]->spinor_wave_functions().pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(m)))*
+    	    //                                //aux_psi_kpb->pw_coeffs(ig_ik, wf::spin_index(0), wf::band_index(n));
+    	    //        }
+    	    //    }
+		    //}    
     	}//end ib
 
-    std::cout << "checking orthogonality..." << std::endl;
+    	std::cout << "checking orthogonality..." << std::endl;
 		for(int n=0; n<num_wann; n++){
 			for(int m=0; m<num_wann; m++){
 				for(int ig=0; ig<kpoints_[ik]->gkvec_.get()->num_gvec(); ig++){
 					atdotat(m,n,ik) += std::conj(kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig, wf::spin_index(0), wf::band_index(m)))*
 											//kpoints_[ik]->atomic_wave_functions().pw_coeffs(ig, wf::spin_index(0), wf::band_index(n));
 											kpoints_[ik]->atomic_wave_functions_S().pw_coeffs(ig, wf::spin_index(0), wf::band_index(n));
+				}
 			}
 		}
-	}
 
 
 		for(int n=0; n<kpoints_[ik]->spinor_wave_functions().num_wf(); n++){
@@ -1153,8 +1170,8 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
 		}
 	}
     }//end ik
-    write_Amn(Amn);
-    write_Mmn(Mmn,nnlist,nncell);
+    write_Amn(A);
+    write_Mmn(M,nnlist,nncell);
 
 
     //check orthogonality
@@ -1236,8 +1253,8 @@ void K_point_set::generate_w90_coeffs()//sirius::K_point_set& k_set__)
 		 		atomic_symbol,
 		 		atoms_cart.at(sddk::memory_t::host), 
 		 		&gamma_only, 
-		 		Mmn.at(sddk::memory_t::host),
-		 		Amn.at(sddk::memory_t::host),
+		 		M.at(sddk::memory_t::host),
+		 		A.at(sddk::memory_t::host),
 		 		eigval.at(sddk::memory_t::host),
 		 		U_matrix.at(sddk::memory_t::host),
 		 		U_dis.at(sddk::memory_t::host),
