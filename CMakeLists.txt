@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(SIRIUS VERSION 7.4.4)
+include(CMakePackageConfigHelpers)
+
+project(SIRIUS
+  DESCRIPTION "Domain specific library for electronic structure calculations"
+  HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
+  VERSION 7.4.4
+  LANGUAGES CXX C)
 
 # user variables
 set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
@@ -251,12 +257,18 @@ configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
                "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
                @ONLY)
 
+write_basic_package_version_file(
+  "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+  VERSION "${SIRIUS_VERSION}"
+  COMPATIBILITY SameMajorVersion)
+
 # install targets and modules
 include(cmake/env_vars_map.cmake)
 configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
                "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
                @ONLY)
 install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+              "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
               "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
               "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
