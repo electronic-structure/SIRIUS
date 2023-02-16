@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 
 project(SIRIUS VERSION 7.4.4)
 
@@ -57,7 +57,6 @@ add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
-
 
 include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
