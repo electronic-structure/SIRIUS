@@ -91,8 +91,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     paw_potential_->sync();
     switch (ctx_.num_mag_dims()) {
         case 0: {
-            symmetrize_function(unit_cell_.symmetry(), unit_cell_.comm(), paw_potential_->ae_component(0));
-            symmetrize_function(unit_cell_.symmetry(), unit_cell_.comm(), paw_potential_->ps_component(0));
+            sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, {&paw_potential_->ae_component(0)});
+            sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, {&paw_potential_->ps_component(0)});
             break;
         }
     }
