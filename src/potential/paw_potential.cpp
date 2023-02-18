@@ -89,13 +89,14 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     }
 
     paw_potential_->sync();
-    switch (ctx_.num_mag_dims()) {
-        case 0: {
-            sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, {&paw_potential_->ae_component(0)});
-            sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, {&paw_potential_->ps_component(0)});
-            break;
-        }
+    std::vector<Spheric_function_set<double>*> ae_comp;
+    std::vector<Spheric_function_set<double>*> ps_comp;
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        ae_comp.push_back(&paw_potential_->ae_component(j));
+        ps_comp.push_back(&paw_potential_->ps_component(j));
     }
+    sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ae_comp);
+    sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ps_comp);
 
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
