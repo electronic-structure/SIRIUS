@@ -504,32 +504,32 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
                 la::wrap(la::lib_t::blas).gemm('N', 'N', lmmax_ia, nrmax_ia, lmmax_ia, &alpha,
                     rotm.at(sddk::memory_t::host), rotm.ld(), (*frlm__[j])[ja].at(sddk::memory_t::host),
                     (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
-                    fsym_loc.at(sddk::memory_t::host, 0, 0, j, ialoc), fsym_loc.ld());
+                    ftmp.at(sddk::memory_t::host, 0, 0, j), ftmp.ld());
+                    //fsym_loc.at(sddk::memory_t::host, 0, 0, j, ialoc), fsym_loc.ld());
+            }
+            if (num_mag_dims__ == 0) {
+                for (int ir = 0; ir < nrmax_ia; ir++) {
+                    for (int lm = 0; lm < lmmax_ia; lm++) {
+                        fsym_loc(lm, ir, ialoc, 0) += ftmp(lm, ir, 0);
+                    }
+                }
             }
             /* apply S part to [0, 0, z] collinear vector */
             if (num_mag_dims__ == 1) {
                 for (int ir = 0; ir < nrmax_ia; ir++) {
                     for (int lm = 0; lm < lmmax_ia; lm++) {
-                        fsym_loc(lm, ir, ialoc, 1) *= S(2, 2);
+                        fsym_loc(lm, ir, ialoc, 1) += ftmp(lm, ir, 1) * S(2, 2);
                     }
                 }
             }
             /* apply 3x3 S-matrix to [x, y, z] vector */
             if (num_mag_dims__ == 3) {
-                ftmp.zero();
                 for (int k : {0, 1, 2}) {
                     for (int j : {0, 1, 2}) {
                         for (int ir = 0; ir < nrmax_ia; ir++) {
                             for (int lm = 0; lm < lmmax_ia; lm++) {
-                                ftmp(lm, ir, k) += S(k, j) * fsym_loc(lm, ir, 1 + j, ialoc);
+                                fsym_loc(lm, ir, 1 + k, ialoc) += ftmp(lm, ir, 1 + j) * S(k, j);
                             }
-                        }
-                    }
-                }
-                for (int k : {0, 1, 2}) {
-                    for (int ir = 0; ir < nrmax_ia; ir++) {
-                        for (int lm = 0; lm < lmmax_ia; lm++) {
-                            fsym_loc(lm, ir, ialoc, 1 + k) = ftmp(lm, ir, k);
                         }
                     }
                 }
