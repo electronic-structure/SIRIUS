@@ -483,7 +483,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
             spl_atoms.local_size());
     fsym_loc.zero();
 
-    sddk::mdarray<double, 3> ftmp(lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__);
+    sddk::mdarray<double, 3> ftmp(lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1);
 
     double alpha = 1.0 / sym__.size();
 
@@ -510,7 +510,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
             if (num_mag_dims__ == 0) {
                 for (int ir = 0; ir < nrmax_ia; ir++) {
                     for (int lm = 0; lm < lmmax_ia; lm++) {
-                        fsym_loc(lm, ir, ialoc, 0) += ftmp(lm, ir, 0);
+                        fsym_loc(lm, ir, 0, ialoc) += ftmp(lm, ir, 0);
                     }
                 }
             }
@@ -518,7 +518,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
             if (num_mag_dims__ == 1) {
                 for (int ir = 0; ir < nrmax_ia; ir++) {
                     for (int lm = 0; lm < lmmax_ia; lm++) {
-                        fsym_loc(lm, ir, ialoc, 1) += ftmp(lm, ir, 1) * S(2, 2);
+                        fsym_loc(lm, ir, 1, ialoc) += ftmp(lm, ir, 1) * S(2, 2);
                     }
                 }
             }
