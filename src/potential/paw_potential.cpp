@@ -44,8 +44,6 @@ void Potential::init_PAW()
 
         paw_potential_data_t ppd;
 
-        //ppd.atom_ = &atom;
-
         ppd.ia = ia;
 
         ppd.ia_paw = ia_paw;
@@ -63,6 +61,9 @@ void Potential::init_PAW()
 
     bool const is_global{true};
     paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, is_global);
+
+    paw_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
+                    [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
 
     /* initialize dij matrix */
     paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
@@ -140,7 +141,7 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     /* new array to store core and valence densities */
     Flm rho0(lmmax, rgrid__);
 
-    assert(rho0.size(0) == rho__[0]->size(0));
+    RTE_ASSERT(rho0.size(0) == rho__[0]->size(0));
 
     rho0.zero();
     rho0 += (*rho__[0]);
@@ -361,7 +362,7 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
     if (std::abs(energy.imag()) > 1e-10) {
         std::stringstream s;
         s << "PAW energy is not real: " << energy;
-        TERMINATE(s.str());
+        RTE_THROW(s.str());
     }
 
     return energy.real();

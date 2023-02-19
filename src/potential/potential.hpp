@@ -49,8 +49,10 @@ class Potential : public Field4D
 {
   private:
 
+    /// Alias to unit cell.
     Unit_cell& unit_cell_;
 
+    /// Communicator of the simulation.
     mpi::Communicator const& comm_;
 
     /// Hartree potential.
@@ -77,6 +79,7 @@ class Potential : public Field4D
     /** This function is set by PW code and is not computed here. */
     std::unique_ptr<Smooth_periodic_function<double>> dveff_;
 
+    /// Moments of the spherical Bessel functions.
     sddk::mdarray<double, 3> sbessel_mom_;
 
     sddk::mdarray<double, 3> sbessel_mt_;
@@ -131,7 +134,11 @@ class Potential : public Field4D
 
     std::vector<paw_potential_data_t> paw_potential_data_;
 
+    /// All-electron and pseudopotential parts of PAW potential.
     std::unique_ptr<PAW_field4D<double>> paw_potential_;
+
+    /// Exchange-correlation energy density of PAW atoms.
+    std::unique_ptr<Spheric_function_set<double>> paw_exc_;
 
     sddk::mdarray<double, 4> paw_dij_;
 
