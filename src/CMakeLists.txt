@@ -78,7 +78,9 @@ set(_SOURCES
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius "${_SOURCES};${_CUSOURCES};${_FSOURCES}")
 
-set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP LINKER_LANGUAGE HIP)
+if(USE_ROCM)
+  set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP LINKER_LANGUAGE HIP)
+endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
