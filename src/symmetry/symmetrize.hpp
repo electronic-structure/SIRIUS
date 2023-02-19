@@ -505,7 +505,6 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
                     rotm.at(sddk::memory_t::host), rotm.ld(), (*frlm__[j])[ja].at(sddk::memory_t::host),
                     (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
                     ftmp.at(sddk::memory_t::host, 0, 0, j), ftmp.ld());
-                    //fsym_loc.at(sddk::memory_t::host, 0, 0, j, ialoc), fsym_loc.ld());
             }
             if (num_mag_dims__ == 0) {
                 for (int ir = 0; ir < nrmax_ia; ir++) {
