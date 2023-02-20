@@ -49,11 +49,10 @@ class Potential : public Field4D
 {
   private:
 
-    /* Alias for spherical functions */
-    using sf = Spheric_function<function_domain_t::spectral, double>;
-
+    /// Alias to unit cell.
     Unit_cell& unit_cell_;
 
+    /// Communicator of the simulation.
     mpi::Communicator const& comm_;
 
     /// Hartree potential.
@@ -80,6 +79,7 @@ class Potential : public Field4D
     /** This function is set by PW code and is not computed here. */
     std::unique_ptr<Smooth_periodic_function<double>> dveff_;
 
+    /// Moments of the spherical Bessel functions.
     sddk::mdarray<double, 3> sbessel_mom_;
 
     sddk::mdarray<double, 3> sbessel_mt_;
@@ -119,30 +119,26 @@ class Potential : public Field4D
 
     struct paw_potential_data_t
     {
-        Atom* atom_{nullptr};
-
         int ia{-1};
 
         int ia_paw{-1};
-
-        std::vector<sf> ae_potential_;
-        std::vector<sf> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
         double core_energy_{0.0};
     };
 
-    std::vector<double> paw_hartree_energies_;
-    std::vector<double> paw_xc_energies_;
-    std::vector<double> paw_core_energies_;
-    std::vector<double> paw_one_elec_energies_;
-
     double paw_hartree_total_energy_{0.0};
     double paw_xc_total_energy_{0.0};
     double paw_total_core_energy_{0.0};
 
     std::vector<paw_potential_data_t> paw_potential_data_;
+
+    /// All-electron and pseudopotential parts of PAW potential.
+    std::unique_ptr<PAW_field4D<double>> paw_potential_;
+
+    /// Exchange-correlation energy density of PAW atoms.
+    std::unique_ptr<Spheric_function_set<double>> paw_exc_;
 
     sddk::mdarray<double, 4> paw_dij_;
 
@@ -165,12 +161,12 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
-                                  std::vector<sf const*> ps_density);
+    void calc_PAW_local_potential(int ia, paw_potential_data_t& pdd, std::vector<Flm const*> ae_density,
+                                  std::vector<Flm const*> ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
 
-    double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
+    double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
     double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
             sddk::mdarray<std::complex<double>, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
@@ -178,7 +174,7 @@ class Potential : public Field4D
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    sddk::mdarray<std::complex<double>,2> poisson_vmt(Periodic_function<double> const& rho__) const
+    auto poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 

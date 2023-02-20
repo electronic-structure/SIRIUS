@@ -25,82 +25,120 @@
 #ifndef __PAW_DENSITY_HPP__
 #define __PAW_DENSITY_HPP__
 
+#include "function3d/spheric_function_set.hpp"
+
 namespace sirius {
 
-class paw_density
+template <typename T>
+class PAW_field4D
 {
   private:
-    Simulation_context* ctx_{nullptr};
-    sddk::mdarray<Spheric_function<function_domain_t::spectral, double>, 2> ae_density_;
-    sddk::mdarray<Spheric_function<function_domain_t::spectral, double>, 2> ps_density_;
-    std::vector<int> atoms_;
-
-    paw_density(paw_density const& src__) = delete;
-    paw_density& operator=(paw_density const& src__) = delete;
-
+    /// Unit cell.
+    Unit_cell const& uc_;
+    /// All-electron part.
+    std::array<Spheric_function_set<T>, 4> ae_components_;
+    /// Pseudo-potential part.
+    std::array<Spheric_function_set<T>, 4> ps_components_;
+    /* copy constructor is forbidden */
+    PAW_field4D(PAW_field4D const& src__) = delete;
+    /* copy assignment operator is forbidden */
+    PAW_field4D& operator=(PAW_field4D const& src__) = delete;
   public:
-    paw_density()
+    PAW_field4D(Unit_cell const& uc__, bool is_global__)
+        : uc_{uc__}
     {
-    }
-
-    paw_density(Simulation_context& ctx__)
-        : ctx_(&ctx__)
-    {
-        auto& uc = ctx__.unit_cell();
-        if (!uc.num_paw_atoms()) {
+        if (!uc__.num_paw_atoms()) {
             return;
         }
 
-        using sf = Spheric_function<function_domain_t::spectral, double>;
+        auto ptr = (is_global__) ? nullptr : &uc__.spl_num_paw_atoms();
 
-        ae_density_ = sddk::mdarray<sf, 2>(ctx__.num_mag_dims() + 1, uc.spl_num_paw_atoms().local_size());
-        ps_density_ = sddk::mdarray<sf, 2>(ctx__.num_mag_dims() + 1, uc.spl_num_paw_atoms().local_size());
-
-        for (int i = 0; i < uc.spl_num_paw_atoms().local_size(); i++) {
-            int ia_paw      = uc.spl_num_paw_atoms(i);
-            int ia          = uc.paw_atom_index(ia_paw);
-            auto& atom      = uc.atom(ia);
-            auto& atom_type = atom.type();
-
-            int l_max      = 2 * atom_type.indexr().lmax_lo();
-            int lm_max_rho = utils::lmmax(l_max);
-
-            atoms_.push_back(ia);
-
-            /* allocate density arrays */
-            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++) {
-                ae_density_(j, i) = sf(lm_max_rho, atom.radial_grid());
-                ps_density_(j, i) = sf(lm_max_rho, atom.radial_grid());
-            }
+        for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
+            ae_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
+                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, ptr);
+            ps_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
+                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, ptr);
         }
     }
 
-    paw_density(paw_density&& src__) = default;
-    paw_density& operator=(paw_density&& src__) = default;
-
-    Spheric_function<function_domain_t::spectral, double>& ae_density(int i, int j)
+    void sync()
     {
-        return ae_density_(i, j);
+        for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
+            ae_components_[j].sync(uc_.spl_num_paw_atoms());
+            ps_components_[j].sync(uc_.spl_num_paw_atoms());
+        }
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& ae_density(int i, int j) const
+    void zero(int ia__)
     {
-        return ae_density_(i, j);
+        for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
+            ae_components_[j][ia__].zero(sddk::memory_t::host);
+            ps_components_[j][ia__].zero(sddk::memory_t::host);
+        }
     }
 
-    Spheric_function<function_domain_t::spectral, double>& ps_density(int i, int j)
+    void zero()
     {
-        return ps_density_(i, j);
+        for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
+            ae_components_[j].zero();
+            ps_components_[j].zero();
+        }
     }
 
-    Spheric_function<function_domain_t::spectral, double> const& ps_density(int i, int j) const
+    auto& ae_component(int i__)
     {
-        return ps_density_(i, j);
+        return ae_components_[i__];
     }
 
-    Simulation_context const& ctx() const
+    auto const& ae_component(int i__) const
     {
-        return *ctx_;
+        return ae_components_[i__];
+    }
+
+    auto& ps_component(int i__)
+    {
+        return ps_components_[i__];
+    }
+
+    auto const& ps_component(int i__) const
+    {
+        return ps_components_[i__];
+    }
+
+    auto const& unit_cell() const
+    {
+        return uc_;
+    }
+};
+
+template <typename T>
+class paw_density : public PAW_field4D<T>
+{
+  public:
+
+    paw_density(Unit_cell const& uc__)
+        : PAW_field4D<T>(uc__, false)
+    {
+    }
+
+    auto& ae_density(int i__, int ja__)
+    {
+        return this->ae_component(i__)[ja__];
+    }
+
+    auto const& ae_density(int i__, int ja__) const
+    {
+        return this->ae_component(i__)[ja__];
+    }
+
+    auto& ps_density(int i__, int ja__)
+    {
+        return this->ps_component(i__)[ja__];
+    }
+
+    auto const& ps_density(int i__, int ja__) const
+    {
+        return this->ps_component(i__)[ja__];
     }
 };
 

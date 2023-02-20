@@ -41,7 +41,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
 FunctionProperties<sddk::mdarray<std::complex<double>, 4>> density_function_property();
 
-FunctionProperties<paw_density> paw_density_function_property();
+FunctionProperties<paw_density<double>> paw_density_function_property();
 
 FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property();
 

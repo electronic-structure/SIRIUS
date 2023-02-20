@@ -313,63 +313,71 @@ FunctionProperties<sddk::mdarray<std::complex<double>, 4>> density_function_prop
                                                                 copy_function, axpy_function, rotate_function);
 }
 
-FunctionProperties<paw_density> paw_density_function_property()
+FunctionProperties<paw_density<double>> paw_density_function_property()
 {
-    auto global_size_func = [](paw_density const& x) -> double
+    auto global_size_func = [](paw_density<double> const& x) -> double
     {
-        return x.ctx().unit_cell().num_paw_atoms();
+        return x.unit_cell().num_paw_atoms();
     };
 
-    auto inner_prod_func = []( paw_density const& x,  paw_density const& y) -> double
+    auto inner_prod_func = [](paw_density<double> const& x, paw_density<double> const& y) -> double
     {
         /* do not contribute to mixing */
         return 0.0;
     };
 
-    auto scale_func = [](double alpha, paw_density& x) -> void
+    auto scale_func = [](double alpha, paw_density<double>& x) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) *= alpha;
-                x.ps_density(j, i) *= alpha;
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                x.ae_density(j, ia) *= alpha;
+                x.ps_density(j, ia) *= alpha;
             }
         }
     };
 
-    auto copy_function = [](paw_density const& x, paw_density& y) -> void
+    auto copy_function = [](paw_density<double> const& x, paw_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) >> y.ae_density(j, i);
-                x.ps_density(j, i) >> y.ps_density(j, i);
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                x.ae_density(j, ia) >> y.ae_density(j, ia);
+                x.ps_density(j, ia) >> y.ps_density(j, ia);
             }
         }
     };
 
-    auto axpy_function = [](double alpha, paw_density const& x, paw_density& y) -> void
+    auto axpy_function = [](double alpha, paw_density<double> const& x, paw_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                y.ae_density(j, i) = x.ae_density(j, i) * alpha + y.ae_density(j, i);
-                y.ps_density(j, i) = x.ps_density(j, i) * alpha + y.ps_density(j, i);
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                y.ae_density(j, ia) = x.ae_density(j, ia) * alpha + y.ae_density(j, ia);
+                y.ps_density(j, ia) = x.ps_density(j, ia) * alpha + y.ps_density(j, ia);
             }
         }
     };
 
-    auto rotate_function = [](double c, double s, paw_density& x, paw_density& y) -> void
+    auto rotate_function = [](double c, double s, paw_density<double>& x, paw_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
-                y.ae_density(j, i) = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                x.ae_density(j, ia) = x.ae_density(j, ia) * c + s * y.ae_density(j, ia);
+                y.ae_density(j, ia) = y.ae_density(j, ia) * c - s * x.ae_density(j, ia);
 
-                x.ps_density(j, i) = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
-                y.ps_density(j, i) = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
+                x.ps_density(j, ia) = x.ps_density(j, ia) * c + s * y.ps_density(j, ia);
+                y.ps_density(j, ia) = y.ps_density(j, ia) * c - s * x.ps_density(j, ia);
             }
         }
     };
 
-    return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scale_func, copy_function,
+    return FunctionProperties<paw_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
                                            axpy_function, rotate_function);
 }
 

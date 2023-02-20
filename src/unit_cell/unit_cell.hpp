@@ -204,6 +204,11 @@ class Unit_cell
         return static_cast<int>(paw_atom_index_.size());
     }
 
+    inline auto const& paw_atoms() const
+    {
+        return paw_atom_index_;
+    }
+
     /// Get split index of PAW atoms.
     inline auto const& spl_num_paw_atoms() const
     {
