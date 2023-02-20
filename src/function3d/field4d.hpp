@@ -54,6 +54,7 @@ class Field4D
                     Periodic_function<double>* gy__);
 
   public:
+    /// Constructor.
     Field4D(Simulation_context& ctx__, int lmmax__);
 
     /// Return scalar part of the field.

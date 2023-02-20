@@ -28,6 +28,7 @@
 #include <iomanip>
 #include "function3d/field4d.hpp"
 #include "function3d/periodic_function.hpp"
+#include "function3d/spheric_function_set.hpp"
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "paw_density.hpp"
@@ -185,7 +186,7 @@ class Density : public Field4D
     sddk::mdarray<std::complex<double>, 4> density_matrix_;
 
     /// Local fraction of atoms with PAW correction.
-    paw_density paw_density_;
+    std::unique_ptr<paw_density<double>> paw_density_;
 
     /// Occupation matrix of the LDA+U method.
     std::unique_ptr<Occupation_matrix> occupation_matrix_;
@@ -212,7 +213,7 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, paw_density,
+                                 Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, paw_density<double>,
                                  Hubbard_matrix>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
@@ -627,21 +628,21 @@ class Density : public Field4D
     void generate_paw_loc_density();
 
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
-    std::vector<Spheric_function<function_domain_t::spectral, double> const*> paw_ae_density(int idx__) const
+    auto paw_ae_density(int ia__) const
     {
         std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            result[j] = &paw_density_.ae_density(j, idx__);
+            result[j] = &paw_density_->ae_density(j, ia__);
         }
         return result;
     }
 
     /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
-    std::vector<Spheric_function<function_domain_t::spectral, double> const*> paw_ps_density(int idx__) const
+    auto paw_ps_density(int ia__) const
     {
         std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            result[j] = &paw_density_.ps_density(j, idx__);
+            result[j] = &paw_density_->ps_density(j, ia__);
         }
         return result;
     }

@@ -105,7 +105,7 @@ Density::Density(Simulation_context& ctx__)
     }
 
     if (unit_cell_.num_paw_atoms()) {
-        paw_density_ = paw_density(ctx_);
+        paw_density_ = std::make_unique<paw_density<double>>(unit_cell_);
     }
 
     update();
@@ -471,9 +471,9 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(int idx__)
+Density::generate_paw_atom_density(int ialoc__)
 {
-    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(idx__);
+    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     int ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
@@ -484,10 +484,7 @@ Density::generate_paw_atom_density(int idx__)
     Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),
                                   atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
 
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        paw_density_.ae_density(i, idx__).zero();
-        paw_density_.ps_density(i, idx__).zero();
-    }
+    paw_density_->zero(ia);
 
     /* get radial grid to divide density over r^2 */
     auto& grid = atom_type.radial_grid();
@@ -527,8 +524,8 @@ Density::generate_paw_atom_density(int idx__)
             }
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                auto& ae_dens = paw_density_.ae_density(imagn, idx__);
-                auto& ps_dens = paw_density_.ps_density(imagn, idx__);
+                auto& ae_dens = paw_density_->ae_density(imagn, ia);
+                auto& ps_dens = paw_density_->ps_density(imagn, ia);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -562,9 +559,11 @@ Density::generate_paw_loc_density()
         return;
     }
 
+    PROFILE("sirius::Density::generate_paw_loc_density");
+
     #pragma omp parallel for
-    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        generate_paw_atom_density(i);
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_paw_atoms().local_size(); ialoc++) {
+        generate_paw_atom_density(ialoc);
     }
 }
 
@@ -1863,8 +1862,8 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     /* create mixer */
     this->mixer_ =
         mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                             Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, paw_density, Hubbard_matrix>(
-            mixer_cfg__);
+                             Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>,
+                             paw_density<double>, Hubbard_matrix>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
@@ -1886,7 +1885,7 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
                                          unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(), unit_cell_.num_atoms());
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
+        this->mixer_->initialize_function<5>(paw_prop, *paw_density_, unit_cell_);
     }
     if (occupation_matrix_) {
         this->mixer_->initialize_function<6>(hubbard_prop, *occupation_matrix_, ctx_);
@@ -1910,7 +1909,7 @@ Density::mixer_input()
     mixer_->set_input<4>(density_matrix_);
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        mixer_->set_input<5>(paw_density_);
+        mixer_->set_input<5>(*paw_density_);
     }
 
     if (occupation_matrix_) {
@@ -1935,7 +1934,7 @@ Density::mixer_output()
     mixer_->get_output<4>(density_matrix_);
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        mixer_->get_output<5>(paw_density_);
+        mixer_->get_output<5>(*paw_density_);
     }
 
     if (occupation_matrix_) {
