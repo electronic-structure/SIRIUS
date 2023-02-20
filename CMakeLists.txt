@@ -1,40 +1,42 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SIRIUS VERSION 7.4.4)
+project(SIRIUS
+  DESCRIPTION "Domain specific library for electronic structure calculations"
+  HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
+  VERSION 7.4.4
+  LANGUAGES CXX C)
 
 # user variables
-set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
-set(CREATE_FORTRAN_BINDINGS ON  CACHE BOOL "build Fortran bindings")
-set(BUILD_DOCS              OFF CACHE BOOL "build doxygen doc")
-set(USE_ELPA                OFF CACHE BOOL "use scalapack")
-set(USE_MAGMA               OFF CACHE BOOL "use MAGMA")
-set(USE_NLCGLIB             OFF CACHE BOOL "enable nlcglib")
-set(USE_CUDA                OFF CACHE BOOL "use CUDA")
-set(USE_ROCM                OFF CACHE BOOL "use ROCM AMD GPU code")
-set(USE_NVTX                OFF CACHE BOOL "use Nvidia profiling tools library")
-set(USE_VDWXC               OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
-set(USE_MKL                 OFF CACHE BOOL "use Intel MKL")
-set(USE_CRAY_LIBSCI         OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
-set(USE_SCALAPACK           OFF CACHE BOOL "use scalapack")
-set(BUILD_APPS              ON  CACHE BOOL "build apps")
-set(DEBUG_MEMORY_POOL       OFF CACHE BOOL "explicit debugging of memory pool")
-set(USE_OPENMP              ON  CACHE BOOL "use OpenMP")
-set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with timer")
-set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
-set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
-set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
+option(CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
+option(CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
+option(BUILD_DOCS              "build doxygen doc" OFF)
+option(USE_ELPA                "use elpa" OFF)
+option(USE_MAGMA               "use MAGMA" OFF)
+option(USE_NLCGLIB             "enable nlcglib" OFF)
+option(USE_CUDA                "use CUDA" OFF)
+option(USE_ROCM                "use ROCM AMD GPU code" OFF)
+option(USE_NVTX                "use Nvidia profiling tools library" OFF)
+option(USE_VDWXC               "use libvdwxc for van der Walls corrections" OFF)
+option(USE_MKL                 "use Intel MKL" OFF)
+option(USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
+option(USE_SCALAPACK           "use scalapack" OFF)
+option(BUILD_APPS              "build apps" ON)
+option(DEBUG_MEMORY_POOL       "explicit debugging of memory pool" OFF)
+option(USE_OPENMP              "use OpenMP" ON)
+option(USE_PROFILER            "measure execution of functions with timer" ON)
+option(USE_MEMORY_POOL         "use memory pool" ON)
+option(USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
+option(BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
+option(USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
+
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
-set(USE_VCSQNM              OFF CACHE BOOL "use variable cell stabilized quasi Newton method")
-
 set_property(CACHE USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
 if(CREATE_FORTRAN_BINDINGS)
-  enable_language(CXX Fortran)
-else()
-  enable_language(CXX)
+  enable_language(Fortran)
 endif()
 
 set(CMAKE_CXX_STANDARD 14)
@@ -46,7 +48,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(CTest)
+  include(CTest)
 endif()
 
 if(USE_CUDA AND USE_ROCM)
@@ -92,7 +94,7 @@ endif()
 # use `CMAKE_SKIP_INSTALL_RPATH` to skip this
 # https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
 list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
-          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
+  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
 # skip RPATH if SIRIUS is installed to system directories
 if(isSystemDir STREQUAL "-1")
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -102,7 +104,7 @@ if(isSystemDir STREQUAL "-1")
     set(basePoint $ORIGIN)
   endif()
   file(RELATIVE_PATH relDir ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}
-                            ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+    ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
   set(CMAKE_INSTALL_RPATH ${basePoint} ${basePoint}/${relDir})
 endif()
 
@@ -122,9 +124,10 @@ find_package(GSL REQUIRED)
 find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
-include(cmake/hdf5_target.cmake)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
+
+include(cmake/hdf5_target.cmake)
 
 # Check if SpFFT support single precision if required
 set(USE_FP32_BOOL OFF)
@@ -189,21 +192,19 @@ find_package(costa CONFIG REQUIRED)
 
 if(USE_CUDA)
   enable_language(CUDA)
-  set(CMAKE_CUDA_STANDARD 14)
-  find_package(CUDA)
+  find_package(CUDAToolkit)
   include(cmake/cudalibs_target.cmake)
 endif(USE_CUDA)
 
 if(USE_ROCM)
+  enable_language(HIP)
   find_package(hip CONFIG REQUIRED)
   find_package(rocblas CONFIG REQUIRED)
-
   # FindHIP module provides compilation command for GPU code
   if(NOT HIP_HCC_FLAGS)
     message(STATUS "Using default AMD gpu targets: gfx803, gfx900, gfx906. Set HIP_HCC_FLAGS to override.")
     set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906)
   endif()
-  find_package(HIP MODULE REQUIRED)
 endif()
 
 # check if git command exists
@@ -213,48 +214,38 @@ find_program(GIT_EXE NAMES git)
 string(TIMESTAMP SIRIUS_TIMESTAMP "%Y-%m-%d %H:%M:%S")
 if(DEFINED GIT_EXE AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
   execute_process(COMMAND git rev-parse HEAD
-                  OUTPUT_VARIABLE SIRIUS_SHA
-                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                  ERROR_QUIET
-                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+    OUTPUT_VARIABLE SIRIUS_SHA
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
   execute_process(COMMAND git describe --all
-                  OUTPUT_VARIABLE SIRIUS_GIT_BRANCH
-                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                  ERROR_QUIET
-                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+    OUTPUT_VARIABLE SIRIUS_GIT_BRANCH
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
   message(STATUS "git hash ${SIRIUS_SHA}")
 else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
   set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")
 endif()
+
+include(CMakePackageConfigHelpers)
+
 configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/version.hpp"
-               @ONLY)
+  "${PROJECT_BINARY_DIR}/src/version.hpp"
+  @ONLY)
 
 # generate schema
 file(READ "${PROJECT_SOURCE_DIR}/src/context/input_schema.json" SIRIUS_INPUT_SCHEMA NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/src/context/input_schema.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
-               @ONLY)
+  "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
+  @ONLY)
 
 # generate atomic configurations
 file(READ "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json" SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
-               @ONLY)
-
-# install targets and modules
-include(cmake/env_vars_map.cmake)
-configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
-               @ONLY)
-install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
-              "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
-              "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius"
-        FILES_MATCHING PATTERN "*.cmake")
+  "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
+  @ONLY)
 
 # sirius library
 add_subdirectory(src)
@@ -281,3 +272,23 @@ if(BUILD_APPS)
   add_subdirectory(apps/utils)
 endif(BUILD_APPS)
 add_subdirectory(doc)
+
+write_basic_package_version_file(
+  "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+  VERSION "${SIRIUS_VERSION}"
+  COMPATIBILITY SameMajorVersion)
+
+# install targets and modules
+include(cmake/env_vars_map.cmake)
+configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
+  "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+  @ONLY)
+install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+  "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius"
+  FILES_MATCHING PATTERN "*.cmake")
+

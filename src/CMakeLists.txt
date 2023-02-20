@@ -8,10 +8,10 @@ endif()
 
 if(USE_CUDA OR USE_ROCM)
   file(GLOB_RECURSE CUFILES "gpu/*.cu")
-  set(_CUSOURCES "${CUFILES}")
+  set(_CU_SOURCES "${CUFILES}")
 endif()
 
-set(_SOURSES
+set(_SOURCES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
@@ -78,19 +78,21 @@ set(_SOURSES
 # create library with .cpp, .cu and .f90 sources
 
 if(USE_ROCM)
-  # required for linking with compiler other than hcc
-  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc)
-  # Dependency generation of FindHIP module creates a lot of warnings - disable for release mode
-  set(HIP_HCC_FLAGS_RELEASE ${HIP_HCC_FLAGS_RELEASE} -Wno-everything)
-  # FindHIP does not account for C++ standard
-  if(CMAKE_CXX_STANDARD)
-    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -std=gnu++${CMAKE_CXX_STANDARD})
-  endif()
   # macro from FindHIP package, which compiles all .cu files with hcc and cpp files with the set c++ compiler
-  HIP_ADD_LIBRARY(sirius SHARED "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-else()
-  add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+  set_source_files_properties(${_CU_SOURCES} PROPERTIES LANGUAGE HIP)
 endif()
+
+add_library(sirius "${_SOURCES};${_FSOURCES}")
+
+target_sources(sirius PUBLIC $<$<OR:$<BOOL:${USE_ROCM}>,$<BOOL:${USE_CUDA}>>:${_CU_SOURCES}>)
+
+set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES "gfx906;gfx908;gfx90a")
+set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES "60;70;75;80")
+set_target_properties(sirius PROPERTIES LINKER_LANGUAGE "CXX")
+
+target_compile_features(sirius PUBLIC cxx_std_17)
+target_compile_features(sirius PUBLIC c_std_99)
+target_compile_features(sirius PUBLIC cuda_std_11)
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
@@ -101,19 +103,16 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     sirius::libspg
                                     sirius::hdf5
                                     costa::costa
-                                    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::elpa>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::magma>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
-                                    $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
-                                    $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
+                                    $<$<BOOL:${USE_OPENMP}>:OpenMP::OpenMP_CXX>
+                                    $<$<BOOL:${USE_ELPA}>:sirius::elpa>
+                                    $<$<BOOL:${USE_MAGMA}>:sirius::magma>
+                                    $<$<BOOL:${USE_LIBVDWXC}>:sirius::libvdwxc>
+                                    $<$<BOOL:${USE_CUDA}>:sirius::cudalibs>
+                                    $<$<BOOL:${USE_NLCGLIB}>:nlcglib::nlcglib>
+                                    $<$<BOOL:${USE_KOKKOS}>:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
-                                    $<$<BOOL:${USE_ROCM}>:hip::host>
-                                    )
+                                    $<$<BOOL:${USE_ROCM}>:hip::host>)
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
@@ -130,7 +129,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_CUDA}>:SIRIUS_GPU SIRIUS_CUDA>
   $<$<BOOL:${USE_NVTX}>:SIRIUS_CUDA_NVTX>
   $<$<BOOL:${USE_MAGMA}>:SIRIUS_MAGMA>
-  $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
+  $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM __HIP_PLATFORM_AMD__=1>
   $<$<BOOL:${USE_VDWXC}>:SIRIUS_USE_VDWXC>
   $<$<BOOL:${USE_FP32_BOOL}>:USE_FP32>
   $<$<BOOL:${USE_VCSQNM}>:SIRIUS_VCSQNM>
