@@ -198,6 +198,11 @@ if(USE_CUDA)
 endif(USE_CUDA)
 
 if(USE_ROCM)
+  # safegaurd.
+  if (NOT DEFINED CMAKE_HIP_ARCHITECTURES)
+    set(CMAKE_HIP_ARCHITECTURES gfx801 gfx900 gfx90a)
+  endif()
+
   enable_language(HIP)
   find_package(rocblas CONFIG REQUIRED)
   set(CMAKE_HIP_STANDARD 14)
