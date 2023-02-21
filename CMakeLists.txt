@@ -3,38 +3,38 @@ cmake_minimum_required(VERSION 3.21)
 project(SIRIUS VERSION 7.4.4)
 
 # user variables
-set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
-set(CREATE_FORTRAN_BINDINGS ON  CACHE BOOL "build Fortran bindings")
-set(BUILD_DOCS              OFF CACHE BOOL "build doxygen doc")
-set(USE_ELPA                OFF CACHE BOOL "use scalapack")
-set(USE_MAGMA               OFF CACHE BOOL "use MAGMA")
-set(USE_NLCGLIB             OFF CACHE BOOL "enable nlcglib")
-set(USE_CUDA                OFF CACHE BOOL "use CUDA")
-set(USE_ROCM                OFF CACHE BOOL "use ROCM AMD GPU code")
-set(USE_NVTX                OFF CACHE BOOL "use Nvidia profiling tools library")
-set(USE_VDWXC               OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
-set(USE_MKL                 OFF CACHE BOOL "use Intel MKL")
-set(USE_CRAY_LIBSCI         OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
-set(USE_SCALAPACK           OFF CACHE BOOL "use scalapack")
-set(BUILD_APPS              ON  CACHE BOOL "build apps")
-set(DEBUG_MEMORY_POOL       OFF CACHE BOOL "explicit debugging of memory pool")
-set(USE_OPENMP              ON  CACHE BOOL "use OpenMP")
-set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with timer")
-set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
-set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
-set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
+
+option(CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
+option(CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
+option(BUILD_DOCS              "build doxygen doc" OFF)
+option(USE_ELPA                "use elpa" OFF)
+option(USE_MAGMA               "use MAGMA" OFF)
+option(USE_NLCGLIB             "enable nlcglib" OFF)
+option(USE_CUDA                "use CUDA" OFF)
+option(USE_ROCM                "use ROCM AMD GPU code" OFF)
+option(USE_NVTX                "use Nvidia profiling tools library" OFF)
+option(USE_VDWXC               "use libvdwxc for van der Walls corrections" OFF)
+option(USE_MKL                 "use Intel MKL" OFF)
+option(USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
+option(USE_SCALAPACK           "use scalapack" OFF)
+option(BUILD_APPS              "build apps" ON)
+option(DEBUG_MEMORY_POOL       "explicit debugging of memory pool" OFF)
+option(USE_OPENMP              "use OpenMP" ON)
+option(USE_PROFILER            "measure execution of functions with timer" ON)
+option(USE_MEMORY_POOL         "use memory pool" ON)
+option(USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
+option(BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
+option(USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
+
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
-set(USE_VCSQNM              OFF CACHE BOOL "use variable cell stabilized quasi Newton method")
 
 set_property(CACHE USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
 if(CREATE_FORTRAN_BINDINGS)
-  enable_language(CXX Fortran)
-else()
-  enable_language(CXX)
+  enable_language(Fortran)
 endif()
 
 set(CMAKE_CXX_STANDARD 14)
@@ -192,7 +192,8 @@ find_package(costa CONFIG REQUIRED)
 if(USE_CUDA)
   enable_language(CUDA)
   set(CMAKE_CUDA_STANDARD 14)
-  find_package(CUDA)
+  # note find cudatoolkit is called inside the include file. the
+  # sirius::cuda_libs target is also defined there
   include(cmake/cudalibs_target.cmake)
 endif(USE_CUDA)
 

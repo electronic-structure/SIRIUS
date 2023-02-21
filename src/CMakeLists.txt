@@ -78,8 +78,18 @@ set(_SOURCES
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius "${_SOURCES};${_CUSOURCES};${_FSOURCES}")
 
+target_compile_features(sirius PUBLIC cxx_std_14)
+target_compile_features(sirius PUBLIC c_std_99)
+target_compile_features(sirius PUBLIC cuda_std_14)
+set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 if(USE_ROCM)
-  set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP LINKER_LANGUAGE HIP)
+  set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
+  set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+endif()
+
+if(USE_CUDA)
+  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
@@ -96,8 +106,6 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:sirius::magma>
                                     $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
                                     $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
                                     $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
@@ -127,8 +135,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
-
-set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
