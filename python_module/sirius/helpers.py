@@ -110,8 +110,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     """
     from . import (Simulation_context,
                    K_point_set,
-                   DFT_ground_state,
-                   vector3d_double)
+                   DFT_ground_state)
     import json
     if isinstance(config, dict):
         ctx = Simulation_context(json.dumps(config))
@@ -122,7 +121,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     ctx.initialize()
     if 'vk' in siriusJson['parameters']:
         vk = siriusJson['parameters']['vk']
-        kPointSet = K_point_set(ctx, [vector3d_double(x) for x in vk])
+        kPointSet = K_point_set(ctx, vk)
     else:
         if 'shiftk' in siriusJson['parameters']:
             # make sure shiftk is not a list of floats
@@ -140,10 +139,10 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     dft_gs = DFT_ground_state(kPointSet)
     dft_gs.initial_state()
 
-    if 'potential_tol' not in siriusJson['parameters']:
-        potential_tol = 1e-5
+    if 'density_tol' not in siriusJson['parameters']:
+        density_tol = 1e-5
     else:
-        potential_tol = siriusJson['parameters']['potential_tol']
+        density_tol = siriusJson['parameters']['density_tol']
 
     if 'energy_tol' not in siriusJson['parameters']:
         energy_tol = 1e-5
@@ -152,7 +151,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     write_status = False
 
     initial_tol = 1e-2  # TODO: magic number
-    E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
+    E0 = dft_gs.find(density_tol, energy_tol, initial_tol, num_dft_iter, write_status)
 
     return {
         'E': E0,

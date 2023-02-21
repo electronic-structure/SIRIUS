@@ -1,3 +1,4 @@
+#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <sirius.hpp>
@@ -14,6 +15,7 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include "fft/gvec.hpp"
 #include "utils/json.hpp"
 #include "dft/energy.hpp"
 #include "magnetization.hpp"
@@ -522,13 +524,12 @@ PYBIND11_MODULE(py_sirius, m)
                 }
             },
             "ispn"_a, "fn"_a)
-        .def("gkvec_partition", &K_point<double>::gkvec_fft, py::return_value_policy::reference_internal)
-        .def("gkvec", &K_point<double>::gkvec, py::return_value_policy::reference_internal)
+        .def("gkvec_partition", &K_point<double>::gkvec_fft_sptr)
+        .def("gkvec", &K_point<double>::gkvec_sptr)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
-        .def("weight", &K_point<double>::weight);
-// .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions, py::const_),
-//              py::return_value_policy::reference_internal);
+        .def("weight", &K_point<double>::weight)
+        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions), py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -687,9 +688,10 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
 
-    py::class_<wf::num_mag_dims>(m, "num_mag_dims");
-    py::class_<wf::num_bands>(m, "num_bands");
-
+    py::class_<wf::num_mag_dims>(m, "num_mag_dims").def(py::init<int>());
+    py::class_<wf::num_bands>(m, "num_bands").def(py::init<int>());
+    py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
+    py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec");
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,

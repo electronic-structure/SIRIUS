@@ -74,7 +74,7 @@ class Energy:
         # copy to device (if needed)
         for ki in X.kvalues():
             psi = self.kpointset[ki].spinor_wave_functions()
-            if psi.preferred_memory_t() == MemoryEnum.device:
+            if self.ctx.processing_unit_memory_t() == MemoryEnum.device:
                 psi.copy_to_gpu()
         # update density, potential
         self.density.generate(
@@ -88,7 +88,7 @@ class Energy:
 
         for key, val in yn.items():
             k, ispn = key
-            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
             benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
             for j, ek in enumerate(benergies):
@@ -117,11 +117,11 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        from ..py_sirius import apply_hamiltonian
+        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands
 
         ctx = self.kpointset.ctx()
         num_sc = ctx.num_spins()
-        H0 = Hamiltonian0(self.potential)
+        H0 = Hamiltonian0(self.potential, False)
         if isinstance(cn, PwCoeffs):
             assert ki is None
             assert ispn is None
@@ -129,12 +129,14 @@ class ApplyHamiltonian:
             for k, ispn_coeffs in cn.by_k().items():
                 kpoint = self.kpointset[k]
                 # spins might have different number of bands ...
-                num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
+                # num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
+                md = num_mag_dims(ctx.num_mag_dims())
+                nb = num_bands(ctx.num_bands())
                 Psi_x = Wave_functions(
-                    kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc
+                    kpoint.gkvec(), md, nb, ctx.processing_unit_memory_t()
                 )
                 Psi_y = Wave_functions(
-                    kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc
+                    kpoint.gkvec(), md, nb, ctx.processing_unit_memory_t()
                 )
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, : val.shape[1]] = val
