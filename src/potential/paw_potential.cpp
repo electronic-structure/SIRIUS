@@ -62,7 +62,10 @@ void Potential::init_PAW()
     bool const is_global{true};
     paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, is_global);
 
-    paw_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
+    paw_ae_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
+                    [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
+
+    paw_ps_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
                     [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
 
     /* initialize dij matrix */
@@ -134,7 +137,7 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
 double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
     Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
-    std::vector<Flm>& vxc__)
+    std::vector<Flm>& vxc__, Flm& exclm__)
 {
     int lmmax = utils::lmmax(lmax__);
 
@@ -164,10 +167,8 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
         vxc.push_back(&vxc__[j]);
     }
 
-    Flm exclm(lmmax, rgrid__);
-
-    sirius::xc_mt(rgrid__, sht__, xc_func__, num_mag_dims__, rho, vxc, &exclm);
-    return inner(exclm, rho0);
+    sirius::xc_mt(rgrid__, sht__, xc_func__, num_mag_dims__, rho, vxc, &exclm__);
+    return inner(exclm__, rho0);
 }
 
 double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm& v_tot__)
@@ -215,13 +216,13 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     }
 
     auto ae_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density,
-                                          ae_core, vxc);
+                                          ae_core, vxc, (*paw_ae_exc_)[ia]);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ae_component(i)[ia] += vxc[i];
     }
 
     auto ps_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density,
-                                          ps_core, vxc);
+                                          ps_core, vxc, (*paw_ps_exc_)[ia]);
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ps_component(i)[ia] += vxc[i];

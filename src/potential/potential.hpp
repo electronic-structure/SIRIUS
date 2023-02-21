@@ -138,7 +138,8 @@ class Potential : public Field4D
     std::unique_ptr<PAW_field4D<double>> paw_potential_;
 
     /// Exchange-correlation energy density of PAW atoms.
-    std::unique_ptr<Spheric_function_set<double>> paw_exc_;
+    std::unique_ptr<Spheric_function_set<double>> paw_ps_exc_;
+    std::unique_ptr<Spheric_function_set<double>> paw_ae_exc_;
 
     sddk::mdarray<double, 4> paw_dij_;
 
