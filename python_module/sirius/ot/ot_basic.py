@@ -1,9 +1,12 @@
+import typing
+from ..coefficient_array import CoefficientArray
 from ..py_sirius import (
     ewald_energy,
     energy_bxc,
     Wave_functions,
     MemoryEnum,
     Hamiltonian0,
+    total_energy
 )
 from ..coefficient_array import PwCoeffs
 import numpy as np
@@ -55,7 +58,7 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def compute(self, X):
+    def compute(self, X: PwCoeffs, fn: typing.Optional[CoefficientArray] = None):
         """
         Keyword Arguments:
         X  -- PW coefficients
@@ -64,7 +67,9 @@ class Energy:
         Etot -- total energy
         HX   -- Hamiltonian@X
         """
-        assert isinstance(X, PwCoeffs)
+
+        if fn:
+            self.kpointset.fn = fn
 
         for key, val in X.items():
             k, ispn = key
@@ -75,6 +80,7 @@ class Energy:
         for ki in X.kvalues():
             psi = self.kpointset[ki].spinor_wave_functions()
             if self.ctx.processing_unit_memory_t() == MemoryEnum.device:
+                raise Exception("not yet updated")
                 psi.copy_to_gpu()
         # update density, potential
         self.density.generate(
@@ -96,11 +102,18 @@ class Energy:
 
         self.kpointset.sync_band_energy()
 
-        Etot = pp_total_energy(self.potential, self.density, self.kpointset, self.ctx)
+        # Etot = pp_total_energy(self.potential, self.density, self.kpointset, self.ctx)
+        Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential,
+                            ewald_energy(self.ctx, self.ctx.gvec(), self.ctx.unit_cell()))
 
         return Etot, yn
 
-    def __call__(self, cn):
+    def __call__(self, cn: PwCoeffs, fn: typing.Optional[CoefficientArray] = None):
+
+        # update occupation numbers if needed
+        if fn:
+            self.kpointset.fn = fn
+
         E, _ = self.compute(cn)
         return E
 
