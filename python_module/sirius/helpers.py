@@ -69,14 +69,12 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     cn     -- numpy array
     ispn   -- spin component
     """
-    from .ot import matview
 
     if isinstance(cn, PwCoeffs):
         assert (ki is None)
         assert (ispn is None)
         for key, v in cn.items():
             k, ispn = key
-            n, m = v.shape
             psi = kpointset[k].spinor_wave_functions()
             psi.pw_coeffs(ispn)[:, :v.shape[1]] = v
             on_device = psi.preferred_memory_t() == MemoryEnum.device
