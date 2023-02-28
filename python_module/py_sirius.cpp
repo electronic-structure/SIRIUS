@@ -694,7 +694,9 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<wf::num_mag_dims>(m, "num_mag_dims").def(py::init<int>());
     py::class_<wf::num_bands>(m, "num_bands").def(py::init<int>());
     py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
-    py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec");
+    py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec")
+        .def("count", &fft::Gvec::count)
+        .def("gkvec_cart", &fft::Gvec::gkvec_cart<sddk::index_domain_t::global>);
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 
@@ -725,36 +727,7 @@ PYBIND11_MODULE(py_sirius, m)
                                                    matrix_storage.at(sddk::memory_t::host), obj);
             },
             py::keep_alive<0, 1>())
-        // .def("copy_to_gpu",
-        //      [](wf::Wave_functions<double>& wf) {
-        //          /* is_on_device -> true if all internal storage is allocated on device */
-        //          bool is_on_device = true;
-        //          for (int i = 0; i < wf.num_sc(); ++i) {
-        //              is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-        //          }
-        //          if (!is_on_device) {
-        //              for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //                  wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
-        //              }
-        //          }
-        //          for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //              wf.copy_to(spin_range(ispn), memory_t::device, 0, wf.num_wf());
-        //          }
-        //      })
-        // .def("copy_to_cpu",
-        //      [](wf::Wave_functions<double>& wf) {
-        //          /* is_on_device -> true if all internal storage is allocated on device */
-        //          bool is_on_device = true;
-        //          for (int i = 0; i < wf.num_sc(); ++i) {
-        //              is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-        //          }
-        //          if (!is_on_device) {
-        //          } else {
-        //              for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //                  wf.copy_to(spin_range(ispn), memory_t::host, 0, wf.num_wf());
-        //              }
-        //          }
-        //      })
+
         .def("allocated_on_device", [](wf::Wave_functions<double>& wf) {
             bool is_on_device = true;
             for (int i = 0; i < wf.num_sc(); ++i) {
