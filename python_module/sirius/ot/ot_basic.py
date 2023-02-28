@@ -5,6 +5,7 @@ from ..py_sirius import (
     energy_bxc,
     Wave_functions,
     MemoryEnum,
+    CopyEnum,
     Hamiltonian0,
     total_energy
 )
@@ -73,15 +74,9 @@ class Energy:
 
         for key, val in X.items():
             k, ispn = key
-            self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[
-                :, : val.shape[1]
-            ] = val
-        # copy to device (if needed)
-        for ki in X.kvalues():
-            psi = self.kpointset[ki].spinor_wave_functions()
-            if self.ctx.processing_unit_memory_t() == MemoryEnum.device:
-                raise Exception("not yet updated")
-                psi.copy_to_gpu()
+            psi = self.kpointset[k].spinor_wave_functions()
+            psi.pw_coeffs(ispn)[:, : val.shape[1]] = val
+
         # update density, potential
         self.density.generate(
             self.kpointset, symmetrize=self.ctx.use_symmetry(), transform_to_rg=True
@@ -102,9 +97,9 @@ class Energy:
 
         self.kpointset.sync_band_energy()
 
-        # Etot = pp_total_energy(self.potential, self.density, self.kpointset, self.ctx)
         Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential,
                             ewald_energy(self.ctx, self.ctx.gvec(), self.ctx.unit_cell()))
+
 
         return Etot, yn
 
@@ -133,6 +128,7 @@ class ApplyHamiltonian:
         from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands
 
         ctx = self.kpointset.ctx()
+        pmem_t = ctx.processing_unit_memory_t()
         num_sc = ctx.num_spins()
         H0 = Hamiltonian0(self.potential, False)
         if isinstance(cn, PwCoeffs):
@@ -146,13 +142,14 @@ class ApplyHamiltonian:
                 md = num_mag_dims(ctx.num_mag_dims())
                 nb = num_bands(ctx.num_bands())
                 Psi_x = Wave_functions(
-                    kpoint.gkvec(), md, nb, ctx.processing_unit_memory_t()
+                    kpoint.gkvec(), md, nb, MemoryEnum.host
                 )
                 Psi_y = Wave_functions(
-                    kpoint.gkvec(), md, nb, ctx.processing_unit_memory_t()
+                    kpoint.gkvec(), md, nb, MemoryEnum.host
                 )
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, : val.shape[1]] = val
+
                 apply_hamiltonian(H0, kpoint, Psi_y, Psi_x)
 
                 w = kpoint.weight()

@@ -687,13 +687,24 @@ PYBIND11_MODULE(py_sirius, m)
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
-
+    py::enum_<wf::copy_to>(m, "CopyEnum")
+        .value("none", wf::copy_to::none)
+        .value("device", wf::copy_to::device)
+        .value("host", wf::copy_to::host);
     py::class_<wf::num_mag_dims>(m, "num_mag_dims").def(py::init<int>());
     py::class_<wf::num_bands>(m, "num_bands").def(py::init<int>());
     py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
     py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec");
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
-    py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
+    py::class_<wf::device_memory_guard>(m, "device_memory_guard");
+
+    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m, "Wave_functions_base")
+        .def("copy_to", &wf::Wave_functions_base<double>::copy_to)
+        .def("allocate", &wf::Wave_functions_base<double>::allocate)
+        .def("memory_guard", &wf::Wave_functions<double>::memory_guard, "mem"_a, "copy_to"_a)
+        .def("deallocate", &wf::Wave_functions_base<double>::deallocate);
+
+    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)
