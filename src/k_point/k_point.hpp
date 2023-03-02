@@ -29,6 +29,7 @@
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
 #include "fft/fft.hpp"
+#include "wave_functions.hpp"
 
 namespace sirius {
 
@@ -469,16 +470,24 @@ class K_point
         return *fv_states_;
     }
 
-    inline auto const& spinor_wave_functions() const
+    inline wf::Wave_functions<T> const& spinor_wave_functions() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline auto& spinor_wave_functions()
+    inline wf::Wave_functions<T>& spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
+        return *spinor_wave_functions_;
+        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
+    }
+
+    inline auto& spinor_wave_functions2()
+    {
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        return *spinor_wave_functions_;
+        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
     }
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on

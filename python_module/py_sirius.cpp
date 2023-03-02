@@ -1,3 +1,4 @@
+#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <sirius.hpp>
@@ -14,6 +15,7 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include "fft/gvec.hpp"
 #include "utils/json.hpp"
 #include "dft/energy.hpp"
 #include "magnetization.hpp"
@@ -522,13 +524,12 @@ PYBIND11_MODULE(py_sirius, m)
                 }
             },
             "ispn"_a, "fn"_a)
-        .def("gkvec_partition", &K_point<double>::gkvec_fft, py::return_value_policy::reference_internal)
-        .def("gkvec", &K_point<double>::gkvec, py::return_value_policy::reference_internal)
+        .def("gkvec_partition", &K_point<double>::gkvec_fft_sptr)
+        .def("gkvec", &K_point<double>::gkvec_sptr)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
-        .def("weight", &K_point<double>::weight);
-// .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions, py::const_),
-//              py::return_value_policy::reference_internal);
+        .def("weight", &K_point<double>::weight)
+        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions), py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -686,12 +687,26 @@ PYBIND11_MODULE(py_sirius, m)
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
-
-    py::class_<wf::num_mag_dims>(m, "num_mag_dims");
-    py::class_<wf::num_bands>(m, "num_bands");
-
+    py::enum_<wf::copy_to>(m, "CopyEnum")
+        .value("none", wf::copy_to::none)
+        .value("device", wf::copy_to::device)
+        .value("host", wf::copy_to::host);
+    py::class_<wf::num_mag_dims>(m, "num_mag_dims").def(py::init<int>());
+    py::class_<wf::num_bands>(m, "num_bands").def(py::init<int>());
+    py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
+    py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec")
+        .def("count", &fft::Gvec::count)
+        .def("gkvec_cart", &fft::Gvec::gkvec_cart<sddk::index_domain_t::global>);
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
-    py::class_<wf::Wave_functions<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
+    py::class_<wf::device_memory_guard>(m, "device_memory_guard");
+
+    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m, "Wave_functions_base")
+        .def("copy_to", &wf::Wave_functions_base<double>::copy_to)
+        .def("allocate", &wf::Wave_functions_base<double>::allocate)
+        .def("memory_guard", &wf::Wave_functions<double>::memory_guard, "mem"_a, "copy_to"_a)
+        .def("deallocate", &wf::Wave_functions_base<double>::deallocate);
+
+    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)
@@ -712,36 +727,7 @@ PYBIND11_MODULE(py_sirius, m)
                                                    matrix_storage.at(sddk::memory_t::host), obj);
             },
             py::keep_alive<0, 1>())
-        // .def("copy_to_gpu",
-        //      [](wf::Wave_functions<double>& wf) {
-        //          /* is_on_device -> true if all internal storage is allocated on device */
-        //          bool is_on_device = true;
-        //          for (int i = 0; i < wf.num_sc(); ++i) {
-        //              is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-        //          }
-        //          if (!is_on_device) {
-        //              for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //                  wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
-        //              }
-        //          }
-        //          for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //              wf.copy_to(spin_range(ispn), memory_t::device, 0, wf.num_wf());
-        //          }
-        //      })
-        // .def("copy_to_cpu",
-        //      [](wf::Wave_functions<double>& wf) {
-        //          /* is_on_device -> true if all internal storage is allocated on device */
-        //          bool is_on_device = true;
-        //          for (int i = 0; i < wf.num_sc(); ++i) {
-        //              is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-        //          }
-        //          if (!is_on_device) {
-        //          } else {
-        //              for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-        //                  wf.copy_to(spin_range(ispn), memory_t::host, 0, wf.num_wf());
-        //              }
-        //          }
-        //      })
+
         .def("allocated_on_device", [](wf::Wave_functions<double>& wf) {
             bool is_on_device = true;
             for (int i = 0; i < wf.num_sc(); ++i) {
@@ -780,6 +766,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
+    m.def("total_energy", &total_energy);
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
@@ -798,6 +785,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::module smearing_module = m.def_submodule("smearing");
     {
         py::module mpm = smearing_module.def_submodule("methfessel_paxton");
+        mpm.def("entropy", py::vectorize(&smearing::methfessel_paxton::entropy), "x"_a, "w"_a, "n"_a);
         mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a);
         mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a);
         mpm.def("occupancy_deriv", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv), "x"_a, "w"_a, "n"_a);
@@ -805,16 +793,18 @@ PYBIND11_MODULE(py_sirius, m)
     }
     {
         py::module mcold = smearing_module.def_submodule("cold");
+        mcold.def("entropy", py::vectorize(&smearing::cold::entropy), "x"_a, "w"_a);
         mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
         mcold.def("occupancy", py::vectorize(&smearing::cold::occupancy), "x"_a, "w"_a);
-        mcold.def("occupancy_deriv", py::vectorize(&smearing::cold::occupancy_deriv), "x"_a, "w"_a);
+        // mcold.def("occupancy_deriv", py::vectorize(&smearing::cold::occupancy_deriv), "x"_a, "w"_a);
         mcold.def("occupancy_deriv2", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
     }
     {
         py::module mfd = smearing_module.def_submodule("fermi_dirac");
+        mfd.def("entropy", py::vectorize(&smearing::fermi_dirac::entropy), "x"_a, "w"_a);
         mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
         mfd.def("occupancy", py::vectorize(&smearing::fermi_dirac::occupancy), "x"_a, "w"_a);
-        mfd.def("occupancy_deriv", py::vectorize(&smearing::fermi_dirac::occupancy_deriv), "x"_a, "w"_a);
+        // mfd.def("occupancy_deriv", py::vectorize(&smearing::fermi_dirac::occupancy_deriv), "x"_a, "w"_a);
         mfd.def("occupancy_deriv2", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
     }
     {

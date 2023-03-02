@@ -94,7 +94,7 @@ def occupancy_admissible_ds(y, fn, mag=False):
 
         MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [rcvBuf, MPI.DOUBLE],
                                  op=MPI.MIN)
-        return np.asscalar(rcvBuf)
+        return np.ndarray.item(rcvBuf)
     else:
         return _occupancy_admissible_ds(y, fn, mag)
 
@@ -216,7 +216,7 @@ class FreeEnergy:
         entropy = np.array(0.0, dtype=np.float64)
         MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [entropy, MPI.DOUBLE],
                                  op=MPI.SUM)
-        return E + np.asscalar(entropy)
+        return E + np.ndarray.item(entropy)
 
     def grad(self, cn, fn):
         """
