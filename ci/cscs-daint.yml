@@ -1,9 +1,34 @@
 include:
-  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.cscs.yml'
+  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
 
 stages:
+  - baseimage
   - build
   - test
+
+build base image:
+  extends: .container-builder
+  stage: baseimage
+  # we create a tag that depends on the SHA value of ci/base.Dockerfile, this way
+  # a new base image is only built when the SHA of this file changes
+  # If there are more dependency files that should change the tag-name of the base container
+  # image, they can be added too.
+  # Since the base image name is runtime dependent, we need to carry the value of it to
+  # the following jobs via a dotenv file.
+  before_script:
+  - DOCKER_TAG=`sha256sum ci/base.Dockerfile | head -c 16`
+  - export PERSIST_IMAGE_NAME=$CSCS_REGISTRY_PATH/base/sirius-ci:$DOCKER_TAG
+  - echo "BASE_IMAGE=$PERSIST_IMAGE_NAME" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+  variables:
+    DCKERFILE: ci/base.Dockerfile
+    # change to 'always' if you want to rebuild, even if target tag exists already (if-not-exists is the default, i.e. we could also skip the variable)
+    CSCS_REBUILD_POLICY: if-not-exists
+    DOCKER_BUILD_ARGS: '["CI_PROJECT_DIR=$CI_PROJECT_DIR"]'
+
+
 
 .build_common:
   tags: [docker_jfrog]
