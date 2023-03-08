@@ -462,7 +462,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy("hartree contribution", 0.5 * evha);
         write_energy("xc contribution", eexc);
         write_energy("ewald contribution", ewald_energy_);
-        write_energy("PAW contribution", potential_.PAW_total_energy());
+        write_energy("PAW contribution", potential_.PAW_total_energy(density_));
     }
     write_energy("smearing (-TS)", s_sum);
     write_energy("SCF correction", this->scf_correction_energy_);

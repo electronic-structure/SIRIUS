@@ -670,24 +670,29 @@ class Potential : public Field4D
 
     void generate_PAW_effective_potential(Density const& density);
 
-    double PAW_hartree_total_energy() const
+    //double PAW_hartree_total_energy() const
+    //{
+    //    return paw_hartree_total_energy_;
+    //}
+
+    //double PAW_xc_total_energy() const
+    //{
+    //    return paw_xc_total_energy_;
+    //}
+    double PAW_xc_total_energy(Density const& density__) const
     {
-        return paw_hartree_total_energy_;
+        return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
+            inner(*paw_ps_exc_, density__.paw_density().ps_component(0));
     }
 
-    double PAW_xc_total_energy() const
-    {
-        return paw_xc_total_energy_;
-    }
+    //double PAW_total_core_energy() const
+    //{
+    //    return paw_total_core_energy_;
+    //}
 
-    double PAW_total_core_energy() const
+    double PAW_total_energy(Density const& density__) const
     {
-        return paw_total_core_energy_;
-    }
-
-    double PAW_total_energy() const
-    {
-        return paw_hartree_total_energy_ + paw_xc_total_energy_;
+        return paw_hartree_total_energy_ + PAW_xc_total_energy(density__);
     }
 
     double PAW_one_elec_energy(Density const& density__) const

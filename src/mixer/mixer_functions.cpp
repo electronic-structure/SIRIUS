@@ -313,20 +313,20 @@ FunctionProperties<sddk::mdarray<std::complex<double>, 4>> density_function_prop
                                                                 copy_function, axpy_function, rotate_function);
 }
 
-FunctionProperties<paw_density<double>> paw_density_function_property()
+FunctionProperties<PAW_density<double>> paw_density_function_property()
 {
-    auto global_size_func = [](paw_density<double> const& x) -> double
+    auto global_size_func = [](PAW_density<double> const& x) -> double
     {
         return x.unit_cell().num_paw_atoms();
     };
 
-    auto inner_prod_func = [](paw_density<double> const& x, paw_density<double> const& y) -> double
+    auto inner_prod_func = [](PAW_density<double> const& x, PAW_density<double> const& y) -> double
     {
         /* do not contribute to mixing */
         return 0.0;
     };
 
-    auto scale_func = [](double alpha, paw_density<double>& x) -> void
+    auto scale_func = [](double alpha, PAW_density<double>& x) -> void
     {
         for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
             int ipaw = x.unit_cell().spl_num_paw_atoms(i);
@@ -338,7 +338,7 @@ FunctionProperties<paw_density<double>> paw_density_function_property()
         }
     };
 
-    auto copy_function = [](paw_density<double> const& x, paw_density<double>& y) -> void
+    auto copy_function = [](PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
         for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
             int ipaw = x.unit_cell().spl_num_paw_atoms(i);
@@ -350,7 +350,7 @@ FunctionProperties<paw_density<double>> paw_density_function_property()
         }
     };
 
-    auto axpy_function = [](double alpha, paw_density<double> const& x, paw_density<double>& y) -> void
+    auto axpy_function = [](double alpha, PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
         for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
             int ipaw = x.unit_cell().spl_num_paw_atoms(i);
@@ -362,7 +362,7 @@ FunctionProperties<paw_density<double>> paw_density_function_property()
         }
     };
 
-    auto rotate_function = [](double c, double s, paw_density<double>& x, paw_density<double>& y) -> void
+    auto rotate_function = [](double c, double s, PAW_density<double>& x, PAW_density<double>& y) -> void
     {
         for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
             int ipaw = x.unit_cell().spl_num_paw_atoms(i);
@@ -377,7 +377,7 @@ FunctionProperties<paw_density<double>> paw_density_function_property()
         }
     };
 
-    return FunctionProperties<paw_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
+    return FunctionProperties<PAW_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
                                            axpy_function, rotate_function);
 }
 
