@@ -3,8 +3,8 @@ include:
 
 stages:
   - baseimage
-  - build
-  - test
+#  - build
+#  - test
 
 build base image:
   extends: .container-builder
