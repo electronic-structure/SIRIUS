@@ -23,7 +23,7 @@ build base image:
     reports:
       dotenv: build.env
   variables:
-    DCKERFILE: ci/base.Dockerfile
+    DOCKERFILE: ci/base.Dockerfile
     # change to 'always' if you want to rebuild, even if target tag exists already (if-not-exists is the default, i.e. we could also skip the variable)
     CSCS_REBUILD_POLICY: if-not-exists
     DOCKER_BUILD_ARGS: '["CUDA_ARCH=60", "CI_PROJECT_DIR=$CI_PROJECT_DIR"]'
