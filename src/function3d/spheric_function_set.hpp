@@ -21,6 +21,9 @@ class Spheric_function_set
 
     bool all_atoms_{false};
 
+    template <typename F>
+    friend F inner(Spheric_function_set<F> const& f1__, Spheric_function_set<F> const& f2__);
+
     void init(std::function<int(int)> lmax__)
     {
         func_.resize(unit_cell_->num_atoms());
@@ -117,6 +120,31 @@ class Spheric_function_set
         }
     }
 };
+
+template <typename T>
+inline T inner(Spheric_function_set<T> const& f1__, Spheric_function_set<T> const& f2__)
+{
+    RTE_ASSERT(f1__.spl_atoms_ == f2__.spl_atoms_);
+
+    T result{0};
+
+    auto const& comm = f1__.unit_cell_->comm();
+
+    if (f1__.spl_atoms_) {
+        for (int i = 0; i < f1__.spl_atoms_->local_size(); i++) {
+            int ia = f1__.atoms_[(*f1__.spl_atoms_)[i]];
+            result += inner(f1__[ia], f2__[ia]);
+        }
+    } else {
+        sddk::splindex<sddk::splindex_t::block> spl_atoms(f1__.atoms_.size(), comm.size(), comm.rank());
+        for (int i = 0; i < spl_atoms.local_size(); i++) {
+            int ia = f1__.atoms_[spl_atoms[i]];
+            result += inner(f1__[ia], f2__[ia]);
+        }
+    }
+    comm.allreduce(&result, 1);
+    return result;
+}
 
 }
 

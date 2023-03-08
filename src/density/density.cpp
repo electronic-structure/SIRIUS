@@ -105,7 +105,7 @@ Density::Density(Simulation_context& ctx__)
     }
 
     if (unit_cell_.num_paw_atoms()) {
-        paw_density_ = std::make_unique<paw_density<double>>(unit_cell_);
+        paw_density_ = std::make_unique<PAW_density<double>>(unit_cell_);
     }
 
     update();
@@ -1863,7 +1863,7 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     this->mixer_ =
         mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
                              Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>,
-                             paw_density<double>, Hubbard_matrix>(mixer_cfg__);
+                             PAW_density<double>, Hubbard_matrix>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 

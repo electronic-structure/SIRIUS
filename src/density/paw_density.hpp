@@ -112,11 +112,11 @@ class PAW_field4D
 };
 
 template <typename T>
-class paw_density : public PAW_field4D<T>
+class PAW_density : public PAW_field4D<T>
 {
   public:
 
-    paw_density(Unit_cell const& uc__)
+    PAW_density(Unit_cell const& uc__)
         : PAW_field4D<T>(uc__, false)
     {
     }
