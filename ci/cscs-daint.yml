@@ -51,7 +51,7 @@ cuda-10:
     IMAGE: $CSCS_REGISTRY_PATH/cuda-10:$CI_COMMIT_REF_NAME
 
 .run_tests:
-  extends: .daint
+  extends: .container-runner-daint-gpu
   stage: test
   script:
     - cd /sources/spack-build
