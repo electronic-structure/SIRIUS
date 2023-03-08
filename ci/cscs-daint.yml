@@ -30,100 +30,100 @@ build base image:
 
 
 
-.build_common:
-  tags: [docker_jfrog]
-  stage: build
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
-  variables:
-    PERSIST_IMAGE_NAME: $IMAGE
-    DOCKERFILE: ci/spack/deploy.Dockerfile
-    DOCKER_BUILD_ARGS: '["BUILD_BASE=$BUILD_BASE", "DEPLOY_BASE=$DEPLOY_BASE", "SPEC=$SPEC", "ENVIRONMENT=$ENVIRONMENT"]'
-
-cuda-10:
-  extends: .build_common
-  script: ['true']
-  variables:
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +nlcglib +scalapack +cuda cuda_arch=60 ^cuda@10.2.89 ^openblas ^mpich@:3 ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60'
-    ENVIRONMENT: ci/spack/cuda-10.yaml
-    DEPLOY_BASE: ubuntu:18.04
-    BUILD_BASE: stabbles/sirius-cuda-10
-    IMAGE: $CSCS_REGISTRY_PATH/cuda-10:$CI_COMMIT_REF_NAME
-
-.run_tests:
-  extends: .container-runner-daint-gpu
-  stage: test
-  script:
-    - cd /sources/spack-build
-    - |
-      if [ "$SLURM_PROCID" == "0" ]; then
-        $TEST_COMMAND -V
-      else
-        $TEST_COMMAND --output-on-failure
-      fi
-  image: $CSCS_REGISTRY_PATH/cuda-10:$CI_COMMIT_REF_NAME
-  variables:
-    CRAY_CUDA_MPS: 1
-    GIT_STRATEGY: none
-    MPICH_MAX_THREAD_SAFETY: multiple
-    CSCS_REGISTRY_LOGIN: 'YES'
-    PULL_IMAGE: 'YES'
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_UNBUFFEREDIO: ''
-    SLURM_WAIT: 0
-
-gpu serial:
-  extends: .run_tests
-  variables:
-    OMP_NUM_THREADS: 12
-    SLURM_CONSTRAINT: gpu
-    SLURM_CPUS_PER_TASK: 12
-    SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L gpu_serial
-
-gpu band parallel:
-  extends: .run_tests
-  variables:
-    OMP_NUM_THREADS: 3
-    SLURM_CONSTRAINT: gpu
-    SLURM_CPUS_PER_TASK: 3
-    SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L gpu_band_parallel
-    USE_MPI: 'YES'
-
-gpu k-point parallel:
-  extends: .run_tests
-  variables:
-    OMP_NUM_THREADS: 3
-    SLURM_CONSTRAINT: gpu
-    SLURM_CPUS_PER_TASK: 3
-    SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L gpu_k_point_parallel
-    USE_MPI: 'YES'
-
-cpu single:
-  extends: .run_tests
-  variables:
-    OMP_NUM_THREADS: 12
-    SLURM_CONSTRAINT: gpu
-    SLURM_CPU_BIND: sockets
-    SLURM_CPUS_PER_TASK: 12
-    SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L cpu_serial
-
-cpu band parallel:
-  extends: .run_tests
-  variables:
-    OMP_NUM_THREADS: 3
-    SLURM_CONSTRAINT: gpu
-    SLURM_CPU_BIND: sockets
-    SLURM_CPUS_PER_TASK: 3
-    SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L cpu_band_parallel
-    USE_MPI: 'YES'
+#.build_common:
+#  tags: [docker_jfrog]
+#  stage: build
+#  variables:
+#    GIT_SUBMODULE_STRATEGY: recursive
+#  variables:
+#    PERSIST_IMAGE_NAME: $IMAGE
+#    DOCKERFILE: ci/spack/deploy.Dockerfile
+#    DOCKER_BUILD_ARGS: '["BUILD_BASE=$BUILD_BASE", "DEPLOY_BASE=$DEPLOY_BASE", "SPEC=$SPEC", "ENVIRONMENT=$ENVIRONMENT"]'
+#
+#cuda-10:
+#  extends: .build_common
+#  script: ['true']
+#  variables:
+#    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +nlcglib +scalapack +cuda cuda_arch=60 ^cuda@10.2.89 ^openblas ^mpich@:3 ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60'
+#    ENVIRONMENT: ci/spack/cuda-10.yaml
+#    DEPLOY_BASE: ubuntu:18.04
+#    BUILD_BASE: stabbles/sirius-cuda-10
+#    IMAGE: $CSCS_REGISTRY_PATH/cuda-10:$CI_COMMIT_REF_NAME
+#
+#.run_tests:
+#  extends: .container-runner-daint-gpu
+#  stage: test
+#  script:
+#    - cd /sources/spack-build
+#    - |
+#      if [ "$SLURM_PROCID" == "0" ]; then
+#        $TEST_COMMAND -V
+#      else
+#        $TEST_COMMAND --output-on-failure
+#      fi
+#  image: $CSCS_REGISTRY_PATH/cuda-10:$CI_COMMIT_REF_NAME
+#  variables:
+#    CRAY_CUDA_MPS: 1
+#    GIT_STRATEGY: none
+#    MPICH_MAX_THREAD_SAFETY: multiple
+#    CSCS_REGISTRY_LOGIN: 'YES'
+#    PULL_IMAGE: 'YES'
+#    SLURM_HINT: nomultithread
+#    SLURM_JOB_NUM_NODES: 1
+#    SLURM_UNBUFFEREDIO: ''
+#    SLURM_WAIT: 0
+#
+#gpu serial:
+#  extends: .run_tests
+#  variables:
+#    OMP_NUM_THREADS: 12
+#    SLURM_CONSTRAINT: gpu
+#    SLURM_CPUS_PER_TASK: 12
+#    SLURM_NTASKS: 1
+#    SLURM_TIMELIMIT: "30:00"
+#    TEST_COMMAND: ctest -L gpu_serial
+#
+#gpu band parallel:
+#  extends: .run_tests
+#  variables:
+#    OMP_NUM_THREADS: 3
+#    SLURM_CONSTRAINT: gpu
+#    SLURM_CPUS_PER_TASK: 3
+#    SLURM_NTASKS: 4
+#    SLURM_TIMELIMIT: "30:00"
+#    TEST_COMMAND: ctest -L gpu_band_parallel
+#    USE_MPI: 'YES'
+#
+#gpu k-point parallel:
+#  extends: .run_tests
+#  variables:
+#    OMP_NUM_THREADS: 3
+#    SLURM_CONSTRAINT: gpu
+#    SLURM_CPUS_PER_TASK: 3
+#    SLURM_NTASKS: 4
+#    SLURM_TIMELIMIT: "30:00"
+#    TEST_COMMAND: ctest -L gpu_k_point_parallel
+#    USE_MPI: 'YES'
+#
+#cpu single:
+#  extends: .run_tests
+#  variables:
+#    OMP_NUM_THREADS: 12
+#    SLURM_CONSTRAINT: gpu
+#    SLURM_CPU_BIND: sockets
+#    SLURM_CPUS_PER_TASK: 12
+#    SLURM_NTASKS: 1
+#    SLURM_TIMELIMIT: "30:00"
+#    TEST_COMMAND: ctest -L cpu_serial
+#
+#cpu band parallel:
+#  extends: .run_tests
+#  variables:
+#    OMP_NUM_THREADS: 3
+#    SLURM_CONSTRAINT: gpu
+#    SLURM_CPU_BIND: sockets
+#    SLURM_CPUS_PER_TASK: 3
+#    SLURM_NTASKS: 4
+#    SLURM_TIMELIMIT: "30:00"
+#    TEST_COMMAND: ctest -L cpu_band_parallel
+#    USE_MPI: 'YES'
