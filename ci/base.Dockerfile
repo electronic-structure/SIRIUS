@@ -38,6 +38,8 @@ RUN spack external find --all
 # find compilers
 RUN spack compiler find
 
+RUN spack config add packages:all:variants:cuda_arch=${CUDA_ARCH}
+
 # install MPICH
 RUN spack install --only=dependencies mpich@${MPICH_VERSION} %gcc
 RUN spack install mpich@${MPICH_VERSION} %gcc
