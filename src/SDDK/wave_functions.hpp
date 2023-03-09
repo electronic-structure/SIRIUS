@@ -1410,7 +1410,7 @@ void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas
             auto spy = y__->actual_spin_index(s);
             auto spx = x__ ? x__->actual_spin_index(s) : spy;
 
-            auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(idx__[0]));
+            auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(0));
             auto ptr_x = x__->at(mem__, 0, spx, wf::band_index(0));
 
             sddk::mdarray<F, 1> alpha(const_cast<F*>(alphas__), n__);
