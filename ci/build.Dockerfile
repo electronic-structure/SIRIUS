@@ -4,6 +4,6 @@ FROM $BASE_IMAGE
 ARG SPEC
 ARG CI_PROJECT_DIR
 
-RUN spack show $SPEC
+RUN spack spec $SPEC
 
 RUN cd $CI_PROJECT_DIR && ls
