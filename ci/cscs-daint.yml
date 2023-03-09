@@ -36,7 +36,7 @@ build image:
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
     DOCKERFILE: ci/build.Dockerfile
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=${SPEC}"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=${SPEC}", "CI_PROJECT_DIR=$CI_PROJECT_DIR"]'
 
 
 
