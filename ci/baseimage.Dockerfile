@@ -31,14 +31,14 @@ RUN git clone https://github.com/spack/spack.git
 
 # set the location of packages built by spack
 RUN spack config add config:install_tree:root:/opt/local
+# set cuda_arch for all packages
+RUN spack config add packages:all:variants:cuda_arch=${CUDA_ARCH}
 
 # find all external packages
 RUN spack external find --all
 
 # find compilers
 RUN spack compiler find
-
-RUN spack config add packages:all:variants:cuda_arch=${CUDA_ARCH}
 
 # install MPICH
 RUN spack install --only=dependencies mpich@${MPICH_VERSION} %gcc

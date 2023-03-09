@@ -1,0 +1,6 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE
+
+ARG SPEC
+
+RUN spack show $SPEC
