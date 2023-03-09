@@ -30,6 +30,8 @@
 #include <numeric>
 #include <cmath>
 #include <iostream>
+#include <iomanip>      // std::setw
+#include <glob.h>
 #include <complex>
 #include "SDDK/wave_functions.hpp"
 #include "band/residuals.hpp"
@@ -45,6 +47,11 @@ void repack(std::vector<T> &data, std::vector<int> const&ids) {
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
+#ifndef NDEBUG
+    for (size_t i = ids.size(); i < data.size(); ++i) {
+        data[i] = -1;
+    }
+#endif
 }
 
 template<class Matrix, class Prec, class StateVec>
@@ -109,19 +116,88 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         if (not_converged.empty()) {
             break;
         }
+        std::cout << "************************************************************" << std::endl;
+        std::cout << "************************************************************" << std::endl;
+        std::cout << "DEBUG: cg iteration: " << iter+1 << "/" << maxiters << std::endl;
+        std::cout << "DEBUG: Unconverged vectors/bands:  " << num_unconverged << std::endl;
+        std::cout << "DEBUG: Printing (indexes of) not_converged vectors/bands" << std::endl;
+        for(auto elem : not_converged)
+            std::cout << "\t" << elem;
+        std::cout << std::endl;
+
+        std::cout << "DEBUG: ids before and after repack. size: " << ids.size() << std::endl;
+        for(auto elem : ids)
+            std::cout << "\t" << elem;
+        std::cout << std::endl;
+
+        repack(ids, not_converged); // use repack on 1-D vector
+
+        for(auto elem : ids)
+            std::cout << "\t" << elem;
+        std::cout << std::endl;
+        std::cout << "DEBUG: rhos before and after repack. size: " << rhos.size() << std::endl;
+        for(auto elem : rhos) {
+            std::cout << 
+            // std::setprecision(std::numeric_limits<double>::max_digits10)
+            std::setprecision(9)
+            << std::scientific << "\t" << elem;
+        }
+        std::cout << std::endl;
 
         // Move everything contiguously to the front,
         // except for X, since that's updated in-place.
-        repack(ids, not_converged);
         repack(rhos, not_converged);
         repack(rhos_old, not_converged);
+        for(auto elem : rhos)
+            std::cout << "\t" << elem;
+        std::cout << std::endl;
+        // update the host data by copying from the GPU ===============================
+        if (is_device_memory(C.mem)) {
+            X.x->copy_to(sddk::memory_t::host);
+            R.x->copy_to(sddk::memory_t::host);
+            U.x->copy_to(sddk::memory_t::host);
+            C.x->copy_to(sddk::memory_t::host);
+        }
+        // Sum the elements
+        std::cout << "DEBUG: Sum of StateVecs before and after repack. X R U C. size: " << n << "\t" << X.x->ld() << std::endl;
+        for (int ib = 0; ib < n; ib++) {
+            std::complex<double> sum_X{}, sum_R{}, sum_U{}, sum_C{};
+            for (int ig = 0; ig < X.x->ld(); ig++) {
+                sum_X += X.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_R += R.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_U += U.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_C += C.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+            }
+            std::cout << "\t Sum of band " << std::setw(3) << ib << " = "
+                    << sum_X << "\t" << sum_R << "\t" << sum_U << "\t" << sum_C << std::endl;
+        }
+        std::cout << std::endl;
 
-        U.repack(not_converged);
+        U.repack(not_converged); // use repack from the Wave_functions_wrap
         C.repack(not_converged);
         R.repack(not_converged);
+        // update the host data by copying from the GPU ===============================
+        if (is_device_memory(C.mem)) {
+            X.x->copy_to(sddk::memory_t::host);
+            R.x->copy_to(sddk::memory_t::host);
+            U.x->copy_to(sddk::memory_t::host);
+            C.x->copy_to(sddk::memory_t::host);
+        }
+        for (int ib = 0; ib < n; ib++) {
+            std::complex<double> sum_X{}, sum_R{}, sum_U{}, sum_C{};
+            for (int ig = 0; ig < X.x->ld(); ig++) {
+                sum_X += X.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_R += R.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_U += U.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+                sum_C += C.x->pw_coeffs(ig, wf::spin_index(0), wf::band_index(ib));
+            }
+            std::cout << "\t Sum of band " << std::setw(3) << ib << " = "
+                    << sum_X << "\t" << sum_R << "\t" << sum_U << "\t" << sum_C << std::endl;
+        }
+        std::cout << std::endl;
 
-        A.repack(not_converged);
-        P.repack(not_converged);
+        A.repack(not_converged); // use repack from the Linear_response_operator
+        P.repack(not_converged); // use repack from the preconditioner
 
         // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
@@ -147,6 +223,10 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
             alphas[i] = rhos[i] / sigmas[i];
         }
 
+        std::cout << "DEBUG: Size and contents of alpha vector: " << alphas.size() << std::endl;
+        for(auto jjj : alphas)
+            std::cout << "\t" << jjj << std::endl;
+        std::cout << std::endl;
         // X[:, ids[i]] += alpha[i] * U[:, i]
         X.block_axpy_scatter(alphas, U, ids, num_unconverged);
 
@@ -154,9 +234,36 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
             alphas[i] *= -1;
         }
 
+        // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
     }
 
+    for (size_t i = 0; i < residual_history.size(); i++) {
+        std::cout << "vector " << std::setw(3) << i << " needed ";
+        std::cout << std::setw(3) << residual_history[i].size() << " iterations to converge" << std::endl;
+    }
+    glob_t gl;
+    size_t num = 0;
+    if(glob("./residuals/*.csv", GLOB_NOSORT, NULL, &gl) == 0)
+        num = gl.gl_pathc;
+    globfree(&gl);
+    std::cout << "\n" << "Residuals printed in file with id: " << num+1 << std::endl;
+    std::ofstream out("./residuals/residuals_" + std::to_string(num+1) + ".csv");
+    for (size_t iter_res = 0; iter_res < maxiters; iter_res++) {
+        for (size_t vec = 0; vec < n; vec++) {
+            if (iter_res < residual_history[vec].size()) {
+                // the residual has a real part only
+                out << std::setprecision(9) << std::scientific << std::real(residual_history[vec][iter_res]) <<'\t';
+                // out << std::setprecision(std::numeric_limits<double>::max_digits10) << std::scientific << std::real(residual_history[vec][iter_res]) <<'\t';
+            }
+            else {
+                out << "      NaN      \t"; // correct spacing with 9 digits
+                // out << "         NaN         \t"; // correct spacing with full digits
+            }
+        }
+        out << '\n';
+    }
+    out.close();
     return residual_history;
 }
 }
@@ -257,6 +364,11 @@ struct Smoothed_diagonal_preconditioner {
         for (size_t i = 0; i < ids.size(); ++i) {
             eigvals[i] = eigvals[ids[i]];
         }
+#ifndef NDEBUG
+        for (size_t i = ids.size(); i < eigvals.size(); ++i) {
+            eigvals[i] = -1;
+        }
+#endif
     }
 };
 
@@ -302,6 +414,12 @@ struct Linear_response_operator {
         for (size_t i = 0; i < ids.size(); ++i) {
             min_eigenvals[i] = min_eigenvals[ids[i]];
         }
+#ifndef NDEBUG
+        // for debugging purposes, can be commented out in production runs
+        for (size_t i = ids.size(); i < min_eigenvals.size(); ++i) {
+            min_eigenvals[i] = -1;
+        }
+#endif
     }
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
