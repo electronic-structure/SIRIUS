@@ -6,4 +6,6 @@ ARG CI_PROJECT_DIR
 
 RUN spack spec $SPEC
 
-RUN cd $CI_PROJECT_DIR && ls
+COPY . /sirius-src
+
+RUN cd /sirius-src && ls
