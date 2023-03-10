@@ -8,6 +8,6 @@ COPY . /sirius-src
 
 RUN spack --color always -e sirius-env dev-build --source-path /sirius-src $SPEC
 
-RUN cd /sirius-src/ && ln -s spack-build-* spack-build && cd spack-build && ls
+RUN cd /sirius-src && ln -s spack-build-* spack-build && ls
 
 #cd /sirius-src && mkdir build && cd build && spack -e sirius-env build-env cmake .. && make
