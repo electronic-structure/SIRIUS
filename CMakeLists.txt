@@ -46,6 +46,10 @@ endif()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CUDA_STANDARD 14)
 
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+  set(CMAKE_CUDA_ARCHITECTURES "60;70;80")
+endif()
+
 # This ensures that -std=c++14 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -197,13 +201,9 @@ find_package(costa CONFIG REQUIRED)
 
 if(USE_CUDA)
   enable_language(CUDA)
-  set(CMAKE_CUDA_STANDARD 14)
   # note find cudatoolkit is called inside the include file. the
   # sirius::cuda_libs target is also defined there
   include(cmake/cudalibs_target.cmake)
-  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES "60;70;80")
-  endif()
 endif(USE_CUDA)
 
 if(USE_ROCM)
