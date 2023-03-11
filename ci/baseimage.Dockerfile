@@ -48,7 +48,7 @@ RUN spack install mpich@${MPICH_VERSION} %gcc
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop%gcc build_type=Release +fortran +elpa +tests +scalapack +cuda cuda_arch=${CUDA_ARCH} ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spla ^spfft+cuda cuda_arch=${CUDA_ARCH} ^elpa@2022.11.001 +cuda cuda_arch=${CUDA_ARCH}"
+ENV SPEC="sirius@develop%gcc build_type=Release +fortran +elpa +tests +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spla ^spfft+cuda ^elpa+cuda"
 
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
