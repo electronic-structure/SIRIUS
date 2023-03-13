@@ -56,6 +56,3 @@ RUN spack install --only=dependencies $SPEC
 RUN spack env create --with-view /opt/sirius sirius-env
 RUN spack -e sirius-env add $SPEC
 
-# derived containers should install SIRIUS first
-#RUN spack -e sirius-env install
-

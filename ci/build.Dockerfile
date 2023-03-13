@@ -3,12 +3,15 @@ FROM $BASE_IMAGE
 
 ARG SPEC
 
-RUN spack spec $SPEC
+# show the spack's spec
+RUN spack spec $SPEC -I
 
+# copy source files of the pull request into container
 COPY . /sirius-src
 
+# build SIRIUS
 RUN spack --color always -e sirius-env dev-build --source-path /sirius-src $SPEC
 
-RUN cd /sirius-src && ln -s $(find . -name "spack-build-*" -type d) spack-build && ls
-
-#cd /sirius-src && mkdir build && cd build && spack -e sirius-env build-env cmake .. && make
+# we need a fixed name for the build directory
+# here is a hacky workaround to link ./spack-build-{hash} to ./spack-build
+RUN cd /sirius-src && ln -s $(find . -name "spack-build-*" -type d) spack-build
