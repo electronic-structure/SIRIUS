@@ -4,7 +4,7 @@ FROM $BASE_IMAGE
 ARG SPEC
 
 # show the spack's spec
-RUN spack spec $SPEC -I
+RUN spack spec -I $SPEC
 
 # copy source files of the pull request into container
 COPY . /sirius-src
