@@ -310,6 +310,45 @@ class Crystal_symmetry
  *  \f[
  *      {\bf v'} = {\bf L} {\bf R} {\bf L}^{-1} {\bf v}
  *  \f]
+ *
+ *  \section section2 Application of symmetry operation to the wave-functions
+ *
+ *  We want to compute the action of the crystal symmetry operation on the Bloch wave-functions expanded in
+ *  plane-waves:
+ *  \f[
+ *    \{ {\bf R} | {\bf t} \} \psi_{\bf k}({\bf r}) = \sum_{\bf G} e^{i({\bf G+k})  \{ {\bf R} | {\bf t} \}^{-1}{\bf r}}
+ *    \psi_{\bf k}({\bf G}) = \sum_{\bf G} e^{i({\bf G+k}){\bf R}^{-1}{\bf r}} e^{-i({\bf G+k}){\bf R}^{-1}{\bf t}}
+ *    \psi_{\bf k}({\bf G})
+ *  \f]
+ *
+ *  The action of \f$ {\bf R}^{-1} \f$ can be moved from \f$ {\bf r} \f$ to reciprocal vectors:
+ *  \f[
+ *    ({\bf G+k}){\bf R}^{-1}{\bf r} = {\bf R}^{-T}({\bf G+k}){\bf r}
+ *  \f]
+ *  and now
+ *  \f[
+ *  {\bf R}^{-T}({\bf G+k}) = {\bf R}^{-T}{\bf G} + {\bf R}^{-T}{\bf k} = {\bf G}' + {\bf k'}
+ *  \f]
+ *  where \f$ {\bf R}^{-T}{\bf k} = {\bf k'} + {\bf G}_{0} \f$, \f$ {\bf k'} \f$ belongs to the 1st Brillouin
+ *  zone and \f$ {\bf G}' =  {\bf R}^{-T}{\bf G} + {\bf G}_{0} \f$.
+ *
+ *  The original vector \f$ {\bf G} \f$ can be expressed as following:
+ *  \f[
+ *   {\bf G} =  {\bf R}^{T}({\bf G}' - {\bf G}_{0})
+ *  \f]
+ *
+ *  Because  \f$ {\bf G} \f$ and  \f$ {\bf G}' \f$ are related, we can switch from summation over \f$ {\bf G} \f$
+ *  to summation over \f$ {\bf G}' \f$ and rewrite the \f$  \{ {\bf R} | {\bf t} \} \psi_{\bf k}({\bf r}) \f$
+ *  in the following way:
+ *  \f[
+ *   \{ {\bf R} | {\bf t} \} \psi_{\bf k}({\bf r}) = \sum_{\bf G'} e^{i({\bf G'+k'}){\bf r}} e^{-i({\bf G'+k'}){\bf t}}
+ *    \psi_{\bf k}({\bf R}^{T}({\bf G}' - {\bf G}_{0})) =  \sum_{\bf G'} e^{i({\bf G'+k'}){\bf r}} \psi_{\bf k'}({\bf G'})
+ *  \f]
+ *  where
+ *  \f[
+ *    \psi_{\bf k'}({\bf G'}) = e^{-i({\bf G'+k'}){\bf t}}\psi_{\bf k}({\bf R}^{T}({\bf G}' - {\bf G}_{0}))
+ *  \f]
+ *
  */
 
-#endif // __UNIT_CELL_SYMMETRY_H__
+#endif // __CRYSTAL_SYMMETRY_HPP__
