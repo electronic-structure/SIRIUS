@@ -1,4 +1,3 @@
-#FROM nvcr.io/nvidia/nvhpc:22.9-devel-cuda_multi-ubuntu22.04 as builder
 FROM ubuntu:22.04 as builder
 
 ARG CUDA_ARCH=80
