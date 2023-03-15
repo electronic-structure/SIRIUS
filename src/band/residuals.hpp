@@ -167,6 +167,7 @@ apply_preconditioner(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands
         wf::Wave_functions<T>& res__, sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
         sddk::mdarray<T, 1> const& eval__)
 {
+    PROFILE("sirius::apply_preconditioner");
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         auto sp = res__.actual_spin_index(s);
         if (is_host_memory(mem__)) {
