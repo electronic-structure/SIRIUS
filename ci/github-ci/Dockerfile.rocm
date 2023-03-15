@@ -1,13 +1,15 @@
 FROM ubuntu:20.04
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PATH="$PATH:/spack/bin"
+ARG ROCM_ARCH=gfx90a
 
-SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
 
-#
-#ENV FORCE_UNSAFE_CONFIGURE 1
-#
+ENV FORCE_UNSAFE_CONFIGURE 1
+
+ENV PATH="/spack/bin:${PATH}"
+
+ENV CMAKE_VERSION=3.25.2
+
 RUN apt-get -y update && apt-get install -y apt-utils
 
 # install basic tools
@@ -17,31 +19,32 @@ RUN apt-get install -y gcc g++ gfortran clang git make unzip \
   patchelf
 
 # install CMake
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.24.1/cmake-3.24.1-linux-x86_64.tar.gz -O cmake.tar.gz && \
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz -O cmake.tar.gz && \
     tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
 RUN git clone https://github.com/spack/spack.git
 
+# set the location of packages built by spack
+RUN spack config add config:install_tree:root:/opt/local
+# set cuda_arch for all packages
+RUN spack config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
+
 # find gcc and clang compilers
-RUN /spack/bin/spack compiler find
-RUN /spack/bin/spack external find --all
+RUN spack compiler find
+RUN spack external find --all
 
 # create GCC build env.
-RUN /spack/bin/spack env create --with-view /sirius-install gcc-build-env
+RUN spack env create --with-view /sirius-install gcc-build-env
 
 # indtall big packages
-RUN /spack/bin/spack -e gcc-build-env install hip%gcc target=x86_64
-RUN /spack/bin/spack -e gcc-build-env install rocblas%gcc target=x86_64
-RUN /spack/bin/spack -e gcc-build-env install hipfft%gcc target=x86_64
+RUN spack -e gcc-build-env install hip%gcc target=x86_64
+RUN spack -e gcc-build-env install rocblas%gcc target=x86_64
+RUN spack -e gcc-build-env install hipfft%gcc target=x86_64
 
-ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm amdgpu_target=gfx90a ^openblas ^mpich ^spfft target=x86_64"
+ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft target=x86_64"
 
-RUN /spack/bin/spack -e gcc-build-env spec $SPEC_GCC
+RUN spack -e gcc-build-env spec $SPEC_GCC
 
-RUN /spack/bin/spack -e gcc-build-env install --only=dependencies $SPEC_GCC
+RUN spack -e gcc-build-env install --only=dependencies $SPEC_GCC
 
-
-#WORKDIR /root
-#
-#ENTRYPOINT ["bash", "-l"]
