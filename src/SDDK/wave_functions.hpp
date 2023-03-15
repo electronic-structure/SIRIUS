@@ -1314,6 +1314,7 @@ template <typename T, typename F>
 void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const* alpha__,
         wf::Wave_functions<T> const* x__, F const* beta__, wf::Wave_functions<T>* y__)
 {
+    PROFILE("wf::axpby");
     if (x__) {
         RTE_ASSERT(x__->ld() == y__->ld());
     }
@@ -1388,6 +1389,7 @@ template <typename T, typename F, typename G>
 void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas__,
         Wave_functions<T> const* x__, G const* idx__, Wave_functions<T>* y__, int n__)
 {
+    PROFILE("wf::axpy_scatter");
     if (is_host_memory(mem__)) {
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             auto spy = y__->actual_spin_index(s);
@@ -1440,6 +1442,7 @@ template <typename T, typename F = T>
 void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range br_in__,
           Wave_functions<F>& out__, wf::spin_index s_out__, wf::band_range br_out__)
 {
+    PROFILE("wf::copy");
     RTE_ASSERT(br_in__.size() == br_out__.size());
     if (in__.ld() != out__.ld()) {
         std::stringstream s;

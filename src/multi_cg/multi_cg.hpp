@@ -59,6 +59,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
     size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false
 ) {
+    PROFILE("sirius_api::sirius_linear_solver::multi_cg");
     auto n = X.cols();
 
     U.zero();
@@ -294,6 +295,7 @@ struct Wave_functions_wrap {
 
     void repack(std::vector<int> const& ids__)
     {
+        PROFILE("sirius_api::sirius_linear_solver::multi_cg::repack_wf_wrap");
         int j{0};
         for (auto i : ids__) {
             if (j != i) {
@@ -425,6 +427,7 @@ struct Linear_response_operator {
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
+        PROFILE("sirius_api::sirius_linear_solver::LR_operator::multiply");
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<std::complex<double>>(
             wf::spin_range(0),
