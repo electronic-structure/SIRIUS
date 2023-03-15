@@ -574,7 +574,7 @@ __global__ void axpy_scatter_gpu_kernel(F const* alpha__, gpu_complex_type<T> co
         {
             /* index of wave-function coefficient */
             int j = blockIdx.x * blockDim.x + threadIdx.x;
-            /* index of unconverged vector */
+            /* index of the band / unconverged vector */
             int j_unconv = blockIdx.y;
 
             int jj = idx__[j_unconv];
