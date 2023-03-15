@@ -6085,7 +6085,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto C_wrap = sirius::lr::Wave_functions_wrap{C.get(), mem};
 
             // Set up the diagonal preconditioner
-            auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>();
+            auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
             sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
             eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
                 return eigvals_vec[i];
