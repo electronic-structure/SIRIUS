@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ARG ROCM_ARCH=gfx90a
 
@@ -14,9 +14,9 @@ RUN apt-get -y update && apt-get install -y apt-utils
 
 # install basic tools
 RUN apt-get install -y gcc g++ gfortran clang git make unzip \
-  vim wget pkg-config python3-pip curl tcl m4 cpio automake \
+  vim wget pkg-config python3-pip python3-venv curl tcl m4 cpio automake \
   apt-transport-https ca-certificates gnupg software-properties-common \
-  patchelf
+  patchelf meson
 
 # install CMake
 RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz -O cmake.tar.gz && \
@@ -34,17 +34,18 @@ RUN spack config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
 RUN spack compiler find
 RUN spack external find --all
 
+# install big packages
+RUN spack install hip%gcc
+RUN spack install rocblas%gcc
+RUN spack install hipfft%gcc
+
+ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft"
+
+RUN spack spec $SPEC_GCC
+
 # create GCC build env.
 RUN spack env create --with-view /sirius-install gcc-build-env
-
-# indtall big packages
-RUN spack -e gcc-build-env install hip%gcc target=x86_64
-RUN spack -e gcc-build-env install rocblas%gcc target=x86_64
-RUN spack -e gcc-build-env install hipfft%gcc target=x86_64
-
-ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft target=x86_64"
-
-RUN spack -e gcc-build-env spec $SPEC_GCC
-
+RUN spack -e gcc-build-env add $SPEC_GCC
+RUN spack -e gcc-build-env concretize
 RUN spack -e gcc-build-env install --only=dependencies $SPEC_GCC
 
