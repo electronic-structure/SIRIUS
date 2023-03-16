@@ -5916,16 +5916,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
 
-            bool use_qe_gvec_order{true};
-
             std::shared_ptr<fft::Gvec> gvkq_in;
-            if (use_qe_gvec_order) {
-                gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
+            gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
                         *num_gvec_kq_loc__, gvec_kq_loc__, sctx.comm_band(), false);
-            } else {
-                gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
-                        sctx.gk_cutoff(), sctx.comm_k(), false);
-            }
 
             int num_gvec_kq_loc = *num_gvec_kq_loc__;
             int num_gvec_kq = num_gvec_kq_loc;
@@ -5946,15 +5939,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             sddk::mdarray<int, 2> gvec_kq_loc(const_cast<int*>(gvec_kq_loc__), 3, num_gvec_kq_loc);
 
-            if (!use_qe_gvec_order) {
-                for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq_loc(0, ig)));
-                    if (i == -1) {
-                        RTE_THROW("index of G-vector is not found for k+q");
-                    }
-                }
-            }
-
             /* collect local G+k+q vector sizes across all ranks */
             mpi::block_data_descriptor gkq_in_distr(gvkq.comm().size());
             gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
@@ -5963,25 +5947,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             /* offset in the incoming G-vector index */
             int offset = gkq_in_distr.offsets[gvkq.comm().rank()];
-
-            sddk::mdarray<int, 2> gvec_kq(3, gvkq.num_gvec());
-            std::vector<int> igmap(num_gvec_kq);
-            if (!use_qe_gvec_order) {
-                for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                    for (int x: {0, 1, 2}) {
-                        gvec_kq(x, offset + ig) = gvec_kq_loc(x, ig);
-                    }
-                }
-                gvkq.comm().allgather(&gvec_kq(0, 0), 3 * num_gvec_kq_loc, 3 * offset);
-
-                for (int ig = 0; ig < num_gvec_kq; ig++) {
-                    auto i = gvkq.index_by_gvec(r3::vector<int>(&gvec_kq(0, ig)));
-                    if (i == -1) {
-                        RTE_THROW("index of G-vector is not found");
-                    }
-                    igmap[i] = ig;
-                }
-            }
 
             // Copy eigenvalues (factor 2 for rydberg/hartree)
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + sctx.num_bands());
@@ -5999,37 +5964,14 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
             auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
 
-            std::vector<std::complex<double>> tmp_psi(num_gvec_kq);
-            std::vector<std::complex<double>> tmp_dpsi(num_gvec_kq);
-            std::vector<std::complex<double>> tmp_dvpsi(num_gvec_kq);
-
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
-                    if (use_qe_gvec_order) {
-                        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
-                            dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
-                            dvpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dvpsi(ig, ispn, i) / 2.0;
-                        }
-                    } else {
-                        /* gather the full wave-function in the order of QE */
-                        for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                            tmp_psi[offset + ig] = psi(ig, ispn, i);
-                            tmp_dpsi[offset + ig] = dpsi(ig, ispn, i);
-                            tmp_dvpsi[offset + ig] = dvpsi(ig, ispn, i);
-                        }
-                        gvkq.comm().allgather(tmp_psi.data(), gkq_in_distr.counts.data(), gkq_in_distr.offsets.data());
-                        gvkq.comm().allgather(tmp_dpsi.data(), gkq_in_distr.counts.data(), gkq_in_distr.offsets.data());
-                        gvkq.comm().allgather(tmp_dvpsi.data(), gkq_in_distr.counts.data(), gkq_in_distr.offsets.data());
-
-                        /* copy local part */
-                        for (int ig = 0; ig < gvkq.count(); ig++) {
-                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_psi[igmap[ig + gvkq.offset()]];
-                            dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_dpsi[igmap[ig + gvkq.offset()]];
-                            // divide by two to account for hartree / rydberg, this is
-                            // dv * psi and dv should be 2x smaller in sirius.
-                            dvpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = tmp_dvpsi[igmap[ig + gvkq.offset()]] / 2.0;
-                        }
+                    for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+                        psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
+                        dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
+                        // divide by two to account for hartree / rydberg, this is
+                        // dv * psi and dv should be 2x smaller in sirius.
+                        dvpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dvpsi(ig, ispn, i) / 2.0;
                     }
                 }
             }
@@ -6117,18 +6059,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                 for (int i = 0; i < sctx.num_bands(); i++) {
-                    if (use_qe_gvec_order) {
-                        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
-                        }
-                    } else {
-                        for (int ig = 0; ig < gvkq.count(); ++ig) {
-                            tmp_dpsi[igmap[ig + gvkq.offset()]] = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
-                        }
-                        gvkq.comm().allgather(tmp_dpsi.data(), gkq_in_distr.counts.data(), gkq_in_distr.offsets.data());
-                        for (int ig = 0; ig < num_gvec_kq_loc; ig++) {
-                            dpsi(ig, ispn, i) = tmp_dpsi[offset + ig];
-                        }
+                    for (int ig = 0; ig < kp.gkvec().count(); ig++) {
+                        dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                     }
                 }
             }
