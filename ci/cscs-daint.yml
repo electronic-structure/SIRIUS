@@ -6,7 +6,7 @@ stages:
   - build
   - test
 
-build base image:
+build base cuda image:
   extends: .container-builder
   stage: baseimage
   # we create a tag that depends on the SHA value of ci/baseimage.Dockerfile, this way
@@ -28,9 +28,31 @@ build base image:
     CSCS_REBUILD_POLICY: if-not-exists
     DOCKER_BUILD_ARGS: '["CUDA_ARCH=60"]'
 
+build base rocm image:
+  extends: .container-builder
+  stage: baseimage
+  # we create a tag that depends on the SHA value of ci/baseimage.Dockerfile, this way
+  # a new base image is only built when the SHA of this file changes
+  # If there are more dependency files that should change the tag-name of the base container
+  # image, they can be added too.
+  # Since the base image name is runtime dependent, we need to carry the value of it to
+  # the following jobs via a dotenv file.
+  before_script:
+  - DOCKER_TAG=`sha256sum ci/baseimage.rocm.Dockerfile | head -c 16`
+  - export PERSIST_IMAGE_NAME=$CSCS_REGISTRY_PATH/base/sirius-ci:$DOCKER_TAG
+  - echo "BASE_IMAGE=$PERSIST_IMAGE_NAME" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+  variables:
+    DOCKERFILE: ci/baseimage.rocm.Dockerfile
+    # change to 'always' if you want to rebuild, even if target tag exists already (if-not-exists is the default, i.e. we could also skip the variable)
+    CSCS_REBUILD_POLICY: if-not-exists
+    DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
+
 build image:
   extends: .container-builder
-  needs: ["build base image"]
+  needs: ["build base cuda image"]
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
