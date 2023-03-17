@@ -50,7 +50,7 @@ build base rocm image:
     CSCS_REBUILD_POLICY: if-not-exists
     DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
 
-build image:
+build cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
@@ -60,9 +60,19 @@ build image:
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack ^mpich ^intel-oneapi-mkl+cluster'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=$SPEC"]'
 
+build rocm image:
+  extends: .container-builder
+  needs: ["build base rocm image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +rocm +scalapack ^mpich ^openblas'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=$SPEC"]'
+
 .run_tests:
   extends: .container-runner-daint-gpu
-  needs: ["build image"]
+  needs: ["build cuda image"]
   stage: test
   script:
     - cd /sirius-src/spack-build
