@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius_rocm
     env:
-      SPEC_ROCM: sirius@develop %gcc build_type=RelWithDebInfo +scalapack +fortran +tests +rocm amdgpu_target=gfx90a ^openblas ^mpich ^spfft
+      SPEC_ROCM: sirius@develop %gcc build_type=RelWithDebInfo +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft arch=broadwell
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
