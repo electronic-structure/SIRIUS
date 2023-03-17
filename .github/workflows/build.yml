@@ -204,7 +204,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Show the spec
-        run: spack --color always spec -I $SPEC_ROCM
+        run: |
+          spack arch
+          spack --color always spec -I $SPEC_ROCM
       - name: Configure SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}
