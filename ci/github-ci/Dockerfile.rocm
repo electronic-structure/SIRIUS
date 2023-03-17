@@ -29,6 +29,8 @@ RUN git clone https://github.com/spack/spack.git
 RUN spack config add config:install_tree:root:/opt/local
 # set amdgpu_target for all packages
 RUN spack config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
+# set basic x86_64 architecture
+RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
@@ -42,12 +44,6 @@ RUN spack install hipfft%gcc
 ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft"
 
 RUN spack spec $SPEC_GCC
-
-# create GCC build env.
-#RUN spack env create --with-view /sirius-install gcc-build-env
-#RUN spack -e gcc-build-env add $SPEC_GCC
-#RUN spack -e gcc-build-env concretize
-#RUN spack -e gcc-build-env install --only=dependencies
 
 RUN spack install --only=dependencies $SPEC_GCC
 
