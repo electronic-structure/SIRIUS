@@ -6,6 +6,9 @@ ARG SPEC
 # show the spack's spec
 RUN spack spec -I $SPEC
 
+RUN spack env create --with-view /opt/sirius sirius-env
+RUN spack -e sirius-env add $SPEC
+
 # copy source files of the pull request into container
 COPY . /sirius-src
 

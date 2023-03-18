@@ -52,6 +52,3 @@ ENV SPEC="sirius@develop%gcc build_type=Release +fortran +elpa +tests +scalapack
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
 
-RUN spack env create --with-view /opt/sirius sirius-env
-RUN spack -e sirius-env add $SPEC
-
