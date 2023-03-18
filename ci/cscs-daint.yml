@@ -31,6 +31,7 @@ build base cuda image:
 build base rocm image:
   extends: .container-builder
   stage: baseimage
+  timeout: 4h
   # we create a tag that depends on the SHA value of ci/baseimage.Dockerfile, this way
   # a new base image is only built when the SHA of this file changes
   # If there are more dependency files that should change the tag-name of the base container
