@@ -41,9 +41,10 @@ RUN spack install hip%gcc
 RUN spack install rocblas%gcc
 RUN spack install hipfft%gcc
 
+# create build env.
+RUN spack env create --with-view /sirius-install rocm-build-env
+
 ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft"
 
-RUN spack spec $SPEC_GCC
-
-RUN spack install --only=dependencies $SPEC_GCC
-
+RUN spack -e rocm-build-env add $SPEC_GCC
+RUN spack -e rocm-build-env install --fail-fast --only=dependencies
