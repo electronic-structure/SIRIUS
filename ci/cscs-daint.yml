@@ -68,7 +68,7 @@ build rocm image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-rocm:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +rocm +scalapack ^mpich ^openblas'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=$SPEC"]'
 
 .run_tests:
