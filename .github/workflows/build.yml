@@ -210,4 +210,4 @@ jobs:
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack -e rocm-build-env --color always build-env $SPEC_ROCM -- make
+          spack -e rocm-build-env --color always build-env sirius -- make

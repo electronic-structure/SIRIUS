@@ -25,24 +25,19 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
 # get latest version of spack
 RUN git clone https://github.com/spack/spack.git
 
-# set the location of packages built by spack
-RUN spack config add config:install_tree:root:/opt/local
-# set amdgpu_target for all packages
-RUN spack config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
-# set basic x86_64 architecture
-RUN spack config add packages:all:target:x86_64
-
 # find gcc and clang compilers
 RUN spack compiler find
 RUN spack external find --all
 
-# install big packages
-RUN spack install hip%gcc
-RUN spack install rocblas%gcc
-RUN spack install hipfft%gcc
-
 # create build env.
 RUN spack env create --with-view /sirius-install rocm-build-env
+# set the location of packages built by spack
+RUN spack -e rocm-build-env config add config:install_tree:root:/opt/local
+# set amdgpu_target for all packages
+RUN spack -e rocm-build-env config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
+RUN spack -e rocm-build-env config add packages:all:variants:amdgpu_target_sram_ecc=${ROCM_ARCH}
+# set basic x86_64 architecture
+RUN spack -e rocm-build-env config add packages:all:target:x86_64
 
 ENV SPEC_GCC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft"
 
