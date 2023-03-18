@@ -59,7 +59,7 @@ build cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack ^mpich ^intel-oneapi-mkl+cluster'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=${SPEC}"]'
 
 build rocm image:
   extends: .container-builder
@@ -69,7 +69,7 @@ build rocm image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-rocm:$CI_COMMIT_SHA
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPEC=${SPEC}"]'
 
 .run_tests:
   extends: .container-runner-daint-gpu
