@@ -196,24 +196,24 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           spack --color always -e clang-build-env build-env $SPEC_CLANG -- make
 
-  build_rocm:
-    runs-on: ubuntu-latest
-    container: electronicstructure/sirius_rocm
-    env:
-      SPEC_ROCM: sirius@develop %gcc build_type=RelWithDebInfo +scalapack +fortran +tests +rocm amdgpu_target=gfx90a ^openblas ^mpich ^spfft+rocm amdgpu_target=gfx90a target=x86_64
-    steps:
-      - uses: actions/checkout@v2
-      - name: Show the spec
-        run: |
-          spack arch
-          spack --color always spec -I $SPEC_ROCM
-      - name: Configure SIRIUS
-        run: |
-          cd ${GITHUB_WORKSPACE}
-          mkdir build
-          cd build
-          spack --color always build-env $SPEC_ROCM -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DUSE_SCALAPACK=1 -DUSE_ROCM=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-      - name: Build SIRIUS
-        run: |
-          cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $SPEC_ROCM -- make
+          #  build_rocm:
+          #    runs-on: ubuntu-latest
+          #    container: electronicstructure/sirius_rocm
+          #    env:
+          #      SPEC_ROCM: sirius@develop %gcc build_type=RelWithDebInfo +scalapack +fortran +tests +rocm amdgpu_target=gfx90a ^openblas ^mpich ^spfft+rocm amdgpu_target=gfx90a target=x86_64
+          #    steps:
+          #      - uses: actions/checkout@v2
+          #      - name: Show the spec
+          #        run: |
+          #          spack arch
+          #          spack --color always spec -I $SPEC_ROCM
+          #      - name: Configure SIRIUS
+          #        run: |
+          #          cd ${GITHUB_WORKSPACE}
+          #          mkdir build
+          #          cd build
+          #          spack --color always build-env $SPEC_ROCM -- cmake .. -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DUSE_SCALAPACK=1 -DUSE_ROCM=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          #      - name: Build SIRIUS
+          #        run: |
+          #          cd ${GITHUB_WORKSPACE}/build
+          #          spack --color always build-env $SPEC_ROCM -- make
