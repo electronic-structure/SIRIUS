@@ -606,22 +606,21 @@ PYBIND11_MODULE(py_sirius, m)
         mpm.def("entropy", py::vectorize(&smearing::methfessel_paxton::entropy), "x"_a, "w"_a, "n"_a);
         mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a);
         mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a);
-        mpm.def("occupancy_deriv", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv), "x"_a, "w"_a, "n"_a);
-        mpm.def("occupancy_deriv2", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv2), "x"_a, "w"_a, "n"_a);
+        mpm.def("dxdelta", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv2), "x"_a, "w"_a, "n"_a);
     }
     {
         py::module mcold = smearing_module.def_submodule("cold");
         mcold.def("entropy", py::vectorize(&smearing::cold::entropy), "x"_a, "w"_a);
-        mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
         mcold.def("occupancy", py::vectorize(&smearing::cold::occupancy), "x"_a, "w"_a);
-        mcold.def("occupancy_deriv2", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
+        mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
+        mcold.def("dxdelta", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
     }
     {
         py::module mfd = smearing_module.def_submodule("fermi_dirac");
         mfd.def("entropy", py::vectorize(&smearing::fermi_dirac::entropy), "x"_a, "w"_a);
-        mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
         mfd.def("occupancy", py::vectorize(&smearing::fermi_dirac::occupancy), "x"_a, "w"_a);
-        mfd.def("occupancy_deriv2", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
+        mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
+        mfd.def("dxdelta", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
     }
     {
         py::module mgauss = smearing_module.def_submodule("gaussian");

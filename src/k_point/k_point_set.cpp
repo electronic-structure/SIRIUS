@@ -205,21 +205,34 @@ template <class Nt, class DNt, class D2Nt>
 auto
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
 {
+    // Newton finds the minimum, not necessarily N(mu) == ne, tolerate up to `tol_ne` difference in number of electrons
+    // if |N(mu_0) -ne| > tol_ne an error is thrown.
+    const double tol_ne = 1e-2;
+
     struct {
         double mu; // chemical potential
-        int iter; // newton information
+        int iter{0}; // newton information
         std::vector<double> ys; // newton history
     } res;
+
     double mu = mu0;
     double alpha{1.0}; // Newton damping
     int iter{0};
+
+    if ( std::abs(N(mu) - ne) < tol) {
+        res.mu = mu;
+        res.iter = iter;
+        res.ys = {};
+        return res;
+    }
+
     while (true) {
         // compute
         double Nf   = N(mu);
         double dNf  = dN(mu);
         double ddNf = ddN(mu);
         /* minimize (N(mu) - ne)^2  */
-        //double F = (Nf - ne) * (Nf - ne);
+        double F = (Nf - ne) * (Nf - ne);
         double dF = 2 * (Nf - ne) * dNf;
         double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
         double step = alpha * dF / std::abs(ddF);
@@ -227,8 +240,15 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 
         res.ys.push_back(mu);
 
-        if (std::abs(step) < tol) {
-            if (std::abs(Nf - ne) > tol) {
+        if (std::abs(ddF) < 1e-30) {
+            std::stringstream s;
+            s << "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!"
+              << std::setprecision(8) << std::abs(Nf - ne) << "\n";
+            RTE_THROW(s);
+        }
+
+        if (std::abs(step) < tol || std::abs(Nf - ne) < tol) {
+            if (std::abs(Nf - ne) > tol_ne) {
                 std::stringstream s;
                 s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search." << "\n";
                 RTE_THROW(s);
@@ -237,12 +257,6 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
             res.iter = iter;
             res.mu   = mu;
             return res;
-        }
-
-        if (std::abs(ddF) < 1e-10) {
-            std::stringstream s;
-            s << "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!";
-            RTE_THROW(s);
         }
 
         iter++;
@@ -363,7 +377,7 @@ void K_point_set::find_band_occupancies()
             auto N   = [&](double mu) { return compute_ne(mu, f); };
             auto dN  = [&](double mu) { return compute_ne(mu, df); };
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
+            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
             energy_fermi_ = res_newton.mu;
             if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
