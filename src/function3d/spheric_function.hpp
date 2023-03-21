@@ -365,7 +365,8 @@ auto operator*(Spheric_function<domain_t, T> const& b__, T a__)
 /// Inner product of two spherical functions.
 /** The result of the operation is a scalar value. */
 template <function_domain_t domain_t, typename T>
-T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
+inline auto
+inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
 {
     Spline<T> s(f1.radial_grid());
 
@@ -391,7 +392,7 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
     \f]
  */
 template <typename T>
-auto
+inline auto
 laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
 {
     Spheric_function<function_domain_t::spectral, T> g;
@@ -424,8 +425,9 @@ laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
 }
 
 /// Convert from Ylm to Rlm representation.
-inline void convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__,
-                    Spheric_function<function_domain_t::spectral, double>& g__)
+inline void
+convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__,
+        Spheric_function<function_domain_t::spectral, double>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
@@ -457,7 +459,8 @@ inline void convert(Spheric_function<function_domain_t::spectral, std::complex<d
 }
 
 /// Convert from Ylm to Rlm representation.
-inline auto convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__)
+inline auto
+convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__)
 {
     Spheric_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
@@ -465,8 +468,9 @@ inline auto convert(Spheric_function<function_domain_t::spectral, std::complex<d
 }
 
 /// Convert from Rlm to Ylm representation.
-inline void convert(Spheric_function<function_domain_t::spectral, double> const& f__,
-                    Spheric_function<function_domain_t::spectral, std::complex<double>>& g__)
+inline void
+convert(Spheric_function<function_domain_t::spectral, double> const& f__,
+        Spheric_function<function_domain_t::spectral, std::complex<double>>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
@@ -498,7 +502,8 @@ inline void convert(Spheric_function<function_domain_t::spectral, double> const&
 }
 
 /// Convert from Rlm to Ylm representation.
-inline auto convert(Spheric_function<function_domain_t::spectral, double> const& f__)
+inline auto
+convert(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
     Spheric_function<function_domain_t::spectral, std::complex<double>> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
@@ -506,8 +511,9 @@ inline auto convert(Spheric_function<function_domain_t::spectral, double> const&
 }
 
 template <typename T>
-inline void transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__,
-                      Spheric_function<function_domain_t::spatial, T>& g__)
+inline void
+transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__,
+          Spheric_function<function_domain_t::spatial, T>& g__)
 {
     sht__.backward_transform(f__.angular_domain_size(), &f__(0, 0), f__.radial_grid().num_points(),
                              std::min(sht__.lmmax(), f__.angular_domain_size()), &g__(0, 0));
@@ -515,7 +521,8 @@ inline void transform(SHT const& sht__, Spheric_function<function_domain_t::spec
 
 /// Transform to spatial domain (to r, \theta, \phi coordinates).
 template <typename T>
-inline auto transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__)
+inline auto
+transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__)
 {
     Spheric_function<function_domain_t::spatial, T> g(sht__.num_points(), f__.radial_grid());
     transform(sht__, f__, g);
@@ -523,15 +530,17 @@ inline auto transform(SHT const& sht__, Spheric_function<function_domain_t::spec
 }
 
 template <typename T>
-inline void transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__,
-                      Spheric_function<function_domain_t::spectral, T>& g__)
+inline void
+transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__,
+          Spheric_function<function_domain_t::spectral, T>& g__)
 {
     sht__.forward_transform(&f__(0, 0), f__.radial_grid().num_points(), sht__.lmmax(), sht__.lmmax(), &g__(0, 0));
 }
 
 /// Transform to spectral domain.
 template <typename T>
-inline auto transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__)
+inline auto
+transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__)
 {
     Spheric_function<function_domain_t::spectral, T> g(sht__.lmmax(), f__.radial_grid());
     transform(sht__, f__, g);
@@ -539,7 +548,8 @@ inline auto transform(SHT const& sht__, Spheric_function<function_domain_t::spat
 }
 
 /// Gradient of the function in complex spherical harmonics.
-inline auto gradient(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f)
+inline auto
+gradient(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f)
 {
     Spheric_vector_function<function_domain_t::spectral, std::complex<double>> g(f.angular_domain_size(), f.radial_grid());
     for (int i = 0; i < 3; i++) {
@@ -593,7 +603,8 @@ inline auto gradient(Spheric_function<function_domain_t::spectral, std::complex<
 }
 
 /// Gradient of the function in real spherical harmonics.
-inline auto gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
+inline auto
+gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
     SHT sht(sddk::device_t::CPU, lmax);
@@ -607,7 +618,8 @@ inline auto gradient(Spheric_function<function_domain_t::spectral, double> const
 }
 
 /// Divergence of the vector function in complex spherical harmonics.
-inline auto divergence(Spheric_vector_function<function_domain_t::spectral, std::complex<double>> const& vf__)
+inline auto
+divergence(Spheric_vector_function<function_domain_t::spectral, std::complex<double>> const& vf__)
 {
     Spheric_function<function_domain_t::spectral, std::complex<double>> g(vf__.angular_domain_size(), vf__.radial_grid());
     g.zero();
@@ -619,7 +631,8 @@ inline auto divergence(Spheric_vector_function<function_domain_t::spectral, std:
     return g;
 }
 
-inline auto divergence(Spheric_vector_function<function_domain_t::spectral, double> const& vf)
+inline auto
+divergence(Spheric_vector_function<function_domain_t::spectral, double> const& vf)
 {
     Spheric_function<function_domain_t::spectral, double> g(vf.angular_domain_size(), vf.radial_grid());
     g.zero();
