@@ -136,14 +136,12 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
     for (int ia = 0; ia < unit_cell_.spl_num_paw_atoms().local_size(); ia++) {
         energies[0] += paw_potential_data_[ia].hartree_energy_;
-        energies[1] += paw_potential_data_[ia].xc_energy_;
         energies[3] += paw_potential_data_[ia].core_energy_; // it is light operation
     }
 
     comm_.allreduce(&energies[0], 4);
 
     paw_hartree_total_energy_ = energies[0];
-    paw_xc_total_energy_      = energies[1];
     paw_total_core_energy_    = energies[3];
 }
 
@@ -207,13 +205,8 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
 {
     auto& atom = unit_cell_.atom(ia);
 
-    double ae_hartree_energy = calc_PAW_hartree_potential(atom, *ae_density[0],
-            paw_potential_->ae_component(0)[ia]);
-
-    double ps_hartree_energy = calc_PAW_hartree_potential(atom, *ps_density[0],
-            paw_potential_->ps_component(0)[ia]);
-
-    ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
+    ppd.hartree_energy_ = calc_PAW_hartree_potential(atom, *ae_density[0], paw_potential_->ae_component(0)[ia]) -
+                          calc_PAW_hartree_potential(atom, *ps_density[0], paw_potential_->ps_component(0)[ia]);
 
     /* calculation of XC potential */
     auto& ps_core = atom.type().ps_core_charge_density();
@@ -227,21 +220,15 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
         vxc.emplace_back(utils::lmmax(l_max), rgrid);
     }
 
-    auto ae_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density,
-                                          ae_core, vxc, (*paw_ae_exc_)[ia]);
+    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density, ae_core, vxc, (*paw_ae_exc_)[ia]);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ae_component(i)[ia] += vxc[i];
     }
 
-    auto ps_xc_energy = sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density,
-                                          ps_core, vxc, (*paw_ps_exc_)[ia]);
-
+    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density, ps_core, vxc, (*paw_ps_exc_)[ia]);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ps_component(i)[ia] += vxc[i];
     }
-
-    /* save xc energy in pdd structure */
-    ppd.xc_energy_ = ae_xc_energy - ps_xc_energy;
 }
 
 void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)

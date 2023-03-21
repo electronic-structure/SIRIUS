@@ -124,7 +124,7 @@ class Potential : public Field4D
         int ia_paw{-1};
 
         double hartree_energy_{0.0};
-        double xc_energy_{0.0};
+        //double xc_energy_{0.0};
         double core_energy_{0.0};
     };
 
@@ -670,15 +670,6 @@ class Potential : public Field4D
 
     void generate_PAW_effective_potential(Density const& density);
 
-    //double PAW_hartree_total_energy() const
-    //{
-    //    return paw_hartree_total_energy_;
-    //}
-
-    //double PAW_xc_total_energy() const
-    //{
-    //    return paw_xc_total_energy_;
-    //}
     double PAW_xc_total_energy(Density const& density__) const
     {
         if (!unit_cell_.num_paw_atoms()) {
@@ -711,11 +702,6 @@ class Potential : public Field4D
         return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
             inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
     }
-
-    //double PAW_total_core_energy() const
-    //{
-    //    return paw_total_core_energy_;
-    //}
 
     double PAW_total_energy(Density const& density__) const
     {
