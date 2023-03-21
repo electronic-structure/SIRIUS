@@ -681,8 +681,35 @@ class Potential : public Field4D
     //}
     double PAW_xc_total_energy(Density const& density__) const
     {
+        if (!unit_cell_.num_paw_atoms()) {
+            return 0;
+        }
+        /* compute contribution from the core */
+        double ecore{0};
+        #pragma omp parallel for reduction(+:ecore)
+        for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
+            int ia_paw = unit_cell_.spl_num_paw_atoms(i);
+            int ia     = unit_cell_.paw_atom_index(ia_paw);
+
+            auto& atom = unit_cell_.atom(ia);
+
+            auto& atom_type = atom.type();
+
+            auto& ps_core = atom_type.ps_core_charge_density();
+            auto& ae_core = atom_type.paw_ae_core_charge_density();
+
+            Spline<double> s(atom_type.radial_grid());
+            auto y00inv = 1.0 / y00;
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+                s(ir) = y00inv * ((*paw_ae_exc_)[ia](0, ir) * ae_core[ir] - (*paw_ps_exc_)[ia](0, ir) * ps_core[ir]) *
+                    std::pow(atom_type.radial_grid(ir), 2);
+            }
+            ecore += s.interpolate().integrate(0);
+        }
+        comm_.allreduce(&ecore, 1);
+
         return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
-            inner(*paw_ps_exc_, density__.paw_density().ps_component(0));
+            inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
     }
 
     //double PAW_total_core_energy() const

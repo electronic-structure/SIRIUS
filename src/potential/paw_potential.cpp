@@ -102,13 +102,25 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ae_comp);
     sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ps_comp);
 
+    /* symmetrize ae- component of Exc */
+    paw_ae_exc_->sync(unit_cell_.spl_num_paw_atoms());
+    ae_comp.clear();
+    ae_comp.push_back(paw_ae_exc_.get());
+    sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, ae_comp);
+
+    /* symmetrize ps- component of Exc */
+    paw_ps_exc_->sync(unit_cell_.spl_num_paw_atoms());
+    ps_comp.clear();
+    ps_comp.push_back(paw_ps_exc_.get());
+    sirius::symmetrize(unit_cell_.symmetry(), unit_cell_.comm(), 0, ps_comp);
+
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         calc_PAW_local_Dij(paw_potential_data_[i], paw_dij_);
     }
 
-    // collect Dij and add to atom d_mtrx
+    /* collect Dij and add to atom d_mtrx */
     comm_.allreduce(&paw_dij_(0, 0, 0, 0), static_cast<int>(paw_dij_.size()));
 
     if (ctx_.cfg().control().print_checksum()) {
