@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file paw_density.hpp
+/** \file paw_field4d.hpp
  *
- *  \brief Contains definition and implementation of helper class sirius::paw_density.
+ *  \brief Contains definition and implementation of PAW_field4D class.
  */
 
-#ifndef __PAW_DENSITY_HPP__
-#define __PAW_DENSITY_HPP__
+#ifndef __PAW_FIELD4D_HPP__
+#define __PAW_FIELD4D_HPP__
 
 #include "function3d/spheric_function_set.hpp"
 
@@ -46,6 +46,7 @@ class PAW_field4D
     /* copy assignment operator is forbidden */
     PAW_field4D& operator=(PAW_field4D const& src__) = delete;
   public:
+    /// Constructor
     PAW_field4D(Unit_cell const& uc__, bool is_global__)
         : uc_{uc__}
     {
@@ -113,36 +114,6 @@ class PAW_field4D
     }
 };
 
-template <typename T>
-class PAW_density : public PAW_field4D<T>
-{
-  public:
-
-    PAW_density(Unit_cell const& uc__)
-        : PAW_field4D<T>(uc__, false)
-    {
-    }
-
-    auto& ae_density(int i__, int ja__)
-    {
-        return this->ae_component(i__)[ja__];
-    }
-
-    auto const& ae_density(int i__, int ja__) const
-    {
-        return this->ae_component(i__)[ja__];
-    }
-
-    auto& ps_density(int i__, int ja__)
-    {
-        return this->ps_component(i__)[ja__];
-    }
-
-    auto const& ps_density(int i__, int ja__) const
-    {
-        return this->ps_component(i__)[ja__];
-    }
-};
 
 } // namespace sirius
 

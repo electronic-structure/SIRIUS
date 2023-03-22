@@ -27,11 +27,11 @@
 
 #include <iomanip>
 #include "function3d/field4d.hpp"
+#include "function3d/paw_field4d.hpp"
 #include "function3d/periodic_function.hpp"
 #include "function3d/spheric_function_set.hpp"
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
-#include "paw_density.hpp"
 #include "occupation_matrix.hpp"
 
 #if defined(SIRIUS_GPU)
@@ -73,7 +73,7 @@ sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, int ldq_
 namespace sirius {
 
 /// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
-inline std::pair<double, double>
+inline auto
 get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
 {
     if (rho__ < 0.0) {
@@ -94,6 +94,38 @@ get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
 
     return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
 }
+
+/// PAW density storage.
+template <typename T>
+class PAW_density : public PAW_field4D<T>
+{
+  public:
+
+    PAW_density(Unit_cell const& uc__)
+        : PAW_field4D<T>(uc__, false)
+    {
+    }
+
+    auto& ae_density(int i__, int ja__)
+    {
+        return this->ae_component(i__)[ja__];
+    }
+
+    auto const& ae_density(int i__, int ja__) const
+    {
+        return this->ae_component(i__)[ja__];
+    }
+
+    auto& ps_density(int i__, int ja__)
+    {
+        return this->ps_component(i__)[ja__];
+    }
+
+    auto const& ps_density(int i__, int ja__) const
+    {
+        return this->ps_component(i__)[ja__];
+    }
+};
 
 /// Generate charge density and magnetization from occupied spinor wave-functions.
 /** Let's start from the definition of the complex density matrix:

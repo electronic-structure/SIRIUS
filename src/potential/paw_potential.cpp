@@ -38,9 +38,9 @@ void Potential::init_PAW()
         int ia_paw = unit_cell_.spl_num_paw_atoms(i);
         int ia     = unit_cell_.paw_atom_index(ia_paw);
 
-        auto& atom = unit_cell_.atom(ia);
+        //auto& atom = unit_cell_.atom(ia);
 
-        auto& atom_type = atom.type();
+        //auto& atom_type = atom.type();
 
         paw_potential_data_t ppd;
 
@@ -48,7 +48,7 @@ void Potential::init_PAW()
 
         ppd.ia_paw = ia_paw;
 
-        ppd.core_energy_ = atom_type.paw_core_energy();
+        //ppd.core_energy_ = atom_type.paw_core_energy();
 
         paw_potential_data_.push_back(std::move(ppd));
     }
@@ -86,11 +86,15 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
     paw_potential_->zero();
 
+    paw_hartree_total_energy_ = 0.0;
+
     /* calculate xc and hartree for atoms */
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
-        calc_PAW_local_potential(ia, paw_potential_data_[i], density.paw_ae_density(ia), density.paw_ps_density(ia));
+        paw_hartree_total_energy_ += calc_PAW_local_potential(ia, density.paw_ae_density(ia),
+                                                              density.paw_ps_density(ia));
     }
+    comm_.allreduce(&paw_hartree_total_energy_, 1);
 
     paw_potential_->sync();
     std::vector<Spheric_function_set<double>*> ae_comp;
@@ -128,21 +132,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
         utils::print_checksum("paw_dij", cs, ctx_.out());
     }
 
-    // add paw Dij to uspp Dij
+    /* add paw Dij to uspp Dij */
     add_paw_Dij_to_atom_Dmtrx();
-
-    // calc total energy
-    double energies[] = {0.0, 0.0, 0.0, 0.0};
-
-    for (int ia = 0; ia < unit_cell_.spl_num_paw_atoms().local_size(); ia++) {
-        energies[0] += paw_potential_data_[ia].hartree_energy_;
-        energies[3] += paw_potential_data_[ia].core_energy_; // it is light operation
-    }
-
-    comm_.allreduce(&energies[0], 4);
-
-    paw_hartree_total_energy_ = energies[0];
-    paw_total_core_energy_    = energies[3];
 }
 
 double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
@@ -199,14 +190,10 @@ double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm
     return 0.5 * inner(rho__, v_ha);
 }
 
-void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
-    std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
-    std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
+double
+Potential::calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, std::vector<Flm const*> ps_density)
 {
     auto& atom = unit_cell_.atom(ia);
-
-    ppd.hartree_energy_ = calc_PAW_hartree_potential(atom, *ae_density[0], paw_potential_->ae_component(0)[ia]) -
-                          calc_PAW_hartree_potential(atom, *ps_density[0], paw_potential_->ps_component(0)[ia]);
 
     /* calculation of XC potential */
     auto& ps_core = atom.type().ps_core_charge_density();
@@ -229,6 +216,11 @@ void Potential::calc_PAW_local_potential(int ia, paw_potential_data_t& ppd,
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ps_component(i)[ia] += vxc[i];
     }
+
+    auto eha = calc_PAW_hartree_potential(atom, *ae_density[0], paw_potential_->ae_component(0)[ia]) -
+               calc_PAW_hartree_potential(atom, *ps_density[0], paw_potential_->ps_component(0)[ia]);
+
+    return eha;
 }
 
 void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)

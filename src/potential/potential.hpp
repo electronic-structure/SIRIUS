@@ -48,7 +48,6 @@ double density_residual_hartree_energy(Density const& rho1__, Density const& rho
 class Potential : public Field4D
 {
   private:
-
     /// Alias to unit cell.
     Unit_cell& unit_cell_;
 
@@ -125,12 +124,12 @@ class Potential : public Field4D
 
         double hartree_energy_{0.0};
         //double xc_energy_{0.0};
-        double core_energy_{0.0};
+        //double core_energy_{0.0};
     };
 
     double paw_hartree_total_energy_{0.0};
-    double paw_xc_total_energy_{0.0};
-    double paw_total_core_energy_{0.0};
+    //double paw_xc_total_energy_{0.0};
+    //double paw_total_core_energy_{0.0};
 
     std::vector<paw_potential_data_t> paw_potential_data_;
 
@@ -147,9 +146,10 @@ class Potential : public Field4D
 
     sddk::mdarray<double, 2> aux_bf_;
 
-    /// Hubbard potential correction.
+    /// Hubbard potential correction operator.
     std::unique_ptr<Hubbard> U_;
 
+    /// Hubbard potential correction matrix.
     Hubbard_matrix hubbard_potential_;
 
     /// Add extra charge to the density.
@@ -162,8 +162,9 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    void calc_PAW_local_potential(int ia, paw_potential_data_t& pdd, std::vector<Flm const*> ae_density,
-                                  std::vector<Flm const*> ps_density);
+    /// Calculate PAW potential for a given atom.
+    /** \return Hartree energy contribution. */
+    double calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, std::vector<Flm const*> ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
 

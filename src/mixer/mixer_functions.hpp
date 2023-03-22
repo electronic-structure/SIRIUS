@@ -26,9 +26,9 @@
 #define __MIXER_FUNCTIONS_HPP__
 
 #include "function3d/periodic_function.hpp"
+#include "density/density.hpp"
 #include "SDDK/memory.hpp"
 #include "mixer/mixer.hpp"
-#include "density/paw_density.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
 namespace sirius {
