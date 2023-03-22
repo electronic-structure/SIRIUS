@@ -96,8 +96,9 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
-        calc_PAW_local_Dij(ia, paw_dij_[i]);
+        int ia_paw = unit_cell_.spl_num_paw_atoms(i);
+        int ia = unit_cell_.paw_atom_index(ia_paw);
+        calc_PAW_local_Dij(ia, paw_dij_[ia_paw]);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(i);
