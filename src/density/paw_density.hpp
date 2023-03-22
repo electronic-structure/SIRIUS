@@ -29,6 +29,8 @@
 
 namespace sirius {
 
+/// PAW density and potential storage.
+/** In PAW density and potential are represented with two counterpart: all-electron (AE) and pseudo (PS) */
 template <typename T>
 class PAW_field4D
 {

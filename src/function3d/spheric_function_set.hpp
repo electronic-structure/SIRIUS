@@ -14,7 +14,7 @@ class Spheric_function_set
     /// List of atoms for which the spherical expansion is defined.
     std::vector<int> atoms_;
     /// Split the number of atoms between MPI ranks.
-    /** If the pointer is not set, set of spheric functions is treated as global, without MPI distribution */
+    /** If the pointer is null, spheric functions set is treated as global, without MPI distribution */
     sddk::splindex<sddk::splindex_t::block> const* spl_atoms_{nullptr};
     /// List of spheric functions.
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
@@ -124,15 +124,20 @@ class Spheric_function_set
 template <typename T>
 inline T inner(Spheric_function_set<T> const& f1__, Spheric_function_set<T> const& f2__)
 {
-    RTE_ASSERT(f1__.spl_atoms_ == f2__.spl_atoms_);
+    auto ptr = (f1__.spl_atoms_) ? f1__.spl_atoms_ : f2__.spl_atoms_;
+
+    /* if both functions are split then the split index must match */
+    if (f1__.spl_atoms_ && f2__.spl_atoms_) {
+        RTE_ASSERT(f1__.spl_atoms_ == f2__.spl_atoms_);
+    }
 
     T result{0};
 
     auto const& comm = f1__.unit_cell_->comm();
 
-    if (f1__.spl_atoms_) {
-        for (int i = 0; i < f1__.spl_atoms_->local_size(); i++) {
-            int ia = f1__.atoms_[(*f1__.spl_atoms_)[i]];
+    if (ptr) {
+        for (int i = 0; i < ptr->local_size(); i++) {
+            int ia = f1__.atoms_[(*ptr)[i]];
             result += inner(f1__[ia], f2__[ia]);
         }
     } else {
