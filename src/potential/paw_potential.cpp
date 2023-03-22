@@ -29,34 +29,8 @@ namespace sirius {
 
 void Potential::init_PAW()
 {
-    paw_potential_data_.clear();
     if (!unit_cell_.num_paw_atoms()) {
         return;
-    }
-
-    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        int ia_paw = unit_cell_.spl_num_paw_atoms(i);
-        int ia     = unit_cell_.paw_atom_index(ia_paw);
-
-        //auto& atom = unit_cell_.atom(ia);
-
-        //auto& atom_type = atom.type();
-
-        paw_potential_data_t ppd;
-
-        ppd.ia = ia;
-
-        ppd.ia_paw = ia_paw;
-
-        //ppd.core_energy_ = atom_type.paw_core_energy();
-
-        paw_potential_data_.push_back(std::move(ppd));
-    }
-
-    for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia              = unit_cell_.paw_atom_index(i);
-        int bs              = unit_cell_.atom(ia).mt_basis_size();
-        max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
 
     bool const is_global{true};
@@ -69,8 +43,12 @@ void Potential::init_PAW()
                     [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
 
     /* initialize dij matrix */
-    paw_dij_ = sddk::mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
-                                  unit_cell_.num_paw_atoms(), sddk::memory_t::host, "paw_dij_");
+    paw_dij_.resize(unit_cell_.num_paw_atoms());
+    for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
+        int ia = unit_cell_.paw_atom_index(i);
+        paw_dij_[i] = sddk::mdarray<double, 3>(unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(),
+                ctx_.num_mag_dims() + 1);
+    }
 }
 
 void Potential::generate_PAW_effective_potential(Density const& density)
@@ -80,9 +58,6 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     if (!unit_cell_.num_paw_atoms()) {
         return;
     }
-
-    /* zero Dij */
-    paw_dij_.zero();
 
     paw_potential_->zero();
 
@@ -121,19 +96,28 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        calc_PAW_local_Dij(paw_potential_data_[i], paw_dij_);
+        int ia = unit_cell_.paw_atom_index(unit_cell_.spl_num_paw_atoms(i));
+        calc_PAW_local_Dij(ia, paw_dij_[i]);
     }
-
-    /* collect Dij and add to atom d_mtrx */
-    comm_.allreduce(&paw_dij_(0, 0, 0, 0), static_cast<int>(paw_dij_.size()));
-
-    if (ctx_.cfg().control().print_checksum()) {
-        auto cs = paw_dij_.checksum();
-        utils::print_checksum("paw_dij", cs, ctx_.out());
+    for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
+        auto location = unit_cell_.spl_num_paw_atoms().location(i);
+        comm_.bcast(paw_dij_[i].at(sddk::memory_t::host), paw_dij_[i].size(), location.rank);
     }
 
     /* add paw Dij to uspp Dij */
-    add_paw_Dij_to_atom_Dmtrx();
+    #pragma omp parallel for
+    for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
+        int ia     = unit_cell_.paw_atom_index(i);
+        auto& atom = unit_cell_.atom(ia);
+
+        for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
+            for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
+                for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
+                    atom.d_mtrx(ib1, ib2, imagn) += paw_dij_[i](ib1, ib2, imagn);
+                }
+            }
+        }
+    }
 }
 
 double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
@@ -223,12 +207,11 @@ Potential::calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, 
     return eha;
 }
 
-void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij)
+void Potential::calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__)
 {
-    int paw_ind = pdd.ia_paw;
-    int ia = unit_cell_.paw_atom_index(paw_ind);
+    paw_dij__.zero();
 
-    auto& atom = unit_cell_.atom(ia);
+    auto& atom = unit_cell_.atom(ia__);
 
     auto& atom_type = atom.type();
 
@@ -251,8 +234,8 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
     auto& rgrid = atom_type.radial_grid();
 
     for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-        auto& ae_atom_pot = paw_potential_->ae_component(imagn)[ia];
-        auto& ps_atom_pot = paw_potential_->ps_component(imagn)[ia];
+        auto& ae_atom_pot = paw_potential_->ae_component(imagn)[ia__];
+        auto& ps_atom_pot = paw_potential_->ps_component(imagn)[ia__];
 
         for (int irb2 = 0; irb2 < nbrf; irb2++) {
             for (int irb1 = 0; irb1 <= irb2; irb1++) {
@@ -301,43 +284,40 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<doub
                     auto& lm3coef = GC.gaunt(lm1, lm2, inz);
 
                     /* add to atom Dij an integral of dij array */
-                    paw_dij(ib1, ib2, imagn, paw_ind) += lm3coef.coef * integrals(lm3coef.lm3, iqij, imagn);
+                    paw_dij__(ib1, ib2, imagn) += lm3coef.coef * integrals(lm3coef.lm3, iqij, imagn);
                 }
 
                 if (ib1 != ib2) {
-                    paw_dij(ib2, ib1, imagn, paw_ind) = paw_dij(ib1, ib2, imagn, paw_ind);
+                    paw_dij__(ib2, ib1, imagn) = paw_dij__(ib1, ib2, imagn);
                 }
             }
         }
     }
 }
 
-double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
-                                           sddk::mdarray<std::complex<double>, 4> const& density_matrix,
-                                           sddk::mdarray<double, 4> const& paw_dij) const
+double
+Potential::calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>, 4> const& density_matrix__,
+        sddk::mdarray<double, 3> const& paw_dij__) const
 {
-    int ia      = pdd.ia;
-    int paw_ind = pdd.ia_paw;
-
     std::complex<double> energy = 0.0;
 
-    auto& atom = unit_cell_.atom(ia);
+    auto& atom = unit_cell_.atom(ia__);
 
     for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
             double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
-                    dm[2] = 2 * std::real(density_matrix(ib1, ib2, 2, ia));
-                    dm[3] = -2 * std::imag(density_matrix(ib1, ib2, 2, ia));
+                    dm[2] = 2 * std::real(density_matrix__(ib1, ib2, 2, ia__));
+                    dm[3] = -2 * std::imag(density_matrix__(ib1, ib2, 2, ia__));
                 }
                 case 1: {
-                    dm[0] = std::real(density_matrix(ib1, ib2, 0, ia) + density_matrix(ib1, ib2, 1, ia));
-                    dm[1] = std::real(density_matrix(ib1, ib2, 0, ia) - density_matrix(ib1, ib2, 1, ia));
+                    dm[0] = std::real(density_matrix__(ib1, ib2, 0, ia__) + density_matrix__(ib1, ib2, 1, ia__));
+                    dm[1] = std::real(density_matrix__(ib1, ib2, 0, ia__) - density_matrix__(ib1, ib2, 1, ia__));
                     break;
                 }
                 case 0: {
-                    dm[0] = density_matrix(ib1, ib2, 0, ia).real();
+                    dm[0] = density_matrix__(ib1, ib2, 0, ia__).real();
                     break;
                 }
                 default: {
@@ -346,7 +326,7 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
                 }
             }
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                energy += dm[imagn] * paw_dij(ib1, ib2, imagn, paw_ind);
+                energy += dm[imagn] * paw_dij__(ib1, ib2, imagn);
             }
         }
     }
@@ -358,23 +338,6 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
     }
 
     return energy.real();
-}
-
-void Potential::add_paw_Dij_to_atom_Dmtrx()
-{
-    #pragma omp parallel for
-    for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia     = unit_cell_.paw_atom_index(i);
-        auto& atom = unit_cell_.atom(ia);
-
-        for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-            for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
-                for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
-                    atom.d_mtrx(ib1, ib2, imagn) += paw_dij_(ib1, ib2, imagn, i);
-                }
-            }
-        }
-    }
 }
 
 } // namespace sirius

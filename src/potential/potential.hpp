@@ -116,33 +116,20 @@ class Potential : public Field4D
     /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
     sddk::mdarray<std::complex<double>, 1> rm2_inv_pw_;
 
-    struct paw_potential_data_t
-    {
-        int ia{-1};
-
-        int ia_paw{-1};
-
-        double hartree_energy_{0.0};
-        //double xc_energy_{0.0};
-        //double core_energy_{0.0};
-    };
-
+    /// Hartree contribution to total energy from PAW atoms.
     double paw_hartree_total_energy_{0.0};
-    //double paw_xc_total_energy_{0.0};
-    //double paw_total_core_energy_{0.0};
-
-    std::vector<paw_potential_data_t> paw_potential_data_;
 
     /// All-electron and pseudopotential parts of PAW potential.
     std::unique_ptr<PAW_field4D<double>> paw_potential_;
 
-    /// Exchange-correlation energy density of PAW atoms.
+    /// Exchange-correlation energy density of PAW atoms pseudodensity.
     std::unique_ptr<Spheric_function_set<double>> paw_ps_exc_;
+
+    /// Exchange-correlation energy density of PAW atoms all-electron density.
     std::unique_ptr<Spheric_function_set<double>> paw_ae_exc_;
 
-    sddk::mdarray<double, 4> paw_dij_;
-
-    int max_paw_basis_size_{0};
+    /// Contribution to D-operator matrix from the PAW atoms.
+    std::vector<sddk::mdarray<double, 3>> paw_dij_;
 
     sddk::mdarray<double, 2> aux_bf_;
 
@@ -166,14 +153,12 @@ class Potential : public Field4D
     /** \return Hartree energy contribution. */
     double calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, std::vector<Flm const*> ps_density);
 
-    void calc_PAW_local_Dij(paw_potential_data_t& pdd, sddk::mdarray<double, 4>& paw_dij);
+    void calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__);
 
     double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
-    double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd,
-            sddk::mdarray<std::complex<double>, 4> const& density_matrix, sddk::mdarray<double, 4> const& paw_dij) const;
-
-    void add_paw_Dij_to_atom_Dmtrx();
+    double calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>, 4> const& density_matrix__,
+            sddk::mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
     auto poisson_vmt(Periodic_function<double> const& rho__) const
@@ -714,7 +699,9 @@ class Potential : public Field4D
         double e{0};
         #pragma omp parallel for reduction(+:e)
         for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-            e += calc_PAW_one_elec_energy(paw_potential_data_[i], density__.density_matrix(), paw_dij_);
+            int ia_paw = unit_cell_.spl_num_paw_atoms(i);
+            int ia     = unit_cell_.paw_atom_index(ia_paw);
+            e += calc_PAW_one_elec_energy(ia, density__.density_matrix(), paw_dij_[ia_paw]);
         }
         comm_.allreduce(&e, 1);
         return e;
