@@ -10,14 +10,14 @@ ENV PATH="/spack/bin:${PATH}"
 
 ENV MPICH_VERSION=3.4.3
 
-ENV CMAKE_VERSION=3.25.2
+ENV CMAKE_VERSION=3.26.1
 
 RUN apt-get -y update
 
 RUN apt-get install -y apt-utils
 
 # install basic tools
-RUN apt-get install -y --no-install-recommends gcc g++ gfortran git make unzip file \
+RUN apt-get install -y --no-install-recommends gcc g++ gfortran clang libomp-14-dev git make unzip file \
   vim wget pkg-config python3-pip curl tcl m4 cpio automake xz-utils patch \
   apt-transport-https ca-certificates gnupg software-properties-common perl tar bzip2
 
@@ -39,6 +39,15 @@ RUN spack external find --all
 # find compilers
 RUN spack compiler find
 
+# install yq (utility to manipulate the yaml files)
+RUN wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_386 && chmod a+x /usr/local/bin/yq
+
+# change the fortran compilers: for gcc the gfortran is already properly set and the change has no effect; add it for clang
+RUN yq -i '.compilers[0].compiler.paths.f77 = "/usr/bin/gfortran"' /root/.spack/linux/compilers.yaml && \
+    yq -i '.compilers[0].compiler.paths.fc = "/usr/bin/gfortran"' /root/.spack/linux/compilers.yaml  && \
+    yq -i '.compilers[1].compiler.paths.f77 = "/usr/bin/gfortran"' /root/.spack/linux/compilers.yaml && \
+    yq -i '.compilers[1].compiler.paths.fc = "/usr/bin/gfortran"' /root/.spack/linux/compilers.yaml
+
 # install MPICH
 RUN spack install --only=dependencies mpich@${MPICH_VERSION} %gcc
 RUN spack install mpich@${MPICH_VERSION} %gcc
@@ -47,8 +56,11 @@ RUN spack install mpich@${MPICH_VERSION} %gcc
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop%gcc build_type=Release +fortran +elpa +tests +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spla ^spfft+cuda ^elpa+cuda"
+ENV SPEC="sirius@develop %gcc build_type=Release +fortran +elpa +tests +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
 
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
 
+ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas ^mpich^mpich@${MPICH_VERSION} ^spfft+single_precision"
+
+RUN spack install --only=dependencies $SPEC_CLANG
