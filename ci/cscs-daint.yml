@@ -71,6 +71,16 @@ build rocm image:
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
+build elpa cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
 .run_tests:
   extends: .container-runner-daint-gpu
   needs: ["build cuda image"]
