@@ -56,7 +56,7 @@ RUN spack install mpich@${MPICH_VERSION} %gcc
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop %gcc build_type=Release +fortran +elpa +tests +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
+ENV SPEC="sirius@develop %gcc build_type=Release +python +fortran +elpa +tests +scalapack +vdwxc +cuda +nlcglib +magma ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda ^nlcglib+cuda+wrapper ^kokkos+wrapper ^magma+cuda"
 
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
