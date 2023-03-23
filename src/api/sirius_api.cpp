@@ -3054,7 +3054,7 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             {"descf", [&]() { return gs.scf_correction_energy(); }},
             {"demet", [&]() { return kset.entropy_sum(); }},
             {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
-            {"paw", [&]() { return potential.PAW_total_energy(); }},
+            {"paw", [&]() { return potential.PAW_total_energy(density); }},
             {"fermi", [&]() { return kset.energy_fermi(); }},
             {"hubbard", [&]() { return sirius::hubbard_energy(density); }}};
 
