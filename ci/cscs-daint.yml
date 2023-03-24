@@ -15,6 +15,7 @@ build base cuda image:
   # image, they can be added too.
   # Since the base image name is runtime dependent, we need to carry the value of it to
   # the following jobs via a dotenv file.
+  timeout: 2h
   before_script:
   - DOCKER_TAG=`sha256sum ci/baseimage.cuda.Dockerfile | head -c 16`
   - export PERSIST_IMAGE_NAME=$CSCS_REGISTRY_PATH/base/sirius-ci:$DOCKER_TAG
@@ -89,7 +90,7 @@ build sequential eigen-solver cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^intel-oneapi-mkl+cluster ^magma+cuda'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 build fp32 cuda image:
