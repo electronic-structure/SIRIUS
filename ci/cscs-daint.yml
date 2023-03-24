@@ -59,7 +59,7 @@ build cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^intel-oneapi-mkl+cluster'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^intel-oneapi-mkl+cluster'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 build rocm image:
@@ -92,14 +92,25 @@ build sequential eigen-solver cuda image:
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^intel-oneapi-mkl+cluster ^magma+cuda'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
-build cuda fp32 image:
+build fp32 cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc +single_precision ^mpich ^intel-oneapi-mkl+cluster'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build vdwxc cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    # we can't use MKL here because vdwxc needs parallel FFT and MKL doesn't provide it
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 .run_tests:

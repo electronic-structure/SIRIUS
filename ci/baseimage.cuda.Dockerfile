@@ -52,6 +52,16 @@ RUN yq -i '.compilers[0].compiler.paths.f77 = "/usr/bin/gfortran"' /root/.spack/
 RUN spack install --only=dependencies mpich@${MPICH_VERSION} %gcc
 RUN spack install mpich@${MPICH_VERSION} %gcc
 
+# install openmpi
+RUN spack install --only=dependencies openmpi %gcc
+RUN spack install openmpi %gcc
+
+# install openblas
+RUN spack install openblas+fortran %gcc
+
+# install libvdwxc
+RUN spack install libvdwxc+mpi %gcc ^mpich@${MPICH_VERSION}
+
 # for the MPI hook
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
