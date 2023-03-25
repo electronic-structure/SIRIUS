@@ -64,15 +64,17 @@ RUN spack install libvdwxc %gcc +mpi ^mpich@${MPICH_VERSION}
 
 RUN spack install magma %gcc +cuda ^openblas
 
+RUN spack install nlcglib %gcc +cuda+wrapper ^kokkos+wrapper
+
 # for the MPI hook
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop %gcc build_type=Release +python +fortran +elpa +tests +scalapack +vdwxc +cuda +nlcglib ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda ^nlcglib+cuda+wrapper ^kokkos+wrapper"
+ENV SPEC="sirius@develop %gcc build_type=Release +python +fortran +elpa +tests +scalapack +vdwxc +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
 
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
 
-ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas ^mpich^mpich@${MPICH_VERSION} ^spfft+single_precision"
+ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas ^mpich@${MPICH_VERSION} ^spfft+single_precision"
 
 RUN spack install --only=dependencies $SPEC_CLANG

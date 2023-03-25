@@ -204,6 +204,8 @@ if(USE_CUDA)
   # note find cudatoolkit is called inside the include file. the
   # sirius::cuda_libs target is also defined there
   include(cmake/cudalibs_target.cmake)
+  message(STATUS "CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}")
+  message(STATUS "CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}")
 endif(USE_CUDA)
 
 if(USE_ROCM)
