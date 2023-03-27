@@ -8,6 +8,11 @@ project(SIRIUS
   VERSION 7.4.4
   LANGUAGES CXX C)
 
+# for CUDA_ARCHITECTURES
+if(POLICY CMP0104)
+  cmake_policy(SET CMP0104 NEW)
+endif()
+
 # user variables
 
 option(CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
@@ -47,7 +52,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CUDA_STANDARD 14)
 
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES "60;70;80")
+  set(CMAKE_CUDA_ARCHITECTURES "60;70;80" CACHE STRING "CUDA architectures to generate code for")
 endif()
 
 # This ensures that -std=c++14 is passed to nvcc. See
@@ -205,7 +210,6 @@ if(USE_CUDA)
   # sirius::cuda_libs target is also defined there
   include(cmake/cudalibs_target.cmake)
   message(STATUS "CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}")
-  message(STATUS "CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}")
 endif(USE_CUDA)
 
 if(USE_ROCM)

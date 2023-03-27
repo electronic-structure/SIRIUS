@@ -60,7 +60,7 @@ build cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^intel-oneapi-mkl+cluster'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 build rocm image:
