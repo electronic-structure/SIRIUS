@@ -78,34 +78,19 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr) // TODO: get rid of mem.pool
+    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__)
         : spfft_(&spfft__)
         , gvecp_(gvecp__)
     {
-        if (mp__) {
-            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
-        } else {
-            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host,
-                                        "Smooth_periodic_function.f_rg_");
-        }
+        auto& mp = sddk::get_memory_pool(sddk::memory_t::host);
+        f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), mp, "Smooth_periodic_function.f_rg_");
         f_rg_.zero();
 
-        if (mp__) {
-            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), *mp__,
-                                                           "Smooth_periodic_function.f_pw_local_");
-        } else {
-            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
-                                                       "Smooth_periodic_function.f_pw_local_");
-        }
+        f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), mp,
+                                                        "Smooth_periodic_function.f_pw_local_");
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            if (mp__) {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), *mp__,
-                                                             "Smooth_periodic_function.f_pw_fft_");
-            } else {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), sddk::memory_t::host,
-                                                             "Smooth_periodic_function.f_pw_fft_");
-            }
+            f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), mp, "Smooth_periodic_function.f_pw_fft_");
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
@@ -208,23 +193,18 @@ class Smooth_periodic_function
 
         auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
 
-#if defined(USE_FP32)
-        using precision_type = typename std::conditional<std::is_same<real_type<T>, double>::value, double, float>::type;
-#else
-        using precision_type = double;
-#endif 
         switch (direction__) {
             case 1: {
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     gather_f_pw_fft();
                 }
-                spfft_->backward(reinterpret_cast<precision_type const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
+                spfft_->backward(reinterpret_cast<real_type<T> const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
                 fft::spfft_output(*spfft_, frg_ptr);
                 break;
             }
             case -1: {
                 fft::spfft_input(*spfft_, frg_ptr);
-                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<precision_type*>(f_pw_fft_.at(sddk::memory_t::host)),
+                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<real_type<T>*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     int count  = gvecp_->gvec_slab().counts[gvecp_->comm_ortho_fft().rank()];

@@ -41,8 +41,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
 
     /* allocate functions */
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        veff_vec_[j] = std::unique_ptr<Smooth_periodic_function<T>>(
-            new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+        veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
             veff_vec_[j]->f_rg(ir) = 2.71828;
@@ -51,8 +50,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
     /* map Theta(r) to the coarse mesh */
     if (ctx_.full_potential()) {
         auto& gvec_dense_p = ctx_.gvec_fft();
-        veff_vec_[v_local_index_t::theta] = std::unique_ptr<Smooth_periodic_function<T>>(
-            new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+        veff_vec_[v_local_index_t::theta] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         /* map unit-step function */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
@@ -80,8 +78,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             auto& fft_dense    = ctx_.spfft<T>();
             auto& gvec_dense_p = ctx_.gvec_fft();
 
-            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft<T>(), ctx_.gvec_fft_sptr(),
-                                             &get_memory_pool(sddk::memory_t::host));
+            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft<T>(), ctx_.gvec_fft_sptr());
 
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */
@@ -103,8 +100,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
                 veff_vec_[j]->fft_transform(1);
             }
             if (ctx_.valence_relativity() == relativity_t::zora) {
-                veff_vec_[v_local_index_t::rm_inv] = std::unique_ptr<Smooth_periodic_function<T>>(
-                    new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+                veff_vec_[v_local_index_t::rm_inv] = std::make_unique<Smooth_periodic_function<T>>(
+                        fft_coarse__, gvec_coarse_p__);
                 /* loop over local set of coarse G-vectors */
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
@@ -180,15 +177,9 @@ void Local_operator<T>::prepare_k(fft::Gvec_fft const& gkvec_p__)
     int ngv_fft = gkvec_p__.count();
 
     /* cache kinteic energy of plane-waves */
-    //if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
-        pw_ekin_ = sddk::mdarray<T, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
-    //}
-    //if (static_cast<int>(gkvec_cart_.size()) < ngv_fft) {
-        gkvec_cart_ = sddk::mdarray<T, 2>(ngv_fft, 3, get_memory_pool(sddk::memory_t::host), "Local_operator::gkvec_cart");
-    //}
-    //if (static_cast<int>(vphi_.size()) < ngv_fft) {
-        vphi_ = sddk::mdarray<std::complex<T>, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::vphi");
-    //}
+    pw_ekin_ = sddk::mdarray<T, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
+    gkvec_cart_ = sddk::mdarray<T, 2>(ngv_fft, 3, get_memory_pool(sddk::memory_t::host), "Local_operator::gkvec_cart");
+    vphi_ = sddk::mdarray<std::complex<T>, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::vphi");
 
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
