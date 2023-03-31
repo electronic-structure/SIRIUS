@@ -61,7 +61,7 @@ void Potential::generate_D_operator_matrix()
             n_mag_comp = ctx_.num_mag_dims() + 1;
             veff = sddk::mdarray<std::complex<double>, 2>(gvec_count, n_mag_comp, mph);
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                std::copy(&component(j).f_pw_local(0), &component(j).f_pw_local(0) + gvec_count, &veff(0, j));
+                std::copy(&component(j).rg().f_pw_local(0), &component(j).rg().f_pw_local(0) + gvec_count, &veff(0, j));
             }
             veff.allocate(mpd).copy_to(sddk::memory_t::device);
             break;
@@ -127,7 +127,7 @@ void Potential::generate_D_operator_matrix()
                             for (int g = 0; g < ng; g++) {
                                 int ig = ctx_.gvec().offset() + g_begin + g;
                                 /* V(G) * exp(i * G * r_{alpha}) */
-                                auto z = component(iv).f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
+                                auto z = component(iv).rg().f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
                                 veff_a(2 * g,     i, 0) = z.real();
                                 veff_a(2 * g + 1, i, 0) = z.imag();
                             }
@@ -192,7 +192,7 @@ void Potential::generate_D_operator_matrix()
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nqlm; j++) {
-                            d_tmp(j, i, iv) = 2 * d_tmp(j, i, iv) - component(iv).f_pw_local(0).real() *
+                            d_tmp(j, i, iv) = 2 * d_tmp(j, i, iv) - component(iv).rg().f_pw_local(0).real() *
                                 ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }

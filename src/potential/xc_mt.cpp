@@ -341,7 +341,7 @@ void Potential::xc_mt(Density const& density__)
         rho[0] = &density__.rho().f_mt(ialoc);
         vxc[0] = &xc_potential_->f_mt(ialoc);
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            rho[j + 1] = &density__.magnetization(j).f_mt(ialoc);
+            rho[j + 1] = &density__.mag(j).f_mt(ialoc);
             vxc[j + 1] = &effective_magnetic_field(j).f_mt(ialoc);
         }
         sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->f_mt(ialoc));

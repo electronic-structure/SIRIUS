@@ -478,7 +478,7 @@ Force::calc_forces_us()
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
                         auto z = std::complex<double>(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                 potential_.component(ispin).f_pw_local(igloc);
+                                 potential_.component(ispin).rg().f_pw_local(igloc);
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
                     }
@@ -581,7 +581,7 @@ Force::calc_forces_core()
     auto& xc_pot = potential_.xc_potential();
 
     /* transform from real space to reciprocal */
-    xc_pot.fft_transform(-1);
+    xc_pot.rg().fft_transform(-1);
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -610,7 +610,7 @@ Force::calc_forces_core()
 
             /* scalar part of a force without multipying by G-vector */
             std::complex<double> z =
-                fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.rg().f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
             for (int x : {0, 1, 2}) {
@@ -710,7 +710,7 @@ Force::calc_forces_vloc()
     int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
 
-    double fact = valence_rho.gvec().reduced() ? 2.0 : 1.0;
+    double fact = valence_rho.rg().gvec().reduced() ? 2.0 : 1.0;
 
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
@@ -727,7 +727,7 @@ Force::calc_forces_vloc()
             auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.f_pw_local(igloc)) *
+            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.rg().f_pw_local(igloc)) *
                                std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */

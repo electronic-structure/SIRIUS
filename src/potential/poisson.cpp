@@ -33,7 +33,7 @@ double density_residual_hartree_energy(Density const& rho1__, Density const& rho
     auto const& gv = rho1__.ctx().gvec();
     #pragma omp parallel for reduction(+:eh)
     for (int igloc = gv.skip_g0(); igloc < gv.count(); igloc++) {
-        auto z = rho1__.component(0).f_pw_local(igloc) - rho2__.component(0).f_pw_local(igloc);
+        auto z = rho1__.component(0).rg().f_pw_local(igloc) - rho2__.component(0).rg().f_pw_local(igloc);
         double g = gv.gvec_len<sddk::index_domain_t::local>(igloc);
         eh += (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / std::pow(g, 2);
     }
@@ -169,17 +169,17 @@ void Potential::poisson(Periodic_function<double> const& rho)
         }
 
         /* compute multipoles of interstitial density in MT region */
-        auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
+        auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
         if (ctx_.cfg().control().print_checksum()) {
             utils::print_checksum("qit", qit.checksum(), ctx_.out());
         }
 
         /* add contribution from the pseudo-charge */
-        poisson_add_pseudo_pw(qmt, qit, const_cast<std::complex<double>*>(&rho.f_pw_local(0)));
+        poisson_add_pseudo_pw(qmt, qit, const_cast<std::complex<double>*>(&rho.rg().f_pw_local(0)));
 
         if (ctx_.cfg().control().verification() >= 2) {
-            auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
+            auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -195,12 +195,12 @@ void Potential::poisson(Periodic_function<double> const& rho)
 
     /* compute pw coefficients of Hartree potential */
     if (ctx_.gvec().comm().rank() == 0) {
-        hartree_potential_->f_pw_local(0) = 0.0;
+        hartree_potential_->rg().f_pw_local(0) = 0.0;
     }
     if (!ctx_.molecule()) {
         #pragma omp parallel for
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
-            hartree_potential_->f_pw_local(igloc) = fourpi * rho.f_pw_local(igloc) /
+            hartree_potential_->rg().f_pw_local(igloc) = fourpi * rho.rg().f_pw_local(igloc) /
                 std::pow(ctx_.gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
         }
     } else {
@@ -215,7 +215,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         #pragma omp parallel for
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
             auto glen = ctx_.gvec().gvec_len<sddk::index_domain_t::local>(igloc);
-            hartree_potential_->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(glen, 2)) *
+            hartree_potential_->rg().f_pw_local(igloc) = (fourpi * rho.rg().f_pw_local(igloc) / std::pow(glen, 2)) *
                                                     (1.0 - std::cos(glen * R_cut));
         }
     }
@@ -230,7 +230,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
         /* compute V_lm at the MT boundary */
-        auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, gvec_ylm_);
+        auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->rg().f_pw_local(0), sbessel_mt_, gvec_ylm_);
 
         /* add boundary condition and convert to Rlm */
         PROFILE("sirius::Potential::poisson|bc");
@@ -276,11 +276,11 @@ void Potential::poisson(Periodic_function<double> const& rho)
     }
 
     /* transform Hartree potential to real space */
-    hartree_potential_->fft_transform(1);
+    hartree_potential_->rg().fft_transform(1);
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = hartree_potential_->checksum_rg();
-        auto cs1 = hartree_potential_->checksum_pw();
+        auto cs = hartree_potential_->rg().checksum_rg();
+        auto cs1 = hartree_potential_->rg().checksum_pw();
         utils::print_checksum("vha_rg", cs, ctx_.out());
         utils::print_checksum("vha_pw", cs1, ctx_.out());
     }

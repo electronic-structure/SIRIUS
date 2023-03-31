@@ -1300,11 +1300,16 @@ sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, do
             std::string label(label__);
 
             std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-                {"vha", &gs.potential().hartree_potential()}};
+                {"rho", &gs.density().component(0)},
+                {"magz", &gs.density().component(1)},
+                {"magx", &gs.density().component(2)},
+                {"magy", &gs.density().component(3)},
+                {"veff", &gs.potential().component(0)},
+                {"bz", &gs.potential().component(1)},
+                {"bx", &gs.potential().component(2)},
+                {"by", &gs.potential().component(3)},
+                {"vha", &gs.potential().hartree_potential()}
+            };
 
             if (!func_map.count(label)) {
                 RTE_THROW("wrong label: " + label);
@@ -1316,7 +1321,8 @@ sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, do
                 f->set_mt_ptr(f_mt__);
             }
             if (f_rg__) {
-                f->set_rg_ptr(f_rg__);
+                RTE_THROW("setting pointer is not allowed");
+                //f->set_rg_ptr(f_rg__);
             }
         },
         error_code__);
@@ -2549,17 +2555,17 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                    {"rho", &gs.density().rho()},
+                    {"rho", &gs.density().rho().rg()},
                     {"rhoc", &gs.density().rho_pseudo_core()},
-                    {"magz", &gs.density().magnetization(0)},
-                    {"magx", &gs.density().magnetization(1)},
-                    {"magy", &gs.density().magnetization(2)},
-                    {"veff", &gs.potential().effective_potential()},
-                    {"bz", &gs.potential().effective_magnetic_field(0)},
-                    {"bx", &gs.potential().effective_magnetic_field(1)},
-                    {"by", &gs.potential().effective_magnetic_field(2)},
+                    {"magz", &gs.density().mag(0).rg()},
+                    {"magx", &gs.density().mag(1).rg()},
+                    {"magy", &gs.density().mag(2).rg()},
+                    {"veff", &gs.potential().effective_potential().rg()},
+                    {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                    {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                    {"by", &gs.potential().effective_magnetic_field(2).rg()},
                     {"vloc", &gs.potential().local_potential()},
-                    {"vxc", &gs.potential().xc_potential()},
+                    {"vxc", &gs.potential().xc_potential().rg()},
                     {"dveff", &gs.potential().dveff()},
                 };
 
@@ -2634,11 +2640,11 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                    {"rho", &gs.density().rho()},
-                    {"magz", &gs.density().magnetization(0)},
-                    {"magx", &gs.density().magnetization(1)},
-                    {"magy", &gs.density().magnetization(2)},
-                    {"veff", &gs.potential().effective_potential()},
+                    {"rho", &gs.density().rho().rg()},
+                    {"magz", &gs.density().mag(0).rg()},
+                    {"magx", &gs.density().mag(1).rg()},
+                    {"magy", &gs.density().mag(2).rg()},
+                    {"veff", &gs.potential().effective_potential().rg()},
                     {"vloc", &gs.potential().local_potential()},
                     {"rhoc", &gs.density().rho_pseudo_core()}};
 
@@ -3627,7 +3633,7 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vh_el__, int* 
         [&]() {
             auto& gs = get_gs(handler__);
 
-            gs.density().rho().fft_transform(-1);
+            gs.density().rho().rg().fft_transform(-1);
             gs.potential().poisson(gs.density().rho());
 
             if (vh_el__) {
@@ -5123,15 +5129,15 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"bz", &gs.potential().effective_magnetic_field(0)},
-                {"bx", &gs.potential().effective_magnetic_field(1)},
-                {"by", &gs.potential().effective_magnetic_field(2)},
-                {"vxc", &gs.potential().xc_potential()},
+                {"rho", &gs.density().rho().rg()},
+                {"magz", &gs.density().mag(0).rg()},
+                {"magx", &gs.density().mag(1).rg()},
+                {"magy", &gs.density().mag(2).rg()},
+                {"veff", &gs.potential().effective_potential().rg()},
+                {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                {"by", &gs.potential().effective_magnetic_field(2).rg()},
+                {"vxc", &gs.potential().xc_potential().rg()},
             };
             if (!func.count(label)) {
                 RTE_THROW("wrong label: " + label);
@@ -5249,15 +5255,15 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"bz", &gs.potential().effective_magnetic_field(0)},
-                {"bx", &gs.potential().effective_magnetic_field(1)},
-                {"by", &gs.potential().effective_magnetic_field(2)},
-                {"vxc", &gs.potential().xc_potential()},
+                {"rho", &gs.density().rho().rg()},
+                {"magz", &gs.density().mag(0).rg()},
+                {"magx", &gs.density().mag(1).rg()},
+                {"magy", &gs.density().mag(2).rg()},
+                {"veff", &gs.potential().effective_potential().rg()},
+                {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                {"by", &gs.potential().effective_magnetic_field(2).rg()},
+                {"vxc", &gs.potential().xc_potential().rg()},
             };
 
             if (!func.count(label)) {
@@ -5346,7 +5352,7 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
             sddk::mdarray<double, 1> total_mag(mag__, 3);
             total_mag.zero();
             for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
-                auto result  = gs.density().magnetization(j).integrate();
+                auto result  = gs.density().mag(j).integrate();
                 total_mag[j] = std::get<0>(result);
             }
             if (gs.ctx().num_mag_dims() == 3) {

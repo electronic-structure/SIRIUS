@@ -227,8 +227,8 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (!ctx_.full_potential()) {
         /* save current effective potential */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+        for (size_t ig = 0; ig < effective_potential().rg().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().rg().f_pw_local(ig);
         }
     }
 
@@ -249,10 +249,10 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
         poisson(density__.rho());
 
         /* add Hartree potential to the total potential */
-        effective_potential().add(hartree_potential());
+        effective_potential() += hartree_potential();
 
         if (ctx_.cfg().control().print_hash()) {
-            auto h = effective_potential().hash_f_rg();
+            auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha", h);
             }
@@ -262,15 +262,15 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
             xc(density__);
         } else {
             /* add local ionic potential to the effective potential */
-            effective_potential().add(local_potential());
+            effective_potential().rg() += local_potential();
             /* construct XC potentials from rho + rho_core */
             xc<true>(density__);
         }
         /* add XC potential to the effective potential */
-        effective_potential().add(xc_potential());
+        effective_potential() += xc_potential();
 
         if (ctx_.cfg().control().print_hash()) {
-            auto h = effective_potential().hash_f_rg();
+            auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha+Vxc", h);
             }
@@ -302,13 +302,13 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (!ctx_.full_potential()) {
         /* this is needed later to compute scf correction to forces */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
+        for (size_t ig = 0; ig < effective_potential().rg().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().rg().f_pw_local(ig) - dveff_->f_pw_local(ig);
         }
     }
 
     if (ctx_.cfg().control().print_hash()) {
-        auto h = effective_potential().hash_f_pw();
+        auto h = effective_potential().rg().hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("V(G)", h);
         }

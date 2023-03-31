@@ -236,12 +236,36 @@ class Smooth_periodic_function
                   &f_pw_local_(0));
     }
 
-    void add(Smooth_periodic_function<T> const& g__)
+    Smooth_periodic_function<T>& operator+=(Smooth_periodic_function<T> const& rhs__)
     {
-        #pragma omp parallel for schedule(static)
-        for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-            this->f_rg_(irloc) += g__.f_rg(irloc);
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
+                this->f_rg_(irloc) += rhs__.f_rg(irloc);
+            }
+            #pragma omp for schedule(static) nowait
+            for (int igloc = 0; igloc < this->gvecp_->gvec().count(); igloc++) {
+                this->f_pw_local_(igloc) += rhs__.f_pw_local(igloc);
+            }
         }
+        return *this;
+    }
+
+    Smooth_periodic_function<T>& operator*=(T alpha__)
+    {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
+                this->f_rg_(irloc) *= alpha__;
+            }
+            #pragma omp for schedule(static) nowait
+            for (int igloc = 0; igloc < this->gvecp_->gvec().count(); igloc++) {
+                this->f_pw_local_(igloc) *= alpha__;
+            }
+        }
+        return *this;
     }
 
     inline T checksum_rg() const
