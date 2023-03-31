@@ -47,7 +47,7 @@ namespace sirius {
  *   \f]
  */
 template <typename T>
-class Periodic_function : public Smooth_periodic_function<T>
+class Periodic_function
 {
   private:
 
@@ -56,6 +56,9 @@ class Periodic_function : public Smooth_periodic_function<T>
     Unit_cell const& unit_cell_;
 
     mpi::Communicator const& comm_;
+
+    /// Regular space grid component of the periodic function.
+    Smooth_periodic_function<T> rg_component_;
 
     /// Local part of muffin-tin functions.
     sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
@@ -87,10 +90,10 @@ class Periodic_function : public Smooth_periodic_function<T>
   public:
     /// Constructor
     Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
-        : Smooth_periodic_function<T>(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
-        , ctx_(ctx__)
+        : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
+        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
         , gvec_(ctx__.gvec())
         , angular_domain_size_(angular_domain_size__)
     {
@@ -143,8 +146,8 @@ class Periodic_function : public Smooth_periodic_function<T>
     void zero()
     {
         f_mt_.zero();
-        this->f_rg_.zero();
-        this->f_pw_local_.zero();
+        this->rg().f_rg().zero();
+        this->rg().f_pw_local().zero();
         if (ctx_.full_potential()) {
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 f_mt_local_(ialoc).zero();
@@ -156,16 +159,16 @@ class Periodic_function : public Smooth_periodic_function<T>
     inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
     {
         if (f_rg__) {
-            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() *
-                                             this->spfft_->local_z_offset();
-            if (this->spfft_->local_slice_size()) {
+            auto& spfft = this->rg().spfft();
+            int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+            if (spfft.local_slice_size()) {
                 std::copy(
-                    this->f_rg_.at(sddk::memory_t::host), this->f_rg_.at(sddk::memory_t::host) + this->spfft_->local_slice_size(),
+                    this->rg().f_rg().at(sddk::memory_t::host),
+                    this->rg().f_rg().at(sddk::memory_t::host) + spfft.local_slice_size(),
                     f_rg__ + offs);
             }
             if (!is_local_rg__) {
-                mpi::Communicator(
-                    this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
+                mpi::Communicator(spfft.communicator()).allgather(f_rg__, spfft.local_slice_size(), offs);
             }
         }
         if (ctx_.full_potential() && f_mt__) {
@@ -185,11 +188,11 @@ class Periodic_function : public Smooth_periodic_function<T>
     inline void copy_from(T const* f_mt__, T const* f_rg__, bool is_local_rg__)
     {
         if (f_rg__) {
-            int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() *
-                                             this->spfft_->local_z_offset();
-            if (this->spfft_->local_slice_size()) {
-                std::copy(f_rg__ + offs, f_rg__ + offs + this->spfft_->local_slice_size(),
-                          this->f_rg_.at(sddk::memory_t::host));
+            auto& spfft = this->rg().spfft();
+            int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+            if (spfft.local_slice_size()) {
+                std::copy(f_rg__ + offs, f_rg__ + offs + spfft.local_slice_size(),
+                          this->rg().f_rg().at(sddk::memory_t::host));
             }
         }
         if (ctx_.full_potential() && f_mt__) {
@@ -198,21 +201,35 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
-    using Smooth_periodic_function<T>::add;
-
     /// Add the function
-    void add(Periodic_function<T> const& g__)
+    Periodic_function<T>& operator+=(Periodic_function<T> const& g__)
     {
         PROFILE("sirius::Periodic_function::add");
         /* add regular-grid part */
-        Smooth_periodic_function<T>::add(g__);
+        this->rg_component_ += g__.rg();
         /* add muffin-tin part */
         if (ctx_.full_potential()) {
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                f_mt_local_(ialoc) += g__.f_mt(ialoc);
+                this->f_mt_local_(ialoc) += g__.f_mt(ialoc);
             }
         }
+        return *this;
     }
+
+    Periodic_function<T>& operator*=(T alpha__)
+    {
+        PROFILE("sirius::Periodic_function::add");
+        /* add regular-grid part */
+        this->rg_component_ *= alpha__;
+        /* add muffin-tin part */
+        if (ctx_.full_potential()) {
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                this->f_mt_local_(ialoc) *= alpha__;
+            }
+        }
+        return *this;
+    }
+
 
     /// Return total integral, interstitial contribution and muffin-tin contributions.
     inline std::tuple<T, T, std::vector<T>>
@@ -224,17 +241,17 @@ class Periodic_function : public Smooth_periodic_function<T>
 
         if (!ctx_.full_potential()) {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
-            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-                it_val += this->f_rg_(irloc);
+            for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
+                it_val += this->rg().f_rg(irloc);
             }
         } else {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
-            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-                it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
+            for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
+                it_val += this->rg().f_rg(irloc) * ctx_.theta(irloc);
             }
         }
-        it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->spfft()));
-        mpi::Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
+        it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->rg().spfft()));
+        mpi::Communicator(this->rg().spfft().communicator()).allreduce(&it_val, 1);
         T total = it_val;
 
         std::vector<T> mt_val;
@@ -284,7 +301,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /** \todo write and read distributed functions */
     void hdf5_write(std::string storage_file_name__, std::string path__)
     {
-        auto v = this->gather_f_pw();
+        auto v = this->rg().gather_f_pw();
         if (ctx_.comm().rank() == 0) {
             sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
@@ -309,7 +326,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
             r3::vector<int> G(&gvec__(0, ig));
             if (local_gvec_mapping.count(G) != 0) {
-                this->f_pw_local_[local_gvec_mapping[G]] = v[ig];
+                this->rg().f_pw_local(local_gvec_mapping[G]) = v[ig];
             }
         }
 
@@ -326,18 +343,18 @@ class Periodic_function : public Smooth_periodic_function<T>
         set_local_mt_ptr();
     }
 
-    /// Set the pointer to the interstitial part
-    void set_rg_ptr(T* rg_ptr__)
-    {
-        this->f_rg_ = sddk::mdarray<T, 1>(rg_ptr__, this->spfft_->local_slice_size());
-    }
+    ///// Set the pointer to the interstitial part
+    //void set_rg_ptr(T* rg_ptr__)
+    //{
+    //    this->rg().f_rg_ = sddk::mdarray<T, 1>(rg_ptr__, this->spfft_->local_slice_size());
+    //}
 
-    inline Spheric_function<function_domain_t::spectral, T> const& f_mt(int ialoc__) const
+    inline auto const& f_mt(int ialoc__) const
     {
         return f_mt_local_(ialoc__);
     }
 
-    inline Spheric_function<function_domain_t::spectral, T> & f_mt(int ialoc__)
+    inline auto& f_mt(int ialoc__)
     {
         return f_mt_local_(ialoc__);
     }
@@ -388,6 +405,18 @@ class Periodic_function : public Smooth_periodic_function<T>
     {
         return ctx_;
     }
+
+    /// Return reference to regular space grid component.
+    auto& rg()
+    {
+        return rg_component_;
+    }
+
+    /// Return const reference to regular space grid component.
+    auto const& rg() const
+    {
+        return rg_component_;
+    }
 };
 
 template <typename T>
@@ -398,12 +427,10 @@ inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const
     T result_rg{0};
 
     if (!f__.ctx().full_potential()) {
-        result_rg = sirius::inner_local(static_cast<Smooth_periodic_function<T> const&>(f__),
-                                        static_cast<Smooth_periodic_function<T> const&>(g__));
+        result_rg = sirius::inner_local(f__.rg(), g__.rg());
     } else {
-        result_rg = sirius::inner_local(static_cast<Smooth_periodic_function<T> const&>(f__),
-                                        static_cast<Smooth_periodic_function<T> const&>(g__),
-                                        [&](int ir) { return f__.ctx().theta(ir); });
+        result_rg = sirius::inner_local(f__.rg(), g__.rg(),
+                [&](int ir) { return f__.ctx().theta(ir); });
     }
 
     T result_mt{0};

@@ -69,10 +69,10 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
         ovlp.set(ig, ig, 1);
     }
 
-    auto veff = Hk__.H0().potential().effective_potential().gather_f_pw();
+    auto veff = Hk__.H0().potential().effective_potential().rg().gather_f_pw();
     std::vector<std::complex<double>> beff;
     if (ctx_.num_mag_dims() == 1) {
-        beff = Hk__.H0().potential().effective_magnetic_field(0).gather_f_pw();
+        beff = Hk__.H0().potential().effective_magnetic_field(0).rg().gather_f_pw();
         for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
             auto z1 = veff[ig];
             auto z2 = beff[ig];

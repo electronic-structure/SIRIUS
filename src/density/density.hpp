@@ -407,39 +407,39 @@ class Density : public Field4D
         return unit_cell_.atom_symmetry_class(ic).core_leakage();
     }
 
-    /// Return charge density (scalar functions).
-    inline Periodic_function<double>& rho()
-    {
-        return const_cast<Periodic_function<double>&>(static_cast<Density const&>(*this).rho());
-    }
-
     /// Return const reference to charge density (scalar functions).
-    inline Periodic_function<double> const& rho() const
+    inline auto const& rho() const
     {
         return this->scalar();
     }
 
-    inline Smooth_periodic_function<double>& rho_pseudo_core()
+    /// Return charge density (scalar functions).
+    inline auto& rho()
     {
-        return *rho_pseudo_core_;
+        return const_cast<Periodic_function<double>&>(static_cast<Density const&>(*this).rho());
     }
 
-    inline Smooth_periodic_function<double> const& rho_pseudo_core() const
-    {
-        return *rho_pseudo_core_;
-    }
-
-    inline auto& magnetization(int i)
+    inline auto& mag(int i)
     {
         return this->vector(i);
     }
 
-    inline auto const& magnetization(int i) const
+    inline auto const& mag(int i) const
     {
         return this->vector(i);
     }
 
-    auto const& density_mt(int ialoc) const
+    inline auto& rho_pseudo_core()
+    {
+        return *rho_pseudo_core_;
+    }
+
+    inline auto const& rho_pseudo_core() const
+    {
+        return *rho_pseudo_core_;
+    }
+
+    inline auto const& density_mt(int ialoc) const
     {
         return rho().f_mt(ialoc);
     }
@@ -448,7 +448,7 @@ class Density : public Field4D
     void generate_paw_loc_density();
 
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
-    auto paw_ae_density(int ia__) const
+    inline auto paw_ae_density(int ia__) const
     {
         std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -458,7 +458,7 @@ class Density : public Field4D
     }
 
     /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
-    auto paw_ps_density(int ia__) const
+    inline auto paw_ps_density(int ia__) const
     {
         std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -477,12 +477,12 @@ class Density : public Field4D
     /// Mix new density.
     double mix();
 
-    sddk::mdarray<std::complex<double>, 4> const& density_matrix() const
+    inline auto const& density_matrix() const
     {
         return density_matrix_;
     }
 
-    sddk::mdarray<std::complex<double>, 4>& density_matrix()
+    inline auto& density_matrix()
     {
         return density_matrix_;
     }
@@ -721,7 +721,7 @@ class Density : public Field4D
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             std::stringstream s;
             s << "magnetization/" << j;
-            magnetization(j).hdf5_write(storage_file_name, s.str());
+            mag(j).hdf5_write(storage_file_name, s.str());
         }
         ctx_.comm().barrier();
     }
@@ -739,10 +739,10 @@ class Density : public Field4D
         fin.read("/parameters/gvec", gv);
 
         rho().hdf5_read(fin["density"], gv);
-        rho().fft_transform(1);
+        rho().rg().fft_transform(1);
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            magnetization(j).hdf5_read(fin["magnetization"][j], gv);
-            magnetization(j).fft_transform(1);
+            mag(j).hdf5_read(fin["magnetization"][j], gv);
+            mag(j).rg().fft_transform(1);
         }
     }
 
@@ -895,8 +895,8 @@ class Density : public Field4D
 inline void copy(Density const& src__, Density& dest__)
 {
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
-        copy(src__.component(j).f_pw_local(), dest__.component(j).f_pw_local());
-        copy(src__.component(j).f_rg(), dest__.component(j).f_rg());
+        copy(src__.component(j).rg().f_pw_local(), dest__.component(j).rg().f_pw_local());
+        copy(src__.component(j).rg().f_rg(), dest__.component(j).rg().f_rg());
         if (src__.ctx().full_potential()) {
             for (int ialoc = 0; ialoc < src__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
                 copy(src__.component(j).f_mt(ialoc), dest__.component(j).f_mt(ialoc));
@@ -918,10 +918,8 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     auto& ctx = const_cast<Simulation_context&>(density__.ctx());
     int num_points = ctx.spfft<double>().local_slice_size();
 
-    auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
-    auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
-            Smooth_periodic_function<double>(ctx.spfft<double>(), ctx.gvec_fft_sptr()));
+    auto rho_up = std::make_unique<Smooth_periodic_function<double>>(ctx.spfft<double>(), ctx.gvec_fft_sptr());
+    auto rho_dn = std::make_unique<Smooth_periodic_function<double>>(ctx.spfft<double>(), ctx.gvec_fft_sptr());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
@@ -929,10 +927,10 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     for (int ir = 0; ir < num_points; ir++) {
         r3::vector<double> m;
         for (int j = 0; j < ctx.num_mag_dims(); j++) {
-            m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc__);
+            m[j] = density__.mag(j).rg().f_rg(ir) * (1 + add_delta_mag_xc__);
         }
 
-        double rho = density__.rho().f_rg(ir);
+        double rho = density__.rho().rg().f_rg(ir);
         if (add_pseudo_core__) {
             rho += density__.rho_pseudo_core().f_rg(ir);
         }

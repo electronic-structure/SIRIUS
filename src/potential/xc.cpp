@@ -57,7 +57,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     for (int ir = 0; ir < num_points; ir++) {
 
         //int ir = spl_np[irloc];
-        double d = density__.rho().f_rg(ir);
+        double d = density__.rho().rg().f_rg(ir);
         if (add_pseudo_core__) {
             d += density__.rho_pseudo_core().f_rg(ir);
         }
@@ -83,7 +83,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     }
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = density__.rho().checksum_rg();
+        auto cs = density__.rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
@@ -236,13 +236,13 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
-            xc_energy_density_->f_rg(ir) += exc(ir);
-            xc_potential_->f_rg(ir) += vxc(ir);
+            xc_energy_density_->rg().f_rg(ir) += exc(ir);
+            xc_potential_->rg().f_rg(ir) += vxc(ir);
         }
     } // for loop over xc functionals
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = xc_potential_->checksum_rg();
+        auto cs = xc_potential_->rg().checksum_rg();
         utils::print_checksum("exc", cs, ctx_.out());
     }
 }
@@ -415,9 +415,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
         #pragma omp parallel for
         for (int irloc = 0; irloc < num_points; irloc++) {
             /* add XC energy density */
-            xc_energy_density_->f_rg(irloc) += exc(irloc);
+            xc_energy_density_->rg().f_rg(irloc) += exc(irloc);
             /* add XC potential */
-            xc_potential_->f_rg(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
+            xc_potential_->rg().f_rg(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
 
             double bxc = 0.5 * (vxc_up(irloc) - vxc_dn(irloc));
 
@@ -426,13 +426,13 @@ void Potential::xc_rg_magnetic(Density const& density__)
 
             r3::vector<double> m;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                m[j] = density__.magnetization(j).f_rg(irloc);
+                m[j] = density__.mag(j).rg().f_rg(irloc);
             }
             auto m_len = m.length();
 
             if (m_len > 1e-8) {
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                   effective_magnetic_field(j).f_rg(irloc) += std::abs(bxc) * s * m[j] / m_len;
+                   effective_magnetic_field(j).rg().f_rg(irloc) += std::abs(bxc) * s * m[j] / m_len;
                 }
             } 
         }
@@ -466,7 +466,7 @@ void Potential::xc(Density const& density__)
     }
 
     if (ctx_.cfg().control().print_hash()) {
-        auto h = xc_energy_density_->hash_f_rg();
+        auto h = xc_energy_density_->rg().hash_f_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("Exc", h);
         }

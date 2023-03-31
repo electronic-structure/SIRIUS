@@ -41,7 +41,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     auto& comm = ctx_.comm();
 
     if (ctx_.cfg().control().print_hash()) {
-        auto h = f__->hash_f_pw();
+        auto h = f__->rg().hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("f_unsymmetrized(G)", h);
         }
@@ -51,9 +51,9 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     switch (ctx_.num_mag_dims()) {
         case 0: {
             sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
-                &f__->f_pw_local(0), nullptr, nullptr, nullptr);
+                &f__->rg().f_pw_local(0), nullptr, nullptr, nullptr);
             if (ctx_.cfg().control().print_hash()) {
-                auto h = f__->hash_f_pw();
+                auto h = f__->rg().hash_f_pw();
                 if (ctx_.comm().rank() == 0) {
                     utils::print_hash("f_symmetrized(G)", h);
                 }
@@ -62,14 +62,14 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
         }
         case 1: {
             sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
-                &f__->f_pw_local(0), nullptr, nullptr, &gz__->f_pw_local(0));
+                &f__->rg().f_pw_local(0), nullptr, nullptr, &gz__->rg().f_pw_local(0));
             break;
         }
         case 3: {
             if (ctx_.cfg().control().print_hash()) {
-                auto h1 = gx__->hash_f_pw();
-                auto h2 = gy__->hash_f_pw();
-                auto h3 = gz__->hash_f_pw();
+                auto h1 = gx__->rg().hash_f_pw();
+                auto h2 = gy__->rg().hash_f_pw();
+                auto h3 = gz__->rg().hash_f_pw();
                 if (ctx_.comm().rank() == 0) {
                     utils::print_hash("fx_unsymmetrized(G)", h1);
                     utils::print_hash("fy_unsymmetrized(G)", h2);
@@ -78,12 +78,13 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
             }
 
             sirius::symmetrize(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
-                &f__->f_pw_local(0), &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
+                &f__->rg().f_pw_local(0), &gx__->rg().f_pw_local(0),
+                &gy__->rg().f_pw_local(0), &gz__->rg().f_pw_local(0));
 
             if (ctx_.cfg().control().print_hash()) {
-                auto h1 = gx__->hash_f_pw();
-                auto h2 = gy__->hash_f_pw();
-                auto h3 = gz__->hash_f_pw();
+                auto h1 = gx__->rg().hash_f_pw();
+                auto h2 = gy__->rg().hash_f_pw();
+                auto h3 = gz__->rg().hash_f_pw();
                 if (ctx_.comm().rank() == 0) {
                     utils::print_hash("fx_symmetrized(G)", h1);
                     utils::print_hash("fy_symmetrized(G)", h2);
@@ -145,7 +146,7 @@ void Field4D::zero()
 void Field4D::fft_transform(int direction__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        component(i).fft_transform(direction__);
+        component(i).rg().fft_transform(direction__);
     }
 }
 

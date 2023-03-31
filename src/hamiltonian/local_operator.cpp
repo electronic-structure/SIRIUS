@@ -83,7 +83,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */
                 for (int ir = 0; ir < fft_dense.local_slice_size(); ir++) {
-                    ftmp.f_rg(ir) = potential__->component(j).f_rg(ir) * ctx_.theta(ir);
+                    ftmp.f_rg(ir) = potential__->component(j).rg().f_rg(ir) * ctx_.theta(ir);
                 }
                 /* transform to plane-wave domain */
                 ftmp.fft_transform(-1);
@@ -121,7 +121,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
                 for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
                     /* map from fine to coarse set of G-vectors */
                     veff_vec_[j]->f_pw_local(igloc) =
-                        potential__->component(j).f_pw_local(potential__->component(j).gvec().gvec_base_mapping(igloc));
+                        potential__->component(j).rg().f_pw_local(potential__->component(j).rg().gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
                 veff_vec_[j]->fft_transform(1);
@@ -139,10 +139,12 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             }
 
             if (ctx_.num_mag_dims() == 0) {
-                v0_[0] = potential__->component(0).f_0().real();
+                v0_[0] = potential__->component(0).rg().f_0().real();
             } else {
-                v0_[0] = potential__->component(0).f_0().real() + potential__->component(1).f_0().real();
-                v0_[1] = potential__->component(0).f_0().real() - potential__->component(1).f_0().real();
+                v0_[0] = potential__->component(0).rg().f_0().real() +
+                         potential__->component(1).rg().f_0().real();
+                v0_[1] = potential__->component(0).rg().f_0().real() -
+                         potential__->component(1).rg().f_0().real();
             }
         }
 

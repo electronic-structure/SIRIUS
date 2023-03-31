@@ -828,7 +828,7 @@ class Potential : public Field4D
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
     auto energy_vxc_core(Density const& density__) const
     {
-        return inner(density__.rho_pseudo_core(), xc_potential());
+        return inner(density__.rho_pseudo_core(), xc_potential().rg());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
@@ -836,7 +836,7 @@ class Potential : public Field4D
     {
         double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density().rg());
         }
         return exc;
     }
