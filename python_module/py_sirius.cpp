@@ -373,7 +373,7 @@ PYBIND11_MODULE(py_sirius, m)
             "f_pw_local",
             [](py::object& obj, int i) -> py::array_t<complex_double> {
                 Field4D& field       = obj.cast<Field4D&>();
-                auto& matrix_storage = field.component_raise(i).f_pw_local();
+                auto& matrix_storage = field.component_raise(i).rg().f_pw_local();
                 int nrows            = matrix_storage.size(0);
                 /* return underlying data as numpy.ndarray view */
                 return py::array_t<complex_double>({nrows}, {1 * sizeof(complex_double)},
@@ -383,7 +383,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("f_rg",
              [](py::object& obj, int i) -> py::array_t<double> {
                  Field4D& field       = obj.cast<Field4D&>();
-                 auto& matrix_storage = field.component_raise(i).f_rg();
+                 auto& matrix_storage = field.component_raise(i).rg().f_rg();
                  int nrows            = matrix_storage.size(0);
                  /* return underlying data as numpy.ndarray view */
                  return py::array_t<double>({nrows}, {1 * sizeof(double)}, matrix_storage.at(sddk::memory_t::host),
@@ -764,7 +764,7 @@ PYBIND11_MODULE(py_sirius, m)
         //                        py::return_value_policy::reference_internal);
         ;
 
-    py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
+    py::class_<Periodic_function<double>>(m, "RPeriodic_function");
 
     m.def("total_energy", &total_energy);
     m.def("ewald_energy", &ewald_energy);
