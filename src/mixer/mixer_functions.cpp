@@ -45,8 +45,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                x.rg().f_rg(i) *= alpha;
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                x.rg().value(i) *= alpha;
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
@@ -64,8 +64,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                y.rg().f_rg(i) = x.rg().f_rg(i);
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                y.rg().value(i) = x.rg().value(i);
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
@@ -85,8 +85,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                y.rg().f_rg(i) += alpha * x.rg().f_rg(i);
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                y.rg().value(i) += alpha * x.rg().value(i);
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
@@ -106,11 +106,11 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                auto xi = x.rg().f_rg(i);
-                auto yi = y.rg().f_rg(i);
-                x.rg().f_rg(i) = xi * c  + yi * s;
-                y.rg().f_rg(i) = xi * -s + yi * c;
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                auto xi = x.rg().value(i);
+                auto yi = y.rg().value(i);
+                x.rg().value(i) = xi * c  + yi * s;
+                y.rg().value(i) = xi * -s + yi * c;
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
@@ -171,8 +171,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                y.rg().f_rg(i) = x.rg().f_rg(i);
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                y.rg().value(i) = x.rg().value(i);
             }
             #pragma omp for schedule(static) nowait
             for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
@@ -196,8 +196,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                y.rg().f_rg(i) += alpha * x.rg().f_rg(i);
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                y.rg().value(i) += alpha * x.rg().value(i);
             }
             #pragma omp for schedule(static) nowait
             for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
@@ -221,11 +221,11 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().f_rg().size(); ++i) {
-                auto xi = x.rg().f_rg(i);
-                auto yi = y.rg().f_rg(i);
-                x.rg().f_rg(i) = xi * c  + yi * s;
-                y.rg().f_rg(i) = xi * -s + yi * c;
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                auto xi = x.rg().value(i);
+                auto yi = y.rg().value(i);
+                x.rg().value(i) = xi * c  + yi * s;
+                y.rg().value(i) = xi * -s + yi * c;
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {

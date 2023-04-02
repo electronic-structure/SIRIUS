@@ -44,7 +44,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
-            veff_vec_[j]->f_rg(ir) = 2.71828;
+            veff_vec_[j]->value(ir) = 2.71828;
         }
     }
     /* map Theta(r) to the coarse mesh */
@@ -60,7 +60,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         }
         veff_vec_[v_local_index_t::theta]->fft_transform(1);
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[v_local_index_t::theta]->f_rg().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            veff_vec_[v_local_index_t::theta]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
         }
         if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -83,7 +83,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */
                 for (int ir = 0; ir < fft_dense.local_slice_size(); ir++) {
-                    ftmp.f_rg(ir) = potential__->component(j).rg().f_rg(ir) * ctx_.theta(ir);
+                    ftmp.value(ir) = potential__->component(j).rg().value(ir) * ctx_.theta(ir);
                 }
                 /* transform to plane-wave domain */
                 ftmp.fft_transform(-1);
@@ -131,10 +131,10 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0             = veff_vec_[v_local_index_t::v0]->f_rg(ir);
-                    T v1             = veff_vec_[v_local_index_t::v1]->f_rg(ir);
-                    veff_vec_[v_local_index_t::v0]->f_rg(ir) = v0 + v1; // v + Bz
-                    veff_vec_[v_local_index_t::v1]->f_rg(ir) = v0 - v1; // v - Bz
+                    T v0             = veff_vec_[v_local_index_t::v0]->value(ir);
+                    T v1             = veff_vec_[v_local_index_t::v1]->value(ir);
+                    veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
+                    veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
                 }
             }
 
@@ -164,7 +164,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
         for (int j = 0; j < 6; j++) {
             if (veff_vec_[j]) {
-                veff_vec_[j]->f_rg().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                veff_vec_[j]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
             }
         }
         buf_rg_.allocate(get_memory_pool(sddk::memory_t::device));
@@ -218,7 +218,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                         #pragma omp parallel for
                         for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                            out__[ir] = in__[ir] * veff_vec__[idx_veff__]->f_rg(ir);
+                            out__[ir] = in__[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
                         break;
                     }
@@ -228,7 +228,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                         #pragma omp parallel for
                         for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                            out[ir] = in[ir] * veff_vec__[idx_veff__]->f_rg(ir);
+                            out[ir] = in[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
                         break;
                     }
@@ -240,7 +240,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < nr; ir++) {
                     /* multiply by Bx +/- i*By */
-                    out[ir] = in[ir] * std::complex<T>(veff_vec__[2]->f_rg(ir), pref * veff_vec__[3]->f_rg(ir));
+                    out[ir] = in[ir] * std::complex<T>(veff_vec__[2]->value(ir), pref * veff_vec__[3]->value(ir));
                 }
             }
             break;
@@ -250,14 +250,14 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                        mul_by_veff_real_real_gpu(nr, in__, veff_vec__[idx_veff__]->f_rg().at(sddk::memory_t::device), out__);
+                        mul_by_veff_real_real_gpu(nr, in__, veff_vec__[idx_veff__]->values().at(sddk::memory_t::device), out__);
                         break;
                     }
                     case SPFFT_TRANS_C2C: {
                         auto in = reinterpret_cast<std::complex<T> const*>(in__);
                         auto out = reinterpret_cast<std::complex<T>*>(out__);
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                        mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->f_rg().at(sddk::memory_t::device), out);
+                        mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->values().at(sddk::memory_t::device), out);
                         break;
                     }
                 }
@@ -267,8 +267,8 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 auto in = reinterpret_cast<std::complex<T> const*>(in__);
                 auto out = reinterpret_cast<std::complex<T>*>(out__);
 
-                mul_by_veff_complex_complex_gpu(nr, in, pref, veff_vec__[2]->f_rg().at(sddk::memory_t::device),
-                    veff_vec__[3]->f_rg().at(sddk::memory_t::device), out);
+                mul_by_veff_complex_complex_gpu(nr, in, pref, veff_vec__[2]->values().at(sddk::memory_t::device),
+                    veff_vec__[3]->values().at(sddk::memory_t::device), out);
             }
             break;
         }

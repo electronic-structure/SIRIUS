@@ -200,13 +200,13 @@ Density::initial_density_pseudo()
     }
     rho().rg().fft_transform(1);
     if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
-        auto h = rho().rg().f_rg().hash();
+        auto h = rho().rg().values().hash();
         utils::print_hash("rho_rg_init", h);
     }
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().rg().f_rg(ir) = std::max(rho().rg().f_rg(ir), 0.0);
+        rho().rg().value(ir) = std::max(rho().rg().value(ir), 0.0);
     }
     /* renormalize charge */
     normalize();
@@ -236,10 +236,10 @@ Density::initial_density_pseudo()
                 int ir   = coord.first;
                 double r = coord.second;
                 double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
-                mag(0).rg().f_rg(ir) += v[2] * f;
+                mag(0).rg().value(ir) += v[2] * f;
                 if (ctx_.num_mag_dims() == 3) {
-                    mag(1).rg().f_rg(ir) += v[0] * f;
-                    mag(2).rg().f_rg(ir) += v[1] * f;
+                    mag(1).rg().value(ir) += v[0] * f;
+                    mag(2).rg().value(ir) += v[1] * f;
                 }
             }
         }
@@ -297,7 +297,7 @@ Density::initial_density_full_pot()
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().rg().f_rg(ir) = std::max(0.0, rho().rg().f_rg(ir));
+        rho().rg().value(ir) = std::max(0.0, rho().rg().value(ir));
     }
 
     /* set Y00 component of charge density */
@@ -748,22 +748,22 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
         case 3: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[2]->f_rg(ir) += density_rg(ir, 2); // Mx
-                rho_mag_coarse_[3]->f_rg(ir) += density_rg(ir, 3); // My
+                rho_mag_coarse_[2]->value(ir) += density_rg(ir, 2); // Mx
+                rho_mag_coarse_[3]->value(ir) += density_rg(ir, 3); // My
             }
         }
         case 1: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[0]->f_rg(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
-                rho_mag_coarse_[1]->f_rg(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
+                rho_mag_coarse_[0]->value(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
+                rho_mag_coarse_[1]->value(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
             }
             break;
         }
         case 0: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[0]->f_rg(ir) += density_rg(ir, 0); // rho
+                rho_mag_coarse_[0]->value(ir) += density_rg(ir, 0); // rho
             }
         }
     }
@@ -1036,7 +1036,7 @@ Density::normalize()
 
     /* renormalize interstitial part */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().rg().f_rg(ir) *= scale;
+        rho().rg().value(ir) *= scale;
     }
     if (ctx_.full_potential()) {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -1302,7 +1302,7 @@ Density::generate_valence(K_point_set const& ks__)
 
     auto& comm = ctx_.gvec_coarse_fft_sptr()->comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
+        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->value(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
@@ -1766,7 +1766,7 @@ Density::compute_atomic_mag_mom() const
         for (auto coord : atom_to_grid_map) {
             int ir = coord.first;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                mmom(j, ia) += mag(j).rg().f_rg(ir);
+                mmom(j, ia) += mag(j).rg().value(ir);
             }
         }
 

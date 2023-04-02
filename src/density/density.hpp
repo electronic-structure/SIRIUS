@@ -896,7 +896,7 @@ inline void copy(Density const& src__, Density& dest__)
 {
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
         copy(src__.component(j).rg().f_pw_local(), dest__.component(j).rg().f_pw_local());
-        copy(src__.component(j).rg().f_rg(), dest__.component(j).rg().f_rg());
+        copy(src__.component(j).rg().values(), dest__.component(j).rg().values());
         if (src__.ctx().full_potential()) {
             for (int ialoc = 0; ialoc < src__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
                 copy(src__.component(j).f_mt(ialoc), dest__.component(j).f_mt(ialoc));
@@ -927,19 +927,19 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     for (int ir = 0; ir < num_points; ir++) {
         r3::vector<double> m;
         for (int j = 0; j < ctx.num_mag_dims(); j++) {
-            m[j] = density__.mag(j).rg().f_rg(ir) * (1 + add_delta_mag_xc__);
+            m[j] = density__.mag(j).rg().value(ir) * (1 + add_delta_mag_xc__);
         }
 
-        double rho = density__.rho().rg().f_rg(ir);
+        double rho = density__.rho().rg().value(ir);
         if (add_pseudo_core__) {
-            rho += density__.rho_pseudo_core().f_rg(ir);
+            rho += density__.rho_pseudo_core().value(ir);
         }
         rho *= (1 + add_delta_rho_xc__);
         rhomin = std::min(rhomin, rho);
         auto rud = get_rho_up_dn(ctx.num_mag_dims(), rho, m);
 
-        rho_up->f_rg(ir) = rud.first;
-        rho_dn->f_rg(ir) = rud.second;
+        rho_up->value(ir) = rud.first;
+        rho_dn->value(ir) = rud.second;
     }
 
     mpi::Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi::op_t::min>(&rhomin, 1);

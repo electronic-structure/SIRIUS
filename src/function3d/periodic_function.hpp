@@ -146,8 +146,8 @@ class Periodic_function
     void zero()
     {
         f_mt_.zero();
-        this->rg().f_rg().zero();
-        this->rg().f_pw_local().zero();
+        this->rg().values().zero();
+        this->rg().f_pw_local().zero(); // TODO: zero all inside Smooth_periodic_function
         if (ctx_.full_potential()) {
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 f_mt_local_(ialoc).zero();
@@ -163,8 +163,8 @@ class Periodic_function
             int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
             if (spfft.local_slice_size()) {
                 std::copy(
-                    this->rg().f_rg().at(sddk::memory_t::host),
-                    this->rg().f_rg().at(sddk::memory_t::host) + spfft.local_slice_size(),
+                    this->rg().values().at(sddk::memory_t::host),
+                    this->rg().values().at(sddk::memory_t::host) + spfft.local_slice_size(),
                     f_rg__ + offs);
             }
             if (!is_local_rg__) {
@@ -192,7 +192,7 @@ class Periodic_function
             int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
             if (spfft.local_slice_size()) {
                 std::copy(f_rg__ + offs, f_rg__ + offs + spfft.local_slice_size(),
-                          this->rg().f_rg().at(sddk::memory_t::host));
+                          this->rg().values().at(sddk::memory_t::host));
             }
         }
         if (ctx_.full_potential() && f_mt__) {
@@ -242,12 +242,12 @@ class Periodic_function
         if (!ctx_.full_potential()) {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
-                it_val += this->rg().f_rg(irloc);
+                it_val += this->rg().value(irloc);
             }
         } else {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
-                it_val += this->rg().f_rg(irloc) * ctx_.theta(irloc);
+                it_val += this->rg().value(irloc) * ctx_.theta(irloc);
             }
         }
         it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->rg().spfft()));
