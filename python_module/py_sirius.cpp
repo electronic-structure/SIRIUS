@@ -383,7 +383,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("f_rg",
              [](py::object& obj, int i) -> py::array_t<double> {
                  Field4D& field       = obj.cast<Field4D&>();
-                 auto& matrix_storage = field.component_raise(i).rg().f_rg();
+                 auto& matrix_storage = field.component_raise(i).rg().values();
                  int nrows            = matrix_storage.size(0);
                  /* return underlying data as numpy.ndarray view */
                  return py::array_t<double>({nrows}, {1 * sizeof(double)}, matrix_storage.at(sddk::memory_t::host),
@@ -757,8 +757,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
                       py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
                       py::return_value_policy::reference_internal)
-        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::f_rg),
-                      py::overload_cast<>(&Smooth_periodic_function<double>::f_rg),
+        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::values),
+                      py::overload_cast<>(&Smooth_periodic_function<double>::values),
                       py::return_value_policy::reference_internal)
         // .def_property_readonly("gvec_partition", &Smooth_periodic_function<double>::gvec_partition,
         //                        py::return_value_policy::reference_internal);

@@ -5179,7 +5179,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                             for (int ix = 0; ix < nx; ix++) {
                                 /* global x coordinate inside FFT box */
                                 int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
-                                f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                                f->value(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
                             }
                         }
                     }
@@ -5288,7 +5288,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 /* slab of FFT grid for a given rank */
                 sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
                 if (rank == fft_comm.rank()) {
-                    std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
+                    std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
                 fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
 

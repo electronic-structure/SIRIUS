@@ -106,22 +106,22 @@ class Smooth_periodic_function
         f_rg_.zero();
     }
 
-    inline T& f_rg(int ir__)
-    {
-        return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).f_rg(ir__));
-    }
-
-    inline T const& f_rg(int ir__) const
+    inline T const& value(int ir__) const
     {
         return f_rg_(ir__);
     }
 
-    inline sddk::mdarray<T, 1>& f_rg()
+    inline T& value(int ir__)
+    {
+        return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).value(ir__));
+    }
+
+    inline sddk::mdarray<T, 1>& values()
     {
         return f_rg_;
     }
 
-    inline sddk::mdarray<T, 1> const& f_rg() const
+    inline sddk::mdarray<T, 1> const& values() const
     {
         return f_rg_;
     }
@@ -220,7 +220,7 @@ class Smooth_periodic_function
         }
     }
 
-    inline std::vector<std::complex<T>> gather_f_pw()
+    inline auto gather_f_pw()
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
@@ -242,7 +242,7 @@ class Smooth_periodic_function
         {
             #pragma omp for schedule(static) nowait
             for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-                this->f_rg_(irloc) += rhs__.f_rg(irloc);
+                this->f_rg_(irloc) += rhs__.value(irloc);
             }
             #pragma omp for schedule(static) nowait
             for (int igloc = 0; igloc < this->gvecp_->gvec().count(); igloc++) {
@@ -425,9 +425,9 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
     for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {
         T d{0};
         for (int x : {0, 1, 2}) {
-            d += vf__[x].f_rg(ir) * vg__[x].f_rg(ir);
+            d += vf__[x].value(ir) * vg__[x].value(ir);
         }
-        result.f_rg(ir) = d;
+        result.value(ir) = d;
     }
 
     return result;
@@ -444,7 +444,7 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 
     //#pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
-        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc) * theta__(irloc);
+        result_rg += utils::conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / fft::spfft_grid_size(f__.spfft()));
@@ -477,6 +477,8 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 {
     return inner_local(f__, g__, [](int ir){return 1;});
 }
+
+// TODO: add copy() and use it in Density::copy
 
 } // namespace sirius
 

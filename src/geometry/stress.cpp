@@ -322,7 +322,7 @@ Stress::calc_stress_xc()
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) +=
-                            2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+                            2 * grad_rho[mu].value(irloc) * grad_rho[nu].value(irloc) * potential_.vsigma(0).value(irloc);
                     }
                 }
             }
@@ -348,13 +348,13 @@ Stress::calc_stress_xc()
             for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
-                        t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
-                                         potential_.vsigma(0).f_rg(irloc) +
-                                     (grad_rho_up[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) +
-                                      grad_rho_dn[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc)) *
-                                         potential_.vsigma(1).f_rg(irloc) +
-                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) * 2 *
-                                         potential_.vsigma(2).f_rg(irloc);
+                        t(mu, nu) += grad_rho_up[mu].value(irloc) * grad_rho_up[nu].value(irloc) * 2 *
+                                         potential_.vsigma(0).value(irloc) +
+                                     (grad_rho_up[mu].value(irloc) * grad_rho_dn[nu].value(irloc) +
+                                      grad_rho_dn[mu].value(irloc) * grad_rho_up[nu].value(irloc)) *
+                                         potential_.vsigma(1).value(irloc) +
+                                     grad_rho_dn[mu].value(irloc) * grad_rho_dn[nu].value(irloc) * 2 *
+                                         potential_.vsigma(2).value(irloc);
                     }
                 }
             }

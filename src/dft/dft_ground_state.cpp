@@ -377,7 +377,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         density_.rho().rg().fft_transform(1);
         double rho_min{1e100};
         for (int ir = 0; ir < density_.rho().rg().spfft().local_slice_size(); ir++) {
-            rho_min = std::min(rho_min, density_.rho().rg().f_rg(ir));
+            rho_min = std::min(rho_min, density_.rho().rg().value(ir));
         }
         dict["rho_min"] = rho_min;
         ctx_.comm().allreduce<double, mpi::op_t::min>(&rho_min, 1);
