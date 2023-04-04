@@ -26,13 +26,29 @@
 #define __TYPEDEFS_HPP__
 
 #include <cstdlib>
-#include <assert.h>
+//#include <assert.h>
 #include <complex>
 #include <vector>
 #include <array>
 #include <limits>
 #include <map>
 #include <algorithm>
+#include <type_traits>
+
+// define type traits that return real type
+// general case for real type
+template <typename T>
+struct Real {using type = T;};
+
+// special case for complex type
+template <typename T>
+struct Real<std::complex<T>> {using type = T;};
+
+template <typename T>
+using real_type = typename Real<T>::type;
+
+template <class T>
+constexpr bool is_real_v = std::is_same<T, real_type<T>>::value;
 
 /// Spin-blocks of the Hamiltonian.
 enum class spin_block_t
@@ -197,6 +213,31 @@ struct lo_basis_descriptor
 
     /// Index of the local orbital radial function.
     uint8_t idxrf;
+};
+
+template <typename T>
+struct spheric_function_set_ptr_t
+{
+    T* ptr{nullptr};
+    int lmmax;
+    int nrmtmax;
+};
+
+template <typename T>
+struct smooth_periodic_function_ptr_t
+{
+    T* ptr{nullptr};
+    int num_points;
+};
+
+/// Describe external pointers to periodic function.
+/** In case when data is allocated by the calling code, the pointers to muffin-tin and real-space grids
+    can be passed to Periodic_function to avoid allocation on the SIRIUS side.*/
+template <typename T>
+struct periodic_function_ptr_t
+{
+    spheric_function_set_ptr_t<T> mt;
+    smooth_periodic_function_ptr_t<T> rg;
 };
 
 #endif // __TYPEDEFS_HPP__

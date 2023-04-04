@@ -27,6 +27,7 @@
 
 #include "context/simulation_context.hpp"
 #include "spheric_function.hpp"
+#include "spheric_function_set.hpp"
 #include "smooth_periodic_function.hpp"
 #include "utils/profiler.hpp"
 
@@ -51,8 +52,10 @@ class Periodic_function
 {
   private:
 
+    /// Simulation contex.
     Simulation_context const& ctx_;
 
+    /// Alias to unit cell.
     Unit_cell const& unit_cell_;
 
     mpi::Communicator const& comm_;
@@ -66,6 +69,10 @@ class Periodic_function
     /// Global muffin-tin array
     sddk::mdarray<T, 3> f_mt_;
 
+    /// Muffin-tin part of the periodic function.
+    Spheric_function_set<T> f_mt1_;
+
+    /// Alias to G-vectors.
     fft::Gvec const& gvec_;
 
     /// Size of the muffin-tin functions angular domain size.
@@ -89,11 +96,11 @@ class Periodic_function
 
   public:
     /// Constructor
-    Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
+    Periodic_function(Simulation_context const& ctx__, int angular_domain_size__)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
-        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , rg_component_(const_cast<fft::spfft_transform_type<T>&>(ctx__.spfft<real_type<T>>()), ctx__.gvec_fft_sptr())
         , gvec_(ctx__.gvec())
         , angular_domain_size_(angular_domain_size__)
     {
@@ -102,11 +109,37 @@ class Periodic_function
         }
     }
 
-    Periodic_function(Simulation_context& ctx__, int angular_domain_size__, bool allocate_global__)
+    Periodic_function(Simulation_context const& ctx__, int angular_domain_size__, bool allocate_global__)
         : Periodic_function(ctx__, angular_domain_size__)
     {
       this->allocate_mt(allocate_global__);
     }
+
+    /// Constructor for real-space FFT grid only (PP-PW case).
+    Periodic_function(Simulation_context const& ctx__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , comm_(ctx__.comm())
+        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , gvec_(ctx__.gvec())
+    {
+    }
+
+    /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
+    Periodic_function(Simulation_context const& ctx__, std::function<int(int)> lmax__,
+            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr)
+
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , comm_(ctx__.comm())
+        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , f_mt1_(ctx__.unit_cell(), lmax__, spl_atoms__)
+        , gvec_(ctx__.gvec())
+    {
+    }
+
+
+
 
     int angular_domain_size() const
     {

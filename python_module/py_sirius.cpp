@@ -754,9 +754,9 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Smooth_periodic_function<double>>(m, "Smooth_periodic_function")
         .def("fft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(-1); })
         .def("ifft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(1); })
-        .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
-                      py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
-                      py::return_value_policy::reference_internal)
+        //.def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
+        //              py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
+        //              py::return_value_policy::reference_internal)
         .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::values),
                       py::overload_cast<>(&Smooth_periodic_function<double>::values),
                       py::return_value_policy::reference_internal)

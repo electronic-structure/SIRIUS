@@ -27,7 +27,6 @@
 #include "fft/gvec.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
-#include "SDDK/type_definition.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -78,12 +77,30 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__)
+    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__,
+        smooth_periodic_function_ptr_t<T>* sptr__ = nullptr)
         : spfft_(&spfft__)
         , gvecp_(gvecp__)
     {
         auto& mp = sddk::get_memory_pool(sddk::memory_t::host);
-        f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), mp, "Smooth_periodic_function.f_rg_");
+        if (sptr__) {
+            size_t np = sptr__->num_points;
+            if (!(np == fft::spfft_grid_size_local(spfft__) || np == fft::spfft_grid_size(spfft__))) {
+                RTE_THROW("Wrong number of real-space points");
+            }
+            if (!sptr__->ptr) {
+                RTE_THROW("Input pointer is null");
+            }
+            /* true if input external buffer points to local part of FFT grid */
+            bool is_local_rg = (np == fft::spfft_grid_size_local(spfft__));
+
+            int offs = (is_local_rg) ? 0 : spfft__.dim_x() * spfft__.dim_y() * spfft__.local_z_offset();
+            /* wrap the pointer */
+            f_rg_ = sddk::mdarray<T, 1>(&sptr__->ptr[offs], fft::spfft_grid_size_local(spfft__));
+
+        } else {
+            f_rg_ = sddk::mdarray<T, 1>(fft::spfft_grid_size_local(spfft__), mp, "Smooth_periodic_function.f_rg_");
+        }
         f_rg_.zero();
 
         f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), mp,
@@ -116,43 +133,43 @@ class Smooth_periodic_function
         return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).value(ir__));
     }
 
-    inline sddk::mdarray<T, 1>& values()
+    inline auto& values()
     {
         return f_rg_;
     }
 
-    inline sddk::mdarray<T, 1> const& values() const
+    inline auto const& values() const
     {
         return f_rg_;
     }
 
-    inline std::complex<T>& f_pw_local(int ig__)
+    inline auto& f_pw_local(int ig__)
     {
         return f_pw_local_(ig__);
     }
 
-    inline std::complex<T> const& f_pw_local(int ig__) const
+    inline auto const& f_pw_local(int ig__) const
     {
         return f_pw_local_(ig__);
     }
 
-    inline sddk::mdarray<std::complex<T>, 1>& f_pw_local()
+    inline auto& f_pw_local()
     {
       return f_pw_local_;
     }
 
-    inline const sddk::mdarray<std::complex<T>, 1>& f_pw_local() const
+    inline const auto& f_pw_local() const
     {
       return f_pw_local_;
     }
 
-    inline std::complex<T>& f_pw_fft(int ig__)
+    inline auto& f_pw_fft(int ig__)
     {
         return f_pw_fft_(ig__);
     }
 
     /// Return plane-wave coefficient for G=0 component.
-    inline std::complex<T> f_0() const
+    inline auto f_0() const
     {
         std::complex<T> z;
         if (gvecp_->gvec().comm().rank() == 0) {
