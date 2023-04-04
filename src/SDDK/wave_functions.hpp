@@ -34,7 +34,6 @@
 #include "fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/rte.hpp"
-#include "type_definition.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {

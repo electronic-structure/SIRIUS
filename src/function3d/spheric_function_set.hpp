@@ -24,19 +24,30 @@ class Spheric_function_set
     template <typename F>
     friend F inner(Spheric_function_set<F> const& f1__, Spheric_function_set<F> const& f2__);
 
-    void init(std::function<int(int)> lmax__)
+    void init(std::function<int(int)> lmax__, spheric_function_set_ptr_t<T>* sptr__ = nullptr)
     {
         func_.resize(unit_cell_->num_atoms());
+
+        auto set_func = [&](int ia)
+        {
+            if (sptr__) {
+                func_[ia] = Spheric_function<function_domain_t::spectral, T>(
+                            sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
+                            sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
+            } else {
+                func_[ia] = Spheric_function<function_domain_t::spectral, T>(utils::lmmax(lmax__(ia)),
+                            unit_cell_->atom(ia).radial_grid());
+            }
+        };
+
         if (spl_atoms_) {
             for (int i = 0; i < spl_atoms_->local_size(); i++) {
                 int ia = atoms_[(*spl_atoms_)[i]];
-                func_[ia] = Spheric_function<function_domain_t::spectral, T>(utils::lmmax(lmax__(ia)),
-                        unit_cell_->atom(ia).radial_grid());
+                set_func(ia);
             }
         } else {
             for (int ia : atoms_) {
-                func_[ia] = Spheric_function<function_domain_t::spectral, T>(utils::lmmax(lmax__(ia)),
-                        unit_cell_->atom(ia).radial_grid());
+                set_func(ia);
             }
         }
     }
@@ -48,7 +59,8 @@ class Spheric_function_set
 
     /// Constructor for all atoms.
     Spheric_function_set(Unit_cell const& unit_cell__, std::function<int(int)> lmax__,
-            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr)
+            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr,
+            spheric_function_set_ptr_t<T>* sptr__ = nullptr)
         : unit_cell_{&unit_cell__}
         , spl_atoms_{spl_atoms__}
         , all_atoms_{true}
@@ -60,7 +72,7 @@ class Spheric_function_set
                 RTE_THROW("wrong split atom index");
             }
         }
-        init(lmax__);
+        init(lmax__, sptr__);
     }
 
     /// Constructor for a subset of atoms.
