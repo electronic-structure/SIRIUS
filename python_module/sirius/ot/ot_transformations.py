@@ -43,7 +43,7 @@ def c(x, c0):
     """
     if isinstance(x, PwCoeffs):
         assert(isinstance(c0, PwCoeffs))
-        cres = PwCoeffs(dtype=np.complex)
+        cres = PwCoeffs(dtype=np.complex128)
         for key, xloc in x.items():
             c0loc = c0[key]
             cres[key] = c(xloc, c0loc)
