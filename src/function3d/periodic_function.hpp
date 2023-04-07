@@ -63,30 +63,11 @@ class Periodic_function
     /// Regular space grid component of the periodic function.
     Smooth_periodic_function<T> rg_component_;
 
-    /// Local part of muffin-tin functions.
-    sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
-
-    /// Global muffin-tin array
-    sddk::mdarray<T, 3> f_mt_;
-
     /// Muffin-tin part of the periodic function.
-    Spheric_function_set<T> f_mt1_;
+    Spheric_function_set<T> mt_component_;
 
     /// Alias to G-vectors.
     fft::Gvec const& gvec_;
-
-    /// Size of the muffin-tin functions angular domain size.
-    int angular_domain_size_;
-
-    /// Set pointer to local part of muffin-tin functions
-    void set_local_mt_ptr()
-    {
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia             = unit_cell_.spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_,
-                                                                                  unit_cell_.atom(ia).radial_grid());
-        }
-    }
 
     /* forbid copy constructor */
     Periodic_function(const Periodic_function<T>& src) = delete;
@@ -95,143 +76,35 @@ class Periodic_function
     Periodic_function<T>& operator=(const Periodic_function<T>& src) = delete;
 
   public:
-    /// Constructor
-    Periodic_function(Simulation_context const& ctx__, int angular_domain_size__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
-        , comm_(ctx__.comm())
-        , rg_component_(const_cast<fft::spfft_transform_type<T>&>(ctx__.spfft<real_type<T>>()), ctx__.gvec_fft_sptr())
-        , gvec_(ctx__.gvec())
-        , angular_domain_size_(angular_domain_size__)
-    {
-        if (ctx_.full_potential()) {
-            f_mt_local_ = sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
-        }
-    }
-
-    Periodic_function(Simulation_context const& ctx__, int angular_domain_size__, bool allocate_global__)
-        : Periodic_function(ctx__, angular_domain_size__)
-    {
-      this->allocate_mt(allocate_global__);
-    }
-
     /// Constructor for real-space FFT grid only (PP-PW case).
-    Periodic_function(Simulation_context const& ctx__)
+    Periodic_function(Simulation_context const& ctx__, smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
-        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
+        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr(), rg_ptr__)
         , gvec_(ctx__.gvec())
     {
     }
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
-    Periodic_function(Simulation_context const& ctx__, std::function<int(int)> lmax__,
-            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr)
-
+    Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
+            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr,
+            smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
+            spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
-        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr())
-        , f_mt1_(ctx__.unit_cell(), lmax__, spl_atoms__)
+        , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr(), rg_ptr__)
+        , mt_component_(ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
         , gvec_(ctx__.gvec())
     {
-    }
-
-
-
-
-    int angular_domain_size() const
-    {
-        return angular_domain_size_;
-    }
-
-    /// Allocate memory for muffin-tin part.
-    void allocate_mt(bool allocate_global__)
-    {
-        if (ctx_.full_potential()) {
-            if (allocate_global__) {
-                f_mt_ = sddk::mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(),
-                                            unit_cell_.num_atoms(), sddk::memory_t::host, "f_mt_");
-                set_local_mt_ptr();
-            } else {
-                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                    int ia             = unit_cell_.spl_num_atoms(ialoc);
-                    f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(angular_domain_size_,
-                                             unit_cell_.atom(ia).radial_grid());
-                }
-            }
-        }
-    }
-
-    /// Syncronize global muffin-tin array.
-    void sync_mt()
-    {
-        PROFILE("sirius::Periodic_function::sync_mt");
-        assert(f_mt_.size() != 0);
-
-        int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-        comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().local_size(),
-                ld * unit_cell_.spl_num_atoms().global_offset());
     }
 
     /// Zero the function.
     void zero()
     {
-        f_mt_.zero();
-        this->rg().values().zero();
-        this->rg().f_pw_local().zero(); // TODO: zero all inside Smooth_periodic_function
-        if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                f_mt_local_(ialoc).zero();
-            }
-        }
-    }
-
-    /// Copy the values of the function to the external location.
-    inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
-    {
-        if (f_rg__) {
-            auto& spfft = this->rg().spfft();
-            int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
-            if (spfft.local_slice_size()) {
-                std::copy(
-                    this->rg().values().at(sddk::memory_t::host),
-                    this->rg().values().at(sddk::memory_t::host) + spfft.local_slice_size(),
-                    f_rg__ + offs);
-            }
-            if (!is_local_rg__) {
-                mpi::Communicator(spfft.communicator()).allgather(f_rg__, spfft.local_slice_size(), offs);
-            }
-        }
-        if (ctx_.full_potential() && f_mt__) {
-            sddk::mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(),
-                                     unit_cell_.num_atoms());
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia = unit_cell_.spl_num_atoms(ialoc);
-                std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
-            }
-            int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-            comm_.allgather(f_mt__, ld * unit_cell_.spl_num_atoms().local_size(),
-                ld * unit_cell_.spl_num_atoms().global_offset());
-        }
-    }
-
-    /// Copy the values of the function from the external location.
-    inline void copy_from(T const* f_mt__, T const* f_rg__, bool is_local_rg__)
-    {
-        if (f_rg__) {
-            auto& spfft = this->rg().spfft();
-            int offs = (is_local_rg__) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
-            if (spfft.local_slice_size()) {
-                std::copy(f_rg__ + offs, f_rg__ + offs + spfft.local_slice_size(),
-                          this->rg().values().at(sddk::memory_t::host));
-            }
-        }
-        if (ctx_.full_potential() && f_mt__) {
-            int sz = angular_domain_size_ * unit_cell_.max_num_mt_points() * unit_cell_.num_atoms();
-            std::copy(f_mt__, f_mt__ + sz, &f_mt_(0, 0, 0));
-        }
+        mt_component_.zero();
+        rg_component_.zero();
     }
 
     /// Add the function
@@ -242,9 +115,7 @@ class Periodic_function
         this->rg_component_ += g__.rg();
         /* add muffin-tin part */
         if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                this->f_mt_local_(ialoc) += g__.f_mt(ialoc);
-            }
+            this->mt_component_ += g__.mt();
         }
         return *this;
     }
@@ -293,7 +164,7 @@ class Periodic_function
 
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia     = unit_cell_.spl_num_atoms(ialoc);
-                mt_val[ia] = f_mt_local_(ialoc).component(0).integrate(2) * fourpi * y00;
+                mt_val[ia] = mt_component_[ia].component(0).integrate(2) * fourpi * y00;
             }
 
             comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());
@@ -305,32 +176,6 @@ class Periodic_function
         return std::make_tuple(total, it_val, mt_val);
     }
 
-    template <sddk::index_domain_t index_domain>
-    inline T& f_mt(int idx0, int ir, int ia)
-    {
-        switch (index_domain) {
-            case sddk::index_domain_t::local: {
-                return f_mt_local_(ia)(idx0, ir);
-            }
-            case sddk::index_domain_t::global: {
-                return f_mt_(idx0, ir, ia);
-            }
-        }
-    }
-
-    template <sddk::index_domain_t index_domain>
-    inline T const& f_mt(int idx0, int ir, int ia) const
-    {
-        switch (index_domain) {
-            case sddk::index_domain_t::local: {
-                return f_mt_local_(ia)(idx0, ir);
-            }
-            case sddk::index_domain_t::global: {
-                return f_mt_(idx0, ir, ia);
-            }
-        }
-    }
-
     /** \todo write and read distributed functions */
     void hdf5_write(std::string storage_file_name__, std::string path__)
     {
@@ -339,7 +184,11 @@ class Periodic_function
             sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
-                fout[path__].write("f_mt", f_mt_);
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    std::stringstream s;
+                    s << "f_mt_" << ia;
+                    fout[path__].write(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+                }
             }
         }
     }
@@ -364,39 +213,19 @@ class Periodic_function
         }
 
         if (ctx_.full_potential()) {
-            h5f__.read("f_mt", f_mt_);
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                std::stringstream s;
+                s << "f_mt_" << ia;
+                h5f__.read(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+            }
         }
     }
 
-    /// Set the global pointer to the muffin-tin part
-    void set_mt_ptr(T* mt_ptr__)
-    {
-        f_mt_ = sddk::mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_.max_num_mt_points(),
-                                    unit_cell_.num_atoms(), "f_mt_");
-        set_local_mt_ptr();
-    }
-
-    ///// Set the pointer to the interstitial part
-    //void set_rg_ptr(T* rg_ptr__)
-    //{
-    //    this->rg().f_rg_ = sddk::mdarray<T, 1>(rg_ptr__, this->spfft_->local_slice_size());
-    //}
-
-    inline auto const& f_mt(int ialoc__) const
-    {
-        return f_mt_local_(ialoc__);
-    }
-
-    inline auto& f_mt(int ialoc__)
-    {
-        return f_mt_local_(ialoc__);
-    }
-
-    T value_rg(r3::vector<T> const& vc)
+    T value_rg(r3::vector<T> const& vc) const
     {
         T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            r3::vector<T> vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+            auto vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
             p += std::real(this->f_pw_local_(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);
@@ -409,29 +238,20 @@ class Periodic_function
         T dr{0}, tp[2];
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
-            int lmax = utils::lmax(angular_domain_size_);
-            std::vector<T> rlm(angular_domain_size_);
+            auto& frlm = mt_component_[ja];
+            int lmax = utils::lmax(frlm.angular_domain_size());
+            std::vector<T> rlm(frlm.angular_domain_size());
             sf::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
             T p{0};
-            for (int lm = 0; lm < angular_domain_size_; lm++) {
-                T d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
+            for (int lm = 0; lm < frlm.angular_domain_size(); lm++) {
+                T d = (frlm(lm, jr + 1) - frlm(lm, jr)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
 
-                p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
+                p += rlm[lm] * (frlm(lm, jr) + d * dr);
             }
             return p;
         } else {
             return value_rg(vc);
         }
-    }
-
-    auto& f_mt()
-    {
-        return f_mt_;
-    }
-
-    auto const& f_mt() const
-    {
-        return f_mt_;
     }
 
     inline auto const& ctx() const
@@ -449,6 +269,18 @@ class Periodic_function
     auto const& rg() const
     {
         return rg_component_;
+    }
+
+    /// Return reference to spherical functions component.
+    auto& mt()
+    {
+        return mt_component_;
+    }
+
+    /// Return const reference to spherical functions component.
+    auto const& mt() const
+    {
+        return mt_component_;
     }
 };
 
@@ -468,10 +300,7 @@ inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const
 
     T result_mt{0};
     if (f__.ctx().full_potential()) {
-        for (int ialoc = 0; ialoc < f__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-            auto r = sirius::inner(f__.f_mt(ialoc), g__.f_mt(ialoc));
-            result_mt += r;
-        }
+        result_mt = inner(f__.mt(), g__.mt());
     }
 
     return result_mt + result_rg;
@@ -486,6 +315,26 @@ inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
     f__.ctx().comm().allreduce(&result, 1);
 
     return result;
+}
+
+/// Copy values of the function to the external location.
+template <typename T>
+inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> const& dest__)
+{
+    copy(src__.rg(), dest__.rg);
+    if (src__.ctx().full_potential()) {
+        copy(src__.mt(), dest__.mt);
+    }
+}
+
+/// Copy the values of the function from the external location.
+template <typename T>
+inline void copy(periodic_function_ptr_t<T> const& src__, Periodic_function<T> const& dest__ )
+{
+    copy(src__.rg, dest__.rg());
+    if (dest__.ctx().full_potential()) {
+        copy(src__.mt, dest__.mt());
+    }
 }
 
 } // namespace sirius
