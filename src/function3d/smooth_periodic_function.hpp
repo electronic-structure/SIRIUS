@@ -67,6 +67,18 @@ class Smooth_periodic_function
         gvecp_->gather_pw_fft(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host));
     }
 
+    template <typename F>
+    friend void
+    copy(Smooth_periodic_function<F> const& src__, Smooth_periodic_function<F>& dest__);
+
+    template <typename F>
+    friend void
+    scale(F alpha__, Smooth_periodic_function<F>& x__);
+
+    template <typename F>
+    friend void
+    axpy(F alpha__, Smooth_periodic_function<F> const& x__, Smooth_periodic_function<F>& y__);
+
     Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
 
@@ -77,10 +89,10 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__,
-        smooth_periodic_function_ptr_t<T>* sptr__ = nullptr)
-        : spfft_(&spfft__)
-        , gvecp_(gvecp__)
+    Smooth_periodic_function(fft::spfft_transform_type<T> const& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__,
+        smooth_periodic_function_ptr_t<T> const* sptr__ = nullptr)
+        : spfft_{const_cast<fft::spfft_transform_type<T>*>(&spfft__)}
+        , gvecp_{gvecp__}
     {
         auto& mp = sddk::get_memory_pool(sddk::memory_t::host);
         if (sptr__) {
@@ -117,10 +129,11 @@ class Smooth_periodic_function
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
-    /// Zero the values on the regular real-space grid.
+    /// Zero the values on the regular real-space grid and plane-wave coefficients.
     inline void zero()
     {
         f_rg_.zero();
+        f_pw_local_.zero();
     }
 
     inline T const& value(int ir__) const
@@ -495,7 +508,91 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
     return inner_local(f__, g__, [](int ir){return 1;});
 }
 
-// TODO: add copy() and use it in Density::copy
+/// Copy real-space values from the function to external pointer.
+template <typename T>
+inline void
+copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T> const& dest__)
+{
+    auto& spfft = src__.rg().spfft();
+    size_t np = dest__.num_points;
+
+    if (!(np == fft::spfft_grid_size_local(spfft) || np == fft::spfft_grid_size(spfft))) {
+        RTE_THROW("Wrong number of real-space points");
+    }
+    if (!dest__.ptr) {
+        RTE_THROW("Output pointer is null");
+    }
+    /* true if input external buffer points to local part of FFT grid */
+    bool is_local_rg = (np == fft::spfft_grid_size_local(spfft));
+
+    int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+
+    /* copy local fraction of real-space points to local or global array */
+    std::copy(src__.rg().values().at(sddk::memory_t::host),
+              src__.rg().values().at(sddk::memory_t::host) + spfft.local_slice_size(),
+              dest__.ptr + offs);
+
+    /* if output buffer stores the global data array */
+    if (!is_local_rg) {
+        mpi::Communicator(spfft.communicator()).allgather(dest__.ptr, spfft.local_slice_size(), offs);
+    }
+}
+
+/// Copy real-space values from the external pointer to function.
+template <typename T>
+inline void
+copy(smooth_periodic_function_ptr_t<T> const& src__, Smooth_periodic_function<T> const& dest__)
+{
+    auto& spfft = src__.rg().spfft();
+    size_t np = src__.num_points;
+
+    if (!(np == fft::spfft_grid_size_local(spfft) || np == fft::spfft_grid_size(spfft))) {
+        RTE_THROW("Wrong number of real-space points");
+    }
+    if (!src__.ptr) {
+        RTE_THROW("Input pointer is null");
+    }
+    /* true if input external buffer points to local part of FFT grid */
+    bool is_local_rg = (np == fft::spfft_grid_size_local(spfft));
+
+    int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+
+    /* copy local fraction of real-space points to local or global array */
+    std::copy(src__.ptr + offs, src__.ptr + offs + spfft.local_slice_size(),
+              dest__.rg().values().at(sddk::memory_t::host));
+}
+
+template <typename T>
+inline void
+copy(Smooth_periodic_function<T> const& src__, Smooth_periodic_function<T>& dest__)
+{
+    copy(src__.f_rg_, dest__.f_rg_);
+    copy(src__.f_pw_local_, dest__.f_pw_local_);
+}
+
+template <typename T>
+inline void
+scale(T alpha__, Smooth_periodic_function<T>& x__)
+{
+    for (size_t i = 0; i < x__.f_rg_.size(); i++) {
+        x__.f_rg_[i] *= alpha__;
+    }
+    for (size_t i = 0; i < x__.f_pw_local_.size(); i++) {
+        x__.f_pw_local_[i] *= alpha__;
+    }
+}
+
+template <typename T>
+inline void
+axpy(T alpha__, Smooth_periodic_function<T> const& x__, Smooth_periodic_function<T>& y__)
+{
+    for (size_t i = 0; i < x__.f_rg_.size(); i++) {
+        y__.f_rg_[i] += x__.f_rg_[i] * alpha__;
+    }
+    for (size_t i = 0; i < x__.f_pw_local_.size(); i++) {
+        y__.f_pw_local_[i] += x__.f_pw_local_[i] * alpha__;
+    }
+}
 
 } // namespace sirius
 
