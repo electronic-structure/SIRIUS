@@ -171,8 +171,8 @@ class Potential : public Field4D
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
 
-            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
-                const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->f_mt(ialoc)));
+            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.mt()[ia],
+                const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
 
             SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
         }
@@ -292,22 +292,27 @@ class Potential : public Field4D
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
-    std::vector<T>
-    poisson_vmt(Atom const&                                             atom__,
-                Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
-                Spheric_function<function_domain_t::spectral, T>&       vha_mt__) const
+    inline std::vector<T>
+    poisson_vmt(Atom const& atom__, Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
+                Spheric_function<function_domain_t::spectral, T>& vha_mt__) const
     {
         const bool use_r_prefact{false};
 
         int lmmax_rho = rho_mt__.angular_domain_size();
         int lmmax_pot = vha_mt__.angular_domain_size();
-        assert((int)l_by_lm_.size() >= lmmax_rho);
+        if ((int)l_by_lm_.size() < lmmax_rho) {
+            std::stringstream s;
+            s << "wrong size of l_by_lm array for atom of " << atom__.type().symbol() << std::endl
+              << "  lmmax_rho: " << lmmax_rho << std::endl
+              << "  l_by_lm.size: " << l_by_lm_.size();
+            RTE_THROW(s);
+        }
         if (lmmax_rho > ctx_.lmmax_rho()) {
             std::stringstream s;
             s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
               << "  lmmax_rho: " << lmmax_rho << std::endl
               << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         std::vector<T> qmt(ctx_.lmmax_rho(), 0);
 
@@ -736,7 +741,8 @@ class Potential : public Field4D
 
     auto const& effective_potential_mt(int ialoc) const
     {
-        return this->scalar().f_mt(ialoc);
+        int ia = unit_cell_.spl_num_atoms(ialoc);
+        return this->scalar().mt()[ia];
     }
 
     auto& effective_magnetic_field(int i)
@@ -756,7 +762,8 @@ class Potential : public Field4D
 
     auto const& hartree_potential_mt(int ialoc) const
     {
-        return hartree_potential_->f_mt(ialoc);
+        int ia = unit_cell_.spl_num_atoms(ialoc);
+        return hartree_potential_->mt()[ia];
     }
 
     auto& xc_potential()
