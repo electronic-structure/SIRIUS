@@ -96,57 +96,34 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     }
 
     if (ctx_.full_potential()) {
-        /* symmetrize MT components */
-        symmetrize_function(ctx_.unit_cell().symmetry(), comm, f__->f_mt());
+        std::vector<Spheric_function_set<double>*> frlm;
+        frlm.push_back(&f__->mt());
         switch (ctx_.num_mag_dims()) {
             case 1: {
-                symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gz__->f_mt());
+                frlm.push_back(&gz__->mt());
                 break;
             }
             case 3: {
-                symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gx__->f_mt(), gy__->f_mt(), gz__->f_mt());
+                frlm.push_back(&gx__->mt());
+                frlm.push_back(&gy__->mt());
+                frlm.push_back(&gz__->mt());
                 break;
             }
         }
+        sirius::symmetrize(ctx_.unit_cell().symmetry(), comm, ctx_.num_mag_dims(), frlm);
     }
 }
 
-Field4D::Field4D(Simulation_context& ctx__, int lmmax__)
-    : lmmax_(lmmax__)
-    , ctx_(ctx__)
+Field4D::Field4D(Simulation_context& ctx__, lmax_t lmax__)
+    : ctx_(ctx__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         if (ctx_.full_potential()) {
-            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, lmmax__);
-            /* allocate global MT array */
-            components_[i]->allocate_mt(true);
+            /* allocate with global MT part */
+            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;});
         } else {
-            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, lmmax__);
+            components_[i] = std::make_unique<Periodic_function<double>>(ctx_);
         }
-    }
-}
-
-Periodic_function<double>& Field4D::scalar()
-{
-    return *(components_[0]);
-}
-
-Periodic_function<double> const& Field4D::scalar() const
-{
-    return *(components_[0]);
-}
-
-void Field4D::zero()
-{
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        component(i).zero();
-    }
-}
-
-void Field4D::fft_transform(int direction__)
-{
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        component(i).rg().fft_transform(direction__);
     }
 }
 
