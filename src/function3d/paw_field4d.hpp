@@ -58,9 +58,9 @@ class PAW_field4D
 
         for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
             ae_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
-                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, ptr);
+                    [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
             ps_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
-                    [&uc__](int ia){return 2 * uc__.atom(ia).type().indexr().lmax();}, ptr);
+                    [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
         }
     }
 
