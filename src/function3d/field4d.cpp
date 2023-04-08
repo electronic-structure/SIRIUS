@@ -114,15 +114,22 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     }
 }
 
-Field4D::Field4D(Simulation_context& ctx__, lmax_t lmax__)
+Field4D::Field4D(Simulation_context& ctx__, lmax_t lmax__, std::array<periodic_function_ptr_t<double> const*, 4> ptr__)
     : ctx_(ctx__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+        smooth_periodic_function_ptr_t<double> const* ptr_rg{nullptr};
+        spheric_function_set_ptr_t<double> const* ptr_mt{nullptr};
+        if (ptr__[i]) {
+            ptr_rg = &ptr__[i]->rg;
+            ptr_mt = &ptr__[i]->mt;
+        }
         if (ctx_.full_potential()) {
             /* allocate with global MT part */
-            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;});
+            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;}, nullptr,
+                    ptr_rg, ptr_mt);
         } else {
-            components_[i] = std::make_unique<Periodic_function<double>>(ctx_);
+            components_[i] = std::make_unique<Periodic_function<double>>(ctx_, ptr_rg);
         }
     }
 }
