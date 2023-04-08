@@ -259,16 +259,15 @@ void Potential::poisson(Periodic_function<double> const& rho)
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    hartree_potential_->f_mt<sddk::index_domain_t::local>(lm, ir, ialoc) +=
-                        vlm[lm] * rRl(ir, l, unit_cell_.atom(ia).type_id());
+                    hartree_potential_->mt()[ia](lm, ir) += vlm[lm] * rRl(ir, l, unit_cell_.atom(ia).type_id());
                 }
             }
             /* save electronic part of the potential at the point of origin */
 #ifdef __VHA_AUX
-            vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc) +
+            vh_el_(ia) = y00 * hartree_potential_->mt()[ia](0, 0) +
                 unit_cell_.atom(ia).zn() / unit_cell_.atom(ia).radial_grid(0);
 #else
-            vh_el_(ia) = y00 * hartree_potential_->f_mt<sddk::index_domain_t::local>(0, 0, ialoc);
+            vh_el_(ia) = y00 * hartree_potential_->mt()[ia](0, 0);
 #endif
         }
         ctx_.comm().allgather(vh_el_.at(sddk::memory_t::host), unit_cell_.spl_num_atoms().local_size(),
@@ -298,8 +297,8 @@ void Potential::poisson(Periodic_function<double> const& rho)
             Spline<double> srho(atom.radial_grid());
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
-                hartree_potential_->f_mt<sddk::index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
-                srho(ir) = rho.f_mt<sddk::index_domain_t::local>(0, ir, ialoc) * r;
+                hartree_potential_->mt()[ia](0, ir) -= atom.zn() / r / y00;
+                srho(ir) = rho.mt()[ia](0, ir) * r;
             }
             evha_nuc -= atom.zn() * srho.interpolate().integrate(0) / y00;
         }
