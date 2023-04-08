@@ -53,7 +53,8 @@ class Field4D
 
   public:
     /// Constructor.
-    Field4D(Simulation_context& ctx__, lmax_t lmax__);
+    Field4D(Simulation_context& ctx__, lmax_t lmax__,
+            std::array<periodic_function_ptr_t<double> const*, 4> ptr__ = {nullptr, nullptr, nullptr, nullptr});
 
     /// Return scalar part of the field.
     inline auto& scalar()
