@@ -1477,26 +1477,6 @@ class mdarray
     //==     }
     //== }
 
-    /// Copy the content of the array to another array of identical size.
-    /** For example:
-        \code{.cpp}
-        mdarray<double, 2> src(10, 20);
-        mdarray<double, 2> dest(10, 20);
-        src >> dest;
-        \endcode
-     */
-    void operator>>(mdarray<T, N>& dest__) const
-    {
-        for (int i = 0; i < N; i++) {
-            if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end()) {
-                std::printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
-                raise(SIGTERM);
-                exit(-1);
-            }
-        }
-        std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
-    }
-
     /// Zero n elements starting from idx0.
     inline void zero(memory_t mem__, size_t idx0__, size_t n__)
     {
@@ -1625,7 +1605,7 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N> const& v)
     return out;
 }
 
-// template for casting matrix with different precision
+/// Copy content of the array to another array of identical size but different precision.
 template <typename T, typename F, int N>
 inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
 {
@@ -1644,6 +1624,14 @@ inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
     std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
 }
 
+/// Copy content of the array to another array of identical size.
+/** For example:
+    \code{.cpp}
+    mdarray<double, 2> src(10, 20);
+    mdarray<double, 2> dest(10, 20);
+    copy(src, dest);
+    \endcode
+ */
 template <typename T, int N>
 inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
 {
