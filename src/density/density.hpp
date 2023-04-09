@@ -441,7 +441,8 @@ class Density : public Field4D
 
     inline auto const& density_mt(int ialoc) const
     {
-        return rho().f_mt(ialoc);
+        int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
+        return rho().mt()[ia];
     }
 
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
@@ -450,7 +451,7 @@ class Density : public Field4D
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
     inline auto paw_ae_density(int ia__) const
     {
-        std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
+        std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             result[j] = &paw_density_->ae_density(j, ia__);
         }
@@ -460,7 +461,7 @@ class Density : public Field4D
     /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
     inline auto paw_ps_density(int ia__) const
     {
-        std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
+        std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             result[j] = &paw_density_->ps_density(j, ia__);
         }
@@ -892,15 +893,13 @@ class Density : public Field4D
 
 };
 
-inline void copy(Density const& src__, Density& dest__)
+inline void
+copy(Density const& src__, Density& dest__)
 {
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
-        copy(src__.component(j).rg().f_pw_local(), dest__.component(j).rg().f_pw_local());
-        copy(src__.component(j).rg().values(), dest__.component(j).rg().values());
+        copy(src__.component(j).rg(), dest__.component(j).rg());
         if (src__.ctx().full_potential()) {
-            for (int ialoc = 0; ialoc < src__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                copy(src__.component(j).f_mt(ialoc), dest__.component(j).f_mt(ialoc));
-            }
+            copy(src__.component(j).mt(), dest__.component(j).mt());
         }
     }
     copy(src__.density_matrix(), dest__.density_matrix());
