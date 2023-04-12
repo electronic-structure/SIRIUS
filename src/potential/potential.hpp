@@ -31,9 +31,6 @@
 
 namespace sirius {
 
-using Flm = Spheric_function<function_domain_t::spectral, double>;
-using Ftp = Spheric_function<function_domain_t::spatial, double>;
-
 void check_xc_potential(Density const& rho__);
 
 void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,

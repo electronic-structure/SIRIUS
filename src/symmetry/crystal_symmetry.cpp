@@ -207,10 +207,10 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
     }
 
     positions_ = sddk::mdarray<double, 2>(3, num_atoms_);
-    positions__ >> positions_;
+    sddk::copy(positions__, positions_);
 
     magnetization_ = sddk::mdarray<double, 2>(3, num_atoms_);
-    spins__ >> magnetization_;
+    sddk::copy(spins__, magnetization_);
 
     PROFILE_START("sirius::Crystal_symmetry|spg");
     if (use_sym__) {
