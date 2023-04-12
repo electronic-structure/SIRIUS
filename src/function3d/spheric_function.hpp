@@ -200,6 +200,9 @@ class Spheric_function: public sddk::mdarray<T, 2>
 
 };
 
+using Flm = Spheric_function<function_domain_t::spectral, double>;
+using Ftp = Spheric_function<function_domain_t::spatial, double>;
+
 /// 3D vector function.
 template <function_domain_t domain_t, typename T = std::complex<double>>
 class Spheric_vector_function : public std::array<Spheric_function<domain_t, T>, 3>

@@ -194,7 +194,7 @@ inline T inner(Spheric_function_set<T> const& f1__, Spheric_function_set<T> cons
 /// Copy from Spheric_function_set to external pointer.
 template <typename T>
 inline void
-copy(Spheric_function_set<T> const& src__, spheric_function_set_ptr_t<T> const& dest__)
+copy(Spheric_function_set<T> const& src__, spheric_function_set_ptr_t<T> dest__)
 {
     auto p = dest__.ptr;
     for (auto ia : src__.atoms()) {
@@ -213,10 +213,10 @@ copy(Spheric_function_set<T> const& src__, spheric_function_set_ptr_t<T> const& 
 
 template <typename T>
 inline void
-copy(spheric_function_set_ptr_t<T> const& src__, Spheric_function_set<T> const& dest__)
+copy(spheric_function_set_ptr_t<T> const src__, Spheric_function_set<T>& dest__)
 {
     auto p = src__.ptr;
-    for (auto ia : src__.atoms()) {
+    for (auto ia : dest__.atoms()) {
         if (dest__[ia].angular_domain_size() > src__.lmmax) {
             RTE_THROW("wrong angular_domain_size");
         }
