@@ -219,15 +219,46 @@ template <typename T>
 struct spheric_function_set_ptr_t
 {
     T* ptr{nullptr};
-    int lmmax;
-    int nrmtmax;
+    int lmmax{0};
+    int nrmtmax{0};
+    int num_atoms{0};
+
+    spheric_function_set_ptr_t()
+    {
+    }
+
+    spheric_function_set_ptr_t(T* ptr__, int lmmax__, int nrmtmax__, int num_atoms__)
+        : ptr{ptr__}
+        , lmmax{lmmax__}
+        , nrmtmax{nrmtmax__}
+        , num_atoms{num_atoms__}
+    {
+    }
 };
 
 template <typename T>
 struct smooth_periodic_function_ptr_t
 {
     T* ptr{nullptr};
-    int num_points;
+    int size_x{0};
+    int size_y{0};
+    int size_z{0};
+    /* if offset_z is negative, FFT buffer is not distributed */
+    /* if offset_z >= 0. FFT buffer is treated as distributed and size_z is a local size along z-dimension */
+    int offset_z{0};
+
+    smooth_periodic_function_ptr_t()
+    {
+    }
+
+    smooth_periodic_function_ptr_t(T* ptr__, int size_x__, int size_y__, int size_z__, int offset_z__)
+        : ptr{ptr__}
+        , size_x{size_x__}
+        , size_y{size_y__}
+        , size_z{size_z__}
+        , offset_z{offset_z__}
+    {
+    }
 };
 
 /// Describe external pointers to periodic function.
@@ -238,6 +269,16 @@ struct periodic_function_ptr_t
 {
     spheric_function_set_ptr_t<T> mt;
     smooth_periodic_function_ptr_t<T> rg;
+
+    periodic_function_ptr_t()
+    {
+    }
+
+    periodic_function_ptr_t(spheric_function_set_ptr_t<T> mt__, smooth_periodic_function_ptr_t<T> rg__)
+        : mt{mt__}
+        , rg{rg__}
+    {
+    }
 };
 
 #endif // __TYPEDEFS_HPP__

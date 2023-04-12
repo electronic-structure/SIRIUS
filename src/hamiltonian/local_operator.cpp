@@ -78,7 +78,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             auto& fft_dense    = ctx_.spfft<T>();
             auto& gvec_dense_p = ctx_.gvec_fft();
 
-            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft<T>(), ctx_.gvec_fft_sptr());
+            Smooth_periodic_function<T> ftmp(ctx_.spfft<T>(), ctx_.gvec_fft_sptr());
 
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */

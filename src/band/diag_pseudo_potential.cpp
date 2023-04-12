@@ -178,7 +178,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
         la::dmatrix<F> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
         la::dmatrix<F> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
 
-        ovlp >> ovlp1;
+        sddk::copy(ovlp, ovlp1);
 
         std::vector<real_type<F>> eo(kp.num_gkvec());
 

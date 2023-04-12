@@ -953,17 +953,9 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline void set_periodic_function_ptr(std::string label__, double* mt_ptr__, int lmmax__, int nrmtmax__,
-            double* rg_ptr__, int num_rg_points__)
+    inline void set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
     {
-        if (pf_ext_ptr.count(label__) == 0) {
-            pf_ext_ptr[label__] = periodic_function_ptr_t<double>();
-        }
-        pf_ext_ptr[label__].mt.ptr = mt_ptr__;
-        pf_ext_ptr[label__].mt.lmmax = lmmax__;
-        pf_ext_ptr[label__].mt.nrmtmax = nrmtmax__;
-        pf_ext_ptr[label__].rg.ptr = rg_ptr__;
-        pf_ext_ptr[label__].rg.num_points = num_rg_points__;
+        pf_ext_ptr[label__] = ptr__;
     }
 
     inline auto periodic_function_ptr(std::string label__) const
