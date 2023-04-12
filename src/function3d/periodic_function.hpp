@@ -319,7 +319,7 @@ inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 
 /// Copy values of the function to the external location.
 template <typename T>
-inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> const& dest__)
+inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> dest__)
 {
     copy(src__.rg(), dest__.rg);
     if (src__.ctx().full_potential()) {
@@ -329,7 +329,7 @@ inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> c
 
 /// Copy the values of the function from the external location.
 template <typename T>
-inline void copy(periodic_function_ptr_t<T> const& src__, Periodic_function<T> const& dest__ )
+inline void copy(periodic_function_ptr_t<T> const src__, Periodic_function<T>& dest__ )
 {
     copy(src__.rg, dest__.rg());
     if (dest__.ctx().full_potential()) {

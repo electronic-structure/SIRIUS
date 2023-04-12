@@ -33,6 +33,28 @@
 
 namespace sirius {
 
+template <typename T>
+inline void
+check_smooth_periodic_function_ptr(smooth_periodic_function_ptr_t<T> const& ptr__,
+        fft::spfft_transform_type<T> const& spfft__)
+{
+    if (spfft__.dim_x() != ptr__.size_x) {
+        RTE_THROW("x-dimensions don't match");
+    }
+    if (spfft__.dim_y() != ptr__.size_y) {
+        RTE_THROW("y-dimensions don't match");
+    }
+    if (ptr__.offset_z < 0) { /* global FFT buffer */
+        if (spfft__.dim_z() != ptr__.size_z) {
+            RTE_THROW("z-dimensions don't match");
+        }
+    } else { /* local FFT buffer */
+        if ((spfft__.local_z_length() != ptr__.size_z) || (spfft__.local_z_offset() != ptr__.offset_z)) {
+            RTE_THROW("z-dimensions don't match");
+        }
+    }
+}
+
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
  *  The following functionality is provided:
@@ -95,16 +117,15 @@ class Smooth_periodic_function
         , gvecp_{gvecp__}
     {
         auto& mp = sddk::get_memory_pool(sddk::memory_t::host);
+        /* wrap external pointer */
         if (sptr__) {
-            size_t np = sptr__->num_points;
-            if (!(np == fft::spfft_grid_size_local(spfft__) || np == fft::spfft_grid_size(spfft__))) {
-                RTE_THROW("Wrong number of real-space points");
-            }
+            check_smooth_periodic_function_ptr(*sptr__, spfft__);
+
             if (!sptr__->ptr) {
                 RTE_THROW("Input pointer is null");
             }
             /* true if input external buffer points to local part of FFT grid */
-            bool is_local_rg = (np == fft::spfft_grid_size_local(spfft__));
+            bool is_local_rg = (sptr__->offset_z >= 0);
 
             int offs = (is_local_rg) ? 0 : spfft__.dim_x() * spfft__.dim_y() * spfft__.local_z_offset();
             /* wrap the pointer */
@@ -511,25 +532,22 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 /// Copy real-space values from the function to external pointer.
 template <typename T>
 inline void
-copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T> const& dest__)
+copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T> dest__)
 {
-    auto& spfft = src__.rg().spfft();
-    size_t np = dest__.num_points;
+    auto& spfft = src__.spfft();
+    check_smooth_periodic_function_ptr(dest__, spfft);
 
-    if (!(np == fft::spfft_grid_size_local(spfft) || np == fft::spfft_grid_size(spfft))) {
-        RTE_THROW("Wrong number of real-space points");
-    }
     if (!dest__.ptr) {
         RTE_THROW("Output pointer is null");
     }
     /* true if input external buffer points to local part of FFT grid */
-    bool is_local_rg = (np == fft::spfft_grid_size_local(spfft));
+    bool is_local_rg = (dest__.offset_z >= 0);
 
     int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
 
     /* copy local fraction of real-space points to local or global array */
-    std::copy(src__.rg().values().at(sddk::memory_t::host),
-              src__.rg().values().at(sddk::memory_t::host) + spfft.local_slice_size(),
+    std::copy(src__.values().at(sddk::memory_t::host),
+              src__.values().at(sddk::memory_t::host) + spfft.local_slice_size(),
               dest__.ptr + offs);
 
     /* if output buffer stores the global data array */
@@ -541,25 +559,22 @@ copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T>
 /// Copy real-space values from the external pointer to function.
 template <typename T>
 inline void
-copy(smooth_periodic_function_ptr_t<T> const& src__, Smooth_periodic_function<T> const& dest__)
+copy(smooth_periodic_function_ptr_t<T> const src__, Smooth_periodic_function<T>& dest__)
 {
-    auto& spfft = src__.rg().spfft();
-    size_t np = src__.num_points;
+    auto& spfft = dest__.spfft();
+    check_smooth_periodic_function_ptr(src__, spfft);
 
-    if (!(np == fft::spfft_grid_size_local(spfft) || np == fft::spfft_grid_size(spfft))) {
-        RTE_THROW("Wrong number of real-space points");
-    }
     if (!src__.ptr) {
         RTE_THROW("Input pointer is null");
     }
     /* true if input external buffer points to local part of FFT grid */
-    bool is_local_rg = (np == fft::spfft_grid_size_local(spfft));
+    bool is_local_rg = (src__.offset_z >= 0);
 
     int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
 
     /* copy local fraction of real-space points to local or global array */
     std::copy(src__.ptr + offs, src__.ptr + offs + spfft.local_slice_size(),
-              dest__.rg().values().at(sddk::memory_t::host));
+              dest__.values().at(sddk::memory_t::host));
 }
 
 template <typename T>
