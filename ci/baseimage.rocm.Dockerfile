@@ -8,7 +8,7 @@ ENV FORCE_UNSAFE_CONFIGURE 1
 
 ENV PATH="/spack/bin:${PATH}"
 
-ENV CMAKE_VERSION=3.25.2
+ENV CMAKE_VERSION=3.26.3
 
 RUN apt-get -y update && apt-get install -y apt-utils
 
@@ -30,7 +30,7 @@ RUN spack config add config:install_tree:root:/opt/local
 # set amdgpu_target for all packages
 RUN spack config add packages:all:variants:amdgpu_target=${ROCM_ARCH}
 # set basic x86_64 architecture
-#RUN spack config add packages:all:target:x86_64
+RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
