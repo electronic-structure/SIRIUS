@@ -5760,6 +5760,30 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 
 /*
 @api begin
+sirius_create_H0:
+  doc: Generate H0.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground state handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_create_H0(void* const* handler__, int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            gs.create_H0();
+        }, error_code__);
+}
+
+/*
+@api begin
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
@@ -5840,7 +5864,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 RTE_THROW("wrong number of G+k vectors for k");
             }
 
-            sirius::Hamiltonian0<double> H0(gs.potential(), true);
+            auto& H0 = gs.get_H0();
 
             sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
             kp.initialize();
