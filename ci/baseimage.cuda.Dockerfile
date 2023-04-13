@@ -64,7 +64,7 @@ RUN spack install openblas %gcc +fortran
 
 RUN spack install magma %gcc +cuda ^openblas
 
-RUN spack install nlcglib %gcc +cuda+wrapper ^kokkos+wrapper
+RUN spack install nlcglib %gcc +cuda+wrapper ^kokkos@3.7.01+wrapper
 
 # for the MPI hook
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
@@ -75,6 +75,6 @@ ENV SPEC="sirius@develop %gcc build_type=Release +python +fortran +elpa +tests +
 # install all dependencies
 RUN spack install --only=dependencies $SPEC
 
-ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas ^mpich@${MPICH_VERSION} ^spfft+single_precision+cuda"
+ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas%gcc ^mpich@${MPICH_VERSION} ^spfft+single_precision+cuda"
 
 RUN spack install --only=dependencies $SPEC_CLANG
