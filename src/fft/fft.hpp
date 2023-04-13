@@ -28,6 +28,7 @@
 #include <spfft/spfft.hpp>
 #include "SDDK/splindex.hpp"
 #include "mpi/communicator.hpp"
+#include "SDDK/memory.hpp"
 
 namespace fft {
 
