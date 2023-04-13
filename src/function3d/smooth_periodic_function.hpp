@@ -25,8 +25,10 @@
 
 #include "fft/fft.hpp"
 #include "fft/gvec.hpp"
+#include "memory.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
+#include "typedefs.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -167,32 +169,32 @@ class Smooth_periodic_function
         return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).value(ir__));
     }
 
-    inline auto& values()
+    inline auto values() -> sddk::mdarray<T, 1>&
     {
         return f_rg_;
     }
 
-    inline auto const& values() const
+    inline auto values() const -> const sddk::mdarray<T,1>&
     {
         return f_rg_;
     }
 
-    inline auto& f_pw_local(int ig__)
+    inline auto f_pw_local(int ig__)  -> std::complex<T>&
     {
         return f_pw_local_(ig__);
     }
 
-    inline auto const& f_pw_local(int ig__) const
+    inline auto f_pw_local(int ig__) const -> const std::complex<T>&
     {
         return f_pw_local_(ig__);
     }
 
-    inline auto& f_pw_local()
+    inline auto f_pw_local() -> sddk::mdarray<std::complex<T>, 1>&
     {
       return f_pw_local_;
     }
 
-    inline const auto& f_pw_local() const
+    inline auto f_pw_local() const -> const sddk::mdarray<std::complex<T>, 1>&
     {
       return f_pw_local_;
     }

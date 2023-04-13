@@ -101,8 +101,9 @@ show_vec(const r3::vector<T>& vec)
 /* typedefs */
 using complex_double = std::complex<double>;
 
-void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
-        wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
+void
+apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
+                  wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -112,9 +113,9 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_f
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
         throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
     }
-    auto H    = H0(kp);
-    auto& ctx = H0.ctx();
-    auto mg_wf = wf.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device);
+    auto H         = H0(kp);
+    auto& ctx      = H0.ctx();
+    auto mg_wf     = wf.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device);
     auto mg_wf_out = wf_out.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::host);
 
     /* apply H to all wave functions */
@@ -162,7 +163,7 @@ PYBIND11_MODULE(py_sirius, m)
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {
             std::cout << "loading SIRIUS python module, initialize MPI\n";
-       }
+        }
     }
     auto atexit = py::module::import("atexit");
     atexit.attr("register")(py::cpp_function([]() {
@@ -357,7 +358,8 @@ PYBIND11_MODULE(py_sirius, m)
                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
             },
             py::return_value_policy::reference_internal)
-        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1, m2); })
+        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1,
+        // m2); })
         .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
         .def("__mul__",
              [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
@@ -390,7 +392,6 @@ PYBIND11_MODULE(py_sirius, m)
                                             obj);
              })
         .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal)
-        .def(py::init<Simulation_context&, int>())
         .def("symmetrize", py::overload_cast<>(&Field4D::symmetrize));
 
     py::class_<Potential, Field4D>(m, "Potential")
@@ -529,7 +530,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
         .def("weight", &K_point<double>::weight)
-        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions), py::return_value_policy::reference_internal);
+        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
+             py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -675,18 +677,21 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<sddk::mdarray<double, 2>>(m, "mdarray2")
         .def("on_device", &sddk::mdarray<double, 2>::on_device)
-        .def("copy_to_host", [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1));
-        }) .def("__array__", [](py::object& obj) {
+        .def("copy_to_host",
+             [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1)); })
+        .def("__array__", [](py::object& obj) {
             sddk::mdarray<double, 2>& arr = obj.cast<sddk::mdarray<double, 2>&>();
-            int nrows               = arr.size(0);
-            int ncols               = arr.size(1);
+            int nrows                     = arr.size(0);
+            int ncols                     = arr.size(1);
             return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
                                        arr.at(sddk::memory_t::host), obj);
         });
 
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
-    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
+    py::enum_<sddk::memory_t>(m, "MemoryEnum")
+        .value("device", sddk::memory_t::device)
+        .value("host", sddk::memory_t::host);
     py::enum_<wf::copy_to>(m, "CopyEnum")
         .value("none", wf::copy_to::none)
         .value("device", wf::copy_to::device)
@@ -700,13 +705,15 @@ PYBIND11_MODULE(py_sirius, m)
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 
-    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m, "Wave_functions_base")
+    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m,
+                                                                                                  "Wave_functions_base")
         .def("copy_to", &wf::Wave_functions_base<double>::copy_to)
         .def("allocate", &wf::Wave_functions_base<double>::allocate)
         .def("memory_guard", &wf::Wave_functions<double>::memory_guard, "mem"_a, "copy_to"_a)
         .def("deallocate", &wf::Wave_functions_base<double>::deallocate);
 
-    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
+    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>,
+               std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)
@@ -735,34 +742,16 @@ PYBIND11_MODULE(py_sirius, m)
             }
             return is_on_device;
         });
-    // .def("pw_coeffs_obj", py::overload_cast<int>(&wf::Wave_functions<double>::pw_coeffs, py::const_),
-    //      py::return_value_policy::reference_internal);
-
-    // py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
-    //     .def("fft", [](Smooth_periodic_function<complex_double>& obj) { return obj.fft_transform(-1); })
-    //     .def("ifft", [](Smooth_periodic_function<complex_double>& obj) { return obj.fft_transform(1); })
-    //     .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local),
-    //                   py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local),
-    //                   py::return_value_policy::reference_internal)
-    //     .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg),
-    //                   py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg),
-    //                   py::return_value_policy::reference_internal)
-    // .def_property_readonly("gvec_partition", &Smooth_periodic_function<complex_double>::gvec_partition,
-    //                        py::return_value_policy::reference_internal)
-    ;
 
     py::class_<Smooth_periodic_function<double>>(m, "Smooth_periodic_function")
         .def("fft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(-1); })
         .def("ifft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(1); })
-        //.def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
-        //              py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
-        //              py::return_value_policy::reference_internal)
-        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::values),
-                      py::overload_cast<>(&Smooth_periodic_function<double>::values),
+        .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local, py::const_),
+                      py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
                       py::return_value_policy::reference_internal)
-        // .def_property_readonly("gvec_partition", &Smooth_periodic_function<double>::gvec_partition,
-        //                        py::return_value_policy::reference_internal);
-        ;
+        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::values, py::const_),
+                      py::overload_cast<>(&Smooth_periodic_function<double>::values),
+                      py::return_value_policy::reference_internal);
 
     py::class_<Periodic_function<double>>(m, "RPeriodic_function");
 
