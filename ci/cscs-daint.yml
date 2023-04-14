@@ -131,8 +131,8 @@ build clang image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    # reuse openblas and spfft from gcc build
-    SPEC: 'sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^mpich ^spfft+single_precision+cuda'
+    # reuse openblas, libxc and spfft from gcc build
+    SPEC: 'sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich ^spfft%gcc+single_precision+cuda'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 build openmpi image:
