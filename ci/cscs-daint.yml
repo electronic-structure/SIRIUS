@@ -79,7 +79,7 @@ build elpa cuda image:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-tmp1:$CI_COMMIT_SHA
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
@@ -89,7 +89,7 @@ build sequential eigen-solver cuda image:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-tmp2:$CI_COMMIT_SHA
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
@@ -99,7 +99,7 @@ build fp32 cuda image:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-tmp3:$CI_COMMIT_SHA
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
@@ -109,7 +109,7 @@ build vdwxc cuda image:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-tmp4:$CI_COMMIT_SHA
     # we can't use MKL here because vdwxc needs parallel FFT and MKL doesn't provide it
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
