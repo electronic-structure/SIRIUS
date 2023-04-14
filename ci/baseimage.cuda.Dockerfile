@@ -1,6 +1,6 @@
 FROM ubuntu:22.04 as builder
 
-ARG CUDA_ARCH=80
+ARG CUDA_ARCH=60
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -10,7 +10,7 @@ ENV PATH="/spack/bin:${PATH}"
 
 ENV MPICH_VERSION=3.4.3
 
-ENV CMAKE_VERSION=3.26.1
+ENV CMAKE_VERSION=3.26.3
 
 RUN apt-get -y update
 
@@ -70,12 +70,20 @@ RUN spack install nlcglib %gcc +cuda+wrapper ^kokkos@3.7.01+wrapper
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 RUN ldconfig
 
-ENV SPEC="sirius@develop %gcc build_type=Release +python +fortran +elpa +tests +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
+# install dependencies of several basic configurations
 
-# install all dependencies
-RUN spack install --only=dependencies $SPEC
+# gcc + python/elpa/scalapack/MKL/CUDA
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=Release +fortran +tests +python +elpa +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
 
-ENV SPEC_CLANG="sirius@develop %clang build_type=Release ~fortran +tests ^openblas%gcc ^mpich@${MPICH_VERSION} ^spfft+single_precision+cuda"
+# gcc + nlcg/openblas/CUDA
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=Release +fortran +tests +cuda +nlcglib ^mpich@${MPICH_VERSION} ^openblas ^spfft+cuda"
 
-RUN spack install --only=dependencies $SPEC_CLANG
-RUN spack spec -I $SPEC_CLANG
+# gcc + openmpi/elpa/scalapack/CUDA/MAGMA
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=Release +fortran +tests +magma +elpa +scalapack +cuda ^openmpi ^openblas ^spfft+cuda ^elpa+cuda"
+
+# clang + mpich/openblas
+RUN spack install --only=dependencies --fresh --fail-fast \
+  "sirius@develop %clang build_type=Release ~fortran +tests ^openblas%gcc ^mpich@${MPICH_VERSION}"
