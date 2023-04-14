@@ -78,7 +78,7 @@ RUN spack install --only=dependencies --fail-fast \
 
 # gcc + nlcg/openblas/CUDA
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=Release +fortran +tests +cuda +nlcglib ^mpich@${MPICH_VERSION} ^openblas ^spfft+cuda"
+  "sirius@develop %gcc build_type=Release +fortran +tests +cuda +nlcglib +vdwxc ^mpich@${MPICH_VERSION} ^openblas ^spfft+cuda ^nlcglib +cuda +wrapper ^kokkos+wrapper"
 
 # gcc + openmpi/elpa/scalapack/CUDA/MAGMA
 RUN spack install --only=dependencies --fail-fast \
