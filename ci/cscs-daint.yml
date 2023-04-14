@@ -124,6 +124,26 @@ build nlcg image:
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
+build clang image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %clang +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build openmpi image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
 .run_tests:
   extends: .container-runner-daint-gpu
   needs: ["build cuda image"]
