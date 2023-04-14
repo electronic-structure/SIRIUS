@@ -19,4 +19,4 @@ RUN spack --color always -e sirius-env dev-build --source-path /sirius-src $SPEC
 # here is a hacky workaround to link ./spack-build-{hash} to ./spack-build
 RUN cd /sirius-src && ln -s $(find . -name "spack-build-*" -type d) spack-build
 
-RUN spack --color always -e sirius-env build-env sirius -- cuobjdump --list-ptx /sirius-src/spack-build/apps/dft_loop/sirius.scf
+RUN $(spack location -i cuda)/bin/cuobjdump --list-ptx /sirius-src/spack-build/apps/dft_loop/sirius.scf
