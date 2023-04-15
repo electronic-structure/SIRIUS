@@ -52,12 +52,12 @@ RUN yq -i '.compilers[0].compiler.paths.f77 = "/usr/bin/gfortran"' /root/.spack/
 RUN spack install --only=dependencies mpich@${MPICH_VERSION} %gcc
 RUN spack install mpich@${MPICH_VERSION} %gcc
 
-# install libvdwxc
-RUN spack install libvdwxc %gcc +mpi ^mpich@${MPICH_VERSION}
-
 # install openmpi
 RUN spack install --only=dependencies openmpi %gcc
 RUN spack install openmpi %gcc
+
+# install libvdwxc
+RUN spack install libvdwxc %gcc +mpi ^mpich@${MPICH_VERSION}
 
 # install openblas
 RUN spack install openblas %gcc +fortran
@@ -74,9 +74,6 @@ RUN ldconfig
 
 RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster"
-
-RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas"
 
 RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda"
