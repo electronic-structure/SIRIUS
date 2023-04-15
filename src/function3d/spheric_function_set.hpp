@@ -153,7 +153,7 @@ class Spheric_function_set
     Spheric_function_set<T>& operator+=(Spheric_function_set<T> const& rhs__)
     {
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) {
-            if (func_[ia].size()) {
+            if (func_[ia].size() && rhs__[ia].size()) {
                 func_[ia] += rhs__[ia];
             }
         }
