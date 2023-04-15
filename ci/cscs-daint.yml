@@ -9,21 +9,22 @@ stages:
 build base cuda image:
   extends: .container-builder
   stage: baseimage
-  # we create a tag that depends on the SHA value of ci/baseimage.Dockerfile, this way
+  # we create a tag that depends on the SHA value of ci/baseimage.cuda.Dockerfile, this way
   # a new base image is only built when the SHA of this file changes
   # If there are more dependency files that should change the tag-name of the base container
   # image, they can be added too.
   # Since the base image name is runtime dependent, we need to carry the value of it to
   # the following jobs via a dotenv file.
+  timeout: 2h
   before_script:
-  - DOCKER_TAG=`sha256sum ci/baseimage.Dockerfile | head -c 16`
+  - DOCKER_TAG=`sha256sum ci/baseimage.cuda.Dockerfile | head -c 16`
   - export PERSIST_IMAGE_NAME=$CSCS_REGISTRY_PATH/base/sirius-ci:$DOCKER_TAG
   - echo "BASE_IMAGE=$PERSIST_IMAGE_NAME" >> build.env
   artifacts:
     reports:
       dotenv: build.env
   variables:
-    DOCKERFILE: ci/baseimage.Dockerfile
+    DOCKERFILE: ci/baseimage.cuda.Dockerfile
     # change to 'always' if you want to rebuild, even if target tag exists already (if-not-exists is the default, i.e. we could also skip the variable)
     CSCS_REBUILD_POLICY: if-not-exists
     DOCKER_BUILD_ARGS: '["CUDA_ARCH=60"]'
@@ -31,8 +32,9 @@ build base cuda image:
 build base rocm image:
   extends: .container-builder
   stage: baseimage
+  # rocm takes long to build
   timeout: 4h
-  # we create a tag that depends on the SHA value of ci/baseimage.Dockerfile, this way
+  # we create a tag that depends on the SHA value of ci/baseimage.rocm.Dockerfile, this way
   # a new base image is only built when the SHA of this file changes
   # If there are more dependency files that should change the tag-name of the base container
   # image, they can be added too.
@@ -58,7 +60,7 @@ build cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack ^mpich ^intel-oneapi-mkl+cluster'
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 build rocm image:
@@ -67,8 +69,80 @@ build rocm image:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci-rocm:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: discard
     SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build elpa cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build sequential eigen-solver cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build fp32 cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build vdwxc cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    # we can't use MKL here because vdwxc needs parallel FFT and MKL doesn't provide it
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build nlcg image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build clang image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    # reuse openblas, libxc and spfft from gcc build
+    SPEC: 'sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+
+build openmpi image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    SPEC: 'sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi'
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
 
 .run_tests:
