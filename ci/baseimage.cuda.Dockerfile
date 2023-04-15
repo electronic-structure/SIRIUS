@@ -72,18 +72,30 @@ RUN ldconfig
 
 # install dependencies of several basic configurations
 
-# gcc + python/elpa/scalapack/MKL/CUDA
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=Release +fortran +tests +python +elpa +scalapack +cuda ^mpich@${MPICH_VERSION} ^intel-oneapi-mkl+cluster ^spfft+single_precision+cuda ^elpa+cuda"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster"
 
-# gcc + nlcg/openblas/CUDA
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=Release +fortran +tests +cuda +scalapack +nlcglib +vdwxc ^mpich@${MPICH_VERSION} ^openblas ^spfft+cuda ^nlcglib +cuda +wrapper ^kokkos+wrapper"
+  "sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas"
 
-# gcc + openmpi/elpa/scalapack/CUDA/MAGMA
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=Release +fortran +tests +magma +elpa +scalapack +cuda ^openmpi ^openblas ^spfft+cuda ^elpa+cuda"
+  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda"
 
-# clang + mpich/openblas
-RUN spack install --only=dependencies --fresh --fail-fast \
-  "sirius@develop %clang build_type=Release ~fortran +tests ^openblas%gcc ^mpich@${MPICH_VERSION}"
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda"
+
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster"
+
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas"
+
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper"
+
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi"
+
+RUN spack install --only=dependencies --fail-fast \
+  "sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc"
+
