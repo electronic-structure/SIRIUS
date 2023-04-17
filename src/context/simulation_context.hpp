@@ -69,8 +69,10 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     }
     out__ << std::endl;
 
+
     std::vector<std::string> labels = {"host"};
     std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    
     int np{1};
     if (acc::num_devices() > 0) {
         labels.push_back("host pinned");
@@ -79,14 +81,13 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         mp.push_back(&get_memory_pool(sddk::memory_t::device));
         np = 3;
     }
+
     for (int i = 0; i < np; i++) {
         out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
               << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
-              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+              << "num.blocks: " <<  mp[i]->num_blocks() << std::endl;
     }
 }
-
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);

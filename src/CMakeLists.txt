@@ -89,7 +89,7 @@ if(USE_ROCM)
 endif()
 
 if(USE_CUDA)
-  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
@@ -111,7 +111,8 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-                                    )
+				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
+			    )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
