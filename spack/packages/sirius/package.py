@@ -234,6 +234,10 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("spla+rocm", when="+rocm ^spla")
     depends_on("spla+openmp", when="+openmp ^spla")
 
+    depends_on("umpire", when=("+memory_pool"))
+    depends_on("umpire+cuda", when=("+memory_pool+cuda"))
+    depends_on("umpire+rocm", when=("+memory_pool+rocm"))
+    
     depends_on("nlcglib", when="+nlcglib")
 
     depends_on("libvdwxc@0.3.0:+mpi", when="+vdwxc")
