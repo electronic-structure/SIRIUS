@@ -486,12 +486,12 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
     return result;
 }
 
-/// Compute inner product <f|g>
+/// Compute local contribution to inner product <f|g>
 template <typename T, typename F>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    assert(&f__.spfft() == &g__.spfft());
+    RTE_ASSERT(&f__.spfft() == &g__.spfft());
 
     T result_rg{0};
 
@@ -504,6 +504,14 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 
     return result_rg;
 }
+
+template <typename T>
+inline T
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner_local(f__, g__, [](int ir){return 1;});
+}
+
 template <typename T, typename F>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
@@ -522,13 +530,6 @@ inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
 {
     return inner(f__, g__, [](int ir){return 1;});
-}
-
-template <typename T>
-inline T
-inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
-{
-    return inner_local(f__, g__, [](int ir){return 1;});
 }
 
 /// Copy real-space values from the function to external pointer.

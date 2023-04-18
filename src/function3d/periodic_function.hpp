@@ -285,36 +285,18 @@ class Periodic_function
 };
 
 template <typename T>
-inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
-{
-    assert(&f__.ctx() == &g__.ctx());
-
-    T result_rg{0};
-
-    if (!f__.ctx().full_potential()) {
-        result_rg = sirius::inner_local(f__.rg(), g__.rg());
-    } else {
-        result_rg = sirius::inner_local(f__.rg(), g__.rg(),
-                [&](int ir) { return f__.ctx().theta(ir); });
-    }
-
-    T result_mt{0};
-    if (f__.ctx().full_potential()) {
-        result_mt = inner(f__.mt(), g__.mt());
-    }
-
-    return result_mt + result_rg;
-}
-
-template <typename T>
 inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
     PROFILE("sirius::inner");
-
-    T result = inner_local(f__, g__);
-    f__.ctx().comm().allreduce(&result, 1);
-
-    return result;
+    if (f__.ctx().full_potential()) {
+        auto result = sirius::inner_local(f__.rg(), g__.rg(),
+                [&](int ir) { return f__.ctx().theta(ir); });
+        f__.ctx().comm_fft().allreduce(&result, 1);
+        result += inner(f__.mt(), g__.mt());
+        return result;
+    } else {
+        return inner(f__.rg(), g__.rg());
+    }
 }
 
 /// Copy values of the function to the external location.
