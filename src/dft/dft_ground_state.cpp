@@ -37,7 +37,7 @@ DFT_ground_state::initial_state()
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             Band(ctx_).initialize_subspace(kset_, H0);
 #else
@@ -222,7 +222,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         ctx_.message(2, __func__, s);
 
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
@@ -266,7 +266,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         /* tolerance can't be too small */
         iter_solver_tol__ = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         if (ctx_.cfg().parameters().precision_gs() != "auto") {
             /* if the final precision is not equal to the current precision */
             if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {

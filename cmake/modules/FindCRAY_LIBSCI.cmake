@@ -9,7 +9,7 @@ else()
   message(FATAL_ERROR "Unknown compiler. When using libsci use either GNU or INTEL compiler")
 endif()
 
-find_library(CRAY_LIBSCI_LIBRARIES
+find_library(SIRIUS_CRAY_LIBSCI_LIBRARIES
   NAMES ${_sciname}
   HINTS
   ${_SCALAPACK_LIBRARY_DIRS}
@@ -18,4 +18,4 @@ find_library(CRAY_LIBSCI_LIBRARIES
   PATH_SUFFIXES lib
   DOC "scalapack library path")
 
-find_package_handle_standard_args(CRAY_LIBSCI DEFAULT_MSG CRAY_LIBSCI_LIBRARIES)
+find_package_handle_standard_args(CRAY_LIBSCI DEFAULT_MSG SIRIUS_CRAY_LIBSCI_LIBRARIES)

@@ -208,7 +208,7 @@ class Simulation_context : public Simulation_parameters
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<spfft::Transform> spfft_transform_;
     std::unique_ptr<spfft::Grid> spfft_grid_;
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
     std::unique_ptr<spfft::TransformFloat> spfft_transform_float_;
     std::unique_ptr<spfft::GridFloat> spfft_grid_float_;
 #endif
@@ -219,7 +219,7 @@ class Simulation_context : public Simulation_parameters
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
     std::unique_ptr<spfft::TransformFloat> spfft_transform_coarse_float_;
     std::unique_ptr<spfft::GridFloat> spfft_grid_coarse_float_;
 #endif

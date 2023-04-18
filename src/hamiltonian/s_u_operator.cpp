@@ -95,7 +95,7 @@ U_operator<T>::find_orbital_index(const int ia__, const int n__, const int l__) 
 }
 
 template class U_operator<double>;
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template class U_operator<float>;
 #endif
 
@@ -181,7 +181,7 @@ template void apply_U_operator<double>(Simulation_context&, wf::spin_range, wf::
                                        const wf::Wave_functions<double>&, const wf::Wave_functions<double>&,
                                        U_operator<double>&, wf::Wave_functions<double>&);
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template void apply_U_operator<float>(Simulation_context&, wf::spin_range, wf::band_range,
                                       const wf::Wave_functions<float>&, const wf::Wave_functions<float>&,
                                       U_operator<float>&, wf::Wave_functions<float>&);

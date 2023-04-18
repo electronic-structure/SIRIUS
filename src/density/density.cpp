@@ -1210,7 +1210,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
 template void Density::generate<double>(K_point_set const& ks__, bool symmetrize__, bool add_core__,
                                         bool transform_to_rg__);
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template void Density::generate<float>(K_point_set const& ks__, bool symmetrize__, bool add_core__,
                                        bool transform_to_rg__);
 #endif

@@ -399,7 +399,7 @@ template class D_operator<double>;
 
 template class Q_operator<double>;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template class Non_local_operator<float>;
 
 template class D_operator<float>;

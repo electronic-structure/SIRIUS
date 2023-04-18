@@ -21,7 +21,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always build-env $DEVSPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
@@ -59,7 +59,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always build-env $DEVSPEC -- cmake .. -DUSE_SCALAPACK=1 -DUSE_CUDA=1 -DUSE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_CUDA=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build

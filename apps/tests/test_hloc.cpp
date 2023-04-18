@@ -120,7 +120,7 @@ int main(int argn, char** argv)
             std::vector<r3::vector<double>>(), false, false);
         for (int i = 0; i < repeat; i++) {
             if (fp32) {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
                 test_hloc<float>(*ctx, num_bands, use_gpu);
 #else
                 RTE_THROW("Not compiled with FP32 support");

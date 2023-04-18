@@ -94,7 +94,7 @@ template void
 beta_projectors_generate_cpu<double>(sddk::matrix<std::complex<double>>&,
         sddk::mdarray<std::complex<double>, 3> const&, int, int, beta_chunk_t const&, Simulation_context const&,
         fft::Gvec const&);
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 // explicit instantiation
 template void
 beta_projectors_generate_cpu<float>(sddk::matrix<std::complex<float>>&, sddk::mdarray<std::complex<float>, 3> const&,
@@ -124,7 +124,7 @@ template void
 beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&, sddk::mdarray<std::complex<double>, 3> const&,
         sddk::mdarray<std::complex<double>, 3> const&, Simulation_context const&, fft::Gvec const&,
         sddk::mdarray<double, 2> const&, beta_chunk_t const&, int);
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 // explicit instantiation
 template void
 beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&, sddk::mdarray<std::complex<float>, 3> const&,
@@ -312,7 +312,7 @@ Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichu
 
 template class Beta_projector_generator<double>;
 template class Beta_projectors_base<double>;
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template class Beta_projector_generator<float>;
 template class Beta_projectors_base<float>;
 #endif

@@ -121,7 +121,7 @@ void K_point<T>::generate_fv_states()
 }
 
 template void K_point<double>::generate_fv_states();
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template void K_point<float>::generate_fv_states();
 #endif
 

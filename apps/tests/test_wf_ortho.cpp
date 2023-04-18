@@ -125,7 +125,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     if (args.exist("fp32")) {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         call_test<float>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
 #else
         RTE_THROW("Not compiled with FP32 support");
