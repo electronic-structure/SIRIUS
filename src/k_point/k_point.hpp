@@ -188,9 +188,6 @@ class K_point
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
     std::unique_ptr<Beta_projectors<T>> beta_projectors_col_{nullptr};
 
-    /// Preconditioner matrix for Chebyshev solver.
-    sddk::mdarray<std::complex<T>, 3> p_mtrx_;
-
     /// Communicator between(!!) rows.
     mpi::Communicator const& comm_row_;
 
@@ -729,16 +726,6 @@ class K_point
     inline auto const& comm_col() const
     {
         return comm_col_;
-    }
-
-    inline auto p_mtrx(int xi1, int xi2, int iat) const
-    {
-        return p_mtrx_(xi1, xi2, iat);
-    }
-
-    inline auto& p_mtrx()
-    {
-        return p_mtrx_;
     }
 
     auto& beta_projectors()

@@ -24,22 +24,6 @@ class Spheric_function_set
 
     bool all_atoms_{false};
 
-    template <typename F>
-    friend F
-    inner(Spheric_function_set<F> const& f1__, Spheric_function_set<F> const& f2__);
-
-    template <typename F>
-    friend void
-    copy(Spheric_function_set<F> const& src__, Spheric_function_set<F>& dest__);
-
-    template <typename F>
-    friend void
-    scale(F alpha__, Spheric_function_set<F>& x__);
-
-    template <typename F>
-    friend void
-    axpy(F alpha__, Spheric_function_set<F> const& x__, Spheric_function_set<F>& y__);
-
     void init(std::function<lmax_t(int)> lmax__, spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
     {
         func_.resize(unit_cell_->num_atoms());
@@ -159,6 +143,30 @@ class Spheric_function_set
         }
         return *this;
     }
+
+    template <typename F>
+    friend F
+    inner(Spheric_function_set<F> const& f1__, Spheric_function_set<F> const& f2__);
+
+    template <typename F>
+    friend void
+    copy(Spheric_function_set<F> const& src__, Spheric_function_set<F>& dest__);
+
+    template <typename F>
+    friend void
+    copy(Spheric_function_set<F> const& src__, spheric_function_set_ptr_t<F> dest__);
+
+    template <typename F>
+    friend void
+    copy(spheric_function_set_ptr_t<F> src__, Spheric_function_set<F> const& dest__);
+
+    template <typename F>
+    friend void
+    scale(F alpha__, Spheric_function_set<F>& x__);
+
+    template <typename F>
+    friend void
+    axpy(F alpha__, Spheric_function_set<F> const& x__, Spheric_function_set<F>& y__);
 };
 
 template <typename T>
@@ -192,38 +200,50 @@ inline T inner(Spheric_function_set<T> const& f1__, Spheric_function_set<T> cons
 }
 
 /// Copy from Spheric_function_set to external pointer.
+/** External pointer is assumed to be global. */
 template <typename T>
 inline void
 copy(Spheric_function_set<T> const& src__, spheric_function_set_ptr_t<T> dest__)
 {
     auto p = dest__.ptr;
     for (auto ia : src__.atoms()) {
-        if (src__[ia].angular_domain_size() > dest__.lmmax) {
-            RTE_THROW("wrong angular_domain_size");
-        }
-        sddk::mdarray<T, 2> rlm(p, dest__.lmmax, dest__.nrmtmax);
-        for (int ir = 0; ir < src__[ia].radial_grid().num_points(); ir++) {
-            for (int lm = 0; lm < src__[ia].angular_domain_size(); lm++) {
-                rlm(lm, ir) = src__[ia](lm, ir);
+        if (src__[ia].size()) {
+            if (src__[ia].angular_domain_size() > dest__.lmmax) {
+                RTE_THROW("wrong angular_domain_size");
+            }
+            sddk::mdarray<T, 2> rlm(p, dest__.lmmax, dest__.nrmtmax);
+            for (int ir = 0; ir < src__[ia].radial_grid().num_points(); ir++) {
+                for (int lm = 0; lm < src__[ia].angular_domain_size(); lm++) {
+                    rlm(lm, ir) = src__[ia](lm, ir);
+                }
             }
         }
         p += dest__.lmmax * dest__.nrmtmax;
     }
+    if (src__.spl_atoms_) {
+        int ld = dest__.lmmax * dest__.nrmtmax;
+        src__.unit_cell_->comm().allgather(dest__.ptr, ld * src__.spl_atoms_->local_size(),
+                ld * src__.spl_atoms_->global_offset());
+    }
 }
 
+/// Copy from external pointer to Spheric_function_set.
+/** External pointer is assumed to be global. */
 template <typename T>
 inline void
 copy(spheric_function_set_ptr_t<T> const src__, Spheric_function_set<T>& dest__)
 {
     auto p = src__.ptr;
     for (auto ia : dest__.atoms()) {
-        if (dest__[ia].angular_domain_size() > src__.lmmax) {
-            RTE_THROW("wrong angular_domain_size");
-        }
-        sddk::mdarray<T, 2> rlm(p, src__.lmmax, src__.nrmtmax);
-        for (int ir = 0; ir < dest__[ia].radial_grid().num_points(); ir++) {
-            for (int lm = 0; lm < dest__[ia].angular_domain_size(); lm++) {
-                dest__[ia](lm, ir) = rlm(lm, ir);
+        if (dest__[ia].size()) {
+            if (dest__[ia].angular_domain_size() > src__.lmmax) {
+                RTE_THROW("wrong angular_domain_size");
+            }
+            sddk::mdarray<T, 2> rlm(p, src__.lmmax, src__.nrmtmax);
+            for (int ir = 0; ir < dest__[ia].radial_grid().num_points(); ir++) {
+                for (int lm = 0; lm < dest__[ia].angular_domain_size(); lm++) {
+                    dest__[ia](lm, ir) = rlm(lm, ir);
+                }
             }
         }
         p += src__.lmmax * src__.nrmtmax;

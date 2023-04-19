@@ -660,6 +660,12 @@ class Wave_functions_mt : public Wave_functions_base<T>
     {
         return comm_;
     }
+
+    auto const&
+    mt_coeffs_distr() const
+    {
+        return mt_coeffs_distr_;
+    }
 };
 
 /// Wave-functions representation.
