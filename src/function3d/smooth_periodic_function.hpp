@@ -41,18 +41,30 @@ check_smooth_periodic_function_ptr(smooth_periodic_function_ptr_t<T> const& ptr_
         fft::spfft_transform_type<T> const& spfft__)
 {
     if (spfft__.dim_x() != ptr__.size_x) {
-        RTE_THROW("x-dimensions don't match");
+        std::stringstream s;
+        s << "x-dimensions don't match" << std::endl
+          << "  spfft__.dim_x() : " << spfft__.dim_x() << std::endl
+          << "  ptr__.size_x : " << ptr__.size_x;
+        RTE_THROW(s);
     }
     if (spfft__.dim_y() != ptr__.size_y) {
-        RTE_THROW("y-dimensions don't match");
+        std::stringstream s;
+        s << "y-dimensions don't match" << std::endl
+          << "  spfft__.dim_y() : " << spfft__.dim_y() << std::endl
+          << "  ptr__.size_y : " << ptr__.size_y;
+        RTE_THROW(s);
     }
     if (ptr__.offset_z < 0) { /* global FFT buffer */
         if (spfft__.dim_z() != ptr__.size_z) {
-            RTE_THROW("z-dimensions don't match");
+            std::stringstream s;
+            s << "global z-dimensions don't match" << std::endl
+              << "  spfft__.dim_z() : " << spfft__.dim_z() << std::endl
+              << "  ptr__.size_z : " << ptr__.size_z;
+            RTE_THROW(s);
         }
     } else { /* local FFT buffer */
         if ((spfft__.local_z_length() != ptr__.size_z) || (spfft__.local_z_offset() != ptr__.offset_z)) {
-            RTE_THROW("z-dimensions don't match");
+            RTE_THROW("local z-dimensions don't match");
         }
     }
 }

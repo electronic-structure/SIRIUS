@@ -120,8 +120,10 @@ Field4D::Field4D(Simulation_context& ctx__, lmax_t lmax__, std::array<periodic_f
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         smooth_periodic_function_ptr_t<double> const* ptr_rg{nullptr};
         spheric_function_set_ptr_t<double> const* ptr_mt{nullptr};
-        if (ptr__[i]) {
+        if (ptr__[i] && ptr__[i]->rg.ptr) {
             ptr_rg = &ptr__[i]->rg;
+        }
+        if (ptr__[i] && ptr__[i]->mt.ptr) {
             ptr_mt = &ptr__[i]->mt;
         }
         if (ctx_.full_potential()) {
