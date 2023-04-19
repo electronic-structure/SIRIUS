@@ -127,18 +127,6 @@ class K_point
     /// LAPW matching coefficients for the local set G+k vectors.
     std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
-    /// Mapping between local row and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_row_;
-
-    /// Mapping between local column and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_col_;
-
-    /// Mapping between local and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_loc_;
-
     /// Number of G+k vectors distributed along rows of MPI grid
     int num_gkvec_row_{0};
 
@@ -588,36 +576,6 @@ class K_point
         return lo_basis_descriptors_row_[idx];
     }
 
-    inline int igk_loc(int idx__) const
-    {
-        return igk_loc_[idx__];
-    }
-
-    inline std::vector<int> const& igk_loc() const
-    {
-        return igk_loc_;
-    }
-
-    inline int igk_row(int idx__) const // TODO: get all from gkvec_row_
-    {
-        return igk_row_[idx__];
-    }
-
-    inline std::vector<int> const& igk_row() const
-    {
-        return igk_row_;
-    }
-
-    inline int igk_col(int idx__) const
-    {
-        return igk_col_[idx__];
-    }
-
-    inline std::vector<int> const& igk_col() const
-    {
-        return igk_col_;
-    }
-
     inline int num_ranks_row() const
     {
         return num_ranks_row_;
@@ -786,6 +744,16 @@ class K_point
     inline auto gkvec_fft_sptr() const
     {
         return gkvec_partition_;
+    }
+
+    inline auto const& gkvec_col() const
+    {
+        return *gkvec_col_;
+    }
+
+    inline auto const& gkvec_row() const
+    {
+        return *gkvec_row_;
     }
 };
 

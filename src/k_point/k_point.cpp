@@ -795,25 +795,9 @@ K_point<T>::generate_gklo_basis()
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
 
-    igk_row_.resize(num_gkvec_row_);
-    for (int i = 0; i < num_gkvec_row_; i++) {
-        igk_row_[i] = spl_ngk_row[i];
-    }
-
     /* find local number of column G+k vectors */
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
-
-    igk_col_.resize(num_gkvec_col_);
-    for (int i = 0; i < num_gkvec_col_; i++) {
-        igk_col_[i] = spl_ngk_col[i];
-    }
-
-    /* mapping between local and global G+k vecotor indices */
-    igk_loc_.resize(num_gkvec_loc());
-    for (int i = 0; i < num_gkvec_loc(); i++) {
-        igk_loc_[i] = gkvec().offset() + i;
-    }
 
     if (ctx_.full_potential()) {
         sddk::splindex<sddk::splindex_t::block_cyclic> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),

@@ -830,11 +830,11 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
         int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-            auto gvec_col       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
-            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+            auto gvec_col       = kp__->gkvec_col().gvec<sddk::index_domain_t::local>(igk_col);
+            auto gkvec_col_cart = kp__->gkvec_col().gkvec_cart<sddk::index_domain_t::local>(igk_col);
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                auto gvec_row       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
-                auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                auto gvec_row       = kp__->gkvec_row().gvec<sddk::index_domain_t::local>(igk_row);
+                auto gkvec_row_cart = kp__->gkvec_row().gkvec_cart<sddk::index_domain_t::local>(igk_row);
 
                 int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
@@ -851,9 +851,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
         for (int x = 0; x < 3; x++) {
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                auto gvec_col = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+                auto gvec_col = kp__->gkvec_col().gvec<sddk::index_domain_t::local>(igk_col);
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
-                    auto gvec_row = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                    auto gvec_row = kp__->gkvec_row().gvec<sddk::index_domain_t::local>(igk_row);
                     /* compute index of G-G' */
                     int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
                     /* get G-G' */
@@ -867,7 +867,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
             for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
-                    auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                    auto gkvec_row_cart = kp__->gkvec_row().gkvec_cart<sddk::index_domain_t::local>(igk_row);
                     /* multiply by i(G+k) */
                     h1(igk_row, icol + kp__->num_gkvec_col()) =
                         std::complex<double>(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
@@ -879,7 +879,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
             for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
-                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+                    auto gkvec_col_cart = kp__->gkvec_col().gkvec_cart<sddk::index_domain_t::local>(igk_col);
                     /* multiply by i(G+k) */
                     h1(irow + kp__->num_gkvec_row(), igk_col) =
                         std::complex<double>(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);

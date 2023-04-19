@@ -83,11 +83,9 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
 
     #pragma omp parallel for schedule(static)
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
-        int ig_col    = kp.igk_col(igk_col);
-        auto gvec_col = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_col);
+        auto gvec_col = kp.gkvec_col().template gvec<sddk::index_domain_t::local>(igk_col);
         for (int igk_row = 0; igk_row < kp.num_gkvec_row(); igk_row++) {
-            int ig_row    = kp.igk_row(igk_row);
-            auto gvec_row = kp.gkvec().template gvec<sddk::index_domain_t::global>(ig_row);
+            auto gvec_row = kp.gkvec_row().template gvec<sddk::index_domain_t::local>(igk_row);
             auto ig12 = ctx_.gvec().index_g12_safe(gvec_row, gvec_col);
 
             if (ispn__ == 0) {
