@@ -69,6 +69,8 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     cn     -- numpy array
     ispn   -- spin component
     """
+    ctx = kpointset.ctx()
+    pmem_t = ctx.processing_unit_memory_t()
 
     if isinstance(cn, PwCoeffs):
         assert (ki is None)
@@ -77,12 +79,12 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
             k, ispn = key
             psi = kpointset[k].spinor_wave_functions()
             psi.pw_coeffs(ispn)[:, :v.shape[1]] = v
-            on_device = psi.preferred_memory_t() == MemoryEnum.device
+            on_device = pmem_t == MemoryEnum.device
             if on_device:
                 psi.copy_to_gpu()
     else:
         psi = kpointset[ki].spinor_wave_functions()
-        on_device = psi.preferred_memory_t() == MemoryEnum.device
+        on_device = pmem_t == MemoryEnum.device
         psi.pw_coeffs(ispn)[:, :cn.shape[1]] = cn
         if on_device:
             psi.copy_to_gpu()
