@@ -47,3 +47,4 @@ RUN spack spec $SPEC
 
 RUN spack install --only=dependencies $SPEC
 
+# trigger ci

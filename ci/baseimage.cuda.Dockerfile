@@ -96,3 +96,4 @@ RUN spack install --only=dependencies --fail-fast \
 RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc"
 
+# trigger ci
