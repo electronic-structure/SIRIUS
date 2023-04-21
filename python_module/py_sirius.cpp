@@ -277,44 +277,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("omega", &Unit_cell::omega)
         .def("print_info", &Unit_cell::print_info);
 
-    // py::class_<z_column_descriptor>(m, "z_column_descriptor")
-    //     .def_readwrite("x", &z_column_descriptor::x)
-    //     .def_readwrite("y", &z_column_descriptor::y)
-    //     .def_readwrite("z", &z_column_descriptor::z)
-    //     .def(py::init<int, int, std::vector<int>>());
-
-    // py::class_<Gvec>(m, "Gvec")
-    //     .def(py::init<r3::matrix<double>, double, bool>())
-    //     .def("num_gvec", &sddk::Gvec::num_gvec)
-    //     .def("count", &sddk::Gvec::count)
-    //     .def("offset", &sddk::Gvec::offset)
-    //     .def("gvec", &sddk::Gvec::gvec)
-    //     .def("gkvec", &sddk::Gvec::gkvec)
-    //     .def("gkvec_cart", &sddk::Gvec::gkvec_cart<index_domain_t::global>)
-    //     .def("num_zcol", &sddk::Gvec::num_zcol)
-    //     .def("gvec_alt",
-    //          [](Gvec& obj, int idx) {
-    //              r3::vector<int> vec(obj.gvec(idx));
-    //              std::vector<int> retr = {vec[0], vec[1], vec[2]};
-    //              return retr;
-    //          })
-    //     .def("index_by_gvec",
-    //          [](Gvec& obj, std::vector<int> vec) {
-    //              r3::vector<int> vec3d(vec);
-    //              return obj.index_by_gvec(vec3d);
-    //          })
-    //     .def("zcol",
-    //          [](Gvec& gvec, int idx) {
-    //              z_column_descriptor obj(gvec.zcol(idx));
-    //              py::dict dict("x"_a = obj.x, "y"_a = obj.y, "z"_a = obj.z);
-    //              return dict;
-    //          })
-    //     .def("index_by_gvec", &Gvec::index_by_gvec);
-
-    // py::class_<Gvec_partition>(m, "Gvec_partition")
-    //     .def_property_readonly("gvec", &Gvec_partition::gvec)
-    //     .def_property_readonly("gvec_array", &Gvec_partition::get_gvec);
-
     py::class_<r3::vector<int>>(m, "r3::vector_int")
         .def(py::init<std::vector<int>>())
         .def("__call__", [](const r3::vector<int>& obj, int x) { return obj[x]; })
@@ -358,8 +320,6 @@ PYBIND11_MODULE(py_sirius, m)
                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
             },
             py::return_value_policy::reference_internal)
-        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1,
-        // m2); })
         .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
         .def("__mul__",
              [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
@@ -582,35 +542,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("calc_stress_vloc", &Stress::calc_stress_vloc, py::return_value_policy::reference_internal)
         .def("print_info", &Stress::print_info);
 
-    // py::class_<Free_atom>(m, "Free_atom")
-    //     .def(py::init<std::string>())
-    //     .def(py::init<int>())
-    //     .def("ground_state",
-    //          [](Free_atom& atom, double energy_tol, double charge_tol, bool rel) {
-    //              json js = atom.ground_state(energy_tol, charge_tol, rel);
-    //              return pj_convert(js);
-    //          })
-    //     .def("radial_grid_points", &Free_atom::radial_grid_points)
-    //     .def("num_atomic_levels", &Free_atom::num_atomic_levels)
-    //     .def("atomic_level",
-    //          [](Free_atom& atom, int idx) {
-    //              auto level = atom.atomic_level(idx);
-    //              json js;
-    //              js["n"]         = level.n;
-    //              js["l"]         = level.l;
-    //              js["k"]         = level.k;
-    //              js["occupancy"] = level.occupancy;
-    //              js["energy"]    = atom.atomic_level_energy(idx);
-    //              return pj_convert(js);
-    //          })
-    //     .def("free_atom_electronic_potential", [](Free_atom& atom) { return atom.free_atom_electronic_potential(); })
-    //     .def("free_atom_wave_function", [](Free_atom& atom, int idx) { return atom.free_atom_wave_function(idx); })
-    //     .def("free_atom_wave_function_x", [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_x(idx);
-    //     }) .def("free_atom_wave_function_x_deriv",
-    //          [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_x_deriv(idx); })
-    //     .def("free_atom_wave_function_residual",
-    //          [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_residual(idx); });
-
     py::class_<Force>(m, "Force")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
         .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
@@ -630,19 +561,7 @@ PYBIND11_MODULE(py_sirius, m)
                                [](const fft::Grid& obj) -> std::array<int, 3> {
                                    return {obj[0], obj[1], obj[2]};
                                })
-        //.def_property_readonly("grid_size", &FFT3D_grid::grid_size) // TODO: is this needed?
         ;
-
-    // TODO: adjust to spfft
-    // py::class_<FFT3D, FFT3D_grid>(m, "FFT3D")
-    //    .def_property_readonly("comm", &FFT3D::comm)
-    //    .def_property_readonly("local_size", &FFT3D::local_size)
-    //    ;
-
-    // py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
-    //     .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
-    //     .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime),
-    //          py::return_value_policy::reference_internal);
 
     py::class_<sddk::mdarray<complex_double, 1>>(m, "mdarray1c")
         .def("on_device", &sddk::mdarray<complex_double, 1>::on_device)
@@ -768,7 +687,6 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("sprint_magnetization", &sprint_magnetization);
     m.def("apply_hamiltonian", &apply_hamiltonian, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a, "wf_in"_a,
           py::arg("swf_out") = nullptr);
-    // m.def("initialize_subspace", &initialize_subspace);
 
     /* sirius.smearing submodules */
     py::module smearing_module = m.def_submodule("smearing");
@@ -785,7 +703,6 @@ PYBIND11_MODULE(py_sirius, m)
         mcold.def("entropy", py::vectorize(&smearing::cold::entropy), "x"_a, "w"_a);
         mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
         mcold.def("occupancy", py::vectorize(&smearing::cold::occupancy), "x"_a, "w"_a);
-        // mcold.def("occupancy_deriv", py::vectorize(&smearing::cold::occupancy_deriv), "x"_a, "w"_a);
         mcold.def("occupancy_deriv2", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
     }
     {
@@ -793,7 +710,6 @@ PYBIND11_MODULE(py_sirius, m)
         mfd.def("entropy", py::vectorize(&smearing::fermi_dirac::entropy), "x"_a, "w"_a);
         mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
         mfd.def("occupancy", py::vectorize(&smearing::fermi_dirac::occupancy), "x"_a, "w"_a);
-        // mfd.def("occupancy_deriv", py::vectorize(&smearing::fermi_dirac::occupancy_deriv), "x"_a, "w"_a);
         mfd.def("occupancy_deriv2", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
     }
     {
