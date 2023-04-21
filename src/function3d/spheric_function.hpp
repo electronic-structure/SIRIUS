@@ -163,13 +163,13 @@ class Spheric_function: public sddk::mdarray<T, 2>
         return angular_domain_size_;
     }
 
-    inline Radial_grid<double> const& radial_grid() const
+    inline auto const& radial_grid() const
     {
         RTE_ASSERT(radial_grid_ != nullptr);
         return *radial_grid_;
     }
 
-    Spline<T> component(int lm__) const
+    auto component(int lm__) const
     {
         if (domain_t != function_domain_t::spectral) {
             RTE_THROW("function is not is spectral domain");
@@ -199,6 +199,9 @@ class Spheric_function: public sddk::mdarray<T, 2>
     }
 
 };
+
+using Flm = Spheric_function<function_domain_t::spectral, double>;
+using Ftp = Spheric_function<function_domain_t::spatial, double>;
 
 /// 3D vector function.
 template <function_domain_t domain_t, typename T = std::complex<double>>

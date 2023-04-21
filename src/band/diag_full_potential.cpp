@@ -116,12 +116,14 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) con
 
     /* remap to slab */
     {
+        /* G+k vector part */
         auto layout_in = kp.fv_eigen_vectors().grid_layout(0, 0, kp.gkvec().num_gvec(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
             la::constant<std::complex<double>>::zero(), kp.comm().native());
     }
     {
+        /* muffin-tin part */
         auto layout_in = kp.fv_eigen_vectors().grid_layout(kp.gkvec().num_gvec(), 0,
                 ctx_.unit_cell().mt_lo_basis_size(), ctx_.num_fv_states());
         auto layout_out = kp.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));

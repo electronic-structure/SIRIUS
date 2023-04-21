@@ -1263,148 +1263,34 @@ call sirius_free_object_handler_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_free_object_handler
 
 !
-!> @brief Set pointer to density or megnetization.
-!> @param [in] handler Handler of the DFT ground state object.
+!> @brief Set pointer to density or magnetization.
+!> @param [in] handler Simulation context handler.
 !> @param [in] label Label of the function.
 !> @param [in] f_mt Pointer to the muffin-tin part of the function.
-!> @param [in] f_rg Pointer to the regualr-grid part of the function.
+!> @param [in] lmmax Number of lm components.
+!> @param [in] nrmtmax Maximum number of muffin-tin points.
+!> @param [in] num_atoms Total number of atoms.
+!> @param [in] f_rg Pointer to the regular-grid part of the function.
+!> @param [in] size_x Size of X-dimension of FFT grid.
+!> @param [in] size_y Size of Y-dimension of FFT grid.
+!> @param [in] size_z Local or global size of Z-dimension of FFT grid depending on offset_z
+!> @param [in] offset_z Offset in the Z-dimension of FFT grid for this MPI rank.
 !> @param [out] error_code Error code
-subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg,error_code)
+subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,lmmax,nrmtmax,num_atoms,&
+&f_rg,size_x,size_y,size_z,offset_z,error_code)
 implicit none
 !
-type(sirius_ground_state_handler), target, intent(in) :: handler
+type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), optional, target, intent(in) :: f_mt(:,:,:)
-real(8), optional, target, intent(in) :: f_rg(:)
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: f_mt_ptr
-type(C_PTR) :: f_rg_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg,error_code)&
-&bind(C, name="sirius_set_periodic_function_ptr")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: f_mt
-type(C_PTR), value :: f_rg
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler%handler_ptr_)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-f_mt_ptr = C_NULL_PTR
-if (present(f_mt)) then
-f_mt_ptr = C_LOC(f_mt)
-endif
-f_rg_ptr = C_NULL_PTR
-if (present(f_rg)) then
-f_rg_ptr = C_LOC(f_rg)
-endif
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,f_rg_ptr,&
-&error_code_ptr)
-deallocate(label_c_type)
-end subroutine sirius_set_periodic_function_ptr
-
-!
-!> @brief Set values of the periodic function.
-!> @param [in] handler Handler of the DFT ground state object.
-!> @param [in] label Label of the function.
-!> @param [in] f_rg Real space values on the regular grid.
-!> @param [in] f_rg_global If true, real-space array is global.
-!> @param [out] error_code Error code.
-subroutine sirius_set_periodic_function(handler,label,f_rg,f_rg_global,error_code)
-implicit none
-!
-type(sirius_ground_state_handler), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-real(8), optional, target, intent(in) :: f_rg(:)
-logical, optional, target, intent(in) :: f_rg_global
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: f_rg_ptr
-type(C_PTR) :: f_rg_global_ptr
-logical(C_BOOL), target :: f_rg_global_c_type
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_set_periodic_function_aux(handler,label,f_rg,f_rg_global,error_code)&
-&bind(C, name="sirius_set_periodic_function")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: label
-type(C_PTR), value :: f_rg
-type(C_PTR), value :: f_rg_global
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler%handler_ptr_)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string_f2c(label)
-label_ptr = C_LOC(label_c_type)
-f_rg_ptr = C_NULL_PTR
-if (present(f_rg)) then
-f_rg_ptr = C_LOC(f_rg)
-endif
-f_rg_global_ptr = C_NULL_PTR
-if (present(f_rg_global)) then
-f_rg_global_c_type = f_rg_global
-f_rg_global_ptr = C_LOC(f_rg_global_c_type)
-endif
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_set_periodic_function_aux(handler_ptr,label_ptr,f_rg_ptr,f_rg_global_ptr,&
-&error_code_ptr)
-deallocate(label_c_type)
-if (present(f_rg_global)) then
-endif
-end subroutine sirius_set_periodic_function
-
-!
-!> @brief Get values of the periodic function.
-!> @param [in] handler Handler of the DFT ground state object.
-!> @param [in] label Label of the function.
-!> @param [out] f_mt Muffin-tin part of the function.
-!> @param [in] lmmax Number of spherical harmonics
-!> @param [in] max_num_mt_points Maximum number of muffin-tin points
-!> @param [in] num_atoms Number of atoms
-!> @param [out] f_rg Real space values on the regular grid.
-!> @param [in] num_rg_points Number of the real-space FFT grid points.
-!> @param [out] error_code Error code
-subroutine sirius_get_periodic_function(handler,label,f_mt,lmmax,max_num_mt_points,&
-&num_atoms,f_rg,num_rg_points,error_code)
-implicit none
-!
-type(sirius_ground_state_handler), target, intent(in) :: handler
-character(*), target, intent(in) :: label
-real(8), optional, target, intent(out) :: f_mt(:,:,:)
 integer, optional, target, intent(in) :: lmmax
-integer, optional, target, intent(in) :: max_num_mt_points
+integer, optional, target, intent(in) :: nrmtmax
 integer, optional, target, intent(in) :: num_atoms
-real(8), optional, target, intent(out) :: f_rg(:)
-integer, optional, target, intent(in) :: num_rg_points
+real(8), optional, target, intent(in) :: f_rg(:)
+integer, optional, target, intent(in) :: size_x
+integer, optional, target, intent(in) :: size_y
+integer, optional, target, intent(in) :: size_z
+integer, optional, target, intent(in) :: offset_z
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -1412,25 +1298,31 @@ type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: f_mt_ptr
 type(C_PTR) :: lmmax_ptr
-type(C_PTR) :: max_num_mt_points_ptr
+type(C_PTR) :: nrmtmax_ptr
 type(C_PTR) :: num_atoms_ptr
 type(C_PTR) :: f_rg_ptr
-type(C_PTR) :: num_rg_points_ptr
+type(C_PTR) :: size_x_ptr
+type(C_PTR) :: size_y_ptr
+type(C_PTR) :: size_z_ptr
+type(C_PTR) :: offset_z_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_periodic_function_aux(handler,label,f_mt,lmmax,max_num_mt_points,&
-&num_atoms,f_rg,num_rg_points,error_code)&
-&bind(C, name="sirius_get_periodic_function")
+subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,lmmax,nrmtmax,&
+&num_atoms,f_rg,size_x,size_y,size_z,offset_z,error_code)&
+&bind(C, name="sirius_set_periodic_function_ptr")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: f_mt
 type(C_PTR), value :: lmmax
-type(C_PTR), value :: max_num_mt_points
+type(C_PTR), value :: nrmtmax
 type(C_PTR), value :: num_atoms
 type(C_PTR), value :: f_rg
-type(C_PTR), value :: num_rg_points
+type(C_PTR), value :: size_x
+type(C_PTR), value :: size_y
+type(C_PTR), value :: size_z
+type(C_PTR), value :: offset_z
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -1449,9 +1341,9 @@ lmmax_ptr = C_NULL_PTR
 if (present(lmmax)) then
 lmmax_ptr = C_LOC(lmmax)
 endif
-max_num_mt_points_ptr = C_NULL_PTR
-if (present(max_num_mt_points)) then
-max_num_mt_points_ptr = C_LOC(max_num_mt_points)
+nrmtmax_ptr = C_NULL_PTR
+if (present(nrmtmax)) then
+nrmtmax_ptr = C_LOC(nrmtmax)
 endif
 num_atoms_ptr = C_NULL_PTR
 if (present(num_atoms)) then
@@ -1461,16 +1353,261 @@ f_rg_ptr = C_NULL_PTR
 if (present(f_rg)) then
 f_rg_ptr = C_LOC(f_rg)
 endif
-num_rg_points_ptr = C_NULL_PTR
-if (present(num_rg_points)) then
-num_rg_points_ptr = C_LOC(num_rg_points)
+size_x_ptr = C_NULL_PTR
+if (present(size_x)) then
+size_x_ptr = C_LOC(size_x)
+endif
+size_y_ptr = C_NULL_PTR
+if (present(size_y)) then
+size_y_ptr = C_LOC(size_y)
+endif
+size_z_ptr = C_NULL_PTR
+if (present(size_z)) then
+size_z_ptr = C_LOC(size_z)
+endif
+offset_z_ptr = C_NULL_PTR
+if (present(offset_z)) then
+offset_z_ptr = C_LOC(offset_z)
 endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_get_periodic_function_aux(handler_ptr,label_ptr,f_mt_ptr,lmmax_ptr,max_num_mt_points_ptr,&
-&num_atoms_ptr,f_rg_ptr,num_rg_points_ptr,error_code_ptr)
+call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,lmmax_ptr,&
+&nrmtmax_ptr,num_atoms_ptr,f_rg_ptr,size_x_ptr,size_y_ptr,size_z_ptr,offset_z_ptr,&
+&error_code_ptr)
+deallocate(label_c_type)
+end subroutine sirius_set_periodic_function_ptr
+
+!
+!> @brief Set values of the periodic function.
+!> @param [in] handler Handler of the DFT ground state object.
+!> @param [in] label Label of the function.
+!> @param [in] f_mt Pointer to the muffin-tin part of the function.
+!> @param [in] lmmax Number of lm components.
+!> @param [in] nrmtmax Maximum number of muffin-tin points.
+!> @param [in] num_atoms Total number of atoms.
+!> @param [in] f_rg Pointer to the regular-grid part of the function.
+!> @param [in] size_x Size of X-dimension of FFT grid.
+!> @param [in] size_y Size of Y-dimension of FFT grid.
+!> @param [in] size_z Local or global size of Z-dimension of FFT grid depending on offset_z
+!> @param [in] offset_z Offset in the Z-dimension of FFT grid for this MPI rank.
+!> @param [out] error_code Error code.
+subroutine sirius_set_periodic_function(handler,label,f_mt,lmmax,nrmtmax,num_atoms,&
+&f_rg,size_x,size_y,size_z,offset_z,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), optional, target, intent(in) :: f_mt(:,:,:)
+integer, optional, target, intent(in) :: lmmax
+integer, optional, target, intent(in) :: nrmtmax
+integer, optional, target, intent(in) :: num_atoms
+real(8), optional, target, intent(in) :: f_rg(:)
+integer, optional, target, intent(in) :: size_x
+integer, optional, target, intent(in) :: size_y
+integer, optional, target, intent(in) :: size_z
+integer, optional, target, intent(in) :: offset_z
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: f_mt_ptr
+type(C_PTR) :: lmmax_ptr
+type(C_PTR) :: nrmtmax_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: f_rg_ptr
+type(C_PTR) :: size_x_ptr
+type(C_PTR) :: size_y_ptr
+type(C_PTR) :: size_z_ptr
+type(C_PTR) :: offset_z_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_periodic_function_aux(handler,label,f_mt,lmmax,nrmtmax,num_atoms,&
+&f_rg,size_x,size_y,size_z,offset_z,error_code)&
+&bind(C, name="sirius_set_periodic_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: label
+type(C_PTR), value :: f_mt
+type(C_PTR), value :: lmmax
+type(C_PTR), value :: nrmtmax
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: f_rg
+type(C_PTR), value :: size_x
+type(C_PTR), value :: size_y
+type(C_PTR), value :: size_z
+type(C_PTR), value :: offset_z
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string_f2c(label)
+label_ptr = C_LOC(label_c_type)
+f_mt_ptr = C_NULL_PTR
+if (present(f_mt)) then
+f_mt_ptr = C_LOC(f_mt)
+endif
+lmmax_ptr = C_NULL_PTR
+if (present(lmmax)) then
+lmmax_ptr = C_LOC(lmmax)
+endif
+nrmtmax_ptr = C_NULL_PTR
+if (present(nrmtmax)) then
+nrmtmax_ptr = C_LOC(nrmtmax)
+endif
+num_atoms_ptr = C_NULL_PTR
+if (present(num_atoms)) then
+num_atoms_ptr = C_LOC(num_atoms)
+endif
+f_rg_ptr = C_NULL_PTR
+if (present(f_rg)) then
+f_rg_ptr = C_LOC(f_rg)
+endif
+size_x_ptr = C_NULL_PTR
+if (present(size_x)) then
+size_x_ptr = C_LOC(size_x)
+endif
+size_y_ptr = C_NULL_PTR
+if (present(size_y)) then
+size_y_ptr = C_LOC(size_y)
+endif
+size_z_ptr = C_NULL_PTR
+if (present(size_z)) then
+size_z_ptr = C_LOC(size_z)
+endif
+offset_z_ptr = C_NULL_PTR
+if (present(offset_z)) then
+offset_z_ptr = C_LOC(offset_z)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_periodic_function_aux(handler_ptr,label_ptr,f_mt_ptr,lmmax_ptr,nrmtmax_ptr,&
+&num_atoms_ptr,f_rg_ptr,size_x_ptr,size_y_ptr,size_z_ptr,offset_z_ptr,error_code_ptr)
+deallocate(label_c_type)
+end subroutine sirius_set_periodic_function
+
+!
+!> @brief Get values of the periodic function.
+!> @param [in] handler Handler of the DFT ground state object.
+!> @param [in] label Label of the function.
+!> @param [in] f_mt Pointer to the muffin-tin part of the function.
+!> @param [in] lmmax Number of lm components.
+!> @param [in] nrmtmax Maximum number of muffin-tin points.
+!> @param [in] num_atoms Total number of atoms.
+!> @param [in] f_rg Pointer to the regular-grid part of the function.
+!> @param [in] size_x Size of X-dimension of FFT grid.
+!> @param [in] size_y Size of Y-dimension of FFT grid.
+!> @param [in] size_z Local or global size of Z-dimension of FFT grid depending on offset_z
+!> @param [in] offset_z Offset in the Z-dimension of FFT grid for this MPI rank.
+!> @param [out] error_code Error code
+subroutine sirius_get_periodic_function(handler,label,f_mt,lmmax,nrmtmax,num_atoms,&
+&f_rg,size_x,size_y,size_z,offset_z,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), optional, target, intent(in) :: f_mt(:,:,:)
+integer, optional, target, intent(in) :: lmmax
+integer, optional, target, intent(in) :: nrmtmax
+integer, optional, target, intent(in) :: num_atoms
+real(8), optional, target, intent(in) :: f_rg(:)
+integer, optional, target, intent(in) :: size_x
+integer, optional, target, intent(in) :: size_y
+integer, optional, target, intent(in) :: size_z
+integer, optional, target, intent(in) :: offset_z
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: f_mt_ptr
+type(C_PTR) :: lmmax_ptr
+type(C_PTR) :: nrmtmax_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: f_rg_ptr
+type(C_PTR) :: size_x_ptr
+type(C_PTR) :: size_y_ptr
+type(C_PTR) :: size_z_ptr
+type(C_PTR) :: offset_z_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_periodic_function_aux(handler,label,f_mt,lmmax,nrmtmax,num_atoms,&
+&f_rg,size_x,size_y,size_z,offset_z,error_code)&
+&bind(C, name="sirius_get_periodic_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: label
+type(C_PTR), value :: f_mt
+type(C_PTR), value :: lmmax
+type(C_PTR), value :: nrmtmax
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: f_rg
+type(C_PTR), value :: size_x
+type(C_PTR), value :: size_y
+type(C_PTR), value :: size_z
+type(C_PTR), value :: offset_z
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string_f2c(label)
+label_ptr = C_LOC(label_c_type)
+f_mt_ptr = C_NULL_PTR
+if (present(f_mt)) then
+f_mt_ptr = C_LOC(f_mt)
+endif
+lmmax_ptr = C_NULL_PTR
+if (present(lmmax)) then
+lmmax_ptr = C_LOC(lmmax)
+endif
+nrmtmax_ptr = C_NULL_PTR
+if (present(nrmtmax)) then
+nrmtmax_ptr = C_LOC(nrmtmax)
+endif
+num_atoms_ptr = C_NULL_PTR
+if (present(num_atoms)) then
+num_atoms_ptr = C_LOC(num_atoms)
+endif
+f_rg_ptr = C_NULL_PTR
+if (present(f_rg)) then
+f_rg_ptr = C_LOC(f_rg)
+endif
+size_x_ptr = C_NULL_PTR
+if (present(size_x)) then
+size_x_ptr = C_LOC(size_x)
+endif
+size_y_ptr = C_NULL_PTR
+if (present(size_y)) then
+size_y_ptr = C_LOC(size_y)
+endif
+size_z_ptr = C_NULL_PTR
+if (present(size_z)) then
+size_z_ptr = C_LOC(size_z)
+endif
+offset_z_ptr = C_NULL_PTR
+if (present(offset_z)) then
+offset_z_ptr = C_LOC(offset_z)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_periodic_function_aux(handler_ptr,label_ptr,f_mt_ptr,lmmax_ptr,nrmtmax_ptr,&
+&num_atoms_ptr,f_rg_ptr,size_x_ptr,size_y_ptr,size_z_ptr,offset_z_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_get_periodic_function
 

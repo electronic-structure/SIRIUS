@@ -478,7 +478,7 @@ Force::calc_forces_us()
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
                         auto z = std::complex<double>(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                 potential_.component(ispin).f_pw_local(igloc);
+                                 potential_.component(ispin).rg().f_pw_local(igloc);
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
                     }
@@ -581,7 +581,7 @@ Force::calc_forces_core()
     auto& xc_pot = potential_.xc_potential();
 
     /* transform from real space to reciprocal */
-    xc_pot.fft_transform(-1);
+    xc_pot.rg().fft_transform(-1);
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -610,7 +610,7 @@ Force::calc_forces_core()
 
             /* scalar part of a force without multipying by G-vector */
             std::complex<double> z =
-                fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.rg().f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
             for (int x : {0, 1, 2}) {
@@ -710,7 +710,7 @@ Force::calc_forces_vloc()
     int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
 
-    double fact = valence_rho.gvec().reduced() ? 2.0 : 1.0;
+    double fact = valence_rho.rg().gvec().reduced() ? 2.0 : 1.0;
 
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
@@ -727,7 +727,7 @@ Force::calc_forces_vloc()
             auto gvec_cart = gvecs.gvec_cart<sddk::index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.f_pw_local(igloc)) *
+            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.rg().f_pw_local(igloc)) *
                                std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */
@@ -830,11 +830,11 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
         int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-            auto gvec_col       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
-            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+            auto gvec_col       = kp__->gkvec_col().gvec<sddk::index_domain_t::local>(igk_col);
+            auto gkvec_col_cart = kp__->gkvec_col().gkvec_cart<sddk::index_domain_t::local>(igk_col);
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                auto gvec_row       = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
-                auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                auto gvec_row       = kp__->gkvec_row().gvec<sddk::index_domain_t::local>(igk_row);
+                auto gkvec_row_cart = kp__->gkvec_row().gkvec_cart<sddk::index_domain_t::local>(igk_row);
 
                 int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
@@ -851,9 +851,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
         for (int x = 0; x < 3; x++) {
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                auto gvec_col = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+                auto gvec_col = kp__->gkvec_col().gvec<sddk::index_domain_t::local>(igk_col);
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
-                    auto gvec_row = kp__->gkvec().gvec<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                    auto gvec_row = kp__->gkvec_row().gvec<sddk::index_domain_t::local>(igk_row);
                     /* compute index of G-G' */
                     int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
                     /* get G-G' */
@@ -867,7 +867,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
             for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
-                    auto gkvec_row_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_row(igk_row));
+                    auto gkvec_row_cart = kp__->gkvec_row().gkvec_cart<sddk::index_domain_t::local>(igk_row);
                     /* multiply by i(G+k) */
                     h1(igk_row, icol + kp__->num_gkvec_col()) =
                         std::complex<double>(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
@@ -879,7 +879,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 
             for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
-                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<sddk::index_domain_t::global>(kp__->igk_col(igk_col));
+                    auto gkvec_col_cart = kp__->gkvec_col().gkvec_cart<sddk::index_domain_t::local>(igk_col);
                     /* multiply by i(G+k) */
                     h1(irow + kp__->num_gkvec_row(), igk_col) =
                         std::complex<double>(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);

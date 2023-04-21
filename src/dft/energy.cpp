@@ -95,7 +95,7 @@ energy_bxc(const Density& density, const Potential& potential)
 {
     double ebxc{0};
     for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
-        ebxc += sirius::inner(density.magnetization(j), potential.effective_magnetic_field(j));
+        ebxc += sirius::inner(density.mag(j), potential.effective_magnetic_field(j));
     }
     return ebxc;
 }
@@ -119,7 +119,7 @@ energy_enuc(Simulation_context const& ctx, Potential const& potential)
 double
 energy_vloc(Density const& density, Potential const& potential)
 {
-    return sirius::inner(potential.local_potential(), density.rho());
+    return sirius::inner(potential.local_potential(), density.rho().rg());
 }
 
 double

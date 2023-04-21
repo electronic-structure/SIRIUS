@@ -37,10 +37,10 @@ void Potential::init_PAW()
     paw_potential_ = std::make_unique<PAW_field4D<double>>(unit_cell_, is_global);
 
     paw_ae_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
-                    [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
+                    [this](int ia){return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax());});
 
     paw_ps_exc_ = std::make_unique<Spheric_function_set<double>>(unit_cell_, unit_cell_.paw_atoms(),
-                    [this](int ia){return 2 * this->unit_cell_.atom(ia).type().indexr().lmax();});
+                    [this](int ia){return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax());});
 
     /* initialize dij matrix */
     paw_dij_.resize(unit_cell_.num_paw_atoms());
