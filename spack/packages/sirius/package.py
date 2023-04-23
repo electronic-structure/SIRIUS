@@ -1,11 +1,11 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
 
-from spack import *
+from spack.package import *
 
 
 class Sirius(CMakePackage, CudaPackage, ROCmPackage):
@@ -16,47 +16,23 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     list_url = "https://github.com/electronic-structure/SIRIUS/releases"
     git = "https://github.com/electronic-structure/SIRIUS.git"
 
-    maintainers = ["simonpintarelli", "haampie", "dev-zero", "AdhocMan", "toxa81"]
-
-    # Don't upstream this, it's to work around
-    # https://github.com/spack/spack/pull/18574 / https://github.com/spack/spack/pull/18838
-    build_dirname = "spack-build"
+    maintainers("simonpintarelli", "haampie", "dev-zero", "AdhocMan", "toxa81")
 
     version("develop", branch="develop")
     version("master", branch="master")
 
-    version(
-        "7.3.0",
-        sha256="69b5cf356adbe181be6c919032859c4e0160901ff42a885d7e7ea0f38cc772e2",
-    )
-    version(
-        "7.2.7",
-        sha256="929bf7f131a4847624858b9c4295532c24b0c06f6dcef5453c0dfc33fb78eb03",
-    )
-    version(
-        "7.2.6",
-        sha256="e751fd46cdc7c481ab23b0839d3f27fb00b75dc61dc22a650c92fe8e35336e3a",
-    )
-    version(
-        "7.2.5",
-        sha256="794e03d4da91025f77542d3d593d87a8c74e980394f658a0210a4fd91c011f22",
-    )
-    version(
-        "7.2.4",
-        sha256="aeed0e83b80c3a79a9469e7f3fe10d80ad331795e38dbc3c49cb0308e2bd084d",
-    )
-    version(
-        "7.2.3",
-        sha256="6c10f0e87e50fcc7cdb4d1b2d35e91dba6144de8f111e36c7d08912e5942a906",
-    )
-    version(
-        "7.2.1",
-        sha256="01bf6c9893ff471473e13351ca7fdc2ed6c1f4b1bb7afa151909ea7cd6fa0de7",
-    )
-    version(
-        "7.2.0",
-        sha256="537800459db8a7553d7aa251c19f3a31f911930194b068bc5bca2dfb2c9b71db",
-    )
+    version("7.4.3", sha256="015679a60a39fa750c5d1bd8fb1ce73945524bef561270d8a171ea2fd4687fec")
+    version("7.4.0", sha256="f9360a695a1e786d8cb9d6702c82dd95144a530c4fa7e8115791c7d1e92b020b")
+    version("7.3.2", sha256="a256508de6b344345c295ad8642dbb260c4753cd87cc3dd192605c33542955d7")
+    version("7.3.1", sha256="8bf9848b8ebf0b43797fd359adf8c84f00822de4eb677e3049f22baa72735e98")
+    version("7.3.0", sha256="69b5cf356adbe181be6c919032859c4e0160901ff42a885d7e7ea0f38cc772e2")
+    version("7.2.7", sha256="929bf7f131a4847624858b9c4295532c24b0c06f6dcef5453c0dfc33fb78eb03")
+    version("7.2.6", sha256="e751fd46cdc7c481ab23b0839d3f27fb00b75dc61dc22a650c92fe8e35336e3a")
+    version("7.2.5", sha256="794e03d4da91025f77542d3d593d87a8c74e980394f658a0210a4fd91c011f22")
+    version("7.2.4", sha256="aeed0e83b80c3a79a9469e7f3fe10d80ad331795e38dbc3c49cb0308e2bd084d")
+    version("7.2.3", sha256="6c10f0e87e50fcc7cdb4d1b2d35e91dba6144de8f111e36c7d08912e5942a906")
+    version("7.2.1", sha256="01bf6c9893ff471473e13351ca7fdc2ed6c1f4b1bb7afa151909ea7cd6fa0de7")
+    version("7.2.0", sha256="537800459db8a7553d7aa251c19f3a31f911930194b068bc5bca2dfb2c9b71db")
     version(
         "7.0.2",
         sha256="ee613607ce3be0b2c3f69b560b2415ce1b0e015179002aa90739430dbfaa0389",
@@ -174,9 +150,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("vdwxc", default=False, description="Enable libvdwxc support")
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
-    variant(
-        "nlcglib", default=False, description="enable robust wave function optimization"
-    )
+    variant("nlcglib", default=False, description="enable robust wave function optimization")
     variant(
         "build_type",
         default="Release",
@@ -185,15 +159,9 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     )
     variant("apps", default=True, description="Build applications")
     variant("tests", default=False, description="Build tests")
+    variant("single_precision", default=False, description="Use single precision arithmetics")
     variant(
-        "single_precision",
-        default=False,
-        description="Use single precision arithmetics",
-    )
-    variant(
-        "profiler",
-        default=True,
-        description="Use internal profiler to measure execution time",
+        "profiler", default=True, description="Use internal profiler to measure execution time"
     )
 
     depends_on("mpi")
@@ -207,7 +175,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("pkgconfig", type="build")
 
     # Python module
-    depends_on("python", when="+python@3.6:", type=("build", "run"))
+    depends_on("python", when="+python", type=("build", "run"))
     depends_on("python", when="@:6", type=("build", "run"))
     depends_on("py-numpy", when="+python", type=("build", "run"))
     depends_on("py-scipy", when="+python", type=("build", "run"))
@@ -234,18 +202,12 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("spla+rocm", when="+rocm ^spla")
     depends_on("spla+openmp", when="+openmp ^spla")
 
-    depends_on("umpire", when=("+memory_pool"))
-    depends_on("umpire+cuda", when=("+memory_pool+cuda"))
-    depends_on("umpire+rocm", when=("+memory_pool+rocm"))
-    
     depends_on("nlcglib", when="+nlcglib")
 
     depends_on("libvdwxc@0.3.0:+mpi", when="+vdwxc")
 
     depends_on("scalapack", when="+scalapack")
 
-    # rocm
-    depends_on("hip", when="+rocm")
     depends_on("rocblas", when="+rocm")
 
     # FindHIP cmake script only works for < 4.1
@@ -255,6 +217,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     conflicts("+boost_filesystem", when="~apps")
     conflicts("^libxc@5.0.0")  # known to produce incorrect results
     conflicts("+single_precision", when="@:7.2.4")
+    conflicts("+scalapack", when="^cray-libsci")
 
     # Propagate openmp to blas
     depends_on("openblas threads=openmp", when="+openmp ^openblas")
@@ -265,12 +228,14 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("elpa+openmp", when="+elpa+openmp")
     depends_on("elpa~openmp", when="+elpa~openmp")
 
-    depends_on("eigen@3.4.0:", when="@7.4: +tests")
+    depends_on("eigen@3.4.0:", when="@7.3.2: +tests")
 
-    depends_on("costa+shared", when="@7.4:")
+    depends_on("costa+shared", when="@7.3.2:")
 
-    # TODO:
-    # add support for CRAY_LIBSCI, testing
+    with when("+memory_pool"):
+        depends_on("umpire")
+        depends_on("umpire+cuda", when="+cuda")
+        depends_on("umpire+rocm", when="+rocm")
 
     patch("strip-spglib-include-subfolder.patch", when="@6.1.5")
     patch("link-libraries-fortran.patch", when="@6.1.5")
@@ -285,10 +250,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             libraries += ["libsirius"]
 
             return find_libraries(
-                libraries,
-                root=self.prefix,
-                shared="+shared" in self.spec,
-                recursive=True,
+                libraries, root=self.prefix, shared="+shared" in self.spec, recursive=True
             )
         else:
             if "+fortran" in self.spec:
@@ -298,10 +260,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
                 libraries += ["libsirius_cu"]
 
             return find_libraries(
-                libraries,
-                root=self.prefix,
-                shared="+shared" in self.spec,
-                recursive=True,
+                libraries, root=self.prefix, shared="+shared" in self.spec, recursive=True
             )
 
     def cmake_args(self):
@@ -338,18 +297,17 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             ]
         )
 
-        if "+scalapack" in spec:
+        if "+scalapack" in spec and "^cray-libsci" not in spec:
             args.extend(
                 [
                     self.define("SCALAPACK_FOUND", "true"),
-                    self.define(
-                        "SCALAPACK_INCLUDE_DIRS", spec["scalapack"].prefix.include
-                    ),
-                    self.define(
-                        "SCALAPACK_LIBRARIES", spec["scalapack"].libs.joined(";")
-                    ),
+                    self.define("SCALAPACK_INCLUDE_DIRS", spec["scalapack"].prefix.include),
+                    self.define("SCALAPACK_LIBRARIES", spec["scalapack"].libs.joined(";")),
                 ]
             )
+
+        if "^cray-libsci" in spec:
+            args.append(self.define("USE_CRAY_LIBSCI", "ON"))
 
         if spec["blas"].name in ["intel-mkl", "intel-parallel-studio"]:
             args.append(self.define("USE_MKL", "ON"))
@@ -364,27 +322,21 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
                 # Specify a single arch directly
                 if "@:6" in spec:
                     args.append(
-                        self.define(
-                            "CMAKE_CUDA_FLAGS", "-arch=sm_{0}".format(cuda_arch[0])
-                        )
+                        self.define("CMAKE_CUDA_FLAGS", "-arch=sm_{0}".format(cuda_arch[0]))
                     )
 
                 # Make SIRIUS handle it
-                elif "@6:7.3" in spec:
-                    args.append(self.define("CUDA_ARCH", ";".join(cuda_arch)))
                 else:
-                    args.append(self.define("CMAKE_CUDA_ARCHITECTURES", ";".join(cuda_arch)))
+                    args.append(self.define("CUDA_ARCH", ";".join(cuda_arch)))
+
         if "+rocm" in spec:
             archs = ",".join(self.spec.variants["amdgpu_target"].value)
-            if "@:7.3" in spec:
-                args.extend(
-                    [
-                        self.define("HIP_ROOT_DIR", spec["hip"].prefix),
-                        self.define("HIP_HCC_FLAGS", "--amdgpu-target={0}".format(archs)),
-                        self.define("HIP_CXX_COMPILER", self.spec["hip"].hipcc),
-                    ]
-                )
-            else:
-                args.extend([self.define("CMAKE_HIP_ARCHITECTURES", archs)])
+            args.extend(
+                [
+                    self.define("HIP_ROOT_DIR", spec["hip"].prefix),
+                    self.define("HIP_HCC_FLAGS", "--amdgpu-target={0}".format(archs)),
+                    self.define("HIP_CXX_COMPILER", self.spec["hip"].hipcc),
+                ]
+            )
 
         return args
