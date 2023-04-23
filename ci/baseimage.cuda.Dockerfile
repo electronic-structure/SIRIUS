@@ -73,26 +73,25 @@ RUN ldconfig
 # install dependencies of several basic configurations
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda"
+  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda"
+  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi"
+  "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc"
-
+  "sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc ^umpire~cuda~device_alloc"

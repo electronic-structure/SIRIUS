@@ -41,9 +41,8 @@ RUN spack install hip%gcc
 RUN spack install rocblas%gcc
 RUN spack install hipfft%gcc
 
-ENV SPEC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft"
+ENV SPEC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc"
 
 RUN spack spec $SPEC
 
 RUN spack install --only=dependencies $SPEC
-

@@ -85,11 +85,6 @@ set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
-  set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
-endif()
-
-if(USE_CUDA)
-  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
@@ -111,7 +106,8 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-                                    )
+				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
+			    )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
@@ -121,7 +117,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:SIRIUS_SCALAPACK>
   $<$<BOOL:${USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>
-  $<$<BOOL:${DEBUG_MEMORY_POOL}>:SIRIUS_DEBUG_MEMORY_POOL>
   $<$<BOOL:${USE_POWER_COUNTER}>:SIRIUS_USE_POWER_COUNTER>
   $<$<BOOL:${USE_ELPA}>:SIRIUS_ELPA>
   $<$<BOOL:${USE_NLCGLIB}>:SIRIUS_NLCGLIB>

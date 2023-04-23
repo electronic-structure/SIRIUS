@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.4.4
+  VERSION 7.5.0
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -29,7 +29,6 @@ option(USE_MKL                 "use Intel MKL" OFF)
 option(USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
 option(USE_SCALAPACK           "use scalapack" OFF)
 option(BUILD_APPS              "build apps" ON)
-option(DEBUG_MEMORY_POOL       "explicit debugging of memory pool" OFF)
 option(USE_OPENMP              "use OpenMP" ON)
 option(USE_PROFILER            "measure execution of functions with timer" ON)
 option(USE_MEMORY_POOL         "use memory pool" ON)
@@ -132,6 +131,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 if(USE_NLCGLIB)
   find_package(nlcglib REQUIRED)
   find_package(Kokkos REQUIRED)
+endif()
+
+if(USE_MEMORY_POOL)
+  find_package(umpire)
 endif()
 
 find_package(MPI REQUIRED)
