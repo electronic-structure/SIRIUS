@@ -554,5 +554,42 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2
     }
 }
 
+inline void dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2>& data__, bool divide_by_r__ = true)
+{
+    /* get spherical coordinates of the Cartesian vector */
+    auto vrs = r3::spherical_coordinates(r__);
+
+    if (vrs[0] < 1e-12) {
+        data__.zero();
+        return;
+    }
+    double dr = 1e-5 * vrs[0];
+
+    int lmmax = (lmax__ + 1) * (lmax__ + 1);
+
+    auto pref = divide_by_r__ ? (1.0 / vrs[0]) : 1.0;
+
+    for (int x = 0; x < 3; x++) {
+
+        r3::vector<double> v1 = r__;
+        v1[x] += dr;
+
+        r3::vector<double> v2 = r__;
+        v2[x] -= dr;
+
+        auto vs1 = r3::spherical_coordinates(v1);
+        auto vs2 = r3::spherical_coordinates(v2);
+        std::vector<double> rlm1(lmmax);
+        std::vector<double> rlm2(lmmax);
+
+        sf::spherical_harmonics(lmax__, vs1[1], vs1[2], &rlm1[0]);
+        sf::spherical_harmonics(lmax__, vs2[1], vs2[2], &rlm2[0]);
+
+        for (int lm = 0; lm < lmmax; lm++) {
+            data__(lm, x) = pref * (rlm1[lm] - rlm2[lm]) / 2 / dr;
+        }
+    }
+}
+
 } // namespace sf
 #endif // __SPECFUNC_HPP__

@@ -391,8 +391,8 @@ Simulation_context::initialize()
         for (int i = 0; i < unit_cell().symmetry().size(); i++) {
             auto& spgR = unit_cell().symmetry()[i].spg_op.R;
             bool found{false};
-            for (size_t i = 0; i < lat_sym.size(); i++) {
-                auto latR = lat_sym[i];
+            for (size_t j = 0; j < lat_sym.size(); j++) {
+                auto latR = lat_sym[j];
                 found     = true;
                 for (int x : {0, 1, 2}) {
                     for (int y : {0, 1, 2}) {

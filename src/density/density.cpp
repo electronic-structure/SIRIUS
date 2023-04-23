@@ -73,7 +73,8 @@ update_density_rg_2_gpu(int size__, std::complex<double> const* psi_rg_up__, std
 #endif
 
 Density::Density(Simulation_context& ctx__)
-    : Field4D(ctx__, ctx__.lmmax_rho())
+    : Field4D(ctx__, lmax_t(ctx__.lmax_rho()), {ctx__.periodic_function_ptr("rho"), ctx__.periodic_function_ptr("magz"),
+            ctx__.periodic_function_ptr("magx"), ctx__.periodic_function_ptr("magy")})
     , unit_cell_(ctx_.unit_cell())
 {
     PROFILE("sirius::Density");
@@ -86,12 +87,12 @@ Density::Density(Simulation_context& ctx__)
 
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr()));
+        rho_mag_coarse_[i] = std::make_unique<spf>(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr());
     }
 
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
-        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
+        rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
     }
 
     l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
@@ -105,7 +106,7 @@ Density::Density(Simulation_context& ctx__)
     }
 
     if (unit_cell_.num_paw_atoms()) {
-        paw_density_ = paw_density(ctx_);
+        paw_density_ = std::make_unique<PAW_density<double>>(unit_cell_);
     }
 
     update();
@@ -180,14 +181,14 @@ Density::initial_density_pseudo()
         ctx_.comm().allreduce(&z1, 1);
         utils::print_checksum("rho_pw_init", z1, ctx_.out());
     }
-    std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
+    std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
     if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
         utils::print_hash("rho_pw_init", h);
     }
 
-    double charge = rho().f_0().real() * unit_cell_.omega();
+    double charge = rho().rg().f_0().real() * unit_cell_.omega();
 
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
         std::stringstream s;
@@ -198,21 +199,21 @@ Density::initial_density_pseudo()
             WARNING(s);
         }
     }
-    rho().fft_transform(1);
+    rho().rg().fft_transform(1);
     if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
-        auto h = rho().f_rg().hash();
+        auto h = rho().rg().values().hash();
         utils::print_hash("rho_rg_init", h);
     }
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().f_rg(ir) = std::max(rho().f_rg(ir), 0.0);
+        rho().rg().value(ir) = std::max(rho().rg().value(ir), 0.0);
     }
     /* renormalize charge */
     normalize();
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = rho().checksum_rg();
+        auto cs = rho().rg().checksum_rg();
         utils::print_checksum("rho_rg_init", cs, ctx_.out());
     }
 
@@ -236,10 +237,10 @@ Density::initial_density_pseudo()
                 int ir   = coord.first;
                 double r = coord.second;
                 double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
-                magnetization(0).f_rg(ir) += v[2] * f;
+                mag(0).rg().value(ir) += v[2] * f;
                 if (ctx_.num_mag_dims() == 3) {
-                    magnetization(1).f_rg(ir) += v[0] * f;
-                    magnetization(2).f_rg(ir) += v[1] * f;
+                    mag(1).rg().value(ir) += v[0] * f;
+                    mag(2).rg().value(ir) += v[1] * f;
                 }
             }
         }
@@ -248,8 +249,8 @@ Density::initial_density_pseudo()
 
     if (ctx_.cfg().control().print_checksum()) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            auto cs  = component(i).checksum_rg();
-            auto cs1 = component(i).checksum_pw();
+            auto cs  = component(i).rg().checksum_rg();
+            auto cs1 = component(i).rg().checksum_pw();
             std::stringstream s;
             s << "component[" << i << "]_rg";
             utils::print_checksum(s.str(), cs, ctx_.out());
@@ -286,18 +287,18 @@ Density::initial_density_full_pot()
     }
 
     /* set plane-wave coefficients of the charge density */
-    std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
+    std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
     /* convert charge density to real space mesh */
-    rho().fft_transform(1);
+    rho().rg().fft_transform(1);
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = rho().checksum_rg();
+        auto cs = rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().f_rg(ir) = std::max(0.0, rho().f_rg(ir));
+        rho().rg().value(ir) = std::max(0.0, rho().rg().value(ir));
     }
 
     /* set Y00 component of charge density */
@@ -305,8 +306,8 @@ Density::initial_density_full_pot()
         int nmtp = ctx_.unit_cell().atom(ia).num_mt_points();
 
         for (int ir = 0; ir < nmtp; ir++) {
-            double x                                      = ctx_.unit_cell().atom(ia).radial_grid(ir);
-            rho().f_mt<sddk::index_domain_t::global>(0, ir, ia) = unit_cell_.atom(ia).type().free_atom_density(x) / y00;
+            double x              = ctx_.unit_cell().atom(ia).radial_grid(ir);
+            rho().mt()[ia](0, ir) = unit_cell_.atom(ia).type().free_atom_density(x) / y00;
         }
     }
 
@@ -355,7 +356,7 @@ Density::initial_density_full_pot()
             for (int lm = 0; lm < lmmax; lm++) {
                 int l = l_by_lm[lm];
                 for (int ir = 0; ir < nmtp; ir++) {
-                    rho().f_mt<sddk::index_domain_t::global>(lm, ir, ia) += glm[lm] * rRl(ir, l);
+                    rho().mt()[ia](lm, ir) += glm[lm] * rRl(ir, l);
                 }
             }
         }
@@ -394,7 +395,7 @@ Density::initial_density_full_pot()
             double R = unit_cell_.atom(ia).mt_radius();
             for (int ir = 0; ir < nmtp; ir++) {
                 double x  = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho_s(ir) = this->rho().f_mt<sddk::index_domain_t::local>(0, ir, ialoc) * y00 *
+                rho_s(ir) = this->rho().mt()[ia](0, ir) * y00 *
                             (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
 
@@ -412,12 +413,12 @@ Density::initial_density_full_pot()
 
             if (len > 1e-8) {
                 for (int ir = 0; ir < nmtp; ir++) {
-                    magnetization(0).f_mt<sddk::index_domain_t::local>(0, ir, ialoc) = rho_s(ir) * v[2] / q / y00;
+                    mag(0).mt()[ia](0, ir) = rho_s(ir) * v[2] / q / y00;
                 }
                 if (ctx_.num_mag_dims() == 3) {
                     for (int ir = 0; ir < nmtp; ir++) {
-                        magnetization(1).f_mt<sddk::index_domain_t::local>(0, ir, ialoc) = rho_s(ir) * v[0] / q / y00;
-                        magnetization(2).f_mt<sddk::index_domain_t::local>(0, ir, ialoc) = rho_s(ir) * v[1] / q / y00;
+                        mag(1).mt()[ia](0, ir) = rho_s(ir) * v[0] / q / y00;
+                        mag(2).mt()[ia](0, ir) = rho_s(ir) * v[1] / q / y00;
                     }
                 }
             }
@@ -471,9 +472,9 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(int idx__)
+Density::generate_paw_atom_density(int ialoc__)
 {
-    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(idx__);
+    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     int ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
@@ -484,10 +485,7 @@ Density::generate_paw_atom_density(int idx__)
     Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),
                                   atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
 
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        paw_density_.ae_density(i, idx__).zero();
-        paw_density_.ps_density(i, idx__).zero();
-    }
+    paw_density_->zero(ia);
 
     /* get radial grid to divide density over r^2 */
     auto& grid = atom_type.radial_grid();
@@ -527,8 +525,8 @@ Density::generate_paw_atom_density(int idx__)
             }
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                auto& ae_dens = paw_density_.ae_density(imagn, idx__);
-                auto& ps_dens = paw_density_.ps_density(imagn, idx__);
+                auto& ae_dens = paw_density_->ae_density(imagn, ia);
+                auto& ps_dens = paw_density_->ps_density(imagn, ia);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -562,9 +560,11 @@ Density::generate_paw_loc_density()
         return;
     }
 
+    PROFILE("sirius::Density::generate_paw_loc_density");
+
     #pragma omp parallel for
-    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        generate_paw_atom_density(i);
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_paw_atoms().local_size(); ialoc++) {
+        generate_paw_atom_density(ialoc);
     }
 }
 
@@ -749,22 +749,22 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
         case 3: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[2]->f_rg(ir) += density_rg(ir, 2); // Mx
-                rho_mag_coarse_[3]->f_rg(ir) += density_rg(ir, 3); // My
+                rho_mag_coarse_[2]->value(ir) += density_rg(ir, 2); // Mx
+                rho_mag_coarse_[3]->value(ir) += density_rg(ir, 3); // My
             }
         }
         case 1: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[0]->f_rg(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
-                rho_mag_coarse_[1]->f_rg(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
+                rho_mag_coarse_[0]->value(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
+                rho_mag_coarse_[1]->value(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
             }
             break;
         }
         case 0: {
             #pragma omp parallel for
             for (int ir = 0; ir < nr; ir++) {
-                rho_mag_coarse_[0]->f_rg(ir) += density_rg(ir, 0); // rho
+                rho_mag_coarse_[0]->value(ir) += density_rg(ir, 0); // rho
             }
         }
     }
@@ -1037,13 +1037,13 @@ Density::normalize()
 
     /* renormalize interstitial part */
     for (int ir = 0; ir < ctx_.spfft<double>().local_slice_size(); ir++) {
-        rho().f_rg(ir) *= scale;
+        rho().rg().value(ir) *= scale;
     }
     if (ctx_.full_potential()) {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
                 for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                    rho().f_mt<sddk::index_domain_t::global>(lm, ir, ia) *= scale;
+                    rho().mt()[ia](lm, ir) *= scale;
                 }
             }
         }
@@ -1058,7 +1058,7 @@ Density::check_num_electrons() const
     if (ctx_.full_potential()) {
         nel = std::get<0>(rho().integrate());
     } else {
-        nel = rho().f_0().real() * unit_cell_.omega();
+        nel = rho().rg().f_0().real() * unit_cell_.omega();
     }
 
     /* check the number of electrons */
@@ -1097,14 +1097,14 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
                 for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                    rho().f_mt<sddk::index_domain_t::local>(0, ir, ialoc) +=
+                    rho().mt()[ia](0, ir) +=
                         unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
                 }
             }
         }
         /* synchronize muffin-tin part */
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            this->component(iv).sync_mt();
+            this->component(iv).mt().sync(ctx_.unit_cell().spl_num_atoms());
         }
     }
     if (symmetrize__) {
@@ -1198,7 +1198,7 @@ Density::augment()
     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-            this->component(iv).f_pw_local(igloc) += rho_aug(igloc, iv);
+            this->component(iv).rg().f_pw_local(igloc) += rho_aug(igloc, iv);
         }
     }
 }
@@ -1303,7 +1303,7 @@ Density::generate_valence(K_point_set const& ks__)
 
     auto& comm = ctx_.gvec_coarse_fft_sptr()->comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
+        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->value(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
@@ -1317,7 +1317,7 @@ Density::generate_valence(K_point_set const& ks__)
         rho_mag_coarse_[j]->fft_transform(-1);
         /* map to fine G-vector grid */
         for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
-            component(j).f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
+            component(j).rg().f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
 
@@ -1326,15 +1326,15 @@ Density::generate_valence(K_point_set const& ks__)
 
         /* remove extra chanrge */
         if (ctx_.gvec().comm().rank() == 0) {
-            rho().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
+            rho().rg().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
         if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
-            auto h = sddk::mdarray<std::complex<double>, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
+            auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);
         }
 
-        double nel = rho().f_0().real() * unit_cell_.omega();
+        double nel = rho().rg().f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;
@@ -1674,23 +1674,25 @@ Density::generate_valence_mt()
                       &la::constant<double>::zero(), &dlm(0, 0, j), dlm.ld());
         }
 
-        int sz = static_cast<int>(ctx_.lmmax_rho() * nmtp * sizeof(double));
+        auto sz = ctx_.lmmax_rho() * nmtp;
         switch (ctx_.num_mag_dims()) {
             case 3: {
-                std::memcpy(&magnetization(1).f_mt<sddk::index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 2), sz);
-                std::memcpy(&magnetization(2).f_mt<sddk::index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
+                /* copy x component */
+                std::copy(&dlm(0, 0, 2), &dlm(0, 0, 2) + sz, &mag(1).mt()[ia](0, 0));
+                /* copy y component */
+                std::copy(&dlm(0, 0, 3), &dlm(0, 0, 3) + sz, &mag(2).mt()[ia](0, 0));
             }
             case 1: {
                 for (int ir = 0; ir < nmtp; ir++) {
                     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                        rho().f_mt<sddk::index_domain_t::local>(lm, ir, ialoc)            = dlm(lm, ir, 0) + dlm(lm, ir, 1);
-                        magnetization(0).f_mt<sddk::index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
+                        rho().mt()[ia](lm, ir) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
+                        mag(0).mt()[ia](lm, ir) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
                     }
                 }
                 break;
             }
             case 0: {
-                std::memcpy(&rho().f_mt<sddk::index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
+                std::copy(&dlm(0, 0, 0), &dlm(0, 0, 0) + sz, &rho().mt()[ia](0, 0));
             }
         }
     }
@@ -1738,7 +1740,7 @@ Density::symmetrize_density_matrix()
         a[i] *= alpha;
     }
 
-    dm >> density_matrix_;
+    sddk::copy(dm, density_matrix_);
 
     if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
         auto cs = dm.checksum();
@@ -1767,7 +1769,7 @@ Density::compute_atomic_mag_mom() const
         for (auto coord : atom_to_grid_map) {
             int ir = coord.first;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                mmom(j, ia) += magnetization(j).f_rg(ir);
+                mmom(j, ia) += mag(j).rg().value(ir);
             }
         }
 
@@ -1791,7 +1793,7 @@ Density::get_magnetisation() const
     std::vector<int> idx = (ctx_.num_mag_dims() == 1) ? std::vector<int>({2}) : std::vector<int>({2, 0, 1});
 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        auto result       = this->magnetization(j).integrate();
+        auto result       = this->mag(j).integrate();
         total_mag[idx[j]] = std::get<0>(result);
         it_mag[idx[j]]    = std::get<1>(result);
         if (ctx_.full_potential()) {
@@ -1863,30 +1865,31 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     /* create mixer */
     this->mixer_ =
         mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                             Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, paw_density, Hubbard_matrix>(
-            mixer_cfg__);
-
-    const bool init_mt = ctx_.full_potential();
+                             Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>,
+                             PAW_density<double>, Hubbard_matrix>(mixer_cfg__);
 
     /* initialize functions */
     if (mixer_cfg__.use_hartree()) {
-        this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
+        if (ctx_.full_potential()) {
+            RTE_THROW("Mixer: Hartree residual energy is implemented only for PP-PW case");
+        }
+        this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
     } else {
-        this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
+        this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
     }
     if (ctx_.num_mag_dims() > 0) {
-        this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, init_mt);
+        this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
     }
     if (ctx_.num_mag_dims() > 1) {
-        this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_, init_mt);
-        this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_, init_mt);
+        this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
+        this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
     }
 
     this->mixer_->initialize_function<4>(density_prop, density_matrix_, unit_cell_.max_mt_basis_size(),
                                          unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(), unit_cell_.num_atoms());
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
+        this->mixer_->initialize_function<5>(paw_prop, *paw_density_, unit_cell_);
     }
     if (occupation_matrix_) {
         this->mixer_->initialize_function<6>(hubbard_prop, *occupation_matrix_, ctx_);
@@ -1910,7 +1913,7 @@ Density::mixer_input()
     mixer_->set_input<4>(density_matrix_);
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        mixer_->set_input<5>(paw_density_);
+        mixer_->set_input<5>(*paw_density_);
     }
 
     if (occupation_matrix_) {
@@ -1935,7 +1938,7 @@ Density::mixer_output()
     mixer_->get_output<4>(density_matrix_);
 
     if (ctx_.unit_cell().num_paw_atoms()) {
-        mixer_->get_output<5>(paw_density_);
+        mixer_->get_output<5>(*paw_density_);
     }
 
     if (occupation_matrix_) {

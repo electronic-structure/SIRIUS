@@ -27,12 +27,12 @@
 
 #include <spfft/spfft.hpp>
 #include "SDDK/splindex.hpp"
-#include "SDDK/type_definition.hpp"
 #include "mpi/communicator.hpp"
+#include "SDDK/memory.hpp"
 
 namespace fft {
 
-// type traits to handle Spfft grid for different precision type
+/// Type traits to handle Spfft grid for different precision type.
 template <typename T>
 struct SpFFT_Grid {};
 
@@ -53,7 +53,7 @@ struct SpFFT_Grid<float> {using type = spfft::GridFloat;};
 template <typename T>
 using spfft_grid_type = typename SpFFT_Grid<T>::type;
 
-// type traits to handle Spfft driver for different precision type
+/// Type traits to handle Spfft driver for different precision type.
 template <typename T>
 struct SpFFT_Transform {};
 

@@ -1,9 +1,13 @@
+import typing
+from ..coefficient_array import CoefficientArray
 from ..py_sirius import (
     ewald_energy,
     energy_bxc,
     Wave_functions,
     MemoryEnum,
+    CopyEnum,
     Hamiltonian0,
+    total_energy
 )
 from ..coefficient_array import PwCoeffs
 import numpy as np
@@ -55,7 +59,7 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def compute(self, X):
+    def compute(self, X: PwCoeffs, fn: typing.Optional[CoefficientArray] = None):
         """
         Keyword Arguments:
         X  -- PW coefficients
@@ -64,18 +68,15 @@ class Energy:
         Etot -- total energy
         HX   -- Hamiltonian@X
         """
-        assert isinstance(X, PwCoeffs)
+
+        if fn:
+            self.kpointset.fn = fn
 
         for key, val in X.items():
             k, ispn = key
-            self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[
-                :, : val.shape[1]
-            ] = val
-        # copy to device (if needed)
-        for ki in X.kvalues():
-            psi = self.kpointset[ki].spinor_wave_functions()
-            if psi.preferred_memory_t() == MemoryEnum.device:
-                psi.copy_to_gpu()
+            psi = self.kpointset[k].spinor_wave_functions()
+            psi.pw_coeffs(ispn)[:, : val.shape[1]] = val
+
         # update density, potential
         self.density.generate(
             self.kpointset, symmetrize=self.ctx.use_symmetry(), transform_to_rg=True
@@ -88,7 +89,7 @@ class Energy:
 
         for key, val in yn.items():
             k, ispn = key
-            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
             benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
             for j, ek in enumerate(benergies):
@@ -96,11 +97,18 @@ class Energy:
 
         self.kpointset.sync_band_energy()
 
-        Etot = pp_total_energy(self.potential, self.density, self.kpointset, self.ctx)
+        Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential,
+                            ewald_energy(self.ctx, self.ctx.gvec(), self.ctx.unit_cell()))
+
 
         return Etot, yn
 
-    def __call__(self, cn):
+    def __call__(self, cn: PwCoeffs, fn: typing.Optional[CoefficientArray] = None):
+
+        # update occupation numbers if needed
+        if fn:
+            self.kpointset.fn = fn
+
         E, _ = self.compute(cn)
         return E
 
@@ -117,11 +125,12 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        from ..py_sirius import apply_hamiltonian
+        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands
 
         ctx = self.kpointset.ctx()
+        pmem_t = ctx.processing_unit_memory_t()
         num_sc = ctx.num_spins()
-        H0 = Hamiltonian0(self.potential)
+        H0 = Hamiltonian0(self.potential, False)
         if isinstance(cn, PwCoeffs):
             assert ki is None
             assert ispn is None
@@ -129,15 +138,18 @@ class ApplyHamiltonian:
             for k, ispn_coeffs in cn.by_k().items():
                 kpoint = self.kpointset[k]
                 # spins might have different number of bands ...
-                num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
+                # num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
+                md = num_mag_dims(ctx.num_mag_dims())
+                nb = num_bands(ctx.num_bands())
                 Psi_x = Wave_functions(
-                    kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc
+                    kpoint.gkvec(), md, nb, MemoryEnum.host
                 )
                 Psi_y = Wave_functions(
-                    kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc
+                    kpoint.gkvec(), md, nb, MemoryEnum.host
                 )
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, : val.shape[1]] = val
+
                 apply_hamiltonian(H0, kpoint, Psi_y, Psi_x)
 
                 w = kpoint.weight()

@@ -29,6 +29,7 @@
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
 #include "fft/fft.hpp"
+#include "wave_functions.hpp"
 
 namespace sirius {
 
@@ -126,18 +127,6 @@ class K_point
     /// LAPW matching coefficients for the local set G+k vectors.
     std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
-    /// Mapping between local row and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_row_;
-
-    /// Mapping between local column and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_col_;
-
-    /// Mapping between local and global G+k vecotor index.
-    /** Used by matching_coefficients class. */
-    std::vector<int> igk_loc_;
-
     /// Number of G+k vectors distributed along rows of MPI grid
     int num_gkvec_row_{0};
 
@@ -186,9 +175,6 @@ class K_point
     /// Beta projectors for column G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
     std::unique_ptr<Beta_projectors<T>> beta_projectors_col_{nullptr};
-
-    /// Preconditioner matrix for Chebyshev solver.
-    sddk::mdarray<std::complex<T>, 3> p_mtrx_;
 
     /// Communicator between(!!) rows.
     mpi::Communicator const& comm_row_;
@@ -469,16 +455,24 @@ class K_point
         return *fv_states_;
     }
 
-    inline auto const& spinor_wave_functions() const
+    inline wf::Wave_functions<T> const& spinor_wave_functions() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline auto& spinor_wave_functions()
+    inline wf::Wave_functions<T>& spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
+        return *spinor_wave_functions_;
+        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
+    }
+
+    inline auto& spinor_wave_functions2()
+    {
+        RTE_ASSERT(spinor_wave_functions_ != nullptr);
+        return *spinor_wave_functions_;
+        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
     }
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
@@ -580,36 +574,6 @@ class K_point
     {
         RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
         return lo_basis_descriptors_row_[idx];
-    }
-
-    inline int igk_loc(int idx__) const
-    {
-        return igk_loc_[idx__];
-    }
-
-    inline std::vector<int> const& igk_loc() const
-    {
-        return igk_loc_;
-    }
-
-    inline int igk_row(int idx__) const // TODO: get all from gkvec_row_
-    {
-        return igk_row_[idx__];
-    }
-
-    inline std::vector<int> const& igk_row() const
-    {
-        return igk_row_;
-    }
-
-    inline int igk_col(int idx__) const
-    {
-        return igk_col_[idx__];
-    }
-
-    inline std::vector<int> const& igk_col() const
-    {
-        return igk_col_;
     }
 
     inline int num_ranks_row() const
@@ -722,16 +686,6 @@ class K_point
         return comm_col_;
     }
 
-    inline auto p_mtrx(int xi1, int xi2, int iat) const
-    {
-        return p_mtrx_(xi1, xi2, iat);
-    }
-
-    inline auto& p_mtrx()
-    {
-        return p_mtrx_;
-    }
-
     auto& beta_projectors()
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
@@ -790,6 +744,16 @@ class K_point
     inline auto gkvec_fft_sptr() const
     {
         return gkvec_partition_;
+    }
+
+    inline auto const& gkvec_col() const
+    {
+        return *gkvec_col_;
+    }
+
+    inline auto const& gkvec_row() const
+    {
+        return *gkvec_row_;
     }
 };
 
