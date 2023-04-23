@@ -129,6 +129,7 @@ class Atom_type
         In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
         In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
     radial_functions_index indexr_;
+    experimental::radial_functions_index indexri1_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
@@ -519,7 +520,7 @@ class Atom_type
     }
 
     /// Return a radial beta functions.
-    inline Spline<double> const& beta_radial_function(int idxrf__) const
+    inline auto const& beta_radial_function(int idxrf__) const
     {
         return beta_radial_functions_[idxrf__].second;
     }

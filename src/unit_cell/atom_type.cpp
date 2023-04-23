@@ -92,6 +92,17 @@ Atom_type::init(int offset_lo__)
             RTE_THROW("maximum aw order > 3");
         }
     }
+    /* build radial function index */
+    for (auto e : aw_descriptors_) {
+        RTE_ASSERT(e.size() <= 3);
+        for (auto rs : e) {
+            indexr1_.add(angular_momentum(rs.l));
+        }
+    }
+    int idxlo{0};
+    for (auto e : lo_descriptors_) {
+        indext1_.add(angular_momentum(e.l), idxlo++);
+    }
 
     /* initialize index of radial functions */
     indexr_.init(aw_descriptors_, lo_descriptors_);
