@@ -96,12 +96,12 @@ Atom_type::init(int offset_lo__)
     for (auto e : aw_descriptors_) {
         RTE_ASSERT(e.size() <= 3);
         for (auto rs : e) {
-            indexr1_.add(angular_momentum(rs.l));
+            indexr1_.add(experimental::angular_momentum(rs.l));
         }
     }
     int idxlo{0};
     for (auto e : lo_descriptors_) {
-        indext1_.add(angular_momentum(e.l), idxlo++);
+        indexr1_.add(experimental::angular_momentum(e.l), idxlo++);
     }
 
     /* initialize index of radial functions */
