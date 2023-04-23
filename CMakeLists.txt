@@ -134,6 +134,10 @@ if(USE_NLCGLIB)
   find_package(Kokkos REQUIRED)
 endif()
 
+if(USE_MEMORY_POOL)
+  find_package(umpire)
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 find_package(LibXC 4.0.0 REQUIRED)
