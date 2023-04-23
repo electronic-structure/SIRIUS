@@ -105,6 +105,7 @@ class angular_momentum
     }
 };
 
+/// Output angular momentum to a stream.
 inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
 {
     if (am.s() == 0) {
@@ -115,16 +116,87 @@ inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
     return out;
 }
 
+/// Radial basis function index.
 class radial_functions_index
 {
   private:
+    /// Total size of the index (total number of radial functions).
+    /** Radial functions can have a repeating orbital quantum number, for example {2s, 2s, 3p, 3p, 4d} configuration
+     *  corresponds to {l=0, l=0, l=1, l=1, l=2} radial functions index. */
     int size_{0};
+    /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
     std::vector<int> l_;
     std::vector<int> s_;
     std::vector<int> o_;
+    /// Index of local orbital.
+    std::vector<int> idxlo_;
   public:
-    void add(angular_momentum am__)
+    radial_functions_index()
+    {
+    }
+
+    //template <typename T>
+    //void radial_functions_index(std::vector<radial_solution_descriptor_set> const& aw_descriptors__,
+    //          std::vector<T> const& lo_descriptors__)
+    //{
+    //    int lmax_aw = static_cast<int>(aw_descriptors__.size()) - 1;
+    //    //lmax_lo_ = -1;
+    //    //for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++) {
+    //    //    int l    = lo_descriptors[idxlo].l;
+    //    //    lmax_lo_ = std::max(lmax_lo_, l);
+    //    //}
+
+    //    //lmax_ = std::max(lmax_aw_, lmax_lo_);
+
+    //    //num_rf_ = std::vector<int>(lmax_ + 1, 0);
+    //    //num_lo_ = std::vector<int>(lmax_ + 1, 0);
+
+    //    //max_num_rf_ = 0;
+
+    //    //radial_function_index_descriptors_.clear();
+
+    //    for (int l = 0; l <= lmax_aw; l++) {
+    //        RTE_ASSERT(aw_descriptors__[l].size() <= 3);
+
+    //        for (size_t order = 0; order < aw_descriptors__[l].size(); order++) {
+    //            this->add(angular_momentum(l));
+    //        }
+    //    }
+
+    //    for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
+    //        int l = lo_descriptors[idxlo].l;
+    //        this->add(angular_momentum(l), idxlo);
+    //        radial_function_index_descriptors_.push_back(
+    //            radial_function_index_descriptor(l, lo_descriptors[idxlo].total_angular_momentum, num_rf_[l], idxlo));
+    //    //    num_rf_[l]++;
+    //    //    num_lo_[l]++;
+    //    //}
+
+    //    //for (int l = 0; l <= lmax_; l++) {
+    //    //    max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
+    //    //}
+
+    //    //index_by_l_order_ = sddk::mdarray<int, 2>(lmax_ + 1, max_num_rf_);
+
+    //    //if (lo_descriptors.size()) {
+    //    //    index_by_idxlo_ = sddk::mdarray<int, 1>(lo_descriptors.size());
+    //    //}
+
+    //    //for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {
+    //    //    int l     = radial_function_index_descriptors_[i].l;
+    //    //    int order = radial_function_index_descriptors_[i].order;
+    //    //    int idxlo = radial_function_index_descriptors_[i].idxlo;
+    //    //    index_by_l_order_(l, order) = i;
+    //    //    if (idxlo >= 0) {
+    //    //        index_by_idxlo_(idxlo) = i;
+    //    //    }
+    //    //}
+
+    //}
+
+    /// Add a single angular_momentum.
+    void add(angular_momentum am__, int idxlo__ = -1)
     {
         /* current l */
         auto l = am__.l();
@@ -149,23 +221,22 @@ class radial_functions_index
         l_.push_back(l);
         s_.push_back(s);
         o_.push_back(o);
+        idxlo_.push_back(idxlo__);
         size_++;
     }
 
-    void add(angular_momentum am1__, angular_momentum am2__)
+    void add(angular_momentum am1__, angular_momentum am2__, int idxlo__ = -1)
     {
         /* current l */
-        auto l1 = am1__.l();
+        auto l = am1__.l();
         /* current s */
         auto s1 = am1__.s();
-        /* current l */
-        auto l2 = am2__.l();
-        /* current s */
-        auto s2 = am2__.s();
-
-        if (l1 != l2) {
+        /* check second l */
+        if (l != am2__.l()) {
             RTE_THROW("orbital quantum numbers are different");
         }
+        /* current s */
+        auto s2 = am2__.s();
 
         if (s1 == s2) {
             RTE_THROW("spin quantum numbers are the same");
@@ -176,25 +247,44 @@ class radial_functions_index
         }
 
         /* make sure that the space is available */
-        if (static_cast<int>(index_by_j_order_.size()) < l1 + 1) {
-            index_by_j_order_.resize(l1 + 1);
+        if (static_cast<int>(index_by_j_order_.size()) < l + 1) {
+            index_by_j_order_.resize(l + 1);
         }
 
+        /* for the total angular momantum, the radial functions are stored in pairs and
+         * have a contiguous index from s=-1 to s=1, for example:
+         *                        | l = 0 | l = 1 |
+         *   +-----------+--------+-------+-------+---
+         *   |           | s = -1 |  n/a  | idx=1 |
+         *   | order = 0 +--------+-------+-------+---
+         *   |           ! s =  1 | idx=0 | idx=2 |
+         *   +-----------+--------+-------+-------+---
+         *   |           | s = -1 |  n/a  | idx=4 |
+         *   | order = 1 +--------+-------+-------+---
+         *   |           ! s =  1 | idx=3 | idx=5 |
+         *   +-----------+--------+-------+-------+---
+         *   |........................................
+         *   |
+         */
+
         /* current order */
-        auto o = static_cast<int>(index_by_j_order_[l1].size());
+        auto o = static_cast<int>(index_by_j_order_[l].size());
 
         std::array<int, 2> idx({-1, -1});
+        /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
         idx[std::max(s1, 0)] = size_;
         idx[std::max(s2, 0)] = size_ + 1;
 
-        l_.push_back(l1);
-        l_.push_back(l2);
+        l_.push_back(l);
+        l_.push_back(l);
         s_.push_back(s1);
         s_.push_back(s2);
         o_.push_back(o);
         o_.push_back(o);
+        idxlo_.push_back(idxlo__);
+        idxlo_.push_back(idxlo__);
 
-        index_by_j_order_[l1].push_back(idx);
+        index_by_j_order_[l].push_back(idx);
         size_ += 2;
     }
 
@@ -220,6 +310,7 @@ class radial_functions_index
 
     inline auto index_of(angular_momentum am__, int order__) const
     {
+        /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
         return index_by_j_order_[am__.l()][order__][std::max(am__.s(), 0)];
     }
 
@@ -460,7 +551,7 @@ class basis_functions_index
 
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves of local orbitals
+ *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves or local orbitals
  *  (in case of FP-LAPW) or bete projectors, atomic or Hubbard wave functions in case of PP-PW.
  */
 struct radial_function_index_descriptor
