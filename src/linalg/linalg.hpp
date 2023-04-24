@@ -1018,7 +1018,7 @@ inline int wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::potrf<ftn_double>(n, A, lda);
 #else
@@ -1064,7 +1064,7 @@ inline int wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::potrf<ftn_single>(n, A, lda);
 #else
@@ -1110,7 +1110,7 @@ inline int wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::potrf<ftn_double_complex>(n, A, lda);
 #else
@@ -1156,7 +1156,7 @@ inline int wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::potrf<ftn_complex>(n, A, lda);
 #else
@@ -1202,7 +1202,7 @@ inline int wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::trtri<ftn_double>(n, A, lda);
 #else
@@ -1248,7 +1248,7 @@ inline int wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::trtri<ftn_single>(n, A, lda);
 #else
@@ -1294,7 +1294,7 @@ inline int wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::trtri<ftn_double_complex>(n, A, lda);
 #else
@@ -1340,7 +1340,7 @@ inline int wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
 #endif
             break;
         }
-        case linalg_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             cusolver::trtri<ftn_complex>(n, A, lda);
 #else
