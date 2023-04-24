@@ -471,7 +471,9 @@ class memory_pool
         if (M_ == memory_t::none) {
             return;
         }
+#if defined(SIRIUS_USE_MEMORY_POOL)
         memory_pool_allocator_.release();
+#endif
     }
 
     /// Return the type of memory this pool is managing.
