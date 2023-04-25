@@ -69,14 +69,14 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
 
         if (type.hubbard_correction()) {
             /* loop over Hubbard orbitals of the atom */
-            for (int idxrf = 0; idxrf < type.indexr_hub().size(); idxrf++) {
+            for (auto idxrf = type.indexr_hub().begin(); idxrf < type.indexr_hub().end(); idxrf++) {
                 auto& hd = type.lo_descriptor_hub(idxrf);
                 int l = type.indexr_hub().am(idxrf).l();
                 int mmax = 2 * l + 1;
 
                 int idxr_wf = hd.idx_wf();
-                int offset_in_wf = atomic_wf_offset__[ia] + type.indexb_wfs().offset(idxr_wf);
-                int offset_in_hwf = hubbard_wf_offset__[ia] + type.indexb_hub().offset(idxrf);
+                int offset_in_wf = atomic_wf_offset__[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
+                int offset_in_hwf = hubbard_wf_offset__[ia] + type.indexb_hub().index_of(idxrf);
 
                 if (ctx__.cfg().hubbard().full_orthogonalization()) {
                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */

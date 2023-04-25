@@ -297,7 +297,7 @@ K_point<T>::generate_hubbard_orbitals()
         auto& type = atom.type();
         if (type.hubbard_correction()) {
             /* loop over Hubbard orbitals of the atom */
-            for (int idxrf = 0; idxrf < type.indexr_hub().size(); idxrf++) {
+            for (auto idxrf = type.indexr_hub().begin(); idxrf < type.indexr_hub().end(); idxrf++) {
                 /* Hubbard orbital descriptor */
                 auto& hd = type.lo_descriptor_hub(idxrf);
                 int l = type.indexr_hub().am(idxrf).l();
@@ -305,8 +305,8 @@ K_point<T>::generate_hubbard_orbitals()
 
                 int idxr_wf = hd.idx_wf();
 
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(idxr_wf);
-                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(idxrf);
+                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
+                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(idxrf);
 
                 wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,
@@ -746,7 +746,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
                 continue;
             }
             auto const& indexb = *indexb__(iat);
-            for (int xi = 0; xi < static_cast<int>(indexb.size()); xi++) {
+            for (auto xi = indexb.begin(); xi != indexb.end(); xi++) {
                 /*  orbital quantum  number of this atomic orbital */
                 int l = indexb.l(xi);
                 /*  composite l,m index */

@@ -2233,8 +2233,8 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 }
                 int n      = (n__) ? *n__ : -1;
                 double occ = (occ__) ? *occ__ : 0.0;
-                type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
-                                      std::vector<double>(rf__, rf__ + *num_points__), occ);
+                type.add_ps_atomic_wf(n, sirius::angular_momentum(*l__),
+                        std::vector<double>(rf__, rf__ + *num_points__), occ);
             } else if (label == "ps_rho_core") {
                 type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
             } else if (label == "ps_rho_total") {

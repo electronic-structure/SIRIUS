@@ -120,8 +120,6 @@ inline bool operator==(angular_momentum lhs__, angular_momentum rhs__)
     return (lhs__.l() == rhs__.l()) && (lhs__.s() == rhs__.s());
 }
 
-namespace experimental {
-
 /// Output angular momentum to a stream.
 inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
 {
@@ -132,6 +130,8 @@ inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
     }
     return out;
 }
+
+namespace experimental {
 
 /// Radial basis function index.
 class radial_functions_index
@@ -217,9 +217,6 @@ class radial_functions_index
     /// Add a single angular_momentum.
     void add(angular_momentum am__)
     {
-        if (offset_lo_ >= 0) {
-            RTE_THROW("can't add more radial functions after local orbitals");
-        }
         /* current l */
         auto l = am__.l();
         /* current s */

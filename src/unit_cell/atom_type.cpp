@@ -96,11 +96,11 @@ Atom_type::init(int offset_lo__)
     for (auto aw : aw_descriptors_) {
         RTE_ASSERT(aw.size() <= 3);
         for (auto e : aw) {
-            indexr1_.add(experimental::angular_momentum(e.l));
+            indexr1_.add(angular_momentum(e.l));
         }
     }
     for (auto e : lo_descriptors_) {
-        indexr1_.add_lo(experimental::angular_momentum(e.l));
+        indexr1_.add_lo(angular_momentum(e.l));
     }
 
     /* initialize index of radial functions */
@@ -614,7 +614,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
                 }
                 k += 1;
             }
-            add_ps_atomic_wf(n, sirius::experimental::angular_momentum(l), v, occ);
+            add_ps_atomic_wf(n, angular_momentum(l), v, occ);
         }
     }
 }
@@ -904,7 +904,7 @@ Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double 
     }
 
     /* add a record in radial function index */
-    indexr_hub_.add(sirius::experimental::angular_momentum(l__));
+    indexr_hub_.add(angular_momentum(l__));
     /* add Hubbard orbital descriptor to a list */
     lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__,
                                      std::move(s.interpolate()), use_for_calculations__, idx_rf);
