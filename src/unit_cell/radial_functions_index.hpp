@@ -26,10 +26,20 @@
 #define __RADIAL_FUNCTIONS_INDEX_HPP__
 
 #include "utils/rte.hpp"
+#include "strong_type.hpp"
 
 namespace sirius {
 
-namespace experimental {
+/// Radial function index.
+using rf_index = strong_type<int, struct __rf_index_tag>;
+/// Augmented wave radial function index.
+using rf_aw_index = strong_type<int, struct __rf_aw_index_tag>;
+/// Local-orbital radial function index.
+using rf_lo_index = strong_type<int, struct __rf_lo_index_tag>;
+/// Basis function index.
+using bf_index = strong_type<int, struct __bf_index_tag>;
+using bf_aw_index = strong_type<int, struct __bf_aw_index_tag>;
+using bf_lo_index = strong_type<int, struct __bf_lo_index_tag>;
 
 /// Angular momentum quantum number.
 /** This class handles orbital or total angluar momentum quantum number. */
@@ -105,6 +115,13 @@ class angular_momentum
     }
 };
 
+inline bool operator==(angular_momentum lhs__, angular_momentum rhs__)
+{
+    return (lhs__.l() == rhs__.l()) && (lhs__.s() == rhs__.s());
+}
+
+namespace experimental {
+
 /// Output angular momentum to a stream.
 inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
 {
@@ -126,11 +143,13 @@ class radial_functions_index
     int size_{0};
     /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
+    //std::vector<int> index_by_lo_;
     std::vector<int> l_;
     std::vector<int> s_;
     std::vector<int> o_;
     /// Index of local orbital.
-    std::vector<int> idxlo_;
+    //std::vector<rf_lo_index> idxlo_;
+    int offset_lo_{-1};
   public:
     radial_functions_index()
     {
@@ -196,8 +215,11 @@ class radial_functions_index
     //}
 
     /// Add a single angular_momentum.
-    void add(angular_momentum am__, int idxlo__ = -1)
+    void add(angular_momentum am__)
     {
+        if (offset_lo_ >= 0) {
+            RTE_THROW("can't add more radial functions after local orbitals");
+        }
         /* current l */
         auto l = am__.l();
         /* current s */
@@ -221,20 +243,43 @@ class radial_functions_index
         l_.push_back(l);
         s_.push_back(s);
         o_.push_back(o);
-        idxlo_.push_back(idxlo__);
+        //idxlo_.push_back(idxlo__);
+        ///* this radial function is local orbital */
+        //if (idxlo__ >= 0) {
+        //    if (static_cast<int>(index_by_lo_.size()) <= idxlo__) {
+        //        index_by_lo_.resize(idxlo__ + 1);
+        //    }
+        //    /* save current index of radial function for reverese mapping from local orbital index */
+        //    index_by_lo_[idxlo__] = size_;
+        //}
         size_++;
     }
 
-    void add(angular_momentum am1__, angular_momentum am2__, int idxlo__ = -1)
+    /// Add local-orbital type of radial function.
+    /** Local orbitals are only used in FP-LAPW, where the distinction between APW and local orbitals
+     *  must be made. For PP-PW this is not used. */
+    void add_lo(angular_momentum am__)
+    {
+        /* mark the start of the local orbital block of radial functions */
+        if (offset_lo_ < 0) {
+            offset_lo_ = size_;
+        }
+        /* add current index of radial function for reverese mapping from local orbital index */
+        //index_by_lo_.push_back(size_);
+        this->add(am__);
+    }
+
+    void add(angular_momentum am1__, angular_momentum am2__)
     {
         /* current l */
         auto l = am1__.l();
-        /* current s */
-        auto s1 = am1__.s();
         /* check second l */
         if (l != am2__.l()) {
             RTE_THROW("orbital quantum numbers are different");
         }
+
+        /* current s */
+        auto s1 = am1__.s();
         /* current s */
         auto s2 = am2__.s();
 
@@ -281,19 +326,17 @@ class radial_functions_index
         s_.push_back(s2);
         o_.push_back(o);
         o_.push_back(o);
-        idxlo_.push_back(idxlo__);
-        idxlo_.push_back(idxlo__);
 
         index_by_j_order_[l].push_back(idx);
         size_ += 2;
     }
 
-    inline auto am(int idx__) const
+    inline auto am(rf_index idx__) const
     {
         return angular_momentum(l_[idx__], s_[idx__]);
     }
 
-    inline auto order(int idx__) const
+    inline auto order(rf_index idx__) const
     {
         return o_[idx__];
     }
@@ -308,10 +351,25 @@ class radial_functions_index
         return static_cast<int>(index_by_j_order_[l__].size());
     }
 
+    inline auto max_order() const
+    {
+        int result{0};
+        for (int l = 0; l <= this->lmax(); l++) {
+            result = std::max(result, this->max_order(l));
+        }
+        return result;
+    }
+
     inline auto index_of(angular_momentum am__, int order__) const
     {
         /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
-        return index_by_j_order_[am__.l()][order__][std::max(am__.s(), 0)];
+        return rf_index(index_by_j_order_[am__.l()][order__][std::max(am__.s(), 0)]);
+    }
+
+    inline auto index_of(rf_lo_index idxlo__) const
+    {
+        RTE_ASSERT(idxlo__ >= 0 && idxlo__ + offset_lo_ < size_);
+        return rf_index(offset_lo_ + idxlo__);
     }
 
     auto full_j(int l__, int o__) const
@@ -350,6 +408,16 @@ class radial_functions_index
         }
         return size;
     }
+
+    auto begin() const
+    {
+        return rf_index(0);
+    }
+
+    auto end() const
+    {
+        return rf_index(size_);
+    }
 };
 
 class basis_functions_index
@@ -358,8 +426,10 @@ class basis_functions_index
     radial_functions_index indexr_;
 
     int size_{0};
-//
-//    //mdarray<int, 2> index_by_lm_order_;
+
+    int offset_lo_{-1};
+
+    sddk::mdarray<int, 2> index_by_lm_order_;
 //
 //    //mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
 //
@@ -374,8 +444,9 @@ class basis_functions_index
 //    //
 //    std::vector<std::vector<int>> index_by_lm_order_; // TODO: subject to change to index_by_lm_idxrf
 //
-    std::vector<int> idxrf_;
+    std::vector<rf_index> idxrf_;
     std::vector<int> lm_;
+    /// Offset in the basis function index for the given radial function index.
     std::vector<int> offset_;
   public:
     basis_functions_index()
@@ -389,18 +460,28 @@ class basis_functions_index
         }
 
         if (!expand_full_j__) {
-//            int lmmax = utils::lmmax(indexr_.lmax());
-//            index_by_lm_order_.resize(lmmax);
-            for (int idxrf = 0; idxrf < indexr_.size(); idxrf++) {
+            index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr_.lmax()), indexr_.max_order());
+            std::fill(index_by_lm_order_.begin(), index_by_lm_order_.end(), -1);
+            for (auto idxrf = indexr_.begin(); idxrf != indexr_.end(); idxrf++) {
+                if (idxrf == indexr_.index_of(rf_lo_index(0))) {
+                    offset_lo_ = size_;
+                }
                 /* angular momentum */
                 auto am = indexr_.am(idxrf);
+
+                /* order of radial function */
+                auto o = indexr_.order(idxrf);
 
                 offset_.push_back(size_);
 
                 for (int m = -am.l(); m <= am.l(); m++) {
                     idxrf_.push_back(idxrf);
-                    lm_.push_back(utils::lm(am.l(), m));
+                    auto lm = utils::lm(am.l(), m);
+                    lm_.push_back(lm);
+                    /* reverse mapping */
+                    index_by_lm_order_(lm, o) = size_;
                     size_++;
+
     
 //                    basis_function_index_descriptor b;
 //                    b.idxrf = idxrf;
@@ -431,17 +512,46 @@ class basis_functions_index
         return size_;
     }
 
-    inline auto idxrf(int xi__) const
+    inline auto size_aw() const
+    {
+        if (offset_lo_ == -1) {
+            return size_;
+        } else {
+            return offset_lo_;
+        }
+    }
+
+    inline auto size_lo() const
+    {
+        if (offset_lo_ == -1) {
+            return 0;
+        } else {
+            return size_ - offset_lo_;
+        }
+    }
+
+    inline auto idxrf(bf_index xi__) const
     {
         return idxrf_[xi__];
     }
 
-    inline auto l(int xi__) const
+    inline auto l(bf_index xi__) const
     {
         return indexr_.am(idxrf(xi__)).l();
     }
 
-    inline auto lm(int xi__) const
+    inline auto order(bf_index xi__) const
+    {
+        return indexr_.order(idxrf(xi__));
+    }
+
+    /// Return total angular momentum.
+    inline auto am(bf_index xi__) const
+    {
+        return indexr_.am(idxrf(xi__));
+    }
+
+    inline auto lm(bf_index xi__) const
     {
         return lm_[xi__];
     }
@@ -451,9 +561,47 @@ class basis_functions_index
         return indexr_;
     }
 
-    inline auto offset(int idxrf__) const
+    inline auto index_of(rf_index idxrf__) const
     {
-        return offset_[idxrf__];
+        return bf_index(offset_[idxrf__]);
+    }
+
+    auto begin() const
+    {
+        return bf_index(0);
+    }
+
+    auto end() const
+    {
+        return bf_index(size_);
+    }
+
+    auto begin_aw() const
+    {
+        return bf_index(0);
+    }
+
+    auto end_aw() const
+    {
+        if (offset_lo_ < 0) {
+            return bf_index(size_);
+        } else {
+            return bf_index(offset_lo_);
+        }
+    }
+
+    auto begin_lo() const
+    {
+        return bf_index(offset_lo_);
+    }
+
+    auto end_lo() const
+    {
+        if (offset_lo_ < 0) {
+            return bf_index(offset_lo_);
+        } else {
+            return bf_index(size_);
+        }
     }
 
 //    inline int order(int xi__) const
@@ -461,10 +609,16 @@ class basis_functions_index
 //        return indexr_[(*this)[xi__].idxrf].order;
 //    }
 //
-//    inline int index_by_lm_order(int lm__, int order__) const // TODO: subject to change
-//    {
-//        return index_by_lm_order_[lm__][order__];
-//    }
+    inline auto index_by_lm_order(int lm__, int order__) const
+    {
+        return bf_index(index_by_lm_order_(lm__, order__));
+    }
+
+    /* this is needed for full angular momentum indexing
+    inline auto index_by_jmj_order(...) const
+    {
+    }
+    */
 //
 //
 //    //void init(radial_functions_index& indexr__)
