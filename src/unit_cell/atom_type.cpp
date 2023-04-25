@@ -93,15 +93,14 @@ Atom_type::init(int offset_lo__)
         }
     }
     /* build radial function index */
-    for (auto e : aw_descriptors_) {
-        RTE_ASSERT(e.size() <= 3);
-        for (auto rs : e) {
-            indexr1_.add(experimental::angular_momentum(rs.l));
+    for (auto aw : aw_descriptors_) {
+        RTE_ASSERT(aw.size() <= 3);
+        for (auto e : aw) {
+            indexr1_.add(experimental::angular_momentum(e.l));
         }
     }
-    int idxlo{0};
     for (auto e : lo_descriptors_) {
-        indexr1_.add(experimental::angular_momentum(e.l), idxlo++);
+        indexr1_.add_lo(experimental::angular_momentum(e.l));
     }
 
     /* initialize index of radial functions */
@@ -109,12 +108,12 @@ Atom_type::init(int offset_lo__)
 
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
-
+    indexb1_ = experimental::basis_functions_index(indexr1_, false);
 
     /* initialize index for wave functions */
     if (ps_atomic_wfs_.size()) {
-        for (size_t i = 0; i < ps_atomic_wfs_.size(); i++) {
-            indexr_wfs_.add(ps_atomic_wfs_[i].am);
+        for (auto& e : ps_atomic_wfs_) {
+            indexr_wfs_.add(e.am);
         }
         indexb_wfs_ = sirius::experimental::basis_functions_index(indexr_wfs_, false);
         if (static_cast<int>(ps_atomic_wfs_.size()) != indexr_wfs_.size()) {
@@ -354,7 +353,7 @@ Atom_type::print_info(std::ostream& out__) const
     }
     out__ << "spin-orbit coupling              : " << utils::boolstr(this->spin_orbit_coupling()) << std::endl;
     out__ << "atomic wave-functions            : ";
-    for (int i = 0; i < indexr_wfs_.size(); i++) {
+    for (auto i = indexr_wfs_.begin(); i != indexr_wfs_.end(); i++) {
         if (i) {
             out__ << ", ";
         }
