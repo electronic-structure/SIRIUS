@@ -37,7 +37,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
             auto phase        = twopi * dot(kp__.gkvec().gkvec<sddk::index_domain_t::local>(igkloc),
                                             ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
-            for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
+            for (auto xi = atom_type.indexb_wfs().begin(); xi != atom_type.indexb_wfs().end(); xi++) {
                 /*  orbital quantum  number of this atomic orbital */
                 int l = atom_type.indexb_wfs().l(xi);
                 /*  composite l,m index */

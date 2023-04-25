@@ -392,8 +392,8 @@ class memory_pool
                 mem_type = "NONE";
                 M_ = memory_t::none;
 #endif
-            }
                 break;
+            }
             case memory_t::none: {
                 mem_type = "NONE";
                 break;

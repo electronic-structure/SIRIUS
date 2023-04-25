@@ -42,7 +42,7 @@ namespace sirius {
 struct ps_atomic_wf_descriptor
 {
     /// Constructor.
-    ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__, Spline<double> f__)
+    ps_atomic_wf_descriptor(int n__, angular_momentum am__, double occ__, Spline<double> f__)
         : n(n__)
         , am(am__)
         , occ(occ__)
@@ -52,7 +52,7 @@ struct ps_atomic_wf_descriptor
     /// Principal quantum number.
     int n;
     /// Angular momentum quantum number.
-    sirius::experimental::angular_momentum am;
+    angular_momentum am;
     /// Shell occupancy
     double occ;
     /// Radial wave-function.
@@ -134,6 +134,7 @@ class Atom_type
     /// Index of atomic basis functions (radial function * spherical harmonic).
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
     basis_functions_index indexb_;
+    experimental::basis_functions_index indexb1_;
 
     /// Index for the radial atomic functions.
     sirius::experimental::radial_functions_index indexr_wfs_;
@@ -474,8 +475,7 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__, std::vector<double> f__,
-                                 double occ__ = 0.0)
+    inline void add_ps_atomic_wf(int n__, angular_momentum am__, std::vector<double> f__, double occ__ = 0.0)
     {
         Spline<double> rwf(radial_grid_, f__);
         auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
