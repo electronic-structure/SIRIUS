@@ -203,12 +203,6 @@ class radial_functions_index
     /// Vector of radial function index descriptors.
     std::vector<radial_function_index_descriptor> vrd_;
 
-    //std::vector<int> index_by_lo_;
-    //std::vector<int> l_;
-    //std::vector<int> s_;
-    //std::vector<int> o_;
-    /// Index of local orbital.
-    //std::vector<rf_lo_index> idxlo_;
     int offset_lo_{-1};
   public:
     /// Default constructor.
@@ -242,18 +236,6 @@ class radial_functions_index
         index_by_j_order_[l].push_back(idx);
         /* add descriptor to the list */
         vrd_.push_back(radial_function_index_descriptor(am__, o, rf_index(size_)));
-        //l_.push_back(l);
-        //s_.push_back(s);
-        //o_.push_back(o);
-        //idxlo_.push_back(idxlo__);
-        ///* this radial function is local orbital */
-        //if (idxlo__ >= 0) {
-        //    if (static_cast<int>(index_by_lo_.size()) <= idxlo__) {
-        //        index_by_lo_.resize(idxlo__ + 1);
-        //    }
-        //    /* save current index of radial function for reverese mapping from local orbital index */
-        //    index_by_lo_[idxlo__] = size_;
-        //}
         size_++;
     }
 
@@ -327,13 +309,6 @@ class radial_functions_index
 
         vrd_.push_back(radial_function_index_descriptor(am1__, o, rf_index(size_)));
         vrd_.push_back(radial_function_index_descriptor(am2__, o, rf_index(size_ + 1)));
-
-        //l_.push_back(l);
-        //l_.push_back(l);
-        //s_.push_back(s1);
-        //s_.push_back(s2);
-        //o_.push_back(o);
-        //o_.push_back(o);
 
         index_by_j_order_[l].push_back(idx);
         size_ += 2;

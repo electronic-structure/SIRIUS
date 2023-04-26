@@ -15,10 +15,8 @@ int run_test(cmd_args& args)
     sirius::experimental::radial_functions_index ri;
 
     ri.add(angular_momentum(0, 1));
-    ri.add(angular_momentum(1, -1));
-    ri.add(angular_momentum(1, 1));
-    ri.add(angular_momentum(2, -1));
-    ri.add(angular_momentum(2,  1));
+    ri.add(angular_momentum(1, -1), angular_momentum(1, 1));
+    ri.add(angular_momentum(2, -1), angular_momentum(2, 1));
     ri.add(angular_momentum(0));
 
     std::cout << ri.size() << std::endl;

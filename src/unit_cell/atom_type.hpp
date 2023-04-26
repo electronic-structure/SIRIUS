@@ -838,7 +838,8 @@ class Atom_type
 
     inline int indexr_by_l_order(int l, int order) const
     {
-        return indexr_.index_by_l_order(l, order);
+        //return indexr_.index_by_l_order(l, order);
+        return indexr1_.index_of(angular_momentum(l), order);
     }
 
     inline int indexr_by_idxlo(int idxlo) const
