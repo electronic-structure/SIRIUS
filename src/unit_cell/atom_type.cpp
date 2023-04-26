@@ -353,11 +353,11 @@ Atom_type::print_info(std::ostream& out__) const
     }
     out__ << "spin-orbit coupling              : " << utils::boolstr(this->spin_orbit_coupling()) << std::endl;
     out__ << "atomic wave-functions            : ";
-    for (auto i = indexr_wfs_.begin(); i != indexr_wfs_.end(); i++) {
-        if (i) {
+    for (auto e : indexr_wfs_) {
+        if (e.idxrf) {
             out__ << ", ";
         }
-        out__ << indexr_wfs_.am(i);
+        out__ << e.am;
     }
     out__ << std::endl;
     out__ << std::endl;

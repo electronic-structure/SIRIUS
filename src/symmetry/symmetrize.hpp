@@ -586,16 +586,16 @@ symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__
             sddk::mdarray<std::complex<double>, 3> dm_ia(mmax, mmax, num_mag_comp__);
 
             /* loop over radial functions */
-            for (auto idxrf1 = indexr.begin(); idxrf1 != indexr.end(); idxrf1++) {
+            for (auto e1 : indexr) {
                 /* angular momentum of radial function */
-                auto am1     = indexr.am(idxrf1);
+                auto am1     = e1.am;
                 auto ss1     = am1.subshell_size();
-                auto offset1 = indexb.index_of(idxrf1);
-                for (auto idxrf2 = indexr.begin(); idxrf2 != indexr.end(); idxrf2++) {
+                auto offset1 = indexb.index_of(e1.idxrf);
+                for (auto e2 : indexr) {
                     /* angular momentum of radial function */
-                    auto am2     = indexr.am(idxrf2);
+                    auto am2     = e2.am;
                     auto ss2     = am2.subshell_size();
-                    auto offset2 = indexb.index_of(idxrf2);
+                    auto offset2 = indexb.index_of(e2.idxrf);
 
                     dm_ia.zero();
                     for (int j = 0; j < num_mag_comp__; j++) {
