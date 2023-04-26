@@ -190,17 +190,12 @@ K_point<T>::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
-    //auto& phi = atomic_wave_functions();
-    //auto& sphi = atomic_wave_functions_S();
     if (ctx_.so_correction()) {
         RTE_THROW("Hubbard+SO is not implemented");
     }
     if (ctx_.gamma_point()) {
         RTE_THROW("Hubbard+Gamma point is not implemented");
     }
-
-    //phi.zero(sddk::device_t::CPU);
-    //sphi.zero(sddk::device_t::CPU);
 
     auto num_ps_atomic_wf = unit_cell_.num_ps_atomic_wf();
     int nwf = num_ps_atomic_wf.first;
@@ -297,16 +292,16 @@ K_point<T>::generate_hubbard_orbitals()
         auto& type = atom.type();
         if (type.hubbard_correction()) {
             /* loop over Hubbard orbitals of the atom */
-            for (auto idxrf = type.indexr_hub().begin(); idxrf < type.indexr_hub().end(); idxrf++) {
+            for (auto e : type.indexr_hub()) {
                 /* Hubbard orbital descriptor */
-                auto& hd = type.lo_descriptor_hub(idxrf);
-                int l = type.indexr_hub().am(idxrf).l();
+                auto& hd = type.lo_descriptor_hub(e.idxrf);
+                int l = e.am.l();
                 int mmax = 2 * l + 1;
 
                 int idxr_wf = hd.idx_wf();
 
                 int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
-                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(idxrf);
+                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(e.idxrf);
 
                 wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,

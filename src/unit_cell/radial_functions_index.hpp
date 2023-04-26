@@ -131,6 +131,62 @@ inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
     return out;
 }
 
+/// Descriptor for the atomic radial functions.
+/** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
+ *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves or local orbitals
+ *  (in case of FP-LAPW) or beta projectors, atomic or Hubbard wave functions in case of PP-PW.
+ */
+struct radial_function_index_descriptor
+{
+    /// Orbital quantum number \f$ \ell \f$.
+    int l;
+
+    /// Total angular momentum
+    double j;
+
+    /// Order of a function for a given \f$ \ell \f$.
+    int order;
+
+    /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
+    int idxlo;
+
+    rf_index idxrf{-1};
+
+    angular_momentum am;
+
+    /// Constructor.
+    radial_function_index_descriptor(int l, int order, int idxlo = -1)
+        : l{l}
+        , order{order}
+        , idxlo{idxlo}
+        , am(l)
+    {
+        RTE_ASSERT(l >= 0);
+        RTE_ASSERT(order >= 0);
+    }
+
+    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1)
+        : l{l}
+        , j{j}
+        , order{order}
+        , idxlo{idxlo}
+        , am(l)
+    {
+        RTE_ASSERT(l >= 0);
+        RTE_ASSERT(order >= 0);
+    }
+
+    radial_function_index_descriptor(angular_momentum am__, int order__, rf_index idxrf__, int idxlo__ = -1)
+        : order{order__}
+        , idxlo{idxlo__}
+        , idxrf{idxrf__}
+        , am{am__}
+    {
+        RTE_ASSERT(order >= 0);
+    }
+};
+
+
 namespace experimental {
 
 /// Radial basis function index.
@@ -143,78 +199,24 @@ class radial_functions_index
     int size_{0};
     /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
+
+    /// Vector of radial function index descriptors.
+    std::vector<radial_function_index_descriptor> vrd_;
+
     //std::vector<int> index_by_lo_;
-    std::vector<int> l_;
-    std::vector<int> s_;
-    std::vector<int> o_;
+    //std::vector<int> l_;
+    //std::vector<int> s_;
+    //std::vector<int> o_;
     /// Index of local orbital.
     //std::vector<rf_lo_index> idxlo_;
     int offset_lo_{-1};
   public:
+    /// Default constructor.
     radial_functions_index()
     {
     }
 
-    //template <typename T>
-    //void radial_functions_index(std::vector<radial_solution_descriptor_set> const& aw_descriptors__,
-    //          std::vector<T> const& lo_descriptors__)
-    //{
-    //    int lmax_aw = static_cast<int>(aw_descriptors__.size()) - 1;
-    //    //lmax_lo_ = -1;
-    //    //for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++) {
-    //    //    int l    = lo_descriptors[idxlo].l;
-    //    //    lmax_lo_ = std::max(lmax_lo_, l);
-    //    //}
-
-    //    //lmax_ = std::max(lmax_aw_, lmax_lo_);
-
-    //    //num_rf_ = std::vector<int>(lmax_ + 1, 0);
-    //    //num_lo_ = std::vector<int>(lmax_ + 1, 0);
-
-    //    //max_num_rf_ = 0;
-
-    //    //radial_function_index_descriptors_.clear();
-
-    //    for (int l = 0; l <= lmax_aw; l++) {
-    //        RTE_ASSERT(aw_descriptors__[l].size() <= 3);
-
-    //        for (size_t order = 0; order < aw_descriptors__[l].size(); order++) {
-    //            this->add(angular_momentum(l));
-    //        }
-    //    }
-
-    //    for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
-    //        int l = lo_descriptors[idxlo].l;
-    //        this->add(angular_momentum(l), idxlo);
-    //        radial_function_index_descriptors_.push_back(
-    //            radial_function_index_descriptor(l, lo_descriptors[idxlo].total_angular_momentum, num_rf_[l], idxlo));
-    //    //    num_rf_[l]++;
-    //    //    num_lo_[l]++;
-    //    //}
-
-    //    //for (int l = 0; l <= lmax_; l++) {
-    //    //    max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
-    //    //}
-
-    //    //index_by_l_order_ = sddk::mdarray<int, 2>(lmax_ + 1, max_num_rf_);
-
-    //    //if (lo_descriptors.size()) {
-    //    //    index_by_idxlo_ = sddk::mdarray<int, 1>(lo_descriptors.size());
-    //    //}
-
-    //    //for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {
-    //    //    int l     = radial_function_index_descriptors_[i].l;
-    //    //    int order = radial_function_index_descriptors_[i].order;
-    //    //    int idxlo = radial_function_index_descriptors_[i].idxlo;
-    //    //    index_by_l_order_(l, order) = i;
-    //    //    if (idxlo >= 0) {
-    //    //        index_by_idxlo_(idxlo) = i;
-    //    //    }
-    //    //}
-
-    //}
-
-    /// Add a single angular_momentum.
+    /// Add a single radial function with a given angular momentum.
     void add(angular_momentum am__)
     {
         /* current l */
@@ -236,10 +238,13 @@ class radial_functions_index
         idx[std::max(s, 0)] = size_;
         /* current order */
         auto o = static_cast<int>(index_by_j_order_[l].size());
+        /* for the reverse mapping */
         index_by_j_order_[l].push_back(idx);
-        l_.push_back(l);
-        s_.push_back(s);
-        o_.push_back(o);
+        /* add descriptor to the list */
+        vrd_.push_back(radial_function_index_descriptor(am__, o, rf_index(size_)));
+        //l_.push_back(l);
+        //s_.push_back(s);
+        //o_.push_back(o);
         //idxlo_.push_back(idxlo__);
         ///* this radial function is local orbital */
         //if (idxlo__ >= 0) {
@@ -264,8 +269,11 @@ class radial_functions_index
         /* add current index of radial function for reverese mapping from local orbital index */
         //index_by_lo_.push_back(size_);
         this->add(am__);
+        /* set index of the local orbital */
+        vrd_.back().idxlo = size_ - offset_lo_ - 1;
     }
 
+    /// Add two component of the spinor radial function.
     void add(angular_momentum am1__, angular_momentum am2__)
     {
         /* current l */
@@ -317,37 +325,45 @@ class radial_functions_index
         idx[std::max(s1, 0)] = size_;
         idx[std::max(s2, 0)] = size_ + 1;
 
-        l_.push_back(l);
-        l_.push_back(l);
-        s_.push_back(s1);
-        s_.push_back(s2);
-        o_.push_back(o);
-        o_.push_back(o);
+        vrd_.push_back(radial_function_index_descriptor(am1__, o, rf_index(size_)));
+        vrd_.push_back(radial_function_index_descriptor(am2__, o, rf_index(size_ + 1)));
+
+        //l_.push_back(l);
+        //l_.push_back(l);
+        //s_.push_back(s1);
+        //s_.push_back(s2);
+        //o_.push_back(o);
+        //o_.push_back(o);
 
         index_by_j_order_[l].push_back(idx);
         size_ += 2;
     }
 
+    /// Return angular momentum of the radial function.
     inline auto am(rf_index idx__) const
     {
-        return angular_momentum(l_[idx__], s_[idx__]);
+        return vrd_[idx__].am;
     }
 
+    /// Return order of the radial function.
     inline auto order(rf_index idx__) const
     {
-        return o_[idx__];
+        return vrd_[idx__].order;
     }
 
+    /// Return maximum angular momentum quantum number.
     inline auto lmax() const
     {
         return static_cast<int>(index_by_j_order_.size()) - 1;
     }
 
+    /// Return maximum order of the radial functions for a given angular momentum.
     inline auto max_order(int l__) const
     {
         return static_cast<int>(index_by_j_order_[l__].size());
     }
 
+    /// Return maximum order of the radial functions across all angular momentums.
     inline auto max_order() const
     {
         int result{0};
@@ -357,12 +373,14 @@ class radial_functions_index
         return result;
     }
 
+    /// Return index of radial function.
     inline auto index_of(angular_momentum am__, int order__) const
     {
         /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
         return rf_index(index_by_j_order_[am__.l()][order__][std::max(am__.s(), 0)]);
     }
 
+    /// Return index of local orbital.
     inline auto index_of(rf_lo_index idxlo__) const
     {
         RTE_ASSERT(idxlo__ >= 0 && idxlo__ + offset_lo_ < size_);
@@ -408,14 +426,24 @@ class radial_functions_index
 
     auto begin() const
     {
-        return rf_index(0);
+        return vrd_.begin();
     }
 
     auto end() const
     {
-        return rf_index(size_);
+        return vrd_.end();
     }
 };
+
+inline auto begin(radial_functions_index const& idx__)
+{
+    return idx__.begin();
+}
+
+inline auto end(radial_functions_index const& idx__)
+{
+    return idx__.end();
+}
 
 class basis_functions_index
 {
@@ -459,20 +487,21 @@ class basis_functions_index
         if (!expand_full_j__) {
             index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr_.lmax()), indexr_.max_order());
             std::fill(index_by_lm_order_.begin(), index_by_lm_order_.end(), -1);
-            for (auto idxrf = indexr_.begin(); idxrf != indexr_.end(); idxrf++) {
-                if (idxrf == indexr_.index_of(rf_lo_index(0))) {
+            //for (auto idxrf = indexr_.begin(); idxrf != indexr_.end(); idxrf++) {
+            for (auto e : indexr_) {
+                if (e.idxrf == indexr_.index_of(rf_lo_index(0))) {
                     offset_lo_ = size_;
                 }
                 /* angular momentum */
-                auto am = indexr_.am(idxrf);
+                auto am = e.am;
 
                 /* order of radial function */
-                auto o = indexr_.order(idxrf);
+                auto o = e.order;
 
                 offset_.push_back(size_);
 
                 for (int m = -am.l(); m <= am.l(); m++) {
-                    idxrf_.push_back(idxrf);
+                    idxrf_.push_back(e.idxrf);
                     auto lm = utils::lm(am.l(), m);
                     lm_.push_back(lm);
                     /* reverse mapping */
@@ -699,46 +728,6 @@ class basis_functions_index
 
 
 } // namespace "experimental"
-
-/// Descriptor for the atomic radial functions.
-/** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves or local orbitals
- *  (in case of FP-LAPW) or bete projectors, atomic or Hubbard wave functions in case of PP-PW.
- */
-struct radial_function_index_descriptor
-{
-    /// Orbital quantum number \f$ \ell \f$.
-    int l;
-
-    /// Total angular momentum
-    double j;
-
-    /// Order of a function for a given \f$ \ell \f$.
-    int order;
-
-    /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
-    int idxlo;
-
-    /// Constructor.
-    radial_function_index_descriptor(int l, int order, int idxlo = -1)
-        : l(l)
-        , order(order)
-        , idxlo(idxlo)
-    {
-        assert(l >= 0);
-        assert(order >= 0);
-    }
-
-    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1)
-        : l(l)
-        , j(j)
-        , order(order)
-        , idxlo(idxlo)
-    {
-        assert(l >= 0);
-        assert(order >= 0);
-    }
-};
 
 /// A helper class to establish various index mappings for the atomic radial functions.
 class radial_functions_index

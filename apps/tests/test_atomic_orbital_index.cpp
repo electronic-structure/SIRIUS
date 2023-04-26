@@ -6,20 +6,20 @@ using namespace sirius;
 
 int run_test(cmd_args& args)
 {
-    sirius::experimental::angular_momentum aqn1(1);
+    angular_momentum aqn1(1);
     std::cout << aqn1.l() << " " << aqn1.s() << " " << aqn1.j() << std::endl;
 
-    sirius::experimental::angular_momentum aqn2(2, -1);
+    angular_momentum aqn2(2, -1);
     std::cout << aqn2.l() << " " << aqn2.s() << " " << aqn2.j() << std::endl;
 
     sirius::experimental::radial_functions_index ri;
 
-    ri.add(sirius::experimental::angular_momentum(0, 1));
-    ri.add(sirius::experimental::angular_momentum(1, -1));
-    ri.add(sirius::experimental::angular_momentum(1, 1));
-    ri.add(sirius::experimental::angular_momentum(2, -1));
-    ri.add(sirius::experimental::angular_momentum(2,  1));
-    ri.add(sirius::experimental::angular_momentum(0));
+    ri.add(angular_momentum(0, 1));
+    ri.add(angular_momentum(1, -1));
+    ri.add(angular_momentum(1, 1));
+    ri.add(angular_momentum(2, -1));
+    ri.add(angular_momentum(2,  1));
+    ri.add(angular_momentum(0));
 
     std::cout << ri.size() << std::endl;
     std::cout << ri.full_j(0, 0) << std::endl;
@@ -35,7 +35,7 @@ int run_test(cmd_args& args)
     for (int l = 0; l < 3; l++) {
         for (int o = 0; o < ri.max_order(l); o++) {
             for (auto j: ri.subshell(l, o)) {
-                int idx = ri.index_of(j, o);
+                auto idx = ri.index_of(j, o);
                 std::cout << idx << " " << ri.am(idx).l() << " " << ri.am(idx).s() << std::endl;
             }
         }
