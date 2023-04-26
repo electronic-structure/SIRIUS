@@ -1,0 +1,603 @@
+{
+    "comm_world_size": 32,
+    "context": {
+        "chemical_formula": "Si63Ge",
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 64,
+                "fft_mode": "parallel",
+                "gen_evp_solver_name": "scalapack",
+                "gvec_chunk_size": 500000,
+                "mpi_grid_dims": [
+                    2,
+                    2
+                ],
+                "num_bands_to_print": 10,
+                "ortho_rf": false,
+                "output": "stdout:",
+                "print_checksum": false,
+                "print_forces": false,
+                "print_hash": false,
+                "print_memory_usage": false,
+                "print_neighbors": false,
+                "print_performance": false,
+                "print_stress": false,
+                "print_timers": true,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 1e-06,
+                "std_evp_solver_name": "scalapack",
+                "use_second_variation": true,
+                "verbosity": 2,
+                "verification": 0
+            },
+            "hubbard": {
+                "full_orthogonalization": false,
+                "local": [],
+                "nonlocal": [],
+                "normalize": false,
+                "orthogonalize": false,
+                "simplified": false
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 0,
+                "energy_tolerance": 0.01,
+                "extra_ortho": false,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 2,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.7,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": false
+            },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-06,
+                "electronic_structure_method": "pseudopotential",
+                "energy_tol": 1e-08,
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 5.0,
+                "hubbard_correction": false,
+                "lmax_apw": -1,
+                "lmax_pot": 4,
+                "lmax_rho": 4,
+                "molecule": false,
+                "ngridk": [
+                    2,
+                    2,
+                    2
+                ],
+                "nn_radius": -1,
+                "num_bands": 159,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 0,
+                "precision_gs": "auto",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
+                "pw_cutoff": 20.0,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.025,
+                "so_correction": false,
+                "use_ibz": true,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_LDA_X",
+                    "XC_LDA_C_PZ"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    135,
+                    135,
+                    135
+                ],
+                "fp32_to_fp64_rms": 0,
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.5
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ge": "ge_lda_v1.4.uspp.F.UPF.json",
+                    "Si": "si_lda_v1.uspp.F.UPF.json"
+                },
+                "atom_types": [
+                    "Si",
+                    "Ge"
+                ],
+                "atoms": {
+                    "Ge": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    ],
+                    "Si": [
+                        [
+                            0.0,
+                            0.0,
+                            0.5
+                        ],
+                        [
+                            0.0,
+                            0.5,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            0.5,
+                            0.5
+                        ],
+                        [
+                            0.5,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.5,
+                            0.0,
+                            0.5
+                        ],
+                        [
+                            0.5,
+                            0.5,
+                            0.0
+                        ],
+                        [
+                            0.5,
+                            0.5,
+                            0.5
+                        ],
+                        [
+                            0.0,
+                            0.25,
+                            0.25
+                        ],
+                        [
+                            0.0,
+                            0.25,
+                            0.75
+                        ],
+                        [
+                            0.0,
+                            0.75,
+                            0.25
+                        ],
+                        [
+                            0.0,
+                            0.75,
+                            0.75
+                        ],
+                        [
+                            0.5,
+                            0.25,
+                            0.25
+                        ],
+                        [
+                            0.5,
+                            0.25,
+                            0.75
+                        ],
+                        [
+                            0.5,
+                            0.75,
+                            0.25
+                        ],
+                        [
+                            0.5,
+                            0.75,
+                            0.75
+                        ],
+                        [
+                            0.25,
+                            0.0,
+                            0.25
+                        ],
+                        [
+                            0.25,
+                            0.0,
+                            0.75
+                        ],
+                        [
+                            0.25,
+                            0.5,
+                            0.25
+                        ],
+                        [
+                            0.25,
+                            0.5,
+                            0.75
+                        ],
+                        [
+                            0.75,
+                            0.0,
+                            0.25
+                        ],
+                        [
+                            0.75,
+                            0.0,
+                            0.75
+                        ],
+                        [
+                            0.75,
+                            0.5,
+                            0.25
+                        ],
+                        [
+                            0.75,
+                            0.5,
+                            0.75
+                        ],
+                        [
+                            0.25,
+                            0.25,
+                            0.0
+                        ],
+                        [
+                            0.25,
+                            0.25,
+                            0.5
+                        ],
+                        [
+                            0.25,
+                            0.75,
+                            0.0
+                        ],
+                        [
+                            0.25,
+                            0.75,
+                            0.5
+                        ],
+                        [
+                            0.75,
+                            0.25,
+                            0.0
+                        ],
+                        [
+                            0.75,
+                            0.25,
+                            0.5
+                        ],
+                        [
+                            0.75,
+                            0.75,
+                            0.0
+                        ],
+                        [
+                            0.75,
+                            0.75,
+                            0.5
+                        ],
+                        [
+                            0.375,
+                            0.375,
+                            0.125
+                        ],
+                        [
+                            0.375,
+                            0.375,
+                            0.625
+                        ],
+                        [
+                            0.375,
+                            0.875,
+                            0.125
+                        ],
+                        [
+                            0.375,
+                            0.875,
+                            0.625
+                        ],
+                        [
+                            0.875,
+                            0.375,
+                            0.125
+                        ],
+                        [
+                            0.875,
+                            0.375,
+                            0.625
+                        ],
+                        [
+                            0.875,
+                            0.875,
+                            0.125
+                        ],
+                        [
+                            0.875,
+                            0.875,
+                            0.625
+                        ],
+                        [
+                            0.375,
+                            0.125,
+                            0.375
+                        ],
+                        [
+                            0.375,
+                            0.125,
+                            0.875
+                        ],
+                        [
+                            0.375,
+                            0.625,
+                            0.375
+                        ],
+                        [
+                            0.375,
+                            0.625,
+                            0.875
+                        ],
+                        [
+                            0.875,
+                            0.125,
+                            0.375
+                        ],
+                        [
+                            0.875,
+                            0.125,
+                            0.875
+                        ],
+                        [
+                            0.875,
+                            0.625,
+                            0.375
+                        ],
+                        [
+                            0.875,
+                            0.625,
+                            0.875
+                        ],
+                        [
+                            0.125,
+                            0.375,
+                            0.375
+                        ],
+                        [
+                            0.125,
+                            0.375,
+                            0.875
+                        ],
+                        [
+                            0.125,
+                            0.875,
+                            0.375
+                        ],
+                        [
+                            0.125,
+                            0.875,
+                            0.875
+                        ],
+                        [
+                            0.625,
+                            0.375,
+                            0.375
+                        ],
+                        [
+                            0.625,
+                            0.375,
+                            0.875
+                        ],
+                        [
+                            0.625,
+                            0.875,
+                            0.375
+                        ],
+                        [
+                            0.625,
+                            0.875,
+                            0.875
+                        ],
+                        [
+                            0.125,
+                            0.125,
+                            0.125
+                        ],
+                        [
+                            0.125,
+                            0.125,
+                            0.625
+                        ],
+                        [
+                            0.125,
+                            0.625,
+                            0.125
+                        ],
+                        [
+                            0.125,
+                            0.625,
+                            0.625
+                        ],
+                        [
+                            0.625,
+                            0.125,
+                            0.125
+                        ],
+                        [
+                            0.625,
+                            0.125,
+                            0.625
+                        ],
+                        [
+                            0.625,
+                            0.625,
+                            0.125
+                        ],
+                        [
+                            0.625,
+                            0.625,
+                            0.625
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        20.525071,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        20.525071,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        20.525071
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            },
+            "vcsqnm": {
+                "alpha0": 0.01,
+                "eps_subsp": 0.001,
+                "forces_tol": 0.0001,
+                "initial_step_size": -0.1,
+                "lattice_weight": 2.0,
+                "nhist_max": 10,
+                "num_steps": 300,
+                "stress_tol": 1e-05
+            }
+        },
+        "fft_coarse_grid": [
+            72,
+            72,
+            72
+        ],
+        "mpi_grid": [
+            2,
+            2
+        ],
+        "num_atoms": 64,
+        "omega": 8646.771935143524
+    },
+    "counters": {
+        "band_evp_work_count": 186.66940892543897,
+        "local_operator_num_applied": 7199
+    },
+    "git_hash": "2f32150f996fc889240d21a032707688bc7611e0",
+    "ground_state": {
+        "band_gap": 0.018999019848865845,
+        "converged": true,
+        "efermi": 0.22996085247902448,
+        "energy": {
+            "bxc": 0.0,
+            "entropy_sum": -0.04839284463304733,
+            "eval_sum": 2.2948171603959504,
+            "ewald": -296.6562169120613,
+            "exc": -164.34253330616673,
+            "kin": 174.30044270555732,
+            "scf_correction": -1.0343899049303218e-05,
+            "total": -409.8414318237511,
+            "veff": -172.00562554516137,
+            "vha": 150.6948487034628,
+            "vloc": -198.44214547427993,
+            "vxc": -124.25832877434446
+        },
+        "etot_history": [
+            -409.6900041530027,
+            -409.8256786203269,
+            -409.8352570980591,
+            -409.83546926752956,
+            -409.83984710200986,
+            -409.84104096806306,
+            -409.84125120053125,
+            -409.8413681343607,
+            -409.8413966680427,
+            -409.84141031770844,
+            -409.8414213282517,
+            -409.8414293316841,
+            -409.84143069962886,
+            -409.8414313081704,
+            -409.8414315871952,
+            -409.84143170930764,
+            -409.84143177262183,
+            -409.8414318016682,
+            -409.8414318148629,
+            -409.8414318237511
+        ],
+        "num_scf_iterations": 19,
+        "rho_min": 0.0035259335533243535,
+        "rms_history": [
+            0.0065311934398637524,
+            0.0015908194139211307,
+            0.000225649249455684,
+            0.00021299516152063728,
+            0.0001615852874539617,
+            4.058979547747855e-05,
+            1.4279866794925563e-05,
+            1.7814131190305942e-05,
+            1.3960235008905613e-05,
+            6.954875377271877e-06,
+            3.5177501477441834e-06,
+            1.880684030070681e-06,
+            9.296866496648405e-07,
+            6.109912499498311e-07,
+            3.8036036139024956e-07,
+            2.5191438704176186e-07,
+            1.553587171913228e-07,
+            9.771919788956189e-08,
+            8.800971644614413e-08,
+            3.44455665242373e-08
+        ],
+        "scf_time": 82.104738391
+    },
+    "task": 0,
+    "threads_per_rank": 8
+}
