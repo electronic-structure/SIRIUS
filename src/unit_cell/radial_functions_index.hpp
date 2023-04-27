@@ -177,7 +177,9 @@ struct radial_function_index_descriptor
     }
 
     radial_function_index_descriptor(angular_momentum am__, int order__, rf_index idxrf__, int idxlo__ = -1)
-        : order{order__}
+        : l(am__.l())
+        , j(am__.j())
+        , order{order__}
         , idxlo{idxlo__}
         , idxrf{idxrf__}
         , am{am__}
@@ -397,6 +399,11 @@ class radial_functions_index
             size += j.subshell_size();
         }
         return size;
+    }
+
+    inline auto const& operator[](rf_index i__) const
+    {
+        return vrd_[i__];
     }
 
     auto begin() const
