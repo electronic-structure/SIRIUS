@@ -833,7 +833,8 @@ class Atom_type
     inline auto const& indexr(int i) const
     {
         RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
-        return indexr_[i];
+        //return indexr_[i];
+        return indexr1_[rf_index(i)];
     }
 
     inline int indexr_by_l_order(int l, int order) const
@@ -844,7 +845,8 @@ class Atom_type
 
     inline int indexr_by_idxlo(int idxlo) const
     {
-        return indexr_.index_by_idxlo(idxlo);
+        //return indexr_.index_by_idxlo(idxlo);
+        return indexr1_.index_of(rf_lo_index(idxlo));
     }
 
     inline basis_functions_index const& indexb() const
