@@ -151,6 +151,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
     variant("nlcglib", default=False, description="enable robust wave function optimization")
+    variant("w98", default=False, description="Enable Wannier90 library")
     variant(
         "build_type",
         default="Release",
@@ -224,6 +225,9 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("amdblis threads=openmp", when="+openmp ^amdblis")
     depends_on("blis threads=openmp", when="+openmp ^blis")
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
+
+    depends_on("wannier90", when="+w90")
+    depends_on("wannier90+shared", when="+w90+shared")
 
     depends_on("elpa+openmp", when="+elpa+openmp")
     depends_on("elpa~openmp", when="+elpa~openmp")
