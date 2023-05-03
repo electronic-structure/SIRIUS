@@ -185,9 +185,8 @@ endif()
 
 
 if(USE_WANNIER90)
-    target_link_libraries(sirius::filesystem INTERFACE ifcore)
-    find_library(LIB_TO_INCLUDE wannier /home/gcistaro/codes/q-e-qe-7.1/wannier90-3.1.0/)
-    target_link_libraries(sirius::filesystem INTERFACE ${LIB_TO_INCLUDE})
+  #target_link_libraries(sirius::filesystem INTERFACE ifcore)
+  find_package(Wannier90 REQUIRED)
 endif(USE_WANNIER90)
 
 

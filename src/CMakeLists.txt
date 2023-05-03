@@ -96,14 +96,6 @@ endif()
 
 set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
 
-if(USE_WANNIER90)
-    target_link_libraries(sirius PUBLIC ifcore)
-    find_library(LIB_TO_INCLUDE wannier /home/gcistaro/codes/q-e-qe-7.1/wannier90-3.1.0/)
-    target_link_libraries(sirius PUBLIC ${LIB_TO_INCLUDE})
-endif(USE_WANNIER90)
-
-
-
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
                                     ${GSL_LIBRARY}
@@ -122,6 +114,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
                                     $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
+                                    $<TARGET_NAME_IF_EXISTS:sirius::wannier90>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
