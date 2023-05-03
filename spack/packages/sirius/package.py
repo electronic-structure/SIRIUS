@@ -151,7 +151,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
     variant("nlcglib", default=False, description="enable robust wave function optimization")
-    variant("w98", default=False, description="Enable Wannier90 library")
+    variant("w90", default=False, description="Enable Wannier90 library")
     variant(
         "build_type",
         default="Release",
