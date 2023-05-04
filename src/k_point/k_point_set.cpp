@@ -855,6 +855,10 @@ void
 K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_set& k_set__)
 {
 
+    std::cout << "I am rank " << ctx().comm().rank() << " ik " << ctx().comm_k().rank() << " band " << ctx().comm_band().rank();
+    std::cout << " fft " << ctx().comm_fft().rank() << " ortho_fft " << ctx().comm_ortho_fft().rank();
+    std::cout << " fft_coarse " << ctx().comm_fft_coarse().rank() << " ortho_fft_coarse " << ctx().comm_ortho_fft_coarse().rank();
+    std::cout << " band_ortho_fft_coarse " << ctx().comm_band_ortho_fft_coarse().rank();
     // phase1: k-point exchange
     // each MPI rank sores the local set of k-points
     // for each k-point we have a list of q vectors to compute k+q. In general we assume that the number
@@ -936,8 +940,7 @@ K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_se
     // Reconstructing FBZ
     K_point_set kset_fbz(this->ctx());
 
-    {//beginning scope to go to FBZ
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::unfold_fbz");
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::unfold_fbz");
 
     std::vector<r3::vector<double>> k_temp;
     // Apply symmetry to all points of the IBZ. Save indices of ibz, fbz, sym
@@ -1001,7 +1004,7 @@ K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_se
                              this->ctx().cfg().parameters().ngridk().data()[2]) {
         std::cout << "Warning!!!!! I could not recover the FBZ!! The program will break at wannier_setup_\n";
     }
-    
+    /*
     if (ctx().comm().rank() == 0) {
             std::ofstream kp;
             kp.open("k.txt");
@@ -1016,8 +1019,8 @@ K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_se
 	        kp << std::setw(15) << std::setprecision(10) << ik2ig[ik] << std::endl;
             }
             kp.close();
-    }
-    }//end scope to go to fbz    
+    }*/
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::unfold_fbz");
 
     
     /*
@@ -1033,8 +1036,7 @@ K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_se
     int num_bands_tot = this->ctx().num_bands();
 
 
-    {//start scope to unfold wavefunctions to fbz
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
     std::complex<double> imtwopi = std::complex<double>(0.,twopi);
     std::complex<double> exp1, exp2;
 
@@ -1042,8 +1044,8 @@ K_point_set::generate_w90_coeffs(Hamiltonian0<double>& H0) // sirius::K_point_se
     //    for (int ik = 0; ik < kset_fbz.num_kpoints(); ik++)
 	//        std::cout << ik << " " << kset_fbz.spl_num_kpoints_.local_rank(ik) << std::endl; 
     
+    srand(time(NULL));
 
-int count_mpi=0;    
     for (int ik = 0; ik < kset_fbz.num_kpoints(); ik++) {
     	int& ik_ = ik2ir[ik];
 	    int& isym = ik2isym[ik];
@@ -1109,15 +1111,15 @@ int count_mpi=0;
                 for (int iband = 0; iband < num_bands_tot; iband++) {
                     kset_fbz.kpoints_[ik]->spinor_wave_functions_->pw_coeffs(ig, wf::spin_index(0),
                                                                              wf::band_index(iband)) =
-                        exp1*exp2*wf_IBZ(ig_, iband);
+                        exp1*exp2*wf_IBZ(ig_, iband)
+                                +std::complex<double>(rand()%1000,rand()%1000)*1.e-08;//needed to not get stuck on local minima. 
+                                                                                      //not working with 1.e-09
                 }
             }
 	    }
-if(use_mpi) count_mpi++;
     }//end ik loop
 
-    std::cout << "number of points calculated with mpi: "<< count_mpi;
-    }//end profile to unfold wfs
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
 
    /*
     * STEP 0.3: Check that the wavefunctions diagonalize the Hamiltonian
@@ -1314,8 +1316,9 @@ if(use_mpi) count_mpi++;
      *             kpoints_[nnlist(ik,ib)] = kpoints_[ik] + (neighbor b) - nncell(.,ik,ib)
      */
     std::cout << "I am process " << ctx().comm().rank() << " and I go inside the wannier_setup\n";
-    {    
-        PROFILE("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
+    
+    
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
     if (ctx().comm().rank() == 0) {
         std::cout << "starting wannier_setup_\n";
         wannier_setup_(seedname,
@@ -1351,17 +1354,11 @@ if(use_mpi) count_mpi++;
 
                        //std::cout << "center_w:: " << proj_site << std::endl;
     }
-    std::cout << "I am process " << ctx().comm().rank() << " and I start broadcast\n";
     ctx().comm_k().bcast(&nntot, 1, 0);
-    std::cout << "I am process " << ctx().comm().rank() << " ->1\n";
     ctx().comm_k().bcast(nnlist.at(sddk::memory_t::host), num_kpts * num_nnmax, 0);
-    std::cout << "I am process " << ctx().comm().rank() << " ->2\n";
     ctx().comm_k().bcast(nncell.at(sddk::memory_t::host), 3 * num_kpts * num_nnmax, 0);
-    std::cout << "I am process " << ctx().comm().rank() << " ->3\n";
     ctx().comm_k().bcast(&num_bands, 1, 0);
-    std::cout << "I am process " << ctx().comm().rank() << " ->4\n";
     ctx().comm_k().bcast(&num_wann, 1, 0);
-    std::cout << "I am process " << ctx().comm().rank() << " ->5\n";
     ctx().comm_k().bcast(exclude_bands.at(sddk::memory_t::host), num_bands_tot, 0);
 
     std::cout << "\n\n\n\n\n\n";
@@ -1377,7 +1374,7 @@ if(use_mpi) count_mpi++;
         }
     }
     
-    }//end profile wannier_setup
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
 
     num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
@@ -1393,7 +1390,8 @@ if(use_mpi) count_mpi++;
      * STEP 2.1: Calculate A.
      *    Amn(k) = <psi_{mk} | S | w_{nk}> = conj(<w_{nk} | S | psi_{mk}>)      
      *           Here we calculate the projectors over all the atomic orbitals in the pseudopotential
-     */
+    */
+
     sddk::mdarray<std::complex<double>, 3> A(num_bands, num_wann, kset_fbz.num_kpoints()); 
     A.zero();
     la::dmatrix<std::complex<double>> Ak(num_bands, num_wann);     //matrix at the actual k point 
@@ -1413,8 +1411,7 @@ if(use_mpi) count_mpi++;
  
 
 
-{
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
  
  
     for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
@@ -1526,7 +1523,7 @@ if(use_mpi) count_mpi++;
         ctx().comm_k().bcast(A.at(sddk::memory_t::host,0,0,ik), num_bands*num_wann, local_rank);
 	ctx().comm_k().barrier();
     }
-}//end profile calculate_Amn
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
 
 
 
@@ -1544,15 +1541,15 @@ if(use_mpi) count_mpi++;
 	std::vector<std::shared_ptr<fft::Gvec>> gkpb_mpi;//auto gkvec_kpb = use_mpi  ? std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)))
 	std::vector<sddk::mdarray<std::complex<double>, 2>> wkpb_mpi;
     std::vector<int> ikpb2ik_(num_kpts,-1);
-{
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::send_k+b");
+    
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::send_k+b");
     int index=-1; //to keep track of the index to use
     for (int ik = 0; ik < num_kpts; ik++) {
         for (int ib = 0; ib < nntot; ib++) {
            	int ikpb = nnlist(ik,ib)-1;
             int src_rank = kset_fbz.spl_num_kpoints_.local_rank(ikpb);
             int dest_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
-            std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << std::endl;
+            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << std::endl;
 	    	bool use_mpi = ( src_rank==kset_fbz.ctx().comm_k().rank() )^( dest_rank==kset_fbz.ctx().comm_k().rank());//xor operations: it is true if 01 or 10
             if(!use_mpi){
                 continue;
@@ -1573,7 +1570,7 @@ if(use_mpi) count_mpi++;
             if(found){
                 continue;
             }
-            std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "TOBEDONE" << std::endl;
+            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "TOBEDONE" << std::endl;
             tag = src_rank + kset_fbz.num_kpoints()*dest_rank;
             if(kset_fbz.ctx().comm_k().rank()==src_rank){
                 auto trash = kset_fbz.get_gkvec(ikpb, dest_rank);
@@ -1592,11 +1589,11 @@ if(use_mpi) count_mpi++;
                 ctx().comm_k().recv(& wkpb_mpi[index](0,0),
                                 	gkpb_mpi[index]->num_gvec()*num_bands_tot, src_rank, tag);	
             }
-            std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "DONE"<< std::endl;
+            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "DONE"<< std::endl;
 
         }//end ib
     }//end ik
-}
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::send_k+b");
 
 
     /*
@@ -1617,8 +1614,7 @@ if(use_mpi) count_mpi++;
     la::dmatrix<std::complex<double>> Mbk(num_bands, num_bands);
     Mbk.zero(); 
 
-{
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::calculate_Mmn");
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::calculate_Mmn");
     for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
         int ik = kset_fbz.spl_num_kpoints_[ikloc];
        	auto q_op = (kset_fbz.kpoints_[ik]->unit_cell_.augment())
@@ -1699,7 +1695,8 @@ if(use_mpi) count_mpi++;
 		kset_fbz.ctx().comm_k().bcast(M.at(sddk::memory_t::host,0,0,0,ik), num_bands*num_bands*nntot, local_rank);
 		ctx().comm_k().barrier();
     }
-}//end profile calculate_Mmn
+    
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::calculate_Mmn");
 
     std::cout << "writing Mmn..\n";
     if (ctx().comm().rank() == 0) {
@@ -1744,8 +1741,8 @@ if(use_mpi) count_mpi++;
     	wannier_centres.zero();
     	wannier_spreads.zero();
     	spread_loc.zero();
-{
-    PROFILE("sirius::K_point_set::generate_w90_coeffs::wannier_run");
+
+    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_run");
 
     	std::cout << "Starting wannier_run..." << std::endl;
     	wannier_run_(seedname,
@@ -1774,7 +1771,7 @@ if(use_mpi) count_mpi++;
                         length_atomic_symbol);
     std::cout << "Wannier_run succeeded. " << std::endl;
     }
-    }//end profile wannier_run
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_run");
 }
 
 } // namespace sirius
