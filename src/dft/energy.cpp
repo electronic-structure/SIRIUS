@@ -151,23 +151,22 @@ energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const
 }
 
 double
-total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-             double ewald_energy)
+ks_energy(Simulation_context const& ctx, const std::map<std::string, double>& energies)
 {
     double tot_en{0};
 
     switch (ctx.electronic_structure_method()) {
         case electronic_structure_method_t::full_potential_lapwlo: {
-            tot_en = (energy_kin(ctx, kset, density, potential) + energy_exc(density, potential) +
-                      0.5 * energy_vha(potential) + energy_enuc(ctx, potential));
+            tot_en = energies.at("ekin") + energies.at("exc") + 0.5 * energies.at("vha") + energies.at("enuc");
             break;
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) - energy_bxc(density, potential) -
-                      potential.PAW_one_elec_energy(density) - one_electron_energy_hubbard(density, potential)) -
-                     0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy(density) +
-                     ewald_energy + kset.entropy_sum() + ::sirius::hubbard_energy(density);
+            tot_en = energies.at("valence_eval_sum") - energies.at("vxc") - energies.at("bxc") - energies.at("PAW_one_elec");
+            tot_en += -0.5*energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") + energies.at("ewald");
+            if (ctx.hubbard_correction()) {
+                tot_en += energies.at("hubbard_energy") - energies.at("hubbard_one_el_contribution");
+            }
             break;
         }
     }
@@ -176,10 +175,80 @@ total_energy(Simulation_context const& ctx, K_point_set const& kset, Density con
 }
 
 double
+ks_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
+          double ewald_energy)
+{
+    return ks_energy(ctx, total_energy_components(ctx, kset, density, potential, ewald_energy));
+}
+
+double
+total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
+             double ewald_energy)
+{
+
+    double eks = ks_energy(ctx, kset, density, potential, ewald_energy);
+    double tot_en{0};
+
+    switch (ctx.electronic_structure_method()) {
+        case electronic_structure_method_t::full_potential_lapwlo: {
+            tot_en = eks;
+            break;
+        }
+
+        case electronic_structure_method_t::pseudopotential: {
+            tot_en = eks + kset.entropy_sum();
+            break;
+        }
+        default: {
+            RTE_THROW("invalid electronic_structure_method");
+        }
+    }
+
+    return tot_en;
+}
+
+std::map<std::string, double>
+total_energy_components(Simulation_context const& ctx, const K_point_set & kset, Density const& density,
+                        Potential const& potential, double ewald_energy)
+{
+    std::map<std::string, double> table;
+    switch (ctx.electronic_structure_method()) {
+        case electronic_structure_method_t::full_potential_lapwlo: {
+            table["ekin"] = energy_kin(ctx, kset, density, potential);
+            table["exc"]  = energy_exc(density, potential);
+            table["vha"]  = energy_vha(potential);
+            table["enuc"] = energy_enuc(ctx, potential);
+            break;
+            }
+
+        case electronic_structure_method_t::pseudopotential: {
+            table["valence_eval_sum"] = kset.valence_eval_sum();
+            table["vxc"]              = energy_vxc(density, potential);
+            table["bxc"]              = energy_bxc(density, potential);
+            table["PAW_one_elec"]     = potential.PAW_one_elec_energy(density);
+            table["vha"]              = energy_vha(potential);
+            table["exc"]              = energy_exc(density, potential);
+            table["ewald"]            = ewald_energy;
+            table["PAW_total_energy"] = potential.PAW_total_energy(density);
+            break;
+        }
+    }
+
+    if (ctx.hubbard_correction()) {
+        table["hubbard_one_el_contribution"] = one_electron_energy_hubbard(density, potential);
+        table["hubbard_energy"] = ::sirius::hubbard_energy(density);
+    }
+
+    table["entropy"] = kset.entropy_sum();
+
+    return table;
+}
+
+double
 hubbard_energy(Density const& density)
 {
     if (density.ctx().hubbard_correction()) {
-        return ::sirius::energy(density.occupation_matrix());
+        return energy(density.occupation_matrix());
     } else {
         return 0.0;
     }
@@ -197,7 +266,7 @@ one_electron_energy_hubbard(Density const& density, Potential const& potential)
 {
     auto& ctx = density.ctx();
     if (ctx.hubbard_correction()) {
-        return ::sirius::one_electron_energy_hubbard(density.occupation_matrix(), potential.hubbard_potential());
+        return one_electron_energy_hubbard(density.occupation_matrix(), potential.hubbard_potential());
     }
     return 0.0;
 }
