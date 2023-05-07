@@ -145,7 +145,7 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 
 template <typename T>
 inline auto
-random_positive_definite(int N__, int bs__ = 16, sddk::BLACS_grid const *blacs_grid__ = nullptr)
+random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const *blacs_grid__ = nullptr)
 {
     PROFILE("random_positive_definite");
 
