@@ -1,6 +1,8 @@
 #include <sirius.hpp>
 #include <testing.hpp>
+#if defined(SIRIUS_CUDA)
 #include "gpu/cusolver.hpp"
+#endif
 
 /* template for unit tests */
 
@@ -8,6 +10,7 @@ using namespace sirius;
 
 int run_test(cmd_args const& args)
 {
+#if defined(SIRIUS_CUDA)
     std::vector<int> sizes({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 100, 1000});
 
     using type = std::complex<double>;
@@ -21,6 +24,7 @@ int run_test(cmd_args const& args)
             return info;
         }
     }
+#endif
     return 0;
 }
 
