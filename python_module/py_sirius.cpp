@@ -1,23 +1,7 @@
-#include <pybind11/detail/common.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <sirius.hpp>
-#include <pybind11/stl.h>
-#include <pybind11/operators.h>
-#include <pybind11/complex.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <utility>
-#include <memory>
-#include <stdexcept>
-#include <omp.h>
+#include "python_module_includes.hpp"
 #include <mpi.h>
 
 #include "fft/gvec.hpp"
-#include "utils/json.hpp"
-#include "dft/energy.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
@@ -70,7 +54,7 @@ pj_convert(json& node)
             return result;
         }
         default: {
-            throw std::runtime_error("undefined json value");
+            RTE_THROW("undefined json value");
             /* make compiler happy */
             return py::reinterpret_borrow<py::object>(Py_None);
         }
@@ -111,7 +95,7 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-        throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+        RTE_THROW("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
     }
     auto H         = H0(kp);
     auto& ctx      = H0.ctx();
@@ -240,7 +224,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("mass", [](const Atom& obj) { return obj.type().mass(); })
         .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
             if (pos.size() != 3)
-                throw std::runtime_error("wrong input");
+                RTE_THROW("wrong input");
             obj.set_position({pos[0], pos[1], pos[2]});
         });
 
@@ -397,7 +381,7 @@ PYBIND11_MODULE(py_sirius, m)
                 Density& density = obj.cast<Density&>();
                 auto& dm         = density.density_matrix();
                 if (dm.at(sddk::memory_t::host) == nullptr) {
-                    throw std::runtime_error("trying to access null pointer");
+                    RTE_THROW("trying to access null pointer");
                 }
                 return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
                                                                        dm.at(sddk::memory_t::host), obj);
@@ -406,7 +390,7 @@ PYBIND11_MODULE(py_sirius, m)
                 Density& density = obj.cast<Density&>();
                 auto& dm         = density.density_matrix();
                 if (dm.at(sddk::memory_t::host) == nullptr) {
-                    throw std::runtime_error("trying to access null pointer");
+                    RTE_THROW("trying to access null pointer");
                 }
                 return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
                                                                        dm.at(sddk::memory_t::host), obj);

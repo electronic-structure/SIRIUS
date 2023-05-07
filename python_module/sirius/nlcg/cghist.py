@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class CGHistNeugebaur:
+class CGHistNeugebauer:
     """
     Store CG variables for every iteration
     """
@@ -21,7 +21,7 @@ class CGHistNeugebaur:
 
     def __call__(self, it, kappa, resX, resF, F, gamma):
         new = np.array((it, kappa, resX, resF, F, gamma),
-                       dtype=CGHistNeugebaur.types)
+                       dtype=CGHistNeugebauer.types)
         self.data = np.concatenate((self.data, new), axis=0)
 
     def __item__(self, key):

@@ -1,6 +1,8 @@
 import numpy as np
 from mpi4py import MPI
 from scipy.sparse import dia_matrix
+import collections
+
 
 def threaded(f):
     """
@@ -14,6 +16,15 @@ def threaded(f):
             return out
         else:
             return f(x, *args, **kwargs)
+    return _f
+
+
+def allthreaded(f):
+    def _f(*args):
+        out = type(args[0])(dtype=args[0].dtype, ctype=args[0].ctype)
+        for k in args[0]._data.keys():
+            out[k] = f(*map(lambda x: x.__getitem__(k), args))
+        return out
     return _f
 
 
@@ -42,6 +53,37 @@ def trace(x):
 @threaded
 def identity_like(x):
     return np.eye(*x.shape)
+
+
+def shapes(x):
+    shapes = {}
+    for k in x:
+        shapes[k] = np.shape(x[k])
+    return shapes
+
+
+def eye_like(shapes):
+    """
+    Arguments:
+    shapes -- a map of (key,tuple)
+
+    Returns:
+    out -- CoefficientArray of identities according to shapes
+    """
+    out = CoefficientArray()
+    for k in shapes:
+        out[k] = np.matrix(np.eye(*shapes[k]))
+    return out
+
+
+# def identity_op_like(X):
+#     from scipy.sparse.linalg import LinearOperator
+
+#     if isinstance(X, CoefficientArrayBase):
+#         for k in X:
+#             n = X[k].shape[0]
+
+#     raise TypeError
 
 
 def diag(x):
@@ -119,16 +161,37 @@ def einsum(expr, *operands):
         return out
 
 
-class CoefficientArray:
+class CoefficientArrayBase(collections.abc.Mapping):
+
+    def __init__(self):
+        self._data = {}
+
+    def __iter__(self):
+        yield from self._data
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    def __len__(self):
+        return len(self._data)
+
+    # workaround for numpy exploiting the __iter__(self)
+    __array_priority__ = 10000
+
+
+class CoefficientArray(CoefficientArrayBase):
     """CoefficientArray class."""
     def __init__(self, dtype=np.complex128, ctype=np.matrix):
         """
         dtype -- number type
         ctype -- container type (default np.matrix)
         """
+        super().__init__()
         self.dtype = dtype
         self.ctype = ctype
-        self._data = {}
 
     def __getitem__(self, key):
         """
@@ -140,6 +203,7 @@ class CoefficientArray:
 
         # return as view
         return self._data[key]
+
     def __setitem__(self, key, item):
         """
         """
@@ -150,15 +214,10 @@ class CoefficientArray:
             if key in self._data:
                 x = self._data[key]
                 # make sure shapes don't change
-                try:
-                    # view, no copy needed
-                    x[:] = self.ctype(item, copy=False)
-                except TypeError:
-                    # not a view, make a copy
-                    self._data[key] = self.ctype(item)
+                x[:] = item
             else:
                 if isinstance(item, np.ndarray):
-                    self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+                    self._data[key] = self.ctype(item, dtype=self.dtype, copy=False)
                 else:
                     self._data[key] = item
 
@@ -454,6 +513,10 @@ class CoefficientArray:
             p.pretty(val)
             p.text('\n')
 
+    def __repr__(self):
+        for key in self._data:
+            print(key, self._data[key])
+
     @staticmethod
     def ones_like(x, dtype=None, ctype=None):
         if ctype is None:
@@ -476,7 +539,6 @@ class CoefficientArray:
             out[k] = np.zeros_like(x[k], dtype=dtype)
         return out
 
-
     __lmul__ = __mul__
     __rmul__ = __mul__
     __radd__ = __add__
@@ -494,7 +556,7 @@ class PwCoeffs(CoefficientArray):
                 k = kpointset[ki]
                 for ispn in range(num_sc):
                     key = ki, ispn
-                    val = np.matrix(k.spinor_wave_functions().pw_coeffs(ispn))
+                    val = np.matrix(np.array(k.spinor_wave_functions().pw_coeffs(ispn), order='F', copy=True), copy=False)
                     self.__setitem__(key, val)
 
     def __setitem__(self, key, item):

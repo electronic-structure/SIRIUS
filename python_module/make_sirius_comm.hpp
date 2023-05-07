@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "mpi/communicator.hpp"
+#include "utils/rte.hpp"
 
 namespace sirius {
 
@@ -13,7 +14,7 @@ inline auto make_sirius_comm(pybind11::object py_comm)
     PyObject* py_obj = py_comm.ptr();
     MPI_Comm* comm_p  = PyMPIComm_Get(py_obj);
     if(comm_p == NULL) {
-        throw std::runtime_error("invalid MPI_Comm object passed");
+        RTE_THROW("invalid MPI_Comm object passed");
     }
     int rank = -1;
     MPI_Comm_rank(*comm_p, &rank);

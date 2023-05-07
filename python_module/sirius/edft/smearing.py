@@ -181,6 +181,7 @@ def inverse_efermi_spline(fn):
     # remove numerical noise
     fn = np.where(fn < 0, 0, fn)
 
+    # TODO: document these limits
     ub = 8.0
     lb = -5.0
 
@@ -403,10 +404,21 @@ class GaussianSplineSmearing(Smearing):
         occ = efermi_spline((ek - mu) / self.kT)
         return occ * factor[self.nspin], mu
 
+    @threaded
+    def dfdx(self, x):
+        im = x < 0
+
+        out = np.empty_like(x)
+        sqrt2 = np.sqrt(2)
+        out[im] = -0.5 * np.exp((sqrt2 - x) * x) * (sqrt2 - 2 * x)
+        out[~im] = -0.5 * np.exp((sqrt2 + x) * x) * (sqrt2 + 2 * x)
+        return out
+
     def dSdf(self, fn):
         """
         """
-        x = inverse_efermi_spline(fn)
+        factor = {1: 2, 2: 1}
+        x = inverse_efermi_spline(fn / factor[self.nspin])
         return -self.kT * x
 
 
@@ -426,7 +438,7 @@ class FermiDiracSmearing(Smearing):
 
     def entropy(self, fn):
         factor = {1: 2, 2: 1}
-        S = self.kT * np.sum(self.kw * fermi_entropy(fn / factor[self.nspin]))
+        S = factor[self.nspin] * self.kT * np.sum(self.kw * fermi_entropy(fn / factor[self.nspin]))
         return S
 
     def fn(self, ek):
@@ -455,6 +467,11 @@ class FermiDiracSmearing(Smearing):
         fn_loc = fn / self.mo
         x = inverse_fermi_dirac(fn_loc)
         return x * self.kT
+
+    @threaded
+    def dfdx(self, x):
+        fn = fermi_dirac(x)
+        return -1.0 * self.kT * fn * (1 - fn)
 
 
 class FermiDiracSmearingReg(Smearing):
