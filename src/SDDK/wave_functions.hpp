@@ -1840,7 +1840,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     }
     if (is_device_memory(mem__)) {
         /* this is for trmm */
-        la1 = sddk::linalg_t::gpublas;
+        la1 = la::lib_t::gpublas;
         /* this is for potrf */
         //if (o__.comm().size() == 1) {
         //    mem = mem__;
