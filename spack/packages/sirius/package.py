@@ -232,10 +232,10 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("costa+shared", when="@7.3.2:")
 
-    with when("+memory_pool"):
+    with when("@7.5: +memory_pool"):
         depends_on("umpire")
-        depends_on("umpire+cuda", when="+cuda")
-        depends_on("umpire+rocm", when="+rocm")
+        depends_on("umpire+cuda~device_alloc", when="+cuda")
+        depends_on("umpire+rocm~device_alloc", when="+rocm")
 
     patch("strip-spglib-include-subfolder.patch", when="@6.1.5")
     patch("link-libraries-fortran.patch", when="@6.1.5")
