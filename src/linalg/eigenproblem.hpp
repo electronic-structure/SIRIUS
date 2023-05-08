@@ -1391,6 +1391,9 @@ class Eigensolver_magma_gpu: public Eigensolver
         auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
         auto w = mph.get_unique_ptr<double>(matrix_size__);
 
+        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__,
+                    matrix_size__);
+
         int info, m;
 
         int lwork;
@@ -1422,11 +1425,6 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-            //#pragma omp parallel for schedule(static)
-            //for (int i = 0; i < nev__; i++) {
-            //    std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-            //              Z__.at(sddk::memory_t::host, 0, i));
-            //}
             acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(),
                          matrix_size__, nev__);
         }
