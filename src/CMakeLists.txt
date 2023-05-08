@@ -34,6 +34,7 @@ set(_SOURCES
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
+  "hamiltonian/s_u_operator.cpp"
   "band/band.cpp"
   "band/solve.cpp"
   "band/diag_pseudo_potential.cpp"
