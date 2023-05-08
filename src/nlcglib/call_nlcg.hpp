@@ -38,7 +38,7 @@ call_nlcg(Simulation_context& ctx, const config_t::nlcg_t& nlcg_params, Energy& 
     } else if (smear.compare("cold") == 0) {
         smearing = nlcglib::smearing_type::COLD;
     } else {
-        throw std::runtime_error("invalid smearing type given");
+        RTE_THROW("invalid smearing type given");
     }
 
     Hamiltonian0<double> H0(potential, false /* precompute laplw */);

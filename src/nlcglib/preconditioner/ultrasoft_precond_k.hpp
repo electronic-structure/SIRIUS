@@ -279,7 +279,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
                 break;
 #endif
             default:
-                throw std::runtime_error("invalid processing unit");
+                RTE_THROW("invalid processing unit");
                 break;
         }
     }

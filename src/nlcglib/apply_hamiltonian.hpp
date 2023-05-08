@@ -21,7 +21,7 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-        throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+        RTE_THROW("num_sc or num_wf do not match");
     }
     auto H    = H0(kp);
     auto& ctx = H0.ctx();

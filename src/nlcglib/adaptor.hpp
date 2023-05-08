@@ -207,7 +207,7 @@ make_matrix_view(nlcglib::buffer_protocol<numeric_t, 2>& buf)
     int ncols = buf.size[1];
 
     if (buf.stride[0] != 1 || buf.stride[1] != nrows) {
-        throw std::runtime_error("strides not compatible with sddk::mdarray");
+        RTE_THROW("strides not compatible with sddk::mdarray");
     }
 
     numeric_t *device_ptr{nullptr}, *host_ptr{nullptr};
@@ -222,7 +222,7 @@ make_matrix_view(nlcglib::buffer_protocol<numeric_t, 2>& buf)
             break;
         }
         default:
-            throw std::runtime_error("buffer protocol invalid memory type.");
+            RTE_THROW("buffer protocol invalid memory type.");
             break;
     }
 

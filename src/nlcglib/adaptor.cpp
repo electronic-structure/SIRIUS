@@ -1,4 +1,5 @@
 #include "memory.hpp"
+#include "utils/rte.hpp"
 #include "wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include <stdexcept>
@@ -49,7 +50,7 @@ make_vector(const std::vector<wfc_ptr_t>& wfct, const Simulation_context& ctx, c
             if (is_device_memory(target_memory)) {
                 // make sure that array is on device
                 if (!array.on_device()) {
-                    throw std::runtime_error("Error: expected device storage, but got nullptr");
+                    RTE_THROW("Error: expected device storage, but got nullptr");
                 }
             }
             kpoint_indices.emplace_back(std::make_pair(gidk, ispn));
