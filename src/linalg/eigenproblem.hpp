@@ -49,22 +49,22 @@ class Eigensolver_lapack : public Eigensolver
     }
 
     /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override {
         PROFILE("Eigensolver_lapack|dsyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__){
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override {
         PROFILE("Eigensolver_lapack|zheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+    int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override {
         PROFILE("Eigensolver_lapack|ssyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__){
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override {
         PROFILE("Eigensolver_lapack|cheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
@@ -124,22 +124,22 @@ class Eigensolver_lapack : public Eigensolver
     }
 
     /// wrapper for solving a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override {
         PROFILE("Eigensolver_lapack|dsyevr");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override {
         PROFILE("Eigensolver_lapack|zheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override {
         PROFILE("Eigensolver_lapack|ssyevr");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__){
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override {
         PROFILE("Eigensolver_lapack|cheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
@@ -253,25 +253,25 @@ class Eigensolver_lapack : public Eigensolver
 
     /// wrapper for solving a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-          dmatrix<double>& Z__){
+          dmatrix<double>& Z__) override {
         PROFILE("Eigensolver_lapack|dsygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
-              dmatrix<std::complex<double>>& Z__){
+              dmatrix<std::complex<double>>& Z__) override {
         PROFILE("Eigensolver_lapack|zhegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
-              dmatrix<float>& Z__){
+              dmatrix<float>& Z__) override {
         PROFILE("Eigensolver_lapack|ssygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__,
-              dmatrix<std::complex<float>>& Z__){
+              dmatrix<std::complex<float>>& Z__) override {
         PROFILE("Eigensolver_lapack|chegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
@@ -446,30 +446,30 @@ class Eigensolver_elpa : public Eigensolver
     static void finalize();
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__,
-              double* eval__, dmatrix<double>& Z__);
+              double* eval__, dmatrix<double>& Z__) override;
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
-              double* eval__, dmatrix<std::complex<double>>& Z__);
+              double* eval__, dmatrix<std::complex<double>>& Z__) override;
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__);
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__) override;
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
-              dmatrix<std::complex<double>>& Z__);
+              dmatrix<std::complex<double>>& Z__) override;
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__);
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override;
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__,
-              dmatrix<std::complex<double>>& Z__);
+              dmatrix<std::complex<double>>& Z__) override;
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__);
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override;
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__);
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override;
 };
 #else
 class Eigensolver_elpa : public Eigensolver
@@ -558,13 +558,13 @@ class Eigensolver_scalapack : public Eigensolver
     }
 
     /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pzheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pcheevd");
         return solve_(matrix_size__, A__, eval__, Z__);
@@ -739,13 +739,13 @@ class Eigensolver_scalapack : public Eigensolver
         return info;
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pdsyevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pssyevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
@@ -869,13 +869,13 @@ class Eigensolver_scalapack : public Eigensolver
         return info;
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pzheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pcheevx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
@@ -993,13 +993,13 @@ class Eigensolver_scalapack : public Eigensolver
         return info;
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pdsygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pssygvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
@@ -1138,14 +1138,14 @@ class Eigensolver_scalapack : public Eigensolver
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
-               double* eval__, dmatrix<std::complex<double>>& Z__)
+               double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pzhegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
-              float* eval__, dmatrix<std::complex<float>>& Z__)
+              float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pchegvx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
@@ -1174,7 +1174,7 @@ class Eigensolver_magma: public Eigensolver
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-              dmatrix<double>& Z__)
+              dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_magma|dsygvdx");
 
@@ -1223,7 +1223,7 @@ class Eigensolver_magma: public Eigensolver
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
-              double* eval__, dmatrix<std::complex<double>>& Z__)
+              double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_magma|zhegvdx");
 
@@ -1274,7 +1274,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_magma|dsygvdx");
 
@@ -1324,7 +1324,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_magma|zheevdx");
 
@@ -1381,7 +1381,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_magma_gpu|zheevdx");
 
@@ -1528,25 +1528,25 @@ class Eigensolver_cuda: public Eigensolver
     }
 
     /// wrapper for dynamic binding
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override
     {
         PROFILE("Eigensolver_cuda|dsyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_cuda|ssyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
         PROFILE("Eigensolver_cuda|cheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_cuda|zheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
@@ -1631,51 +1631,51 @@ class Eigensolver_cuda: public Eigensolver
     }
 
     /// wrapper for dynamic binding
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__,  double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__,  double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_cuda|dsygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__,  float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__,  float* eval__, dmatrix<float>& Z__) override
     {
         PROFILE("Eigensolver_cuda|ssygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
-              double* eval__, dmatrix<std::complex<double>>& Z__)
+              double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_cuda|zhegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
-              float* eval__, dmatrix<std::complex<float>>& Z__)
+              float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
         PROFILE("Eigensolver_cuda|chegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__) override
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__) override
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
-              dmatrix<std::complex<double>>& Z__)
+              dmatrix<std::complex<double>>& Z__) override
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__,
-              dmatrix<std::complex<float>>& Z__)
+              dmatrix<std::complex<float>>& Z__) override
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
