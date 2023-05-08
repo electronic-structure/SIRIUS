@@ -28,9 +28,13 @@
 #include "SDDK/omp.hpp"
 #include "SDDK/memory.hpp"
 #include "beta_projectors/beta_projectors.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 #include "beta_projectors/beta_projectors_strain_deriv.hpp"
+#include "non_local_operator_impl.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
+#include "traits.hpp"
+#include "utils/rte.hpp"
 
 namespace sirius {
 /* forward declaration */
@@ -38,207 +42,6 @@ template <typename T>
 class Beta_projectors;
 template <typename T>
 class Beta_projectors_base;
-
-/// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
-template <typename T>
-class Non_local_operator
-{
-  protected:
-    Simulation_context const& ctx_;
-
-    sddk::device_t pu_;
-
-    int packed_mtrx_size_;
-
-    sddk::mdarray<int, 1> packed_mtrx_offset_;
-
-    /// Non-local operator matrix.
-    sddk::mdarray<T, 3> op_;
-
-    bool is_null_{false};
-
-    /// True if the operator is diagonal in spin.
-    bool is_diag_{true};
-
-    /* copy assignment operrator is forbidden */
-    Non_local_operator<T>& operator=(Non_local_operator<T> const& src) = delete;
-    /* copy constructor is forbidden */
-    Non_local_operator(Non_local_operator<T> const& src) = delete;
-
-  public:
-    /// Constructor.
-    Non_local_operator(Simulation_context const& ctx__);
-
-    /// Apply chunk of beta-projectors to all wave functions.
-    /** \tparam F  Type of the subspace matrix
-     */
-    template <typename F>
-    void
-    apply(sddk::memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__, wf::band_range br__,
-          Beta_projectors_base<T> const& beta__, sddk::matrix<F> const& beta_phi__) const
-    {
-        PROFILE("sirius::Non_local_operator::apply");
-
-        if (is_null_) {
-            return;
-        }
-
-        auto const& beta_gk = beta__.pw_coeffs_a();
-        int num_gkvec_loc   = beta__.num_gkvec_loc();
-        int nbeta           = beta__.chunk(chunk__).num_beta_;
-
-        /* setup linear algebra parameters */
-        la::lib_t la{la::lib_t::blas};
-        sddk::device_t pu{sddk::device_t::CPU};
-        if (is_device_memory(mem__)) {
-            la = la::lib_t::gpublas;
-            pu = sddk::device_t::GPU;
-        }
-
-        int size_factor = 1;
-        if (std::is_same<F, real_type<F>>::value) {
-            size_factor = 2;
-        }
-
-        auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), get_memory_pool(mem__));
-
-        /* compute O * <beta|phi> for atoms in a chunk */
-        #pragma omp parallel
-        {
-            acc::set_device_id(mpi::get_device_id(acc::num_devices())); // avoid cuda mth bugs
-
-            #pragma omp for
-            for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
-                /* number of beta functions for a given atom */
-                int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-                int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-                int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-
-                if (nbf) {
-                    la::wrap(la).gemm(
-                        'N', 'N', nbf, br__.size(), nbf, &la::constant<F>::one(),
-                        reinterpret_cast<F const*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
-                        reinterpret_cast<F const*>(beta_phi__.at(mem__, offs, 0)), beta_phi__.ld(),
-                        &la::constant<F>::zero(),
-                        reinterpret_cast<F*>(work.at(mem__, offs, 0)), nbeta, stream_id(omp_get_thread_num()));
-                }
-            }
-        }
-        switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
-            case sddk::device_t::GPU: {
-                /* wait for previous zgemms */
-                #pragma omp parallel
-                acc::sync_stream(stream_id(omp_get_thread_num()));
-                break;
-            }
-            case sddk::device_t::CPU: {
-                break;
-            }
-        }
-
-        auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
-
-        /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-        la::wrap(la)
-            .gemm('N', 'N', num_gkvec_loc * size_factor, br__.size(), nbeta, &la::constant<F>::one(),
-                reinterpret_cast<F const*>(beta_gk.at(mem__)), num_gkvec_loc * size_factor, 
-                work.at(mem__), nbeta, &la::constant<F>::one(),
-                reinterpret_cast<F*>(op_phi__.at(mem__, 0, sp, wf::band_index(br__.begin()))),
-                op_phi__.ld() * size_factor);
-
-        switch (pu) {
-            case sddk::device_t::GPU: {
-                acc::sync_stream(stream_id(-1));
-                break;
-            }
-            case sddk::device_t::CPU: {
-                break;
-            }
-        }
-    }
-
-    /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
-    template <typename F>
-    std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
-    apply(sddk::memory_t mem__, int chunk__, wf::atom_index ia__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
-            wf::band_range br__, Beta_projectors_base<T>& beta__, sddk::matrix<F>& beta_phi__)
-    {
-        if (is_null_) {
-            return;
-        }
-
-        auto& beta_gk     = beta__.pw_coeffs_a();
-        int num_gkvec_loc = beta__.num_gkvec_loc();
-
-        int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, ia__.get());
-        int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, ia__.get());
-        int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, ia__.get());
-
-        if (nbf == 0) {
-            return;
-        }
-
-        la::lib_t la{la::lib_t::blas};
-        sddk::device_t pu{sddk::device_t::CPU};
-        if (is_device_memory(mem__)) {
-            la = la::lib_t::gpublas;
-            pu = sddk::device_t::GPU;
-        }
-
-        auto work = sddk::mdarray<std::complex<T>, 1>(nbf * br__.size(), get_memory_pool(mem__));
-
-        la::wrap(la).gemm('N', 'N', nbf, br__.size(), nbf, &la::constant<std::complex<T>>::one(),
-                        reinterpret_cast<std::complex<T>*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
-                        beta_phi__.at(mem__, offs, 0), beta_phi__.ld(), &la::constant<std::complex<T>>::zero(),
-                        work.at(mem__), nbf);
-
-        int jspn = ispn_block__ & 1;
-
-        la::wrap(la)
-            .gemm('N', 'N', num_gkvec_loc, br__.size(), nbf, &la::constant<std::complex<T>>::one(),
-                    beta_gk.at(mem__, 0, offs), num_gkvec_loc, work.at(mem__), nbf, &la::constant<std::complex<T>>::one(),
-                  op_phi__.at(mem__, 0, wf::spin_index(jspn), wf::band_index(br__.begin())),
-                  op_phi__.ld());
-
-        switch (pu) {
-            case sddk::device_t::CPU: {
-                break;
-            }
-            case sddk::device_t::GPU: {
-#ifdef SIRIUS_GPU
-                acc::sync_stream(stream_id(-1));
-#endif
-                break;
-            }
-        }
-    }
-
-    template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
-    inline F value(int xi1__, int xi2__, int ia__)
-    {
-        return this->value<F>(xi1__, xi2__, 0, ia__);
-    }
-
-    template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
-    F value(int xi1__, int xi2__, int ispn__, int ia__)
-    {
-        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
-        return this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
-    }
-
-    template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
-    F value(int xi1__, int xi2__, int ispn__, int ia__)
-    {
-        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
-        return std::complex<T>(this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__),
-                               this->op_(1, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__));
-    }
-
-    inline bool is_diag() const
-    {
-        return is_diag_;
-    }
-};
 
 template <typename T>
 class D_operator : public Non_local_operator<T>
@@ -265,7 +68,7 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
-    //sddk::mdarray<std::complex<T>, 3> um_;
+    // sddk::mdarray<std::complex<T>, 3> um_;
     std::array<la::dmatrix<std::complex<T>>, 4> um_;
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
@@ -285,7 +88,7 @@ class U_operator
         this->nhwf_            = r.first;
         this->offset_          = um1__.offset();
         this->atomic_orbitals_ = um1__.atomic_orbitals();
-        for (int j = 0; j <  ctx_.num_mag_dims() + 1; j++) {
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             um_[j] = la::dmatrix<std::complex<T>>(r.first, r.first);
             um_[j].zero();
         }
@@ -336,7 +139,8 @@ class U_operator
                 RTE_THROW("um is not Hermitian");
             }
             if (ctx_.print_checksum()) {
-                utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
+                utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first),
+                                      RTE_OUT(ctx_.out()));
             }
             if (ctx_.processing_unit() == sddk::device_t::GPU) {
                 um_[is].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
@@ -367,12 +171,12 @@ class U_operator
         return offset_[ia__];
     }
 
-    auto operator()(int m1, int m2, int j)
+    std::complex<T> operator()(int m1, int m2, int j)
     {
         return um_[j](m1, m2);
     }
 
-    auto* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3)
+    std::complex<T>* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3)
     {
         return um_[idx3].at(mem__, idx1, idx2);
     }
@@ -397,89 +201,59 @@ class U_operator
     }
 };
 
-// template <typename T>
-// class P_operator : public Non_local_operator<T>
-//{
-//  public:
-//    P_operator(Simulation_context const& ctx_, mdarray<std::complex<double>, 3>& p_mtrx__)
-//        : Non_local_operator<T>(ctx_)
-//    {
-//        /* Q-operator is independent of spin */
-//        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-//        this->op_.zero();
-//
-//        auto& uc = ctx_.unit_cell();
-//        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-//            int iat = uc.atom(ia).type().id();
-//            if (!uc.atom_type(iat).augment()) {
-//                continue;
-//            }
-//            int nbf = uc.atom(ia).mt_basis_size();
-//            for (int xi2 = 0; xi2 < nbf; xi2++) {
-//                for (int xi1 = 0; xi1 < nbf; xi1++) {
-//                    this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = -p_mtrx__(xi1, xi2, iat).real();
-//                }
-//            }
-//        }
-//        if (this->pu_ == device_t::GPU) {
-//            this->op_.allocate(memory_t::device);
-//            this->op_.copy_to(memory_t::device);
-//        }
-//    }
-//};
-
-/// Apply non-local part of the Hamiltonian and S operators.
-/** This operations must be combined because of the expensive inner product between wave-functions and beta
- *  projectors, which is computed only once.
- *
- *  \param [in]  spins   Range of the spin index.
- *  \param [in]  N       Starting index of the wave-functions.
- *  \param [in]  n       Number of wave-functions to which D and Q are applied.
- *  \param [in]  beta    Beta-projectors.
- *  \param [in]  phi     Wave-functions.
- *  \param [in]  d_op    Pointer to D-operator.
- *  \param [out] hphi    Resulting |beta>D<beta|phi>
- *  \param [in]  q_op    Pointer to Q-operator.
- *  \param [out] sphi    Resulting |beta>Q<beta|phi>
- */
-//template <typename T>
-//void apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors<real_type<T>>& beta__,
-//                         sddk::Wave_functions<real_type<T>>& phi__, D_operator<real_type<T>>* d_op__,
-//                         sddk::Wave_functions<real_type<T>>* hphi__, Q_operator<real_type<T>>* q_op__,
-//                         sddk::Wave_functions<real_type<T>>* sphi__);
-
 /** \tparam T  Precision of the wave-functions.
  *  \tparam F  Type of the subspace.
+ *
+ *  \param [in]  spins          Range of the spin index.
+ *  \param [in]  N              Starting index of the wave-functions.
+ *  \param [in]  n              Number of wave-functions to which D and Q are applied.
+ *  \param [in]  beta           Beta-projector generator
+ *  \param [in]  beta_coeffs    Beta-projector coefficients
+ *  \param [in]  phi            Wave-functions.
+ *  \param [in]  d_op           Pointer to D-operator.
+ *  \param [out] hphi           Resulting |beta>D<beta|phi>
+ *  \param [in]  q_op           Pointer to Q-operator.
+ *  \param [out] sphi           Resulting |beta>Q<beta|phi>
  **/
 template <typename T, typename F>
 void
-apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projectors<T>& beta__,
-    wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
-    Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
+apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__,
+                    Beta_projector_generator<T>& beta__, beta_projectors_coeffs_t<T>& beta_coeffs__,
+                    wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
+                    Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
 {
+    if(sddk::is_device_memory(mem__)) {
+        RTE_ASSERT(beta__.device_t() == sddk::device_t::GPU);
+    }
+
+    auto& ctx = beta__.ctx();
+
     for (int i = 0; i < beta__.num_chunks(); i++) {
         /* generate beta-projectors for a block of atoms */
-        beta__.generate(mem__, i);
+        beta__.generate(beta_coeffs__, i);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-            auto sp = phi__.actual_spin_index(s);
-            auto beta_phi = beta__.template inner<F>(mem__, i, phi__, sp, br__);
+            auto sp       = phi__.actual_spin_index(s);
+            // auto beta_phi = beta__.template inner<F>(mem__, i, phi__, sp, br__);
+            auto beta_phi = inner_prod_beta<F>(ctx.spla_context(), mem__, ctx.host_memory_t(),
+                                               sddk::is_device_memory(mem__), /* copy result back to gpu if true */
+                                               beta_coeffs__, phi__, sp, br__);
 
             if (hphi__ && d_op__) {
                 /* apply diagonal spin blocks */
-                d_op__->apply(mem__, i, s.get(), *hphi__, br__, beta__, beta_phi);
+                d_op__->apply(mem__, i, s.get(), *hphi__, br__, beta_coeffs__, beta_phi);
                 if (!d_op__->is_diag() && hphi__->num_md() == wf::num_mag_dims(3)) {
                     /* apply non-diagonal spin blocks */
                     /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                    d_op__->apply(mem__, i, s.get() ^ 3, *hphi__, br__, beta__, beta_phi);
+                    d_op__->apply(mem__, i, s.get() ^ 3, *hphi__, br__, beta_coeffs__, beta_phi);
                 }
             }
 
             if (sphi__ && q_op__) {
                 /* apply Q operator (diagonal in spin) */
-                q_op__->apply(mem__, i, s.get(), *sphi__, br__, beta__, beta_phi);
+                q_op__->apply(mem__, i, s.get(), *sphi__, br__, beta_coeffs__, beta_phi);
                 if (!q_op__->is_diag() && sphi__->num_md() == wf::num_mag_dims(3)) {
-                    q_op__->apply(mem__, i, s.get() ^ 3, *sphi__, br__, beta__, beta_phi);
+                    q_op__->apply(mem__, i, s.get() ^ 3, *sphi__, br__, beta_coeffs__, beta_phi);
                 }
             }
         }
@@ -488,20 +262,21 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
 
 /// Compute |sphi> = (1 + Q)|phi>
 template <typename T, typename F>
-void apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__,
-                      Beta_projectors<T>& beta__, wf::Wave_functions<T> const& phi__,
-                      Q_operator<T> const* q_op__, wf::Wave_functions<T>& sphi__)
+void
+apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
+                 beta_projectors_coeffs_t<T>& beta_coeffs__,
+                 wf::Wave_functions<T> const& phi__, Q_operator<T> const* q_op__, wf::Wave_functions<T>& sphi__)
 {
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         wf::copy(mem__, phi__, s, br__, sphi__, s, br__);
     }
 
     if (q_op__) {
-        apply_non_local_D_Q<T, F>(mem__, spins__, br__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
+        apply_non_local_D_Q<T, F>(mem__, spins__, br__, beta__, beta_coeffs__, phi__, nullptr, nullptr, q_op__, &sphi__);
     }
 }
 
-/** Apply Hubbard U correction 
+/** Apply Hubbard U correction
  * \tparam T  Precision type of wave-functions (flat or double).
  * \param [in]  hub_wf   Hubbard atomic wave-functions.
  * \param [in]  phi      Set of wave-functions to which Hubbard correction is applied.
@@ -510,8 +285,8 @@ void apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_ran
 template <typename T>
 void
 apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-        wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
-        wf::Wave_functions<T>& hphi__)
+                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
+                 wf::Wave_functions<T>& hphi__)
 {
     if (!ctx__.hubbard_correction()) {
         return;
@@ -528,7 +303,8 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
 
     /* First calculate the local part of the projections
        dm(i, n) = <phi_i| S |psi_{nk}> */
-    wf::inner(ctx__.spla_context(), mt, spins__, hub_wf__, wf::band_range(0, hub_wf__.num_wf().get()), phi__, br__, dm, 0, 0);
+    wf::inner(ctx__.spla_context(), mt, spins__, hub_wf__, wf::band_range(0, hub_wf__.num_wf().get()), phi__, br__, dm,
+              0, 0);
 
     la::dmatrix<std::complex<T>> Up(hub_wf__.num_wf().get(), br__.size());
     if (is_device_memory(mt)) {
@@ -537,7 +313,7 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
 
     if (ctx__.num_mag_dims() == 3) {
         Up.zero();
-        #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
         for (int at_lvl = 0; at_lvl < (int)um__.atomic_orbitals().size(); at_lvl++) {
             const int ia     = um__.atomic_orbitals(at_lvl).first;
             auto const& atom = ctx__.unit_cell().atom(ia);
@@ -548,14 +324,14 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
                 // but I do not like it at all
                 for (int s1 = 0; s1 < ctx__.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx__.num_spins(); s2++) {
-                      // TODO: replace this with matrix matrix multiplication
+                        // TODO: replace this with matrix matrix multiplication
                         for (int nbd = 0; nbd < br__.size(); nbd++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
                                     const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
                                     Up(um__.nhwf() * s1 + um__.offset(at_lvl) + m1, nbd) +=
-                                      um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
-                                      dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
+                                        um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
+                                        dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
                                 }
                             }
                         }
@@ -564,9 +340,9 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
             }
         }
     } else {
-        la::wrap(la).gemm('N', 'N', um__.nhwf(), br__.size(), um__.nhwf(),
-                &la::constant<std::complex<T>>::one(), um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(),
-                dm.at(mt, 0, 0), dm.ld(), &la::constant<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
+        la::wrap(la).gemm('N', 'N', um__.nhwf(), br__.size(), um__.nhwf(), &la::constant<std::complex<T>>::one(),
+                          um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
+                          &la::constant<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
         if (is_device_memory(mt)) {
             Up.copy_to(sddk::memory_t::host);
         }
@@ -574,27 +350,45 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         auto sp = hub_wf__.actual_spin_index(s);
         wf::transform(ctx__.spla_context(), mt, Up, 0, 0, 1.0, hub_wf__, sp, wf::band_range(0, hub_wf__.num_wf().get()),
-            1.0, hphi__, sp, br__);
+                      1.0, hphi__, sp, br__);
     }
 }
 
 /// Apply strain derivative of S-operator to all scalar functions.
 inline void
-apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projectors<double>& bp__,
-                              Beta_projectors_strain_deriv<double>& bp_strain_deriv__, wf::Wave_functions<double>& phi__,
-                              Q_operator<double>& q_op__, wf::Wave_functions<double>& ds_phi__)
+apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
+                              beta_projectors_coeffs_t<double>& bp_coeffs__,
+                              Beta_projector_generator<double>& bp_strain_deriv__,
+                              beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
+                              wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
+                              wf::Wave_functions<double>& ds_phi__)
 {
+    if(sddk::is_device_memory(mem__)) {
+        RTE_ASSERT((bp__.device_t() == sddk::device_t::GPU));
+    }
+    assert(false); // TODO not checked
+    // NOTE: Beta_projectors_generator knows the target memory!
+    using complex_t = std::complex<double>;
+
     RTE_ASSERT(ds_phi__.num_wf() == phi__.num_wf());
     for (int ichunk = 0; ichunk < bp__.num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
-        bp__.generate(mem__, ichunk);
+        bp__.generate(bp_coeffs__, ichunk);
         /* generate derived beta-projectors for a block of atoms */
-        bp_strain_deriv__.generate(mem__, ichunk, comp__);
-        auto dbeta_phi = bp_strain_deriv__.inner<std::complex<double>>(mem__, ichunk, phi__, wf::spin_index(0),
-                wf::band_range(0, phi__.num_wf().get()));
-        auto beta_phi = bp__.inner<std::complex<double>>(mem__, ichunk, phi__, wf::spin_index(0), wf::band_range(0, phi__.num_wf().get()));
-        q_op__.apply(mem__, ichunk, 0, ds_phi__, wf::band_range(0, ds_phi__.num_wf().get()), bp__, dbeta_phi);
-        q_op__.apply(mem__, ichunk, 0, ds_phi__, wf::band_range(0, ds_phi__.num_wf().get()), bp_strain_deriv__, beta_phi);
+        bp_strain_deriv__.generate(bp_strain_deriv_coeffs__, ichunk, comp__);
+
+        auto host_mem = bp__.ctx().host_memory_t();
+        auto& spla_ctx = bp__.ctx().spla_context();
+        auto band_range_phi = wf::band_range(0, phi__.num_wf().get());
+        bool result_on_device = bp__.ctx().processing_unit() == sddk::device_t::GPU;
+        auto dbeta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
+                                                    bp_strain_deriv_coeffs__, phi__, wf::spin_index(0), band_range_phi);
+        auto beta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
+                                                   bp_coeffs__, phi__, wf::spin_index(0), band_range_phi);
+
+        auto band_range = wf::band_range(0, ds_phi__.num_wf().get());
+        q_op__.apply(mem__, ichunk, 0, ds_phi__, band_range, bp_coeffs__, dbeta_phi);
+        q_op__.apply(mem__, ichunk, 0, ds_phi__, band_range, bp_strain_deriv_coeffs__, beta_phi);
     }
 }
 

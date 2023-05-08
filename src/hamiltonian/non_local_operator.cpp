@@ -23,9 +23,13 @@
  */
 
 #include "non_local_operator.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
 namespace sirius {
+
+using namespace wf;
+using namespace sddk;
 
 template <typename T>
 Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
@@ -37,18 +41,20 @@ Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
     auto& uc            = this->ctx_.unit_cell();
     packed_mtrx_offset_ = sddk::mdarray<int, 1>(uc.num_atoms());
     packed_mtrx_size_   = 0;
+    size_ = 0;
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         int nbf                 = uc.atom(ia).mt_basis_size();
         packed_mtrx_offset_(ia) = packed_mtrx_size_;
         packed_mtrx_size_ += nbf * nbf;
+        size_ += nbf;
     }
 
     switch (pu_) {
-        case sddk::device_t::GPU: {
-            packed_mtrx_offset_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        case device_t::GPU: {
+            packed_mtrx_offset_.allocate(memory_t::device).copy_to(memory_t::device);
             break;
         }
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
     }
@@ -59,9 +65,9 @@ D_operator<T>::D_operator(Simulation_context const& ctx_)
     : Non_local_operator<T>(ctx_)
 {
     if (ctx_.gamma_point()) {
-        this->op_ = sddk::mdarray<T, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
     } else {
-        this->op_ = sddk::mdarray<T, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
     }
     this->op_.zero();
     initialize();
@@ -85,7 +91,7 @@ D_operator<T>::initialize()
 
         /* in case of spin orbit coupling */
         if (uc.atom(ia).type().spin_orbit_coupling()) {
-            sddk::mdarray<std::complex<T>, 3> d_mtrx_so(nbf, nbf, 4);
+            mdarray<std::complex<T>, 3> d_mtrx_so(nbf, nbf, 4);
             d_mtrx_so.zero();
 
             /* transform the d_mtrx */
@@ -225,8 +231,8 @@ D_operator<T>::initialize()
         utils::print_checksum("D_operator", cs, this->ctx_.out());
     }
 
-    if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {
-        this->op_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
+        this->op_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     /* D-operator is not diagonal in spin in case of non-collinear magnetism
@@ -243,9 +249,9 @@ Q_operator<T>::Q_operator(Simulation_context const& ctx__)
     /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
      * method if the Q-operator has a spin index */
     if (this->ctx_.gamma_point()) {
-        this->op_ = sddk::mdarray<T, 3>(1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
     } else {
-        this->op_ = sddk::mdarray<T, 3>(2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
     }
     this->op_.zero();
     initialize();
@@ -318,8 +324,8 @@ Q_operator<T>::initialize()
         utils::print_checksum("Q_operator", cs, this->ctx_.out());
     }
 
-    if (this->pu_ == sddk::device_t::GPU && uc.mt_lo_basis_size() != 0) {
-        this->op_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+    if (this->pu_ == device_t::GPU && uc.mt_lo_basis_size() != 0) {
+        this->op_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     this->is_null_ = true;
@@ -334,11 +340,67 @@ Q_operator<T>::initialize()
     }
 }
 
+template <class T>
+int
+Non_local_operator<T>::size(int i) const
+{
+    if (i == 0 || i == 1) {
+        return this->size_;
+    }
+    RTE_THROW("invalid dimension");
+}
+
+template <class T>
+template <class F>
+sddk::matrix<F>
+Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
+{
+    static_assert(is_complex<F>::value, "not implemented for gamma point");
+
+    using double_complex = std::complex<double>;
+
+    auto& uc = ctx_.unit_cell();
+    std::vector<int> offsets(uc.num_atoms() + 1, 0);
+    for (int ia = 0; ia < uc.num_atoms(); ++ia) {
+        offsets[ia + 1] = offsets[ia] + uc.atom(ia).mt_basis_size();
+    }
+
+    sddk::matrix<double_complex> O(this->size(0), this->size(1), mem);
+    O.zero(mem);
+    int num_atoms = uc.num_atoms();
+    for(int ia=0; ia < num_atoms; ++ia) {
+        int offset = offsets[ia];
+        int lsize = offsets[ia+1] - offsets[ia];
+        if(mem == memory_t::device) {
+            double_complex* out_ptr = O.at(memory_t::device, offset, offset);
+            const double_complex* op_ptr = reinterpret_cast<const double_complex*>(op_.at(memory_t::device, 0, packed_mtrx_offset_(ia), ispn));
+            // copy column by column
+            for (int col = 0; col < lsize; ++col) {
+                acc::copy(out_ptr + col * O.ld(), op_ptr + col * lsize, lsize);
+            }
+        } else if( mem == memory_t::host) {
+            double_complex* out_ptr = O.at(memory_t::host, offset, offset);
+            const double_complex* op_ptr = reinterpret_cast<const double_complex*>(op_.at(memory_t::host, 0, packed_mtrx_offset_(ia), ispn));
+            // copy column by column
+            for (int col = 0; col < lsize; ++col) {
+                std::copy(op_ptr + col * lsize, op_ptr + col * lsize + lsize, out_ptr + col * O.ld());
+            }
+        } else {
+            RTE_THROW("invalid memory type.");
+        }
+    }
+    return O;
+}
+
+
+template sddk::matrix<std::complex<double>> Non_local_operator<double>::get_matrix(int, memory_t) const;
+
 template class Non_local_operator<double>;
 
 template class D_operator<double>;
 
 template class Q_operator<double>;
+
 
 #if defined(USE_FP32)
 template class Non_local_operator<float>;
@@ -346,5 +408,9 @@ template class Non_local_operator<float>;
 template class D_operator<float>;
 
 template class Q_operator<float>;
+
+
 #endif
+
+
 } // namespace sirius

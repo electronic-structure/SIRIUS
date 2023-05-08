@@ -28,7 +28,8 @@
 #include "function3d/periodic_function.hpp"
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
-#include "beta_projectors/beta_projectors.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
+#include "memory.hpp"
 
 namespace sirius {
 
@@ -49,26 +50,34 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
     double main_two_factor{-2};
 
+    auto mt = ctx__.processing_unit_memory_t();
+    auto bp_gen = bp.make_generator(mt);
+    auto beta_coeffs = bp_gen.prepare();
+
+    auto bp_base_gen      = bp_base__.make_generator(mt);
+    auto beta_coeffs_base = bp_base_gen.prepare();
+
     for (int icnk = 0; icnk < bp_base__.num_chunks(); icnk++) {
 
-        bp.prepare();
         /* generate chunk for inner product of beta */
-        bp.generate(ctx__.processing_unit_memory_t(), icnk);
+        bp_gen.generate(beta_coeffs, icnk);
 
         /* store <beta|psi> for spin up and down */
         sddk::matrix<F> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             int nbnd = kp__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
-                    kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+            // beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
+            //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt),
+                                                       beta_coeffs, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
-        bp.dismiss();
+        // bp.dismiss();
 
-        bp_base__.prepare();
+        // bp_base__.prepare();
         for (int x = 0; x < bp_base__.num_comp(); x++) {
             /* generate chunk for inner product of beta gradient */
-            bp_base__.generate(ctx__.processing_unit_memory_t(), icnk, x);
+            bp_base_gen.generate(beta_coeffs_base, icnk, x);
 
             for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
                 int spin_factor = (ispn == 0 ? 1 : -1);
@@ -76,18 +85,22 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                 int nbnd = kp__.num_occupied_bands(ispn);
 
                 /* inner product of beta gradient and WF */
-                auto bp_base_phi_chunk = bp_base__.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
-                        kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+                // auto bp_base_phi_chunk = bp_base__.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
+                //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+
+                auto bp_base_phi_chunk = inner_prod_beta<F>(
+                    ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), beta_coeffs_base,
+                    kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
                 sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
 
                 int nbnd_loc = spl_nbnd.local_size();
 
                 #pragma omp parallel for
-                for (int ia_chunk = 0; ia_chunk < bp_base__.chunk(icnk).num_atoms_; ia_chunk++) {
-                    int ia =   bp_base__.chunk(icnk).desc_(beta_desc_idx::ia, ia_chunk);
-                    int offs = bp_base__.chunk(icnk).desc_(beta_desc_idx::offset, ia_chunk);
-                    int nbf =  bp_base__.chunk(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
+                for (int ia_chunk = 0; ia_chunk < beta_coeffs_base.beta_chunk.num_atoms_; ia_chunk++) {
+                    int ia =   beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::ia, ia_chunk);
+                    int offs = beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::offset, ia_chunk);
+                    int nbf =  beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::nbf, ia_chunk);
                     int iat = uc.atom(ia).type_id();
 
                     if (uc.atom(ia).type().spin_orbit_coupling()) {
@@ -170,7 +183,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
         } // x
     }
 
-    bp_base__.dismiss();
+    // bp_base__.dismiss();
 }
 
 }

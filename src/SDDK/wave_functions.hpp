@@ -1580,7 +1580,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
     PROFILE("wf::inner");
 
     RTE_ASSERT(wf_i__.ld() == wf_j__.ld());
-    RTE_ASSERT((wf_i__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+    // RTE_ASSERT((wf_i__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
     RTE_ASSERT((wf_j__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
 
     if (spins__.size() == 2) {

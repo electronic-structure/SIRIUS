@@ -233,9 +233,10 @@ K_point<T>::generate_hubbard_orbitals()
         auto mg2 = atomic_wave_functions_S_->memory_guard(mem, wf::copy_to::host);
 
         /* compute S|phi> */
-        beta_projectors().prepare();
+        auto bp_gen = beta_projectors().make_generator();
+        auto bp_coeffs = bp_gen.prepare();
 
-        sirius::apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), beta_projectors(),
+        sirius::apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), bp_gen, bp_coeffs,
                 *atomic_wave_functions_, q_op.get(), *atomic_wave_functions_S_);
 
         if (ctx_.cfg().hubbard().full_orthogonalization()) {
@@ -269,7 +270,7 @@ K_point<T>::generate_hubbard_orbitals()
             wf::copy(mem, *atomic_wave_functions_S_, wf::spin_index(0), wf::band_range(0, nwf),
                      *atomic_wave_functions_, wf::spin_index(0), wf::band_range(0, nwf));
 
-            apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), beta_projectors(),
+            apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), bp_gen, bp_coeffs,
                 *atomic_wave_functions_, q_op.get(), *atomic_wave_functions_S_);
 
             //if (ctx_.cfg().control().verification() >= 1) {
@@ -280,7 +281,7 @@ K_point<T>::generate_hubbard_orbitals()
             //}
         }
 
-        beta_projectors().dismiss();
+        // beta_projectors().dismiss();
    }
 
     if (pcs) {
@@ -780,7 +781,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         for (int xi = 0; xi < static_cast<int>(indexb__(iat)->size()); xi++) {
             #pragma omp for nowait
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                wf__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(offset[ia] + xi)) = 
+                wf__.pw_coeffs(igk_loc, wf::spin_index(0), wf::band_index(offset[ia] + xi)) =
                     wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }
         }

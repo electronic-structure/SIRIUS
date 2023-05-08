@@ -112,21 +112,26 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
 
     sddk::mdarray<F, 2> btmp(kp.num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
 
-    kp.beta_projectors_row().prepare();
-    kp.beta_projectors_col().prepare();
+    auto bp_gen_row        = kp.beta_projectors_row().make_generator();
+    auto bp_coeffs_row = bp_gen_row.prepare();
+
+    auto bp_gen_col = kp.beta_projectors_col().make_generator();
+    auto bp_coeffs_col = bp_gen_col.prepare();
+
     for (int ichunk = 0; ichunk <  kp.beta_projectors_row().num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
-        kp.beta_projectors_row().generate(sddk::memory_t::host, ichunk);
-        kp.beta_projectors_col().generate(sddk::memory_t::host, ichunk);
 
-        auto& beta_row = kp.beta_projectors_row().pw_coeffs_a();
-        auto& beta_col = kp.beta_projectors_col().pw_coeffs_a();
+        bp_gen_row.generate(bp_coeffs_row, ichunk);
+        bp_gen_col.generate(bp_coeffs_col, ichunk);
 
-        for (int i = 0; i <  kp.beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
+        auto& beta_row = bp_coeffs_row.pw_coeffs_a;
+        auto& beta_col = bp_coeffs_col.pw_coeffs_a;
+
+        for (int i = 0; i <  bp_coeffs_row.beta_chunk.num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
-            int offs = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
-            int ia   = kp.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
+            int nbf  = bp_coeffs_row.beta_chunk.desc_(beta_desc_idx::nbf, i);
+            int offs = bp_coeffs_row.beta_chunk.desc_(beta_desc_idx::offset, i);
+            int ia   = bp_coeffs_row.beta_chunk.desc_(beta_desc_idx::ia, i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -153,8 +158,8 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const
             }
         } // i (atoms in chunk)
     }
-    kp.beta_projectors_row().dismiss();
-    kp.beta_projectors_col().dismiss();
+    // kp.beta_projectors_row().dismiss();
+    // kp.beta_projectors_col().dismiss();
 
     if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(ovlp, kp.num_gkvec());

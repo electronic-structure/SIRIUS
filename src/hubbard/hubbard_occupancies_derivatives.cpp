@@ -31,7 +31,9 @@
  * \note This code only applies to the collinear case.
  */
 
+#include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard.hpp"
+#include "memory.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "linalg/inverse_sqrt.hpp"
 #include "geometry/wavefunction_strain_deriv.hpp"
@@ -203,6 +205,10 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     std::array<std::array<la::dmatrix<std::complex<double>>, 2>, 3> grad_phi_atomic_s_psi;
     std::array<la::dmatrix<std::complex<double>>, 3> grad_phi_atomic_s_phi_atomic;
 
+    auto& bp       = kp__.beta_projectors();
+    auto bp_gen    = bp.make_generator(mt);
+    auto bp_coeffs = bp_gen.prepare();
+
     for (int x = 0; x < 3; x++) {
         /* compute |phi_atomic_tmp> = |d phi_atomic / d r_{alpha} > for all atoms */
         for (int i = 0; i < nawf; i++) {
@@ -218,8 +224,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
             phi_atomic_tmp->copy_to(mt);
         }
         /* apply S to |d phi_atomic / d r_{alpha} > */
-        apply_S_operator<double, std::complex<double>>(mt, wf::spin_range(0),
-                wf::band_range(0, nawf), kp__.beta_projectors(), *phi_atomic_tmp, &q_op__, *s_phi_atomic_tmp);
+        apply_S_operator<double, std::complex<double>>(mt, wf::spin_range(0), wf::band_range(0, nawf), bp_gen,
+                                                       bp_coeffs, *phi_atomic_tmp, &q_op__, *s_phi_atomic_tmp);
 
         /* compute < d phi_atomic / d r_{alpha} | S | phi_atomic >
          * used to compute derivative of the inverse square root of the overlap matrix */
@@ -252,27 +258,39 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     }
 
     Beta_projectors_gradient<double> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
-    bp_grad.prepare();
+    auto bp_grad_gen = bp_grad.make_generator(mt);
+    auto bp_grad_coeffs = bp_grad_gen.prepare();
 
     dn__.zero(mt);
 
     for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
-        kp__.beta_projectors().generate(mt, ichunk);
+
+        // store <beta|x> on device if `mt` is device memory.
+        bool copy_back_innerb = sddk::is_device_memory(mt);
+
+        bp_gen.generate(bp_coeffs, ichunk);
+        auto& beta_chunk = bp_coeffs.beta_chunk;
 
         /* <beta | phi_atomic> for this chunk */
-        auto beta_phi_atomic = kp__.beta_projectors().inner<std::complex<double>>(mt, ichunk, phi_atomic, wf::spin_index(0),
-                wf::band_range(0, nawf));
+        // auto beta_phi_atomic = kp__.beta_projectors().inner<std::complex<double>>(mt, ichunk, phi_atomic, wf::spin_index(0),
+        //         wf::band_range(0, nawf));
+        auto beta_phi_atomic =
+            inner_prod_beta<std::complex<double>>(ctx_.spla_context(), mt, ctx_.host_memory_t(), copy_back_innerb, bp_coeffs,
+                                                  phi_atomic, wf::spin_index(0), wf::band_range(0, nawf));
 
         for (int x = 0; x < 3; x++) {
-            bp_grad.generate(mt, ichunk, x);
+            bp_grad_gen.generate(bp_grad_coeffs, ichunk, x);
 
             /* <dbeta | phi> for this chunk */
-            auto grad_beta_phi_atomic = bp_grad.inner<std::complex<double>>(mt, ichunk, phi_atomic, wf::spin_index(0),
-                    wf::band_range(0, nawf));
+            // auto grad_beta_phi_atomic = bp_grad.inner<std::complex<double>>(mt, ichunk, phi_atomic, wf::spin_index(0),
+            //         wf::band_range(0, nawf));
+            auto grad_beta_phi_atomic = inner_prod_beta<std::complex<double>>(
+                ctx_.spla_context(), mt, ctx_.host_memory_t(), copy_back_innerb, bp_grad_coeffs, phi_atomic,
+                wf::spin_index(0), wf::band_range(0, nawf));
 
-            for (int i = 0; i < kp__.beta_projectors().chunk(ichunk).num_atoms_; i++) {
+            for (int i = 0; i < beta_chunk.num_atoms_; i++) {
                 /* this is a displacement atom */
-                int ja = kp__.beta_projectors().chunk(ichunk).desc_(beta_desc_idx::ia, i);
+                int ja = beta_chunk.desc_(beta_desc_idx::ia, i);
 
                 /* build |phi_atomic_tmp> = | d S / d r_{j} | phi_atomic > */
                 /* it consists of two contributions:
@@ -281,9 +299,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                 phi_atomic_tmp->zero(mt, wf::spin_index(0), wf::band_range(0, nawf));
                 if (ctx_.unit_cell().atom(ja).type().augment()) {
                     q_op__.apply(mt, ichunk, wf::atom_index(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
-                            bp_grad, beta_phi_atomic);
+                            bp_grad_coeffs, beta_phi_atomic);
                     q_op__.apply(mt, ichunk, wf::atom_index(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
-                            kp__.beta_projectors(), grad_beta_phi_atomic);
+                            bp_coeffs, grad_beta_phi_atomic);
                 }
 
                 /* compute O' = d O / d r_{alpha} */
@@ -346,8 +364,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                             &alpha, phi_hub_s_psi_deriv, psi_s_phi_hub[ispn], dn__.at(mt, 0, 0, ispn, x, ja),
                             dn__.ld());
                 } // ispn
-            } //i
-        } // x
+            }     // i
+        }     // x
     } // ichunk
 
     if (ctx_.processing_unit() == sddk::device_t::GPU) {
@@ -379,8 +397,12 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     auto alpha = std::complex<double>(kp__.weight(), 0.0);
 
     Beta_projectors_strain_deriv<double> bp_strain_deriv(ctx_, kp__.gkvec());
+    auto bp_strain_gen = bp_strain_deriv.make_generator();
     /* initialize the beta projectors and derivatives */
-    bp_strain_deriv.prepare();
+    auto bp_strain_coeffs = bp_strain_gen.prepare();
+
+    auto bp_gen = kp__.beta_projectors().make_generator();
+    auto bp_coeffs = bp_gen.prepare();
 
     const int lmax  = ctx_.unit_cell().lmax();
     const int lmmax = utils::lmmax(lmax);
@@ -439,7 +461,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
         ovlp = la::dmatrix<std::complex<double>>(nawf, nawf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf),
-                phi_atomic_S, wf::band_range(0, nawf), ovlp, 0, 0);
+                  phi_atomic_S, wf::band_range(0, nawf), ovlp, 0, 0);
 
         /* a tuple of O^{-1/2}, U, \lambda */
         auto result = inverse_sqrt(ovlp, nawf);
@@ -473,12 +495,13 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             }
 
             /* compute S |d phi_atomic / d epsilon_{mu, nu} > */
-            sirius::apply_S_operator<double, std::complex<double>>(mt, wf::spin_range(0),
-                    wf::band_range(0, nawf), kp__.beta_projectors(), *dphi_atomic, &q_op__, *s_dphi_atomic);
+            sirius::apply_S_operator<double, std::complex<double>>(mt, wf::spin_range(0), wf::band_range(0, nawf),
+                                                                   bp_gen, bp_coeffs, *dphi_atomic, &q_op__,
+                                                                   *s_dphi_atomic);
 
             ds_phi_atomic->zero(mt, wf::spin_index(0), wf::band_range(0, nawf));
-            sirius::apply_S_operator_strain_deriv(mt, 3 * nu + mu, kp__.beta_projectors(),
-                         bp_strain_deriv, phi_atomic, q_op__, *ds_phi_atomic);
+            sirius::apply_S_operator_strain_deriv(mt, 3 * nu + mu, bp_gen, bp_coeffs, bp_strain_gen, bp_strain_coeffs,
+                                                  phi_atomic, q_op__, *ds_phi_atomic);
 
             if (ctx_.cfg().hubbard().full_orthogonalization()) {
                 /* compute <phi_atomic | ds/d epsilon | phi_atomic> */

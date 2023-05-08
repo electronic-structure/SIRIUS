@@ -44,9 +44,9 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__)
     PROFILE("sirius::Hamiltonian_k");
     H0_.local_op().prepare_k(kp_.gkvec_fft());
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
-            kp_.beta_projectors().prepare();
-        }
+        // if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
+        //     kp_.beta_projectors().prepare();
+        // }
         if (H0_.ctx().hubbard_correction()) {
             u_op_ = std::make_shared<U_operator<T>>(H0__.ctx(), H0__.potential().hubbard_potential(), kp__.vk());
             if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
@@ -61,9 +61,9 @@ template <typename T>
 Hamiltonian_k<T>::~Hamiltonian_k()
 {
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
-            kp_.beta_projectors().dismiss();
-        }
+        // if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
+        //     kp_.beta_projectors().dismiss();
+        // }
         if (H0_.ctx().hubbard_correction()) {
             if (H0_.ctx().processing_unit() == sddk::device_t::GPU) {
                 const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S()).deallocate(H0_.ctx().processing_unit_memory_t());

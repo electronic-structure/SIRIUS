@@ -24,6 +24,7 @@
  */
 
 #include "density.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 #include "symmetry/symmetrize.hpp"
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
@@ -818,18 +819,22 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
 template <typename T, typename F>
 static void
-add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_point<T>& kp__, int ichunk__,
+add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>& kp__, beta_projectors_coeffs_t<T>& bp_coeffs,
         sddk::mdarray<std::complex<double>, 4>& density_matrix__)
 {
     /* number of beta projectors */
-    int nbeta = kp__.beta_projectors().chunk(ichunk__).num_beta_;
+    int nbeta = bp_coeffs.beta_chunk.num_beta_;
+    auto mt = ctx__.processing_unit_memory_t();
 
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* total number of occupied bands for this spin */
         int nbnd = kp__.num_occupied_bands(ispn);
         /* compute <beta|psi> */
-        auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
-                kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+        // auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
+        //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+        auto beta_psi =
+            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), bp_coeffs,
+                               kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
         sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
@@ -842,13 +847,13 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_po
             sddk::mdarray<std::complex<double>, 2> bp1(nbeta, nbnd_loc);
             sddk::mdarray<std::complex<double>, 2> bp2(nbeta, nbnd_loc);
             #pragma omp for
-            for (int ia = 0; ia < kp__.beta_projectors().chunk(ichunk__).num_atoms_; ia++) {
-                int nbf = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::nbf, ia);
+            for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+                int nbf = bp_coeffs.beta_chunk.desc_(beta_desc_idx::nbf, ia);
                 if (!nbf) {
                     continue;
                 }
-                int offs = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::offset, ia);
-                int ja = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::ia, ia);
+                int offs = bp_coeffs.beta_chunk.desc_(beta_desc_idx::offset, ia);
+                int ja = bp_coeffs.beta_chunk.desc_(beta_desc_idx::ia, ia);
 
                 for (int i = 0; i < nbnd_loc; i++) {
                     /* global index of band */
@@ -873,11 +878,11 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context const& ctx__, K_po
 
 template <typename T, typename F>
 static void
-add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K_point<T>& kp__, int ichunk__,
+add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point<T>& kp__, beta_projectors_coeffs_t<T>& bp_coeffs,
         sddk::mdarray<std::complex<double>, 4>& density_matrix__)
 {
     /* number of beta projectors */
-    int nbeta = kp__.beta_projectors().chunk(ichunk__).num_beta_;
+    int nbeta = bp_coeffs.beta_chunk.num_beta_;
 
     /* total number of occupied bands */
     int nbnd = kp__.num_occupied_bands();
@@ -891,11 +896,16 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
 
     auto& uc = ctx__.unit_cell();
 
+    auto mt = ctx__.processing_unit_memory_t();
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* compute <beta|psi> */
-        auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
-                kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
-        #pragma omp parallel for schedule(static)
+        // auto beta_psi = kp__.beta_projectors().template inner<F>(ctx__.processing_unit_memory_t(), ichunk__,
+        //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+        auto beta_psi =
+            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), bp_coeffs,
+                               kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+
+#pragma omp parallel for schedule(static)
         for (int i = 0; i < nbnd_loc; i++) {
             int j = spl_nbnd[i];
 
@@ -906,13 +916,13 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
             }
         }
     }
-    for (int ia = 0; ia < kp__.beta_projectors().chunk(ichunk__).num_atoms_; ia++) {
-        int nbf = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::nbf, ia);
+    for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+        int nbf = bp_coeffs.beta_chunk.desc_(beta_desc_idx::nbf, ia);
         if (!nbf) {
             continue;
         }
-        int offs = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::offset, ia);
-        int ja   = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::ia, ia);
+        int offs = bp_coeffs.beta_chunk.desc_(beta_desc_idx::offset, ia);
+        int ja   = bp_coeffs.beta_chunk.desc_(beta_desc_idx::ia, ia);
         if (uc.atom(ja).type().spin_orbit_coupling()) {
             sddk::mdarray<std::complex<double>, 3> bp3(nbf, nbnd_loc, 2);
             bp3.zero();
@@ -982,10 +992,10 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
 
     if (nbnd_loc) {
         #pragma omp parallel for
-        for (int ia = 0; ia < kp__.beta_projectors().chunk(ichunk__).num_atoms_; ia++) {
-            int nbf  = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::nbf, ia);
-            int offs = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::offset, ia);
-            int ja   = kp__.beta_projectors().chunk(ichunk__).desc_(beta_desc_idx::ia, ia);
+        for (int ia = 0; ia < bp_coeffs.beta_chunk.num_atoms_; ia++) {
+            int nbf  = bp_coeffs.beta_chunk.desc_(beta_desc_idx::nbf, ia);
+            int offs = bp_coeffs.beta_chunk.desc_(beta_desc_idx::offset, ia);
+            int ja   = bp_coeffs.beta_chunk.desc_(beta_desc_idx::ia, ia);
             /* compute diagonal spin blocks */
             for (int ispn = 0; ispn < 2; ispn++) {
                 la::wrap(la::lib_t::blas)
@@ -1005,7 +1015,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context const& ctx__, K
 
 template <typename T, typename F>
 static void
-add_k_point_contribution_dm_pwpp(Simulation_context const& ctx__, K_point<T>& kp__,
+add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__,
         sddk::mdarray<std::complex<double>, 4>& density_matrix__)
 {
     PROFILE("sirius::add_k_point_contribution_dm_pwpp");
@@ -1014,19 +1024,21 @@ add_k_point_contribution_dm_pwpp(Simulation_context const& ctx__, K_point<T>& kp
         return;
     }
 
-    kp__.beta_projectors().prepare();
+    auto bp_gen = kp__.beta_projectors().make_generator();
+    auto bp_coeffs = bp_gen.prepare();
 
     for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
-        kp__.beta_projectors().generate(ctx__.processing_unit_memory_t(), ichunk);
+        // kp__.beta_projectors().generate(ctx__.processing_unit_memory_t(), ichunk);
+        bp_gen.generate(bp_coeffs, ichunk);
 
         if (ctx__.num_mag_dims() != 3) {
-            add_k_point_contribution_dm_pwpp_collinear<T, F>(ctx__, kp__, ichunk, density_matrix__);
+            add_k_point_contribution_dm_pwpp_collinear<T, F>(ctx__, kp__, bp_coeffs, density_matrix__);
         } else {
-            add_k_point_contribution_dm_pwpp_noncollinear<T, F>(ctx__, kp__, ichunk, density_matrix__);
+            add_k_point_contribution_dm_pwpp_noncollinear<T, F>(ctx__, kp__, bp_coeffs, density_matrix__);
         }
     }
 
-    kp__.beta_projectors().dismiss();
+    // kp__.beta_projectors().dismiss();
 }
 
 void

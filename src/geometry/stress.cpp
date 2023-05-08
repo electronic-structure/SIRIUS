@@ -138,7 +138,7 @@ Stress::calc_stress_hubbard()
         if (is_device_memory(ctx_.processing_unit_memory_t())) {
             dn.zero(ctx_.processing_unit_memory_t());
         }
-        kp->beta_projectors().prepare();
+        // kp->beta_projectors().prepare();
         auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
         auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
         auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
@@ -204,7 +204,6 @@ Stress::calc_stress_hubbard()
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
-        kp->beta_projectors().dismiss();
     }
 
     /* global reduction */
