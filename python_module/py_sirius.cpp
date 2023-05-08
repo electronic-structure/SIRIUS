@@ -15,6 +15,9 @@ using json = nlohmann::json;
 
 using nlohmann::basic_json;
 
+void init_operators(py::module&);
+void init_r3(py::module&);
+
 // inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object
 pj_convert(json& node)
@@ -59,27 +62,6 @@ pj_convert(json& node)
             return py::reinterpret_borrow<py::object>(Py_None);
         }
     }
-}
-
-std::string
-show_mat(const r3::matrix<double>& mat)
-{
-    std::string str = "[";
-    for (int i = 0; i < 2; ++i) {
-        str = str + "[" + std::to_string(mat(i, 0)) + "," + std::to_string(mat(i, 1)) + "," +
-              std::to_string(mat(i, 2)) + "]" + "\n";
-    }
-    str = str + "[" + std::to_string(mat(2, 0)) + "," + std::to_string(mat(2, 1)) + "," + std::to_string(mat(2, 2)) +
-          "]" + "]";
-    return str;
-}
-
-template <class T>
-std::string
-show_vec(const r3::vector<T>& vec)
-{
-    std::string str = "[" + std::to_string(vec[0]) + "," + std::to_string(vec[1]) + "," + std::to_string(vec[2]) + "]";
-    return str;
 }
 
 /* typedefs */
@@ -172,6 +154,9 @@ PYBIND11_MODULE(py_sirius, m)
         return;
     }
 
+    init_operators(m);
+    init_r3(m);
+
     m.def("num_devices", &acc::num_devices);
 
     py::class_<mpi::Communicator>(m, "Communicator");
@@ -260,59 +245,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("max_mt_radius", &Unit_cell::max_mt_radius)
         .def_property_readonly("omega", &Unit_cell::omega)
         .def("print_info", &Unit_cell::print_info);
-
-    py::class_<r3::vector<int>>(m, "r3::vector_int")
-        .def(py::init<std::vector<int>>())
-        .def("__call__", [](const r3::vector<int>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const r3::vector<int>& vec) { return show_vec(vec); })
-        .def("__len__", &r3::vector<int>::length)
-        .def("__array__", [](r3::vector<int>& v3d) {
-            py::array_t<int> x(3);
-            auto r = x.mutable_unchecked<1>();
-            r(0)   = v3d[0];
-            r(1)   = v3d[1];
-            r(2)   = v3d[2];
-            return x;
-        });
-
-    py::class_<r3::vector<double>>(m, "r3::vector_double")
-        .def(py::init<std::vector<double>>())
-        .def("__call__", [](const r3::vector<double>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const r3::vector<double>& vec) { return show_vec(vec); })
-        .def("__array__",
-             [](r3::vector<double>& v3d) {
-                 py::array_t<double> x(3);
-                 auto r = x.mutable_unchecked<1>();
-                 r(0)   = v3d[0];
-                 r(1)   = v3d[1];
-                 r(2)   = v3d[2];
-                 return x;
-             })
-        .def("__len__", &r3::vector<double>::length)
-        .def(py::self - py::self)
-        .def(py::self * float())
-        .def(py::self + py::self)
-        .def(py::init<r3::vector<double>>());
-
-    py::class_<r3::matrix<double>>(m, "r3::matrix")
-        .def(py::init<std::vector<std::vector<double>>>())
-        .def(py::init<>())
-        .def("__call__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
-        .def(
-            "__array__",
-            [](const r3::matrix<double>& mat) {
-                return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
-            },
-            py::return_value_policy::reference_internal)
-        .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
-        .def("__mul__",
-             [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
-                 r3::vector<double> res = dot(obj, b);
-                 return res;
-             })
-        .def("__repr__", [](const r3::matrix<double>& mat) { return show_mat(mat); })
-        .def(py::init<r3::matrix<double>>())
-        .def("det", &r3::matrix<double>::det);
 
     py::class_<Field4D>(m, "Field4D")
         .def(
@@ -474,6 +406,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
         .def("weight", &K_point<double>::weight)
+        .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors, py::const_),
+             py::return_value_policy::reference_internal)
         .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
              py::return_value_policy::reference_internal);
 
@@ -508,13 +442,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_kpoint",
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, r3::vector<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
-
-    py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
-
-    py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
-        .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1, 3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())

@@ -20,7 +20,7 @@ else()
 endif()
 
 set(libname py_sirius)
-pybind11_add_module(${libname} py_sirius.cpp py_sirius_operators.cpp)
+pybind11_add_module(${libname} py_sirius.cpp py_sirius_operators.cpp py_sirius_r3.cpp)
 
 add_dependencies(${libname} sirius)
 target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)
