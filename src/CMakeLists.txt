@@ -108,8 +108,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocsolver>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
-			    )
+                                    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>)
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
