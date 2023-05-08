@@ -12,7 +12,7 @@ namespace sirius {
 
 inline void
 apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
-                  wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
+                  wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>> swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -25,6 +25,7 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     }
     auto H    = H0(kp);
     auto& ctx = H0.ctx();
+
     /* apply H to all wave functions */
     int N = 0;
     int n = num_wf;

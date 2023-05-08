@@ -30,6 +30,9 @@
 #ifdef SIRIUS_NLCGLIB
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
+#include "nlcglib/ultrasoft_precond.hpp"
+#include "nlcglib/overlap.hpp"
+#include "hamiltonian/hamiltonian.hpp"
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "multi_cg/multi_cg.hpp"
@@ -364,7 +367,12 @@ sirius_initialize:
 void
 sirius_initialize(bool const* call_mpi_init__, int* error_code__)
 {
-    call_sirius([&]() { sirius::initialize(*call_mpi_init__); }, error_code__);
+    call_sirius([&]() {
+        sirius::initialize(*call_mpi_init__);
+#ifdef SIRIUS_NLCGLIB
+        nlcglib::initialize();
+#endif
+    }, error_code__);
 }
 
 /*
@@ -396,6 +404,9 @@ sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, boo
 {
     call_sirius(
         [&]() {
+#ifdef SIRIUS_NLCGLIB
+            nlcglib::finalize();
+#endif
             bool mpi_fin{true};
             bool device_reset{true};
             bool fftw_fin{true};
@@ -1850,136 +1861,6 @@ sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
         error_code__);
 }
 
-/*
-@api begin
-sirius_find_ground_state_robust:
-  doc: Find the ground state using the robust wave-function optimisation method.
-  full_doc: The code has to be compiled with NLCG library in order to enable this feature.
-  arguments:
-    gs_handler:
-      type: gs_handler
-      attr: in, required
-      doc: Handler of the ground state.
-    ks_handler:
-      type: ks_handler
-      attr: in, required
-      doc: Handler of the k-point set.
-    scf_density_tol:
-      type: double
-      attr: in, optional
-      doc: Tolerance on RMS in density.
-    scf_energy_tol:
-      type: double
-      attr: in, optional
-      doc: Tolerance in total energy difference.
-    scf_ninit:
-      type: int
-      attr: in, optional
-      doc: Number of SCF iterations.
-    temp:
-      type: double
-      attr: in, optional
-      doc: Temperature.
-    tol:
-      type: double
-      attr: in, optional
-      doc: Tolerance.
-    cg_restart:
-      type: int
-      attr: in, optional
-      doc: CG restart.
-    kappa:
-      type: double
-      attr: in, optional
-      doc: Scalar preconditioner for pseudo Hamiltonian
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code
-@api end
-*/
-void
-sirius_find_ground_state_robust(void* const* gs_handler__, void* const* ks_handler__, double const* scf_density_tol__,
-                                double const* scf_energy_tol__, int const* scf_ninit__, double const* temp__,
-                                double const* tol__, int* error_code__)
-{
-#ifdef SIRIUS_NLCGLIB
-    call_sirius(
-        [&]() {
-            auto& gs  = get_gs(gs_handler__);
-            auto& ctx = gs.ctx();
-            auto& inp = ctx.cfg().parameters();
-            gs.initial_state();
-
-            double rho_tol = inp.density_tol();
-            if (scf_density_tol__) {
-                rho_tol = *scf_density_tol__;
-            }
-
-            double etol = inp.energy_tol();
-            if (scf_energy_tol__) {
-                etol = *scf_energy_tol__;
-            }
-
-            int niter = inp.num_dft_iter();
-            if (scf_ninit__) {
-                niter = *scf_ninit__;
-            }
-
-            // do a couple of SCF iterations to obtain a good initial guess
-            bool save_state = false;
-            auto result = gs.find(rho_tol, etol, ctx.cfg().iterative_solver().energy_tolerance(), niter, save_state);
-
-            // now call the direct solver
-            // call nlcg solver
-            auto& potential = gs.potential();
-            auto& density   = gs.density();
-
-            auto& kset = get_ks(ks_handler__);
-
-            auto nlcg_params  = ctx.cfg().nlcg();
-            double temp       = nlcg_params.T();
-            double tol        = nlcg_params.tol();
-            double kappa      = nlcg_params.kappa();
-            double tau        = nlcg_params.tau();
-            int maxiter       = nlcg_params.maxiter();
-            int restart       = nlcg_params.restart();
-            std::string smear = ctx.cfg().parameters().smearing();
-            std::string pu    = ctx.cfg().control().processing_unit();
-
-            nlcglib::smearing_type smearing;
-            if (smear.compare("FD") == 0) {
-                smearing = nlcglib::smearing_type::FERMI_DIRAC;
-            } else if (smear.compare("GS") == 0) {
-                smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
-            } else {
-                RTE_THROW("invalid smearing type given");
-            }
-
-            sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.processing_unit_memory_t())) {
-                if (pu.empty() || pu.compare("gpu") == 0) {
-                    nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                } else if (pu.compare("cpu") == 0) {
-                    nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                } else {
-                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
-                }
-            } else {
-                if (pu.empty() || pu.compare("gpu") == 0) {
-                    nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                } else if (pu.compare("cpu") == 0) {
-                    nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-                } else {
-                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
-                }
-            }
-        },
-        error_code__);
-#else
-    RTE_THROW("SIRIUS was not compiled with NLCG option.");
-#endif
-}
 
 /*
 @api begin
@@ -5681,6 +5562,11 @@ sirius_nlcg_params:
       type: string
       attr: in, required
       doc: processing_unit = ["cpu"|"gpu"|"none"]
+    converged:
+      type: bool
+      attr: out, required
+      doc: Boolean variable indicating if the calculation has converged
+      doc:
     error_code:
       type: int
       attr: out, optional
@@ -5691,11 +5577,12 @@ sirius_nlcg_params:
 void
 sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double const* temp__, char const* smearing__,
                    double const* kappa__, double const* tau__, double const* tol__, int const* maxiter__,
-                   int const* restart__, char const* processing_unit__, int* error_code__)
+                   int const* restart__, char const* processing_unit__, bool* converged__, int* error_code__)
 {
     call_sirius(
         [&]() {
 #if defined(SIRIUS_NLCGLIB)
+            PROFILE("sirius::nlcglib");
             // call nlcg solver
             auto& gs        = get_gs(handler__);
             auto& potential = gs.potential();
@@ -5714,11 +5601,29 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             std::string smear(smearing__);
             std::string pu(processing_unit__);
 
+            sddk::device_t processing_unit{ctx.processing_unit()};
+
+            if(pu.compare("gpu") == 0) {
+                processing_unit = sddk::device_t::GPU;
+            } else if (pu.compare("cpu") == 0) {
+                processing_unit = sddk::device_t::CPU;
+            } else if (pu.compare("none") == 0 || pu.empty()) {
+                processing_unit = ctx.processing_unit();
+            } else {
+                RTE_THROW("invalid processing unit given: " + pu);
+            }
+
             nlcglib::smearing_type smearing_t;
             if (smear.compare("FD") == 0) {
                 smearing_t = nlcglib::smearing_type::FERMI_DIRAC;
             } else if (smear.compare("GS") == 0) {
                 smearing_t = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+            } else if (smear.compare("GAUSS") == 0) {
+                smearing_t = nlcglib::smearing_type::GAUSS;
+            } else if (smear.compare("MP") == 0) {
+                smearing_t = nlcglib::smearing_type::METHFESSEL_PAXTON;
+            } else if (smear.compare("COLD") == 0) {
+                smearing_t = nlcglib::smearing_type::COLD;
             } else {
                 RTE_THROW("invalid smearing type given: " + smear);
             }
@@ -5728,32 +5633,35 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
                 pu = ctx.cfg().control().processing_unit();
             }
 
-            nlcglib::nlcg_info info;
-
             sirius::Energy energy(kset, density, potential);
-            if (is_device_memory(ctx.processing_unit_memory_t())) {
-                if (pu.empty() || pu.compare("gpu") == 0) {
-                    info = nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
-                } else if (pu.compare("cpu") == 0) {
-                    info = nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
-                } else {
-                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
+
+            sirius::Hamiltonian0<double> H0(potential, false);
+
+            sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
+            sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q());
+
+            // ultrasoft pp
+            nlcglib::nlcg_info info;
+            switch (processing_unit) {
+                case sddk::device_t::CPU: {
+                    info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+                    break;
                 }
-            } else {
-                if (pu.empty() || pu.compare("cpu") == 0) {
-                    info = nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
-                } else if (pu.compare("gpu") == 0) {
-                    info = nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
-                } else {
-                    RTE_THROW("invalid processing unit for nlcg given: " + pu);
+                case sddk::device_t::GPU: {
+                    info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+                    break;
                 }
             }
-#else
+
+            // return exit state of nlcglib to QE
+            *converged__ = info.converged;
+#else /* SIRIUS_NLCGLIB */
             RTE_THROW("SIRIUS was not compiled with NLCG option.");
-#endif
+#endif /* SIRIUS_NLCGLIB */
         },
         error_code__);
 }
+
 
 /*
 @api begin

@@ -22,7 +22,7 @@
 #include "dft/energy.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "hamiltonian/inverse_overlap.hpp"
-#include "preconditioner/ultrasoft_precond.hpp"
+#include "nlcglib/preconditioner/ultrasoft_precond_k.hpp"
 
 
 #endif /* PYTHON_MODULE_INCLUDES_H */
