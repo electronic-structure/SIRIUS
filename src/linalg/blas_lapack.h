@@ -398,6 +398,16 @@ void FORTRAN(zgetrf)(ftn_int*            M,
                      ftn_int*            IPIV,
                      ftn_int*            INFO);
 
+void FORTRAN(zgetrs)(ftn_char UPLO,
+                     ftn_int* n,
+                     ftn_int* nrhs,
+                     ftn_double_complex* A,
+                     ftn_int* lda,
+                     ftn_int* ipiv,
+                     ftn_double_complex* B,
+                     ftn_int* ldb,
+                     ftn_int* INFO);
+
 void FORTRAN(spotrf)(ftn_char            UPLO,
                      ftn_int*            N,
                      ftn_single*         A,
@@ -1069,6 +1079,8 @@ void FORTRAN(cscal)(const ftn_int* N, const ftn_complex* ALPHA, ftn_complex* X, 
 void FORTRAN(zscal)(const ftn_int* N, const ftn_double_complex* ALPHA, ftn_double_complex* X, const ftn_int* INCX);
 
 void FORTRAN(dlartg)(ftn_double * f, ftn_double * g, ftn_double * cs, ftn_double * sn, ftn_double * r);
+void FORTRAN(daxpy)(const ftn_int*, const ftn_double*, const ftn_double*, const ftn_int*, ftn_double*, ftn_int*);
+void FORTRAN(zaxpy)(const ftn_int*, const ftn_double_complex*, const ftn_double_complex*, const ftn_int*, ftn_double_complex*, ftn_int*);
 }
 
 #endif

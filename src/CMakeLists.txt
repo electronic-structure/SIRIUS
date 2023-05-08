@@ -61,6 +61,7 @@ set(_SOURCES
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
+  "gpu/rocsolver.cpp"
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
@@ -105,6 +106,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
+                                    $<$<BOOL:${USE_ROCM}>:roc::rocsolver>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
 				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
 			    )

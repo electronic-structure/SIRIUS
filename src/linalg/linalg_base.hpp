@@ -25,8 +25,12 @@
 #ifndef __LINALG_BASE_HPP__
 #define __LINALG_BASE_HPP__
 
+#include <algorithm>
+#include <map>
+
 #include "blas_lapack.h"
 #include "scalapack.h"
+#include <mpi.h>
 
 namespace la {
 
