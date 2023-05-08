@@ -76,16 +76,6 @@ def eye_like(shapes):
     return out
 
 
-# def identity_op_like(X):
-#     from scipy.sparse.linalg import LinearOperator
-
-#     if isinstance(X, CoefficientArrayBase):
-#         for k in X:
-#             n = X[k].shape[0]
-
-#     raise TypeError
-
-
 def diag(x):
     """
     TODO: make a check not to flatten a 2d matrix
@@ -177,9 +167,8 @@ class CoefficientArrayBase(collections.abc.Mapping):
 
     def __len__(self):
         return len(self._data)
-
-    # workaround for numpy exploiting the __iter__(self)
-    __array_priority__ = 10000
+    # # workaround for numpy exploiting the __iter__(self)
+    # __array_priority__ = 10000
 
 
 class CoefficientArray(CoefficientArrayBase):
@@ -220,6 +209,34 @@ class CoefficientArray(CoefficientArrayBase):
                     self._data[key] = self.ctype(item, dtype=self.dtype, copy=False)
                 else:
                     self._data[key] = item
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc not in (np.sqrt, np.log, np.absolute, np.conjugate, np.multiply, np.divide):
+            return NotImplemented
+        if method == '__call__':
+            if ufunc == np.sqrt:
+                return self.sqrt()
+            elif ufunc == np.log:
+                return self.log()
+            elif ufunc == np.absolute:
+                return self.abs()
+            elif ufunc == np.conjugate:
+                return self.conjugate()
+            elif ufunc == np.multiply:
+                if isinstance(inputs[0], CoefficientArray):
+                    return NotImplemented
+                else:
+                    return self.__mul__(inputs[0])
+            elif ufunc == np.divide:
+                if isinstance(inputs[0], CoefficientArray):
+                    return NotImplemented
+                else:
+                    return self.__rtruediv__(inputs[0])
+
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
 
     def sum(self, **kwargs):
         """
