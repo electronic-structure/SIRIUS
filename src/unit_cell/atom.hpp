@@ -122,7 +122,7 @@ class Atom
         }
 
         if (!type().parameters().full_potential()) {
-            int nbf = type().mt_lo_basis_size();
+            int nbf = type().mt_basis_size();
             d_mtrx_ = sddk::mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1, sddk::memory_t::host,
                                                "Atom::d_mtrx_");
             d_mtrx_.zero();
