@@ -97,7 +97,7 @@ void Beta_projectors_base<T>::split_in_chunks()
 
     num_beta_t_ = 0;
     for (int iat = 0; iat < uc.num_atom_types(); iat++) {
-        num_beta_t_ += uc.atom_type(iat).mt_lo_basis_size();
+        num_beta_t_ += uc.atom_type(iat).mt_basis_size();
     }
 }
 
