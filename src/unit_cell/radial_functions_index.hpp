@@ -198,7 +198,7 @@ class radial_functions_index
     /// Total size of the index (total number of radial functions).
     /** Radial functions can have a repeating orbital quantum number, for example {2s, 2s, 3p, 3p, 4d} configuration
      *  corresponds to {l=0, l=0, l=1, l=1, l=2} radial functions index. */
-    int size_{0};
+    int size_{0}; // TODO: is it needed?
     /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
 
