@@ -91,16 +91,29 @@ Atom_type::init(int offset_lo__)
         if (max_aw_order_ > 3) {
             RTE_THROW("maximum aw order > 3");
         }
-    }
-    /* build radial function index */
-    for (auto aw : aw_descriptors_) {
-        RTE_ASSERT(aw.size() <= 3);
-        for (auto e : aw) {
-            indexr1_.add(angular_momentum(e.l));
+        /* build radial function index */
+        for (auto aw : aw_descriptors_) {
+            RTE_ASSERT(aw.size() <= 3);
+            for (auto e : aw) {
+                indexr1_.add(angular_momentum(e.l));
+            }
         }
-    }
-    for (auto e : lo_descriptors_) {
-        indexr1_.add_lo(angular_momentum(e.l));
+        for (auto e : lo_descriptors_) {
+            indexr1_.add_lo(angular_momentum(e.l));
+        }
+    } else {
+        for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
+            if (this->spin_orbit_coupling()) {
+                if (this->beta_radial_function1(i).first.l() == 0) {
+                    indexr1_.add(this->beta_radial_function1(i).first);
+                } else {
+                    indexr1_.add(this->beta_radial_function1(i).first, this->beta_radial_function1(i + 1).first);
+                    i++;
+                }
+            } else {
+                indexr1_.add(this->beta_radial_function1(i).first);
+            }
+        }
     }
 
     /* initialize index of radial functions */
@@ -108,7 +121,7 @@ Atom_type::init(int offset_lo__)
 
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
-    indexb1_ = experimental::basis_functions_index(indexr1_, false);
+    indexb1_ = experimental::basis_functions_index1(indexr1_, false);
 
     /* initialize index for wave functions */
     if (ps_atomic_wfs_.size()) {
@@ -127,7 +140,7 @@ Atom_type::init(int offset_lo__)
 
     if (!parameters_.full_potential()) {
         RTE_ASSERT(mt_radial_basis_size() == num_beta_radial_functions());
-        RTE_ASSERT(lmax_beta() == indexr().lmax());
+        //RTE_ASSERT(lmax_beta() == indexr1().lmax());
     }
 
     /* get number of valence electrons */
@@ -387,7 +400,7 @@ Atom_type::read_input_core(nlohmann::json const& parser)
             if (n <= 0 || iss.fail()) {
                 std::stringstream s;
                 s << "wrong principal quantum number : " << std::string(1, c1);
-                TERMINATE(s);
+                RTE_THROW(s);
             }
 
             switch (c2) {
@@ -410,7 +423,7 @@ Atom_type::read_input_core(nlohmann::json const& parser)
                 default: {
                     std::stringstream s;
                     s << "wrong angular momentum label : " << std::string(1, c2);
-                    TERMINATE(s);
+                    RTE_THROW(s);
                 }
             }
 
@@ -498,7 +511,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     auto rgrid = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
     if (static_cast<int>(rgrid.size()) != nmtp) {
-        TERMINATE("wrong mesh size");
+        RTE_THROW("wrong mesh size");
     }
     /* set the radial grid */
     set_radial_grid(nmtp, rgrid.data());
@@ -514,7 +527,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         ps_total_charge_density().size() != rgrid.size()) {
         std::cout << local_potential().size() << " " << ps_core_charge_density().size() << " "
                   << ps_total_charge_density().size() << std::endl;
-        TERMINATE("wrong array size");
+        RTE_THROW("wrong array size");
     }
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
@@ -543,7 +556,16 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             }
         }
         add_beta_radial_function(l, beta);
-    }
+        if (spin_orbit_coupling_) {
+            if (l >= 0) {
+                add_beta_radial_function(angular_momentum(l, 1), beta);
+            } else {
+                add_beta_radial_function(angular_momentum(-l, -1), beta);
+            }
+        } else {
+            add_beta_radial_function(angular_momentum(l), beta);
+        }
+     }
 
     sddk::mdarray<double, 2> d_mtrx(nbf, nbf);
     d_mtrx.zero();
@@ -560,11 +582,10 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
             int i = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
             int j = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
-            // int idx  = j * (j + 1) / 2 + i;
-            int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
+            int l = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
             if ((int)qij.size() != num_mt_points()) {
-                TERMINATE("wrong size of qij");
+                RTE_THROW("wrong size of qij");
             }
             add_q_radial_function(i, j, l, qij);
         }
@@ -655,7 +676,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
             s << "wrong size of ae_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ae_wfc radial functions in the file: " << wfc.size() << std::endl
               << "radial grid size: " << num_mt_points();
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         add_ae_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
@@ -667,7 +688,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
             s << "wrong size of ps_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ps_wfc radial functions in the file: " << wfc.size() << std::endl
               << "radial grid size: " << num_mt_points();
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         add_ps_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
