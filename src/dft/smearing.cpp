@@ -128,17 +128,6 @@ mp_coefficients(int n)
     return sign / tgamma(n + 1) / std::pow(4, n) / sqrtpi;
 }
 
-// double
-// methfessel_paxton::delta(double x__, double width__, int n__)
-// {
-//     double result{0};
-//     double z = -x__ / width__;
-//     for (int i = 1; i <= n__; ++i) {
-//         result += mp_coefficients(i) * sf::hermiteh(2 * i, z) * std::exp(-z * z);
-//     }
-//     return result;
-// }
-
 double
 methfessel_paxton::occupancy(double x__, double width__, int n__)
 {

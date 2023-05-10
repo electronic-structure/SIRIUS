@@ -96,7 +96,6 @@ struct cold
  *  http://dx.doi.org/10.1103/PhysRevB.40.3616
  */
 struct methfessel_paxton {
-    // static double delta(double x__, double width__, int n__);
     static double dxdelta(double x__, double width__, int n__);
     static double delta(double x__, double width__, int n__);
     static double occupancy(double x__, double width__, int n__);
