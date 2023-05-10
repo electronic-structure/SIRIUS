@@ -59,7 +59,7 @@ fermi_dirac::entropy(double x__, double width__)
  * \f]
  */
 double
-fermi_dirac::occupancy_deriv2(double x__, double width__)
+fermi_dirac::dxdelta(double x__, double width__)
 {
     double exw = std::exp(x__ / width__);
     double w2  = width__ * width__;
@@ -95,7 +95,7 @@ cold::delta(double x__, double width__)
  * w^2}, \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
  */
 double
-cold::occupancy_deriv2(double x__, double width__)
+cold::dxdelta(double x__, double width__)
 {
   double sqrt2  = std::sqrt(2.0);
   double z      = x__ / width__ - 1 / sqrt2;
@@ -128,16 +128,16 @@ mp_coefficients(int n)
     return sign / tgamma(n + 1) / std::pow(4, n) / sqrtpi;
 }
 
-double
-methfessel_paxton::delta(double x__, double width__, int n__)
-{
-    double result{0};
-    double z = -x__ / width__;
-    for (int i = 1; i <= n__; ++i) {
-        result += mp_coefficients(i) * sf::hermiteh(2 * i, z) * std::exp(-z * z);
-    }
-    return result;
-}
+// double
+// methfessel_paxton::delta(double x__, double width__, int n__)
+// {
+//     double result{0};
+//     double z = -x__ / width__;
+//     for (int i = 1; i <= n__; ++i) {
+//         result += mp_coefficients(i) * sf::hermiteh(2 * i, z) * std::exp(-z * z);
+//     }
+//     return result;
+// }
 
 double
 methfessel_paxton::occupancy(double x__, double width__, int n__)
@@ -154,7 +154,7 @@ methfessel_paxton::occupancy(double x__, double width__, int n__)
 }
 
 double
-methfessel_paxton::occupancy_deriv(double x__, double width__, int n__)
+methfessel_paxton::delta(double x__, double width__, int n__)
 {
     double z      = -x__ / width__;
     double result = -std::exp(-z * z) / std::sqrt(pi) / width__ * (-1);
@@ -166,7 +166,7 @@ methfessel_paxton::occupancy_deriv(double x__, double width__, int n__)
 }
 
 double
-methfessel_paxton::occupancy_deriv2(double x__, double width__, int n__)
+methfessel_paxton::dxdelta(double x__, double width__, int n__)
 {
     double z      = -x__ / width__;
     double result = 2 * std::exp(-z * z) * z / std::sqrt(pi) / (width__ * width__);

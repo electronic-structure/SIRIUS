@@ -69,10 +69,10 @@ struct gaussian
 
 struct fermi_dirac
 {
+    static double dxdelta(double x__, double width__);
     static double delta(double x__, double width__);
     static double occupancy(double x__, double width__);
     static double entropy(double x__, double width__);
-    static double occupancy_deriv2(double x__, double width__);
 };
 
 struct cold
@@ -86,7 +86,7 @@ struct cold
      *     \frac{\partial^2 f(x,w)}{\partial x^2} = \frac{e^{-y^2} \left(2 \sqrt{2} y^2-2 y-\sqrt{2}\right)}{\sqrt{\pi }
      * w^2}, \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
      */
-    static double occupancy_deriv2(double x__, double width__);
+    static double dxdelta(double x__, double width__);
 };
 
 /** Methfessel-Paxton smearing.
@@ -96,10 +96,10 @@ struct cold
  *  http://dx.doi.org/10.1103/PhysRevB.40.3616
  */
 struct methfessel_paxton {
+    // static double delta(double x__, double width__, int n__);
+    static double dxdelta(double x__, double width__, int n__);
     static double delta(double x__, double width__, int n__);
     static double occupancy(double x__, double width__, int n__);
-    static double occupancy_deriv(double x__, double width__, int n__);
-    static double occupancy_deriv2(double x__, double width__, int n__);
     static double entropy(double x__, double width__, int n__);
 };
 
@@ -158,7 +158,7 @@ delta(smearing_t type__, double width__)
             return [width__](double x__) { return cold::delta(x__, width__); };
         }
         case smearing_t::methfessel_paxton: {
-            return [width__](double x__) { return methfessel_paxton::occupancy_deriv(x__, width__, 1); };
+            return [width__](double x__) { return methfessel_paxton::delta(x__, width__, 1); };
         }
         default: {
             throw std::runtime_error("wrong type of smearing");
@@ -167,20 +167,20 @@ delta(smearing_t type__, double width__)
 }
 
 inline std::function<double(double)>
-occupancy_deriv2(smearing_t type__, double width__)
+dxdelta(smearing_t type__, double width__)
 {
     switch (type__) {
         case smearing_t::gaussian: {
             throw std::runtime_error("not available");
         }
         case smearing_t::fermi_dirac: {
-            return [width__](double x__) { return fermi_dirac::occupancy_deriv2(x__, width__); };
+            return [width__](double x__) { return fermi_dirac::dxdelta(x__, width__); };
         }
         case smearing_t::cold: {
-            return [width__](double x__) { return cold::occupancy_deriv2(x__, width__); };
+            return [width__](double x__) { return cold::dxdelta(x__, width__); };
         }
         case smearing_t::methfessel_paxton: {
-            return [width__](double x__) { return methfessel_paxton::occupancy_deriv2(x__, width__, 1); };
+            return [width__](double x__) { return methfessel_paxton::dxdelta(x__, width__, 1); };
         }
         default: {
             throw std::runtime_error("wrong type of smearing");
