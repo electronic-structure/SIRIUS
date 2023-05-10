@@ -389,6 +389,7 @@ class radial_functions_index
 
     inline auto size() const
     {
+        RTE_ASSERT(size_ == vrd_.size());
         return size_;
     }
 
