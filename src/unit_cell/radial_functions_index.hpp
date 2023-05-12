@@ -120,6 +120,11 @@ inline bool operator==(angular_momentum lhs__, angular_momentum rhs__)
     return (lhs__.l() == rhs__.l()) && (lhs__.s() == rhs__.s());
 }
 
+inline bool operator!=(angular_momentum lhs__, angular_momentum rhs__)
+{
+    return !(lhs__ == rhs__);
+}
+
 /// Output angular momentum to a stream.
 inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
 {
@@ -192,13 +197,11 @@ struct radial_function_index_descriptor
 namespace experimental {
 
 /// Radial basis function index.
+/** Radial functions can have a repeating orbital quantum number, for example {2s, 2s, 3p, 3p, 4d} configuration
+ *  corresponds to {l=0, l=0, l=1, l=1, l=2} radial functions index. */
 class radial_functions_index
 {
   private:
-    /// Total size of the index (total number of radial functions).
-    /** Radial functions can have a repeating orbital quantum number, for example {2s, 2s, 3p, 3p, 4d} configuration
-     *  corresponds to {l=0, l=0, l=1, l=1, l=2} radial functions index. */
-    int size_{0}; // TODO: is it needed?
     /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
 
@@ -229,16 +232,18 @@ class radial_functions_index
             index_by_j_order_.resize(l + 1);
         }
 
+        /* size of array is equal to current index */
+        auto size = this->size();
+
         std::array<int, 2> idx({-1, -1});
         /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
-        idx[std::max(s, 0)] = size_;
+        idx[std::max(s, 0)] = size;
         /* current order */
         auto o = static_cast<int>(index_by_j_order_[l].size());
         /* for the reverse mapping */
         index_by_j_order_[l].push_back(idx);
         /* add descriptor to the list */
-        vrd_.push_back(radial_function_index_descriptor(am__, o, rf_index(size_)));
-        size_++;
+        vrd_.push_back(radial_function_index_descriptor(am__, o, rf_index(size)));
     }
 
     /// Add local-orbital type of radial function.
@@ -248,13 +253,12 @@ class radial_functions_index
     {
         /* mark the start of the local orbital block of radial functions */
         if (offset_lo_ < 0) {
-            offset_lo_ = size_;
+            offset_lo_ = this->size();
         }
         /* add current index of radial function for reverese mapping from local orbital index */
-        //index_by_lo_.push_back(size_);
         this->add(am__);
         /* set index of the local orbital */
-        vrd_.back().idxlo = size_ - offset_lo_ - 1;
+        vrd_.back().idxlo = this->size() - offset_lo_ - 1;
     }
 
     /// Add two component of the spinor radial function.
@@ -304,16 +308,17 @@ class radial_functions_index
         /* current order */
         auto o = static_cast<int>(index_by_j_order_[l].size());
 
+        auto size = this->size();
+
         std::array<int, 2> idx({-1, -1});
         /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
-        idx[std::max(s1, 0)] = size_;
-        idx[std::max(s2, 0)] = size_ + 1;
+        idx[std::max(s1, 0)] = size;
+        idx[std::max(s2, 0)] = size + 1;
 
-        vrd_.push_back(radial_function_index_descriptor(am1__, o, rf_index(size_)));
-        vrd_.push_back(radial_function_index_descriptor(am2__, o, rf_index(size_ + 1)));
+        vrd_.push_back(radial_function_index_descriptor(am1__, o, rf_index(size)));
+        vrd_.push_back(radial_function_index_descriptor(am2__, o, rf_index(size + 1)));
 
         index_by_j_order_[l].push_back(idx);
-        size_ += 2;
     }
 
     /// Return angular momentum of the radial function.
@@ -360,7 +365,7 @@ class radial_functions_index
     /// Return index of local orbital.
     inline auto index_of(rf_lo_index idxlo__) const
     {
-        RTE_ASSERT(idxlo__ >= 0 && idxlo__ + offset_lo_ < size_);
+        RTE_ASSERT(idxlo__ >= 0 && idxlo__ + offset_lo_ < this->size());
         return rf_index(offset_lo_ + idxlo__);
     }
 
@@ -387,10 +392,9 @@ class radial_functions_index
         }
     }
 
-    inline auto size() const
+    inline int size() const
     {
-        RTE_ASSERT(size_ == vrd_.size());
-        return size_;
+        return static_cast<int>(vrd_.size());
     }
 
     inline auto subshell_size(int l__, int o__) const
