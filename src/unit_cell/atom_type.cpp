@@ -114,6 +114,17 @@ Atom_type::init(int offset_lo__)
                 indexr1_.add(this->beta_radial_function1(i).first);
             }
         }
+        /* check inner consistency of the index */
+        for (auto e : this->indexr1_) {
+            if (e.am != this->beta_radial_function1(e.idxrf).first) {
+                RTE_THROW("wrong order of beta radial functions");
+            }
+        }
+        //for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
+        //    if (this->beta_radial_function1(i).first != indexr1_[rf_index(i)].am) {
+        //        RTE_THROW("wrong order of beta radial functions");
+        //    }
+        //}
     }
 
     /* initialize index of radial functions */

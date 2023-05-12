@@ -284,17 +284,9 @@ namespace experimental {
 class basis_functions_index1
 {
   private:
-    std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; // TODO: rename to vbd_
+    std::vector<basis_function_index_descriptor> vbd_; // TODO: rename to vbd_
 
     sddk::mdarray<int, 2> index_by_lm_order_;
-
-    sddk::mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
-
-    /// Number of augmented wave basis functions.
-    int size_aw_{0};
-
-    /// Number of local orbital basis functions.
-    int size_lo_{0};
 
     /// Maximum l of the radial basis functions.
     int lmax_{-1};
@@ -324,7 +316,7 @@ class basis_functions_index1
             for (auto e : indexr_) {
 
                 /* index of this block starts from the current size of basis functions descriptor */
-                auto size = static_cast<int>(basis_function_index_descriptors_.size());
+                auto size = this->size();
 
                 //if (e.am.s() != 0) {
                 //    RTE_THROW("full-j radial function index is not allowed here");
@@ -338,8 +330,8 @@ class basis_functions_index1
                 offset_.push_back(size);
 
                 for (int m = -am.l(); m <= am.l(); m++) {
-                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(am, m, e.order, e.idxlo, e.idxrf));
-                    basis_function_index_descriptors_.back().xi = bf_index(size);
+                    vbd_.push_back(basis_function_index_descriptor(am, m, e.order, e.idxlo, e.idxrf));
+                    vbd_.back().xi = bf_index(size);
                     /* reverse mapping */
                     index_by_lm_order_(utils::lm(am.l(), m), e.order) = size;
                     size++;
@@ -358,9 +350,10 @@ class basis_functions_index1
     /// Return total number of MT basis functions.
     inline int size() const
     {
-        return static_cast<int>(basis_function_index_descriptors_.size());
+        return static_cast<int>(vbd_.size());
     }
 
+    /// Return size of AW part of basis functions in case of LAPW.
     inline auto size_aw() const
     {
         if (offset_lo_ == -1) {
@@ -370,6 +363,7 @@ class basis_functions_index1
         }
     }
 
+    /// Return size of local-orbital part of basis functions in case of LAPW.
     inline auto size_lo() const
     {
         if (offset_lo_ == -1) {
@@ -378,18 +372,6 @@ class basis_functions_index1
             return this->size() - offset_lo_;
         }
     }
-
-    ///// Return size of AW part of basis functions in case of LAPW.
-    //inline int size_aw() const
-    //{
-    //    return size_aw_;
-    //}
-
-    ///// Return size of local-orbital part of basis functions in case of LAPW.
-    //inline int size_lo() const
-    //{
-    //    return size_lo_;
-    //}
 
     inline int index_by_l_m_order(int l, int m, int order) const
     {
@@ -403,15 +385,14 @@ class basis_functions_index1
 
     inline int index_by_idxrf(int idxrf) const
     {
-        return index_by_idxrf_(idxrf);
-        //return offset_[idxrf];
+        return offset_[idxrf];
     }
 
     /// Return descriptor of the given basis function.
     inline auto const& operator[](int i) const
     {
-        assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
-        return basis_function_index_descriptors_[i];
+        RTE_ASSERT(i >= 0 && i < this->size());
+        return vbd_[i];
     }
 };
 
