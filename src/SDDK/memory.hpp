@@ -367,33 +367,35 @@ class memory_pool
     memory_pool(memory_t M__, size_t initial_size__ = 0)
         : M_(M__)
     {
-        std::string mem_type_;
-        // All examples in Umpire use upper case names.
+        std::string mem_type;
 
+        // All examples in Umpire use upper case names.
         switch (M__) {
             case memory_t::host: {
-                mem_type_ = "HOST";
+                mem_type = "HOST";
                 break;
             }
             case memory_t::host_pinned: {
-                mem_type_ = "PINNED";
+                mem_type = "PINNED";
                 break;
             }
             case memory_t::managed: {
-                mem_type_ = "MANAGED";
+                mem_type = "MANAGED";
                 break;
             }
             case memory_t::device: {
 #ifdef SIRIUS_GPU
-                mem_type_ = "DEVICE";
+                std::stringstream s;
+                s << "DEVICE::" << acc::get_device_id();
+                mem_type = s.str();
 #else
-                mem_type_ = "NONE";
+                mem_type = "NONE";
                 M_ = memory_t::none;
 #endif
             }
                 break;
             case memory_t::none: {
-                mem_type_ = "NONE";
+                mem_type = "NONE";
                 break;
             }
             default: {
@@ -402,18 +404,17 @@ class memory_pool
         }
 #ifdef SIRIUS_USE_MEMORY_POOL
         if (M_ != memory_t::none) {
-            auto& rm_  = umpire::ResourceManager::getInstance();
-            allocator_ = rm_.getAllocator(mem_type_);
-
-            std::transform(mem_type_.begin(), mem_type_.end(), mem_type_.begin(),
-                           [](unsigned char c) { return std::tolower(c); });
+            auto& rm = umpire::ResourceManager::getInstance();
+            this->allocator_ = rm.getAllocator(mem_type);
 
             if (M_ == memory_t::host) {
-                memory_pool_allocator_ =
-                    rm_.makeAllocator<umpire::strategy::AlignedAllocator>("aligned_allocator", allocator_, 256);
+                this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::AlignedAllocator>("aligned_allocator", this->allocator_, 256);
             } else {
-                memory_pool_allocator_ =
-                    rm_.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type_ + "_dynamic_pool", allocator_);
+                std::transform(mem_type.begin(), mem_type.end(), mem_type.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
             }
         }
 #endif
