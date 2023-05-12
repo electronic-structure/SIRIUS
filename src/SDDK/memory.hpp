@@ -386,7 +386,7 @@ class memory_pool
             case memory_t::device: {
 #ifdef SIRIUS_GPU
                 std::stringstream s;
-                s << "DEVICE" << acc::get_device_id();
+                s << "DEVICE::" << acc::get_device_id();
                 mem_type = s.str();
 #else
                 mem_type = "NONE";
