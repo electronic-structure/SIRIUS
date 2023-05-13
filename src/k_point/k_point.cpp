@@ -300,8 +300,8 @@ K_point<T>::generate_hubbard_orbitals()
 
                 int idxr_wf = hd.idx_wf();
 
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
-                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(e.idxrf);
+                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(rf_index(idxr_wf));
+                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(e.idxrf);
 
                 wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,
@@ -688,7 +688,7 @@ K_point<T>::load(sddk::HDF5_tree h5in, int id)
 template <typename T>
 void
 K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
-        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
+        std::function<sirius::experimental::basis_functions_index1 const*(int)> indexb__,
         Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
@@ -741,17 +741,10 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
                 continue;
             }
             auto const& indexb = *indexb__(iat);
-            for (auto xi = indexb.begin(); xi != indexb.end(); xi++) {
-                /*  orbital quantum  number of this atomic orbital */
-                int l = indexb.l(xi);
-                /*  composite l,m index */
-                int lm = indexb.lm(xi);
-                /* index of the radial function */
-                int idxrf = indexb.idxrf(xi);
+            for (auto const& e: indexb) {
+                auto z = std::pow(std::complex<double>(0, -1), e.l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-
-                wf_t[iat](igk_loc, xi) = static_cast<std::complex<T>>(z * rlm[lm] * ri_values[iat](idxrf));
+                wf_t[iat](igk_loc, e.xi) = static_cast<std::complex<T>>(z * rlm[e.lm] * ri_values[iat](e.idxrf));
             }
         }
     }

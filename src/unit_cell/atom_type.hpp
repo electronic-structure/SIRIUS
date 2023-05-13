@@ -140,7 +140,7 @@ class Atom_type
     sirius::experimental::radial_functions_index indexr_wfs_;
 
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
-    sirius::experimental::basis_functions_index indexb_wfs_;
+    sirius::experimental::basis_functions_index1 indexb_wfs_;
 
     /// List of Hubbard orbital descriptors.
     /** List of sirius::hubbard_orbital_descriptor for each orbital. Each element of the list contains
@@ -152,7 +152,7 @@ class Atom_type
     sirius::experimental::radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
-    sirius::experimental::basis_functions_index indexb_hub_;
+    sirius::experimental::basis_functions_index1 indexb_hub_;
 
     /// Radial functions of beta-projectors.
     /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit

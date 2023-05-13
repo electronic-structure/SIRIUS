@@ -383,9 +383,9 @@ class basis_functions_index1
         return index_by_lm_order_(lm, order);
     }
 
-    inline int index_by_idxrf(int idxrf) const
+    inline int offset(rf_index idxrf__) const
     {
-        return offset_[idxrf];
+        return offset_[idxrf__];
     }
 
     /// Return descriptor of the given basis function.
@@ -394,7 +394,27 @@ class basis_functions_index1
         RTE_ASSERT(i >= 0 && i < this->size());
         return vbd_[i];
     }
+
+    inline auto begin() const
+    {
+        return vbd_.begin();
+    }
+
+    inline auto end() const
+    {
+        return vbd_.end();
+    }
 };
+
+inline auto begin(basis_functions_index1 const& idx__)
+{
+    return idx__.begin();
+}
+
+inline auto end(basis_functions_index1 const& idx__)
+{
+    return idx__.end();
+}
 
 }
 

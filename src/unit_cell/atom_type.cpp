@@ -139,14 +139,14 @@ Atom_type::init(int offset_lo__)
         for (auto& e : ps_atomic_wfs_) {
             indexr_wfs_.add(e.am);
         }
-        indexb_wfs_ = sirius::experimental::basis_functions_index(indexr_wfs_, false);
+        indexb_wfs_ = sirius::experimental::basis_functions_index1(indexr_wfs_, false);
         if (static_cast<int>(ps_atomic_wfs_.size()) != indexr_wfs_.size()) {
             RTE_THROW("wrong size of atomic orbital list");
         }
     }
 
     if (hubbard_correction_) {
-        indexb_hub_ = sirius::experimental::basis_functions_index(indexr_hub_, false);
+        indexb_hub_ = sirius::experimental::basis_functions_index1(indexr_hub_, false);
     }
 
     if (!parameters_.full_potential()) {

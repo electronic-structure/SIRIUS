@@ -75,8 +75,8 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
                 int mmax = 2 * l + 1;
 
                 int idxr_wf = hd.idx_wf();
-                int offset_in_wf = atomic_wf_offset__[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
-                int offset_in_hwf = hubbard_wf_offset__[ia] + type.indexb_hub().index_of(e.idxrf);
+                int offset_in_wf = atomic_wf_offset__[ia] + type.indexb_wfs().offset(rf_index(idxr_wf));
+                int offset_in_hwf = hubbard_wf_offset__[ia] + type.indexb_hub().offset(e.idxrf);
 
                 if (ctx__.cfg().hubbard().full_orthogonalization()) {
                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */
