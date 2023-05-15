@@ -136,7 +136,7 @@ Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdar
             alm[j] = oalm[j] = alm__(ig, j);
         }
         for (int j = 0; j < type.mt_aw_basis_size(); j++) {
-            int l     = type.indexb(j).l;
+            int l     = type.indexb(j).am.l();
             int lm    = type.indexb(j).lm;
             int idxrf = type.indexb(j).idxrf;
             for (int order = 0; order < type.aw_order(l); order++) {

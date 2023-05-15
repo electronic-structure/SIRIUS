@@ -29,15 +29,12 @@ namespace sirius {
 
 struct basis_function_index_descriptor
 {
-    /// Angular momentum.
-    int l;
+    /// Total angular momemtum.
+    angular_momentum am;
     /// Projection of the angular momentum.
     int m;
     /// Composite index.
     int lm;
-    /// Total angular momemtum. // TODO: replace with positive and negative integer in l
-    double j;
-    angular_momentum am;
     /// Order of the radial function for a given l (j).
     int order;
     /// Index of local orbital.
@@ -46,49 +43,15 @@ struct basis_function_index_descriptor
     int idxrf;
     bf_index xi{-1};
 
-    basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
-        : l(l)
-        , m(m)
-        , lm(utils::lm(l, m))
-        , am(l)
-        , order(order)
-        , idxlo(idxlo)
-        , idxrf(idxrf)
-    {
-        assert(l >= 0);
-        assert(m >= -l && m <= l);
-        assert(order >= 0);
-        assert(idxrf >= 0);
-    }
-
-    basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
-        : l(l)
-        , m(m)
-        , lm(utils::lm(l, m))
-        , j(j)
-        , am(l)
-        , order(order)
-        , idxlo(idxlo)
-        , idxrf(idxrf)
-    {
-        assert(l >= 0);
-        assert(m >= -l && m <= l);
-        assert(order >= 0);
-        assert(idxrf >= 0);
-    }
-
     basis_function_index_descriptor(angular_momentum am, int m, int order, int idxlo, int idxrf)
-        : l(am.l())
+        : am(am)
         , m(m)
-        , lm(utils::lm(l, m))
-        , j(am.j())
-        , am(am)
+        , lm(utils::lm(am.l(), m))
         , order(order)
         , idxlo(idxlo)
         , idxrf(idxrf)
     {
-        assert(l >= 0);
-        assert(m >= -l && m <= l);
+        assert(m >= -am.l() && m <= am.l());
         assert(order >= 0);
         assert(idxrf >= 0);
     }
@@ -188,14 +151,16 @@ class basis_functions_index
 
         for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
             int l     = indexr__[idxrf].l;
+            auto j    = indexr__[idxrf].j;
             int order = indexr__[idxrf].order;
             int idxlo = indexr__[idxrf].idxlo;
 
             index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
 
+            angular_momentum am = (j < l) ? angular_momentum(l, -1) : angular_momentum(l, 1);
+
             for (int m = -l; m <= l; m++) {
-                basis_function_index_descriptors_.push_back(
-                    basis_function_index_descriptor(l, m, indexr__[idxrf].j, order, idxlo, idxrf));
+                basis_function_index_descriptors_.push_back(basis_function_index_descriptor(am, m, order, idxlo, idxrf));
             }
         }
         index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());

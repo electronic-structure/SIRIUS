@@ -774,12 +774,12 @@ Atom_type::generate_f_coefficients()
     f_coefficients_.zero();
 
     for (int xi2 = 0; xi2 < nbf; xi2++) {
-        const int l2    = this->indexb(xi2).l;
-        const double j2 = this->indexb(xi2).j;
+        const int l2    = this->indexb(xi2).am.l();
+        const double j2 = this->indexb(xi2).am.j();
         const int m2    = this->indexb(xi2).m;
         for (int xi1 = 0; xi1 < nbf; xi1++) {
-            const int l1    = this->indexb(xi1).l;
-            const double j1 = this->indexb(xi1).j;
+            const int l1    = this->indexb(xi1).am.l();
+            const double j1 = this->indexb(xi1).am.j();
             const int m1    = this->indexb(xi1).m;
 
             if ((l2 == l1) && (std::abs(j1 - j2) < 1e-8)) {

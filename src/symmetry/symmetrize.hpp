@@ -473,7 +473,7 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
            sddk::mdarray<std::complex<double>, 4>& dm_, const bool hubbard_)
 {
     for (int xi1 = 0; xi1 < indexb.size(); xi1++) {
-        int l1  = indexb[xi1].l;
+        int l1  = indexb[xi1].am.l();
         int lm1 = indexb[xi1].lm;
         int o1  = indexb[xi1].order;
 
@@ -482,9 +482,9 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
         }
 
         for (int xi2 = 0; xi2 < indexb.size(); xi2++) {
-            int l2                                       = indexb[xi2].l;
-            int lm2                                      = indexb[xi2].lm;
-            int o2                                       = indexb[xi2].order;
+            int l2  = indexb[xi2].am.l();
+            int lm2 = indexb[xi2].lm;
+            int o2  = indexb[xi2].order;
             std::array<std::complex<double>, 3> dm_rot_spatial = {0, 0, 0};
 
             //} the hubbard treatment when spin orbit coupling is present is

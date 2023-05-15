@@ -1093,8 +1093,7 @@ class Atom_type
      *  leaving the m index free. Only useful when spin orbit coupling is included. */
     inline bool compare_index_beta_functions(const int xi, const int xj) const
     {
-        return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
-                (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
+        return ((indexb(xi).am == indexb(xj).am) && (indexb(xi).idxrf == indexb(xj).idxrf));
     }
 
     /// Return a vector containing all information about the localized atomic
