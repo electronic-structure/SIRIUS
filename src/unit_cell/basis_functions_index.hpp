@@ -90,58 +90,6 @@ class basis_functions_index
     experimental::radial_functions_index indexr_;
 
   public:
-    basis_functions_index()
-    {
-    }
-
-    basis_functions_index(experimental::radial_functions_index const& indexr__, bool expand_full_j__)
-        : indexr_(indexr__)
-    {
-        if (expand_full_j__) {
-            RTE_THROW("j,mj expansion of the full angular momentum index is not implemented");
-        }
-
-        if (!expand_full_j__) {
-            index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr_.lmax()), indexr_.max_order());
-            std::fill(index_by_lm_order_.begin(), index_by_lm_order_.end(), -1);
-            /* loop over radial functions */
-            for (auto e : indexr_) {
-
-                /* index of this block starts from the current size of basis functions descriptor */
-                auto size = static_cast<int>(basis_function_index_descriptors_.size());
-
-                if (e.am.s() != 0) {
-                    RTE_THROW("full-j radial function index is not allowed here");
-                }
-                std::cout << "e.idxrf = " << e.idxrf << ", indexr_.index_of(rf_lo_index(0)=" << indexr_.index_of(rf_lo_index(0)) << std::endl;
-                if (e.idxrf == indexr_.index_of(rf_lo_index(0))) {
-                    offset_lo_ = size;
-                }
-                std::cout << "offset_lo_ = " << offset_lo_ << std::endl;
-                /* angular momentum */
-                auto am = e.am;
-
-                offset_.push_back(size);
-
-                for (int m = -am.l(); m <= am.l(); m++) {
-                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(am, m, e.order, e.idxlo, e.idxrf));
-                    basis_function_index_descriptors_.back().xi = bf_index(size);
-                    /* reverse mapping */
-                    index_by_lm_order_(utils::lm(am.l(), m), e.order) = size;
-                    size++;
-                }
-            }
-        } else { /* for the full-j expansion */
-            /* several things have to be done here:
-             *  - packing of jmj index for l+1/2 and l-1/2 subshells has to be introduced
-             *    like existing utils::lm(l, m) function
-             *  - indexing within l-shell has to be implemented; l shell now contains 2(2l+1) spin orbitals
-             *  - order of s=-1 and s=1 components has to be agreed upon and respected
-             */
-            RTE_THROW("full j is not yet implemented");
-        }
-    }
-
 
     void init(radial_functions_index& indexr__)
     {
@@ -186,24 +134,6 @@ class basis_functions_index
     {
         return static_cast<int>(basis_function_index_descriptors_.size());
     }
-
-    //inline auto size_aw1() const
-    //{
-    //    if (offset_lo_ == -1) {
-    //        return this->size();
-    //    } else {
-    //        return offset_lo_;
-    //    }
-    //}
-
-    //inline auto size_lo1() const
-    //{
-    //    if (offset_lo_ == -1) {
-    //        return 0;
-    //    } else {
-    //        return this->size() - offset_lo_;
-    //    }
-    //}
 
     /// Return size of AW part of basis functions in case of LAPW.
     inline int size_aw() const
@@ -345,7 +275,7 @@ class basis_functions_index1
         return index_by_lm_order_(lm, order);
     }
 
-    inline int offset(rf_index idxrf__) const
+    inline int index_of(rf_index idxrf__) const
     {
         return offset_[idxrf__];
     }
@@ -365,6 +295,11 @@ class basis_functions_index1
     inline auto end() const
     {
         return vbd_.end();
+    }
+
+    auto const& indexr() const
+    {
+        return indexr_;
     }
 };
 
