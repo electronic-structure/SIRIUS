@@ -169,9 +169,9 @@ Atom_type::init(int offset_lo__)
             int l = l_by_lm[lm];
 
             for (int i2 = 0; i2 < indexr().size(); i2++) {
-                int l2 = indexr(i2).l;
+                int l2 = indexr(i2).am.l();
                 for (int i1 = 0; i1 <= i2; i1++) {
-                    int l1 = indexr(i1).l;
+                    int l1 = indexr(i1).am.l();
                     if ((l + l1 + l2) % 2 == 0) {
                         if (lm) {
                             non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));

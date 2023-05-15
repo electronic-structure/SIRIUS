@@ -1528,10 +1528,10 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk
 
     #pragma omp parallel for default(shared)
     for (int idxrf2 = 0; idxrf2 < atom_type__.mt_radial_basis_size(); idxrf2++) {
-        int l2 = atom_type__.indexr(idxrf2).l;
+        int l2 = atom_type__.indexr(idxrf2).am.l();
         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-            int l1   = atom_type__.indexr(idxrf1).l;
+            int l1   = atom_type__.indexr(idxrf1).am.l();
 
             int xi2 = atom_type__.indexb().index_by_idxrf(idxrf2);
             for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {

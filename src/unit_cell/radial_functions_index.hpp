@@ -143,11 +143,8 @@ inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
  */
 struct radial_function_index_descriptor
 {
-    /// Orbital quantum number \f$ \ell \f$.
-    int l;
-
     /// Total angular momentum
-    double j;
+    angular_momentum am;
 
     /// Order of a function for a given \f$ \ell \f$.
     int order;
@@ -157,37 +154,11 @@ struct radial_function_index_descriptor
 
     rf_index idxrf{-1};
 
-    angular_momentum am;
-
-    /// Constructor.
-    radial_function_index_descriptor(int l, int order, int idxlo = -1)
-        : l{l}
-        , order{order}
-        , idxlo{idxlo}
-        , am(l)
-    {
-        RTE_ASSERT(l >= 0);
-        RTE_ASSERT(order >= 0);
-    }
-
-    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1)
-        : l{l}
-        , j{j}
-        , order{order}
-        , idxlo{idxlo}
-        , am(l)
-    {
-        RTE_ASSERT(l >= 0);
-        RTE_ASSERT(order >= 0);
-    }
-
     radial_function_index_descriptor(angular_momentum am__, int order__, rf_index idxrf__, int idxlo__ = -1)
-        : l(am__.l())
-        , j(am__.j())
+        : am{am__}
         , order{order__}
         , idxlo{idxlo__}
         , idxrf{idxrf__}
-        , am{am__}
     {
         RTE_ASSERT(order >= 0);
     }
@@ -784,15 +755,18 @@ class radial_functions_index
             assert(aw_descriptors[l].size() <= 3);
 
             for (size_t order = 0; order < aw_descriptors[l].size(); order++) {
-                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
+                radial_function_index_descriptors_.push_back(
+                    radial_function_index_descriptor(angular_momentum(l), num_rf_[l],
+                        rf_index(radial_function_index_descriptors_.size())));
                 num_rf_[l]++;
             }
         }
 
         for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
             int l = lo_descriptors[idxlo].l;
+            angular_momentum am = (lo_descriptors[idxlo].total_angular_momentum < l) ? angular_momentum(l, -1) : angular_momentum(l, 1);
             radial_function_index_descriptors_.push_back(
-                radial_function_index_descriptor(l, lo_descriptors[idxlo].total_angular_momentum, num_rf_[l], idxlo));
+                radial_function_index_descriptor(am, num_rf_[l], rf_index(radial_function_index_descriptors_.size()), idxlo));
             num_rf_[l]++;
             num_lo_[l]++;
         }
@@ -808,7 +782,7 @@ class radial_functions_index
         }
 
         for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {
-            int l     = radial_function_index_descriptors_[i].l;
+            int l     = radial_function_index_descriptors_[i].am.l();
             int order = radial_function_index_descriptors_[i].order;
             int idxlo = radial_function_index_descriptors_[i].idxlo;
             index_by_l_order_(l, order) = i;

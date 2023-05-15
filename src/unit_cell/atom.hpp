@@ -296,9 +296,9 @@ class Atom
             int l = l_by_lm[lm];
 
             for (int i2 = 0; i2 < type().indexr().size(); i2++) {
-                int l2 = type().indexr(i2).l;
+                int l2 = type().indexr(i2).am.l();
                 for (int i1 = 0; i1 <= i2; i1++) {
-                    int l1 = type().indexr(i1).l;
+                    int l1 = type().indexr(i1).am.l();
                     if ((l + l1 + l2) % 2 == 0) {
                         if (lm) {
                             h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = result(n++);
