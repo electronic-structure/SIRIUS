@@ -451,7 +451,7 @@ Density::init_density_matrix_for_paw()
 
             double occ = occupations[rad_func_index];
 
-            int l = basis_func_index_dsc.l;
+            int l = basis_func_index_dsc.am.l();
 
             switch (ctx_.num_mag_dims()) {
                 case 0: {

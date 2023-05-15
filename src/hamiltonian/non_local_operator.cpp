@@ -133,14 +133,10 @@ D_operator<T>::initialize()
             /* keep the order of the indices because it is crucial here;
                permuting the indices makes things wrong */
             for (int xi2 = 0; xi2 < nbf; xi2++) {
-                int l2     = atom.type().indexb(xi2).l;
-                double j2  = atom.type().indexb(xi2).j;
                 int idxrf2 = atom.type().indexb(xi2).idxrf;
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    int l1     = atom.type().indexb(xi1).l;
-                    double j1  = atom.type().indexb(xi1).j;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
-                    if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
+                    if (atom.type().indexb(xi1).am == atom.type().indexb(xi2).am) {
                         /* up-up down-down */
                         d_mtrx_so(xi1, xi2, 0) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 0, 0);
                         d_mtrx_so(xi1, xi2, 1) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 1, 1);

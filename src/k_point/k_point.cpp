@@ -742,7 +742,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
             }
             auto const& indexb = *indexb__(iat);
             for (auto const& e: indexb) {
-                auto z = std::pow(std::complex<double>(0, -1), e.l) * fourpi / std::sqrt(unit_cell_.omega());
+                auto z = std::pow(std::complex<double>(0, -1), e.am.l()) * fourpi / std::sqrt(unit_cell_.omega());
 
                 wf_t[iat](igk_loc, e.xi) = static_cast<std::complex<T>>(z * rlm[e.lm] * ri_values[iat](e.idxrf));
             }
@@ -804,7 +804,7 @@ K_point<T>::generate_gklo_basis()
             int lo_index_offset = type.mt_aw_basis_size();
 
             for (int j = 0; j < type.mt_lo_basis_size(); j++) {
-                int l         = type.indexb(lo_index_offset + j).l;
+                int l         = type.indexb(lo_index_offset + j).am.l();
                 int lm        = type.indexb(lo_index_offset + j).lm;
                 int order     = type.indexb(lo_index_offset + j).order;
                 int idxrf     = type.indexb(lo_index_offset + j).idxrf;

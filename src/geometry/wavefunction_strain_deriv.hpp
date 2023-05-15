@@ -39,7 +39,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
             for (auto const& e: atom_type.indexb_wfs()) {
                 /*  orbital quantum  number of this atomic orbital */
-                int l = e.l;
+                int l = e.am.l();
                 /*  composite l,m index */
                 int lm = e.lm;
                 /* index of the radial function */

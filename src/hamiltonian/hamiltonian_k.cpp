@@ -924,7 +924,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
                     /* local orbital indices */
-                    int l_lo     = type.indexb(xi_lo).l;
+                    int l_lo     = type.indexb(xi_lo).am.l();
                     int lm_lo    = type.indexb(xi_lo).lm;
                     int order_lo = type.indexb(xi_lo).order;
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
@@ -977,7 +977,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
                 /* local orbital indices */
-                int l_lo     = type.indexb(xi_lo).l;
+                int l_lo     = type.indexb(xi_lo).am.l();
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
 
@@ -1064,7 +1064,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             for (int ilo = 0; ilo < nlo; ilo++) {
                 int xi_lo = naw + ilo;
                 /* local orbital indices */
-                int l_lo     = type.indexb(xi_lo).l;
+                int l_lo     = type.indexb(xi_lo).am.l();
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
                 for (int i = 0; i < b__.size(); i++) {

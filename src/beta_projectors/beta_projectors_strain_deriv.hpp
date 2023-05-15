@@ -87,7 +87,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                         double p = (mu == nu) ? 0.5 : 0;
 
                         for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
-                            int l     = atom_type.indexb(xi).l;
+                            int l     = atom_type.indexb(xi).am.l();
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
 
