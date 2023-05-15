@@ -150,17 +150,14 @@ class basis_functions_index
         index_by_idxrf_ = sddk::mdarray<int, 1>(indexr__.size());
 
         for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
-            int l     = indexr__[idxrf].l;
-            auto j    = indexr__[idxrf].j;
+            int l     = indexr__[idxrf].am.l();
             int order = indexr__[idxrf].order;
             int idxlo = indexr__[idxrf].idxlo;
 
             index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
 
-            angular_momentum am = (j < l) ? angular_momentum(l, -1) : angular_momentum(l, 1);
-
             for (int m = -l; m <= l; m++) {
-                basis_function_index_descriptors_.push_back(basis_function_index_descriptor(am, m, order, idxlo, idxrf));
+                basis_function_index_descriptors_.push_back(basis_function_index_descriptor(indexr__[idxrf].am, m, order, idxlo, idxrf));
             }
         }
         index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());

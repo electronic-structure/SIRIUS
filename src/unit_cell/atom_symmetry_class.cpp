@@ -626,8 +626,8 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
         for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
             for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
                 /* for spherical part of potential integrals are diagonal in l */
-                if (atom_type_.indexr(i1).l == atom_type_.indexr(i2).l) {
-                    int ll = atom_type_.indexr(i1).l * (atom_type_.indexr(i1).l + 1);
+                if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
+                    int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
                     for (int ir = 0; ir < nmtp; ir++) {
                         double Minv = 1.0 / (1 - spherical_potential_[ir] * sq_alpha_half);
                         /* u_1(r) * u_2(r) */
@@ -674,8 +674,8 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
             Spline<double> s(atom_type_.radial_grid());
             for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
                 /* for spherical part of potential integrals are diagonal in l */
-                if (atom_type_.indexr(i1).l == atom_type_.indexr(i2).l) {
-                    int ll = atom_type_.indexr(i1).l * (atom_type_.indexr(i1).l + 1);
+                if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
+                    int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
                     for (int ir = 0; ir < nmtp; ir++) {
                         double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
                         /* u_1(r) * u_2(r) */
