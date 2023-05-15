@@ -300,8 +300,8 @@ K_point<T>::generate_hubbard_orbitals()
 
                 int idxr_wf = hd.idx_wf();
 
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(rf_index(idxr_wf));
-                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(e.idxrf);
+                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
+                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(e.idxrf);
 
                 wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,

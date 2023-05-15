@@ -540,7 +540,7 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
 inline void
 symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__, int num_mag_comp__,
            Crystal_symmetry const& sym__,
-           std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
+           std::function<sirius::experimental::basis_functions_index1 const*(int)> indexb__)
 {
     /* quick exit */
     if (sym__.size() == 1) {
