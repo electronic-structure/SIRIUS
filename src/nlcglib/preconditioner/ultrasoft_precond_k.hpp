@@ -1,9 +1,29 @@
+// Copyright (c) 2023 Simon Pintarelli, Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 /** \file ultrasoft_precond.hpp
-    \brief Provides preconditioner for ultrasoft case.
+ *
+ *  \brief Provides preconditioner for ultrasoft case.
  */
 
-#ifndef ULTRASOFT_PRECOND_K_H
-#define ULTRASOFT_PRECOND_K_H
+#ifndef __ULTRASOFT_PRECOND_K_HPP__
+#define __ULTRASOFT_PRECOND_K_HPP__
 
 #include "context/simulation_context.hpp"
 #include "hamiltonian/non_local_operator.hpp"
@@ -136,7 +156,8 @@ class Ultrasoft_preconditioner : public local::OperatorBase
                              const Beta_projectors_base<double>& bp, const fft::Gvec& gkvec);
 
     sddk::mdarray<numeric_t, 2> apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm = sddk::memory_t::none);
-    void apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm = sddk::memory_t::none);
+    void apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
+               sddk::memory_t pm = sddk::memory_t::none);
 
     const Simulation_context& ctx() const
     {
@@ -157,7 +178,8 @@ class Ultrasoft_preconditioner : public local::OperatorBase
 template <class numeric_t>
 Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context& simulation_context,
                                                               const Q_operator<double>& q_op, int ispn,
-                                                              const Beta_projectors_base<double>& bp, const fft::Gvec& gkvec)
+                                                              const Beta_projectors_base<double>& bp,
+                                                              const fft::Gvec& gkvec)
     : local::OperatorBase(gkvec.count())
     , ctx_(simulation_context)
     , P(simulation_context, gkvec)
@@ -183,13 +205,15 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     // add identiy matrix
     std::vector<complex_t> ones(n, 1);
     // add identity matrix
-    la::wrap(la::lib_t::blas).axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(sddk::memory_t::host), n + 1);
+    la::wrap(la::lib_t::blas)
+        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(sddk::memory_t::host), n + 1);
     // compute LU factorization
     this->LU = sddk::empty_like(CQ);
     sddk::auto_copy(this->LU, CQ);
     this->ipiv = sddk::mdarray<int, 1>(n, sddk::memory_t::host);
     // compute LU factorization
-    la::wrap(la::lib_t::lapack).getrf(n, n, this->LU.at(sddk::memory_t::host), this->LU.ld(), this->ipiv.at(sddk::memory_t::host));
+    la::wrap(la::lib_t::lapack)
+        .getrf(n, n, this->LU.at(sddk::memory_t::host), this->LU.ld(), this->ipiv.at(sddk::memory_t::host));
     // copy LU factorization to device if needed
     auto mem = ctx_.processing_unit_memory_t();
     if (is_device_memory(mem)) {
@@ -212,7 +236,8 @@ Ultrasoft_preconditioner<numeric_t>::apply(const sddk::mdarray<numeric_t, 2>& X,
 
 template <class numeric_t>
 void
-Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm)
+Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
+                                           sddk::memory_t pm)
 {
     int num_beta = bp.num_total_beta();
     int nbnd     = X.size(1);
@@ -286,4 +311,4 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
 }
 } // namespace sirius
 
-#endif /* ULTRASOFT_PRECOND_K_H */
+#endif /* __ULTRASOFT_PRECOND_K_HPP__ */
