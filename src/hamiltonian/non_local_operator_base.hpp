@@ -128,11 +128,11 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
     auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), get_memory_pool(mem__));
 
 /* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel
+    #pragma omp parallel
     {
         acc::set_device_id(mpi::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
-#pragma omp for
+        #pragma omp for
         for (int i = 0; i < beta_coeffs__.beta_chunk.num_atoms_; i++) {
             /* number of beta functions for a given atom */
             int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), i);
@@ -150,8 +150,8 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
     }
     switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
         case sddk::device_t::GPU: {
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(stream_id(omp_get_thread_num()));
             break;
         }
