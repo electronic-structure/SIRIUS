@@ -67,7 +67,7 @@ beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a, const mdarray
     int num_gkvec_loc = gkvec.count();
     auto& unit_cell   = ctx.unit_cell();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < beta_chunk.num_atoms_; i++) {
         int ia = beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), i);
 

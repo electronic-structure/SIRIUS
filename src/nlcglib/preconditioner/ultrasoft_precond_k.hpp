@@ -98,7 +98,7 @@ DiagonalPreconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const s
 #endif /*SIRIUS_GPU*/
 
     int n = X.size(0);
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < n; ++i) {
         numeric_t d = d_(i);
         for (int j = 0; j < static_cast<int>(X.size(1)); ++j) {

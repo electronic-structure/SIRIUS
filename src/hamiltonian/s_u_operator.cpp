@@ -136,7 +136,7 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
 
     if (ctx__.num_mag_dims() == 3) {
         Up.zero();
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int at_lvl = 0; at_lvl < (int)um__.atomic_orbitals().size(); at_lvl++) {
             const int ia     = um__.atomic_orbitals(at_lvl).first;
             auto const& atom = ctx__.unit_cell().atom(ia);
