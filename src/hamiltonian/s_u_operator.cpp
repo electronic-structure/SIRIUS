@@ -199,7 +199,6 @@ apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_g
     if (sddk::is_device_memory(mem__)) {
         RTE_ASSERT((bp__.device_t() == sddk::device_t::GPU));
     }
-    assert(false); // TODO not checked
     // NOTE: Beta_projectors_generator knows the target memory!
     using complex_t = std::complex<double>;
 
