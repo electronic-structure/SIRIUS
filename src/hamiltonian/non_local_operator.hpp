@@ -109,7 +109,6 @@ class U_operator
     }
 
     const int find_orbital_index(const int ia__, const int n__, const int l__) const;
-
 };
 
 /** \tparam T  Precision of the wave-functions.
@@ -133,7 +132,7 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
                     wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
                     Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
 {
-    if(sddk::is_device_memory(mem__)) {
+    if (sddk::is_device_memory(mem__)) {
         RTE_ASSERT(beta__.device_t() == sddk::device_t::GPU);
     }
 
@@ -144,7 +143,7 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
         beta__.generate(beta_coeffs__, i);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-            auto sp       = phi__.actual_spin_index(s);
+            auto sp = phi__.actual_spin_index(s);
             // auto beta_phi = beta__.template inner<F>(mem__, i, phi__, sp, br__);
             auto beta_phi = inner_prod_beta<F>(ctx.spla_context(), mem__, ctx.host_memory_t(),
                                                sddk::is_device_memory(mem__), /* copy result back to gpu if true */
@@ -175,15 +174,16 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
 template <typename T, typename F>
 void
 apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
-                 beta_projectors_coeffs_t<T>& beta_coeffs__,
-                 wf::Wave_functions<T> const& phi__, Q_operator<T> const* q_op__, wf::Wave_functions<T>& sphi__)
+                 beta_projectors_coeffs_t<T>& beta_coeffs__, wf::Wave_functions<T> const& phi__,
+                 Q_operator<T> const* q_op__, wf::Wave_functions<T>& sphi__)
 {
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         wf::copy(mem__, phi__, s, br__, sphi__, s, br__);
     }
 
     if (q_op__) {
-        apply_non_local_D_Q<T, F>(mem__, spins__, br__, beta__, beta_coeffs__, phi__, nullptr, nullptr, q_op__, &sphi__);
+        apply_non_local_D_Q<T, F>(mem__, spins__, br__, beta__, beta_coeffs__, phi__, nullptr, nullptr, q_op__,
+                                  &sphi__);
     }
 }
 
@@ -194,18 +194,16 @@ apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br
  * \param [out] hphi     Output wave-functions to which the result is added.
  */
 template <typename T>
-void
-apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
-                 wf::Wave_functions<T>& hphi__);
+void apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
+                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
+                      wf::Wave_functions<T>& hphi__);
 /// Apply strain derivative of S-operator to all scalar functions.
-void
-apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
-                              beta_projectors_coeffs_t<double>& bp_coeffs__,
-                              Beta_projector_generator<double>& bp_strain_deriv__,
-                              beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
-                              wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
-                              wf::Wave_functions<double>& ds_phi__);
+void apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
+                                   beta_projectors_coeffs_t<double>& bp_coeffs__,
+                                   Beta_projector_generator<double>& bp_strain_deriv__,
+                                   beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
+                                   wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
+                                   wf::Wave_functions<double>& ds_phi__);
 } // namespace sirius
 
 #endif
