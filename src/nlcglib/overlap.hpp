@@ -1,8 +1,8 @@
-#ifndef OVERLAP_H
-#define OVERLAP_H
+#ifndef __OVERLAP_HPP__
+#define __OVERLAP_HPP__
 
 #ifdef SIRIUS_NLCGLIB
-#include "hamiltonian/inverse_overlap.hpp"
+#include "inverse_overlap.hpp"
 #include "k_point/k_point_set.hpp"
 #include "context/simulation_context.hpp"
 #include <nlcglib/interface.hpp>
@@ -73,6 +73,6 @@ std::vector<std::pair<int,int>> Overlap_operators<op_t>::get_keys() const
 
 
 } // namespace sirius
-#endif /* __NLCGLIB */
+#endif /* SIRIUS_NLCGLIB */
 
-#endif /* OVERLAP_H */
+#endif /* __OVERLAP_HPP__ */

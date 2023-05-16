@@ -33,7 +33,7 @@
 #include "linalg/linalg_base.hpp"
 #include "memory.hpp"
 #include "mpi/communicator.hpp"
-#include "non_local_operator.hpp"
+#include "hamiltonian/non_local_operator.hpp"
 #include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
 #include "beta_projectors/beta_projectors.hpp"
