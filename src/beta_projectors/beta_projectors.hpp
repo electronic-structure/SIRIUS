@@ -51,8 +51,8 @@ class Beta_projectors : public Beta_projectors_base<T>
             z[l] = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
         }
 
-/* compute <G+k|beta> */
-#pragma omp parallel for
+        /* compute <G+k|beta> */
+        #pragma omp parallel for
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
             /* vs = {r, theta, phi} */
             auto vs = r3::spherical_coordinates(this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc));
