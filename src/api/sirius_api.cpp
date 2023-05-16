@@ -24,6 +24,7 @@
 
 #include <ctype.h>
 #include <iostream>
+#include "memory.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
@@ -5603,14 +5604,8 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
             sddk::device_t processing_unit{ctx.processing_unit()};
 
-            if(pu.compare("gpu") == 0) {
-                processing_unit = sddk::device_t::GPU;
-            } else if (pu.compare("cpu") == 0) {
-                processing_unit = sddk::device_t::CPU;
-            } else if (pu.compare("none") == 0 || pu.empty()) {
-                processing_unit = ctx.processing_unit();
-            } else {
-                RTE_THROW("invalid processing unit given: " + pu);
+            if (pu.compare("none") != 0 || !pu.empty()) {
+                processing_unit = sddk::get_device_t(pu);
             }
 
             nlcglib::smearing_type smearing_t;
