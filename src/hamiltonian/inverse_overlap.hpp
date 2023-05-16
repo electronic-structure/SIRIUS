@@ -1,8 +1,29 @@
+// Copyright (c) 2023 Simon Pintarelli, Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 /** \file inverse_overlap.hpp
+ *
  *  \brief provides S⁻¹
  */
-#ifndef INVERSE_OVERLAP_H
-#define INVERSE_OVERLAP_H
+
+#ifndef __INVERSE_OVERLAP_HPP__
+#define __INVERSE_OVERLAP_HPP__
 
 #include <iostream>
 #include <spla/matrix_distribution.hpp>
@@ -154,7 +175,8 @@ InverseS_k<numeric_t>::initialize(const Beta_projectors_base<double>& beta_proje
     }
     // add identity matrix
     std::vector<complex_t> ones(n, complex_t{1, 0});
-    la::wrap(la::lib_t::blas).axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(sddk::memory_t::host), n + 1);
+    la::wrap(la::lib_t::blas)
+        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(sddk::memory_t::host), n + 1);
 
     LU = sddk::empty_like(BQ, sddk::get_memory_pool(sddk::memory_t::host));
     sddk::auto_copy(LU, BQ, sddk::device_t::CPU);
@@ -162,7 +184,6 @@ InverseS_k<numeric_t>::initialize(const Beta_projectors_base<double>& beta_proje
     ipiv = sddk::mdarray<int, 1>(n);
     // compute LU factorization, TODO: use GPU if needed
     la::wrap(la::lib_t::lapack).getrf(n, n, LU.at(sddk::memory_t::host), LU.ld(), ipiv.at(sddk::memory_t::host));
-
 }
 
 /// apply wfct
@@ -304,4 +325,4 @@ S_k<numeric_t>::apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm)
 
 } // namespace sirius
 
-#endif /* INVERSE_OVERLAP_H */
+#endif /* __INVERSE_OVERLAP_HPP__ */
