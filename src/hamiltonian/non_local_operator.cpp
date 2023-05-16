@@ -41,7 +41,7 @@ Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
     auto& uc            = this->ctx_.unit_cell();
     packed_mtrx_offset_ = sddk::mdarray<int, 1>(uc.num_atoms());
     packed_mtrx_size_   = 0;
-    size_ = 0;
+    size_               = 0;
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         int nbf                 = uc.atom(ia).mt_basis_size();
         packed_mtrx_offset_(ia) = packed_mtrx_size_;
@@ -368,19 +368,21 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
     sddk::matrix<double_complex> O(this->size(0), this->size(1), mem);
     O.zero(mem);
     int num_atoms = uc.num_atoms();
-    for(int ia=0; ia < num_atoms; ++ia) {
+    for (int ia = 0; ia < num_atoms; ++ia) {
         int offset = offsets[ia];
-        int lsize = offsets[ia+1] - offsets[ia];
-        if(mem == memory_t::device) {
+        int lsize  = offsets[ia + 1] - offsets[ia];
+        if (mem == memory_t::device) {
             double_complex* out_ptr = O.at(memory_t::device, offset, offset);
-            const double_complex* op_ptr = reinterpret_cast<const double_complex*>(op_.at(memory_t::device, 0, packed_mtrx_offset_(ia), ispn));
+            const double_complex* op_ptr =
+                reinterpret_cast<const double_complex*>(op_.at(memory_t::device, 0, packed_mtrx_offset_(ia), ispn));
             // copy column by column
             for (int col = 0; col < lsize; ++col) {
                 acc::copy(out_ptr + col * O.ld(), op_ptr + col * lsize, lsize);
             }
-        } else if( mem == memory_t::host) {
+        } else if (mem == memory_t::host) {
             double_complex* out_ptr = O.at(memory_t::host, offset, offset);
-            const double_complex* op_ptr = reinterpret_cast<const double_complex*>(op_.at(memory_t::host, 0, packed_mtrx_offset_(ia), ispn));
+            const double_complex* op_ptr =
+                reinterpret_cast<const double_complex*>(op_.at(memory_t::host, 0, packed_mtrx_offset_(ia), ispn));
             // copy column by column
             for (int col = 0; col < lsize; ++col) {
                 std::copy(op_ptr + col * lsize, op_ptr + col * lsize + lsize, out_ptr + col * O.ld());
@@ -392,7 +394,6 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
     return O;
 }
 
-
 template sddk::matrix<std::complex<double>> Non_local_operator<double>::get_matrix(int, memory_t) const;
 
 template class Non_local_operator<double>;
@@ -401,7 +402,6 @@ template class D_operator<double>;
 
 template class Q_operator<double>;
 
-
 #if defined(USE_FP32)
 template class Non_local_operator<float>;
 
@@ -409,8 +409,6 @@ template class D_operator<float>;
 
 template class Q_operator<float>;
 
-
 #endif
-
 
 } // namespace sirius

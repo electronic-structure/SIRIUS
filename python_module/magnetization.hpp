@@ -7,7 +7,8 @@
 
 namespace sirius {
 
-std::vector<double> magnetization(Density& density)
+std::vector<double>
+magnetization(Density& density)
 {
     std::vector<double> lm(3, 0.0);
     auto result = density.get_magnetisation();
@@ -18,7 +19,8 @@ std::vector<double> magnetization(Density& density)
     return lm;
 }
 
-std::string sprint_magnetization(K_point_set& kset, const Density& density)
+std::string
+sprint_magnetization(K_point_set& kset, const Density& density)
 {
     auto& ctx       = kset.ctx();
     auto& unit_cell = kset.unit_cell();
@@ -34,7 +36,7 @@ std::string sprint_magnetization(K_point_set& kset, const Density& density)
     if (ctx.num_mag_dims()) {
         std::sprintf(buffer, "atom              moment                |moment|");
         sstream << buffer;
-        std::sprintf(buffer ,"\n");
+        std::sprintf(buffer, "\n");
         sstream << buffer;
         for (int i = 0; i < 80; i++) {
             std::sprintf(buffer, "-");

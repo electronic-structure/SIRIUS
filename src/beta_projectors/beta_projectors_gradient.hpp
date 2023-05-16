@@ -60,6 +60,6 @@ class Beta_projectors_gradient: public Beta_projectors_base<T>
     }
 };
 
-}
+} // namespace sirius
 
 #endif // __BETA_PROJECTORS_GRADIENT_HPP__

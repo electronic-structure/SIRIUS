@@ -39,9 +39,9 @@ namespace sirius {
 class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
 {
   private:
-    using key_t = std::pair<int, int>;
+    using key_t     = std::pair<int, int>;
     using numeric_t = std::complex<double>;
-    using op_t = Ultrasoft_preconditioner<numeric_t>;
+    using op_t      = Ultrasoft_preconditioner<numeric_t>;
 
   public:
     using buffer_t = nlcglib::MatrixBaseZ::buffer_t;
@@ -56,7 +56,8 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
     std::map<key_t, std::shared_ptr<op_t>> data;
 };
 
-inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op)
+inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx,
+                                          const Q_operator<double>& q_op)
 {
     int nk = kset.spl_num_kpoints().local_size();
     for (int ik_loc = 0; ik_loc < nk; ++ik_loc) {
@@ -69,16 +70,18 @@ inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_co
     }
 }
 
-inline void UltrasoftPrecond::apply(const key_t& key, buffer_t& out, buffer_t& in) const
+inline void
+UltrasoftPrecond::apply(const key_t& key, buffer_t& out, buffer_t& in) const
 {
-    auto& op    = data.at(key);
-    auto array_out = make_matrix_view(out);
-    auto array_in  = make_matrix_view(in);
+    auto& op          = data.at(key);
+    auto array_out    = make_matrix_view(out);
+    auto array_in     = make_matrix_view(in);
     sddk::memory_t pm = out.memtype == nlcglib::memory_type::host ? sddk::memory_t::host : sddk::memory_t::device;
     op->apply(array_out, array_in, pm);
 }
 
-inline std::vector<std::pair<int,int>> UltrasoftPrecond::get_keys() const
+inline std::vector<std::pair<int, int>>
+UltrasoftPrecond::get_keys() const
 {
     std::vector<key_t> keys;
     for (auto& elem : data) {
@@ -87,7 +90,7 @@ inline std::vector<std::pair<int,int>> UltrasoftPrecond::get_keys() const
     return keys;
 }
 
-}  // sirius
+} // namespace sirius
 
 #endif /* SIRIUS_NLCGLIB */
 #endif /* __ULTRASOFT_PRECOND_HPP__ */

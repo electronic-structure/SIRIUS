@@ -61,7 +61,7 @@ beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a, const mdarray
 {
     PROFILE("sirius::Beta_projectors_base::generate");
 
-    using numeric_t = std::complex<T>;
+    using numeric_t      = std::complex<T>;
     using double_complex = std::complex<double>;
 
     int num_gkvec_loc = gkvec.count();
@@ -100,15 +100,16 @@ template void beta_projectors_generate_cpu<double>(matrix<std::complex<double>>&
 #ifdef USE_FP32
 // explicit instantiation
 template void beta_projectors_generate_cpu<float>(matrix<std::complex<float>>&, const mdarray<std::complex<float>, 3>&,
-                                                  int, int, const beta_chunk_t&, const Simulation_context&, const fft::Gvec&);
+                                                  int, int, const beta_chunk_t&, const Simulation_context&,
+                                                  const fft::Gvec&);
 #endif
 
 template <class T>
 void
 beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out, const mdarray<std::complex<T>, 3>& pw_coeffs_t_device,
                              const mdarray<std::complex<T>, 3>& pw_coeffs_t_host, const Simulation_context& ctx,
-                             const fft::Gvec& gkvec, const mdarray<double, 2>& gkvec_coord_, const beta_chunk_t& beta_chunk,
-                             int j__)
+                             const fft::Gvec& gkvec, const mdarray<double, 2>& gkvec_coord_,
+                             const beta_chunk_t& beta_chunk, int j__)
 {
     int num_gkvec_loc = gkvec.count();
     PROFILE("sirius::Beta_projectors_base::generate");
@@ -121,14 +122,18 @@ beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out, const mdarray<std
 }
 
 // explicit instantiation
-template void beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&, const mdarray<std::complex<double>, 3>&,
+template void beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&,
+                                                   const mdarray<std::complex<double>, 3>&,
                                                    const mdarray<std::complex<double>, 3>&, const Simulation_context&,
-                                                   const fft::Gvec&, const mdarray<double, 2>&, const beta_chunk_t&, int);
+                                                   const fft::Gvec&, const mdarray<double, 2>&, const beta_chunk_t&,
+                                                   int);
 #ifdef USE_FP32
 // explicit instantiation
-template void beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&, const mdarray<std::complex<float>, 3>&,
+template void beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&,
+                                                  const mdarray<std::complex<float>, 3>&,
                                                   const mdarray<std::complex<float>, 3>&, const Simulation_context&,
-                                                  const fft::Gvec&, const mdarray<double, 2>&, const beta_chunk_t&, int);
+                                                  const fft::Gvec&, const mdarray<double, 2>&, const beta_chunk_t&,
+                                                  int);
 #endif
 } // namespace local
 

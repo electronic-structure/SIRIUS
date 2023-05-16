@@ -107,7 +107,7 @@ class Beta_projectors : public Beta_projectors_base<T>
         for (int ichunk = 0; ichunk < this->num_chunks(); ++ichunk) {
             this->pw_coeffs_a_ =
                 sddk::matrix<std::complex<T>>(&this->beta_pw_all_atoms_(0, this->beta_chunks_[ichunk].offset_),
-                                                   this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_);
+                                              this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_);
             local::beta_projectors_generate_cpu(this->pw_coeffs_a_, this->pw_coeffs_t_, ichunk, /*j*/ 0,
                                                 this->beta_chunks_[ichunk], ctx__, gkvec__);
         }

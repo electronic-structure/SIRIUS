@@ -60,7 +60,10 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         }
         veff_vec_[v_local_index_t::theta]->fft_transform(1);
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[v_local_index_t::theta]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            veff_vec_[v_local_index_t::theta]
+                ->values()
+                .allocate(get_memory_pool(sddk::memory_t::device))
+                .copy_to(sddk::memory_t::device);
         }
         if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -131,8 +134,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0             = veff_vec_[v_local_index_t::v0]->value(ir);
-                    T v1             = veff_vec_[v_local_index_t::v1]->value(ir);
+                    T v0                                      = veff_vec_[v_local_index_t::v0]->value(ir);
+                    T v1                                      = veff_vec_[v_local_index_t::v1]->value(ir);
                     veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
                     veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
                 }

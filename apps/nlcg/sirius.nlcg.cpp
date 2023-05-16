@@ -9,19 +9,20 @@ const std::string aiida_output_file = "output_aiida.json";
 
 enum class task_t : int
 {
-    ground_state_new     = 0
+    ground_state_new = 0
 };
 
-void json_output_common(json& dict__)
+void
+json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    //dict__["build_date"] = build_date;
-    dict__["comm_world_size"] = mpi::Communicator::world().size();
+    // dict__["build_date"] = build_date;
+    dict__["comm_world_size"]  = mpi::Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
-                                                   cmd_args const& args__)
+std::unique_ptr<Simulation_context>
+create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
     auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, mpi::Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
@@ -36,10 +37,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     return ctx_ptr;
 }
 
-double ground_state(Simulation_context& ctx,
-                    task_t              task,
-                    cmd_args const&     args,
-                    int                 write_output)
+double
+ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int write_output)
 {
     print_memory_usage(ctx.out(), FILE_LINE);
 
@@ -51,7 +50,8 @@ double ground_state(Simulation_context& ctx,
 
     std::shared_ptr<K_point_set> kset;
     if (ctx.cfg().parameters().vk().size() == 0) {
-        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
+        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(),
+                                             ctx.use_symmetry());
     } else {
         // setting
         kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().vk());
@@ -61,18 +61,18 @@ double ground_state(Simulation_context& ctx,
     print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& potential = dft.potential();
-    auto& density = dft.density();
+    auto& density   = dft.density();
 
     dft.initial_state();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(), inp.num_dft_iter(), write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
+                           inp.num_dft_iter(), write_state);
 
     std::cout << "nlcg after scf init (freeCudaMem): " << acc::get_free_mem() << "\n";
-    std::cout << "mempool (total/free): "
-              << sddk::get_memory_pool(sddk::memory_t::device).total_size() << " / "
+    std::cout << "mempool (total/free): " << sddk::get_memory_pool(sddk::memory_t::device).total_size() << " / "
               << sddk::get_memory_pool(sddk::memory_t::device).free_size() << "\n";
-    auto& nlcg_params  = ctx.cfg().nlcg();
+    auto& nlcg_params = ctx.cfg().nlcg();
     if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
@@ -83,7 +83,7 @@ double ground_state(Simulation_context& ctx,
     call_nlcg(ctx, nlcg_params, energy, *kset, potential);
     nlcglib::finalize();
 
-    //dft.print_magnetic_moment();
+    // dft.print_magnetic_moment();
 
     if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -157,16 +157,16 @@ double ground_state(Simulation_context& ctx,
         json dict;
         json_output_common(dict);
 
-        dict["task"] = static_cast<int>(task);
+        dict["task"]         = static_cast<int>(task);
         dict["ground_state"] = result;
         // dict["timers"] = utils::timer::serialize();
-        dict["counters"] = json::object();
+        dict["counters"]                               = json::object();
         dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
-        dict["counters"]["band_evp_work_count"] = ctx.evp_work_count();
+        dict["counters"]["band_evp_work_count"]        = ctx.evp_work_count();
 
         if (ctx.comm().rank() == 0) {
-            std::string output_file = args.value<std::string>("output", std::string("output_") +
-                                                              ctx.start_time_tag() + std::string(".json"));
+            std::string output_file =
+                args.value<std::string>("output", std::string("output_") + ctx.start_time_tag() + std::string(".json"));
             std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
@@ -179,7 +179,8 @@ double ground_state(Simulation_context& ctx,
 }
 
 /// Run a task based on a command line input.
-void run_tasks(cmd_args const& args)
+void
+run_tasks(cmd_args const& args)
 {
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
@@ -197,11 +198,10 @@ void run_tasks(cmd_args const& args)
         ctx->initialize();
         ground_state(*ctx, task, args, 1);
     }
-
-
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
@@ -212,7 +212,7 @@ int main(int argn, char** argv)
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
     args.register_key("--control.verification=", "");
-    args.register_key("--control.mpi_grid_dims=","");
+    args.register_key("--control.mpi_grid_dims=", "");
     args.register_key("--control.std_evp_solver_name=", "");
     args.register_key("--control.gen_evp_solver_name=", "");
     args.register_key("--control.fft_mode=", "");

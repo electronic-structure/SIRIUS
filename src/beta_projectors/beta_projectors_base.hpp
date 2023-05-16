@@ -256,8 +256,8 @@ Beta_projector_generator<T>::prepare() const
     beta_storage.communicator = gkvec_.comm().duplicate();
 
     if (processing_unit_ == sddk::device_t::GPU) {
-        beta_storage.__pw_coeffs_a_buffer = sddk::matrix<std::complex<T>>(
-            num_gkvec_loc_, max_num_beta_, sddk::get_memory_pool(sddk::memory_t::device));
+        beta_storage.__pw_coeffs_a_buffer =
+            sddk::matrix<std::complex<T>>(num_gkvec_loc_, max_num_beta_, sddk::get_memory_pool(sddk::memory_t::device));
     }
 
     return beta_storage;

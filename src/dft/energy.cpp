@@ -162,8 +162,10 @@ ks_energy(Simulation_context const& ctx, const std::map<std::string, double>& en
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en = energies.at("valence_eval_sum") - energies.at("vxc") - energies.at("bxc") - energies.at("PAW_one_elec");
-            tot_en += -0.5*energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") + energies.at("ewald");
+            tot_en =
+                energies.at("valence_eval_sum") - energies.at("vxc") - energies.at("bxc") - energies.at("PAW_one_elec");
+            tot_en +=
+                -0.5 * energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") + energies.at("ewald");
             if (ctx.hubbard_correction()) {
                 tot_en += energies.at("hubbard_energy") - energies.at("hubbard_one_el_contribution");
             }
@@ -208,7 +210,7 @@ total_energy(Simulation_context const& ctx, K_point_set const& kset, Density con
 }
 
 std::map<std::string, double>
-total_energy_components(Simulation_context const& ctx, const K_point_set & kset, Density const& density,
+total_energy_components(Simulation_context const& ctx, const K_point_set& kset, Density const& density,
                         Potential const& potential, double ewald_energy)
 {
     std::map<std::string, double> table;
@@ -219,7 +221,7 @@ total_energy_components(Simulation_context const& ctx, const K_point_set & kset,
             table["vha"]  = energy_vha(potential);
             table["enuc"] = energy_enuc(ctx, potential);
             break;
-            }
+        }
 
         case electronic_structure_method_t::pseudopotential: {
             table["valence_eval_sum"] = kset.valence_eval_sum();
@@ -236,7 +238,7 @@ total_energy_components(Simulation_context const& ctx, const K_point_set & kset,
 
     if (ctx.hubbard_correction()) {
         table["hubbard_one_el_contribution"] = one_electron_energy_hubbard(density, potential);
-        table["hubbard_energy"] = ::sirius::hubbard_energy(density);
+        table["hubbard_energy"]              = ::sirius::hubbard_energy(density);
     }
 
     table["entropy"] = kset.entropy_sum();

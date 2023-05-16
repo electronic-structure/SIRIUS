@@ -196,7 +196,7 @@ apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_g
                               wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
                               wf::Wave_functions<double>& ds_phi__)
 {
-    if(sddk::is_device_memory(mem__)) {
+    if (sddk::is_device_memory(mem__)) {
         RTE_ASSERT((bp__.device_t() == sddk::device_t::GPU));
     }
     assert(false); // TODO not checked
@@ -210,21 +210,19 @@ apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_g
         /* generate derived beta-projectors for a block of atoms */
         bp_strain_deriv__.generate(bp_strain_deriv_coeffs__, ichunk, comp__);
 
-        auto host_mem = bp__.ctx().host_memory_t();
-        auto& spla_ctx = bp__.ctx().spla_context();
-        auto band_range_phi = wf::band_range(0, phi__.num_wf().get());
+        auto host_mem         = bp__.ctx().host_memory_t();
+        auto& spla_ctx        = bp__.ctx().spla_context();
+        auto band_range_phi   = wf::band_range(0, phi__.num_wf().get());
         bool result_on_device = bp__.ctx().processing_unit() == sddk::device_t::GPU;
-        auto dbeta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
+        auto dbeta_phi        = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
                                                     bp_strain_deriv_coeffs__, phi__, wf::spin_index(0), band_range_phi);
-        auto beta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
-                                                   bp_coeffs__, phi__, wf::spin_index(0), band_range_phi);
+        auto beta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device, bp_coeffs__, phi__,
+                                                   wf::spin_index(0), band_range_phi);
 
         auto band_range = wf::band_range(0, ds_phi__.num_wf().get());
         q_op__.apply(mem__, ichunk, 0, ds_phi__, band_range, bp_coeffs__, dbeta_phi);
         q_op__.apply(mem__, ichunk, 0, ds_phi__, band_range, bp_strain_deriv_coeffs__, beta_phi);
     }
 }
-
-
 
 } // namespace sirius

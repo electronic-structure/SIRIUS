@@ -468,11 +468,9 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<fft::Grid>(m, "FFT3D_grid")
         .def_property_readonly("num_points", py::overload_cast<>(&fft::Grid::num_points, py::const_))
-        .def_property_readonly("shape",
-                               [](const fft::Grid& obj) -> std::array<int, 3> {
-                                   return {obj[0], obj[1], obj[2]};
-                               })
-        ;
+        .def_property_readonly("shape", [](const fft::Grid& obj) -> std::array<int, 3> {
+            return {obj[0], obj[1], obj[2]};
+        });
 
     py::class_<sddk::mdarray<complex_double, 1>>(m, "mdarray1c")
         .def("on_device", &sddk::mdarray<complex_double, 1>::on_device)

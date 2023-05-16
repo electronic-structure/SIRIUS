@@ -66,15 +66,15 @@ fermi_dirac::dxdelta(double x__, double width__)
     return -exw * (exw - 1) / (std::pow(1 + exw, 3) * w2);
 }
 
-
 double
 cold::occupancy(double x__, double width__)
 {
-    double x = x__ / width__ - 1.0 / sqrt2;
-    double x2 = x*x;
-    double f = std::erf(x) / 2.0 + 0.5;
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    double f  = std::erf(x) / 2.0 + 0.5;
 
-    if (x2 > 700) return f;
+    if (x2 > 700)
+        return f;
 
     // std::erf(x) / 2.0 + std::exp(-x2) / std::sqrt(2 * pi) + 0.5;
     return f + std::exp(-x2) / std::sqrt(2 * pi);
@@ -83,10 +83,11 @@ cold::occupancy(double x__, double width__)
 double
 cold::delta(double x__, double width__)
 {
-  double x = x__ / width__ - 1.0 / sqrt2;
-  double x2 = x*x;
-  if (x2 > 700) return 0;
-  return std::exp(-x2) * (2 * width__ - sqrt2 * x__) / std::sqrt(pi) / width__ / width__;
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    if (x2 > 700)
+        return 0;
+    return std::exp(-x2) * (2 * width__ - sqrt2 * x__) / std::sqrt(pi) / width__ / width__;
 }
 
 /** Second derivative of the occupation function \f$f(x,w)\f$.
@@ -97,20 +98,22 @@ cold::delta(double x__, double width__)
 double
 cold::dxdelta(double x__, double width__)
 {
-  double sqrt2  = std::sqrt(2.0);
-  double z      = x__ / width__ - 1 / sqrt2;
-  double z2 = z*z;
-  if (z2 > 700) return 0;
-  double expmz2 = std::exp(-z2);
-  return expmz2 * (-sqrt2 - 2 * z + 2 * sqrt2 * z * z) / std::sqrt(pi) / width__ / width__;
+    double sqrt2 = std::sqrt(2.0);
+    double z     = x__ / width__ - 1 / sqrt2;
+    double z2    = z * z;
+    if (z2 > 700)
+        return 0;
+    double expmz2 = std::exp(-z2);
+    return expmz2 * (-sqrt2 - 2 * z + 2 * sqrt2 * z * z) / std::sqrt(pi) / width__ / width__;
 }
 
 double
 cold::entropy(double x__, double width__)
 {
-    double x = x__ / width__ - 1.0 / sqrt2;
-    double x2 = x*x;
-    if (x2 > 700) return 0;
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    if (x2 > 700)
+        return 0;
     return -std::exp(-x2) * (width__ - sqrt2 * x__) / 2 / std::sqrt(pi);
 }
 

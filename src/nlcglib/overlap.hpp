@@ -36,26 +36,29 @@
 namespace sirius {
 
 using inverseS = InverseS_k<std::complex<double>>;
-using S = S_k<std::complex<double>>;
+using S        = S_k<std::complex<double>>;
 
-template<class op_t>
+template <class op_t>
 class Overlap_operators : public nlcglib::OverlapBase
 {
   private:
     using key_t = std::pair<int, int>;
+
   public:
     Overlap_operators(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op);
     // virtual void apply(nlcglib::MatrixBaseZ& out, const nlcglib::MatrixBaseZ& in) const override;
     /// return a functor for nlcglib at given key
-    virtual void apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out, nlcglib::MatrixBaseZ::buffer_t& in) const override;
-    virtual std::vector<std::pair<int, int>>  get_keys() const override;
+    virtual void apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out,
+                       nlcglib::MatrixBaseZ::buffer_t& in) const override;
+    virtual std::vector<std::pair<int, int>> get_keys() const override;
 
   private:
     std::map<key_t, std::shared_ptr<op_t>> data;
 };
 
-template<class op_t>
-Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op)
+template <class op_t>
+Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_context& ctx,
+                                           const Q_operator<double>& q_op)
 {
     int nk = kset.spl_num_kpoints().local_size();
     for (int ik_loc = 0; ik_loc < nk; ++ik_loc) {
@@ -70,9 +73,10 @@ Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_c
 
 template <class op_t>
 void
-Overlap_operators<op_t>::apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out, nlcglib::MatrixBaseZ::buffer_t& in) const
+Overlap_operators<op_t>::apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out,
+                               nlcglib::MatrixBaseZ::buffer_t& in) const
 {
-    auto& op = data.at(key);
+    auto& op       = data.at(key);
     auto array_out = make_matrix_view(out);
     auto array_in  = make_matrix_view(in);
     // TODO: make sure the processing unit is correct
@@ -81,7 +85,8 @@ Overlap_operators<op_t>::apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t&
 }
 
 template <class op_t>
-std::vector<std::pair<int,int>> Overlap_operators<op_t>::get_keys() const
+std::vector<std::pair<int, int>>
+Overlap_operators<op_t>::get_keys() const
 {
     std::vector<key_t> keys;
     for (auto& elem : data) {
@@ -89,7 +94,6 @@ std::vector<std::pair<int,int>> Overlap_operators<op_t>::get_keys() const
     }
     return keys;
 }
-
 
 } // namespace sirius
 #endif /* SIRIUS_NLCGLIB */

@@ -45,7 +45,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         auto& beta_ri0 = this->ctx_.beta_ri();
         auto& beta_ri1 = this->ctx_.beta_ri_djl();
 
-        int lmax = this->ctx_.unit_cell().lmax();
+        int lmax  = this->ctx_.unit_cell().lmax();
         int lmmax = utils::lmmax(lmax);
 
         sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
@@ -91,13 +91,15 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
 
-                            auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
+                            auto z = std::pow(std::complex<double>(0, -1), l) * fourpi /
+                                     std::sqrt(this->ctx_.unit_cell().omega());
 
                             auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] * inv_len);
 
-                            this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = static_cast<std::complex<T>>(z * (d1 + d2));
+                            this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) =
+                                static_cast<std::complex<T>>(z * (d1 + d2));
                         }
                     }
                 }
@@ -113,7 +115,6 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
     }
 };
 
-}
+} // namespace sirius
 
 #endif
-

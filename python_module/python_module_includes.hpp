@@ -24,5 +24,4 @@
 #include "nlcglib/inverse_overlap.hpp"
 #include "nlcglib/preconditioner/ultrasoft_precond_k.hpp"
 
-
 #endif /* __PYTHON_MODULE_INCLUDES_HPP__ */
