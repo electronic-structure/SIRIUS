@@ -5831,6 +5831,10 @@ sirius_linear_solver:
       type: double
       attr: in, required
       doc: Constant for the projector.
+    spin:
+      type: int
+      attr: in, required
+      doc: Current spin channel.
     error_code:
       type: int
       attr: out, optional
@@ -5840,17 +5844,26 @@ sirius_linear_solver:
 void sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num_gvec_kq_loc__,
         int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double> * psi__, double* eigvals__,
         std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__, double const * alpha_pv__,
-        int* error_code__)
+        int const* spin__, int* error_code__)
 {
     PROFILE("sirius_api::sirius_linear_solver");
     call_sirius(
         [&]() {
+            /* works for non-magnetic and collinear cases */
             RTE_ASSERT(*num_spin_comp__ == 1);
 
             r3::vector<double> vkq(vkq__);
 
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
+
+            wf::spin_range sr(0);
+            if (sctx.num_mag_dims() == 1) {
+                if (!(*spin__ == 1 || *spin__ == 2)) {
+                    RTE_THROW("wrong spin channel");
+                }
+                sr = wf::spin_range(*spin__ - 1);
+            }
 
             std::shared_ptr<fft::Gvec> gvkq_in;
             gvkq_in = std::make_shared<fft::Gvec>(vkq, sctx.unit_cell().reciprocal_lattice_vectors(),
@@ -5955,7 +5968,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 psi_wf.get(),
                 tmp_wf.get(),
                 *alpha_pv__ / 2,
-                mem); // rydberg/hartree factor
+                mem, // rydberg/hartree factor
+                sr);
             // CG state vectors
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
@@ -5978,7 +5992,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
               std::move(h_o_diag.second),
               std::move(eigvals_mdarray),
               sctx.num_bands(),
-              mem
+              mem,
+              sr
             };
 
             // Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};

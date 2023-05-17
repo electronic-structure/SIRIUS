@@ -251,6 +251,7 @@ struct Smoothed_diagonal_preconditioner {
     sddk::mdarray<double, 1> eigvals;
     int num_active;
     sddk::memory_t mem;
+    wf::spin_range sr;
 
     void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
         // Could avoid a copy here, but apply_precondition is in-place.
@@ -289,6 +290,7 @@ struct Linear_response_operator {
     wf::Wave_functions<double> * tmp;
     double alpha_pv;
     sddk::memory_t mem;
+    wf::spin_range sr;
     la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
@@ -300,9 +302,10 @@ struct Linear_response_operator {
         wf::Wave_functions<double> * evq,
         wf::Wave_functions<double> * tmp,
         double alpha_pv,
-        sddk::memory_t mem)
+        sddk::memory_t mem,
+        wf::spin_range sr)
     : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), mem(mem), overlap(ctx.num_bands(), ctx.num_bands())
+      alpha_pv(alpha_pv), mem(mem), sr(sr), overlap(ctx.num_bands(), ctx.num_bands())
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
