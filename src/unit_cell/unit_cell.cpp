@@ -671,11 +671,6 @@ Unit_cell::initialize()
     int offs_lo{0};
     for (int iat = 0; iat < num_atom_types(); iat++) {
         atom_type(iat).init(offs_lo);
-        max_num_mt_points_        = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
-        max_mt_basis_size_        = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
-        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
-        max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
-        max_mt_lo_basis_size_     = std::max(max_mt_lo_basis_size_, atom_type(iat).mt_lo_basis_size());
         offs_lo += atom_type(iat).mt_lo_basis_size();
     }
 
