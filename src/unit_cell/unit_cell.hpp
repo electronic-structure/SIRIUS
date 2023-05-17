@@ -121,15 +121,6 @@ class Unit_cell
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
 
-    /// Maximum number of muffin-tin points among all atom types.
-    int max_num_mt_points_{0};
-
-    /// Maximum number of MT basis functions among all atoms.
-    int max_mt_basis_size_{0};
-
-    /// Maximum number of MT radial basis functions among all atoms.
-    int max_mt_radial_basis_size_{0};
-
     /// Total number of augmented wave basis functions in the muffin-tins.
     /** This is equal to the total number of matching coefficients for each plane-wave. */
     int mt_aw_basis_size_{0};
@@ -137,12 +128,6 @@ class Unit_cell
     /// Total number of local orbital basis functions.
     /** This also counts the total number of beta-projectors in case of pseudopotential method. */
     int mt_lo_basis_size_{0};
-
-    /// Maximum AW basis size among all atoms.
-    int max_mt_aw_basis_size_{0};
-
-    /// Maximum local orbital basis size among all atoms.
-    int max_mt_lo_basis_size_{0};
 
     /// List of nearest neighbours for each atom.
     std::vector<std::vector<nearest_neighbour_descriptor>> nearest_neighbours_;
@@ -422,7 +407,11 @@ class Unit_cell
     /// Maximum number of muffin-tin points among all atom types.
     inline int max_num_mt_points() const
     {
-        return max_num_mt_points_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).num_mt_points());
+        }
+        return result;
     }
 
     /// Total number of the augmented wave basis functions over all atoms.
@@ -440,13 +429,21 @@ class Unit_cell
     /// Maximum number of basis functions among all atom types.
     inline int max_mt_basis_size() const
     {
-        return max_mt_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_basis_size());
+        }
+        return result;
     }
 
     /// Maximum number of radial functions among all atom types.
     inline int max_mt_radial_basis_size() const
     {
-        return max_mt_radial_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_radial_basis_size());
+        }
+        return result;
     }
 
     /// Minimum muffin-tin radius.
@@ -464,12 +461,21 @@ class Unit_cell
     /// Maximum number of AW basis functions among all atom types.
     inline int max_mt_aw_basis_size() const
     {
-        return max_mt_aw_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_aw_basis_size());
+        }
+        return result;
     }
 
+    /// Maximum local orbital basis size among all atoms.
     inline int max_mt_lo_basis_size() const
     {
-        return max_mt_lo_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_lo_basis_size1());
+        }
+        return result;
     }
 
     /// Maximum number of atoms across all atom types.
