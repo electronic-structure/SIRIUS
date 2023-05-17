@@ -112,8 +112,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
         auto& atom = unit_cell_.atom(ia);
 
         for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-            for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
-                for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
+            for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
+                for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
                     atom.d_mtrx(ib1, ib2, imagn) += paw_dij_[i](ib1, ib2, imagn);
                 }
             }
@@ -262,7 +262,7 @@ void Potential::calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__
     }
 
     /* calculate Dij */
-    for (int ib2 = 0; ib2 < atom_type.mt_lo_basis_size(); ib2++) {
+    for (int ib2 = 0; ib2 < atom_type.mt_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 <= ib2; ib1++) {
 
             /* get lm quantum numbers (lm index) of the basis functions */
@@ -304,8 +304,8 @@ Potential::calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>
 
     auto& atom = unit_cell_.atom(ia__);
 
-    for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
-        for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
+    for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
+        for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
             double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
