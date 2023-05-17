@@ -473,7 +473,7 @@ class Unit_cell
     {
         int result{0};
         for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_lo_basis_size1());
+            result = std::max(result, atom_type(iat).mt_lo_basis_size());
         }
         return result;
     }
