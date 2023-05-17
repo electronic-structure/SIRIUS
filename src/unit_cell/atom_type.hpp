@@ -854,19 +854,16 @@ class Atom_type
     inline auto const& indexr(int i) const
     {
         RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
-        //return indexr_[i];
         return indexr1_[rf_index(i)];
     }
 
     inline int indexr_by_l_order(int l, int order) const
     {
-        //return indexr_.index_by_l_order(l, order);
         return indexr1_.index_of(angular_momentum(l), order);
     }
 
     inline int indexr_by_idxlo(int idxlo) const
     {
-        //return indexr_.index_by_idxlo(idxlo);
         return indexr1_.index_of(rf_lo_index(idxlo));
     }
 
@@ -910,7 +907,7 @@ class Atom_type
     /// Total number of radial basis functions.
     inline int mt_radial_basis_size() const
     {
-        return indexr_.size();
+        return indexr1_.size();
     }
 
     inline auto const& indexb_wfs() const
