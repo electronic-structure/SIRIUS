@@ -169,10 +169,10 @@ class Ultrasoft_preconditioner : public local::OperatorBase
     Simulation_context& ctx_;
     Teter<numeric_t> P;
     const Q_operator<double>& q_op;
-    int ispn;
-    const Beta_projectors_base<double>& bp;
-    sddk::mdarray<int, 1> ipiv;
-    sddk::mdarray<numeric_t, 2> LU;
+    int ispn_;
+    const Beta_projectors_base<double>& bp_;
+    sddk::mdarray<int, 1> ipiv_;
+    sddk::mdarray<numeric_t, 2> LU_;
 };
 
 template <class numeric_t>
@@ -184,8 +184,8 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     , ctx_(simulation_context)
     , P(simulation_context, gkvec)
     , q_op(q_op)
-    , ispn(ispn)
-    , bp(bp)
+    , ispn_(ispn)
+    , bp_(bp)
 {
     using complex_t = std::complex<double>;
     /* compute C <- <ϐ|P|ϐ> */
@@ -199,7 +199,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
         C.copy_to(sddk::memory_t::host);
     }
     /* compute C <- C@Q */
-    this->q_op.lmatmul(CQ, C, this->ispn, sddk::memory_t::host);
+    this->q_op.lmatmul(CQ, C, this->ispn_, sddk::memory_t::host);
     /* compute C <- 1 + C */
     int n = CQ.size(0);
     // add identiy matrix
@@ -208,20 +208,20 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     la::wrap(la::lib_t::blas)
         .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(sddk::memory_t::host), n + 1);
     // compute LU factorization
-    this->LU = sddk::empty_like(CQ);
-    sddk::auto_copy(this->LU, CQ);
-    this->ipiv = sddk::mdarray<int, 1>(n, sddk::memory_t::host);
+    this->LU_ = sddk::empty_like(CQ);
+    sddk::auto_copy(this->LU_, CQ);
+    this->ipiv_ = sddk::mdarray<int, 1>(n, sddk::memory_t::host);
     // compute LU factorization
     la::wrap(la::lib_t::lapack)
-        .getrf(n, n, this->LU.at(sddk::memory_t::host), this->LU.ld(), this->ipiv.at(sddk::memory_t::host));
+        .getrf(n, n, this->LU_.at(sddk::memory_t::host), this->LU_.ld(), this->ipiv_.at(sddk::memory_t::host));
     // copy LU factorization to device if needed
     auto mem = ctx_.processing_unit_memory_t();
     if (is_device_memory(mem)) {
-        ipiv.allocate(mem);
-        ipiv.copy_to(mem);
+        ipiv_.allocate(mem);
+        ipiv_.copy_to(mem);
 
-        LU.allocate(mem);
-        LU.copy_to(mem);
+        LU_.allocate(mem);
+        LU_.copy_to(mem);
     }
 }
 
@@ -239,7 +239,7 @@ void
 Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
                                            sddk::memory_t pm)
 {
-    int num_beta = bp.num_total_beta();
+    int num_beta = bp_.num_total_beta();
     int nbnd     = X.size(1);
 
     pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
@@ -250,12 +250,12 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
         la = la::lib_t::gpublas;
     }
 
-    auto bp_gen      = bp.make_generator(pu);
+    auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
     sddk::mdarray<numeric_t, 2> bphi(num_beta, nbnd, sddk::get_memory_pool(pm));
     // compute inner Beta^H X -> goes to host memory
-    for (int ichunk = 0; ichunk < bp.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors
         auto G         = P.apply(beta_coeffs.pw_coeffs_a, pm);
@@ -270,15 +270,15 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
     if (pu == sddk::device_t::GPU) {
         lapack = la::lib_t::gpublas;
     }
-    la::wrap(lapack).getrs('N', num_beta, nbnd, LU.at(pm), LU.ld(), ipiv.at(pm), bphi.at(pm), bphi.ld());
+    la::wrap(lapack).getrs('N', num_beta, nbnd, LU_.at(pm), LU_.ld(), ipiv_.at(pm), bphi.at(pm), bphi.ld());
 
     auto R = empty_like(bphi, sddk::get_memory_pool(pm));
-    q_op.rmatmul(R, bphi, ispn, pm, -1);
+    q_op.rmatmul(R, bphi, ispn_, pm, -1);
 
     // compute Y <- (1+T')^(-1) X
     this->P.apply(Y, X, pm);
 
-    for (int ichunk = 0; ichunk < bp.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors in place
         auto G = P.apply(beta_coeffs.pw_coeffs_a, pm);

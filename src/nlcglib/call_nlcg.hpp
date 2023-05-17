@@ -36,7 +36,7 @@
 namespace sirius {
 
 inline void
-call_nlcg(Simulation_context& ctx, const config_t::nlcg_t& nlcg_params, Energy& energy, K_point_set& kset,
+call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& energy, K_point_set& kset,
           Potential& potential)
 {
     using numeric_t = std::complex<double>;

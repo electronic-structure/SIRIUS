@@ -53,11 +53,11 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
     virtual std::vector<std::pair<int, int>> get_keys() const override;
 
   private:
-    std::map<key_t, std::shared_ptr<op_t>> data;
+    std::map<key_t, std::shared_ptr<op_t>> data_;
 };
 
-inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx,
-                                          const Q_operator<double>& q_op)
+inline UltrasoftPrecond::UltrasoftPrecond(K_point_set const& kset, Simulation_context& ctx,
+                                          Q_operator<double> const& q_op)
 {
     int nk = kset.spl_num_kpoints().local_size();
     for (int ik_loc = 0; ik_loc < nk; ++ik_loc) {
@@ -65,7 +65,7 @@ inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_co
         auto& kp = *kset.get<double>(ik);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
             key_t key{ik, ispn};
-            data[key] = std::make_shared<op_t>(ctx, q_op, ispn, kp.beta_projectors(), kp.gkvec());
+            data_[key] = std::make_shared<op_t>(ctx, q_op, ispn, kp.beta_projectors(), kp.gkvec());
         }
     }
 }
@@ -73,7 +73,7 @@ inline UltrasoftPrecond::UltrasoftPrecond(const K_point_set& kset, Simulation_co
 inline void
 UltrasoftPrecond::apply(const key_t& key, buffer_t& out, buffer_t& in) const
 {
-    auto& op          = data.at(key);
+    auto& op          = data_.at(key);
     auto array_out    = make_matrix_view(out);
     auto array_in     = make_matrix_view(in);
     sddk::memory_t pm = out.memtype == nlcglib::memory_type::host ? sddk::memory_t::host : sddk::memory_t::device;
@@ -84,7 +84,7 @@ inline std::vector<std::pair<int, int>>
 UltrasoftPrecond::get_keys() const
 {
     std::vector<key_t> keys;
-    for (auto& elem : data) {
+    for (auto& elem : data_) {
         keys.push_back(elem.first);
     }
     return keys;

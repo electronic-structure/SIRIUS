@@ -53,7 +53,7 @@ class Overlap_operators : public nlcglib::OverlapBase
     virtual std::vector<std::pair<int, int>> get_keys() const override;
 
   private:
-    std::map<key_t, std::shared_ptr<op_t>> data;
+    std::map<key_t, std::shared_ptr<op_t>> data_;
 };
 
 template <class op_t>
@@ -66,7 +66,7 @@ Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_c
         auto& kp = *kset.get<double>(ik);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
             key_t key{ik, ispn};
-            data[key] = std::make_shared<op_t>(ctx, q_op, kp.beta_projectors(), ispn);
+            data_[key] = std::make_shared<op_t>(ctx, q_op, kp.beta_projectors(), ispn);
         }
     }
 }
@@ -76,7 +76,7 @@ void
 Overlap_operators<op_t>::apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out,
                                nlcglib::MatrixBaseZ::buffer_t& in) const
 {
-    auto& op       = data.at(key);
+    auto& op       = data_.at(key);
     auto array_out = make_matrix_view(out);
     auto array_in  = make_matrix_view(in);
     // TODO: make sure the processing unit is correct
@@ -89,7 +89,7 @@ std::vector<std::pair<int, int>>
 Overlap_operators<op_t>::get_keys() const
 {
     std::vector<key_t> keys;
-    for (auto& elem : data) {
+    for (auto& elem : data_) {
         keys.push_back(elem.first);
     }
     return keys;

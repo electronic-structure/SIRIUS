@@ -40,7 +40,7 @@ namespace sirius {
 class Matrix : public nlcglib::MatrixBaseZ
 {
   public:
-    Matrix(const std::vector<buffer_t>& data, const std::vector<kindex_t>& indices, MPI_Comm mpi_comm = MPI_COMM_SELF)
+    Matrix(std::vector<buffer_t> const& data, std::vector<kindex_t> const& indices, MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data(data)
         , indices(indices)
         , mpi_comm(mpi_comm)
@@ -87,7 +87,7 @@ class Matrix : public nlcglib::MatrixBaseZ
 class Array1d : public nlcglib::VectorBaseZ
 {
   public:
-    Array1d(const std::vector<std::vector<double>>& data, const std::vector<kindex_t>& indices,
+    Array1d(std::vector<std::vector<double>> const& data, std::vector<kindex_t> const& indices,
             MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data(data)
         , indices(indices)
@@ -136,7 +136,7 @@ class Array1d : public nlcglib::VectorBaseZ
 class Scalar : public nlcglib::ScalarBaseZ
 {
   public:
-    Scalar(const std::vector<double>& data__, const std::vector<kindex_t>& indices__, MPI_Comm mpi_comm = MPI_COMM_SELF)
+    Scalar(std::vector<double> const& data__, std::vector<kindex_t> const& indices__, MPI_Comm mpi_comm = MPI_COMM_SELF)
         : data(data__)
         , indices(indices__)
         , mpi_comm(mpi_comm)
@@ -210,17 +210,17 @@ class Energy : public nlcglib::EnergyBase
     void print_info() const override;
 
   private:
-    K_point_set& kset;
-    Density& density;
-    Potential& potential;
+    K_point_set& kset_;
+    Density& density_;
+    Potential& potential_;
     /// H*psi
-    std::vector<std::shared_ptr<wf::Wave_functions<double>>> hphis;
+    std::vector<std::shared_ptr<wf::Wave_functions<double>>> hphis_;
     /// S*spi
-    std::vector<std::shared_ptr<wf::Wave_functions<double>>> sphis;
+    std::vector<std::shared_ptr<wf::Wave_functions<double>>> sphis_;
     /// original wfct
-    std::vector<wf::Wave_functions<double>*> cphis;
-    double etot{std::nan("1")};
-    std::map<std::string, double> energy_components;
+    std::vector<wf::Wave_functions<double>*> cphis_;
+    double etot_{std::nan("1")};
+    std::map<std::string, double> energy_components_;
 };
 
 template <class numeric_t>

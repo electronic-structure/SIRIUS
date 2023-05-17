@@ -172,10 +172,10 @@ class Beta_projector_generator
     typedef sddk::mdarray<complex_t, 3> array_t;
 
   public:
-    Beta_projector_generator(Simulation_context& ctx, const array_t& pw_coeffs_t_host,
-                             const sddk::matrix<std::complex<T>>& beta_pw_all, sddk::device_t processing_unit,
-                             const std::vector<beta_chunk_t>& beta_chunks, const fft::Gvec& gkvec,
-                             const sddk::mdarray<double, 2>& gkvec_coord, int num_gkvec_loc);
+    Beta_projector_generator(Simulation_context& ctx, array_t const& pw_coeffs_t_host,
+                             sddk::matrix<std::complex<T>> const& beta_pw_all, sddk::device_t processing_unit,
+                             std::vector<beta_chunk_t> const& beta_chunks, fft::Gvec const& gkvec,
+                             sddk::mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc);
 
     void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk, int j) const;
     void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk) const;
@@ -203,15 +203,15 @@ class Beta_projector_generator
 
   private:
     Simulation_context& ctx_;
-    const array_t& pw_coeffs_t_host_;
+    array_t const& pw_coeffs_t_host_;
     /// precomputed beta coefficients on CPU
-    const sddk::matrix<complex_t>& beta_pw_all_atoms_;
+    sddk::matrix<complex_t> const& beta_pw_all_atoms_;
     sddk::device_t processing_unit_;
     /// chunk descriptors
-    const std::vector<beta_chunk_t>& beta_chunks_;
+    std::vector<beta_chunk_t> const& beta_chunks_;
     /// gkvec
-    const fft::Gvec& gkvec_;
-    const sddk::mdarray<double, 2>& gkvec_coord_;
+    fft::Gvec const& gkvec_;
+    sddk::mdarray<double, 2> const& gkvec_coord_;
     int num_gkvec_loc_;
     /// pw_coeffs_t on device
     array_t pw_coeffs_t_device_;
@@ -220,11 +220,11 @@ class Beta_projector_generator
 
 template <typename T>
 Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, const array_t& pw_coeffs_t_host,
-                                                      const sddk::matrix<std::complex<T>>& beta_pw_all,
+                                                      sddk::matrix<std::complex<T>> const& beta_pw_all,
                                                       sddk::device_t processing_unit,
-                                                      const std::vector<beta_chunk_t>& beta_chunks,
-                                                      const fft::Gvec& gkvec,
-                                                      const sddk::mdarray<double, 2>& gkvec_coord, int num_gkvec_loc)
+                                                      std::vector<beta_chunk_t> const& beta_chunks,
+                                                      fft::Gvec const& gkvec,
+                                                      sddk::mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc)
     : ctx_(ctx)
     , pw_coeffs_t_host_(pw_coeffs_t_host)
     , beta_pw_all_atoms_(beta_pw_all)
