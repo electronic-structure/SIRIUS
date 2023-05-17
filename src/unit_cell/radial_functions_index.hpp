@@ -176,7 +176,7 @@ class radial_functions_index
     /// Store index of the radial function by angular momentum j and order of the function for a given j. */
     std::vector<std::vector<std::array<int, 2>>> index_by_j_order_;
 
-    /// Vector of radial function index descriptors.
+    /// List of radial function index descriptors.
     std::vector<radial_function_index_descriptor> vrd_;
 
     int offset_lo_{-1};
@@ -308,6 +308,31 @@ class radial_functions_index
     inline auto lmax() const
     {
         return static_cast<int>(index_by_j_order_.size()) - 1;
+    }
+
+    inline auto lmax_lo1() const
+    {
+        int result{-1};
+        if (offset_lo_ >= 0) {
+            for (int i = offset_lo_; i < this->size(); i++) {
+                result = std::max(result, vrd_[i].am.l());
+            }
+        }
+        return result;
+    }
+
+    /// Number of local orbitals for a given l.
+    inline auto num_lo1(int l__) const
+    {
+        int result{-1};
+        if (offset_lo_ >= 0) {
+            for (int i = offset_lo_; i < this->size(); i++) {
+                if (vrd_[i].am.l() == l__) {
+                    result++;
+                }
+            }
+        }
+        return result;
     }
 
     /// Return maximum order of the radial functions for a given angular momentum.
