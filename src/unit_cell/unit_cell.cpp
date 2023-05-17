@@ -680,7 +680,6 @@ Unit_cell::initialize()
         num_core_electrons_ += atom(i).type().num_core_electrons();
         num_valence_electrons_ += atom(i).type().num_valence_electrons();
     }
-    num_electrons_ = num_core_electrons_ + num_valence_electrons_;
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
@@ -880,13 +879,6 @@ Unit_cell::update()
               << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
               << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
             RTE_THROW(s);
-        }
-
-        min_mt_radius_ = 1e100;
-        max_mt_radius_ = 0;
-        for (int i = 0; i < num_atom_types(); i++) {
-            min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
-            max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
         }
     }
 

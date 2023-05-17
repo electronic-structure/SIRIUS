@@ -176,7 +176,7 @@ namespace experimental {
 class basis_functions_index1
 {
   private:
-    std::vector<basis_function_index_descriptor> vbd_; // TODO: rename to vbd_
+    std::vector<basis_function_index_descriptor> vbd_;
 
     sddk::mdarray<int, 2> index_by_lm_order_;
 

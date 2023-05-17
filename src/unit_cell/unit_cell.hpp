@@ -115,9 +115,6 @@ class Unit_cell
     /// Total number of valence electrons.
     double num_valence_electrons_{0};
 
-    /// Total number of electrons.
-    double num_electrons_{0};
-
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
 
@@ -131,12 +128,6 @@ class Unit_cell
 
     /// List of nearest neighbours for each atom.
     std::vector<std::vector<nearest_neighbour_descriptor>> nearest_neighbours_;
-
-    /// Minimum muffin-tin radius.
-    double min_mt_radius_{0};
-
-    /// Maximum muffin-tin radius.
-    double max_mt_radius_{0};
 
     std::unique_ptr<Crystal_symmetry> symmetry_;
 
@@ -389,7 +380,7 @@ class Unit_cell
     /// Total number of electrons (core + valence).
     inline double num_electrons() const
     {
-        return num_electrons_;
+        return this->num_core_electrons() + this->num_valence_electrons();
     }
 
     /// Number of valence electrons.
@@ -449,13 +440,21 @@ class Unit_cell
     /// Minimum muffin-tin radius.
     inline double min_mt_radius() const
     {
-        return min_mt_radius_;
+        double result{1e100};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::min(result, atom_type(iat).mt_radius());
+        }
+        return result;
     }
 
     /// Maximum muffin-tin radius.
     inline double max_mt_radius() const
     {
-        return max_mt_radius_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_radius());
+        }
+        return result;
     }
 
     /// Maximum number of AW basis functions among all atom types.
