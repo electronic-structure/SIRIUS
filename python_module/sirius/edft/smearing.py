@@ -519,7 +519,7 @@ class FermiDiracSmearingReg(Smearing):
         loc = np.array(entropy_loc, dtype=np.float64)
         entropy = np.array(0.0, dtype=np.float64)
         MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [entropy, MPI.DOUBLE], op=MPI.SUM)
-        return np.asscalar(entropy)
+        return np.ndarray.item(entropy)
 
     def dSdf(self, fn):
         """

@@ -338,20 +338,20 @@ void Potential::xc_mt(Density const& density__)
         auto& rgrid = unit_cell_.atom(ia).radial_grid();
         std::vector<Flm const*> rho(ctx_.num_mag_dims() + 1);
         std::vector<Flm*> vxc(ctx_.num_mag_dims() + 1);
-        rho[0] = &density__.rho().f_mt(ialoc);
-        vxc[0] = &xc_potential_->f_mt(ialoc);
+        rho[0] = &density__.rho().mt()[ia];
+        vxc[0] = &xc_potential_->mt()[ia];
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            rho[j + 1] = &density__.magnetization(j).f_mt(ialoc);
-            vxc[j + 1] = &effective_magnetic_field(j).f_mt(ialoc);
+            rho[j + 1] = &density__.mag(j).mt()[ia];
+            vxc[j + 1] = &effective_magnetic_field(j).mt()[ia];
         }
-        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->f_mt(ialoc));
+        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[ia]);
 
         /* z, x, y order */
         std::array<int, 3> comp_map = {2, 0, 1};
         /* add auxiliary magnetic field antiparallel to starting magnetization */
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                effective_magnetic_field(j).f_mt<sddk::index_domain_t::local>(0, ir, ialoc) -=
+                effective_magnetic_field(j).mt()[ia](0, ir) -=
                     aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]];
             }
         }

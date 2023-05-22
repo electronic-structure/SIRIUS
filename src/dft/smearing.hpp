@@ -72,7 +72,6 @@ struct fermi_dirac
     static double delta(double x__, double width__);
     static double occupancy(double x__, double width__);
     static double entropy(double x__, double width__);
-    static double occupancy_deriv(double x__, double width__);
     static double occupancy_deriv2(double x__, double width__);
 };
 
@@ -81,12 +80,6 @@ struct cold
     static double delta(double x__, double width__);
     static double occupancy(double x__, double width__);
     static double entropy(double x__, double width__);
-    /** Derivative of the occupation function \f$f(x,w)\f$.
-     *  \f[
-     *  \frac{\partial f(x,w)}{\partial x} = \frac{e^{-y^2} \left(-\sqrt{2} y+1\right)}{\sqrt{\pi } w}, \qquad
-     * y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
-     */
-    static double occupancy_deriv(double x__, double width__);
 
     /** Second derivative of the occupation function \f$f(x,w)\f$.
      *   \f[
@@ -152,17 +145,17 @@ inline std::function<double(double)> entropy(smearing_t type__, double width__)
 }
 
 inline std::function<double(double)>
-occupancy_deriv(smearing_t type__, double width__)
+delta(smearing_t type__, double width__)
 {
     switch (type__) {
         case smearing_t::gaussian: {
             throw std::runtime_error("not available");
         }
         case smearing_t::fermi_dirac: {
-            return [width__](double x__) { return fermi_dirac::occupancy_deriv(x__, width__); };
+            return [width__](double x__) { return fermi_dirac::delta(x__, width__); };
         }
         case smearing_t::cold: {
-            return [width__](double x__) { return cold::occupancy_deriv(x__, width__); };
+            return [width__](double x__) { return cold::delta(x__, width__); };
         }
         case smearing_t::methfessel_paxton: {
             return [width__](double x__) { return methfessel_paxton::occupancy_deriv(x__, width__, 1); };

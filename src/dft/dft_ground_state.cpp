@@ -146,7 +146,7 @@ DFT_ground_state::check_scf_density()
     {
         double rms{0};
         for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            rms += std::pow(std::abs(a.component(0).f_pw_local(ig) - b.component(0).f_pw_local(ig)), 2);
+            rms += std::pow(std::abs(a.component(0).rg().f_pw_local(ig) - b.component(0).rg().f_pw_local(ig)), 2);
         }
         ctx_.comm().allreduce(&rms, 1);
         return std::sqrt(rms / ctx_.gvec().num_gvec());
@@ -358,9 +358,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     if (write_state__) {
         ctx_.create_storage_file();
         if (ctx_.full_potential()) { // TODO: why this is necessary?
-            density_.rho().fft_transform(-1);
+            density_.rho().rg().fft_transform(-1);
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                density_.magnetization(j).fft_transform(-1);
+                density_.mag(j).rg().fft_transform(-1);
             }
         }
         potential_.save();
@@ -374,10 +374,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     /* check density */
     if (num_iter >= 0) {
-        density_.rho().fft_transform(1);
+        density_.rho().rg().fft_transform(1);
         double rho_min{1e100};
-        for (int ir = 0; ir < density_.rho().spfft().local_slice_size(); ir++) {
-            rho_min = std::min(rho_min, density_.rho().f_rg(ir));
+        for (int ir = 0; ir < density_.rho().rg().spfft().local_slice_size(); ir++) {
+            rho_min = std::min(rho_min, density_.rho().rg().value(ir));
         }
         dict["rho_min"] = rho_min;
         ctx_.comm().allreduce<double, mpi::op_t::min>(&rho_min, 1);
@@ -462,7 +462,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy("hartree contribution", 0.5 * evha);
         write_energy("xc contribution", eexc);
         write_energy("ewald contribution", ewald_energy_);
-        write_energy("PAW contribution", potential_.PAW_total_energy());
+        write_energy("PAW contribution", potential_.PAW_total_energy(density_));
     }
     write_energy("smearing (-TS)", s_sum);
     write_energy("SCF correction", this->scf_correction_energy_);

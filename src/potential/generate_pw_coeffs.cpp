@@ -43,7 +43,7 @@ void Potential::generate_pw_coefs()
         case relativity_t::iora: {
             fft::spfft_input<double>(fft, [&](int ir) -> double
             {
-                double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
+                double M = 1 - sq_alpha_half * effective_potential().rg().value(ir);
                 return ctx_.theta(ir) / std::pow(M, 2);
             });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
@@ -52,7 +52,7 @@ void Potential::generate_pw_coefs()
         case relativity_t::zora: {
             fft::spfft_input<double>(fft, [&](int ir)
             {
-                double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
+                double M = 1 - sq_alpha_half * effective_potential().rg().value(ir);
                 return ctx_.theta(ir) / M;
             });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
@@ -61,7 +61,7 @@ void Potential::generate_pw_coefs()
         default: {
             fft::spfft_input<double>(fft, [&](int ir)
             {
-                return effective_potential().f_rg(ir) * ctx_.theta(ir);
+                return effective_potential().rg().value(ir) * ctx_.theta(ir);
             });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);

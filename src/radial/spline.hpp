@@ -128,7 +128,7 @@ class Spline : public Radial_grid<U>
     {
         /* copy the grid points */
         this->x_ = sddk::mdarray<U, 1>(radial_grid__.num_points());
-        radial_grid__.x() >> this->x_;
+        sddk::copy(radial_grid__.x(), this->x_);
         this->init();
     }
 

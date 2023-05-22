@@ -53,18 +53,6 @@ fermi_dirac::entropy(double x__, double width__)
     return width__ * ((1 - f) * std::log(1 - f) + f * std::log(f));
 }
 
-/** First derivative of the occupation function.
-   \f[
-       \frac{d f} {d x} = \frac{e ^ { x / w }} {w \left(e ^ {x / w} + 1\right) ^ 2}
-   \f]
- */
-double
-fermi_dirac::occupancy_deriv(double x__, double width__)
-{
-    double exw = std::exp(x__ / width__);
-    return exw / ((1 + exw) * (1 + exw) * width__);
-}
-
 /** Second derivative of occupation function.
  * \f[
  *  -\frac{e^{x/w} \left(e^{x/w}-1\right)}{w^2 \left(e^{x/w}+1\right)^3}
@@ -97,20 +85,6 @@ cold::entropy(double x__, double width__)
 {
     double x = x__ / width__ - 1.0 / sqrt2;
     return -std::exp(-std::pow(x, 2)) * (width__ - sqrt2 * x__) / 2 / std::sqrt(pi);
-}
-
-/** Derivative of the occupation function \f$f(x,w)\f$.
- *  \f[
- *  \frac{\partial f(x,w)}{\partial x} = \frac{e^{-y^2} \left(-\sqrt{2} y+1\right)}{\sqrt{\pi } w}, \qquad
- * y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
- */
-double
-cold::occupancy_deriv(double x__, double width__)
-{
-    double sqrt2  = std::sqrt(2.0);
-    double z      = x__ / width__ - 1 / sqrt2;
-    double expmz2 = std::exp(-z * z);
-    return expmz2 * (1 - sqrt2 * z) / std::sqrt(pi) / width__;
 }
 
 /** Second derivative of the occupation function \f$f(x,w)\f$.
@@ -173,7 +147,7 @@ methfessel_paxton::occupancy_deriv(double x__, double width__, int n__)
     double result = -std::exp(-z * z) / std::sqrt(pi) / width__ * (-1);
     for (int i = 1; i <= n__; ++i) {
         double A = mp_coefficients(i);
-        result -= A * sf::hermiteh(2 * i, z) * std::exp(-z * z) * (-1);
+        result += A * sf::hermiteh(2 * i, z) * std::exp(-z * z);
     }
     return result;
 }

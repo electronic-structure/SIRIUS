@@ -804,7 +804,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
             N += expand_with;
 
             /* copy the Ritz values */
-            eval >> eval_old;
+            sddk::copy(eval, eval_old);
 
             if (verbosity__ >= 3) {
                 RTE_OUT(out__) << "computing " << num_bands__.get() << " pre-Ritz pairs" << std::endl;

@@ -151,7 +151,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
     variant("nlcglib", default=False, description="enable robust wave function optimization")
-    variant("w90", default=False, description="Enable Wannier90 library")
+    variant("wannier90", default=False, description="Enable Wannier90 library")
     variant(
         "build_type",
         default="Release",
@@ -226,8 +226,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("blis threads=openmp", when="+openmp ^blis")
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
 
-    depends_on("wannier90", when="+w90")
-    depends_on("wannier90+shared", when="+w90+shared")
+    depends_on("wannier90", when="+wannier90")
+    depends_on("wannier90+shared", when="+wannier90+shared")
 
     depends_on("elpa+openmp", when="+elpa+openmp")
     depends_on("elpa~openmp", when="+elpa~openmp")
@@ -236,10 +236,10 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("costa+shared", when="@7.3.2:")
 
-    with when("@7.5: +memory_pool"):
+    with when("+memory_pool"):
         depends_on("umpire")
-        depends_on("umpire+cuda~device_alloc", when="+cuda")
-        depends_on("umpire+rocm~device_alloc", when="+rocm")
+        depends_on("umpire+cuda", when="+cuda")
+        depends_on("umpire+rocm", when="+rocm")
 
     patch("strip-spglib-include-subfolder.patch", when="@6.1.5")
     patch("link-libraries-fortran.patch", when="@6.1.5")

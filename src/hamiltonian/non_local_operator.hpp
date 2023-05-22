@@ -27,7 +27,6 @@
 
 #include "SDDK/omp.hpp"
 #include "SDDK/memory.hpp"
-#include "SDDK/type_definition.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "context/simulation_context.hpp"

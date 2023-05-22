@@ -69,8 +69,10 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     }
     out__ << std::endl;
 
+
     std::vector<std::string> labels = {"host"};
     std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    
     int np{1};
     if (acc::num_devices() > 0) {
         labels.push_back("host pinned");
@@ -79,14 +81,13 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         mp.push_back(&get_memory_pool(sddk::memory_t::device));
         np = 3;
     }
+
     for (int i = 0; i < np; i++) {
         out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
               << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " <<  mp[i]->num_blocks() << ", "
-              << "num.pointers: " << mp[i]->num_stored_ptr() << std::endl;
+              << "num.blocks: " <<  mp[i]->num_blocks() << std::endl;
     }
 }
-
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
@@ -267,6 +268,9 @@ class Simulation_context : public Simulation_parameters
 
     std::ostream* output_stream_{nullptr};
     std::ofstream output_file_stream_;
+
+    /// External pointers to periodic functions.
+    std::map<std::string, periodic_function_ptr_t<double>> pf_ext_ptr;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -949,6 +953,20 @@ class Simulation_context : public Simulation_parameters
                 this->out() << "[" << label__ << "] " << e << std::endl;
             }
         }
+    }
+
+    inline void set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
+    {
+        pf_ext_ptr[label__] = ptr__;
+    }
+
+    inline auto periodic_function_ptr(std::string label__) const
+    {
+        periodic_function_ptr_t<double> const* ptr{nullptr};
+        if (pf_ext_ptr.count(label__)) {
+            ptr = &pf_ext_ptr.at(label__);
+        }
+        return ptr;
     }
 };
 

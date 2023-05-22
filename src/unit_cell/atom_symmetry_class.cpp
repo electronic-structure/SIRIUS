@@ -374,7 +374,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     }
 
     sddk::mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
-    loprod >> ovlp;
+    sddk::copy(loprod, ovlp);
 
     auto stdevp = la::Eigensolver_factory("lapack");
 

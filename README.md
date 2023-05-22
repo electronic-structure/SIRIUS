@@ -2,7 +2,7 @@
 <img src="doc/images/sirius_logo.png" width="500">
 </p>
 
-[![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases) 
+[![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 [![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
@@ -144,7 +144,7 @@ make -j install
 where `CMAKE_PREFIX_PATH` is a list of installation paths of dependencies installed in non-standard locations.
 
 #### Adding GPU support
-To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DCUDA_ARCH='60;70'`, where `CUDA_ARCH` is
+To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DCMAKE_CUDA_ARCHITECTURES='60;70'`, where `CMAKE_CUDA_ARCHITECTURES` is
 a list of NVIDIA architectures. Use `60`, `61`, `62` for Pascal; `70`, `72` for Volta; `75` for Turing; and `80` for Ampere.
 If CUDA is installed in a non-standard directory, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
 
@@ -168,7 +168,7 @@ By default example applications are built. This can be turned off via `-DBUILD_A
 Arch Linux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
 
 ### Installation on Piz Daint
-Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and 
+Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and
 [CSCS User portal](https://user.cscs.ch/computing/applications/sirius/) for detailed instructions.
 
 ## Accelerating DFT codes
@@ -176,7 +176,7 @@ Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/S
 ### Quantum ESPRESSO
 [Quantum ESPRESSO](https://www.quantum-espresso.org/) is a popular open source suite of computer codes for
 electronic-structure calculations and materials modeling at the nanoscale. It is based on DFT, plane waves, and
-pseudopotentials. We maintain the GPU-accelerated version of 
+pseudopotentials. We maintain the GPU-accelerated version of
 [Quantum ESPRESSO with SIRIUS bindings](https://github.com/electronic-structure/q-e-sirius).
 This version is frequently synchronised with the
 `develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
@@ -249,7 +249,7 @@ pw.x -i pw.in -sirius
 The SIRIUS library is using OpenMP for node-level parallelization. To run QE/SIRIUS efficiently, follow these simple rules:
  * always prefer k-point pool parallelization over band parallelization
  * use as few MPI ranks as possible for band parallelization
- * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
+ * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate
    the GPU card by using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
 #### Benchmarks
@@ -295,4 +295,3 @@ The development of the SIRIUS library would not be possible without support of t
 |![pasc](doc/images/logo_marvel.png) | NCCR MARVEL <br> Centre on Computational Design and Discovery of Novel Materials | https://nccr-marvel.ch/ |
 |![pasc](doc/images/logo_max.png)    | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
 |![pasc](doc/images/logo_prace.png)  | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
-

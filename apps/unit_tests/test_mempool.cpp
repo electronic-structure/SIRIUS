@@ -10,19 +10,19 @@ using namespace sddk;
 
 void test1()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
 }
 
 void test2()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
     auto ptr = mp.allocate<double_complex>(1024);
     mp.free(ptr);
 }
 
 void test2a()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp= get_memory_pool(memory_t::host);
     auto ptr = mp.allocate<double_complex>(1024);
     mp.free(ptr);
     ptr = mp.allocate<double_complex>(512);
@@ -31,7 +31,7 @@ void test2a()
 
 void test3()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
     auto p1 = mp.allocate<double_complex>(1024);
     auto p2 = mp.allocate<double_complex>(2024);
     auto p3 = mp.allocate<double_complex>(3024);
@@ -40,32 +40,9 @@ void test3()
     mp.free(p3);
 }
 
-void test3a()
-{
-    memory_pool mp(memory_t::host);
-    mp.allocate<double_complex>(1024);
-    mp.allocate<double_complex>(2024);
-    mp.allocate<double_complex>(3024);
-    mp.reset();
-}
-
-void test4()
-{
-    memory_pool mp(memory_t::host);
-    mp.allocate<double_complex>(1024);
-    mp.reset();
-    mp.allocate<double_complex>(1024);
-    mp.allocate<double_complex>(1024);
-    mp.reset();
-    mp.allocate<double_complex>(1024);
-    mp.allocate<double_complex>(1024);
-    mp.allocate<double_complex>(1024);
-    mp.reset();
-}
-
 void test5()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
 
     for (int k = 0; k < 2; k++) {
         std::vector<double*> vp;
@@ -137,7 +114,7 @@ void test6()
             t0 += test_alloc(sz);
         }
     }
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
     double t1{0};
     for (int k = 0; k < 8; k++) {
         for (int i = 10; i < 30; i++) {
@@ -157,7 +134,7 @@ void test6a()
             t0 += test_alloc(sz);
         }
     }
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
     double t1{0};
     for (int k = 0; k < 500; k++) {
         for (int i = 2; i < 1024; i++) {
@@ -166,12 +143,11 @@ void test6a()
         }
     }
     std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
-    mp.print();
 }
 
 void test7()
 {
-    memory_pool mp(memory_t::host);
+    memory_pool &mp = get_memory_pool(memory_t::host);
 
     int N = 10000;
     std::vector<double*> v(N);
@@ -192,9 +168,6 @@ void test7()
         //if (mp.num_blocks() != 1) {
         //    throw std::runtime_error("wrong number of blocks");
         //}
-        if (mp.num_stored_ptr() != 0) {
-            throw std::runtime_error("wrong number of stored pointers");
-        }
     }
 }
 
@@ -283,8 +256,6 @@ int run_test()
     test2();
     test2a();
     test3();
-    test3a();
-    test4();
     test5();
     //test6();
     //test6a();

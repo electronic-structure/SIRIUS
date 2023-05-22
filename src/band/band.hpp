@@ -26,7 +26,6 @@
 #define __BAND_HPP__
 
 #include "SDDK/memory.hpp"
-#include "SDDK/type_definition.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "k_point/k_point_set.hpp"
 #include "SDDK/wave_functions.hpp"

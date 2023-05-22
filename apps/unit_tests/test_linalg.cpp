@@ -18,7 +18,7 @@ void test1()
     {
         for (int j = 0; j < N; j++) A(i, j) = B(i, j) + std::conj(B(j, i));
     }
-    A >> B;
+    sddk::copy(A, B);
 
     la::wrap(la::lib_t::lapack).syinv(N, A);
     la::wrap(la::lib_t::blas).hemm('L', 'U', N, N, &la::constant<std::complex<double>>::one(),
@@ -70,7 +70,7 @@ void test2()
             A(j, i) = utils::random<T>();
         }
     }
-    A >> B;
+    sddk::copy(A, B);
 
     la::wrap(la::lib_t::lapack).geinv(N, A);
     la::wrap(la::lib_t::blas).gemm('N', 'N', N, N, N, &la::constant<T>::one(), A.at(memory_t::host), A.ld(),

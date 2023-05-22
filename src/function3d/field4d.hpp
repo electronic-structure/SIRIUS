@@ -44,8 +44,6 @@ class Field4D
     std::array<std::unique_ptr<Periodic_function<double>>, 4> components_;
 
   protected:
-    int lmmax_;
-
     Simulation_context& ctx_;
 
     void symmetrize(Periodic_function<double>* f__,
@@ -54,36 +52,44 @@ class Field4D
                     Periodic_function<double>* gy__);
 
   public:
-    Field4D(Simulation_context& ctx__, int lmmax__);
+    /// Constructor.
+    Field4D(Simulation_context& ctx__, lmax_t lmax__,
+            std::array<periodic_function_ptr_t<double> const*, 4> ptr__ = {nullptr, nullptr, nullptr, nullptr});
 
     /// Return scalar part of the field.
-    Periodic_function<double>& scalar();
+    inline auto& scalar()
+    {
+        return *(components_[0]);
+    }
 
     /// Return scalar part of the field.
-    Periodic_function<double> const& scalar() const;
+    inline auto const& scalar() const
+    {
+        return *(components_[0]);
+    }
 
     /// Return component of the vector part of the field.
-    Periodic_function<double>& vector(int i)
+    inline auto& vector(int i)
     {
         assert(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
     /// Return component of the vector part of the field.
-    Periodic_function<double> const& vector(int i) const
+    inline auto const& vector(int i) const
     {
         assert(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
-    Periodic_function<double>& component(int i)
+    inline auto& component(int i)
     {
         assert(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 
     /// Throws error in case of invalid access.
-    Periodic_function<double>& component_raise(int i)
+    inline auto& component_raise(int i)
     {
         if (components_[i] == nullptr) {
             throw std::runtime_error("invalid access");
@@ -91,22 +97,32 @@ class Field4D
         return *(components_[i]);
     }
 
-    Periodic_function<double> const& component(int i) const
+    inline auto const& component(int i) const
     {
         assert(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 
-    void zero();
+    inline void zero()
+    {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            component(i).zero();
+        }
+    }
 
-    void fft_transform(int direction__);
+    inline void fft_transform(int direction__)
+    {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            component(i).rg().fft_transform(direction__);
+        }
+    }
 
-    Simulation_context& ctx()
+    inline auto& ctx()
     {
         return ctx_;
     }
 
-    Simulation_context const& ctx() const
+    inline auto const& ctx() const
     {
         return ctx_;
     }

@@ -10,7 +10,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
 {
     auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
     la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
-    A_ref >> A;
+    sddk::copy(A_ref, A);
 
     la::dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
 
@@ -19,7 +19,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (test_gen__) {
         B_ref = random_positive_definite<T>(N__, bs__, blacs_grid__);
         B = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
-        B_ref >> B;
+        sddk::copy(B_ref, B);
     }
 
     std::vector<double> eval(nev__);
@@ -98,7 +98,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
         la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
                 &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
 #endif
-        B >> A;
+        sddk::copy(B, A);
     }
 
     /* A * Z - lambda * B * Z */
