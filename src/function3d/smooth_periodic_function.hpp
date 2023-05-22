@@ -25,14 +25,49 @@
 
 #include "fft/fft.hpp"
 #include "fft/gvec.hpp"
+#include "memory.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
-#include "SDDK/type_definition.hpp"
+#include "typedefs.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
 
 namespace sirius {
+
+template <typename T>
+inline void
+check_smooth_periodic_function_ptr(smooth_periodic_function_ptr_t<T> const& ptr__,
+        fft::spfft_transform_type<T> const& spfft__)
+{
+    if (spfft__.dim_x() != ptr__.size_x) {
+        std::stringstream s;
+        s << "x-dimensions don't match" << std::endl
+          << "  spfft__.dim_x() : " << spfft__.dim_x() << std::endl
+          << "  ptr__.size_x : " << ptr__.size_x;
+        RTE_THROW(s);
+    }
+    if (spfft__.dim_y() != ptr__.size_y) {
+        std::stringstream s;
+        s << "y-dimensions don't match" << std::endl
+          << "  spfft__.dim_y() : " << spfft__.dim_y() << std::endl
+          << "  ptr__.size_y : " << ptr__.size_y;
+        RTE_THROW(s);
+    }
+    if (ptr__.offset_z < 0) { /* global FFT buffer */
+        if (spfft__.dim_z() != ptr__.size_z) {
+            std::stringstream s;
+            s << "global z-dimensions don't match" << std::endl
+              << "  spfft__.dim_z() : " << spfft__.dim_z() << std::endl
+              << "  ptr__.size_z : " << ptr__.size_z;
+            RTE_THROW(s);
+        }
+    } else { /* local FFT buffer */
+        if ((spfft__.local_z_length() != ptr__.size_z) || (spfft__.local_z_offset() != ptr__.offset_z)) {
+            RTE_THROW("local z-dimensions don't match");
+        }
+    }
+}
 
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
@@ -68,6 +103,18 @@ class Smooth_periodic_function
         gvecp_->gather_pw_fft(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host));
     }
 
+    template <typename F>
+    friend void
+    copy(Smooth_periodic_function<F> const& src__, Smooth_periodic_function<F>& dest__);
+
+    template <typename F>
+    friend void
+    scale(F alpha__, Smooth_periodic_function<F>& x__);
+
+    template <typename F>
+    friend void
+    axpy(F alpha__, Smooth_periodic_function<F> const& x__, Smooth_periodic_function<F>& y__);
+
     Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
 
@@ -78,34 +125,36 @@ class Smooth_periodic_function
     }
 
     /// Constructor.
-    Smooth_periodic_function(fft::spfft_transform_type<T>& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__, sddk::memory_pool* mp__ = nullptr) // TODO: get rid of mem.pool
-        : spfft_(&spfft__)
-        , gvecp_(gvecp__)
+    Smooth_periodic_function(fft::spfft_transform_type<T> const& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__,
+        smooth_periodic_function_ptr_t<T> const* sptr__ = nullptr)
+        : spfft_{const_cast<fft::spfft_transform_type<T>*>(&spfft__)}
+        , gvecp_{gvecp__}
     {
-        if (mp__) {
-            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
+        auto& mp = sddk::get_memory_pool(sddk::memory_t::host);
+        /* wrap external pointer */
+        if (sptr__) {
+            check_smooth_periodic_function_ptr(*sptr__, spfft__);
+
+            if (!sptr__->ptr) {
+                RTE_THROW("Input pointer is null");
+            }
+            /* true if input external buffer points to local part of FFT grid */
+            bool is_local_rg = (sptr__->offset_z >= 0);
+
+            int offs = (is_local_rg) ? 0 : spfft__.dim_x() * spfft__.dim_y() * spfft__.local_z_offset();
+            /* wrap the pointer */
+            f_rg_ = sddk::mdarray<T, 1>(&sptr__->ptr[offs], fft::spfft_grid_size_local(spfft__));
+
         } else {
-            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host,
-                                        "Smooth_periodic_function.f_rg_");
+            f_rg_ = sddk::mdarray<T, 1>(fft::spfft_grid_size_local(spfft__), mp, "Smooth_periodic_function.f_rg_");
         }
         f_rg_.zero();
 
-        if (mp__) {
-            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), *mp__,
-                                                           "Smooth_periodic_function.f_pw_local_");
-        } else {
-            f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
-                                                       "Smooth_periodic_function.f_pw_local_");
-        }
+        f_pw_local_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), mp,
+                                                        "Smooth_periodic_function.f_pw_local_");
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            if (mp__) {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), *mp__,
-                                                             "Smooth_periodic_function.f_pw_fft_");
-            } else {
-                f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), sddk::memory_t::host,
-                                                             "Smooth_periodic_function.f_pw_fft_");
-            }
+            f_pw_fft_ = sddk::mdarray<std::complex<T>, 1>(gvecp_->count(), mp, "Smooth_periodic_function.f_pw_fft_");
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
@@ -115,59 +164,60 @@ class Smooth_periodic_function
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
-    /// Zero the values on the regular real-space grid.
+    /// Zero the values on the regular real-space grid and plane-wave coefficients.
     inline void zero()
     {
         f_rg_.zero();
+        f_pw_local_.zero();
     }
 
-    inline T& f_rg(int ir__)
-    {
-        return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).f_rg(ir__));
-    }
-
-    inline T const& f_rg(int ir__) const
+    inline T const& value(int ir__) const
     {
         return f_rg_(ir__);
     }
 
-    inline sddk::mdarray<T, 1>& f_rg()
+    inline T& value(int ir__)
+    {
+        return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).value(ir__));
+    }
+
+    inline auto values() -> sddk::mdarray<T, 1>&
     {
         return f_rg_;
     }
 
-    inline sddk::mdarray<T, 1> const& f_rg() const
+    inline auto values() const -> const sddk::mdarray<T,1>&
     {
         return f_rg_;
     }
 
-    inline std::complex<T>& f_pw_local(int ig__)
+    inline auto f_pw_local(int ig__)  -> std::complex<T>&
     {
         return f_pw_local_(ig__);
     }
 
-    inline std::complex<T> const& f_pw_local(int ig__) const
+    inline auto f_pw_local(int ig__) const -> const std::complex<T>&
     {
         return f_pw_local_(ig__);
     }
 
-    inline sddk::mdarray<std::complex<T>, 1>& f_pw_local()
+    inline auto f_pw_local() -> sddk::mdarray<std::complex<T>, 1>&
     {
       return f_pw_local_;
     }
 
-    inline const sddk::mdarray<std::complex<T>, 1>& f_pw_local() const
+    inline auto f_pw_local() const -> const sddk::mdarray<std::complex<T>, 1>&
     {
       return f_pw_local_;
     }
 
-    inline std::complex<T>& f_pw_fft(int ig__)
+    inline auto& f_pw_fft(int ig__)
     {
         return f_pw_fft_(ig__);
     }
 
     /// Return plane-wave coefficient for G=0 component.
-    inline std::complex<T> f_0() const
+    inline auto f_0() const
     {
         std::complex<T> z;
         if (gvecp_->gvec().comm().rank() == 0) {
@@ -208,23 +258,18 @@ class Smooth_periodic_function
 
         auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
 
-#if defined(USE_FP32)
-        using precision_type = typename std::conditional<std::is_same<real_type<T>, double>::value, double, float>::type;
-#else
-        using precision_type = double;
-#endif 
         switch (direction__) {
             case 1: {
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     gather_f_pw_fft();
                 }
-                spfft_->backward(reinterpret_cast<precision_type const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
+                spfft_->backward(reinterpret_cast<real_type<T> const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
                 fft::spfft_output(*spfft_, frg_ptr);
                 break;
             }
             case -1: {
                 fft::spfft_input(*spfft_, frg_ptr);
-                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<precision_type*>(f_pw_fft_.at(sddk::memory_t::host)),
+                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<real_type<T>*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     int count  = gvecp_->gvec_slab().counts[gvecp_->comm_ortho_fft().rank()];
@@ -240,7 +285,7 @@ class Smooth_periodic_function
         }
     }
 
-    inline std::vector<std::complex<T>> gather_f_pw()
+    inline auto gather_f_pw()
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
@@ -256,12 +301,36 @@ class Smooth_periodic_function
                   &f_pw_local_(0));
     }
 
-    void add(Smooth_periodic_function<T> const& g__)
+    Smooth_periodic_function<T>& operator+=(Smooth_periodic_function<T> const& rhs__)
     {
-        #pragma omp parallel for schedule(static)
-        for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-            this->f_rg_(irloc) += g__.f_rg(irloc);
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
+                this->f_rg_(irloc) += rhs__.value(irloc);
+            }
+            #pragma omp for schedule(static) nowait
+            for (int igloc = 0; igloc < this->gvecp_->gvec().count(); igloc++) {
+                this->f_pw_local_(igloc) += rhs__.f_pw_local(igloc);
+            }
         }
+        return *this;
+    }
+
+    Smooth_periodic_function<T>& operator*=(T alpha__)
+    {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
+                this->f_rg_(irloc) *= alpha__;
+            }
+            #pragma omp for schedule(static) nowait
+            for (int igloc = 0; igloc < this->gvecp_->gvec().count(); igloc++) {
+                this->f_pw_local_(igloc) *= alpha__;
+            }
+        }
+        return *this;
     }
 
     inline T checksum_rg() const
@@ -421,32 +490,40 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
     for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {
         T d{0};
         for (int x : {0, 1, 2}) {
-            d += vf__[x].f_rg(ir) * vg__[x].f_rg(ir);
+            d += vf__[x].value(ir) * vg__[x].value(ir);
         }
-        result.f_rg(ir) = d;
+        result.value(ir) = d;
     }
 
     return result;
 }
 
-/// Compute inner product <f|g>
+/// Compute local contribution to inner product <f|g>
 template <typename T, typename F>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    assert(&f__.spfft() == &g__.spfft());
+    RTE_ASSERT(&f__.spfft() == &g__.spfft());
 
     T result_rg{0};
 
     //#pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
-        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc) * theta__(irloc);
+        result_rg += utils::conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / fft::spfft_grid_size(f__.spfft()));
 
     return result_rg;
 }
+
+template <typename T>
+inline T
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner_local(f__, g__, [](int ir){return 1;});
+}
+
 template <typename T, typename F>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
@@ -467,11 +544,84 @@ inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const&
     return inner(f__, g__, [](int ir){return 1;});
 }
 
+/// Copy real-space values from the function to external pointer.
 template <typename T>
-inline T
-inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+inline void
+copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T> dest__)
 {
-    return inner_local(f__, g__, [](int ir){return 1;});
+    auto& spfft = src__.spfft();
+    check_smooth_periodic_function_ptr(dest__, spfft);
+
+    if (!dest__.ptr) {
+        RTE_THROW("Output pointer is null");
+    }
+    /* true if input external buffer points to local part of FFT grid */
+    bool is_local_rg = (dest__.offset_z >= 0);
+
+    int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+
+    /* copy local fraction of real-space points to local or global array */
+    std::copy(src__.values().at(sddk::memory_t::host),
+              src__.values().at(sddk::memory_t::host) + spfft.local_slice_size(),
+              dest__.ptr + offs);
+
+    /* if output buffer stores the global data array */
+    if (!is_local_rg) {
+        mpi::Communicator(spfft.communicator()).allgather(dest__.ptr, spfft.local_slice_size(), offs);
+    }
+}
+
+/// Copy real-space values from the external pointer to function.
+template <typename T>
+inline void
+copy(smooth_periodic_function_ptr_t<T> const src__, Smooth_periodic_function<T>& dest__)
+{
+    auto& spfft = dest__.spfft();
+    check_smooth_periodic_function_ptr(src__, spfft);
+
+    if (!src__.ptr) {
+        RTE_THROW("Input pointer is null");
+    }
+    /* true if input external buffer points to local part of FFT grid */
+    bool is_local_rg = (src__.offset_z >= 0);
+
+    int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
+
+    /* copy local fraction of real-space points to local or global array */
+    std::copy(src__.ptr + offs, src__.ptr + offs + spfft.local_slice_size(),
+              dest__.values().at(sddk::memory_t::host));
+}
+
+template <typename T>
+inline void
+copy(Smooth_periodic_function<T> const& src__, Smooth_periodic_function<T>& dest__)
+{
+    copy(src__.f_rg_, dest__.f_rg_);
+    copy(src__.f_pw_local_, dest__.f_pw_local_);
+}
+
+template <typename T>
+inline void
+scale(T alpha__, Smooth_periodic_function<T>& x__)
+{
+    for (size_t i = 0; i < x__.f_rg_.size(); i++) {
+        x__.f_rg_[i] *= alpha__;
+    }
+    for (size_t i = 0; i < x__.f_pw_local_.size(); i++) {
+        x__.f_pw_local_[i] *= alpha__;
+    }
+}
+
+template <typename T>
+inline void
+axpy(T alpha__, Smooth_periodic_function<T> const& x__, Smooth_periodic_function<T>& y__)
+{
+    for (size_t i = 0; i < x__.f_rg_.size(); i++) {
+        y__.f_rg_[i] += x__.f_rg_[i] * alpha__;
+    }
+    for (size_t i = 0; i < x__.f_pw_local_.size(); i++) {
+        y__.f_pw_local_[i] += x__.f_pw_local_[i] * alpha__;
+    }
 }
 
 } // namespace sirius

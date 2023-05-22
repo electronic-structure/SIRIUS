@@ -28,7 +28,6 @@
 #include <memory>
 #include <complex>
 #include "SDDK/memory.hpp"
-#include "SDDK/type_definition.hpp"
 #include "SDDK/wave_functions.hpp"
 #include "linalg/dmatrix.hpp"
 #include "typedefs.hpp"

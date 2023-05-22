@@ -437,50 +437,6 @@ K_point<T>::update()
         if (ctx_.hubbard_correction()) {
             generate_hubbard_orbitals();
         }
-
-        // if (false) {
-        //    p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-        //    unit_cell_.num_atom_types()); p_mtrx_.zero();
-
-        //    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        //        auto& atom_type = unit_cell_.atom_type(iat);
-
-        //        if (!atom_type.pp_desc().augment) {
-        //            continue;
-        //        }
-        //        int nbf = atom_type.mt_basis_size();
-        //        int ofs = atom_type.offset_lo();
-
-        //        matrix<double_complex> qinv(nbf, nbf);
-        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
-        //            }
-        //        }
-        //        linalg<device_t::CPU>::geinv(nbf, qinv);
-        //
-        //        /* compute P^{+}*P */
-        //        linalg<device_t::CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
-        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
-        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
-        //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
-        //        comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() *
-        //        unit_cell_.max_mt_basis_size());
-
-        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
-        //            }
-        //        }
-        //        /* compute (Q^{-1} + P^{+}*P)^{-1} */
-        //        linalg<device_t::CPU>::geinv(nbf, qinv);
-        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
-        //            }
-        //        }
-        //    }
-        //}
     }
 }
 
@@ -488,26 +444,54 @@ template <typename T>
 void
 K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) const
 {
-    assert((int)fv_evec__.size(0) >= gklo_basis_size());
-    assert((int)fv_evec__.size(1) == ctx_.num_fv_states());
-    assert(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
+    RTE_ASSERT((int)fv_evec__.size(0) >= gklo_basis_size());
+    RTE_ASSERT((int)fv_evec__.size(1) == ctx_.num_fv_states());
+    RTE_ASSERT(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
 
     sddk::mdarray<std::complex<T>, 1> tmp(gklo_basis_size_row());
 
+    /* zero global array */
     fv_evec__.zero();
 
-    for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
-        auto loc = fv_eigen_vectors_.spl_col().location(ist);
-        if (loc.rank == fv_eigen_vectors_.rank_col()) {
-            std::copy(&fv_eigen_vectors_(0, loc.local_index),
-                      &fv_eigen_vectors_(0, loc.local_index) + gklo_basis_size_row(), &tmp(0));
+    try {
+        for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+            for (int igloc = 0; igloc < this->num_gkvec_loc(); igloc++) {
+                int ig = this->gkvec().offset() + igloc;
+                fv_evec__(ig, ist) = fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(ist));
+            }
+            this->comm().allgather(fv_evec__.at(sddk::memory_t::host, 0, ist), this->gkvec().count(),
+                    this->gkvec().offset());
         }
-        fv_eigen_vectors_.blacs_grid().comm_col().bcast(&tmp(0), gklo_basis_size_row(), loc.rank);
-        for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++) {
-            int j             = fv_eigen_vectors_.irow(jloc);
-            fv_evec__(j, ist) = tmp(jloc);
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in getting plane-wave coefficients";
+        RTE_THROW(s, e.what());
+    }
+
+    try {
+        for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+            /* offset in the global index of local orbitals */
+            int offs{0};
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                /* number of atom local orbitals */
+                int nlo = ctx_.unit_cell().atom(ia).mt_lo_basis_size();
+                auto loc = fv_eigen_vectors_slab_->spl_num_atoms().location(ia);
+                if (loc.rank == this->comm().rank()) {
+                    for (int xi = 0; xi < nlo; xi++) {
+                        fv_evec__(this->num_gkvec() + offs + xi, ist) =
+                            fv_eigen_vectors_slab_->mt_coeffs(xi, wf::atom_index(loc.local_index), wf::spin_index(0), wf::band_index(ist));
+                    }
+                }
+                offs += nlo;
+            }
+            auto& mtd = fv_eigen_vectors_slab_->mt_coeffs_distr();
+            this->comm().allgather(fv_evec__.at(sddk::memory_t::host, this->num_gkvec(), ist),
+                    mtd.counts.data(), mtd.offsets.data());
         }
-        fv_eigen_vectors_.blacs_grid().comm_row().allreduce(&fv_evec__(0, ist), gklo_basis_size());
+    } catch(std::exception const& e) {
+        std::stringstream s;
+        s << "Error in getting muffin-tin coefficients";
+        RTE_THROW(s, e.what());
     }
 }
 
@@ -554,176 +538,6 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
 //==
 //==     printf("atom : %i  absolute alm error : %e  average alm error : %e\n",
 //==            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
-//== }
-
-// Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
-//{
-//    Timer t("sirius::K_point::spinor_wave_function_component");
-//
-//    int lmmax = Utils::lmmax_by_lmax(lmax);
-//
-//    Periodic_function<double_complex, index_order>* func =
-//        new Periodic_function<double_complex, index_order>(ctx_, lmax);
-//    func->allocate(ylm_component | it_component);
-//    func->zero();
-//
-//    if (basis_type == pwlo)
-//    {
-//        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
-//
-//        double fourpi_omega = fourpi / sqrt(ctx_.omega());
-//
-//        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-//        {
-//            int igk = igkglob(igkloc);
-//            double_complex z1 = spinor_wave_functions_(ctx_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-//
-//            // TODO: possilbe optimization with zgemm
-//            for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//            {
-//                int iat = ctx_.atom_type_index_by_id(ctx_.atom(ia)->type_id());
-//                double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia);
-//
-//                #pragma omp parallel for default(shared)
-//                for (int lm = 0; lm < lmmax; lm++)
-//                {
-//                    int l = l_by_lm_(lm);
-//                    double_complex z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc));
-//                    for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//                        func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
-//                }
-//            }
-//        }
-//
-//        for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//        {
-//            Platform::allreduce(&func->f_ylm(0, 0, ia), lmmax * ctx_.max_num_mt_points(),
-//                                ctx_.mpi_grid().communicator(1 << band->dim_row()));
-//        }
-//    }
-//
-//    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//    {
-//        for (int i = 0; i < ctx_.atom(ia)->type()->mt_basis_size(); i++)
-//        {
-//            int lm = ctx_.atom(ia)->type()->indexb(i).lm;
-//            int idxrf = ctx_.atom(ia)->type()->indexb(i).idxrf;
-//            switch (index_order)
-//            {
-//                case angular_radial:
-//                {
-//                    for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//                    {
-//                        func->f_ylm(lm, ir, ia) +=
-//                            spinor_wave_functions_(ctx_.atom(ia)->offset_wf() + i, ispn, jloc) *
-//                            ctx_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-//                    }
-//                    break;
-//                }
-//                case radial_angular:
-//                {
-//                    for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//                    {
-//                        func->f_ylm(ir, lm, ia) +=
-//                            spinor_wave_functions_(ctx_.atom(ia)->offset_wf() + i, ispn, jloc) *
-//                            ctx_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-//                    }
-//                    break;
-//                }
-//            }
-//        }
-//    }
-//
-//    // in principle, wave function must have an overall e^{ikr} phase factor
-//    ctx_.fft().input(num_gkvec(), &fft_index_[0],
-//                            &spinor_wave_functions_(ctx_.mt_basis_size(), ispn, jloc));
-//    ctx_.fft().transform(1);
-//    ctx_.fft().output(func->f_it());
-//
-//    for (int i = 0; i < ctx_.fft().size(); i++) func->f_it(i) /= sqrt(ctx_.omega());
-//
-//    return func;
-//}
-
-//== void K_point::spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<double_complex>& psilm)
-//== {
-//==     Timer t("sirius::K_point::spinor_wave_function_component_mt");
-//==
-//==     //int lmmax = Utils::lmmax_by_lmax(lmax);
-//==
-//==     psilm.zero();
-//==
-//==     //if (basis_type == pwlo)
-//==     //{
-//==     //    if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
-//==
-//==     //    double fourpi_omega = fourpi / sqrt(ctx_.omega());
-//==
-//==     //    mdarray<double_complex, 2> zm(ctx_.max_num_mt_points(),  num_gkvec_row());
-//==
-//==     //    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//==     //    {
-//==     //        int iat = ctx_.atom_type_index_by_id(ctx_.atom(ia)->type_id());
-//==     //        for (int l = 0; l <= lmax; l++)
-//==     //        {
-//==     //            #pragma omp parallel for default(shared)
-//==     //            for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-//==     //            {
-//==     //                int igk = igkglob(igkloc);
-//==     //                double_complex z1 = spinor_wave_functions_(ctx_.mt_basis_size() + igk, ispn, jloc) *
-//fourpi_omega;
-//==     //                double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
-//==     //                for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//==     //                    zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
-//==     //            }
-//==     //            blas<CPU>::gemm(0, 2, ctx_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
-//==     //                            &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(),
-//==     //                            &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
-//==     //        }
-//==     //    }
-//==     //    //for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-//==     //    //{
-//==     //    //    int igk = igkglob(igkloc);
-//==     //    //    double_complex z1 = spinor_wave_functions_(ctx_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-//==
-//==     //    //    // TODO: possilbe optimization with zgemm
-//==     //    //    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//==     //    //    {
-//==     //    //        int iat = ctx_.atom_type_index_by_id(ctx_.atom(ia)->type_id());
-//==     //    //        double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia);
-//==     //    //
-//==     //    //        #pragma omp parallel for default(shared)
-//==     //    //        for (int lm = 0; lm < lmmax; lm++)
-//==     //    //        {
-//==     //    //            int l = l_by_lm_(lm);
-//==     //    //            double_complex z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc));
-//==     //    //            for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//==     //    //                fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
-//==     //    //        }
-//==     //    //    }
-//==     //    //}
-//==
-//==     //    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//==     //    {
-//==     //        Platform::allreduce(&fylm(0, 0, ia), lmmax * ctx_.max_num_mt_points(),
-//==     //                            ctx_.mpi_grid().communicator(1 << band->dim_row()));
-//==     //    }
-//==     //}
-//==
-//==     for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//==     {
-//==         for (int i = 0; i < ctx_.atom(ia)->type()->mt_basis_size(); i++)
-//==         {
-//==             int lm = ctx_.atom(ia)->type()->indexb(i).lm;
-//==             int idxrf = ctx_.atom(ia)->type()->indexb(i).idxrf;
-//==             for (int ir = 0; ir < ctx_.atom(ia)->num_mt_points(); ir++)
-//==             {
-//==                 psilm(lm, ir, ia) +=
-//==                     spinor_wave_functions_(ctx_.atom(ia)->offset_wf() + i, ispn, jloc) *
-//==                     ctx_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-//==             }
-//==         }
-//==     }
 //== }
 
 /** The following HDF5 data structure is created:
@@ -981,25 +795,9 @@ K_point<T>::generate_gklo_basis()
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
 
-    igk_row_.resize(num_gkvec_row_);
-    for (int i = 0; i < num_gkvec_row_; i++) {
-        igk_row_[i] = spl_ngk_row[i];
-    }
-
     /* find local number of column G+k vectors */
     sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
-
-    igk_col_.resize(num_gkvec_col_);
-    for (int i = 0; i < num_gkvec_col_; i++) {
-        igk_col_[i] = spl_ngk_col[i];
-    }
-
-    /* mapping between local and global G+k vecotor indices */
-    igk_loc_.resize(num_gkvec_loc());
-    for (int i = 0; i < num_gkvec_loc(); i++) {
-        igk_loc_[i] = gkvec().offset() + i;
-    }
 
     if (ctx_.full_potential()) {
         sddk::splindex<sddk::splindex_t::block_cyclic> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),

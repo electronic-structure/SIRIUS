@@ -41,18 +41,16 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
 
     /* allocate functions */
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        veff_vec_[j] = std::unique_ptr<Smooth_periodic_function<T>>(
-            new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+        veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
-            veff_vec_[j]->f_rg(ir) = 2.71828;
+            veff_vec_[j]->value(ir) = 2.71828;
         }
     }
     /* map Theta(r) to the coarse mesh */
     if (ctx_.full_potential()) {
         auto& gvec_dense_p = ctx_.gvec_fft();
-        veff_vec_[v_local_index_t::theta] = std::unique_ptr<Smooth_periodic_function<T>>(
-            new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+        veff_vec_[v_local_index_t::theta] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         /* map unit-step function */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
@@ -62,7 +60,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         }
         veff_vec_[v_local_index_t::theta]->fft_transform(1);
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[v_local_index_t::theta]->f_rg().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            veff_vec_[v_local_index_t::theta]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
         }
         if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -80,13 +78,12 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             auto& fft_dense    = ctx_.spfft<T>();
             auto& gvec_dense_p = ctx_.gvec_fft();
 
-            Smooth_periodic_function<T> ftmp(const_cast<Simulation_context&>(ctx_).spfft<T>(), ctx_.gvec_fft_sptr(),
-                                             &get_memory_pool(sddk::memory_t::host));
+            Smooth_periodic_function<T> ftmp(ctx_.spfft<T>(), ctx_.gvec_fft_sptr());
 
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 /* multiply potential by step function theta(r) */
                 for (int ir = 0; ir < fft_dense.local_slice_size(); ir++) {
-                    ftmp.f_rg(ir) = potential__->component(j).f_rg(ir) * ctx_.theta(ir);
+                    ftmp.value(ir) = potential__->component(j).rg().value(ir) * ctx_.theta(ir);
                 }
                 /* transform to plane-wave domain */
                 ftmp.fft_transform(-1);
@@ -103,8 +100,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
                 veff_vec_[j]->fft_transform(1);
             }
             if (ctx_.valence_relativity() == relativity_t::zora) {
-                veff_vec_[v_local_index_t::rm_inv] = std::unique_ptr<Smooth_periodic_function<T>>(
-                    new Smooth_periodic_function<T>(fft_coarse__, gvec_coarse_p__, &get_memory_pool(sddk::memory_t::host)));
+                veff_vec_[v_local_index_t::rm_inv] = std::make_unique<Smooth_periodic_function<T>>(
+                        fft_coarse__, gvec_coarse_p__);
                 /* loop over local set of coarse G-vectors */
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
@@ -124,7 +121,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
                 for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
                     /* map from fine to coarse set of G-vectors */
                     veff_vec_[j]->f_pw_local(igloc) =
-                        potential__->component(j).f_pw_local(potential__->component(j).gvec().gvec_base_mapping(igloc));
+                        potential__->component(j).rg().f_pw_local(potential__->component(j).rg().gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
                 veff_vec_[j]->fft_transform(1);
@@ -134,18 +131,20 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0             = veff_vec_[v_local_index_t::v0]->f_rg(ir);
-                    T v1             = veff_vec_[v_local_index_t::v1]->f_rg(ir);
-                    veff_vec_[v_local_index_t::v0]->f_rg(ir) = v0 + v1; // v + Bz
-                    veff_vec_[v_local_index_t::v1]->f_rg(ir) = v0 - v1; // v - Bz
+                    T v0             = veff_vec_[v_local_index_t::v0]->value(ir);
+                    T v1             = veff_vec_[v_local_index_t::v1]->value(ir);
+                    veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
+                    veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
                 }
             }
 
             if (ctx_.num_mag_dims() == 0) {
-                v0_[0] = potential__->component(0).f_0().real();
+                v0_[0] = potential__->component(0).rg().f_0().real();
             } else {
-                v0_[0] = potential__->component(0).f_0().real() + potential__->component(1).f_0().real();
-                v0_[1] = potential__->component(0).f_0().real() - potential__->component(1).f_0().real();
+                v0_[0] = potential__->component(0).rg().f_0().real() +
+                         potential__->component(1).rg().f_0().real();
+                v0_[1] = potential__->component(0).rg().f_0().real() -
+                         potential__->component(1).rg().f_0().real();
             }
         }
 
@@ -165,7 +164,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
         for (int j = 0; j < 6; j++) {
             if (veff_vec_[j]) {
-                veff_vec_[j]->f_rg().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                veff_vec_[j]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
             }
         }
         buf_rg_.allocate(get_memory_pool(sddk::memory_t::device));
@@ -180,15 +179,9 @@ void Local_operator<T>::prepare_k(fft::Gvec_fft const& gkvec_p__)
     int ngv_fft = gkvec_p__.count();
 
     /* cache kinteic energy of plane-waves */
-    //if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
-        pw_ekin_ = sddk::mdarray<T, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
-    //}
-    //if (static_cast<int>(gkvec_cart_.size()) < ngv_fft) {
-        gkvec_cart_ = sddk::mdarray<T, 2>(ngv_fft, 3, get_memory_pool(sddk::memory_t::host), "Local_operator::gkvec_cart");
-    //}
-    //if (static_cast<int>(vphi_.size()) < ngv_fft) {
-        vphi_ = sddk::mdarray<std::complex<T>, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::vphi");
-    //}
+    pw_ekin_ = sddk::mdarray<T, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::pw_ekin");
+    gkvec_cart_ = sddk::mdarray<T, 2>(ngv_fft, 3, get_memory_pool(sddk::memory_t::host), "Local_operator::gkvec_cart");
+    vphi_ = sddk::mdarray<std::complex<T>, 1>(ngv_fft, get_memory_pool(sddk::memory_t::host), "Local_operator::vphi");
 
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
@@ -225,7 +218,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                         #pragma omp parallel for
                         for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                            out__[ir] = in__[ir] * veff_vec__[idx_veff__]->f_rg(ir);
+                            out__[ir] = in__[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
                         break;
                     }
@@ -235,7 +228,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                         #pragma omp parallel for
                         for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                            out[ir] = in[ir] * veff_vec__[idx_veff__]->f_rg(ir);
+                            out[ir] = in[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
                         break;
                     }
@@ -247,7 +240,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < nr; ir++) {
                     /* multiply by Bx +/- i*By */
-                    out[ir] = in[ir] * std::complex<T>(veff_vec__[2]->f_rg(ir), pref * veff_vec__[3]->f_rg(ir));
+                    out[ir] = in[ir] * std::complex<T>(veff_vec__[2]->value(ir), pref * veff_vec__[3]->value(ir));
                 }
             }
             break;
@@ -257,14 +250,14 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                        mul_by_veff_real_real_gpu(nr, in__, veff_vec__[idx_veff__]->f_rg().at(sddk::memory_t::device), out__);
+                        mul_by_veff_real_real_gpu(nr, in__, veff_vec__[idx_veff__]->values().at(sddk::memory_t::device), out__);
                         break;
                     }
                     case SPFFT_TRANS_C2C: {
                         auto in = reinterpret_cast<std::complex<T> const*>(in__);
                         auto out = reinterpret_cast<std::complex<T>*>(out__);
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
-                        mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->f_rg().at(sddk::memory_t::device), out);
+                        mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->values().at(sddk::memory_t::device), out);
                         break;
                     }
                 }
@@ -274,8 +267,8 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                 auto in = reinterpret_cast<std::complex<T> const*>(in__);
                 auto out = reinterpret_cast<std::complex<T>*>(out__);
 
-                mul_by_veff_complex_complex_gpu(nr, in, pref, veff_vec__[2]->f_rg().at(sddk::memory_t::device),
-                    veff_vec__[3]->f_rg().at(sddk::memory_t::device), out);
+                mul_by_veff_complex_complex_gpu(nr, in, pref, veff_vec__[2]->values().at(sddk::memory_t::device),
+                    veff_vec__[3]->values().at(sddk::memory_t::device), out);
             }
             break;
         }

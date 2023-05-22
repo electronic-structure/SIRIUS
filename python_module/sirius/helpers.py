@@ -69,22 +69,22 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     cn     -- numpy array
     ispn   -- spin component
     """
-    from .ot import matview
+    ctx = kpointset.ctx()
+    pmem_t = ctx.processing_unit_memory_t()
 
     if isinstance(cn, PwCoeffs):
         assert (ki is None)
         assert (ispn is None)
         for key, v in cn.items():
             k, ispn = key
-            n, m = v.shape
             psi = kpointset[k].spinor_wave_functions()
             psi.pw_coeffs(ispn)[:, :v.shape[1]] = v
-            on_device = psi.preferred_memory_t() == MemoryEnum.device
+            on_device = pmem_t == MemoryEnum.device
             if on_device:
                 psi.copy_to_gpu()
     else:
         psi = kpointset[ki].spinor_wave_functions()
-        on_device = psi.preferred_memory_t() == MemoryEnum.device
+        on_device = pmem_t == MemoryEnum.device
         psi.pw_coeffs(ispn)[:, :cn.shape[1]] = cn
         if on_device:
             psi.copy_to_gpu()
@@ -110,8 +110,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     """
     from . import (Simulation_context,
                    K_point_set,
-                   DFT_ground_state,
-                   vector3d_double)
+                   DFT_ground_state)
     import json
     if isinstance(config, dict):
         ctx = Simulation_context(json.dumps(config))
@@ -122,7 +121,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     ctx.initialize()
     if 'vk' in siriusJson['parameters']:
         vk = siriusJson['parameters']['vk']
-        kPointSet = K_point_set(ctx, [vector3d_double(x) for x in vk])
+        kPointSet = K_point_set(ctx, vk)
     else:
         if 'shiftk' in siriusJson['parameters']:
             # make sure shiftk is not a list of floats
@@ -140,10 +139,10 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     dft_gs = DFT_ground_state(kPointSet)
     dft_gs.initial_state()
 
-    if 'potential_tol' not in siriusJson['parameters']:
-        potential_tol = 1e-5
+    if 'density_tol' not in siriusJson['parameters']:
+        density_tol = 1e-5
     else:
-        potential_tol = siriusJson['parameters']['potential_tol']
+        density_tol = siriusJson['parameters']['density_tol']
 
     if 'energy_tol' not in siriusJson['parameters']:
         energy_tol = 1e-5
@@ -152,7 +151,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     write_status = False
 
     initial_tol = 1e-2  # TODO: magic number
-    E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
+    E0 = dft_gs.find(density_tol, energy_tol, initial_tol, num_dft_iter, write_status)
 
     return {
         'E': E0,
@@ -213,7 +212,7 @@ def get_c0_x(kpointset, eps=0):
     import numpy as np
 
     c0 = PwCoeffs(kpointset)
-    x = PwCoeffs(dtype=np.complex)
+    x = PwCoeffs(dtype=np.complex128)
     for key, c0_loc in c0.items():
         x_loc = np.zeros_like(c0_loc)
         x[key] = x_loc

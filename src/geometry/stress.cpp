@@ -53,7 +53,7 @@ Stress::calc_stress_nonloc_aux()
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_.get<T>(ik);
-        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+        auto mem = ctx_.processing_unit_memory_t();
         auto mg = kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
         Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
 
@@ -237,7 +237,7 @@ Stress::calc_stress_core()
         return stress_core_;
     }
 
-    potential_.xc_potential().fft_transform(-1);
+    potential_.xc_potential().rg().fft_transform(-1);
 
     auto q     = ctx_.gvec().shells_len();
     auto ff    = ctx_.ps_core_ri_djl().values(q, ctx_.comm());
@@ -253,12 +253,12 @@ Stress::calc_stress_core()
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {
                 stress_core_(mu, nu) -=
-                    std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) *
+                    std::real(std::conj(potential_.xc_potential().rg().f_pw_local(igloc)) * drhoc[igloc]) *
                     G[mu] * G[nu] / g;
             }
         }
 
-        sdiag += std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) *
+        sdiag += std::real(std::conj(potential_.xc_potential().rg().f_pw_local(igloc)) *
                            density_.rho_pseudo_core().f_pw_local(igloc));
     }
 
@@ -268,7 +268,7 @@ Stress::calc_stress_core()
     }
     if (ctx_.comm().rank() == 0) {
         sdiag +=
-            std::real(std::conj(potential_.xc_potential().f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
+            std::real(std::conj(potential_.xc_potential().rg().f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
     }
 
     for (int mu : {0, 1, 2}) {
@@ -304,8 +304,8 @@ Stress::calc_stress_xc()
         if (ctx_.num_spins() == 1) {
             Smooth_periodic_function<double> rhovc(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
             rhovc.zero();
-            rhovc.add(density_.rho());
-            rhovc.add(density_.rho_pseudo_core());
+            rhovc += density_.rho().rg();
+            rhovc += density_.rho_pseudo_core();
 
             /* transform to PW domain */
             rhovc.fft_transform(-1);
@@ -322,7 +322,7 @@ Stress::calc_stress_xc()
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         t(mu, nu) +=
-                            2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+                            2 * grad_rho[mu].value(irloc) * grad_rho[nu].value(irloc) * potential_.vsigma(0).value(irloc);
                     }
                 }
             }
@@ -348,13 +348,13 @@ Stress::calc_stress_xc()
             for (int irloc = 0; irloc < ctx_.spfft<double>().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
-                        t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
-                                         potential_.vsigma(0).f_rg(irloc) +
-                                     (grad_rho_up[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) +
-                                      grad_rho_dn[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc)) *
-                                         potential_.vsigma(1).f_rg(irloc) +
-                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) * 2 *
-                                         potential_.vsigma(2).f_rg(irloc);
+                        t(mu, nu) += grad_rho_up[mu].value(irloc) * grad_rho_up[nu].value(irloc) * 2 *
+                                         potential_.vsigma(0).value(irloc) +
+                                     (grad_rho_up[mu].value(irloc) * grad_rho_dn[nu].value(irloc) +
+                                      grad_rho_dn[mu].value(irloc) * grad_rho_up[nu].value(irloc)) *
+                                         potential_.vsigma(1).value(irloc) +
+                                     grad_rho_dn[mu].value(irloc) * grad_rho_dn[nu].value(irloc) * 2 *
+                                         potential_.vsigma(2).value(irloc);
                     }
                 }
             }
@@ -450,7 +450,7 @@ Stress::calc_stress_us()
                         double g = gvc.length();
 
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            auto z = phase_factors(ia, igloc) * potential_.component(ispin).f_pw_local(igloc) *
+                            auto z = phase_factors(ia, igloc) * potential_.component(ispin).rg().f_pw_local(igloc) *
                                      (-gvc[mu] / g);
                             v_tmp(ia, 2 * igloc)     = z.real();
                             v_tmp(ia, 2 * igloc + 1) = z.imag();
@@ -621,7 +621,7 @@ Stress::calc_stress_har()
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         auto G    = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         double g2 = std::pow(G.length(), 2);
-        auto z    = density_.rho().f_pw_local(igloc);
+        auto z    = density_.rho().rg().f_pw_local(igloc);
         double d  = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
 
         for (int mu : {0, 1, 2}) {
@@ -750,11 +750,11 @@ Stress::calc_stress_vloc()
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {
                 stress_vloc_(mu, nu) +=
-                    std::real(std::conj(density_.rho().f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
+                    std::real(std::conj(density_.rho().rg().f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
             }
         }
 
-        sdiag += std::real(std::conj(density_.rho().f_pw_local(igloc)) * v[igloc]);
+        sdiag += std::real(std::conj(density_.rho().rg().f_pw_local(igloc)) * v[igloc]);
     }
 
     if (ctx_.gvec().reduced()) {
@@ -762,7 +762,7 @@ Stress::calc_stress_vloc()
         sdiag *= 2;
     }
     if (ctx_.comm().rank() == 0) {
-        sdiag += std::real(std::conj(density_.rho().f_pw_local(0)) * v[0]);
+        sdiag += std::real(std::conj(density_.rho().rg().f_pw_local(0)) * v[0]);
     }
 
     for (int mu : {0, 1, 2}) {

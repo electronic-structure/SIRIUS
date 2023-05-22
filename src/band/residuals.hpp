@@ -29,7 +29,6 @@
 #include "memory.hpp"
 #include "linalg/linalg.hpp"
 #include "context/simulation_context.hpp"
-#include "SDDK/type_definition.hpp"
 #include "SDDK/wave_functions.hpp"
 
 struct residual_result

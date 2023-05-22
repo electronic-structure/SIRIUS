@@ -34,7 +34,7 @@
 #include "fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/rte.hpp"
-#include "type_definition.hpp"
+#include "strong_type.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -106,47 +106,7 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 /// Namespace for the wave-functions.
 namespace wf {
 
-template <typename T, typename Tag>
-class strong_type
-{
-  private:
-    T val_;
-  public:
-    explicit strong_type(T const& val__)
-        : val_{val__}
-    {
-    }
-
-    explicit strong_type(T&& val__) 
-        : val_{std::move(val__)}
-    {
-    }
-
-    T const& get() const
-    {
-        return val_;
-    }
-
-    operator T() const
-    {
-        return val_;
-    }
-    bool operator!=(strong_type<T, Tag> const& rhs__)
-    {
-        return this->val_ != rhs__.val_;
-    }
-
-    bool operator==(strong_type<T, Tag> const& rhs__)
-    {
-        return this->val_ == rhs__.val_;
-    }
-
-    strong_type<T, Tag>& operator++(int)
-    {
-        this->val_++;
-        return *this;
-    }
-};
+using sirius::strong_type;
 
 using spin_index = strong_type<int, struct __spin_index_tag>;
 using atom_index = strong_type<int, struct __atom_index_tag>;
@@ -699,6 +659,12 @@ class Wave_functions_mt : public Wave_functions_base<T>
     comm() const
     {
         return comm_;
+    }
+
+    auto const&
+    mt_coeffs_distr() const
+    {
+        return mt_coeffs_distr_;
     }
 };
 

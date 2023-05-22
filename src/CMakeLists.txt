@@ -11,8 +11,6 @@ if(USE_CUDA OR USE_ROCM)
   set(_CUSOURCES "${CUFILES}")
 endif()
 
-
-
 set(_SOURSES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
@@ -79,31 +77,22 @@ set(_SOURSES
 
 
 # create library with .cpp, .cu and .f90 sources
+add_library(sirius "${_SOURCES};${_CUSOURCES};${_FSOURCES}")
+
+target_compile_features(sirius PUBLIC cxx_std_14)
+target_compile_features(sirius PUBLIC c_std_99)
+target_compile_features(sirius PUBLIC cuda_std_14)
+set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(USE_ROCM)
-  # required for linking with compiler other than hcc
-  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc)
-  # Dependency generation of FindHIP module creates a lot of warnings - disable for release mode
-  set(HIP_HCC_FLAGS_RELEASE ${HIP_HCC_FLAGS_RELEASE} -Wno-everything)
-  # FindHIP does not account for C++ standard
-  if(CMAKE_CXX_STANDARD)
-    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -std=gnu++${CMAKE_CXX_STANDARD})
-  endif()
-  # macro from FindHIP package, which compiles all .cu files with hcc and cpp files with the set c++ compiler
-  HIP_ADD_LIBRARY(sirius SHARED "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-else()
-  add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+  set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
 endif()
-
-set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
 
 if(USE_WANNIER90)
     target_link_libraries(sirius PUBLIC ifcore)
     find_library(LIB_TO_INCLUDE wannier /home/gcistaro/codes/q-e-qe-7.1/wannier90-3.1.0/)
     target_link_libraries(sirius PUBLIC ${LIB_TO_INCLUDE})
 endif(USE_WANNIER90)
-
-
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     SPLA::spla
@@ -119,14 +108,13 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:sirius::magma>
                                     $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
                                     $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm>
-                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
                                     $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-                                    )
+				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
+			    )
 
 
 
@@ -139,7 +127,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:SIRIUS_SCALAPACK>
   $<$<BOOL:${USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>
-  $<$<BOOL:${DEBUG_MEMORY_POOL}>:SIRIUS_DEBUG_MEMORY_POOL>
   $<$<BOOL:${USE_POWER_COUNTER}>:SIRIUS_USE_POWER_COUNTER>
   $<$<BOOL:${USE_ELPA}>:SIRIUS_ELPA>
   $<$<BOOL:${USE_NLCGLIB}>:SIRIUS_NLCGLIB>
@@ -153,8 +140,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
-
-set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)

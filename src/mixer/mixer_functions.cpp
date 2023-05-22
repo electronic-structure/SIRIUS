@@ -42,63 +42,23 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
     };
 
     auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                x.f_rg(i) *= alpha;
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    auto& x_f_mt = x.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        x_f_mt[i] *= alpha;
-                    }
-                }
-            }
+        scale(alpha, x.rg());
+        if (x.ctx().full_potential()) {
+            scale(alpha, x.mt());
         }
     };
 
     auto copy_function = [](const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                y.f_rg(i) = x.f_rg(i);
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
-                    const auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt       = y.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        y_f_mt[i] = x_f_mt[i];
-                    }
-                }
-            }
+        copy(x.rg(), y.rg());
+        if (x.ctx().full_potential()) {
+            copy(x.mt(), y.mt());
         }
     };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                y.f_rg(i) += alpha * x.f_rg(i);
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
-                    const auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt       = y.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        y_f_mt[i] += alpha * x_f_mt[i];
-                    }
-                }
-            }
+        axpy(alpha, x.rg(), y.rg());
+        if (x.ctx().full_potential()) {
+            axpy(alpha, x.mt(), y.mt());
         }
     };
 
@@ -106,18 +66,19 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         #pragma omp parallel
         {
             #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                auto xi = x.f_rg(i);
-                auto yi = y.f_rg(i);
-                x.f_rg(i) = xi * c  + yi * s;
-                y.f_rg(i) = xi * -s + yi * c;
+            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+                auto xi = x.rg().value(i);
+                auto yi = y.rg().value(i);
+                x.rg().value(i) = xi * c  + yi * s;
+                y.rg().value(i) = xi * -s + yi * c;
             }
             if (x.ctx().full_potential()) {
                 for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt = y.f_mt(ialoc);
+                    int ia = x.ctx().unit_cell().spl_num_atoms(ialoc);
+                    auto& x_f_mt = x.mt()[ia];
+                    auto& y_f_mt = y.mt()[ia];
                     #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                    for (int i = 0; i < static_cast<int>(x.mt()[ia].size()); i++) {
                         auto xi = x_f_mt[i];
                         auto yi = y_f_mt[i];
                         x_f_mt[i] = xi * c  + yi * s;
@@ -132,6 +93,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
                                                          axpy_function, rotate_function);
 }
 
+/// Only for the PP-PW case.
 FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__)
 {
     auto global_size_func = [](Periodic_function<double> const& x) -> double
@@ -139,19 +101,21 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         return 1.0 / x.ctx().unit_cell().omega();
     };
 
-    auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
+    auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x,
+            Periodic_function<double> const& y) -> double
+    {
         double result{0};
         if (use_coarse_gvec__) {
             for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
 
-                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) /
+                result += std::real(std::conj(x.rg().f_pw_local(ig1)) * y.rg().f_pw_local(ig1)) /
                     std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(ig1), 2);
             }
         } else {
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
-                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) /
+                result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc)) /
                     std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
             }
         }
@@ -163,102 +127,28 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         return result;
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                x.f_rg(i) *= alpha;
-            }
-            #pragma omp for schedule(static) nowait
-            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
-                x.f_pw_local(ig) *= alpha;
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    auto& x_f_mt = x.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        x_f_mt[i] *= alpha;
-                    }
-                }
-            }
-        }
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void
+    {
+        scale(alpha, x.rg());
     };
 
-    auto copy_function = [](const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                y.f_rg(i) = x.f_rg(i);
-            }
-            #pragma omp for schedule(static) nowait
-            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
-                y.f_pw_local(ig) = x.f_pw_local(ig);
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
-                    const auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt       = y.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        y_f_mt[i] = x_f_mt[i];
-                    }
-                }
-            }
-        }
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void {
+        copy(x.rg(), y.rg());
     };
 
-    auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                y.f_rg(i) += alpha * x.f_rg(i);
-            }
-            #pragma omp for schedule(static) nowait
-            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
-                y.f_pw_local(ig) += alpha * x.f_pw_local(ig);
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
-                    const auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt       = y.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        y_f_mt[i] += alpha * x_f_mt[i];
-                    }
-                }
-            }
-        }
+    auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void
+    {
+        axpy(alpha, x.rg(), y.rg());
     };
 
-    auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
-                auto xi = x.f_rg(i);
-                auto yi = y.f_rg(i);
-                x.f_rg(i) = xi * c  + yi * s;
-                y.f_rg(i) = xi * -s + yi * c;
-            }
-            if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    auto& x_f_mt = x.f_mt(ialoc);
-                    auto& y_f_mt = y.f_mt(ialoc);
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
-                        auto xi = x_f_mt[i];
-                        auto yi = y_f_mt[i];
-                        x_f_mt[i] = xi * c  + yi * s;
-                        y_f_mt[i] = xi * -s + yi * c;
-                    }
-                }
-            }
+    auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void
+    {
+        #pragma omp parallel for schedule(static)
+        for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
+            auto xi = x.rg().value(i);
+            auto yi = y.rg().value(i);
+            x.rg().value(i) = xi * c  + yi * s;
+            y.rg().value(i) = xi * -s + yi * c;
         }
     };
 
@@ -313,63 +203,71 @@ FunctionProperties<sddk::mdarray<std::complex<double>, 4>> density_function_prop
                                                                 copy_function, axpy_function, rotate_function);
 }
 
-FunctionProperties<paw_density> paw_density_function_property()
+FunctionProperties<PAW_density<double>> paw_density_function_property()
 {
-    auto global_size_func = [](paw_density const& x) -> double
+    auto global_size_func = [](PAW_density<double> const& x) -> double
     {
-        return x.ctx().unit_cell().num_paw_atoms();
+        return x.unit_cell().num_paw_atoms();
     };
 
-    auto inner_prod_func = []( paw_density const& x,  paw_density const& y) -> double
+    auto inner_prod_func = [](PAW_density<double> const& x, PAW_density<double> const& y) -> double
     {
         /* do not contribute to mixing */
         return 0.0;
     };
 
-    auto scale_func = [](double alpha, paw_density& x) -> void
+    auto scale_func = [](double alpha, PAW_density<double>& x) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) *= alpha;
-                x.ps_density(j, i) *= alpha;
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                x.ae_density(j, ia) *= alpha;
+                x.ps_density(j, ia) *= alpha;
             }
         }
     };
 
-    auto copy_function = [](paw_density const& x, paw_density& y) -> void
+    auto copy_function = [](PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) >> y.ae_density(j, i);
-                x.ps_density(j, i) >> y.ps_density(j, i);
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                sddk::copy(x.ae_density(j, ia), y.ae_density(j, ia));
+                sddk::copy(x.ps_density(j, ia), y.ps_density(j, ia));
             }
         }
     };
 
-    auto axpy_function = [](double alpha, paw_density const& x, paw_density& y) -> void
+    auto axpy_function = [](double alpha, PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                y.ae_density(j, i) = x.ae_density(j, i) * alpha + y.ae_density(j, i);
-                y.ps_density(j, i) = x.ps_density(j, i) * alpha + y.ps_density(j, i);
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                y.ae_density(j, ia) = x.ae_density(j, ia) * alpha + y.ae_density(j, ia);
+                y.ps_density(j, ia) = x.ps_density(j, ia) * alpha + y.ps_density(j, ia);
             }
         }
     };
 
-    auto rotate_function = [](double c, double s, paw_density& x, paw_density& y) -> void
+    auto rotate_function = [](double c, double s, PAW_density<double>& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
-                x.ae_density(j, i) = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
-                y.ae_density(j, i) = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
+            int ia = x.unit_cell().paw_atom_index(ipaw);
+            for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
+                x.ae_density(j, ia) = x.ae_density(j, ia) * c + s * y.ae_density(j, ia);
+                y.ae_density(j, ia) = y.ae_density(j, ia) * c - s * x.ae_density(j, ia);
 
-                x.ps_density(j, i) = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
-                y.ps_density(j, i) = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
+                x.ps_density(j, ia) = x.ps_density(j, ia) * c + s * y.ps_density(j, ia);
+                y.ps_density(j, ia) = y.ps_density(j, ia) * c - s * x.ps_density(j, ia);
             }
         }
     };
 
-    return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scale_func, copy_function,
+    return FunctionProperties<PAW_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
                                            axpy_function, rotate_function);
 }
 
@@ -404,11 +302,11 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
         for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            x.local(at_lvl) >> y.local(at_lvl);
+            sddk::copy(x.local(at_lvl), y.local(at_lvl));
         }
 
         for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            x.nonlocal(at_lvl) >> y.nonlocal(at_lvl);
+            sddk::copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
         }
     };
 
