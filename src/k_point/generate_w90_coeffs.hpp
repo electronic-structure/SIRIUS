@@ -2,6 +2,8 @@
  *
  *  \brief Interface to W90 library.
  */
+#ifdef SIRIUS_WANNIER90
+
 #ifndef __GENERATE_W90_COEFFS_HPP__
 #define __GENERATE_W90_COEFFS_HPP__
 
@@ -215,3 +217,5 @@ void generate_w90_coeffs(sirius::K_point_set& k_set__)
 }
 
 #endif
+
+#endif // SIRIUS_WANNIER90

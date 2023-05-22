@@ -287,6 +287,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("USE_FP32", "single_precision"),
             self.define_from_variant("USE_PROFILER", "profiler"),
+            self.define_from_variant("USE_WANNIER90", "wannier90"),
         ]
 
         lapack = spec["lapack"]

@@ -2,8 +2,7 @@
  *
  *  \brief Interface to W90 library.
  */
-#ifndef __GENERATE_W90_COEFFS_HPP__
-#define __GENERATE_W90_COEFFS_HPP__
+#ifndef SIRIUS_WANNIER90
 
 #include <limits>
 #include "dft/smearing.hpp"
@@ -1055,5 +1054,4 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
   // WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
   // PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
 
-
-#endif
+#endif // SIRIUS_WANNIER90

@@ -125,7 +125,10 @@ class K_point_set
 
     void load();
 
+#ifdef SIRIUS_WANNIER90
     void generate_w90_coeffs();//sirius::K_point_set& k_set__)
+#endif
+
     /// Return sum of valence eigen-values.
     double valence_eval_sum() const;
 

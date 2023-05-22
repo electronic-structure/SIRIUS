@@ -5,11 +5,9 @@
 #include "utils/json.hpp"
 #include "dft/lattice_relaxation.hpp"
 
+#ifdef SIRIUS_WANNIER90
 #include "../src/k_point/generate_w90_coeffs.hpp"
-
-
-
-
+#endif
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -259,10 +257,10 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         dft.check_scf_density();
     }
 
-
+#ifdef SIRIUS_WANNIER90
     kset.generate_w90_coeffs();
     //generate_w90_coeffs(kset);
-
+#endif
 
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {

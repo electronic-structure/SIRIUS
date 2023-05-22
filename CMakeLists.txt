@@ -34,6 +34,7 @@ option(USE_MEMORY_POOL         "use memory pool" ON)
 option(USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
 option(BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
 option(USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
+option(USE_WANNIER90           "use wannier90" OFF)
 
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
