@@ -2,7 +2,7 @@
  *
  *  \brief Interface to W90 library.
  */
-#ifndef SIRIUS_WANNIER90
+#ifdef SIRIUS_WANNIER90
 
 #include <limits>
 #include "dft/smearing.hpp"

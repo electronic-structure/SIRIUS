@@ -193,12 +193,9 @@ else()
   endif()
 endif()
 
-
 if(USE_WANNIER90)
-  #target_link_libraries(sirius::filesystem INTERFACE ifcore)
   find_package(Wannier90 REQUIRED)
-endif(USE_WANNIER90)
-
+endif()
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
