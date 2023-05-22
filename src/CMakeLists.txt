@@ -11,7 +11,7 @@ if(USE_CUDA OR USE_ROCM)
   set(_CUSOURCES "${CUFILES}")
 endif()
 
-set(_SOURSES
+set(_SOURCES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
@@ -108,8 +108,8 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
-			    )
+                                    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
+                    )
 
 
 
