@@ -258,7 +258,7 @@ struct Smoothed_diagonal_preconditioner {
         x.copy(y, num_active);
         sirius::apply_preconditioner(
             mem,
-            wf::spin_range(0),
+            sr,
             wf::num_bands(num_active),
             *x.x,
             H_diag,
@@ -337,7 +337,7 @@ struct Linear_response_operator {
         PROFILE("sirius_api::sirius_linear_solver::LR_operator::multiply");
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<std::complex<double>>(
-            wf::spin_range(0),
+            sr,
             wf::band_range(0, num_active),
             *x.x,
             Hphi,
