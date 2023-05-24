@@ -140,7 +140,6 @@ class CoefficientArray:
 
         # return as view
         return self._data[key]
-
     def __setitem__(self, key, item):
         """
         """
@@ -169,7 +168,7 @@ class CoefficientArray:
         loc_sum = np.array(
             sum([np.sum(v) for _, v in self.items()]), dtype=self.dtype)
         reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)
-        return np.asscalar(reduced)
+        return np.ndarray.item(reduced)
 
     def log(self, **kwargs):
         out = type(self)(dtype=self.dtype, ctype=self.ctype)

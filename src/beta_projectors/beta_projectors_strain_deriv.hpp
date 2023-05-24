@@ -65,6 +65,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
             sf::dRlm_dr(lmax, gvc, rlm_dg_tmp);
         }
 
+        this->pw_coeffs_t_.zero(sddk::memory_t::host);
+
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
@@ -72,35 +74,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
             /* vs = {r, theta, phi} */
             auto gvs = r3::spherical_coordinates(gvc);
 
-            /* |G+k|=0 case */
-            if (gvs[0] < 1e-10) {
-                for (int nu = 0; nu < 3; nu++) {
-                    for (int mu = 0; mu < 3; mu++) {
-                        double p = (mu == nu) ? 0.5 : 0;
-
-                        for (int iat = 0; iat < this->ctx_.unit_cell().num_atom_types(); iat++) {
-                            auto& atom_type = this->ctx_.unit_cell().atom_type(iat);
-                            auto ri0 = beta_ri0.values(iat, gvs[0]);
-
-                            for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
-                                int l     = atom_type.indexb(xi).l;
-                                int idxrf = atom_type.indexb(xi).idxrf;
-
-                                if (l == 0) {
-                                    auto z = fourpi / std::sqrt(this->ctx_.unit_cell().omega());
-
-                                    auto d1 = ri0(idxrf) * (-p * y00);
-
-                                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = z * d1;
-                                } else {
-                                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = 0;
-                                }
-                            }
-                        }
-                    }
-                }
-                continue;
-            }
+            auto inv_len = (gvs[0] < 1e-10) ? 0 : 1.0 / gvs[0];
 
             for (int iat = 0; iat < this->ctx_.unit_cell().num_atom_types(); iat++) {
                 auto& atom_type = this->ctx_.unit_cell().atom_type(iat);
@@ -121,7 +95,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
 
                             auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
-                            auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
+                            auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] * inv_len);
 
                             this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = static_cast<std::complex<T>>(z * (d1 + d2));
                         }

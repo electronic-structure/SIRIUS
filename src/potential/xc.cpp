@@ -57,14 +57,14 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     for (int ir = 0; ir < num_points; ir++) {
 
         //int ir = spl_np[irloc];
-        double d = density__.rho().f_rg(ir);
+        double d = density__.rho().rg().value(ir);
         if (add_pseudo_core__) {
-            d += density__.rho_pseudo_core().f_rg(ir);
+            d += density__.rho_pseudo_core().value(ir);
         }
         d *= (1 + add_delta_rho_xc_);
 
         rhomin = std::min(rhomin, d);
-        rho.f_rg(ir) = std::max(d, 0.0);
+        rho.value(ir) = std::max(d, 0.0);
     }
     mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce<double, mpi::op_t::min>(&rhomin, 1);
     /* even a small negative density is a sign of something bing wrong; don't remove this check */
@@ -83,7 +83,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     }
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = density__.rho().checksum_rg();
+        auto cs = density__.rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
 
@@ -141,7 +141,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc.get_vdw(&rho.f_rg(0), &grad_rho_grad_rho.f_rg(0), vxc.at(sddk::memory_t::host), &vsigma.f_rg(0),
+                ixc.get_vdw(&rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(sddk::memory_t::host), &vsigma.value(0),
                              exc.at(sddk::memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -157,16 +157,16 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 sddk::splindex<sddk::splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
-                    ixc.get_lda(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
+                    ixc.get_lda(spl_t.local_size(), &rho.value(spl_t.global_offset()),
                                 vxc.at(sddk::memory_t::host, spl_t.global_offset()),
                                 exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
-                    ixc.get_gga(spl_t.local_size(), &rho.f_rg(spl_t.global_offset()),
-                                &grad_rho_grad_rho.f_rg(spl_t.global_offset()),
+                    ixc.get_gga(spl_t.local_size(), &rho.value(spl_t.global_offset()),
+                                &grad_rho_grad_rho.value(spl_t.global_offset()),
                                 vxc.at(sddk::memory_t::host, spl_t.global_offset()),
-                                &vsigma.f_rg(spl_t.global_offset()),
+                                &vsigma.value(spl_t.global_offset()),
                                 exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
@@ -193,7 +193,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
-                vsigma_[0]->f_rg(ir) += vsigma.f_rg(ir);
+                vsigma_[0]->value(ir) += vsigma.value(ir);
             }
 
             if (use_2nd_deriv) {
@@ -214,14 +214,14 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 /* add remaining term to Vxc */
                 #pragma omp parallel for
                 for (int ir = 0; ir < num_points; ir++) {
-                    vxc(ir) -= 2 * (vsigma.f_rg(ir) * lapl_rho.f_rg(ir) + grad_vsigma_grad_rho.f_rg(ir));
+                    vxc(ir) -= 2 * (vsigma.value(ir) * lapl_rho.value(ir) + grad_vsigma_grad_rho.value(ir));
                 }
             } else {
                 Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.spfft<double>(), gvp);
 
                 for (int x: {0, 1, 2}) {
                     for (int ir = 0; ir < num_points; ir++) {
-                        vsigma_grad_rho[x].f_rg(ir) = grad_rho[x].f_rg(ir) * vsigma.f_rg(ir);
+                        vsigma_grad_rho[x].value(ir) = grad_rho[x].value(ir) * vsigma.value(ir);
                     }
                     /* transform to plane wave domain */
                     vsigma_grad_rho[x].fft_transform(-1);
@@ -230,19 +230,19 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 /* transform to real space domain */
                 div_vsigma_grad_rho.fft_transform(1);
                 for (int ir = 0; ir < num_points; ir++) {
-                    vxc(ir) -= 2 * div_vsigma_grad_rho.f_rg(ir);
+                    vxc(ir) -= 2 * div_vsigma_grad_rho.value(ir);
                 }
             }
         }
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
-            xc_energy_density_->f_rg(ir) += exc(ir);
-            xc_potential_->f_rg(ir) += vxc(ir);
+            xc_energy_density_->rg().value(ir) += exc(ir);
+            xc_potential_->rg().value(ir) += vxc(ir);
         }
     } // for loop over xc functionals
 
     if (ctx_.cfg().control().print_checksum()) {
-        auto cs = xc_potential_->checksum_rg();
+        auto cs = xc_potential_->rg().checksum_rg();
         utils::print_checksum("exc", cs, ctx_.out());
     }
 }
@@ -337,9 +337,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
-                ixc.get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
-                             &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(sddk::memory_t::host), vxc_dn.at(sddk::memory_t::host),
-                             &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(sddk::memory_t::host));
+                ixc.get_vdw(&rho_up.value(0), &rho_dn.value(0), &grad_rho_up_grad_rho_up.value(0),
+                             &grad_rho_dn_grad_rho_dn.value(0), vxc_up.at(sddk::memory_t::host), vxc_dn.at(sddk::memory_t::host),
+                             &vsigma_uu.value(0), &vsigma_dd.value(0), exc.at(sddk::memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
@@ -354,24 +354,24 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 sddk::splindex<sddk::splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
-                    ixc.get_lda(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
-                                &rho_dn.f_rg(spl_t.global_offset()),
+                    ixc.get_lda(spl_t.local_size(), &rho_up.value(spl_t.global_offset()),
+                                &rho_dn.value(spl_t.global_offset()),
                                 vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
                                 vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
                                 exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
-                    ixc.get_gga(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
-                                &rho_dn.f_rg(spl_t.global_offset()),
-                                &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
-                                &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
+                    ixc.get_gga(spl_t.local_size(), &rho_up.value(spl_t.global_offset()),
+                                &rho_dn.value(spl_t.global_offset()),
+                                &grad_rho_up_grad_rho_up.value(spl_t.global_offset()),
+                                &grad_rho_up_grad_rho_dn.value(spl_t.global_offset()),
+                                &grad_rho_dn_grad_rho_dn.value(spl_t.global_offset()),
                                 vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
                                 vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
-                                &vsigma_uu.f_rg(spl_t.global_offset()),
-                                &vsigma_ud.f_rg(spl_t.global_offset()),
-                                &vsigma_dd.f_rg(spl_t.global_offset()),
+                                &vsigma_uu.value(spl_t.global_offset()),
+                                &vsigma_ud.value(spl_t.global_offset()),
+                                &vsigma_dd.value(spl_t.global_offset()),
                                 exc.at(sddk::memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
@@ -382,17 +382,17 @@ void Potential::xc_rg_magnetic(Density const& density__)
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
-                vsigma_[0]->f_rg(ir) += vsigma_uu.f_rg(ir);
-                vsigma_[1]->f_rg(ir) += vsigma_ud.f_rg(ir);
-                vsigma_[2]->f_rg(ir) += vsigma_dd.f_rg(ir);
+                vsigma_[0]->value(ir) += vsigma_uu.value(ir);
+                vsigma_[1]->value(ir) += vsigma_ud.value(ir);
+                vsigma_[2]->value(ir) += vsigma_dd.value(ir);
             }
 
             Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
             Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
             for (int x: {0, 1, 2}) {
                 for(int ir = 0; ir < num_points; ir++) {
-                  up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);
-                  dn_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_dn[x].f_rg(ir) * vsigma_dd.f_rg(ir) + grad_rho_up[x].f_rg(ir) * vsigma_ud.f_rg(ir);
+                  up_gradrho_vsigma[x].value(ir) = 2 * grad_rho_up[x].value(ir) * vsigma_uu.value(ir) + grad_rho_dn[x].value(ir) * vsigma_ud.value(ir);
+                  dn_gradrho_vsigma[x].value(ir) = 2 * grad_rho_dn[x].value(ir) * vsigma_dd.value(ir) + grad_rho_up[x].value(ir) * vsigma_ud.value(ir);
                 }
                 /* transform to plane wave domain */
                 up_gradrho_vsigma[x].fft_transform(-1);
@@ -407,32 +407,32 @@ void Potential::xc_rg_magnetic(Density const& density__)
             /* add remaining term to Vxc */
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
-                vxc_up(ir) -= div_up_gradrho_vsigma.f_rg(ir);
-                vxc_dn(ir) -= div_dn_gradrho_vsigma.f_rg(ir);
+                vxc_up(ir) -= div_up_gradrho_vsigma.value(ir);
+                vxc_dn(ir) -= div_dn_gradrho_vsigma.value(ir);
             }
         }
 
         #pragma omp parallel for
         for (int irloc = 0; irloc < num_points; irloc++) {
             /* add XC energy density */
-            xc_energy_density_->f_rg(irloc) += exc(irloc);
+            xc_energy_density_->rg().value(irloc) += exc(irloc);
             /* add XC potential */
-            xc_potential_->f_rg(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
+            xc_potential_->rg().value(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
 
             double bxc = 0.5 * (vxc_up(irloc) - vxc_dn(irloc));
 
             /* get the sign between mag and B */
-            auto s = utils::sign((rho_up.f_rg(irloc) - rho_dn.f_rg(irloc)) * bxc);
+            auto s = utils::sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
 
             r3::vector<double> m;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                m[j] = density__.magnetization(j).f_rg(irloc);
+                m[j] = density__.mag(j).rg().value(irloc);
             }
             auto m_len = m.length();
 
             if (m_len > 1e-8) {
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                   effective_magnetic_field(j).f_rg(irloc) += std::abs(bxc) * s * m[j] / m_len;
+                   effective_magnetic_field(j).rg().value(irloc) += std::abs(bxc) * s * m[j] / m_len;
                 }
             } 
         }
@@ -466,7 +466,7 @@ void Potential::xc(Density const& density__)
     }
 
     if (ctx_.cfg().control().print_hash()) {
-        auto h = xc_energy_density_->hash_f_rg();
+        auto h = xc_energy_density_->rg().hash_f_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("Exc", h);
         }

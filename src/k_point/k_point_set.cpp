@@ -351,7 +351,7 @@ void K_point_set::find_band_occupancies()
         /* for cold and Methfessel Paxton smearing start newton minimization  */
         if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
             f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-            auto df  = smearing::occupancy_deriv(ctx_.smearing(), ctx_.smearing_width());
+            auto df  = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
             auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
             auto N   = [&](double mu) { return compute_ne(mu, f); };
             auto dN  = [&](double mu) { return compute_ne(mu, df); };

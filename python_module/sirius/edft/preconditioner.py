@@ -118,7 +118,7 @@ def make_kinetic_precond(kpointset, eps=0.1):
     for k in range(nk):
         kp = kpointset[k]
         gkvec = kp.gkvec()
-        assert (gkvec.num_gvec() == gkvec.count())
+        # assert (gkvec.num_gvec() == gkvec.count())
         N = gkvec.count()
         d = np.array([
             1 / (np.sum(
@@ -145,7 +145,7 @@ def make_kinetic_precond2(kpointset):
     for k in range(nk):
         kp = kpointset[k]
         gkvec = kp.gkvec()
-        assert (gkvec.num_gvec() == gkvec.count())
+        # assert (gkvec.num_gvec() == gkvec.count())
         N = gkvec.count()
         ekin = lambda i: np.sum((np.array(gkvec.gkvec_cart(i))**2))
         Tp = lambda T: 16*T**4 / (27 + 18*T + 12*T**2 + 8*T**3)

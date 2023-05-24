@@ -140,11 +140,7 @@ class FreeEnergy:
         cn   -- PW coefficients
         fn   -- occupations numbers
         """
-
-        self.energy.kpointset.fn = fn
-        E, HX = self.energy.compute(cn)
-        entropy = self.smearing.entropy(fn)
-        return E + entropy, HX
+        return self.energy.compute(cn, fn)
 
 
 class CG:

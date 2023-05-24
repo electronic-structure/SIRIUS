@@ -32,9 +32,9 @@
 #include "linalg/blacs_grid.hpp"
 #include "SDDK/splindex.hpp"
 #include "SDDK/hdf5_tree.hpp"
-#include "SDDK/type_definition.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
+#include "typedefs.hpp"
 
 namespace la {
 

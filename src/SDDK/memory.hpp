@@ -35,6 +35,15 @@
 #include <array>
 #include <complex>
 #include <cassert>
+
+#ifdef SIRIUS_USE_MEMORY_POOL
+#include <umpire/ResourceManager.hpp>
+#include <umpire/Allocator.hpp>
+#include <umpire/util/wrap_allocator.hpp>
+#include <umpire/strategy/DynamicPoolList.hpp>
+#include <umpire/strategy/AlignedAllocator.hpp>
+#endif
+
 #include "gpu/acc.hpp"
 
 namespace sddk {
@@ -47,7 +56,7 @@ struct is_complex
 };
 
 /// Check is the type is a complex number: for std::complex<T> it is true.
-template<typename T>
+template <typename T>
 struct is_complex<std::complex<T>>
 {
     constexpr static bool value{true};
@@ -59,47 +68,48 @@ struct is_complex<std::complex<T>>
 enum class memory_t : unsigned int
 {
     /// Nothing.
-    none        = 0b0000,
+    none = 0b0000,
     /// Host memory.
-    host        = 0b0001,
+    host = 0b0001,
     /// Pinned host memory. This is host memory + extra bit flag.
     host_pinned = 0b0011,
     /// Device memory.
-    device      = 0b1000,
+    device = 0b1000,
     /// Managed memory (accessible from both host and device).
-    managed     = 0b1101,
+    managed = 0b1101,
 };
 
 /// Check if this is a valid host memory (memory, accessible by the host).
-inline bool is_host_memory(memory_t mem__)
+inline bool
+is_host_memory(memory_t mem__)
 {
     return static_cast<unsigned int>(mem__) & 0b0001;
 }
 
 /// Check if this is a valid device memory (memory, accessible by the device).
-inline bool is_device_memory(memory_t mem__)
+inline bool
+is_device_memory(memory_t mem__)
 {
     return static_cast<unsigned int>(mem__) & 0b1000;
 }
 
 /// Get a memory type from a string.
-inline memory_t get_memory_t(std::string name__)
+inline memory_t
+get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, memory_t> const m = {
-        {"none", memory_t::none},
-        {"host", memory_t::host},
-        {"host_pinned", memory_t::host_pinned},
-        {"managed", memory_t::managed},
-        {"device", memory_t::device}
-    };
+    std::map<std::string, memory_t> const m = {{"none", memory_t::none},
+                                               {"host", memory_t::host},
+                                               {"host_pinned", memory_t::host_pinned},
+                                               {"managed", memory_t::managed},
+                                               {"device", memory_t::device}};
 
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "get_memory_t(): wrong label of the memory_t enumerator: " << name__;
         throw std::runtime_error(s.str());
-     }
-     return m.at(name__);
+    }
+    return m.at(name__);
 }
 
 /// Type of the main processing unit.
@@ -114,7 +124,8 @@ enum class device_t
 };
 
 /// Get type of device by memory type.
-inline device_t get_device_t(memory_t mem__)
+inline device_t
+get_device_t(memory_t mem__)
 {
     switch (mem__) {
         case memory_t::host:
@@ -132,27 +143,26 @@ inline device_t get_device_t(memory_t mem__)
 }
 
 /// Get device type from the string.
-inline device_t get_device_t(std::string name__)
+inline device_t
+get_device_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, device_t> const m = {
-        {"cpu", device_t::CPU},
-        {"gpu", device_t::GPU}
-    };
+    std::map<std::string, device_t> const m = {{"cpu", device_t::CPU}, {"gpu", device_t::GPU}};
 
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "get_device_t(): wrong label of the device_t enumerator: " << name__;
         throw std::runtime_error(s.str());
-     }
-     return m.at(name__);
+    }
+    return m.at(name__);
 }
 
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
 template <typename T>
-inline T* allocate(size_t n__, memory_t M__)
+inline T*
+allocate(size_t n__, memory_t M__)
 {
     switch (M__) {
         case memory_t::none: {
@@ -182,7 +192,8 @@ inline T* allocate(size_t n__, memory_t M__)
 }
 
 /// Deallocate pointer of a given memory type.
-inline void deallocate(void* ptr__, memory_t M__)
+inline void
+deallocate(void* ptr__, memory_t M__)
 {
     switch (M__) {
         case memory_t::none: {
@@ -212,7 +223,8 @@ inline void deallocate(void* ptr__, memory_t M__)
 
 /// Copy between different memory types.
 template <typename T, typename F>
-inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F* to_ptr__, size_t n__)
+inline void
+copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F* to_ptr__, size_t n__)
 {
     if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
         std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
@@ -225,7 +237,8 @@ inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, F*
 }
 
 template <typename T>
-inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
+inline void
+copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {
     if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
         std::copy(from_ptr__, from_ptr__ + n__, to_ptr__);
@@ -272,13 +285,14 @@ class memory_t_deleter_base
 };
 
 /// Deleter for the allocated memory pointer of a given type.
-class memory_t_deleter: public memory_t_deleter_base
+class memory_t_deleter : public memory_t_deleter_base
 {
   protected:
-    class memory_t_deleter_impl: public memory_t_deleter_base_impl
+    class memory_t_deleter_impl : public memory_t_deleter_base_impl
     {
       protected:
         memory_t M_{memory_t::none};
+
       public:
         memory_t_deleter_impl(memory_t M__)
             : M_(M__)
@@ -291,6 +305,7 @@ class memory_t_deleter: public memory_t_deleter_base
             }
         }
     };
+
   public:
     explicit memory_t_deleter(memory_t M__)
     {
@@ -299,13 +314,14 @@ class memory_t_deleter: public memory_t_deleter_base
 };
 
 /// Deleter for the allocated memory pointer from a given memory pool.
-class memory_pool_deleter: public memory_t_deleter_base
+class memory_pool_deleter : public memory_t_deleter_base
 {
   protected:
-    class memory_pool_deleter_impl: public memory_t_deleter_base_impl
+    class memory_pool_deleter_impl : public memory_t_deleter_base_impl
     {
       protected:
         memory_pool* mp_{nullptr};
+
       public:
         memory_pool_deleter_impl(memory_pool* mp__)
             : mp_(mp__)
@@ -323,151 +339,11 @@ class memory_pool_deleter: public memory_t_deleter_base
 
 /// Allocate n elements and return a unique pointer.
 template <typename T>
-inline std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__, memory_t M__)
+inline std::unique_ptr<T, memory_t_deleter_base>
+get_unique_ptr(size_t n__, memory_t M__)
 {
     return std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__, M__), memory_t_deleter(M__));
 }
-
-/// Descriptor of the allocated memory block.
-/** Internally the block might be split into sub-blocks. */
-struct memory_block_descriptor
-{
-    /// Storage buffer for the memory blocks.
-    std::unique_ptr<uint8_t, memory_t_deleter_base> buffer_;
-    /// Size of the storage buffer.
-    size_t size_{0};
-    /// List of <offset, size> pairs of the free subblocks.
-    /** The list is ordered, i.e. offset of the next free block is greater or equal to the offset + size of the
-     *  previous block. */
-    std::list<std::pair<size_t, size_t>> free_subblocks_;
-
-    /// Create a new empty memory block.
-    memory_block_descriptor(size_t size__, memory_t M__)
-        : buffer_(get_unique_ptr<uint8_t>(size__, M__))
-        , size_(size__)
-    {
-        free_subblocks_.push_back(std::make_pair(0, size_));
-    }
-
-    /// Check if the memory block is empty.
-    inline bool is_empty() const
-    {
-        return (free_subblocks_.size() == 1 &&
-                free_subblocks_.front().first == 0 &&
-                free_subblocks_.front().second == size_);
-    }
-
-    /// Return total size of the block.
-    inline size_t size() const
-    {
-        return size_;
-    }
-
-    /// Try to allocate a subblock of memory.
-    /** Return a valid pointer in case of success and nullptr if empty space can't be found in this memory block.
-        The returned pointer is not aligned. */
-    uint8_t* allocate_subblock(size_t size__)
-    {
-        uint8_t* ptr{nullptr};
-         for (auto it = free_subblocks_.begin(); it != free_subblocks_.end(); it++) {
-            /* if this free subblock can fit the "size" elements */
-            if (size__ <= it->second) {
-                /* pointer to the beginning of subblock */
-                ptr = buffer_.get() + it->first;
-                it->first += size__;
-                it->second -= size__;
-                if (it->second == 0) {
-                    free_subblocks_.erase(it);
-                }
-                break;
-            }
-        }
-        return ptr;
-    }
-
-    /// Free the pointer and its memory to the list of free subblocks.
-    void free_subblock(uint8_t* ptr__, size_t size__)
-    {
-        /* offset from the beginning of the memory buffer */
-        size_t offset = static_cast<size_t>(ptr__ - buffer_.get());
-        auto check_free_subblocks = [&]()
-        {
-#ifndef NDEBUG
-            if (free_subblocks_.size() <= 1) {
-                return;
-            }
-            auto it = free_subblocks_.begin();
-            auto it1 = it;
-            it1++;
-            for (; it1 != free_subblocks_.end(); it1++) {
-                /* if offse + size of the previous free block is larger than the offset of next block
-                   this is an error */
-                if (it->first + it->second > it1->first) {
-                    throw std::runtime_error("wrong order of free memory blocks");
-                }
-            }
-#endif
-        };
-
-        for (auto it = free_subblocks_.begin(); it != free_subblocks_.end(); it++) {
-            /* check if we can attach released subblock before this subblock */
-            if (it->first == offset + size__) {
-                it->first = offset;
-                it->second += size__;
-                check_free_subblocks();
-                return;
-            }
-            /* check if we can attach released subblock after this subblock */
-            if (it->first + it->second == offset) {
-                it->second += size__;
-                /* now check if we can attach this subblock to the top of the next one */
-                auto it1 = it;
-                it1++;
-                if (it1 != free_subblocks_.end()) {
-                    if (it->first + it->second == it1->first) {
-                        /* merge second block into first and erase it */
-                        it->second += it1->second;
-                        free_subblocks_.erase(it1);
-                    }
-                }
-                check_free_subblocks();
-                return;
-            }
-            /* finally, check if the released subblock is before this subblock, but not touching it */
-            if (offset + size__ < it->first) {
-                free_subblocks_.insert(it, std::make_pair(offset, size__));
-                check_free_subblocks();
-                return;
-            }
-        }
-        /* otherwise this will be the last free subblock */
-        free_subblocks_.push_back(std::make_pair(offset, size__));
-        check_free_subblocks();
-    }
-
-    /// Return the total size of the free subblocks.
-    size_t get_free_size() const
-    {
-        size_t sz{0};
-        for (auto& e: free_subblocks_) {
-            sz += e.second;
-        }
-        return sz;
-    }
-};
-
-/// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
-struct memory_subblock_descriptor
-{
-    /// Iterator in the list of block descriptors stored by memory pool.
-    /** Iterator points to a memory block in which this sub-block was allocated */
-    std::list<memory_block_descriptor>::iterator it_;
-    /// Size of the sub-block.
-    size_t size_;
-    /// This is the precise beginning of the memory sub-block.
-    /** Used to compute the exact location of the sub-block inside a memory block. */
-    uint8_t* unaligned_ptr_;
-};
 
 //// Memory pool.
 /** This class stores list of allocated memory blocks. Each of the blocks can be divided into subblocks. When subblock
@@ -479,20 +355,69 @@ class memory_pool
   private:
     /// Type of memory that is handeled by this pool.
     memory_t M_;
-    /// List of blocks of allocated memory.
-    std::list<memory_block_descriptor> memory_blocks_;
-    /// Mapping between an allocated pointer and a subblock descriptor.
-    std::map<uint8_t*, memory_subblock_descriptor> map_ptr_;
 
+#ifdef SIRIUS_USE_MEMORY_POOL
+    /// handler to umpire allocator_
+    umpire::Allocator allocator_;
+    /// handler to umpire memory pool
+    umpire::Allocator memory_pool_allocator_;
+#endif
   public:
-
     /// Constructor
     memory_pool(memory_t M__, size_t initial_size__ = 0)
         : M_(M__)
     {
-        if (initial_size__) {
-            memory_blocks_.push_back(memory_block_descriptor(initial_size__, M_));
+        std::string mem_type;
+
+        // All examples in Umpire use upper case names.
+        switch (M__) {
+            case memory_t::host: {
+                mem_type = "HOST";
+                break;
+            }
+            case memory_t::host_pinned: {
+                mem_type = "PINNED";
+                break;
+            }
+            case memory_t::managed: {
+                mem_type = "MANAGED";
+                break;
+            }
+            case memory_t::device: {
+#ifdef SIRIUS_GPU
+                std::stringstream s;
+                s << "DEVICE::" << acc::get_device_id();
+                mem_type = s.str();
+#else
+                mem_type = "NONE";
+                M_ = memory_t::none;
+#endif
+            }
+                break;
+            case memory_t::none: {
+                mem_type = "NONE";
+                break;
+            }
+            default: {
+                break;
+            }
         }
+#ifdef SIRIUS_USE_MEMORY_POOL
+        if (M_ != memory_t::none) {
+            auto& rm = umpire::ResourceManager::getInstance();
+            this->allocator_ = rm.getAllocator(mem_type);
+
+            if (M_ == memory_t::host) {
+                this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::AlignedAllocator>("aligned_allocator", this->allocator_, 256);
+            } else {
+                std::transform(mem_type.begin(), mem_type.end(), mem_type.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
+            }
+        }
+#endif
     }
 
     /// Return a pointer to a memory block for n elements of type T.
@@ -500,65 +425,11 @@ class memory_pool
     T* allocate(size_t num_elements__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
-        /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
-        size_t align_size = std::max(size_t(SIRIUS_GPU_MEMORY_ALIGMENT), alignof(T));
-        /* size of the memory block in bytes */
-        size_t size = num_elements__ * sizeof(T) + align_size;
-
-        uint8_t* ptr{nullptr};
-
-        /* iterate over existing blocks */
-        auto it = memory_blocks_.begin();
-        for (; it != memory_blocks_.end(); it++) {
-            /* try to allocate a block */
-            ptr = it->allocate_subblock(size);
-            /* break if this memory block can store the subblock */
-            if (ptr) {
-                break;
-            }
+        if (M_ == memory_t::none) {
+            return nullptr;
         }
 
-        /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
-        if (!ptr) {
-            /* free all empty blocks and get their total size */
-            size_t new_size{0};
-            auto i = memory_blocks_.begin();
-            while (i != memory_blocks_.end()) {
-                if (i->is_empty()) {
-                    new_size += i->size();
-                    memory_blocks_.erase(i++);
-                } else {
-                    ++i;
-                }
-            }
-            /* get upper limit for the size of the new block */
-            new_size = std::max(new_size, size);
-
-            memory_blocks_.push_back(memory_block_descriptor(new_size, M_));
-            it = memory_blocks_.end();
-            it--;
-            ptr = it->allocate_subblock(size);
-        }
-        if (!ptr) {
-            throw std::runtime_error("memory allocation failed");
-        }
-        /* save the information about the allocated memory sub-block */
-        memory_subblock_descriptor msb;
-        /* location in the list of blocks */
-        msb.it_ = it;
-        /* total size including the aligment */
-        msb.size_ = size;
-        /* beginning of the block (unaligned) */
-        msb.unaligned_ptr_ = ptr;
-        auto uip = reinterpret_cast<std::uintptr_t>(ptr);
-        /* align the pointer */
-        if (uip % align_size) {
-            uip += (align_size - uip % align_size);
-        }
-        auto aligned_ptr = reinterpret_cast<uint8_t*>(uip);
-        /* add to the hash table */
-        map_ptr_[aligned_ptr] = msb;
-        return reinterpret_cast<T*>(aligned_ptr);
+        return static_cast<T*>(memory_pool_allocator_.allocate(num_elements__ * sizeof(T)));
 #else
         return sddk::allocate<T>(num_elements__, M_);
 #endif
@@ -568,13 +439,11 @@ class memory_pool
     void free(void* ptr__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
-        auto ptr = reinterpret_cast<uint8_t*>(ptr__);
-        /* get a descriptor of this pointer */
-        auto& msb = map_ptr_.at(ptr);
-        /* free the sub-block */
-        msb.it_->free_subblock(msb.unaligned_ptr_, msb.size_);
-        /* remove this pointer from the hash table */
-        map_ptr_.erase(ptr);
+        if (M_ == memory_t::none) {
+            return;
+        }
+
+        memory_pool_allocator_.deallocate(ptr__);
 #else
         sddk::deallocate(ptr__, M_);
 #endif
@@ -591,32 +460,21 @@ class memory_pool
 #endif
     }
 
-    /// Free all the allocated blocks.
+    /// Free all the allocated blocks. umpire does not support this
     /** All pointers and smart pointers, allocated by the pool are invalidated. */
     void reset()
     {
-        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
-            it->free_subblocks_.clear();
-            it->free_subblocks_.push_back(std::make_pair(0, it->size_));
-        }
-        map_ptr_.clear();
     }
 
-    /// Clear memory pool and release all memory.
+    /// shrink the memory pool and release all memory.
     void clear()
     {
-        memory_blocks_.clear();
-    }
-
-    void print()
-    {
-        std::cout << "--- memory pool status ---\n";
-        int i{0};
-        for (auto& e: memory_blocks_) {
-            std::cout << "memory block: " << i << ", capacity: " << e.size_
-                      << ", free size: " << e.get_free_size() << "\n";
-            i++;
+        if (M_ == memory_t::none) {
+            return;
         }
+#if defined(SIRIUS_USE_MEMORY_POOL)
+        memory_pool_allocator_.release();
+#endif
     }
 
     /// Return the type of memory this pool is managing.
@@ -628,41 +486,40 @@ class memory_pool
     /// Return the total capacity of the memory pool.
     size_t total_size() const
     {
-        size_t s{0};
-        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
-            s += it->size_;
+#if defined(SIRIUS_USE_MEMORY_POOL)
+        if (M_ != memory_t::none) {
+            return memory_pool_allocator_.getActualSize();
         }
-        return s;
+#endif
+        return 0;
     }
 
     /// Get the total free size of the memory pool.
     size_t free_size() const
     {
-        size_t s{0};
-        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
-            s += it->get_free_size();
-        }
-        return s;
+#if defined(SIRIUS_USE_MEMORY_POOL)
+      if (M_ != memory_t::none) {
+          size_t s = memory_pool_allocator_.getActualSize() - memory_pool_allocator_.getCurrentSize();
+          return s;
+      }
+#endif
+        return 0;
     }
 
     /// Get the number of free memory blocks.
     size_t num_blocks() const
     {
-        size_t s{0};
-        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
-            s += it->free_subblocks_.size();
+#if defined(SIRIUS_USE_MEMORY_POOL)
+        if (M_ != memory_t::none) {
+            auto dynamic_pool = umpire::util::unwrap_allocator<umpire::strategy::DynamicPoolList>(allocator_);
+            return dynamic_pool->getBlocksInPool();
         }
-        return s;
-    }
-
-    /// Get the number of stored pointers.
-    size_t num_stored_ptr() const
-    {
-        return map_ptr_.size();
+#endif
+        return 0;
     }
 };
-
-void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
+void
+memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 {
     mp_->free(ptr__);
 }
@@ -674,19 +531,19 @@ sddk::memory_pool& get_memory_pool(sddk::memory_t M__);
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                                               \
-    {                                                                             \
-        if (!(condition__)) {                                                     \
-            std::stringstream _s;                                                 \
-            _s << "Assertion (" << #condition__ << ") failed "                    \
-               << "at line " << __LINE__ << " of file " << __FILE__ << std::endl  \
-               << "array label: " << label_ << std::endl;                         \
-            for (int i = 0; i < N; i++) {                                         \
-                _s << "dims[" << i << "].size = " << dims_[i].size() << std::endl;\
-            }                                                                     \
-            throw std::runtime_error(_s.str());                                   \
-            raise(SIGABRT);                                                       \
-        }                                                                         \
+#define mdarray_assert(condition__)                                                                                    \
+    {                                                                                                                  \
+        if (!(condition__)) {                                                                                          \
+            std::stringstream _s;                                                                                      \
+            _s << "Assertion (" << #condition__ << ") failed "                                                         \
+               << "at line " << __LINE__ << " of file " << __FILE__ << std::endl                                       \
+               << "array label: " << label_ << std::endl;                                                              \
+            for (int i = 0; i < N; i++) {                                                                              \
+                _s << "dims[" << i << "].size = " << dims_[i].size() << std::endl;                                     \
+            }                                                                                                          \
+            throw std::runtime_error(_s.str());                                                                        \
+            raise(SIGABRT);                                                                                            \
+        }                                                                                                              \
     }
 #endif
 
@@ -707,7 +564,6 @@ class mdarray_index_descriptor
     size_t size_{0};
 
   public:
-
     /// Constructor of empty descriptor.
     mdarray_index_descriptor()
     {
@@ -847,7 +703,7 @@ class mdarray
         std::array<index_type, N> i = {args...};
 
         for (int j = 0; j < N; j++) {
-            //mdarray_assert(dims_[j].check_range(i[j]) && i[j] >= dims_[j].begin() && i[j] <= dims_[j].end());
+            // mdarray_assert(dims_[j].check_range(i[j]) && i[j] >= dims_[j].begin() && i[j] <= dims_[j].end());
             mdarray_assert(dims_[j].check_range(i[j]));
         }
 
@@ -923,7 +779,6 @@ class mdarray
     mdarray<T, N>& operator=(mdarray<T, N> const& src) = delete;
 
   public:
-
     /// Default constructor.
     mdarray()
     {
@@ -937,8 +792,7 @@ class mdarray
     }
 
     /// N-dimensional array with index bounds.
-    mdarray(std::array<mdarray_index_descriptor, N> const dims__,
-            memory_t memory__ = memory_t::host,
+    mdarray(std::array<mdarray_index_descriptor, N> const dims__, memory_t memory__ = memory_t::host,
             std::string label__ = "")
         : label_(label__)
     {
@@ -952,9 +806,7 @@ class mdarray
      */
 
     /// 1D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            memory_t memory__   = memory_t::host,
-            std::string label__ = "")
+    mdarray(mdarray_index_descriptor const& d0, memory_t memory__ = memory_t::host, std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
 
@@ -973,11 +825,8 @@ class mdarray
         this->allocate(mp__);
     }
 
-
     /// 1D array with host pointer wrapper.
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
 
@@ -987,10 +836,7 @@ class mdarray
     }
 
     /// 1D array with host and device pointer wrapper.
-    mdarray(T* ptr__,
-            T* ptr_device__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
+    mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
 
@@ -1008,9 +854,7 @@ class mdarray
      */
 
     /// 2D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            memory_t memory__   = memory_t::host,
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, memory_t memory__ = memory_t::host,
             std::string label__ = "")
     {
         static_assert(N == 2, "wrong number of dimensions");
@@ -1021,11 +865,8 @@ class mdarray
     }
 
     /// 3D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            memory_t memory__   = memory_t::host,
-            std::string label__ = "")
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
+            memory_t memory__ = memory_t::host, std::string label__ = "")
     {
         static_assert(N == 3, "wrong number of dimensions");
 
@@ -1035,12 +876,8 @@ class mdarray
     }
 
     /// 4D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            memory_t memory__   = memory_t::host,
-            std::string label__ = "")
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3, memory_t memory__ = memory_t::host, std::string label__ = "")
     {
         static_assert(N == 4, "wrong number of dimensions");
 
@@ -1050,12 +887,8 @@ class mdarray
     }
 
     /// 5D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            mdarray_index_descriptor const& d4,
-            memory_t memory__   = memory_t::host,
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3, mdarray_index_descriptor const& d4, memory_t memory__ = memory_t::host,
             std::string label__ = "")
     {
         static_assert(N == 5, "wrong number of dimensions");
@@ -1066,14 +899,9 @@ class mdarray
     }
 
     /// 6D array with memory allocation.
-    mdarray(mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            mdarray_index_descriptor const& d4,
-            mdarray_index_descriptor const& d5,
-            memory_t memory__   = memory_t::host,
-            std::string label__ = "")
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3, mdarray_index_descriptor const& d4, mdarray_index_descriptor const& d5,
+            memory_t memory__ = memory_t::host, std::string label__ = "")
     {
         static_assert(N == 6, "wrong number of dimensions");
 
@@ -1083,10 +911,7 @@ class mdarray
     }
 
     /// Wrap a pointer into 2D array.
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            std::string label__ = "")
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, std::string label__ = "")
     {
         static_assert(N == 2, "wrong number of dimensions");
 
@@ -1095,10 +920,7 @@ class mdarray
         this->raw_ptr_ = ptr__;
     }
 
-    mdarray(T* ptr__,
-            T* ptr_device__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
+    mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
             std::string label__ = "")
     {
         static_assert(N == 2, "wrong number of dimensions");
@@ -1122,11 +944,8 @@ class mdarray
         this->allocate(mp__);
     }
 
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            std::string label__ = "")
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2, std::string label__ = "")
     {
         static_assert(N == 3, "wrong number of dimensions");
 
@@ -1135,12 +954,8 @@ class mdarray
         this->raw_ptr_ = ptr__;
     }
 
-    mdarray(T* ptr__,
-            T* ptr_device__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            std::string label__ = "")
+    mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2, std::string label__ = "")
     {
         static_assert(N == 3, "wrong number of dimensions");
 
@@ -1154,7 +969,7 @@ class mdarray
 
     /// 3D array with memory pool allocation.
     mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
-        memory_pool& mp__, std::string label__ = "")
+            memory_pool& mp__, std::string label__ = "")
     {
         static_assert(N == 3, "wrong number of dimensions");
 
@@ -1163,12 +978,8 @@ class mdarray
         this->allocate(mp__);
     }
 
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            std::string label__ = "")
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, std::string label__ = "")
     {
         static_assert(N == 4, "wrong number of dimensions");
 
@@ -1177,12 +988,8 @@ class mdarray
         this->raw_ptr_ = ptr__;
     }
 
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            mdarray_index_descriptor const& d4,
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, mdarray_index_descriptor const& d4,
             std::string label__ = "")
     {
         static_assert(N == 5, "wrong number of dimensions");
@@ -1192,14 +999,9 @@ class mdarray
         this->raw_ptr_ = ptr__;
     }
 
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
-            mdarray_index_descriptor const& d2,
-            mdarray_index_descriptor const& d3,
-            mdarray_index_descriptor const& d4,
-            mdarray_index_descriptor const& d5,
-            std::string label__ = "")
+    mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3, mdarray_index_descriptor const& d4,
+            mdarray_index_descriptor const& d5, std::string label__ = "")
     {
         static_assert(N == 6, "wrong number of dimensions");
 
@@ -1457,7 +1259,6 @@ class mdarray
         return this->at(memory_t::host) + this->size();
     }
 
-
     //== template <device_t pu>
     //== inline T checksum() const
     //== {
@@ -1477,33 +1278,13 @@ class mdarray
     //==     }
     //== }
 
-    /// Copy the content of the array to another array of identical size.
-    /** For example:
-        \code{.cpp}
-        mdarray<double, 2> src(10, 20);
-        mdarray<double, 2> dest(10, 20);
-        src >> dest;
-        \endcode
-     */
-    void operator>>(mdarray<T, N>& dest__) const
-    {
-        for (int i = 0; i < N; i++) {
-            if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end()) {
-                std::printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
-                raise(SIGTERM);
-                exit(-1);
-            }
-        }
-        std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
-    }
-
     /// Zero n elements starting from idx0.
     inline void zero(memory_t mem__, size_t idx0__, size_t n__)
     {
         mdarray_assert(idx0__ + n__ <= size());
         if (n__ && is_host_memory(mem__)) {
             mdarray_assert(raw_ptr_ != nullptr);
-            //std::fill(raw_ptr_ + idx0__, raw_ptr_ + idx0__ + n__, 0);
+            // std::fill(raw_ptr_ + idx0__, raw_ptr_ + idx0__ + n__, 0);
             std::memset((void*)&raw_ptr_[idx0__], 0, n__ * sizeof(T));
         }
 #ifdef SIRIUS_GPU
@@ -1531,7 +1312,8 @@ class mdarray
         mdarray_assert(raw_ptr_device_ != nullptr);
         mdarray_assert(idx0__ + n__ <= size());
         if (is_host_memory(mem__) && is_device_memory(mem__)) {
-            throw std::runtime_error("mdarray::copy_to(): memory is both host and device, check what to do with this case");
+            throw std::runtime_error(
+                "mdarray::copy_to(): memory is both host and device, check what to do with this case");
         }
         /* copy to device memory */
         if (is_device_memory(mem__)) {
@@ -1614,7 +1396,8 @@ using matrix = mdarray<T, 2>;
 
 /// Serialize to std::ostream
 template <typename T, int N>
-std::ostream& operator<<(std::ostream& out, mdarray<T, N> const& v)
+std::ostream&
+operator<<(std::ostream& out, mdarray<T, N> const& v)
 {
     if (v.size()) {
         out << v[0];
@@ -1625,9 +1408,10 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N> const& v)
     return out;
 }
 
-// template for casting matrix with different precision
+/// Copy content of the array to another array of identical size but different precision.
 template <typename T, typename F, int N>
-inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
+inline void
+copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
 {
     if (src__.size() == 0) {
         return;
@@ -1644,8 +1428,17 @@ inline void copy(mdarray<F, N> const& src__, mdarray<T, N>& dest__)
     std::copy(&src__.at(memory_t::host)[0], &src__.at(memory_t::host)[0] + src__.size(), &dest__.at(memory_t::host)[0]);
 }
 
+/// Copy content of the array to another array of identical size.
+/** For example:
+    \code{.cpp}
+    mdarray<double, 2> src(10, 20);
+    mdarray<double, 2> dest(10, 20);
+    copy(src, dest);
+    \endcode
+ */
 template <typename T, int N>
-inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
+inline void
+copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
 {
     if (src__.size() == 0) {
         return;
@@ -1660,6 +1453,6 @@ inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
     std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
 }
 
-}
+} // namespace sddk
 
-#endif  // __MEMORY_HPP__
+#endif // __MEMORY_HPP__

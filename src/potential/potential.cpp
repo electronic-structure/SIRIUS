@@ -28,7 +28,8 @@
 namespace sirius {
 
 Potential::Potential(Simulation_context& ctx__)
-    : Field4D(ctx__, ctx__.lmmax_pot())
+    : Field4D(ctx__, lmax_t(ctx__.lmax_pot()), {ctx__.periodic_function_ptr("veff"), ctx__.periodic_function_ptr("bz"),
+            ctx__.periodic_function_ptr("bx"), ctx__.periodic_function_ptr("by")})
     , unit_cell_(ctx__.unit_cell())
     , comm_(ctx__.comm())
     , hubbard_potential_(ctx__)
@@ -73,25 +74,22 @@ Potential::Potential(Simulation_context& ctx__)
     using pf = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
-    hartree_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-    hartree_potential_->allocate_mt(false);
+    hartree_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
 
-    xc_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-    xc_potential_->allocate_mt(false);
+    xc_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
 
-    xc_energy_density_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-    xc_energy_density_->allocate_mt(false);
+    xc_energy_density_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
 
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
         for (int i = 0; i < nsigma ; i++) {
-            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
+            vsigma_[i] = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         }
     }
 
     if (!ctx_.full_potential()) {
-        local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
-        dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft<double>(), ctx_.gvec_fft_sptr()));
+        local_potential_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        dveff_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         dveff_->zero();
     }
 
@@ -227,8 +225,8 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (!ctx_.full_potential()) {
         /* save current effective potential */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+        for (size_t ig = 0; ig < effective_potential().rg().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().rg().f_pw_local(ig);
         }
     }
 
@@ -249,10 +247,10 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
         poisson(density__.rho());
 
         /* add Hartree potential to the total potential */
-        effective_potential().add(hartree_potential());
+        effective_potential() += hartree_potential();
 
         if (ctx_.cfg().control().print_hash()) {
-            auto h = effective_potential().hash_f_rg();
+            auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha", h);
             }
@@ -262,24 +260,24 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
             xc(density__);
         } else {
             /* add local ionic potential to the effective potential */
-            effective_potential().add(local_potential());
+            effective_potential().rg() += local_potential();
             /* construct XC potentials from rho + rho_core */
             xc<true>(density__);
         }
         /* add XC potential to the effective potential */
-        effective_potential().add(xc_potential());
+        effective_potential() += xc_potential();
 
         if (ctx_.cfg().control().print_hash()) {
-            auto h = effective_potential().hash_f_rg();
+            auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha+Vxc", h);
             }
         }
 
         if (ctx_.full_potential()) {
-            effective_potential().sync_mt();
+            effective_potential().mt().sync(ctx_.unit_cell().spl_num_atoms());
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field(j).sync_mt();
+                effective_magnetic_field(j).mt().sync(ctx_.unit_cell().spl_num_atoms());
             }
         }
 
@@ -302,13 +300,13 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (!ctx_.full_potential()) {
         /* this is needed later to compute scf correction to forces */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
+        for (size_t ig = 0; ig < effective_potential().rg().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().rg().f_pw_local(ig) - dveff_->f_pw_local(ig);
         }
     }
 
     if (ctx_.cfg().control().print_hash()) {
-        auto h = effective_potential().hash_f_pw();
+        auto h = effective_potential().rg().hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("V(G)", h);
         }
@@ -390,18 +388,18 @@ void Potential::update_atomic_potential()
         std::vector<double> veff(nmtp);
 
         for (int ir = 0; ir < nmtp; ir++) {
-            veff[ir] = y00 * effective_potential().f_mt<sddk::index_domain_t::global>(0, ir, ia);
+            veff[ir] = y00 * effective_potential().mt()[ia](0, ir);
         }
 
         unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
     }
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        double* veff = &effective_potential().f_mt<sddk::index_domain_t::global>(0, 0, ia);
+        double* veff = &effective_potential().mt()[ia](0, 0);
 
         double* beff[] = {nullptr, nullptr, nullptr};
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            beff[i] = &effective_magnetic_field(i).f_mt<sddk::index_domain_t::global>(0, 0, ia);
+            beff[i] = &effective_magnetic_field(i).mt()[ia](0, 0);
         }
 
         unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);

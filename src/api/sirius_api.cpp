@@ -282,6 +282,12 @@ call_sirius(F&& f__, int* error_code__)
     }
 }
 
+template <typename T>
+auto get_value(T const* ptr__, T v0__ = T())
+{
+    return (ptr__) ? *ptr__ : v0__;
+}
+
 sirius::Simulation_context&
 get_sim_ctx(void* const* h)
 {
@@ -1266,12 +1272,12 @@ sirius_free_object_handler(void** handler__, int* error_code__)
 /*
 @api begin
 sirius_set_periodic_function_ptr:
-  doc: Set pointer to density or megnetization.
+  doc: Set pointer to density or magnetization.
   arguments:
     handler:
-      type: gs_handler
+      type: ctx_handler
       attr: in, required
-      doc: Handler of the DFT ground state object.
+      doc: Simulation context handler.
     label:
       type: string
       attr: in, required
@@ -1280,10 +1286,38 @@ sirius_set_periodic_function_ptr:
       type: double
       attr: in, optional, dimension(:,:,:)
       doc: Pointer to the muffin-tin part of the function.
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of lm components.
+    nrmtmax:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points.
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Total number of atoms.
     f_rg:
       type: double
       attr: in, optional, dimension(:)
-      doc: Pointer to the regualr-grid part of the function.
+      doc: Pointer to the regular-grid part of the function.
+    size_x:
+      type: int
+      attr: in, optional
+      doc: Size of X-dimension of FFT grid.
+    size_y:
+      type: int
+      attr: in, optional
+      doc: Size of Y-dimension of FFT grid.
+    size_z:
+      type: int
+      attr: in, optional
+      doc: Local or global size of Z-dimension of FFT grid depending on offset_z
+    offset_z:
+      type: int
+      attr: in, optional
+      doc: Offset in the Z-dimension of FFT grid for this MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1291,33 +1325,27 @@ sirius_set_periodic_function_ptr:
 @api end
 */
 void
-sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, double* f_rg__,
-                                 int* error_code__)
+sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, double* f_mt__, int const* lmmax__,
+        int const* nrmtmax__, int const* num_atoms__, double* f_rg__, int const* size_x__, int const* size_y__,
+        int const* size_z__, int const* offset_z__, int* error_code__)
 {
     call_sirius(
         [&]() {
-            auto& gs = get_gs(handler__);
+            auto& sim_ctx = get_sim_ctx(handler__);
             std::string label(label__);
 
-            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-                {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
-                {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
-                {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
-                {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
-                {"vha", &gs.potential().hartree_potential()}};
+            int lmmax = get_value(lmmax__);
+            int nrmtmax = get_value(nrmtmax__);
+            int num_atoms = get_value(num_atoms__);
+            int size_x = get_value(size_x__);
+            int size_y = get_value(size_y__);
+            int size_z = get_value(size_z__);
+            int offset_z = get_value(offset_z__, -1);
 
-            if (!func_map.count(label)) {
-                RTE_THROW("wrong label: " + label);
-            }
+            spheric_function_set_ptr_t<double> mt_ptr(f_mt__, lmmax, nrmtmax, num_atoms);
+            smooth_periodic_function_ptr_t<double> rg_ptr(f_rg__, size_x, size_y, size_z, offset_z);
 
-            auto f = func_map.at(label);
-
-            if (f_mt__) {
-                f->set_mt_ptr(f_mt__);
-            }
-            if (f_rg__) {
-                f->set_rg_ptr(f_rg__);
-            }
+            sim_ctx.set_periodic_function_ptr(label, periodic_function_ptr_t<double>(mt_ptr, rg_ptr));
         },
         error_code__);
 }
@@ -1335,14 +1363,42 @@ sirius_set_periodic_function:
       type: string
       attr: in, required
       doc: Label of the function.
+    f_mt:
+      type: double
+      attr: in, optional, dimension(:,:,:)
+      doc: Pointer to the muffin-tin part of the function.
+    lmmax:
+      type: int
+      attr: in, optional
+      doc: Number of lm components.
+    nrmtmax:
+      type: int
+      attr: in, optional
+      doc: Maximum number of muffin-tin points.
+    num_atoms:
+      type: int
+      attr: in, optional
+      doc: Total number of atoms.
     f_rg:
       type: double
       attr: in, optional, dimension(:)
-      doc: Real space values on the regular grid.
-    f_rg_global:
-      type: bool
+      doc: Pointer to the regular-grid part of the function.
+    size_x:
+      type: int
       attr: in, optional
-      doc: If true, real-space array is global.
+      doc: Size of X-dimension of FFT grid.
+    size_y:
+      type: int
+      attr: in, optional
+      doc: Size of Y-dimension of FFT grid.
+    size_z:
+      type: int
+      attr: in, optional
+      doc: Local or global size of Z-dimension of FFT grid depending on offset_z
+    offset_z:
+      type: int
+      attr: in, optional
+      doc: Offset in the Z-dimension of FFT grid for this MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1350,8 +1406,9 @@ sirius_set_periodic_function:
 @api end
 */
 void
-sirius_set_periodic_function(void* const* handler__, char const* label__, double const* f_rg__,
-                             bool const* f_rg_global__, int* error_code__)
+sirius_set_periodic_function(void* const* handler__, char const* label__, double* f_mt__, int const* lmmax__,
+        int const* nrmtmax__, int const* num_atoms__, double* f_rg__, int const* size_x__,
+        int const* size_y__, int const* size_z__, int const* offset_z__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1363,15 +1420,26 @@ sirius_set_periodic_function(void* const* handler__, char const* label__, double
                 {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
                 {"bx", &gs.potential().component(2)},        {"by", &gs.potential().component(3)},
                 {"vha", &gs.potential().hartree_potential()}};
+
             if (!func_map.count(label)) {
                 RTE_THROW("wrong label (" + label + ") for the periodic function");
             }
+
+            int lmmax = get_value(lmmax__);
+            int nrmtmax = get_value(nrmtmax__);
+            int num_atoms = get_value(num_atoms__);
+            int size_x = get_value(size_x__);
+            int size_y = get_value(size_y__);
+            int size_z = get_value(size_z__);
+            int offset_z = get_value(offset_z__, -1);
+
+            if (f_mt__) {
+                spheric_function_set_ptr_t<double> mt_ptr(f_mt__, lmmax, nrmtmax, num_atoms);
+                copy(mt_ptr, func_map[label]->mt());
+            }
             if (f_rg__) {
-                if (f_rg_global__ == nullptr) {
-                    RTE_THROW("missing bool argument 'f_rg_global'");
-                }
-                bool is_local = !(*f_rg_global__);
-                func_map[label]->copy_from(nullptr, f_rg__, is_local);
+                smooth_periodic_function_ptr_t<double> rg_ptr(f_rg__, size_x, size_y, size_z, offset_z);
+                copy(rg_ptr, func_map[label]->rg());
             }
         },
         error_code__);
@@ -1392,28 +1460,40 @@ sirius_get_periodic_function:
       doc: Label of the function.
     f_mt:
       type: double
-      attr: out, optional, dimension(:,:,:)
-      doc: Muffin-tin part of the function.
+      attr: in, optional, dimension(:,:,:)
+      doc: Pointer to the muffin-tin part of the function.
     lmmax:
       type: int
       attr: in, optional
-      doc: Number of spherical harmonics
-    max_num_mt_points:
+      doc: Number of lm components.
+    nrmtmax:
       type: int
       attr: in, optional
-      doc: Maximum number of muffin-tin points
+      doc: Maximum number of muffin-tin points.
     num_atoms:
       type: int
       attr: in, optional
-      doc: Number of atoms
+      doc: Total number of atoms.
     f_rg:
       type: double
-      attr: out, optional, dimension(:)
-      doc: Real space values on the regular grid.
-    num_rg_points:
+      attr: in, optional, dimension(:)
+      doc: Pointer to the regular-grid part of the function.
+    size_x:
       type: int
       attr: in, optional
-      doc: Number of the real-space FFT grid points.
+      doc: Size of X-dimension of FFT grid.
+    size_y:
+      type: int
+      attr: in, optional
+      doc: Size of Y-dimension of FFT grid.
+    size_z:
+      type: int
+      attr: in, optional
+      doc: Local or global size of Z-dimension of FFT grid depending on offset_z
+    offset_z:
+      type: int
+      attr: in, optional
+      doc: Offset in the Z-dimension of FFT grid for this MPI rank.
     error_code:
       type: int
       attr: out, optional
@@ -1422,8 +1502,8 @@ sirius_get_periodic_function:
 */
 void
 sirius_get_periodic_function(void* const* handler__, char const* label__, double* f_mt__, int const* lmmax__,
-                             int const* max_num_mt_points__, int const* num_atoms__, double* f_rg__,
-                             int const* num_rg_points__, int* error_code__)
+        int const* nrmtmax__, int const* num_atoms__, double* f_rg__, int const* size_x__,
+        int const* size_y__, int const* size_z__, int const* offset_z__, int* error_code__)
 {
     call_sirius(
         [&]() {
@@ -1441,43 +1521,21 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
                 RTE_THROW("wrong label (" + label + ") for the periodic function");
             }
 
-            auto& f = *func_map[label];
+            int lmmax = get_value(lmmax__);
+            int nrmtmax = get_value(nrmtmax__);
+            int num_atoms = get_value(num_atoms__);
+            int size_x = get_value(size_x__);
+            int size_y = get_value(size_y__);
+            int size_z = get_value(size_z__);
+            int offset_z = get_value(offset_z__, -1);
 
             if (f_mt__) {
-                if (!lmmax__) {
-                    RTE_THROW("missing 'lmmax' argument");
-                }
-                if (*lmmax__ != f.angular_domain_size()) {
-                    RTE_THROW("wrong number of spherical harmonics");
-                }
-                if (!max_num_mt_points__) {
-                    RTE_THROW("missing 'max_num_mt_points' argument");
-                }
-                if (*max_num_mt_points__ != gs.ctx().unit_cell().max_num_mt_points()) {
-                    RTE_THROW("wrong maximum number of muffin-tin radial points");
-                }
-                if (!num_atoms__) {
-                    RTE_THROW("missing 'num_atoms' argument");
-                }
-                if (*num_atoms__ != gs.ctx().unit_cell().num_atoms()) {
-                    RTE_THROW("wrong number of atoms");
-                }
-                f.copy_to(f_mt__, nullptr, false);
+                spheric_function_set_ptr_t<double> mt_ptr(f_mt__, lmmax, nrmtmax, num_atoms);
+                copy(func_map[label]->mt(), mt_ptr);
             }
-
             if (f_rg__) {
-                if (!num_rg_points__) {
-                    RTE_THROW("missing 'num_rg_points' argument");
-                }
-                bool is_local_rg;
-                if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size(gs.ctx().spfft<double>()))) {
-                    is_local_rg = false;
-                } else if (*num_rg_points__ == static_cast<int>(fft::spfft_grid_size_local(gs.ctx().spfft<double>()))) {
-                    is_local_rg = true;
-                } else {
-                    RTE_THROW("wrong number of regular grid points");
-                }
-                f.copy_to(nullptr, f_rg__, is_local_rg);
+                smooth_periodic_function_ptr_t<double> rg_ptr(f_rg__, size_x, size_y, size_z, offset_z);
+                copy(func_map[label]->rg(), rg_ptr);
             }
         },
         error_code__);
@@ -2549,17 +2607,17 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                    {"rho", &gs.density().rho()},
+                    {"rho", &gs.density().rho().rg()},
                     {"rhoc", &gs.density().rho_pseudo_core()},
-                    {"magz", &gs.density().magnetization(0)},
-                    {"magx", &gs.density().magnetization(1)},
-                    {"magy", &gs.density().magnetization(2)},
-                    {"veff", &gs.potential().effective_potential()},
-                    {"bz", &gs.potential().effective_magnetic_field(0)},
-                    {"bx", &gs.potential().effective_magnetic_field(1)},
-                    {"by", &gs.potential().effective_magnetic_field(2)},
+                    {"magz", &gs.density().mag(0).rg()},
+                    {"magx", &gs.density().mag(1).rg()},
+                    {"magy", &gs.density().mag(2).rg()},
+                    {"veff", &gs.potential().effective_potential().rg()},
+                    {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                    {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                    {"by", &gs.potential().effective_magnetic_field(2).rg()},
                     {"vloc", &gs.potential().local_potential()},
-                    {"vxc", &gs.potential().xc_potential()},
+                    {"vxc", &gs.potential().xc_potential().rg()},
                     {"dveff", &gs.potential().dveff()},
                 };
 
@@ -2634,11 +2692,11 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
                 std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                    {"rho", &gs.density().rho()},
-                    {"magz", &gs.density().magnetization(0)},
-                    {"magx", &gs.density().magnetization(1)},
-                    {"magy", &gs.density().magnetization(2)},
-                    {"veff", &gs.potential().effective_potential()},
+                    {"rho", &gs.density().rho().rg()},
+                    {"magz", &gs.density().mag(0).rg()},
+                    {"magx", &gs.density().mag(1).rg()},
+                    {"magy", &gs.density().mag(2).rg()},
+                    {"veff", &gs.potential().effective_potential().rg()},
                     {"vloc", &gs.potential().local_potential()},
                     {"rhoc", &gs.density().rho_pseudo_core()}};
 
@@ -3054,7 +3112,7 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
             {"descf", [&]() { return gs.scf_correction_energy(); }},
             {"demet", [&]() { return kset.entropy_sum(); }},
             {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
-            {"paw", [&]() { return potential.PAW_total_energy(); }},
+            {"paw", [&]() { return potential.PAW_total_energy(density); }},
             {"fermi", [&]() { return kset.energy_fermi(); }},
             {"hubbard", [&]() { return sirius::hubbard_energy(density); }}};
 
@@ -3627,7 +3685,7 @@ sirius_generate_coulomb_potential(void* const* handler__, double* vh_el__, int* 
         [&]() {
             auto& gs = get_gs(handler__);
 
-            gs.density().rho().fft_transform(-1);
+            gs.density().rho().rg().fft_transform(-1);
             gs.potential().poisson(gs.density().rho());
 
             if (vh_el__) {
@@ -5123,15 +5181,15 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"bz", &gs.potential().effective_magnetic_field(0)},
-                {"bx", &gs.potential().effective_magnetic_field(1)},
-                {"by", &gs.potential().effective_magnetic_field(2)},
-                {"vxc", &gs.potential().xc_potential()},
+                {"rho", &gs.density().rho().rg()},
+                {"magz", &gs.density().mag(0).rg()},
+                {"magx", &gs.density().mag(1).rg()},
+                {"magy", &gs.density().mag(2).rg()},
+                {"veff", &gs.potential().effective_potential().rg()},
+                {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                {"by", &gs.potential().effective_magnetic_field(2).rg()},
+                {"vxc", &gs.potential().xc_potential().rg()},
             };
             if (!func.count(label)) {
                 RTE_THROW("wrong label: " + label);
@@ -5173,7 +5231,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                             for (int ix = 0; ix < nx; ix++) {
                                 /* global x coordinate inside FFT box */
                                 int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
-                                f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                                f->value(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
                             }
                         }
                     }
@@ -5249,15 +5307,15 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
             }
 
             std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-                {"rho", &gs.density().rho()},
-                {"magz", &gs.density().magnetization(0)},
-                {"magx", &gs.density().magnetization(1)},
-                {"magy", &gs.density().magnetization(2)},
-                {"veff", &gs.potential().effective_potential()},
-                {"bz", &gs.potential().effective_magnetic_field(0)},
-                {"bx", &gs.potential().effective_magnetic_field(1)},
-                {"by", &gs.potential().effective_magnetic_field(2)},
-                {"vxc", &gs.potential().xc_potential()},
+                {"rho", &gs.density().rho().rg()},
+                {"magz", &gs.density().mag(0).rg()},
+                {"magx", &gs.density().mag(1).rg()},
+                {"magy", &gs.density().mag(2).rg()},
+                {"veff", &gs.potential().effective_potential().rg()},
+                {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                {"by", &gs.potential().effective_magnetic_field(2).rg()},
+                {"vxc", &gs.potential().xc_potential().rg()},
             };
 
             if (!func.count(label)) {
@@ -5282,7 +5340,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 /* slab of FFT grid for a given rank */
                 sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
                 if (rank == fft_comm.rank()) {
-                    std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
+                    std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
                 fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
 
@@ -5346,7 +5404,7 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
             sddk::mdarray<double, 1> total_mag(mag__, 3);
             total_mag.zero();
             for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
-                auto result  = gs.density().magnetization(j).integrate();
+                auto result  = gs.density().mag(j).integrate();
                 total_mag[j] = std::get<0>(result);
             }
             if (gs.ctx().num_mag_dims() == 3) {

@@ -973,7 +973,7 @@ class Atom_type
     {
         d_mtrx_ion_ = sddk::matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
                 sddk::memory_t::host, "Atom_type::d_mtrx_ion_");
-        d_mtrx_ion__ >> d_mtrx_ion_;
+        sddk::copy(d_mtrx_ion__, d_mtrx_ion_);
     }
 
     inline auto const& d_mtrx_ion() const

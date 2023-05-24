@@ -180,6 +180,7 @@ Simulation_parameters::import(cmd_args const& args__)
     cfg_.parameters().ngridk(args__.value("parameters.ngridk", cfg_.parameters().ngridk()));
     cfg_.parameters().gamma_point(args__.value("parameters.gamma_point", cfg_.parameters().gamma_point()));
     cfg_.parameters().pw_cutoff(args__.value("parameters.pw_cutoff", cfg_.parameters().pw_cutoff()));
+    cfg_.parameters().gk_cutoff(args__.value("parameters.gk_cutoff", cfg_.parameters().gk_cutoff()));
 
     cfg_.iterative_solver().early_restart(
         args__.value("iterative_solver.early_restart", cfg_.iterative_solver().early_restart()));

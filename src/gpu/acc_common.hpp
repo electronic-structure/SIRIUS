@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include "acc.hpp"
 #include "acc_runtime.hpp"
+#include "../typedefs.hpp"
 
 const double twopi = 6.2831853071795864769;
 
@@ -167,21 +168,6 @@ inline bool __device__ is_zero(double x)
 {
     return x == 0.0;
 }
-
-template <typename T>
-struct Real;
-
-template<>
-struct Real<float>
-{
-    using type = float;
-};
-
-template<>
-struct Real<double>
-{
-    using type = double;
-};
 
 template<>
 struct Real<gpu_complex_type<float>>
