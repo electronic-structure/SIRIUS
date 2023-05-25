@@ -88,7 +88,7 @@ RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper ^umpire+cuda~device_alloc"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda  ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc"
