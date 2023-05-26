@@ -39,6 +39,7 @@ RUN spack external find --all
 # install big packages
 RUN spack install hip%gcc
 RUN spack install rocblas%gcc
+RUN spack install rocsolver%gcc
 RUN spack install hipfft%gcc
 
 ENV SPEC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc"
