@@ -34,7 +34,7 @@ RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
-RUN spack external find --all
+RUN spack external find --all --exclude bzip2 xz
 
 # install big packages
 RUN spack install --fail-fast hip%gcc
