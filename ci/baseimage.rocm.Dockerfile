@@ -16,7 +16,7 @@ RUN apt-get -y update && apt-get install -y apt-utils
 RUN apt-get install -y gcc g++ gfortran clang git make unzip \
   vim wget pkg-config python3-pip python3-venv curl tcl m4 cpio automake \
   apt-transport-https ca-certificates gnupg software-properties-common \
-  patchelf meson
+  patchelf meson liblzma-dev libbz2-dev
 
 # install CMake
 RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz -O cmake.tar.gz && \
@@ -34,7 +34,7 @@ RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
-RUN spack external find --all --exclude bzip2 xz
+RUN spack external find --all
 
 # install big packages
 RUN spack install --fail-fast hip%gcc
