@@ -37,13 +37,13 @@ RUN spack compiler find
 RUN spack external find --all
 
 # install big packages
-RUN spack install hip%gcc
-RUN spack install rocblas%gcc
-RUN spack install rocsolver%gcc
-RUN spack install hipfft%gcc
+RUN spack install --fail-fast hip%gcc
+RUN spack install --fail-fast rocblas%gcc
+RUN spack install --fail-fast rocsolver%gcc
+RUN spack install --fail-fast hipfft%gcc
 
 ENV SPEC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc"
 
 RUN spack spec $SPEC
 
-RUN spack install --only=dependencies $SPEC
+RUN spack install --fail-fast --only=dependencies $SPEC
