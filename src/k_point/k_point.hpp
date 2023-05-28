@@ -686,13 +686,13 @@ class K_point
         return comm_col_;
     }
 
-    auto& beta_projectors()
+    auto beta_projectors() -> Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    auto const& beta_projectors() const
+    auto beta_projectors() const -> const Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;

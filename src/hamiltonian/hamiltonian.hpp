@@ -488,7 +488,9 @@ class Hamiltonian_k
 
         /* return if there are no beta-projectors */
         if (H0().ctx().unit_cell().mt_lo_basis_size()) {
-            apply_non_local_D_Q<T, F>(mem, spins__, br__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+            auto bp_generator = kp().beta_projectors().make_generator();
+            auto beta_coeffs  = bp_generator.prepare();
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
         }
 
         /* apply the hubbard potential if relevant */

@@ -1,23 +1,7 @@
-#include <pybind11/detail/common.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <sirius.hpp>
-#include <pybind11/stl.h>
-#include <pybind11/operators.h>
-#include <pybind11/complex.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <utility>
-#include <memory>
-#include <stdexcept>
-#include <omp.h>
+#include "python_module_includes.hpp"
 #include <mpi.h>
 
 #include "fft/gvec.hpp"
-#include "utils/json.hpp"
-#include "dft/energy.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
@@ -30,6 +14,9 @@ using namespace sirius;
 using json = nlohmann::json;
 
 using nlohmann::basic_json;
+
+void init_operators(py::module&);
+void init_r3(py::module&);
 
 // inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object
@@ -70,32 +57,11 @@ pj_convert(json& node)
             return result;
         }
         default: {
-            throw std::runtime_error("undefined json value");
+            RTE_THROW("undefined json value");
             /* make compiler happy */
             return py::reinterpret_borrow<py::object>(Py_None);
         }
     }
-}
-
-std::string
-show_mat(const r3::matrix<double>& mat)
-{
-    std::string str = "[";
-    for (int i = 0; i < 2; ++i) {
-        str = str + "[" + std::to_string(mat(i, 0)) + "," + std::to_string(mat(i, 1)) + "," +
-              std::to_string(mat(i, 2)) + "]" + "\n";
-    }
-    str = str + "[" + std::to_string(mat(2, 0)) + "," + std::to_string(mat(2, 1)) + "," + std::to_string(mat(2, 2)) +
-          "]" + "]";
-    return str;
-}
-
-template <class T>
-std::string
-show_vec(const r3::vector<T>& vec)
-{
-    std::string str = "[" + std::to_string(vec[0]) + "," + std::to_string(vec[1]) + "," + std::to_string(vec[2]) + "]";
-    return str;
 }
 
 /* typedefs */
@@ -111,7 +77,7 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-        throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+        RTE_THROW("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
     }
     auto H         = H0(kp);
     auto& ctx      = H0.ctx();
@@ -188,6 +154,9 @@ PYBIND11_MODULE(py_sirius, m)
         return;
     }
 
+    init_operators(m);
+    init_r3(m);
+
     m.def("num_devices", &acc::num_devices);
 
     py::class_<mpi::Communicator>(m, "Communicator");
@@ -240,7 +209,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("mass", [](const Atom& obj) { return obj.type().mass(); })
         .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
             if (pos.size() != 3)
-                throw std::runtime_error("wrong input");
+                RTE_THROW("wrong input");
             obj.set_position({pos[0], pos[1], pos[2]});
         });
 
@@ -276,59 +245,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("max_mt_radius", &Unit_cell::max_mt_radius)
         .def_property_readonly("omega", &Unit_cell::omega)
         .def("print_info", &Unit_cell::print_info);
-
-    py::class_<r3::vector<int>>(m, "r3::vector_int")
-        .def(py::init<std::vector<int>>())
-        .def("__call__", [](const r3::vector<int>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const r3::vector<int>& vec) { return show_vec(vec); })
-        .def("__len__", &r3::vector<int>::length)
-        .def("__array__", [](r3::vector<int>& v3d) {
-            py::array_t<int> x(3);
-            auto r = x.mutable_unchecked<1>();
-            r(0)   = v3d[0];
-            r(1)   = v3d[1];
-            r(2)   = v3d[2];
-            return x;
-        });
-
-    py::class_<r3::vector<double>>(m, "r3::vector_double")
-        .def(py::init<std::vector<double>>())
-        .def("__call__", [](const r3::vector<double>& obj, int x) { return obj[x]; })
-        .def("__repr__", [](const r3::vector<double>& vec) { return show_vec(vec); })
-        .def("__array__",
-             [](r3::vector<double>& v3d) {
-                 py::array_t<double> x(3);
-                 auto r = x.mutable_unchecked<1>();
-                 r(0)   = v3d[0];
-                 r(1)   = v3d[1];
-                 r(2)   = v3d[2];
-                 return x;
-             })
-        .def("__len__", &r3::vector<double>::length)
-        .def(py::self - py::self)
-        .def(py::self * float())
-        .def(py::self + py::self)
-        .def(py::init<r3::vector<double>>());
-
-    py::class_<r3::matrix<double>>(m, "r3::matrix")
-        .def(py::init<std::vector<std::vector<double>>>())
-        .def(py::init<>())
-        .def("__call__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
-        .def(
-            "__array__",
-            [](const r3::matrix<double>& mat) {
-                return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
-            },
-            py::return_value_policy::reference_internal)
-        .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
-        .def("__mul__",
-             [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
-                 r3::vector<double> res = dot(obj, b);
-                 return res;
-             })
-        .def("__repr__", [](const r3::matrix<double>& mat) { return show_mat(mat); })
-        .def(py::init<r3::matrix<double>>())
-        .def("det", &r3::matrix<double>::det);
 
     py::class_<Field4D>(m, "Field4D")
         .def(
@@ -397,7 +313,7 @@ PYBIND11_MODULE(py_sirius, m)
                 Density& density = obj.cast<Density&>();
                 auto& dm         = density.density_matrix();
                 if (dm.at(sddk::memory_t::host) == nullptr) {
-                    throw std::runtime_error("trying to access null pointer");
+                    RTE_THROW("trying to access null pointer");
                 }
                 return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
                                                                        dm.at(sddk::memory_t::host), obj);
@@ -406,7 +322,7 @@ PYBIND11_MODULE(py_sirius, m)
                 Density& density = obj.cast<Density&>();
                 auto& dm         = density.density_matrix();
                 if (dm.at(sddk::memory_t::host) == nullptr) {
-                    throw std::runtime_error("trying to access null pointer");
+                    RTE_THROW("trying to access null pointer");
                 }
                 return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
                                                                        dm.at(sddk::memory_t::host), obj);
@@ -490,6 +406,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
         .def("weight", &K_point<double>::weight)
+        .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors, py::const_),
+             py::return_value_policy::reference_internal)
         .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
              py::return_value_policy::reference_internal);
 
@@ -525,13 +443,6 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, r3::vector<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian0<double>>(m, "Hamiltonian0")
-        .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian0<double>::potential, py::return_value_policy::reference_internal);
-
-    py::class_<Hamiltonian_k<double>>(m, "Hamiltonian_k")
-        .def(py::init<Hamiltonian0<double>&, K_point<double>&>(), py::keep_alive<1, 2>(), py::keep_alive<1, 3>());
-
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
         .def("calc_stress_total", &Stress::calc_stress_total, py::return_value_policy::reference_internal)
@@ -557,11 +468,9 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<fft::Grid>(m, "FFT3D_grid")
         .def_property_readonly("num_points", py::overload_cast<>(&fft::Grid::num_points, py::const_))
-        .def_property_readonly("shape",
-                               [](const fft::Grid& obj) -> std::array<int, 3> {
-                                   return {obj[0], obj[1], obj[2]};
-                               })
-        ;
+        .def_property_readonly("shape", [](const fft::Grid& obj) -> std::array<int, 3> {
+            return {obj[0], obj[1], obj[2]};
+        });
 
     py::class_<sddk::mdarray<complex_double, 1>>(m, "mdarray1c")
         .def("on_device", &sddk::mdarray<complex_double, 1>::on_device)
@@ -695,22 +604,21 @@ PYBIND11_MODULE(py_sirius, m)
         mpm.def("entropy", py::vectorize(&smearing::methfessel_paxton::entropy), "x"_a, "w"_a, "n"_a);
         mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a);
         mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a);
-        mpm.def("occupancy_deriv", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv), "x"_a, "w"_a, "n"_a);
-        mpm.def("occupancy_deriv2", py::vectorize(&smearing::methfessel_paxton::occupancy_deriv2), "x"_a, "w"_a, "n"_a);
+        mpm.def("dxdelta", py::vectorize(&smearing::methfessel_paxton::dxdelta), "x"_a, "w"_a, "n"_a);
     }
     {
         py::module mcold = smearing_module.def_submodule("cold");
         mcold.def("entropy", py::vectorize(&smearing::cold::entropy), "x"_a, "w"_a);
-        mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
         mcold.def("occupancy", py::vectorize(&smearing::cold::occupancy), "x"_a, "w"_a);
-        mcold.def("occupancy_deriv2", py::vectorize(&smearing::cold::occupancy_deriv2), "x"_a, "w"_a);
+        mcold.def("delta", py::vectorize(&smearing::cold::delta), "x"_a, "w"_a);
+        mcold.def("dxdelta", py::vectorize(&smearing::cold::dxdelta), "x"_a, "w"_a);
     }
     {
         py::module mfd = smearing_module.def_submodule("fermi_dirac");
         mfd.def("entropy", py::vectorize(&smearing::fermi_dirac::entropy), "x"_a, "w"_a);
-        mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
         mfd.def("occupancy", py::vectorize(&smearing::fermi_dirac::occupancy), "x"_a, "w"_a);
-        mfd.def("occupancy_deriv2", py::vectorize(&smearing::fermi_dirac::occupancy_deriv2), "x"_a, "w"_a);
+        mfd.def("delta", py::vectorize(&smearing::fermi_dirac::delta), "x"_a, "w"_a);
+        mfd.def("dxdelta", py::vectorize(&smearing::fermi_dirac::dxdelta), "x"_a, "w"_a);
     }
     {
         py::module mgauss = smearing_module.def_submodule("gaussian");

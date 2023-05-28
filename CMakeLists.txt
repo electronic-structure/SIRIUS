@@ -223,6 +223,7 @@ if(USE_ROCM)
 
   enable_language(HIP)
   find_package(rocblas CONFIG REQUIRED)
+  find_package(rocsolver CONFIG REQUIRED)
   set(CMAKE_HIP_STANDARD 14)
 endif()
 

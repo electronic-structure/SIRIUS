@@ -98,7 +98,7 @@ class Stress
   private:
     Simulation_context& ctx_;
 
-    Density& density_;
+    Density const& density_;
 
     Potential& potential_;
 

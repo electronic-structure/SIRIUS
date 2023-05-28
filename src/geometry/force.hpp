@@ -26,6 +26,7 @@
 #define __FORCE_HPP__
 
 #include "hamiltonian/hamiltonian.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 
 namespace sirius {
 /* forward declaration */
@@ -44,7 +45,7 @@ class Force
   private:
     Simulation_context& ctx_;
 
-    Density& density_;
+    const Density& density_;
 
     Potential& potential_;
 

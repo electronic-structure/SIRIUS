@@ -1169,6 +1169,38 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
 
+    T* host_data()
+    {
+        assert(raw_ptr_ != nullptr);
+        return raw_ptr_;
+    }
+
+    const T* host_data() const
+    {
+        assert(raw_ptr_ != nullptr);
+        return raw_ptr_;
+    }
+
+    T* device_data()
+    {
+#if defined(SIRIUS_GPU)
+        assert(raw_ptr_device_ != nullptr);
+        return raw_ptr_device_;
+#else
+        throw std::runtime_error("not compiled with GPU support");
+#endif
+    }
+
+    const T* device_data() const
+    {
+#if defined(SIRIUS_GPU)
+        assert(raw_ptr_device_ != nullptr);
+        return raw_ptr_device_;
+#else
+        throw std::runtime_error("not compiled with GPU support");
+#endif
+    }
+
     /// Return total size (number of elements) of the array.
     inline size_t size() const
     {
@@ -1359,6 +1391,11 @@ class mdarray
         return label_;
     }
 
+    inline bool on_host() const
+    {
+        return (raw_ptr_ != nullptr);
+    }
+
     mdarray<T, N>& operator=(std::function<T(void)> f__)
     {
         for (size_t i = 0; i < this->size(); i++) {
@@ -1451,6 +1488,82 @@ copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
         }
     }
     std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
+}
+
+/// Copy all memory present on destination.
+template <typename T, int N>
+void
+auto_copy(mdarray<T, N>& dst, const mdarray<T, N>& src)
+{
+
+    assert(dst.size() == src.size());
+    // TODO: make sure dst and src don't overlap
+
+    if (dst.on_device()) {
+        acc::copy(dst.device_data(), src.device_data(), src.size());
+    }
+
+    if (dst.on_host()) {
+        std::copy(src.host_data(), src.host_data() + dst.size(), dst.host_data());
+    }
+}
+
+/// Copy memory specified by device from src to dst.
+template <typename T, int N>
+void
+auto_copy(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
+{
+    // TODO also compare shapes
+    if (src.size() == 0) {
+        // nothing TODO
+        return;
+    }
+
+    assert(src.size() == dst.size());
+    if (device == device_t::GPU) {
+        assert(src.on_device() && dst.on_device());
+        acc::copy(dst.device_data(), src.device_data(), dst.size());
+    } else if (device == device_t::CPU) {
+        assert(src.on_host() && dst.on_host());
+        std::copy(src.host_data(), src.host_data() + dst.size(), dst.host_data());
+    }
+}
+
+template <class numeric_t, std::size_t... Ts>
+auto
+_empty_like_inner(std::index_sequence<Ts...>& seq, std::size_t (&dims)[sizeof...(Ts)], memory_pool* mempool)
+{
+    if (mempool == nullptr) {
+        return mdarray<numeric_t, sizeof...(Ts)>{dims[Ts]...};
+    } else {
+        mdarray<numeric_t, sizeof...(Ts)> out{dims[Ts]...};
+        out.allocate(*mempool);
+        return out;
+    }
+}
+
+template <typename T, int N>
+auto
+empty_like(const mdarray<T, N>& src)
+{
+    auto I = std::make_index_sequence<N>{};
+    std::size_t dims[N];
+    for (int i = 0; i < N; ++i) {
+        dims[i] = src.size(i);
+    }
+    return _empty_like_inner<T>(I, dims, nullptr);
+}
+
+template <typename T, int N>
+auto
+empty_like(const mdarray<T, N>& src, memory_pool& mempool)
+{
+    auto I = std::make_index_sequence<N>{};
+    std::size_t dims[N];
+    for (int i = 0; i < N; ++i) {
+        dims[i] = src.size(i);
+    }
+    return _empty_like_inner<T>(I, dims, &mempool);
 }
 
 } // namespace sddk

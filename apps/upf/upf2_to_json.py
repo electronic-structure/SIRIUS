@@ -223,10 +223,16 @@ def parse_PAW(upf_dict, root):
     size = upf_dict['header']['number_of_proj']
 
     # ---- occupation
-    for i in range(size):
-        upf_dict['paw_data']['occupations'] = [
-            float(e) for e in str.split(node.text)
-        ]
+    node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
+    upf_dict['paw_data']['occupations'] = [
+        float(e) for e in str.split(node.text)
+    ]
+    try:
+        size = int(node.attrib['size'])
+    except KeyError:
+        size = len(upf_dict['paw_data']['occupations'])
+        print('WARNING: the size attribute in PP_PAW/PP_OCCUPATIONS is missing')
+    assert len(upf_dict['paw_data']['occupations']) == size
 
     # ---- Read AE core correction (density of core charge)
     if 'size' in node.attrib:
@@ -235,10 +241,15 @@ def parse_PAW(upf_dict, root):
     node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     size = upf_dict['header']['mesh_size']
 
-    for i in range(size):
-        upf_dict['paw_data']['ae_core_charge_density'] = [
-            float(e) for e in str.split(node.text)
-        ]
+    upf_dict['paw_data']['ae_core_charge_density'] = [
+        float(e) for e in str.split(node.text)
+    ]
+    try:
+        size = int(node.attrib['size'])
+    except KeyError:
+        size = len(upf_dict['paw_data']['ae_core_charge_density'])
+        print('WARNING: the size attribute in PP_PAW/PP_AE_NLCC is missing')
+    assert len(upf_dict['paw_data']['ae_core_charge_density']) == size
 
     # ---- Read AE local potential
     node = root.findall("./PP_PAW/PP_AE_VLOC")[0]
@@ -247,12 +258,15 @@ def parse_PAW(upf_dict, root):
             print('WARNING: mesh_size != size(PP_AE_VLOC)')
     size = upf_dict['header']['mesh_size']
 
-    for i in range(size):
-        upf_dict['paw_data']['ae_local_potential'] = [
-            float(e) / 2 for e in str.split(node.text)
-        ]  # convert to Ha
-
-
+    upf_dict['paw_data']['ae_local_potential'] = [
+        float(e) / 2 for e in str.split(node.text)
+    ]  # convert to Ha
+    try:
+        size = int(node.attrib['size'])
+    except KeyError:
+        size = len(upf_dict['paw_data']['ae_local_potential'])
+        print('WARNING: the size attribute in PP_PAW/PP_AE_VLOC is missing')
+    assert len(upf_dict['paw_data']['ae_local_potential']) == size
 ####################################################
 ############# Read starting wave functions #########
 ####################################################

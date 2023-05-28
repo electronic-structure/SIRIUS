@@ -315,7 +315,7 @@ Force::calc_forces_hubbard()
 
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_.get<double>(ik);
-            kp->beta_projectors().prepare();
+            // kp->beta_projectors().prepare();
             auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
@@ -325,7 +325,6 @@ Force::calc_forces_hubbard()
                 RTE_THROW("Hubbard forces are only implemented for the simple hubbard correction.");
             }
             hubbard_force_add_k_contribution_collinear(*kp, q_op, forces_hubbard_);
-            kp->beta_projectors().dismiss();
         }
 
         /* global reduction */

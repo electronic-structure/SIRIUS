@@ -62,7 +62,7 @@ def btsearch(x, p, f, f0, b, maxiter=20, tau=0.1):
                 return x, fx
             else:
                 x *= tau
-                Logger()('btsearch: x=%.4e, E=%.10f' % (x, fx))
+                Logger()('btsearch: x=%.2e, E=%.13f' % (x, fx))
 
         raise StepError('backtracking search could not find a new minimum')
 
@@ -294,7 +294,7 @@ def minimize(x0, f, df, M,
         res = np.real(inner(pdfx, pdfx))
 
         if verbose:
-            logger('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
+            logger('%4d %16.13f (Ha)  residual: %.3e' % (i, fnext, res))
         x = xnext
 
         if res < tol:

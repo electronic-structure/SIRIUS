@@ -2,10 +2,18 @@ import yaml
 import argparse
 import time
 
-from sirius import save_state, Logger
+from sirius import save_state, Logger, load_state
 from sirius.ot import ApplyHamiltonian, Energy
+from sirius.coefficient_array import PwCoeffs, diag
+import numpy as np
 
 logger = Logger()
+
+
+def make_pwcoeffs(coefficient_array):
+    out = PwCoeffs(dtype=np.complex, ctype=np.matrix)
+    out._data = coefficient_array._data
+    return out
 
 def validate_config(dd):
     """
@@ -23,10 +31,12 @@ def validate_config(dd):
     marzari = {Required('type'): Any('Marzari'),
                Optional('inner', default=2): int,
                Optional('fd_slope_check', default=False): bool}
-    neugebaur = {Required('type'): Any('Neugebaur'), Optional('kappa', default=0.3): Coerce(float)}
+    neugebauer = {Required('type'): Any('Neugebauer'), Optional('kappa', default=0.3): Coerce(float)}
+    restart = {Required('fname'): str}
 
-    cg = {Required('method'): Any(marzari, neugebaur),
-          Optional('type', default='FR'): Any('FR', 'PR'),
+    cg = {Required('method'): Any(marzari, neugebauer),
+          Optional('restart'): Any(restart),
+          Optional('type', default='FR'): Any('FR', 'PR', 'SD'),
           Optional('tol', default=1e-9): float,
           Optional('maxiter', default=300): int,
           Optional('restart', default=20): int,
@@ -99,12 +109,24 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
     from sirius.edft import MarzariCG as CG, FreeEnergy
 
     cg_config = config['CG']
+    if 'restart' in config:
+        nscf = 1
+    else:
+        nscf = cg_config['nscf']
 
-    X, fn, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
-
+    X, fn, E, ctx, kset = initial_state(sirius_config, nscf)
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
     M = FreeEnergy(E=E, T=T, smearing=smearing)
+
+    # load state
+    if 'restart' in config:
+        logger('restart loading from ' + config['restart']['fname'])
+        fname = config['restart']['fname']
+        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex))
+        fn = load_state(fname, kset, "fn", np.float64).asarray().flatten()
+        M(X, fn) # make sure band energies are set
+
     method_config = config['CG']['method']
     cg = CG(M, fd_slope_check=method_config['fd_slope_check'])
     K = make_precond(cg_config, kset)
@@ -124,24 +146,40 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
     return X, fn, FE
 
 
-def run_neugebaur(config, sirius_config, callback, final_callback, error_callback):
+def run_neugebauer(config, sirius_config, callback, final_callback, error_callback):
     """
     Keyword Arguments:
     config        -- dictionary
     sirius_config -- /path/to/sirius.json
     """
-    from sirius.edft import NeugebaurCG as CG, FreeEnergy
+    from sirius.edft import NeugebauerCG as CG, FreeEnergy
 
     cg_config = config['CG']
-    X, fn, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
+    if 'restart' in config:
+        nscf = 1
+    else:
+        nscf = cg_config['nscf']
+
+    X, fn, E, ctx, kset = initial_state(sirius_config, nscf)
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
     M = FreeEnergy(E=E, T=T, smearing=smearing)
+
+    # load state, Neugebauer method requires X, eta (pseudo band-energies)
+    if 'restart' in config:
+        logger('restart loading from ' + config['restart']['fname'])
+        fname = config['restart']['fname']
+        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex))
+        # the diagoal of eta is stored in dumps, therefore it is real-valued
+        ek = diag(load_state(fname, kset, "eta", np.float64)).asarray().flatten()
+    else:
+        ek = kset.e
+
     cg = CG(M)
     K = make_precond(cg_config, kset)
 
     tstart = time.time()
-    X, fn, FE, success = cg.run(X, fn,
+    X, fn, FE, success = cg.run(X, ek,
                                 tol=cg_config['tol'],
                                 K=K,
                                 maxiter=cg_config['maxiter'],
@@ -151,7 +189,10 @@ def run_neugebaur(config, sirius_config, callback, final_callback, error_callbac
                                 tau=cg_config['tau'],
                                 callback=callback(kset, E=E),
                                 error_callback=error_callback(kset, E=E))
-    assert success
+    if not success:
+        logger('NOT converged.')
+    else:
+        logger('SUCCESSFULLY converged')
     tstop = time.time()
     logger('cg.run took: ', tstop-tstart, ' seconds')
     if final_callback is not None:
@@ -165,6 +206,16 @@ def run(ycfg, sirius_input, callback=None, final_callback=None, error_callback=N
     ycfg         -- EDFT config (dict)
     sirius_input -- /path/to/sirius.json
     """
+
+    def EmptyCallbackFactory(*args, **kw):
+        return lambda **_: None
+    if callback is None:
+        callback = EmptyCallbackFactory
+    if final_callback is None:
+        final_callback = EmptyCallbackFactory
+    if error_callback is None:
+        error_callback = EmptyCallbackFactory
+
     method = ycfg['CG']['method']['type'].lower()
     if method == 'marzari':
         if error_callback is not None:
@@ -172,10 +223,13 @@ def run(ycfg, sirius_input, callback=None, final_callback=None, error_callback=N
         X, fn, FE = run_marzari(ycfg,
                                 sirius_input,
                                 callback, final_callback)
-    elif method == 'neugebaur':
-        X, fn, FE = run_neugebaur(ycfg,
+    elif method == 'neugebauer':
+        X, fn, FE = run_neugebauer(ycfg,
                                   sirius_input,
                                   callback, final_callback, error_callback=error_callback)
+    else:
+        raise Exception('invalid method given')
+
     logger('Final free energy: %.10f' % FE)
     return X, fn, FE
 

@@ -211,6 +211,11 @@ class K_point_set
         return energy_fermi_;
     }
 
+    inline void set_energy_fermi(double energy_fermi__)
+    {
+        this->energy_fermi_ = energy_fermi__;
+    }
+
     inline double band_gap() const
     {
         return band_gap_;
