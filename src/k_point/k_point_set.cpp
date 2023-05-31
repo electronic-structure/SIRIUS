@@ -232,7 +232,7 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         double dNf  = dN(mu);
         double ddNf = ddN(mu);
         /* minimize (N(mu) - ne)^2  */
-        double F = (Nf - ne) * (Nf - ne);
+        //double F = (Nf - ne) * (Nf - ne);
         double dF = 2 * (Nf - ne) * dNf;
         double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
         double step = alpha * dF / std::abs(ddF);

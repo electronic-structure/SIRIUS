@@ -269,7 +269,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         bool copy_back_innerb = sddk::is_device_memory(mt);
 
         bp_gen.generate(bp_coeffs, ichunk);
-        auto& beta_chunk = bp_coeffs.beta_chunk;
+        auto& beta_chunk = bp_coeffs.beta_chunk_;
 
         /* <beta | phi_atomic> for this chunk */
         // auto beta_phi_atomic = kp__.beta_projectors().inner<std::complex<double>>(mt, ichunk, phi_atomic, wf::spin_index(0),

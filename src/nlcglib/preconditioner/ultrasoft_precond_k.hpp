@@ -258,8 +258,8 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors
-        auto G         = P.apply(beta_coeffs.pw_coeffs_a, pm);
-        int row_offset = beta_coeffs.beta_chunk.offset_;
+        auto G         = P.apply(beta_coeffs.pw_coeffs_a_, pm);
+        int row_offset = beta_coeffs.beta_chunk_.offset_;
 
         la::wrap(la).gemm('C', 'N', G.size(1), nbnd, G.size(0), &la::constant<numeric_t>::one(), G.at(pm), G.ld(),
                           X.at(pm), X.ld(), &la::constant<numeric_t>::zero(), bphi.at(pm, row_offset, 0), bphi.ld());
@@ -281,16 +281,16 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors in place
-        auto G = P.apply(beta_coeffs.pw_coeffs_a, pm);
+        auto G = P.apply(beta_coeffs.pw_coeffs_a_, pm);
         int m  = Y.size(0);
         int n  = Y.size(1);
-        int k  = beta_coeffs.pw_coeffs_a.size(1);
+        int k  = beta_coeffs.pw_coeffs_a_.size(1);
 
         switch (pu) {
             case sddk::device_t::CPU: {
                 la::wrap(la::lib_t::blas)
                     .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(sddk::memory_t::host), G.ld(),
-                          R.at(sddk::memory_t::host, beta_coeffs.beta_chunk.offset_, 0), R.ld(),
+                          R.at(sddk::memory_t::host, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(sddk::memory_t::host), Y.ld());
                 break;
             }
@@ -298,7 +298,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
             case sddk::device_t::GPU:
                 la::wrap(la::lib_t::gpublas)
                     .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(sddk::memory_t::device), G.ld(),
-                          R.at(sddk::memory_t::device, beta_coeffs.beta_chunk.offset_, 0), R.ld(),
+                          R.at(sddk::memory_t::device, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(sddk::memory_t::device), Y.ld());
 
                 break;

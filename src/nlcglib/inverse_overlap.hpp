@@ -194,7 +194,7 @@ void
 InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
 {
     int nbnd = X.size(1);
-    assert(X.size(0) == this->size());
+    assert(static_cast<int>(X.size(0)) == this->size());
     pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
     la::lib_t la{la::lib_t::blas};
@@ -212,8 +212,8 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numer
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
 
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a, X, bphi, beta_coeffs.communicator,
-                     beta_coeffs.beta_chunk.offset_, 0);
+        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+                     beta_coeffs.beta_chunk_.offset_, 0);
     }
 
     // compute bphi <- (I + B*Q)⁻¹ (B^H X)
@@ -241,10 +241,10 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numer
         bp_gen.generate(beta_coeffs, ichunk);
         int m = Y.size(0);
         int n = Y.size(1);
-        int k = beta_coeffs.pw_coeffs_a.size(1);
+        int k = beta_coeffs.pw_coeffs_a_.size(1);
 
-        la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a.at(pm),
-                          beta_coeffs.pw_coeffs_a.ld(), R.at(pm, beta_coeffs.beta_chunk.offset_, 0), R.ld(),
+        la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }
@@ -266,7 +266,7 @@ template <class numeric_t>
 void
 S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
 {
-    assert(X.size(0) == this->size());
+    assert(static_cast<int>(X.size(0)) == this->size());
 
     pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
@@ -284,8 +284,8 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a, X, bphi, beta_coeffs.communicator,
-                     beta_coeffs.beta_chunk.offset_, 0);
+        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+                     beta_coeffs.beta_chunk_.offset_, 0);
     }
 
     sddk::matrix<numeric_t> R(q_op_.size(0), bphi.size(1));
@@ -305,10 +305,10 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
         bp_gen.generate(beta_coeffs, ichunk);
         int m = Y.size(0);
         int n = Y.size(1);
-        int k = beta_coeffs.pw_coeffs_a.size(1);
+        int k = beta_coeffs.pw_coeffs_a_.size(1);
 
-        la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a.at(pm),
-                          beta_coeffs.pw_coeffs_a.ld(), R.at(pm, beta_coeffs.beta_chunk.offset_, 0), R.ld(),
+        la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }

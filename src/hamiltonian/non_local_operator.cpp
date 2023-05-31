@@ -348,6 +348,7 @@ Non_local_operator<T>::size(int i) const
         return this->size_;
     }
     RTE_THROW("invalid dimension");
+    return -1; // make compiler happy
 }
 
 template <class T>

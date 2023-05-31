@@ -58,6 +58,8 @@ struct beta_desc_idx
     static const int ia = 3;
 };
 
+/// Describe chunk of beta-projectors for a block of atoms.
+/** Beta-projectors are processed in "chunks" to avoid large memory consumption. */
 struct beta_chunk_t
 {
     /// Number of beta-projectors in the current chunk.
@@ -71,32 +73,35 @@ struct beta_chunk_t
     /// Positions of atoms.
     sddk::mdarray<double, 2> atom_pos_;
 
+    /// Default constructor.
     beta_chunk_t() = default;
 
-    beta_chunk_t(const beta_chunk_t& other)
-        : desc_{empty_like(other.desc_)}
-        , atom_pos_{empty_like(other.atom_pos_)}
+    /// Copy constructor.
+    beta_chunk_t(beta_chunk_t const& src__)
+        : desc_{empty_like(src__.desc_)}
+        , atom_pos_{empty_like(src__.atom_pos_)}
     {
         // pass
-        num_beta_  = other.num_beta_;
-        num_atoms_ = other.num_atoms_;
-        offset_    = other.offset_;
+        num_beta_  = src__.num_beta_;
+        num_atoms_ = src__.num_atoms_;
+        offset_    = src__.offset_;
 
-        auto_copy(desc_, other.desc_);
-        auto_copy(atom_pos_, other.atom_pos_);
+        auto_copy(desc_, src__.desc_);
+        auto_copy(atom_pos_, src__.atom_pos_);
     }
 
-    beta_chunk_t& operator=(const beta_chunk_t& other)
+    /// Copy assignment operator.
+    beta_chunk_t& operator=(beta_chunk_t const& rhs__)
     {
-        num_beta_  = other.num_beta_;
-        num_atoms_ = other.num_atoms_;
-        offset_    = other.offset_;
+        num_beta_  = rhs__.num_beta_;
+        num_atoms_ = rhs__.num_atoms_;
+        offset_    = rhs__.offset_;
 
-        desc_ = empty_like(other.desc_);
-        auto_copy(desc_, other.desc_);
+        desc_ = empty_like(rhs__.desc_);
+        auto_copy(desc_, rhs__.desc_);
 
-        atom_pos_ = empty_like(other.atom_pos_);
-        auto_copy(atom_pos_, other.atom_pos_);
+        atom_pos_ = empty_like(rhs__.atom_pos_);
+        auto_copy(atom_pos_, rhs__.atom_pos_);
         return *this;
     }
 };
@@ -111,21 +116,24 @@ struct beta_projectors_coeffs_t
 {
     using complex_t = std::complex<T>;
 
-    sddk::matrix<complex_t> pw_coeffs_a;
-    mpi::Communicator communicator;
-    /// the current beta chunk
-    beta_chunk_t beta_chunk;
-    /// buffer (num_max_beta) for pw_coeffs_a_
-    sddk::matrix<complex_t> __pw_coeffs_a_buffer;
+    sddk::matrix<complex_t> pw_coeffs_a_;
+    /// Communicator that splits G+k vectors.
+    mpi::Communicator comm_;
+    /// Descriptor of the current beta chunk.
+    beta_chunk_t beta_chunk_;
+    /// Buffer (num_max_beta) for pw_coeffs_a_
+    sddk::matrix<complex_t> pw_coeffs_a_buffer_;
 
+    /// Beta-projectors are treated as non-magnetic.
     auto actual_spin_index(wf::spin_index s__) const -> wf::spin_index
     {
         return wf::spin_index(0);
     }
 
+    /// Leading dimension.
     auto ld() const
     {
-        return pw_coeffs_a.ld();
+        return static_cast<int>(pw_coeffs_a_.ld());
     }
 
     auto num_md() const
@@ -135,12 +143,12 @@ struct beta_projectors_coeffs_t
 
     auto comm() const -> const mpi::Communicator&
     {
-        return communicator;
+        return comm_;
     }
 
-    std::complex<T> const* at(sddk::memory_t mem__, int i__, wf::spin_index s__, wf::band_index b__) const
+    auto const* at(sddk::memory_t mem__, int i__, wf::spin_index s__, wf::band_index b__) const
     {
-        return pw_coeffs_a.at(mem__, i__, b__.get());
+        return pw_coeffs_a_.at(mem__, i__, b__.get());
     }
 };
 
@@ -148,17 +156,15 @@ namespace local {
 
 template <class T>
 void beta_projectors_generate_cpu(sddk::matrix<std::complex<T>>& pw_coeffs_a,
-                                  const sddk::mdarray<std::complex<T>, 3>& pw_coeffs_t, int ichunk__, int j__,
-                                  const beta_chunk_t& beta_chunk, const Simulation_context& ctx,
-                                  const fft::Gvec& gkvec);
+        sddk::mdarray<std::complex<T>, 3> const& pw_coeffs_t, int ichunk__, int j__,
+        beta_chunk_t const& beta_chunk, Simulation_context const& ctx, fft::Gvec const& gkvec);
 
 template <class T>
 void beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
-                                  const sddk::mdarray<std::complex<double>, 3>& pw_coeffs_t_device,
-                                  const sddk::mdarray<std::complex<double>, 3>& pw_coeffs_t_host,
-                                  const Simulation_context& ctx, const fft::Gvec& gkvec,
-                                  const sddk::mdarray<double, 2>& gkvec_coord_, const beta_chunk_t& beta_chunk,
-                                  const std::vector<int>& igk__, int j__);
+        sddk::mdarray<std::complex<double>, 3> const& pw_coeffs_t_device,
+        sddk::mdarray<std::complex<double>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
+        fft::Gvec const& gkvec, sddk::mdarray<double, 2> const& gkvec_coord_, beta_chunk_t const& beta_chunk,
+        std::vector<int> const& igk__, int j__);
 
 } // namespace local
 
@@ -202,19 +208,25 @@ class Beta_projector_generator
     }
 
   private:
+    /// Simulation context.
     Simulation_context& ctx_;
+    /// Beta-projectors for atom-types.
     array_t const& pw_coeffs_t_host_;
-    /// precomputed beta coefficients on CPU
-    sddk::matrix<complex_t> const& beta_pw_all_atoms_;
-    sddk::device_t processing_unit_;
-    /// chunk descriptors
-    std::vector<beta_chunk_t> const& beta_chunks_;
-    /// gkvec
-    fft::Gvec const& gkvec_;
-    sddk::mdarray<double, 2> const& gkvec_coord_;
-    int num_gkvec_loc_;
-    /// pw_coeffs_t on device
+    /// Beta-projectors for atom-types on device.
     array_t pw_coeffs_t_device_;
+    /// Precomputed beta coefficients on CPU.
+    sddk::matrix<complex_t> const& beta_pw_all_atoms_;
+    /// Processing unit.
+    sddk::device_t processing_unit_;
+    /// Chunk descriptors.
+    std::vector<beta_chunk_t> const& beta_chunks_;
+    /// G+k vectors.
+    fft::Gvec const& gkvec_;
+    /// Coordinates of G+k vectors.
+    sddk::mdarray<double, 2> const& gkvec_coord_;
+    /// Local number of G+k vectors.
+    int num_gkvec_loc_;
+    /// Maximum number of beta-projectors.
     int max_num_beta_;
 };
 
@@ -253,10 +265,10 @@ beta_projectors_coeffs_t<T>
 Beta_projector_generator<T>::prepare() const
 {
     beta_projectors_coeffs_t<T> beta_storage;
-    beta_storage.communicator = gkvec_.comm().duplicate();
+    beta_storage.comm_ = gkvec_.comm().duplicate();
 
     if (processing_unit_ == sddk::device_t::GPU) {
-        beta_storage.__pw_coeffs_a_buffer =
+        beta_storage.pw_coeffs_a_buffer_ =
             sddk::matrix<std::complex<T>>(num_gkvec_loc_, max_num_beta_, sddk::get_memory_pool(sddk::memory_t::device));
     }
 
@@ -328,23 +340,10 @@ class Beta_projectors_base
         return make_generator(pu);
     }
 
-    Simulation_context& ctx()
+    auto const& ctx() const
     {
         return ctx_;
     }
-
-    // /// Calculate inner product between beta-projectors and wave-functions.
-    // /** The following is matrix computed: <beta|phi>
-    //  *
-    //  *  \tparam F  Type of the resulting inner product matrix (float, double, complex<float> or complex<double>).
-    //  */
-    // template <typename F>
-    // __attribute__((depcrecated)) std::enable_if_t<std::is_same<T, real_type<F>>::value, la::dmatrix<F>>
-    // inner(sddk::memory_t mem__, int chunk__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__,
-    //       wf::band_range br__) const
-    // {
-    //     throw std::runtime_error("Beta_projector_base::inner has been removed.");
-    // }
 
     inline auto num_gkvec_loc() const
     {
@@ -366,22 +365,15 @@ class Beta_projectors_base
         return ctx_.unit_cell();
     }
 
-    std::complex<T>& pw_coeffs_t(int ig__, int n__, int j__)
+    auto& pw_coeffs_t(int ig__, int n__, int j__)
     {
         return pw_coeffs_t_(ig__, n__, j__);
     }
 
-    sddk::matrix<std::complex<T>> pw_coeffs_t(int j__)
+    auto pw_coeffs_t(int j__)
     {
         return sddk::matrix<std::complex<T>>(&pw_coeffs_t_(0, 0, j__), num_gkvec_loc(), num_beta_t());
     }
-
-    // /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
-    // __attribute_deprecated__ matrix<std::complex<T>>& pw_coeffs_a()
-    // {
-    //     throw std::runtime_error("beta_projectors::pw_coeffs_a is not used anymore!");
-    //     return pw_coeffs_a_;
-    // }
 
     auto const& pw_coeffs_a() const
     {
@@ -397,12 +389,6 @@ class Beta_projectors_base
     {
         return static_cast<int>(beta_chunks_.size());
     }
-
-    // __attribute_deprecated__
-    // inline beta_chunk_t const& chunk(int idx__) const
-    // {
-    //     return beta_chunks_[idx__];
-    // }
 
     inline int max_num_beta() const
     {
@@ -441,7 +427,7 @@ inner_prod_beta(spla::Context& spla_ctx, sddk::memory_t mem__, sddk::memory_t ho
                 beta_projectors_coeffs_t<T>& beta_coeffs__, wf::Wave_functions<T> const& phi__, wf::spin_index ispn__,
                 wf::band_range br__)
 {
-    int nbeta = beta_coeffs__.beta_chunk.num_beta_;
+    int nbeta = beta_coeffs__.beta_chunk_.num_beta_;
 
     la::dmatrix<F> result(nbeta, br__.size(), get_memory_pool(host_mem__), "<beta|phi>");
     if (result_on_device) {
@@ -483,16 +469,16 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
 
         for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
             generator.generate(bcoeffs_col, jchunk);
-            int m              = bcoeffs_row.beta_chunk.num_beta_;
-            int n              = bcoeffs_col.beta_chunk.num_beta_;
-            int k              = bcoeffs_col.pw_coeffs_a.size(0);
-            int dest_row       = bcoeffs_row.beta_chunk.offset_;
-            int dest_col       = bcoeffs_col.beta_chunk.offset_;
-            const complex_t* A = bcoeffs_row.pw_coeffs_a.at(mem_t);
-            const complex_t* B = bcoeffs_col.pw_coeffs_a.at(mem_t);
+            int m              = bcoeffs_row.beta_chunk_.num_beta_;
+            int n              = bcoeffs_col.beta_chunk_.num_beta_;
+            int k              = bcoeffs_col.pw_coeffs_a_.size(0);
+            int dest_row       = bcoeffs_row.beta_chunk_.offset_;
+            int dest_col       = bcoeffs_col.beta_chunk_.offset_;
+            const complex_t* A = bcoeffs_row.pw_coeffs_a_.at(mem_t);
+            const complex_t* B = bcoeffs_col.pw_coeffs_a_.at(mem_t);
             complex_t* C       = out.at(mem_t, dest_row, dest_col);
-            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B, bcoeffs_col.pw_coeffs_a.ld(),
-                              &zero, C, out.ld());
+            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B,
+                    bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
         }
     }
 
@@ -534,18 +520,18 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
         for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
             generator.generate(bcoeffs_col, jchunk);
 
-            int m              = bcoeffs_row.beta_chunk.num_beta_;
-            int n              = bcoeffs_col.beta_chunk.num_beta_;
-            int k              = bcoeffs_col.pw_coeffs_a.size(0);
-            int dest_row       = bcoeffs_row.beta_chunk.offset_;
-            int dest_col       = bcoeffs_col.beta_chunk.offset_;
-            const complex_t* A = bcoeffs_row.pw_coeffs_a.at(mem_t);
+            int m              = bcoeffs_row.beta_chunk_.num_beta_;
+            int n              = bcoeffs_col.beta_chunk_.num_beta_;
+            int k              = bcoeffs_col.pw_coeffs_a_.size(0);
+            int dest_row       = bcoeffs_row.beta_chunk_.offset_;
+            int dest_col       = bcoeffs_col.beta_chunk_.offset_;
+            const complex_t* A = bcoeffs_row.pw_coeffs_a_.at(mem_t);
             // apply Op on |b>  (in-place operation)
-            auto G = op(bcoeffs_col.pw_coeffs_a);
+            auto G = op(bcoeffs_col.pw_coeffs_a_);
 
             const complex_t* B2 = G.at(mem_t);
             complex_t* C        = out.at(mem_t, dest_row, dest_col);
-            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a.ld(), B2, G.ld(), &zero, C, out.ld());
+            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B2, G.ld(), &zero, C, out.ld());
         }
     }
     if (beta.comm().size() > 1) {

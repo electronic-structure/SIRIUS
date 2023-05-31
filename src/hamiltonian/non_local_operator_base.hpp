@@ -132,9 +132,9 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
         return;
     }
 
-    auto& beta_gk     = beta_coeffs__.pw_coeffs_a;
+    auto& beta_gk     = beta_coeffs__.pw_coeffs_a_;
     int num_gkvec_loc = beta_gk.size(0);
-    int nbeta         = beta_coeffs__.beta_chunk.num_beta_;
+    int nbeta         = beta_coeffs__.beta_chunk_.num_beta_;
 
     /* setup linear algebra parameters */
     la::lib_t la{la::lib_t::blas};
@@ -151,17 +151,17 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
 
     auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), get_memory_pool(mem__));
 
-/* compute O * <beta|phi> for atoms in a chunk */
+    /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel
     {
         acc::set_device_id(mpi::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
         #pragma omp for
-        for (int i = 0; i < beta_coeffs__.beta_chunk.num_atoms_; i++) {
+        for (int i = 0; i < beta_coeffs__.beta_chunk_.num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), i);
-            int offs = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), i);
-            int ia   = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), i);
+            int nbf  = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, i);
+            int offs = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, i);
+            int ia   = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, i);
 
             if (nbf) {
                 la::wrap(la).gemm('N', 'N', nbf, br__.size(), nbf, &la::constant<F>::one(),
@@ -215,12 +215,12 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, wf::atom_index i
         return;
     }
 
-    auto& beta_gk     = beta_coeffs__.pw_coeffs_a;
+    auto& beta_gk     = beta_coeffs__.pw_coeffs_a_;
     int num_gkvec_loc = beta_gk.size(0);
 
-    int nbf  = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::nbf), ia__);
-    int offs = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::offset), ia__);
-    int ia   = beta_coeffs__.beta_chunk.desc_(static_cast<int>(beta_desc_idx::ia), ia__);
+    int nbf  = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, ia__);
+    int offs = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, ia__);
+    int ia   = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, ia__);
 
     if (nbf == 0) {
         return;
@@ -276,7 +276,7 @@ Non_local_operator<T>::lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__,
 
     // check shapes
     assert(out.size(0) == B__.size(0) && static_cast<int>(out.size(1)) == this->size_);
-    assert(B__.size(1) == this->size_);
+    assert(static_cast<int>(B__.size(1)) == this->size_);
 
     int num_atoms = uc.num_atoms();
 
@@ -315,7 +315,7 @@ Non_local_operator<T>::rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__,
 
     // check shapes
     assert(static_cast<int>(out.size(0)) == this->size_ && out.size(1) == B__.size(1));
-    assert(B__.size(0) == this->size_);
+    assert(static_cast<int>(B__.size(0)) == this->size_);
 
     int num_atoms = uc.num_atoms();
 
