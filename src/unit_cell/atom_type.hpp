@@ -38,6 +38,23 @@
 
 namespace sirius {
 
+/// Descriptor of a local orbital radial function.
+struct local_orbital_descriptor
+{
+    /// Orbital quantum number \f$ \ell \f$.
+    angular_momentum am;
+
+    /// Set of radial solution descriptors.
+    /** Local orbital is constructed from at least two radial functions in order to make it zero at the
+     *  muffin-tin sphere boundary. */
+    radial_solution_descriptor_set rsd_set;
+
+    local_orbital_descriptor(angular_momentum am__)
+        : am(am__)
+    {
+    }
+};
+
 /// Store basic information about radial pseudo wave-functions.
 struct ps_atomic_wf_descriptor
 {
@@ -433,17 +450,17 @@ class Atom_type
     inline void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
     {
         if ((int)lo_descriptors_.size() == ilo) {
-            lo_descriptors_.push_back(local_orbital_descriptor());
-            lo_descriptors_[ilo].l = l;
+            angular_momentum am(l);
+            lo_descriptors_.push_back(local_orbital_descriptor(am));
         } else {
-            if (l != lo_descriptors_[ilo].l) {
+            if (l != lo_descriptors_[ilo].am.l()) {
                 std::stringstream s;
                 s << "wrong angular quantum number" << std::endl
                   << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
                   << "idxlo: " << ilo << std::endl
                   << "n: " << l << std::endl
                   << "l: " << n << std::endl
-                  << "expected l: " << lo_descriptors_[ilo].l << std::endl;
+                  << "expected l: " << lo_descriptors_[ilo].am.l() << std::endl;
                 RTE_THROW(s);
             }
         }
@@ -506,18 +523,10 @@ class Atom_type
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
 
-        local_orbital_descriptor lod;
-        lod.l = std::abs(l__);
+        auto am = (l__ < 0) ? angular_momentum(-l__, -1) : angular_momentum(l__, 1);
 
-        /* for spin orbit coupling; we can always do that there is
-           no insidence on the rest when calculations exclude SO */
-        if (l__ < 0) {
-            lod.total_angular_momentum = lod.l - 0.5;
-        } else {
-            lod.total_angular_momentum = lod.l + 0.5;
-        }
         /* add local orbital descriptor for the current beta-projector */
-        lo_descriptors_.push_back(lod);
+        lo_descriptors_.push_back(local_orbital_descriptor(am));
     }
 
     inline void add_beta_radial_function(angular_momentum am__, std::vector<double> beta__)
@@ -1123,7 +1132,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: lo_descriptors_) {
-            lmax = std::max(lmax, e.l);
+            lmax = std::max(lmax, e.am.l());
         }
         return lmax;
     }

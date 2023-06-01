@@ -99,7 +99,7 @@ Atom_type::init(int offset_lo__)
             }
         }
         for (auto e : lo_descriptors_) {
-            indexr1_.add_lo(angular_momentum(e.l));
+            indexr1_.add_lo(angular_momentum(e.am.l()));
         }
     } else {
         for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
@@ -493,8 +493,8 @@ Atom_type::read_input_lo(nlohmann::json const& parser)
     for (size_t j = 0; j < parser["lo"].size(); j++) {
         l = parser["lo"][j]["l"].get<int>();
 
-        local_orbital_descriptor lod;
-        lod.l = l;
+        angular_momentum am(l);
+        local_orbital_descriptor lod(am);
         rsd.l = l;
         rsd_set.clear();
         for (size_t order = 0; order < parser["lo"][j]["basis"].size(); order++) {

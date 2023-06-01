@@ -481,7 +481,7 @@ class radial_functions_index
         lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
         lmax_lo_ = -1;
         for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++) {
-            int l    = lo_descriptors[idxlo].l;
+            int l    = lo_descriptors[idxlo].am.l();
             lmax_lo_ = std::max(lmax_lo_, l);
         }
 
@@ -506,10 +506,9 @@ class radial_functions_index
         }
 
         for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
-            int l = lo_descriptors[idxlo].l;
-            angular_momentum am = (lo_descriptors[idxlo].total_angular_momentum < l) ? angular_momentum(l, -1) : angular_momentum(l, 1);
+            int l = lo_descriptors[idxlo].am.l();
             radial_function_index_descriptors_.push_back(
-                radial_function_index_descriptor(am, num_rf_[l], rf_index(radial_function_index_descriptors_.size()), idxlo));
+                radial_function_index_descriptor(lo_descriptors[idxlo].am, num_rf_[l], rf_index(radial_function_index_descriptors_.size()), idxlo));
             num_rf_[l]++;
             num_lo_[l]++;
         }

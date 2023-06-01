@@ -8,11 +8,6 @@
 using double_complex = std::complex<double>;
 using namespace sddk;
 
-void test1()
-{
-    memory_pool &mp = get_memory_pool(memory_t::host);
-}
-
 void test2()
 {
     memory_pool &mp = get_memory_pool(memory_t::host);
@@ -252,7 +247,6 @@ void test9()
 
 int run_test()
 {
-    test1();
     test2();
     test2a();
     test3();

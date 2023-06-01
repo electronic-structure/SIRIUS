@@ -61,9 +61,8 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
         aw_descriptors_[i] = atom_type_.aw_descriptor(i);
     }
 
-    lo_descriptors_.resize(atom_type_.num_lo_descriptors());
     for (int i = 0; i < num_lo_descriptors(); i++) {
-        lo_descriptors_[i] = atom_type_.lo_descriptor(i);
+        lo_descriptors_.push_back(atom_type_.lo_descriptor(i));
     }
 
     ae_core_charge_density_.resize(atom_type_.num_mt_points());
@@ -234,7 +233,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
             s << std::endl;
             s << "atom: " << atom_type_.label() << std::endl
               << "zn: " << atom_type_.zn() << std::endl
-              << "l: " << lo_descriptor(idxlo).l << std::endl;
+              << "l: " << lo_descriptor(idxlo).am.l() << std::endl;
             s << "gesv returned " << info;
             RTE_THROW(s);
         }
@@ -363,7 +362,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
 
             int idxrf2 = atom_type_.indexr().index_by_idxlo(idxlo2);
 
-            if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l) {
+            if (lo_descriptor(idxlo1).am == lo_descriptor(idxlo2).am) {
 
                 for (int ir = 0; ir < nmtp; ir++) {
                     s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);

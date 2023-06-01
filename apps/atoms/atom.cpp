@@ -681,7 +681,7 @@ void generate_atom_file(Free_atom&         a,
     atom_class.write_enu(pout);
     std::cout << pout.flush(0);
 
-    auto lo_to_str = [](local_orbital_descriptor lod) {
+    auto lo_to_str = [](sirius::local_orbital_descriptor lod) {
         std::stringstream s;
         s << "[";
         for (size_t o = 0; o < lod.rsd_set.size(); o++) {
@@ -754,9 +754,9 @@ void generate_atom_file(Free_atom&         a,
             std::printf("X ");
         } else {
             std::printf("  ");
-            dict["lo"].push_back({{"l", atom_class.lo_descriptor(j).l}, {"basis", json::parse(s)}});
+            dict["lo"].push_back({{"l", atom_class.lo_descriptor(j).am.l()}, {"basis", json::parse(s)}});
         }
-        std::printf("l: %i, basis: %s\n", atom_class.lo_descriptor(j).l, s.c_str());
+        std::printf("l: %i, basis: %s\n", atom_class.lo_descriptor(j).am.l(), s.c_str());
     }
 
     dict["free_atom"]                = json::object();
