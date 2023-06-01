@@ -97,10 +97,10 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                 int nbnd_loc = spl_nbnd.local_size();
 
                 #pragma omp parallel for
-                for (int ia_chunk = 0; ia_chunk < beta_coeffs_base.beta_chunk.num_atoms_; ia_chunk++) {
-                    int ia =   beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::ia, ia_chunk);
-                    int offs = beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::offset, ia_chunk);
-                    int nbf =  beta_coeffs_base.beta_chunk.desc_(beta_desc_idx::nbf, ia_chunk);
+                for (int ia_chunk = 0; ia_chunk < beta_coeffs_base.beta_chunk_.num_atoms_; ia_chunk++) {
+                    int ia =   beta_coeffs_base.beta_chunk_.desc_(beta_desc_idx::ia, ia_chunk);
+                    int offs = beta_coeffs_base.beta_chunk_.desc_(beta_desc_idx::offset, ia_chunk);
+                    int nbf =  beta_coeffs_base.beta_chunk_.desc_(beta_desc_idx::nbf, ia_chunk);
                     int iat = uc.atom(ia).type_id();
 
                     if (uc.atom(ia).type().spin_orbit_coupling()) {

@@ -133,8 +133,8 @@ init_operators(py::module& m)
         .def_readonly("offset", &beta_chunk_t::offset_);
 
     py::class_<beta_projectors_coeffs_t<PT>>(m, "beta_projector_coeffs")
-        .def_readonly("a", &beta_projectors_coeffs_t<PT>::pw_coeffs_a, py::return_value_policy::reference_internal)
-        .def_readonly("chunk", &beta_projectors_coeffs_t<PT>::beta_chunk, py::return_value_policy::reference_internal);
+        .def_readonly("a", &beta_projectors_coeffs_t<PT>::pw_coeffs_a_, py::return_value_policy::reference_internal)
+        .def_readonly("chunk", &beta_projectors_coeffs_t<PT>::beta_chunk_, py::return_value_policy::reference_internal);
 
     py::class_<Beta_projector_generator<PT>>(m, "Beta_projector_generator")
         .def("prepare", &Beta_projector_generator<PT>::prepare, py::keep_alive<1, 0>())
