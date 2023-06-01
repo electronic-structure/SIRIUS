@@ -48,6 +48,12 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 
         local_ = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
 
+        if (ctx_.cfg().hubbard().constrained_hubbard_calculation() && ctx_.cfg().hubbard().local_constraint().size()) {
+            apply_constraints_.clear();
+            apply_constraints_.resize(num_atomic_level);
+            local_constraints_       = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
+            multipliers_constraints_ = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
+        }
         /* the offsets here match the offsets of the hubbard wave functions but
          * are more fine grained. The offsets of the hubbard wave functions are
          * for atom while here they are for each atomic level. Since all atomic
@@ -59,15 +65,52 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 
         int size{0};
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
-            offset_[at_lvl] = size;
-            int ia          = atomic_orbitals_[at_lvl].first;
-            auto& atom_type = ctx_.unit_cell().atom(ia).type();
-            int lo_ind      = atomic_orbitals_[at_lvl].second;
-            int l           = atom_type.lo_descriptor_hub(lo_ind).l();
-            int mmax        = 2 * l + 1;
+            offset_[at_lvl]  = size;
+            const int ia     = atomic_orbitals_[at_lvl].first;
+            auto& atom_type  = ctx_.unit_cell().atom(ia).type();
+            const int lo_ind = atomic_orbitals_[at_lvl].second;
+            const int l      = atom_type.lo_descriptor_hub(lo_ind).l();
+            const int n      = atom_type.lo_descriptor_hub(lo_ind).n();
+            const int mmax   = 2 * l + 1;
 
-            local_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(mmax, mmax, 4, sddk::memory_t::host, "local_hubbard");
+            local_[at_lvl] =
+                sddk::mdarray<std::complex<double>, 3>(mmax, mmax, 4, sddk::memory_t::host, "local_hubbard");
             local_[at_lvl].zero();
+
+            if (ctx_.cfg().hubbard().constrained_hubbard_calculation()) {
+                local_constraints_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(mmax, mmax, 4, sddk::memory_t::host,
+                                                                                    "local_hubbard_constraint");
+                multipliers_constraints_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(
+                    mmax, mmax, 4, sddk::memory_t::host, "lagrange_multiplier_constraint");
+                multipliers_constraints_[at_lvl].zero();
+                local_constraints_[at_lvl].zero();
+
+                // fill the constrained occupation numbers. I need to go through the full list of orbitals
+                for (int cts_index = 0; cts_index < ctx_.cfg().hubbard().local_constraint().size(); cts_index++) {
+                    const auto& constraint_    = ctx_.cfg().hubbard().local_constraint(cts_index);
+                    apply_constraints_[at_lvl] = (constraint_.atom_index() == ia) && (constraint_.l() == l) &&
+                                                 ((constraint_.n() == n) || (n < 0));
+                    if (apply_constraints_[at_lvl]) {
+                        // fill the constrained occupation numbers. I need to go through the full for each orbital
+                        const auto& cts_ = ctx_.cfg().hubbard().local_constraint();
+                        for (int cts_index = 0; cts_index < cts_.size(); cts_index++) {
+                            const auto& constraint_ = ctx_.cfg().hubbard().local_constraint(cts_index);
+                            if ((constraint_.atom_index() == ia) && (constraint_.l() == l) &&
+                                ((n == constraint_.n()) || (n < 0))) {
+                                const auto& occ_matrix__ = constraint_.constrained_occupancy();
+                                for (unsigned int sp = 0; sp < occ_matrix__.size();
+                                     sp++) { // spin blocks up-up, up-down, down-down
+                                    for (int m1 = 0; m1 < mmax; m1++) {
+                                        for (int m2 = 0; m2 < mmax; m2++) {
+                                            local_constraints_[at_lvl](m1, m2, sp) = occ_matrix__[sp][m1][m2];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             size += mmax;
         }
 
@@ -78,7 +121,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             int il       = nl.l()[0];
             int jl       = nl.l()[1];
             nonlocal_[i] = sddk::mdarray<std::complex<double>, 3>(2 * il + 1, 2 * jl + 1, ctx_.num_spins(),
-                    sddk::memory_t::host, "nonlocal_hubbard");
+                                                                  sddk::memory_t::host, "nonlocal_hubbard");
             nonlocal_[i].zero();
         }
     }
@@ -98,7 +141,8 @@ Hubbard_matrix::access(std::string const& what__, std::complex<double>* occ__, i
     if (ctx_.num_mag_dims() == 3) {
         occ_mtrx = sddk::mdarray<std::complex<double>, 4>(occ__, ld__, ld__, 4, ctx_.unit_cell().num_atoms());
     } else {
-        occ_mtrx = sddk::mdarray<std::complex<double>, 4>(occ__, ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+        occ_mtrx =
+            sddk::mdarray<std::complex<double>, 4>(occ__, ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
     }
     if (what__ == "get") {
         occ_mtrx.zero();
@@ -191,6 +235,10 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
         }
         out__ << hbar(2 * width * mmax + 3, '-') << std::endl;
     }
+
+    if (ctx_.cfg().hubbard().constrained_hubbard_calculation()) {
+        out__ << "Hubbard constraint error (l2-norm): " << constraint_error_ << std::endl;
+    }
 }
 
 void
@@ -210,8 +258,8 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     /* convert to Cartesian coordinates */
     auto rc = dot(ctx_.unit_cell().lattice_vectors(), r);
 
-    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T
-          << ", r: " << rc << std::endl;
+    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T << ", r: " << rc
+          << std::endl;
 
     int const prec{5};
     int const width{10};
@@ -280,6 +328,12 @@ Hubbard_matrix::zero()
 
     for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
         nonlocal_[i].zero();
+    }
+
+    for (int at_lvl = 0; at_lvl < static_cast<int>(local_constraints_.size()); at_lvl++) {
+        if (apply_constraints(at_lvl)) {
+            multipliers_constraints_[at_lvl].zero();
+        }
     }
 }
 

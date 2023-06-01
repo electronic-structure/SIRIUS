@@ -35,9 +35,16 @@ class Hubbard_matrix
   protected:
     Simulation_context& ctx_;
     /// Local part of Hubbard matrix
+    int num_steps_{0};
+    double constraint_error_{1.0};
+    /// table indicating if we should apply constraints on the hubbard occupation
+    /// to given atomic orbital group
+    std::vector<bool> apply_constraints_;
     std::vector<sddk::mdarray<std::complex<double>, 3>> local_;
     /// Non-local part of Hubbard matrix.
     std::vector<sddk::mdarray<std::complex<double>, 3>> nonlocal_;
+    std::vector<sddk::mdarray<std::complex<double>, 3>> local_constraints_;
+    std::vector<sddk::mdarray<std::complex<double>, 3>> multipliers_constraints_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
 
@@ -109,6 +116,25 @@ class Hubbard_matrix
         return atomic_orbitals_[idx__];
     }
 
+    double constraint_error() const
+    {
+        return constraint_error_;
+    }
+
+    auto& constraint_error()
+    {
+        return constraint_error_;
+    }
+
+    int constraint_hubbard_number_of_itterations() const
+    {
+        return num_steps_;
+    }
+    auto& constraint_hubbard_number_of_itterations()
+    {
+        return num_steps_;
+    }
+
     int offset(const int idx__) const
     {
         return offset_[idx__];
@@ -117,6 +143,58 @@ class Hubbard_matrix
     const auto& offset() const
     {
         return offset_;
+    }
+
+    auto& local_constraints() const
+    {
+        return local_constraints_;
+    }
+
+    auto& local_constraints(int idx__)
+    {
+        return local_constraints_[idx__];
+    }
+
+    auto const& local_constraints(int idx__) const
+    {
+        return local_constraints_[idx__];
+    }
+
+    auto& apply_constraints() const
+    {
+        return apply_constraints_;
+    }
+
+    auto& apply_constraints()
+    {
+        return apply_constraints_;
+    }
+
+    bool apply_constraints(int idx__) const
+    {
+        return apply_constraints_[idx__];
+    }
+
+    auto& multipliers_constraints() const
+    {
+        return multipliers_constraints_;
+    }
+
+    auto& multipliers_constraints(int idx__)
+    {
+        return multipliers_constraints_[idx__];
+    }
+
+    auto const& multipliers_constraints(int idx__) const
+    {
+        return multipliers_constraints_[idx__];
+    }
+
+    bool apply_hubbard_constraint() const
+    {
+        return (this->constraint_error_ > ctx_.cfg().hubbard().constrained_hubbard_error()) &&
+               (this->num_steps_ < ctx_.cfg().hubbard().constrained_hubbard_max_iteration()) &&
+               ctx_.cfg().hubbard().constrained_hubbard_calculation();
     }
 
     auto const& ctx() const
@@ -151,11 +229,21 @@ copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
         sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
+
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
         sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
+
+        if (src__.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+            for (int i = 0; i < static_cast<int>(src__.atomic_orbitals().size()); i++) {
+                if (src__.apply_constraints(i)) {
+                    sddk::copy(src__.local_constraints(i), dest__.local_constraints(i));
+                    sddk::copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
+                    dest__.apply_constraints()[i] = src__.apply_constraints(i);
+                }
+            }
+        }
     }
 }
-
 } // namespace sirius
 
 #endif

@@ -365,6 +365,11 @@ class Simulation_parameters
         return cfg().parameters().hubbard_correction();
     }
 
+    bool hubbard_constrained_calculation() const
+    {
+      return cfg().hubbard().constrained_hubbard_calculation();
+    }
+
     bool gamma_point() const
     {
         return cfg().parameters().gamma_point();

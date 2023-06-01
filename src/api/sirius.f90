@@ -460,6 +460,9 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction True if LDA+U correction is enabled.
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_full_orthogonalization Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
+!> @param [in] apply_constrained_hubbard Apply constrained hubbard.
+!> @param [in] hub_max_iter Maximum number of iterations to apply the hubbard constraints
+!> @param [in] hub_cons_error tolerance
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
@@ -471,9 +474,9 @@ end subroutine sirius_import_parameters
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
-&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
-&error_code)
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,apply_constrained_hubbard,&
+&hub_max_iter,hub_cons_error,hubbard_orbitals,sht_coverage,min_occupancy,smearing,&
+&smearing_width,spglib_tol,electronic_structure_method,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -498,6 +501,9 @@ integer, optional, target, intent(in) :: verbosity
 logical, optional, target, intent(in) :: hubbard_correction
 integer, optional, target, intent(in) :: hubbard_correction_kind
 logical, optional, target, intent(in) :: hubbard_full_orthogonalization
+logical, optional, target, intent(in) :: apply_constrained_hubbard
+integer, optional, target, intent(in) :: hub_max_iter
+real(8), optional, target, intent(in) :: hub_cons_error
 character(*), optional, target, intent(in) :: hubbard_orbitals
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
@@ -537,6 +543,10 @@ logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_full_orthogonalization_ptr
 logical(C_BOOL), target :: hubbard_full_orthogonalization_c_type
+type(C_PTR) :: apply_constrained_hubbard_ptr
+logical(C_BOOL), target :: apply_constrained_hubbard_c_type
+type(C_PTR) :: hub_max_iter_ptr
+type(C_PTR) :: hub_cons_error_ptr
 type(C_PTR) :: hubbard_orbitals_ptr
 character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: sht_coverage_ptr
@@ -553,9 +563,9 @@ interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
-&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
-&error_code)&
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,apply_constrained_hubbard,&
+&hub_max_iter,hub_cons_error,hubbard_orbitals,sht_coverage,min_occupancy,smearing,&
+&smearing_width,spglib_tol,electronic_structure_method,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -580,6 +590,9 @@ type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_full_orthogonalization
+type(C_PTR), value :: apply_constrained_hubbard
+type(C_PTR), value :: hub_max_iter
+type(C_PTR), value :: hub_cons_error
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
@@ -688,6 +701,19 @@ if (present(hubbard_full_orthogonalization)) then
 hubbard_full_orthogonalization_c_type = hubbard_full_orthogonalization
 hubbard_full_orthogonalization_ptr = C_LOC(hubbard_full_orthogonalization_c_type)
 endif
+apply_constrained_hubbard_ptr = C_NULL_PTR
+if (present(apply_constrained_hubbard)) then
+apply_constrained_hubbard_c_type = apply_constrained_hubbard
+apply_constrained_hubbard_ptr = C_LOC(apply_constrained_hubbard_c_type)
+endif
+hub_max_iter_ptr = C_NULL_PTR
+if (present(hub_max_iter)) then
+hub_max_iter_ptr = C_LOC(hub_max_iter)
+endif
+hub_cons_error_ptr = C_NULL_PTR
+if (present(hub_cons_error)) then
+hub_cons_error_ptr = C_LOC(hub_cons_error)
+endif
 hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) then
 allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
@@ -730,9 +756,9 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,&
-&hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_orbitals_ptr,&
-&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
-&electronic_structure_method_ptr,error_code_ptr)
+&hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,apply_constrained_hubbard_ptr,&
+&hub_max_iter_ptr,hub_cons_error_ptr,hubbard_orbitals_ptr,sht_coverage_ptr,min_occupancy_ptr,&
+&smearing_ptr,smearing_width_ptr,spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -751,6 +777,8 @@ endif
 if (present(hubbard_correction)) then
 endif
 if (present(hubbard_full_orthogonalization)) then
+endif
+if (present(apply_constrained_hubbard)) then
 endif
 if (present(hubbard_orbitals)) then
 deallocate(hubbard_orbitals_c_type)
@@ -2323,9 +2351,10 @@ end subroutine sirius_add_atom_type_radial_function
 !> @param [in] alpha J_alpha for the simple interaction treatment.
 !> @param [in] beta J_beta for the simple interaction treatment.
 !> @param [in] J0 J0 for the simple interaction treatment.
+!> @param [in] constrained_hubbard Constrain the hubbard occupation numbers to a definite value
 !> @param [out] error_code Error code.
 subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0,&
-&error_code)
+&constrained_hubbard,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -2338,6 +2367,7 @@ real(8), target, intent(in) :: J
 real(8), target, intent(in) :: alpha
 real(8), target, intent(in) :: beta
 real(8), target, intent(in) :: J0
+logical, optional, target, intent(in) :: constrained_hubbard
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -2351,11 +2381,13 @@ type(C_PTR) :: J_ptr
 type(C_PTR) :: alpha_ptr
 type(C_PTR) :: beta_ptr
 type(C_PTR) :: J0_ptr
+type(C_PTR) :: constrained_hubbard_ptr
+logical(C_BOOL), target :: constrained_hubbard_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,&
-&J0,error_code)&
+&J0,constrained_hubbard,error_code)&
 &bind(C, name="sirius_set_atom_type_hubbard")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -2368,6 +2400,7 @@ type(C_PTR), value :: J
 type(C_PTR), value :: alpha
 type(C_PTR), value :: beta
 type(C_PTR), value :: J0
+type(C_PTR), value :: constrained_hubbard
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -2394,13 +2427,20 @@ beta_ptr = C_NULL_PTR
 beta_ptr = C_LOC(beta)
 J0_ptr = C_NULL_PTR
 J0_ptr = C_LOC(J0)
+constrained_hubbard_ptr = C_NULL_PTR
+if (present(constrained_hubbard)) then
+constrained_hubbard_c_type = constrained_hubbard
+constrained_hubbard_ptr = C_LOC(constrained_hubbard_c_type)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_set_atom_type_hubbard_aux(handler_ptr,label_ptr,l_ptr,n_ptr,occ_ptr,&
-&U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr,error_code_ptr)
+&U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr,constrained_hubbard_ptr,error_code_ptr)
 deallocate(label_c_type)
+if (present(constrained_hubbard)) then
+endif
 end subroutine sirius_set_atom_type_hubbard
 
 !

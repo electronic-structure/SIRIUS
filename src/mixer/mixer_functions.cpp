@@ -300,6 +300,14 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
                 x.nonlocal(at_lvl)[i] *= alpha;
             }
         }
+
+        if (x.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+          for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
+              x.multipliers_constraints(at_lvl)[i] *= alpha;
+            }
+          }
+        }
     };
 
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
@@ -310,6 +318,12 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
 
         for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
             sddk::copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
+        }
+
+        if (x.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+          for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
+            sddk::copy(x.multipliers_constraints(at_lvl), y.multipliers_constraints(at_lvl));
+          }
         }
     };
 
@@ -324,6 +338,14 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
             for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
                 y.nonlocal(at_lvl)[i] = alpha * x.nonlocal(at_lvl)[i] + y.nonlocal(at_lvl)[i];
             }
+        }
+
+        if (x.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+          for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
+              y.multipliers_constraints(at_lvl)[i] = alpha * x.multipliers_constraints(at_lvl)[i] + y.multipliers_constraints(at_lvl)[i];
+            }
+          }
         }
     };
 
@@ -345,6 +367,17 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
                 x.nonlocal(at_lvl)[i] = xi * c + yi * s;
                 y.nonlocal(at_lvl)[i] = yi * c - xi * s;
             }
+        }
+
+        if (x.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+          for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
+              auto xi = x.multipliers_constraints(at_lvl)[i];
+              auto yi = y.multipliers_constraints(at_lvl)[i];
+              x.multipliers_constraints(at_lvl)[i] = xi * c + yi * s;
+              y.multipliers_constraints(at_lvl)[i] = yi * c - xi * s;
+            }
+          }
         }
     };
 

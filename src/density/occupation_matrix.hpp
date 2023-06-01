@@ -60,7 +60,7 @@ class Occupation_matrix : public Hubbard_matrix
             auto const& atom = ctx_.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
                 ctx_.comm_k().allreduce(this->local(at_lvl).at(sddk::memory_t::host),
-                                      static_cast<int>(this->local(at_lvl).size()));
+                                        static_cast<int>(this->local(at_lvl).size()));
             }
         }
 
@@ -89,14 +89,15 @@ class Occupation_matrix : public Hubbard_matrix
             this->nonlocal(i).zero();
 
             /* NOTE : the atom order is important here. */
-            int at1_lvl = this->find_orbital_index(ia, n1, il);
-            int at2_lvl = this->find_orbital_index(ja, n2, jl);
+            int at1_lvl          = this->find_orbital_index(ia, n1, il);
+            int at2_lvl          = this->find_orbital_index(ja, n2, jl);
             auto const& occ_mtrx = occ_mtrx_T_.at(T);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 for (int m1 = 0; m1 < ib; m1++) {
                     for (int m2 = 0; m2 < jb; m2++) {
-                        this->nonlocal(i)(m1, m2, ispn) = occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
+                        this->nonlocal(i)(m1, m2, ispn) =
+                            occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
                     }
                 }
             }
@@ -111,6 +112,7 @@ class Occupation_matrix : public Hubbard_matrix
         }
     }
 
+    void calculate_constraints_and_error();
     void print_occupancies(int verbosity__) const;
 
     inline auto const& occ_mtrx_T(r3::vector<int> T__) const
@@ -123,8 +125,7 @@ class Occupation_matrix : public Hubbard_matrix
         return occ_mtrx_T_;
     }
 
-    friend void
-    copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
+    friend void copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
 };
 
 inline void
@@ -133,12 +134,29 @@ copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
         sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
+
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
         sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
+
     for (auto& e : src__.occ_mtrx_T()) {
         sddk::copy(e.second, dest__.occ_mtrx_T_.at(e.first));
     }
+
+    for (int i = 0; i < static_cast<int>(src__.local_constraints().size()); i++) {
+        sddk::copy(src__.local_constraints(i), dest__.local_constraints(i));
+    }
+
+    for (int i = 0; i < static_cast<int>(src__.multipliers_constraints().size()); i++) {
+        sddk::copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
+    }
+
+    for (int i = 0; i < static_cast<int>(src__.apply_constraints().size()); i++) {
+        dest__.apply_constraints()[i] = src__.apply_constraints(i);
+    }
+
+    dest__.constraint_error()                         = src__.constraint_error();
+    dest__.constraint_hubbard_number_of_itterations() = src__.constraint_hubbard_number_of_itterations();
 }
 
 } // namespace sirius
