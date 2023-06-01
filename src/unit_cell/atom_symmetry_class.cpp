@@ -56,17 +56,16 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
     }
 
     /* copy descriptors because enu is different between atom classes */
-    aw_descriptors_.resize(atom_type_.num_aw_descriptors());
-    for (int i = 0; i < num_aw_descriptors(); i++) {
-        aw_descriptors_[i] = atom_type_.aw_descriptor(i);
+    for (int i = 0; i < atom_type_.num_aw_descriptors(); i++) {
+        aw_descriptors_.push_back(atom_type_.aw_descriptor(i));
     }
 
-    for (int i = 0; i < num_lo_descriptors(); i++) {
+    for (int i = 0; i < atom_type_.num_lo_descriptors(); i++) {
         lo_descriptors_.push_back(atom_type_.lo_descriptor(i));
     }
 
     ae_core_charge_density_.resize(atom_type_.num_mt_points());
-    std::memset(&ae_core_charge_density_[0], 0, atom_type_.num_mt_points() * sizeof(double));
+    std::fill(ae_core_charge_density_.begin(), ae_core_charge_density_.end(), 0);
 }
 
 void
