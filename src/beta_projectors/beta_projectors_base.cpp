@@ -148,7 +148,7 @@ Beta_projectors_base<T>::split_in_chunks()
                 return offs;
             });
 
-    if (uc.mt_lo_basis_size() == 0) {
+    if (uc.max_mt_basis_size() == 0) {
         /* no beta projectors at all */
         beta_chunks_  = std::vector<beta_chunk_t>(0);
         num_beta_t_   = 0;

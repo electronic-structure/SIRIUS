@@ -44,7 +44,7 @@ Stress::calc_stress_nonloc_aux()
     stress_nonloc_.zero();
 
     /* if there are no beta projectors then get out there */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         return;
     }
 
@@ -118,7 +118,7 @@ Stress::calc_stress_hubbard()
     auto r = ctx_.unit_cell().num_hubbard_wf();
     /* if there are no beta projectors then get out there */
     /* TODO : Need to fix the case where pp have no beta projectors */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         TERMINATE("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
         return stress_hubbard_;
     }
@@ -376,7 +376,7 @@ Stress::calc_stress_us()
     stress_us_.zero();
 
     /* check if we have beta projectors. Only for pseudo potentials */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         return stress_us_;
     }
 

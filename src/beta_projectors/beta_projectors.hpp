@@ -110,11 +110,15 @@ class Beta_projectors : public Beta_projectors_base<T>
             // TODO remove is done in `Beta_projector_generator`
             this->pw_coeffs_t_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
+        int nbeta{0};
+        for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
+            nbeta += ctx__.unit_cell().atom_type(iat).num_atoms() * ctx__.unit_cell().atom_type(iat).mt_basis_size();
+        }
 
         // TODO: can be improved... nlcglib might ask for beta coefficients on host,
         // create them such that they are there in any case
         this->beta_pw_all_atoms_ =
-            sddk::matrix<std::complex<T>>(this->num_gkvec_loc(), this->ctx_.unit_cell().mt_lo_basis_size());
+            sddk::matrix<std::complex<T>>(this->num_gkvec_loc(), nbeta);
         for (int ichunk = 0; ichunk < this->num_chunks(); ++ichunk) {
             this->pw_coeffs_a_ =
                 sddk::matrix<std::complex<T>>(&this->beta_pw_all_atoms_(0, this->beta_chunks_[ichunk].offset_),

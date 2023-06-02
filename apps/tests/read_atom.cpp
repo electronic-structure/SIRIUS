@@ -8,7 +8,7 @@ void read_atom(std::string fname)
     params.electronic_structure_method("pseudopotential");
 
     Atom_type atype(params, 0, "", fname);
-    atype.init(0);
+    atype.init();
 }
 
 int main(int argn, char **argv)

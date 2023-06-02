@@ -1020,7 +1020,7 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__,
 {
     PROFILE("sirius::add_k_point_contribution_dm_pwpp");
 
-    if (!ctx__.unit_cell().mt_lo_basis_size()) {
+    if (!ctx__.unit_cell().max_mt_basis_size()) {
         return;
     }
 
@@ -1037,8 +1037,6 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__,
             add_k_point_contribution_dm_pwpp_noncollinear<T, F>(ctx__, kp__, bp_coeffs, density_matrix__);
         }
     }
-
-    // kp__.beta_projectors().dismiss();
 }
 
 void
@@ -1720,7 +1718,7 @@ Density::symmetrize_density_matrix()
 
     int ndm = ctx_.num_mag_comp();
 
-    if (unit_cell_.mt_lo_basis_size() == 0) {
+    if (unit_cell_.max_mt_basis_size() == 0) {
         return;
     }
 

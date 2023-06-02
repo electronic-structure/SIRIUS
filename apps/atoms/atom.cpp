@@ -673,7 +673,7 @@ void generate_atom_file(Free_atom&         a,
     a.set_radial_grid(1500, &x[0]);
 
     std::printf("=== initializing atom ===\n");
-    a.init(0);
+    a.init();
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.set_spherical_potential(veff);
     atom_class.generate_radial_functions(relativity_t::none);

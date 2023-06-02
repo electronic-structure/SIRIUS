@@ -125,7 +125,7 @@ void
 Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         return;
     }
 

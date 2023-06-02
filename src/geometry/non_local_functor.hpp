@@ -42,7 +42,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
     auto& uc = ctx__.unit_cell();
 
-    if (uc.mt_lo_basis_size() == 0) {
+    if (uc.max_mt_basis_size() == 0) {
         return;
     }
 
