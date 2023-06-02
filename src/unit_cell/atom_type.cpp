@@ -97,7 +97,7 @@ Atom_type::init()
             }
         }
         for (auto e : lo_descriptors_) {
-            indexr1_.add_lo(angular_momentum(e.am.l()));
+            indexr1_.add_lo(e.am);
         }
     } else {
         for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
@@ -118,11 +118,6 @@ Atom_type::init()
                 RTE_THROW("wrong order of beta radial functions");
             }
         }
-        //for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
-        //    if (this->beta_radial_function1(i).first != indexr1_[rf_index(i)].am) {
-        //        RTE_THROW("wrong order of beta radial functions");
-        //    }
-        //}
     }
 
     /* initialize index of radial functions */

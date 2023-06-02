@@ -897,18 +897,18 @@ class Atom_type
 
     inline int mt_aw_basis_size() const
     {
-        return indexb_.size_aw();
+        return indexb1_.size_aw();
     }
 
     inline int mt_lo_basis_size() const
     {
-        return indexb_.size_lo();
+        return indexb1_.size_lo();
     }
 
     /// Total number of muffin-tin basis functions (APW + LO).
     inline int mt_basis_size() const
     {
-        return indexb_.size();
+        return indexb1_.size();
     }
 
     /// Total number of radial basis functions.
