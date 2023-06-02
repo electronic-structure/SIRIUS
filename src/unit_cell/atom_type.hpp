@@ -139,8 +139,6 @@ class Atom_type
     /// Maximum number of AW radial functions across angular momentums.
     int max_aw_order_{0};
 
-    int offset_lo_{-1}; // TODO: better name // TODO: should be moved to Unit_cell.
-
     /// Index of radial basis functions.
     /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
         In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
@@ -368,7 +366,7 @@ class Atom_type
 
     /// Initialize the atom type.
     /** Once the unit cell is populated with all atom types and atoms, each atom type can be initialized. */
-    void init(int offset_lo__);
+    void init();
 
     /// Initialize the free atom density (smooth or true).
     void init_free_atom_density(bool smooth);
@@ -992,12 +990,6 @@ class Atom_type
     inline std::string const& file_name() const
     {
         return file_name_;
-    }
-
-    inline int offset_lo() const
-    {
-        RTE_ASSERT(offset_lo_ >= 0);
-        return offset_lo_;
     }
 
     inline void d_mtrx_ion(sddk::matrix<double> const& d_mtrx_ion__)

@@ -42,10 +42,21 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
             return;
         }
 
+        auto& uc = this->ctx_.unit_cell();
+
+        std::vector<int> offset_t(uc.num_atom_types());
+        std::generate(offset_t.begin(), offset_t.end(),
+                [n = 0, iat = 0, &uc] () mutable
+                {
+                    int offs = n;
+                    n += uc.atom_type(iat++).mt_basis_size();
+                    return offs;
+                });
+
         auto& beta_ri0 = this->ctx_.beta_ri();
         auto& beta_ri1 = this->ctx_.beta_ri_djl();
 
-        int lmax  = this->ctx_.unit_cell().lmax();
+        int lmax  = uc.lmax();
         int lmmax = utils::lmmax(lmax);
 
         sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
@@ -76,8 +87,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
 
             auto inv_len = (gvs[0] < 1e-10) ? 0 : 1.0 / gvs[0];
 
-            for (int iat = 0; iat < this->ctx_.unit_cell().num_atom_types(); iat++) {
-                auto& atom_type = this->ctx_.unit_cell().atom_type(iat);
+            for (int iat = 0; iat < uc.num_atom_types(); iat++) {
+                auto& atom_type = uc.atom_type(iat);
 
                 auto ri0 = beta_ri0.values(iat, gvs[0]);
                 auto ri1 = beta_ri1.values(iat, gvs[0]);
@@ -92,13 +103,13 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                             int idxrf = atom_type.indexb(xi).idxrf;
 
                             auto z = std::pow(std::complex<double>(0, -1), l) * fourpi /
-                                     std::sqrt(this->ctx_.unit_cell().omega());
+                                     std::sqrt(uc.omega());
 
                             auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] * inv_len);
 
-                            this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) =
+                            this->pw_coeffs_t_(igkloc, offset_t[atom_type.id()] + xi, mu + nu * 3) =
                                 static_cast<std::complex<T>>(z * (d1 + d2));
                         }
                     }

@@ -90,6 +90,15 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
     h_diag.zero();
     o_diag.zero();
 
+    std::vector<int> offset_t(uc.num_atom_types());
+    std::generate(offset_t.begin(), offset_t.end(),
+            [n = 0, iat = 0, &uc] () mutable
+            {
+                int offs = n;
+                n += uc.atom_type(iat++).mt_basis_size();
+                return offs;
+            });
+
     for (int ispn = 0; ispn < H0_.ctx().num_spins(); ispn++) {
 
         /* local H contribution */
@@ -145,7 +154,8 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                 }
             }
 
-            int offs = uc.atom_type(iat).offset_lo();
+            int offs = offset_t[iat];
+             //uc.atom_type(iat).offset_lo();
 
             if (what & 1) {
                 la::wrap(la::lib_t::blas)

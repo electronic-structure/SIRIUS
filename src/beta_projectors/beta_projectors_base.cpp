@@ -139,6 +139,15 @@ Beta_projectors_base<T>::split_in_chunks()
 {
     auto& uc = ctx_.unit_cell();
 
+    std::vector<int> offset_t(uc.num_atom_types());
+    std::generate(offset_t.begin(), offset_t.end(),
+            [n = 0, iat = 0, &uc] () mutable
+            {
+                int offs = n;
+                n += uc.atom_type(iat++).mt_basis_size();
+                return offs;
+            });
+
     if (uc.mt_lo_basis_size() == 0) {
         /* no beta projectors at all */
         beta_chunks_  = std::vector<beta_chunk_t>(0);
@@ -179,7 +188,7 @@ Beta_projectors_base<T>::split_in_chunks()
             /* offset in beta_gk*/
             beta_chunks_[ib].desc_(beta_desc_idx::offset, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = type.offset_lo();
+            beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = offset_t[type.id()]; //offset_lo();
             /* global index of atom */
             beta_chunks_[ib].desc_(beta_desc_idx::ia, i) = ia;
 

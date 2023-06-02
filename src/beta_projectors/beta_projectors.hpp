@@ -42,13 +42,24 @@ class Beta_projectors : public Beta_projectors_base<T>
             return;
         }
 
+        auto& uc = this->ctx_.unit_cell();
+
+        std::vector<int> offset_t(uc.num_atom_types());
+        std::generate(offset_t.begin(), offset_t.end(),
+                [n = 0, iat = 0, &uc] () mutable
+                {
+                    int offs = n;
+                    n += uc.atom_type(iat++).mt_basis_size();
+                    return offs;
+                });
+
         auto& comm = this->gkvec_.comm();
 
         auto& beta_radial_integrals = this->ctx_.beta_ri();
 
-        std::vector<std::complex<double>> z(this->ctx_.unit_cell().lmax() + 1);
-        for (int l = 0; l <= this->ctx_.unit_cell().lmax(); l++) {
-            z[l] = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(this->ctx_.unit_cell().omega());
+        std::vector<std::complex<double>> z(uc.lmax() + 1);
+        for (int l = 0; l <= uc.lmax(); l++) {
+            z[l] = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(uc.omega());
         }
 
         /* compute <G+k|beta> */
@@ -57,10 +68,10 @@ class Beta_projectors : public Beta_projectors_base<T>
             /* vs = {r, theta, phi} */
             auto vs = r3::spherical_coordinates(this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc));
             /* compute real spherical harmonics for G+k vector */
-            std::vector<double> gkvec_rlm(utils::lmmax(this->ctx_.unit_cell().lmax()));
-            sf::spherical_harmonics(this->ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
-            for (int iat = 0; iat < this->ctx_.unit_cell().num_atom_types(); iat++) {
-                auto& atom_type = this->ctx_.unit_cell().atom_type(iat);
+            std::vector<double> gkvec_rlm(utils::lmmax(uc.lmax()));
+            sf::spherical_harmonics(uc.lmax(), vs[1], vs[2], &gkvec_rlm[0]);
+            for (int iat = 0; iat < uc.num_atom_types(); iat++) {
+                auto& atom_type = uc.atom_type(iat);
                 /* get all values of radial integrals */
                 auto ri_val = beta_radial_integrals.values(iat, vs[0]);
                 for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
@@ -68,7 +79,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                     int lm    = atom_type.indexb(xi).lm;
                     int idxrf = atom_type.indexb(xi).idxrf;
 
-                    this->pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, 0) =
+                    this->pw_coeffs_t_(igkloc, offset_t[atom_type.id()] + xi, 0) =
                         static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
                 }
             }

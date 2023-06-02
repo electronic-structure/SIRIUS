@@ -668,10 +668,8 @@ Unit_cell::initialize()
     spl_num_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
-    int offs_lo{0};
     for (int iat = 0; iat < num_atom_types(); iat++) {
-        atom_type(iat).init(offs_lo);
-        offs_lo += atom_type(iat).mt_lo_basis_size();
+        atom_type(iat).init();
     }
 
     /* find the charges */
@@ -683,7 +681,7 @@ Unit_cell::initialize()
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
-        atom(ia).init(mt_lo_basis_size_);
+        atom(ia).init();
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
     }

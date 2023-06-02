@@ -27,7 +27,7 @@
 namespace sirius {
 
 void
-Atom_type::init(int offset_lo__)
+Atom_type::init()
 {
     PROFILE("sirius::Atom_type::init");
 
@@ -35,8 +35,6 @@ Atom_type::init(int offset_lo__)
     if (initialized_) {
         RTE_THROW("can't initialize twice");
     }
-
-    offset_lo_ = offset_lo__;
 
     /* read data from file if it exists */
     read_input(file_name_);

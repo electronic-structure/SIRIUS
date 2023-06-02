@@ -64,7 +64,7 @@ class Atom
     int lmax_pot_{-1};
 
     /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
-    int offset_lo_{-1}; // TODO: better name for this
+    //int offset_lo_{-1}; // TODO: better name for this
 
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
     sddk::mdarray<std::complex<double>, 4> occupation_matrix_;
@@ -98,9 +98,9 @@ class Atom
     }
 
     /// Initialize atom.
-    inline void init(int offset_lo__)
+    inline void init()
     {
-        offset_lo_ = offset_lo__;
+        //offset_lo_ = offset_lo__;
 
         lmax_pot_ = type().parameters().lmax_pot();
 
@@ -398,11 +398,11 @@ class Atom
         comm__.bcast(occupation_matrix_.at(sddk::memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
-    inline int offset_lo() const
-    {
-        assert(offset_lo_ >= 0);
-        return offset_lo_;
-    }
+    //inline int offset_lo() const
+    //{
+    //    assert(offset_lo_ >= 0);
+    //    return offset_lo_;
+    //}
 
     inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
     {
