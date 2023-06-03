@@ -1544,9 +1544,9 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk
             int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
             int l1   = atom_type__.indexr(idxrf1).am.l();
 
-            int xi2 = atom_type__.indexb().index_by_idxrf(idxrf2);
+            int xi2 = atom_type__.indexb().index_of(rf_index(idxrf2));
             for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
-                int xi1 = atom_type__.indexb().index_by_idxrf(idxrf1);
+                int xi1 = atom_type__.indexb().index_of(rf_index(idxrf1));
                 for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
                     for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
                         int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;

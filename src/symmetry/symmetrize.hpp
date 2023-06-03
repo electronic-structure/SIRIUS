@@ -468,7 +468,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
  *  radial integrals over the total angular momentum
  */
 inline void
-symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_index const& indexb, const int ia, const int ja,
+symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, experimental::basis_functions_index1 const& indexb, const int ia, const int ja,
            const int ndm, sddk::mdarray<double, 2> const& rotm, sddk::mdarray<std::complex<double>, 2> const& spin_rot_su2,
            sddk::mdarray<std::complex<double>, 4>& dm_, const bool hubbard_)
 {

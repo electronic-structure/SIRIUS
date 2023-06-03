@@ -141,7 +141,7 @@ class Atom_type
 
     /// Index of radial basis functions.
     /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
-        In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
+        In LAPW this index is used to iterate over combined set of APW and local-orbital radial functions.
         In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
     radial_functions_index indexr_;
     experimental::radial_functions_index indexr1_;
@@ -874,9 +874,9 @@ class Atom_type
         return indexr1_.index_of(rf_lo_index(idxlo));
     }
 
-    inline basis_functions_index const& indexb() const
+    inline auto const& indexb() const
     {
-        return indexb_;
+        return indexb1_;
     }
 
     inline basis_function_index_descriptor const& indexb(int i) const
