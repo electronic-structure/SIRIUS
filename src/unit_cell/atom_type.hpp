@@ -177,7 +177,7 @@ class Atom_type
             \end{array} \right.
         \f]
      */
-    std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
+    //std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
     std::vector<std::pair<angular_momentum, Spline<double>>> beta_radial_functions1_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
@@ -510,19 +510,19 @@ class Atom_type
 
     /// Add a radial function of beta-projector to a list of functions.
     /** This is the only allowed way to add beta projectors. */
-    inline void add_beta_radial_function(int l__, std::vector<double> beta__)
-    {
-        if (augment_) {
-            RTE_THROW("can't add more beta projectors");
-        }
-        Spline<double> s(radial_grid_, beta__);
-        beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
+    //inline void add_beta_radial_function(int l__, std::vector<double> beta__)
+    //{
+    //    if (augment_) {
+    //        RTE_THROW("can't add more beta projectors");
+    //    }
+    //    Spline<double> s(radial_grid_, beta__);
+    //    beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
 
-        auto am = (l__ < 0) ? angular_momentum(-l__, -1) : angular_momentum(l__, 1);
+    //    auto am = (l__ < 0) ? angular_momentum(-l__, -1) : angular_momentum(l__, 1);
 
-        /* add local orbital descriptor for the current beta-projector */
-        lo_descriptors_.push_back(local_orbital_descriptor(am));
-    }
+    //    /* add local orbital descriptor for the current beta-projector */
+    //    lo_descriptors_.push_back(local_orbital_descriptor(am));
+    //}
 
     inline void add_beta_radial_function(angular_momentum am__, std::vector<double> beta__)
     {
@@ -536,13 +536,13 @@ class Atom_type
     /// Return a radial beta functions.
     inline auto const& beta_radial_function(int idxrf__) const
     {
-        return beta_radial_functions_[idxrf__].second;
+        return beta_radial_functions1_[idxrf__].second;
     }
 
     /// Number of beta-radial functions.
     inline int num_beta_radial_functions() const
     {
-        return beta_radial_functions_.size();
+        return beta_radial_functions1_.size();
     }
 
     /// Return a radial beta functions.
@@ -1142,9 +1142,8 @@ class Atom_type
     {
         int lmax{-1};
 
-        /* need to take |l| since the total angular momentum is encoded in the sign of l */
-        for (auto& e: beta_radial_functions_) {
-            lmax = std::max(lmax, std::abs(e.first));
+        for (auto& e: beta_radial_functions1_) {
+            lmax = std::max(lmax, e.first.l());
         }
         return lmax;
     }

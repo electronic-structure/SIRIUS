@@ -2108,7 +2108,16 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 if (l__ == nullptr) {
                     RTE_THROW("orbital quantum number must be provided for beta-projector");
                 }
-                type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
+                int l = *l__;
+                if (type.spin_orbit_coupling()) {
+                    if (l >= 0) {
+                        type.add_beta_radial_function(sirius::angular_momentum(l, 1), std::vector<double>(rf__, rf__ + *num_points__));
+                    } else {
+                        type.add_beta_radial_function(sirius::angular_momentum(-l, -1), std::vector<double>(rf__, rf__ + *num_points__));
+                    }
+                } else {
+                    type.add_beta_radial_function(sirius::angular_momentum(l), std::vector<double>(rf__, rf__ + *num_points__));
+                }
             } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
                 if (l__ == nullptr) {
                     RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");

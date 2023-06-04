@@ -203,8 +203,8 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
                     beta1[i] = utils::confined_polynomial(x, rcut, l, l + 2, 0);
                 }
                 /* add radial function for l */
-                atype.add_beta_radial_function(l, beta);
-                atype.add_beta_radial_function(l, beta1);
+                atype.add_beta_radial_function(angular_momentum(l), beta);
+                atype.add_beta_radial_function(angular_momentum(l), beta1);
             }
 
             std::vector<double> ps_wf(atype.radial_grid().num_points());

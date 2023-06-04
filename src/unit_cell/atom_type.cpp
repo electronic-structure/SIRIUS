@@ -555,7 +555,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
                 l *= -1;
             }
         }
-        add_beta_radial_function(l, beta);
+        //add_beta_radial_function(l, beta);
         if (spin_orbit_coupling_) {
             if (l >= 0) {
                 add_beta_radial_function(angular_momentum(l, 1), beta);
