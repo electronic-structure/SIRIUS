@@ -572,7 +572,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
             T ori   = atom__.symmetry_class().o_radial_integral(l, order1, order);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                int idxrf1 = type.indexr().index_by_l_order(l, order1);
+                auto idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
                 ori += atom__.symmetry_class().o1_radial_integral(idxrf1, idxrf);
             }
 
@@ -617,7 +617,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
             T ori   = atom__.symmetry_class().o_radial_integral(l, order, order1);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                int idxrf1 = type.indexr().index_by_l_order(l, order1);
+                int idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
                 ori += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1);
             }
 
@@ -661,8 +661,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
                     o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
                         atom.symmetry_class().o_radial_integral(l, order1, order2);
                     if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                        int idxrf1 = atom.type().indexr().index_by_l_order(l, order1);
-                        int idxrf2 = atom.type().indexr().index_by_l_order(l, order2);
+                        auto idxrf1 = atom.type().indexr().index_of(angular_momentum(l), order1);
+                        auto idxrf2 = atom.type().indexr().index_of(angular_momentum(l), order2);
                         o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
                             atom.symmetry_class().o1_radial_integral(idxrf1, idxrf2);
                     }

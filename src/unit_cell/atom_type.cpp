@@ -121,7 +121,7 @@ Atom_type::init()
     }
 
     /* initialize index of radial functions */
-    indexr_.init(aw_descriptors_, lo_descriptors_);
+    //indexr_.init(aw_descriptors_, lo_descriptors_);
 
     /* initialize index of muffin-tin basis functions */
     //indexb_.init(indexr_);
@@ -330,7 +330,7 @@ Atom_type::print_info(std::ostream& out__) const
     out__ << std::endl;
     out__ << "total number of radial functions : " << indexr().size() << std::endl
           << "lmax of radial functions         : " << indexr().lmax() << std::endl
-          << "max. number of radial functions  : " << indexr().max_num_rf() << std::endl
+          << "max. number of radial functions  : " << indexr().max_order() << std::endl
           << "total number of basis functions  : " << indexb().size() << std::endl
           << "number of aw basis functions     : " << indexb().size_aw() << std::endl
           << "number of lo basis functions     : " << indexb().size_lo() << std::endl

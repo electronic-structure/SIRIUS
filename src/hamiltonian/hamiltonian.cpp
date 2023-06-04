@@ -141,7 +141,7 @@ Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdar
             int idxrf = type.indexb(j).idxrf;
             for (int order = 0; order < type.aw_order(l); order++) {
                 int j1     = type.indexb().index_by_lm_order(lm, order);
-                int idxrf1 = type.indexr().index_by_l_order(l, order);
+                int idxrf1 = type.indexr().index_of(angular_momentum(l), order);
                 oalm[j] += static_cast<const T>(atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1)) * alm[j1];
             }
         }
@@ -226,7 +226,7 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
 
         for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */
-            int nrf = atom.type().indexr().num_rf(l);
+            int nrf = atom.type().indexr().max_order(l);
 
             for (int order1 = 0; order1 < nrf; order1++) {
                 for (int order2 = 0; order2 < nrf; order2++) {

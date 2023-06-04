@@ -185,7 +185,7 @@ Potential::calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, 
     auto& ae_core = atom.type().paw_ae_core_charge_density();
 
     auto& rgrid = atom.type().radial_grid();
-    int l_max = 2 * atom.type().indexr().lmax_lo();
+    int l_max = 2 * atom.type().indexr().lmax();
 
     std::vector<Flm> vxc;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {

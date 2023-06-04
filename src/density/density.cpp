@@ -480,11 +480,11 @@ Density::generate_paw_atom_density(int ialoc__)
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
 
-    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
+    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax());
 
     /* get gaunt coefficients */
-    Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),
-                                  atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
+    Gaunt_coefficients<double> GC(atom_type.indexr().lmax(), 2 * atom_type.indexr().lmax(),
+                                  atom_type.indexr().lmax(), SHT::gaunt_rrr);
 
     paw_density_->zero(ia);
 

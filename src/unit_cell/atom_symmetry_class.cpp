@@ -35,23 +35,25 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
         RTE_THROW("atom type is not initialized");
     }
 
-    surface_derivatives_ = sddk::mdarray<double, 2>(3, atom_type_.mt_radial_basis_size());
+    int nl = atom_type_.indexr().lmax() + 1;
+    int max_order = atom_type_.indexr().max_order();
+    int nrf = atom_type_.mt_radial_basis_size();
 
-    radial_functions_ = sddk::mdarray<double, 3>(atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2);
+    surface_derivatives_ = sddk::mdarray<double, 2>(3, nrf);
 
-    h_spherical_integrals_ = sddk::mdarray<double, 2>(atom_type_.mt_radial_basis_size(), atom_type_.mt_radial_basis_size());
+    radial_functions_ = sddk::mdarray<double, 3>(atom_type_.num_mt_points(), nrf, 2);
+
+    h_spherical_integrals_ = sddk::mdarray<double, 2>(nrf, nrf);
     h_spherical_integrals_.zero();
 
-    o_radial_integrals_ = sddk::mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(),
-                                             atom_type_.indexr().max_num_rf());
+    o_radial_integrals_ = sddk::mdarray<double, 3>(nl, max_order, max_order);
     o_radial_integrals_.zero();
 
-    so_radial_integrals_ = sddk::mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(),
-                                              atom_type_.indexr().max_num_rf());
+    so_radial_integrals_ = sddk::mdarray<double, 3>(nl, max_order, max_order);
     so_radial_integrals_.zero();
 
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-        o1_radial_integrals_ = sddk::mdarray<double, 2>(atom_type_.mt_radial_basis_size(), atom_type_.mt_radial_basis_size());
+        o1_radial_integrals_ = sddk::mdarray<double, 2>(nrf, nrf);
         o1_radial_integrals_.zero();
     }
 
@@ -88,7 +90,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
             for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
                 auto rsd = aw_descriptor(l)[order];
 
-                int idxrf = atom_type_.indexr().index_by_l_order(l, order);
+                auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
 
                 solver.solve(rel__, rsd.dme, rsd.l, rsd.enu, p, rdudr, uderiv);
 
@@ -109,7 +111,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
 
                 /* orthogonalize to previous radial functions */
                 for (int order1 = 0; order1 < order; order1++) {
-                    int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
+                    auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
 
                     for (int ir = 0; ir < nmtp; ir++) {
                         s(ir) = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
@@ -155,7 +157,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
             } // order
             /* divide by r */
             for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
-                int idxrf = atom_type_.indexr().index_by_l_order(l, order);
+                auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
                 for (int ir = 0; ir < nmtp; ir++) {
                     radial_functions_(ir, idxrf, 0) *= atom_type_.radial_grid().x_inv(ir);
                 }
@@ -238,7 +240,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         }
 
         /* index of local orbital radial function */
-        int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
+        auto idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
         /* zero surface derivatives */
         for (int i : {0, 1, 2}) {
             surface_derivatives_(i, idxrf) = 0;
@@ -299,11 +301,11 @@ Atom_symmetry_class::orthogonalize_radial_functions()
     int nmtp = atom_type().num_mt_points();
     Spline<double> s(atom_type().radial_grid());
     /* orthogonalize local orbitals */
-    for (int l = 0; l <= atom_type().indexr().lmax_lo(); l++) {
-        for (int j = 0; j < atom_type().indexr().num_lo(l); j++) {
-            int idxrf = atom_type().indexr().index_by_l_order(l, j + atom_type_.aw_order(l));
+    for (int l = 0; l <= atom_type().indexr().lmax_lo1(); l++) {
+        for (int j = 0; j < atom_type().indexr().num_lo1(l); j++) {
+            int idxrf = atom_type().indexr().index_of(angular_momentum(l), j + atom_type_.aw_order(l));
             for (int j1 = 0; j1 < j; j1++) {
-                int idxrf1 = atom_type().indexr().index_by_l_order(l, j1 + atom_type().aw_order(l));
+                int idxrf1 = atom_type().indexr().index_of(angular_momentum(l), j1 + atom_type().aw_order(l));
 
                 for (int ir = 0; ir < nmtp; ir++) {
                     s(ir) = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
@@ -355,11 +357,11 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
 
-        int idxrf1 = atom_type_.indexr().index_by_idxlo(idxlo1);
+        int idxrf1 = atom_type_.indexr().index_of(rf_lo_index(idxlo1));
 
         for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++) {
 
-            int idxrf2 = atom_type_.indexr().index_by_idxlo(idxlo2);
+            int idxrf2 = atom_type_.indexr().index_of(rf_lo_index(idxlo2));
 
             if (lo_descriptor(idxlo1).am == lo_descriptor(idxlo2).am) {
 
@@ -441,7 +443,7 @@ Atom_symmetry_class::dump_lo()
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
         fprintf(fout, "%f ", atom_type_.radial_grid(ir));
         for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-            int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
+            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
         }
         fprintf(fout, "\n");
@@ -455,7 +457,7 @@ Atom_symmetry_class::dump_lo()
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
         fprintf(fout, "%f ", atom_type_.radial_grid(ir));
         for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-            int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
+            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 1));
         }
         fprintf(fout, "\n");
@@ -647,12 +649,12 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
         Spline<double> s(atom_type_.radial_grid());
         #pragma omp for
         for (int l = 0; l <= atom_type_.indexr().lmax(); l++) {
-            int nrf = atom_type_.indexr().num_rf(l);
+            int nrf = atom_type_.indexr().max_order(l);
 
             for (int order1 = 0; order1 < nrf; order1++) {
-                int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
+                auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
                 for (int order2 = 0; order2 < nrf; order2++) {
-                    int idxrf2 = atom_type_.indexr().index_by_l_order(l, order2);
+                    auto idxrf2 = atom_type_.indexr().index_of(angular_momentum(l), order2);
                     if (order1 == order2) {
                         o_radial_integrals_(l, order1, order2) = 1.0;
                     } else {
@@ -702,12 +704,12 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
 
         so_radial_integrals_.zero();
         for (int l = 0; l <= atom_type_.indexr().lmax(); l++) {
-            int nrf = atom_type_.indexr().num_rf(l);
+            int nrf = atom_type_.indexr().max_order(l);
 
             for (int order1 = 0; order1 < nrf; order1++) {
-                int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
+                auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
                 for (int order2 = 0; order2 < nrf; order2++) {
-                    int idxrf2 = atom_type_.indexr().index_by_l_order(l, order2);
+                    auto idxrf2 = atom_type_.indexr().index_of(angular_momentum(l), order2);
 
                     for (int ir = 0; ir < nmtp; ir++) {
                         double M = 1.0 - 2 * soc * spherical_potential_[ir];
