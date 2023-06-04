@@ -124,7 +124,7 @@ Atom_type::init()
     indexr_.init(aw_descriptors_, lo_descriptors_);
 
     /* initialize index of muffin-tin basis functions */
-    indexb_.init(indexr_);
+    //indexb_.init(indexr_);
     indexb1_ = experimental::basis_functions_index1(indexr1_, false);
 
     /* initialize index for wave functions */

@@ -65,111 +65,111 @@ struct basis_function_index_descriptor
     Multiple radial functions for each \f$ \ell \f$ channel are allowed. This is reflected by
     the \f$ \nu \f$ index and called "order".
   */
-class basis_functions_index
-{
-  private:
-    std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; // TODO: rename to vbd_
-
-    sddk::mdarray<int, 2> index_by_lm_order_;
-
-    sddk::mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
-
-    /// Number of augmented wave basis functions.
-    int size_aw_{0};
-
-    /// Number of local orbital basis functions.
-    int size_lo_{0};
-
-    /// Maximum l of the radial basis functions.
-    int lmax_{-1};
-
-    int offset_lo_{-1};
-
-    std::vector<int> offset_;
-
-    experimental::radial_functions_index indexr_;
-
-  public:
-
-    void init(radial_functions_index& indexr__)
-    {
-        basis_function_index_descriptors_.clear();
-
-        index_by_idxrf_ = sddk::mdarray<int, 1>(indexr__.size());
-
-        for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
-            int l     = indexr__[idxrf].am.l();
-            int order = indexr__[idxrf].order;
-            int idxlo = indexr__[idxrf].idxlo;
-
-            index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
-
-            for (int m = -l; m <= l; m++) {
-                basis_function_index_descriptors_.push_back(basis_function_index_descriptor(indexr__[idxrf].am, m, order, idxlo, idxrf));
-            }
-        }
-        index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
-
-        for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
-            int lm    = basis_function_index_descriptors_[i].lm;
-            int order = basis_function_index_descriptors_[i].order;
-            index_by_lm_order_(lm, order) = i;
-
-            /* get number of aw basis functions */
-            if (basis_function_index_descriptors_[i].idxlo < 0) {
-                size_aw_ = i + 1;
-            }
-        }
-
-        size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
-
-        lmax_ = indexr__.lmax();
-
-        assert(size_aw_ >= 0);
-        assert(size_lo_ >= 0);
-    }
-
-    /// Return total number of MT basis functions.
-    inline int size() const
-    {
-        return static_cast<int>(basis_function_index_descriptors_.size());
-    }
-
-    /// Return size of AW part of basis functions in case of LAPW.
-    inline int size_aw() const
-    {
-        return size_aw_;
-    }
-
-    /// Return size of local-orbital part of basis functions in case of LAPW.
-    inline int size_lo() const
-    {
-        return size_lo_;
-    }
-
-    inline int index_by_l_m_order(int l, int m, int order) const
-    {
-        return index_by_lm_order_(utils::lm(l, m), order);
-    }
-
-    inline int index_by_lm_order(int lm, int order) const
-    {
-        return index_by_lm_order_(lm, order);
-    }
-
-    inline int index_by_idxrf(int idxrf) const
-    {
-        return index_by_idxrf_(idxrf);
-        //return offset_[idxrf];
-    }
-
-    /// Return descriptor of the given basis function.
-    inline auto const& operator[](int i) const
-    {
-        assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
-        return basis_function_index_descriptors_[i];
-    }
-};
+//class basis_functions_index
+//{
+//  private:
+//    std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; // TODO: rename to vbd_
+//
+//    sddk::mdarray<int, 2> index_by_lm_order_;
+//
+//    sddk::mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
+//
+//    /// Number of augmented wave basis functions.
+//    int size_aw_{0};
+//
+//    /// Number of local orbital basis functions.
+//    int size_lo_{0};
+//
+//    /// Maximum l of the radial basis functions.
+//    int lmax_{-1};
+//
+//    int offset_lo_{-1};
+//
+//    std::vector<int> offset_;
+//
+//    experimental::radial_functions_index indexr_;
+//
+//  public:
+//
+//    void init(radial_functions_index& indexr__)
+//    {
+//        basis_function_index_descriptors_.clear();
+//
+//        index_by_idxrf_ = sddk::mdarray<int, 1>(indexr__.size());
+//
+//        for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
+//            int l     = indexr__[idxrf].am.l();
+//            int order = indexr__[idxrf].order;
+//            int idxlo = indexr__[idxrf].idxlo;
+//
+//            index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
+//
+//            for (int m = -l; m <= l; m++) {
+//                basis_function_index_descriptors_.push_back(basis_function_index_descriptor(indexr__[idxrf].am, m, order, idxlo, idxrf));
+//            }
+//        }
+//        index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
+//
+//        for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
+//            int lm    = basis_function_index_descriptors_[i].lm;
+//            int order = basis_function_index_descriptors_[i].order;
+//            index_by_lm_order_(lm, order) = i;
+//
+//            /* get number of aw basis functions */
+//            if (basis_function_index_descriptors_[i].idxlo < 0) {
+//                size_aw_ = i + 1;
+//            }
+//        }
+//
+//        size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
+//
+//        lmax_ = indexr__.lmax();
+//
+//        assert(size_aw_ >= 0);
+//        assert(size_lo_ >= 0);
+//    }
+//
+//    /// Return total number of MT basis functions.
+//    inline int size() const
+//    {
+//        return static_cast<int>(basis_function_index_descriptors_.size());
+//    }
+//
+//    /// Return size of AW part of basis functions in case of LAPW.
+//    inline int size_aw() const
+//    {
+//        return size_aw_;
+//    }
+//
+//    /// Return size of local-orbital part of basis functions in case of LAPW.
+//    inline int size_lo() const
+//    {
+//        return size_lo_;
+//    }
+//
+//    inline int index_by_l_m_order(int l, int m, int order) const
+//    {
+//        return index_by_lm_order_(utils::lm(l, m), order);
+//    }
+//
+//    inline int index_by_lm_order(int lm, int order) const
+//    {
+//        return index_by_lm_order_(lm, order);
+//    }
+//
+//    inline int index_by_idxrf(int idxrf) const
+//    {
+//        return index_by_idxrf_(idxrf);
+//        //return offset_[idxrf];
+//    }
+//
+//    /// Return descriptor of the given basis function.
+//    inline auto const& operator[](int i) const
+//    {
+//        assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
+//        return basis_function_index_descriptors_[i];
+//    }
+//};
 
 namespace experimental {
 

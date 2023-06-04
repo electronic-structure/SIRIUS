@@ -148,7 +148,7 @@ class Atom_type
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
-    basis_functions_index indexb_;
+    //basis_functions_index indexb_;
     experimental::basis_functions_index1 indexb1_;
 
     /// Index for the radial atomic functions.
@@ -881,18 +881,18 @@ class Atom_type
 
     inline basis_function_index_descriptor const& indexb(int i) const
     {
-        RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
-        return indexb_[i];
+        //RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
+        return indexb1_[i];
     }
 
     inline int indexb_by_l_m_order(int l, int m, int order) const
     {
-        return indexb_.index_by_l_m_order(l, m, order);
+        return indexb1_.index_by_l_m_order(l, m, order);
     }
 
     inline int indexb_by_lm_order(int lm, int order) const
     {
-        return indexb_.index_by_lm_order(lm, order);
+        return indexb1_.index_by_lm_order(lm, order);
     }
 
     inline int mt_aw_basis_size() const
