@@ -107,13 +107,13 @@ class Unit_cell
     double volume_it_{0};
 
     /// Total nuclear charge.
-    int total_nuclear_charge_{0};
+    //int total_nuclear_charge_{0};
 
     /// Total number of core electrons.
-    double num_core_electrons_{0};
+    //double num_core_electrons_{0};
 
     /// Total number of valence electrons.
-    double num_valence_electrons_{0};
+    //double num_valence_electrons_{0};
 
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
@@ -253,14 +253,19 @@ class Unit_cell
     /** This is useful to check the sanity of the crystal structure. */
     double min_bond_length() const;
 
+    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
+    std::vector<double> find_mt_radii(int auto_rmt__, bool inflate__);
+
+    /// Get the total number of pseudo atomic wave-functions.
+    std::pair<int, std::vector<int>> num_ps_atomic_wf() const;
+
     /// Return number of Hubbard wave-functions.
     auto const& num_hubbard_wf() const
     {
         return num_hubbard_wf_;
     }
-
-    /// Get the total number of pseudo atomic wave-functions.
-    std::pair<int, std::vector<int>> num_ps_atomic_wf() const;
 
     /// Get Cartesian coordinates of the vector by its fractional coordinates.
     template <typename T>
@@ -364,9 +369,15 @@ class Unit_cell
         return *atoms_[id__];
     }
 
+    /// Total nuclear charge.
     inline int total_nuclear_charge() const
     {
-        return total_nuclear_charge_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).zn();
+        }
+        return result;
     }
 
     /// Total number of electrons (core + valence).
@@ -378,13 +389,23 @@ class Unit_cell
     /// Number of valence electrons.
     inline double num_valence_electrons() const
     {
-        return num_valence_electrons_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).num_valence_electrons();
+        }
+        return result;
     }
 
     /// Number of core electrons.
     inline double num_core_electrons() const
     {
-        return num_core_electrons_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).num_core_electrons();
+        }
+        return result;
     }
 
     /// Maximum number of muffin-tin points among all atom types.
@@ -606,11 +627,6 @@ class Unit_cell
         }
         return a;
     }
-
-    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
-    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
-    std::vector<double> find_mt_radii(int auto_rmt__, bool inflate__);
 };
 
 } // namespace sirius

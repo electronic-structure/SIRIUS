@@ -673,11 +673,11 @@ Unit_cell::initialize()
     }
 
     /* find the charges */
-    for (int i = 0; i < num_atoms(); i++) {
-        total_nuclear_charge_ += atom(i).zn();
-        num_core_electrons_ += atom(i).type().num_core_electrons();
-        num_valence_electrons_ += atom(i).type().num_valence_electrons();
-    }
+    //for (int i = 0; i < num_atoms(); i++) {
+        //total_nuclear_charge_ += atom(i).zn();
+        //num_core_electrons_ += atom(i).type().num_core_electrons();
+        //num_valence_electrons_ += atom(i).type().num_valence_electrons();
+    //}
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
