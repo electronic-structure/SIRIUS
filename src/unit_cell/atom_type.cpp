@@ -120,26 +120,22 @@ Atom_type::init()
         }
     }
 
-    /* initialize index of radial functions */
-    //indexr_.init(aw_descriptors_, lo_descriptors_);
-
     /* initialize index of muffin-tin basis functions */
-    //indexb_.init(indexr_);
-    indexb1_ = experimental::basis_functions_index1(indexr_, false);
+    indexb_ = basis_functions_index(indexr_, false);
 
     /* initialize index for wave functions */
     if (ps_atomic_wfs_.size()) {
         for (auto& e : ps_atomic_wfs_) {
             indexr_wfs_.add(e.am);
         }
-        indexb_wfs_ = sirius::experimental::basis_functions_index1(indexr_wfs_, false);
+        indexb_wfs_ = basis_functions_index(indexr_wfs_, false);
         if (static_cast<int>(ps_atomic_wfs_.size()) != indexr_wfs_.size()) {
             RTE_THROW("wrong size of atomic orbital list");
         }
     }
 
     if (hubbard_correction_) {
-        indexb_hub_ = sirius::experimental::basis_functions_index1(indexr_hub_, false);
+        indexb_hub_ = basis_functions_index(indexr_hub_, false);
     }
 
     if (!parameters_.full_potential()) {

@@ -689,7 +689,7 @@ K_point<T>::load(sddk::HDF5_tree h5in, int id)
 template <typename T>
 void
 K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
-        std::function<sirius::experimental::basis_functions_index1 const*(int)> indexb__,
+        std::function<basis_functions_index const*(int)> indexb__,
         Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");

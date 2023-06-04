@@ -146,13 +146,13 @@ class Atom_type
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
-    experimental::basis_functions_index1 indexb1_;
+    basis_functions_index indexb_;
 
     /// Index for the radial atomic functions.
     radial_functions_index indexr_wfs_;
 
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
-    sirius::experimental::basis_functions_index1 indexb_wfs_;
+    basis_functions_index indexb_wfs_;
 
     /// List of Hubbard orbital descriptors.
     /** List of sirius::hubbard_orbital_descriptor for each orbital. Each element of the list contains
@@ -164,7 +164,7 @@ class Atom_type
     radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
-    sirius::experimental::basis_functions_index1 indexb_hub_;
+    basis_functions_index indexb_hub_;
 
     /// Radial functions of beta-projectors.
     /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit
@@ -873,39 +873,39 @@ class Atom_type
 
     inline auto const& indexb() const
     {
-        return indexb1_;
+        return indexb_;
     }
 
-    inline basis_function_index_descriptor const& indexb(int i) const
+    inline auto const& indexb(int i) const
     {
         //RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
-        return indexb1_[i];
+        return indexb_[i];
     }
 
     inline int indexb_by_l_m_order(int l, int m, int order) const
     {
-        return indexb1_.index_by_l_m_order(l, m, order);
+        return indexb_.index_by_l_m_order(l, m, order);
     }
 
     inline int indexb_by_lm_order(int lm, int order) const
     {
-        return indexb1_.index_by_lm_order(lm, order);
+        return indexb_.index_by_lm_order(lm, order);
     }
 
     inline int mt_aw_basis_size() const
     {
-        return indexb1_.size_aw();
+        return indexb_.size_aw();
     }
 
     inline int mt_lo_basis_size() const
     {
-        return indexb1_.size_lo();
+        return indexb_.size_lo();
     }
 
     /// Total number of muffin-tin basis functions (APW + LO).
     inline int mt_basis_size() const
     {
-        return indexb1_.size();
+        return indexb_.size();
     }
 
     /// Total number of radial basis functions.

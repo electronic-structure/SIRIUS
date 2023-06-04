@@ -682,8 +682,6 @@ Unit_cell::initialize()
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
         atom(ia).init();
-        mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
-        mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
     }
 
     init_paw();

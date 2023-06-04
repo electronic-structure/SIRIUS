@@ -118,14 +118,6 @@ class Unit_cell
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
 
-    /// Total number of augmented wave basis functions in the muffin-tins.
-    /** This is equal to the total number of matching coefficients for each plane-wave. */
-    int mt_aw_basis_size_{0};
-
-    /// Total number of local orbital basis functions.
-    /** This also counts the total number of beta-projectors in case of pseudopotential method. */
-    int mt_lo_basis_size_{0};
-
     /// List of nearest neighbours for each atom.
     std::vector<std::vector<nearest_neighbour_descriptor>> nearest_neighbours_;
 
@@ -406,15 +398,26 @@ class Unit_cell
     }
 
     /// Total number of the augmented wave basis functions over all atoms.
+    /** This is equal to the total number of matching coefficients for each plane-wave. */
     inline int mt_aw_basis_size() const
     {
-        return mt_aw_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).mt_aw_basis_size();
+        }
+        return result;
     }
 
     /// Total number of local orbital basis functions over all atoms.
     inline int mt_lo_basis_size() const
     {
-        return mt_lo_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).mt_lo_basis_size();
+        }
+        return result;
     }
 
     /// Maximum number of basis functions among all atom types.

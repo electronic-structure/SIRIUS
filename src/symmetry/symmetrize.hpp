@@ -468,7 +468,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
  *  radial integrals over the total angular momentum
  */
 inline void
-symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, experimental::basis_functions_index1 const& indexb, const int ia, const int ja,
+symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_index const& indexb, const int ia, const int ja,
            const int ndm, sddk::mdarray<double, 2> const& rotm, sddk::mdarray<std::complex<double>, 2> const& spin_rot_su2,
            sddk::mdarray<std::complex<double>, 4>& dm_, const bool hubbard_)
 {
@@ -540,7 +540,7 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, experimental::basi
 inline void
 symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__, int num_mag_comp__,
            Crystal_symmetry const& sym__,
-           std::function<sirius::experimental::basis_functions_index1 const*(int)> indexb__)
+           std::function<basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
     if (sym__.size() == 1) {
