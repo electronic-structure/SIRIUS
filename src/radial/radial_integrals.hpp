@@ -117,14 +117,14 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     /// Callback function to compute radial integrals using the host code.
     std::function<void(int, double, double*, int)> atomic_wfc_callback_{nullptr};
     /// Return radial basis index for a given atom type.
-    std::function<sirius::experimental::radial_functions_index const&(int)> indexr_;
+    std::function<radial_functions_index const&(int)> indexr_;
     /// Generate radial integrals.
     void generate(std::function<Spline<double> const&(int, int)> fl__);
 
   public:
     /// Constructor.
     Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__,
-                               std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
+                               std::function<radial_functions_index const&(int)> indexr__,
                                std::function<Spline<double> const&(int, int)> fl__,
                                std::function<void(int, double, double*, int)> atomic_wfc_callback__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)

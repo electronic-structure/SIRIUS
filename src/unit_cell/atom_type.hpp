@@ -140,19 +140,16 @@ class Atom_type
     int max_aw_order_{0};
 
     /// Index of radial basis functions.
-    /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
-        In LAPW this index is used to iterate over combined set of APW and local-orbital radial functions.
-        In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
-    //radial_functions_index indexr_;
-    experimental::radial_functions_index indexr1_;
+    /** In LAPW this index is used to iterate over combined set of APW and local-orbital radial functions.
+     *  In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
+    radial_functions_index indexr_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
-    //basis_functions_index indexb_;
     experimental::basis_functions_index1 indexb1_;
 
     /// Index for the radial atomic functions.
-    sirius::experimental::radial_functions_index indexr_wfs_;
+    radial_functions_index indexr_wfs_;
 
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
     sirius::experimental::basis_functions_index1 indexb_wfs_;
@@ -164,7 +161,7 @@ class Atom_type
     std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
 
     /// Index of radial functions for hubbard orbitals.
-    sirius::experimental::radial_functions_index indexr_hub_;
+    radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
     sirius::experimental::basis_functions_index1 indexb_hub_;
@@ -845,7 +842,7 @@ class Atom_type
     /** The index can be used to determine the total number of radial functions */
     inline auto const& indexr() const
     {
-        return indexr1_;
+        return indexr_;
     }
 
     inline auto const& indexr_wfs() const
@@ -861,17 +858,17 @@ class Atom_type
     inline auto const& indexr(int i) const
     {
         //RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
-        return indexr1_[rf_index(i)];
+        return indexr_[rf_index(i)];
     }
 
     inline int indexr_by_l_order(int l, int order) const
     {
-        return indexr1_.index_of(angular_momentum(l), order);
+        return indexr_.index_of(angular_momentum(l), order);
     }
 
     inline int indexr_by_idxlo(int idxlo) const
     {
-        return indexr1_.index_of(rf_lo_index(idxlo));
+        return indexr_.index_of(rf_lo_index(idxlo));
     }
 
     inline auto const& indexb() const
@@ -914,7 +911,7 @@ class Atom_type
     /// Total number of radial basis functions.
     inline int mt_radial_basis_size() const
     {
-        return indexr1_.size();
+        return indexr_.size();
     }
 
     inline auto const& indexb_wfs() const

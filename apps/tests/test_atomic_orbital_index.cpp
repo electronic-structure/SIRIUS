@@ -12,7 +12,7 @@ int run_test(cmd_args& args)
     angular_momentum aqn2(2, -1);
     std::cout << aqn2.l() << " " << aqn2.s() << " " << aqn2.j() << std::endl;
 
-    sirius::experimental::radial_functions_index ri;
+    radial_functions_index ri;
 
     ri.add(angular_momentum(0, 1));
     ri.add(angular_momentum(1, -1), angular_momentum(1, 1));

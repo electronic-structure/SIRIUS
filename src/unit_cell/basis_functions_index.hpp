@@ -194,7 +194,7 @@ class basis_functions_index1
     {
     }
 
-    basis_functions_index1(experimental::radial_functions_index const& indexr__, bool expand_full_j__)
+    basis_functions_index1(radial_functions_index const& indexr__, bool expand_full_j__)
         : indexr_(indexr__)
     {
         if (expand_full_j__) {

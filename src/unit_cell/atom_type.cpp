@@ -93,27 +93,27 @@ Atom_type::init()
         for (auto aw : aw_descriptors_) {
             RTE_ASSERT(aw.size() <= 3);
             for (auto e : aw) {
-                indexr1_.add(angular_momentum(e.l));
+                indexr_.add(angular_momentum(e.l));
             }
         }
         for (auto e : lo_descriptors_) {
-            indexr1_.add_lo(e.am);
+            indexr_.add_lo(e.am);
         }
     } else {
         for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
             if (this->spin_orbit_coupling()) {
                 if (this->beta_radial_function1(i).first.l() == 0) {
-                    indexr1_.add(this->beta_radial_function1(i).first);
+                    indexr_.add(this->beta_radial_function1(i).first);
                 } else {
-                    indexr1_.add(this->beta_radial_function1(i).first, this->beta_radial_function1(i + 1).first);
+                    indexr_.add(this->beta_radial_function1(i).first, this->beta_radial_function1(i + 1).first);
                     i++;
                 }
             } else {
-                indexr1_.add(this->beta_radial_function1(i).first);
+                indexr_.add(this->beta_radial_function1(i).first);
             }
         }
         /* check inner consistency of the index */
-        for (auto e : this->indexr1_) {
+        for (auto e : this->indexr_) {
             if (e.am != this->beta_radial_function1(e.idxrf).first) {
                 RTE_THROW("wrong order of beta radial functions");
             }
@@ -125,7 +125,7 @@ Atom_type::init()
 
     /* initialize index of muffin-tin basis functions */
     //indexb_.init(indexr_);
-    indexb1_ = experimental::basis_functions_index1(indexr1_, false);
+    indexb1_ = experimental::basis_functions_index1(indexr_, false);
 
     /* initialize index for wave functions */
     if (ps_atomic_wfs_.size()) {

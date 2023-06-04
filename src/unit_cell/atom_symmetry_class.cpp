@@ -301,8 +301,8 @@ Atom_symmetry_class::orthogonalize_radial_functions()
     int nmtp = atom_type().num_mt_points();
     Spline<double> s(atom_type().radial_grid());
     /* orthogonalize local orbitals */
-    for (int l = 0; l <= atom_type().indexr().lmax_lo1(); l++) {
-        for (int j = 0; j < atom_type().indexr().num_lo1(l); j++) {
+    for (int l = 0; l <= atom_type().indexr().lmax_lo(); l++) {
+        for (int j = 0; j < atom_type().indexr().num_lo(l); j++) {
             int idxrf = atom_type().indexr().index_of(angular_momentum(l), j + atom_type_.aw_order(l));
             for (int j1 = 0; j1 < j; j1++) {
                 int idxrf1 = atom_type().indexr().index_of(angular_momentum(l), j1 + atom_type().aw_order(l));
