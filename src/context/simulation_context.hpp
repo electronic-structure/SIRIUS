@@ -69,10 +69,9 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     }
     out__ << std::endl;
 
-
     std::vector<std::string> labels = {"host"};
     std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
-    
+
     int np{1};
     if (acc::num_devices() > 0) {
         labels.push_back("host pinned");

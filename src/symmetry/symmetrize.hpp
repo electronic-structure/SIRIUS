@@ -473,7 +473,7 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
            sddk::mdarray<std::complex<double>, 4>& dm_, const bool hubbard_)
 {
     for (int xi1 = 0; xi1 < indexb.size(); xi1++) {
-        int l1  = indexb[xi1].l;
+        int l1  = indexb[xi1].am.l();
         int lm1 = indexb[xi1].lm;
         int o1  = indexb[xi1].order;
 
@@ -482,9 +482,9 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
         }
 
         for (int xi2 = 0; xi2 < indexb.size(); xi2++) {
-            int l2                                       = indexb[xi2].l;
-            int lm2                                      = indexb[xi2].lm;
-            int o2                                       = indexb[xi2].order;
+            int l2  = indexb[xi2].am.l();
+            int lm2 = indexb[xi2].lm;
+            int o2  = indexb[xi2].order;
             std::array<std::complex<double>, 3> dm_rot_spatial = {0, 0, 0};
 
             //} the hubbard treatment when spin orbit coupling is present is
@@ -540,7 +540,7 @@ symmetrize(const sddk::mdarray<std::complex<double>, 4>& ns_, basis_functions_in
 inline void
 symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__, int num_mag_comp__,
            Crystal_symmetry const& sym__,
-           std::function<sirius::experimental::basis_functions_index const*(int)> indexb__)
+           std::function<basis_functions_index const*(int)> indexb__)
 {
     /* quick exit */
     if (sym__.size() == 1) {
@@ -586,16 +586,16 @@ symmetrize(std::function<sddk::mdarray<std::complex<double>, 3>&(int ia__)> dm__
             sddk::mdarray<std::complex<double>, 3> dm_ia(mmax, mmax, num_mag_comp__);
 
             /* loop over radial functions */
-            for (int idxrf1 = 0; idxrf1 < indexr.size(); idxrf1++) {
+            for (auto e1 : indexr) {
                 /* angular momentum of radial function */
-                auto am1     = indexr.am(idxrf1);
+                auto am1     = e1.am;
                 auto ss1     = am1.subshell_size();
-                auto offset1 = indexb.offset(idxrf1);
-                for (int idxrf2 = 0; idxrf2 < indexr.size(); idxrf2++) {
+                auto offset1 = indexb.index_of(e1.idxrf);
+                for (auto e2 : indexr) {
                     /* angular momentum of radial function */
-                    auto am2     = indexr.am(idxrf2);
+                    auto am2     = e2.am;
                     auto ss2     = am2.subshell_size();
-                    auto offset2 = indexb.offset(idxrf2);
+                    auto offset2 = indexb.index_of(e2.idxrf);
 
                     dm_ia.zero();
                     for (int j = 0; j < num_mag_comp__; j++) {

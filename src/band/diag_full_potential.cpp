@@ -289,13 +289,22 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
                 *phi_extra_new, wf::spin_index(0), wf::band_range(0, ncomp));
     }
 
+    std::vector<int> offset_lo(unit_cell_.num_atoms());
+    std::generate(offset_lo.begin(), offset_lo.end(),
+            [n = 0, ia = 0, this] () mutable
+            {
+                int offs = n;
+                n += unit_cell_.atom(ia++).mt_lo_basis_size();
+                return offs;
+            });
+
     /* add pure local orbitals to the basis staring from ncomp index */
     if (nlo) {
         for (int ialoc = 0; ialoc < phi_extra_new->spl_num_atoms().local_size(); ialoc++) {
             int ia = phi_extra_new->spl_num_atoms()[ialoc];
             for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
                 phi_extra_new->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0),
-                        wf::band_index(unit_cell_.atom(ia).offset_lo() + xi + ncomp)) = 1.0;
+                        wf::band_index(offset_lo[ia] + xi + ncomp)) = 1.0;
             }
         }
     }

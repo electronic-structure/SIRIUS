@@ -452,7 +452,7 @@ Density::init_density_matrix_for_paw()
 
             double occ = occupations[rad_func_index];
 
-            int l = basis_func_index_dsc.l;
+            int l = basis_func_index_dsc.am.l();
 
             switch (ctx_.num_mag_dims()) {
                 case 0: {
@@ -480,11 +480,11 @@ Density::generate_paw_atom_density(int ialoc__)
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
 
-    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
+    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax());
 
     /* get gaunt coefficients */
-    Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),
-                                  atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
+    Gaunt_coefficients<double> GC(atom_type.indexr().lmax(), 2 * atom_type.indexr().lmax(),
+                                  atom_type.indexr().lmax(), SHT::gaunt_rrr);
 
     paw_density_->zero(ia);
 
@@ -1020,7 +1020,7 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__,
 {
     PROFILE("sirius::add_k_point_contribution_dm_pwpp");
 
-    if (!ctx__.unit_cell().mt_lo_basis_size()) {
+    if (!ctx__.unit_cell().max_mt_basis_size()) {
         return;
     }
 
@@ -1037,8 +1037,6 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__,
             add_k_point_contribution_dm_pwpp_noncollinear<T, F>(ctx__, kp__, bp_coeffs, density_matrix__);
         }
     }
-
-    // kp__.beta_projectors().dismiss();
 }
 
 void
@@ -1541,14 +1539,14 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk
 
     #pragma omp parallel for default(shared)
     for (int idxrf2 = 0; idxrf2 < atom_type__.mt_radial_basis_size(); idxrf2++) {
-        int l2 = atom_type__.indexr(idxrf2).l;
+        int l2 = atom_type__.indexr(idxrf2).am.l();
         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-            int l1   = atom_type__.indexr(idxrf1).l;
+            int l1   = atom_type__.indexr(idxrf1).am.l();
 
-            int xi2 = atom_type__.indexb().index_by_idxrf(idxrf2);
+            int xi2 = atom_type__.indexb().index_of(rf_index(idxrf2));
             for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
-                int xi1 = atom_type__.indexb().index_by_idxrf(idxrf1);
+                int xi1 = atom_type__.indexb().index_of(rf_index(idxrf1));
                 for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
                     for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
                         int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;
@@ -1720,7 +1718,7 @@ Density::symmetrize_density_matrix()
 
     int ndm = ctx_.num_mag_comp();
 
-    if (unit_cell_.mt_lo_basis_size() == 0) {
+    if (unit_cell_.max_mt_basis_size() == 0) {
         return;
     }
 

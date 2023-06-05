@@ -1201,7 +1201,7 @@ Simulation_context::update()
                 unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
         }
 
-        auto idxr_wf = [&](int iat) -> sirius::experimental::radial_functions_index const& {
+        auto idxr_wf = [&](int iat) -> radial_functions_index const& {
             return unit_cell().atom_type(iat).indexr_wfs();
         };
 

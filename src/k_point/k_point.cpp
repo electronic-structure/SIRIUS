@@ -190,17 +190,12 @@ K_point<T>::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
-    //auto& phi = atomic_wave_functions();
-    //auto& sphi = atomic_wave_functions_S();
     if (ctx_.so_correction()) {
         RTE_THROW("Hubbard+SO is not implemented");
     }
     if (ctx_.gamma_point()) {
         RTE_THROW("Hubbard+Gamma point is not implemented");
     }
-
-    //phi.zero(sddk::device_t::CPU);
-    //sphi.zero(sddk::device_t::CPU);
 
     auto num_ps_atomic_wf = unit_cell_.num_ps_atomic_wf();
     int nwf = num_ps_atomic_wf.first;
@@ -298,16 +293,16 @@ K_point<T>::generate_hubbard_orbitals()
         auto& type = atom.type();
         if (type.hubbard_correction()) {
             /* loop over Hubbard orbitals of the atom */
-            for (int idxrf = 0; idxrf < type.indexr_hub().size(); idxrf++) {
+            for (auto e : type.indexr_hub()) {
                 /* Hubbard orbital descriptor */
-                auto& hd = type.lo_descriptor_hub(idxrf);
-                int l = type.indexr_hub().am(idxrf).l();
+                auto& hd = type.lo_descriptor_hub(e.idxrf);
+                int l = e.am.l();
                 int mmax = 2 * l + 1;
 
                 int idxr_wf = hd.idx_wf();
 
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().offset(idxr_wf);
-                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().offset(idxrf);
+                int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
+                int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(e.idxrf);
 
                 wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,
@@ -694,7 +689,7 @@ K_point<T>::load(sddk::HDF5_tree h5in, int id)
 template <typename T>
 void
 K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
-        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
+        std::function<basis_functions_index const*(int)> indexb__,
         Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
@@ -747,17 +742,10 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
                 continue;
             }
             auto const& indexb = *indexb__(iat);
-            for (int xi = 0; xi < static_cast<int>(indexb.size()); xi++) {
-                /*  orbital quantum  number of this atomic orbital */
-                int l = indexb.l(xi);
-                /*  composite l,m index */
-                int lm = indexb.lm(xi);
-                /* index of the radial function */
-                int idxrf = indexb.idxrf(xi);
+            for (auto const& e: indexb) {
+                auto z = std::pow(std::complex<double>(0, -1), e.am.l()) * fourpi / std::sqrt(unit_cell_.omega());
 
-                auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-
-                wf_t[iat](igk_loc, xi) = static_cast<std::complex<T>>(z * rlm[lm] * ri_values[iat](idxrf));
+                wf_t[iat](igk_loc, e.xi) = static_cast<std::complex<T>>(z * rlm[e.lm] * ri_values[iat](e.idxrf));
             }
         }
     }
@@ -817,7 +805,7 @@ K_point<T>::generate_gklo_basis()
             int lo_index_offset = type.mt_aw_basis_size();
 
             for (int j = 0; j < type.mt_lo_basis_size(); j++) {
-                int l         = type.indexb(lo_index_offset + j).l;
+                int l         = type.indexb(lo_index_offset + j).am.l();
                 int lm        = type.indexb(lo_index_offset + j).lm;
                 int order     = type.indexb(lo_index_offset + j).order;
                 int idxrf     = type.indexb(lo_index_offset + j).idxrf;

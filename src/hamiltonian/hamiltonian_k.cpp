@@ -90,6 +90,15 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
     h_diag.zero();
     o_diag.zero();
 
+    std::vector<int> offset_t(uc.num_atom_types());
+    std::generate(offset_t.begin(), offset_t.end(),
+            [n = 0, iat = 0, &uc] () mutable
+            {
+                int offs = n;
+                n += uc.atom_type(iat++).mt_basis_size();
+                return offs;
+            });
+
     for (int ispn = 0; ispn < H0_.ctx().num_spins(); ispn++) {
 
         /* local H contribution */
@@ -103,7 +112,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                 o_diag(ig_loc, ispn) = 1;
             }
         }
-        if (uc.mt_lo_basis_size() == 0) {
+        if (uc.max_mt_basis_size() == 0) {
             continue;
         }
 
@@ -145,7 +154,8 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                 }
             }
 
-            int offs = uc.atom_type(iat).offset_lo();
+            int offs = offset_t[iat];
+             //uc.atom_type(iat).offset_lo();
 
             if (what & 1) {
                 la::wrap(la::lib_t::blas)
@@ -562,7 +572,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
             T ori   = atom__.symmetry_class().o_radial_integral(l, order1, order);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                int idxrf1 = type.indexr().index_by_l_order(l, order1);
+                auto idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
                 ori += atom__.symmetry_class().o1_radial_integral(idxrf1, idxrf);
             }
 
@@ -607,7 +617,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, sddk::mdarray<
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
             T ori   = atom__.symmetry_class().o_radial_integral(l, order, order1);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                int idxrf1 = type.indexr().index_by_l_order(l, order1);
+                int idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
                 ori += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1);
             }
 
@@ -651,8 +661,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
                     o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
                         atom.symmetry_class().o_radial_integral(l, order1, order2);
                     if (H0_.ctx().valence_relativity() == relativity_t::iora) {
-                        int idxrf1 = atom.type().indexr().index_by_l_order(l, order1);
-                        int idxrf2 = atom.type().indexr().index_by_l_order(l, order2);
+                        auto idxrf1 = atom.type().indexr().index_of(angular_momentum(l), order1);
+                        auto idxrf2 = atom.type().indexr().index_of(angular_momentum(l), order2);
                         o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
                             atom.symmetry_class().o1_radial_integral(idxrf1, idxrf2);
                     }
@@ -924,7 +934,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
                     /* local orbital indices */
-                    int l_lo     = type.indexb(xi_lo).l;
+                    int l_lo     = type.indexb(xi_lo).am.l();
                     int lm_lo    = type.indexb(xi_lo).lm;
                     int order_lo = type.indexb(xi_lo).order;
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
@@ -977,7 +987,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
                 /* local orbital indices */
-                int l_lo     = type.indexb(xi_lo).l;
+                int l_lo     = type.indexb(xi_lo).am.l();
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
 
@@ -1064,7 +1074,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             for (int ilo = 0; ilo < nlo; ilo++) {
                 int xi_lo = naw + ilo;
                 /* local orbital indices */
-                int l_lo     = type.indexb(xi_lo).l;
+                int l_lo     = type.indexb(xi_lo).am.l();
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
                 for (int i = 0; i < b__.size(); i++) {

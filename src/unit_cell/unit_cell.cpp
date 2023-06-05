@@ -668,30 +668,13 @@ Unit_cell::initialize()
     spl_num_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
-    int offs_lo{0};
     for (int iat = 0; iat < num_atom_types(); iat++) {
-        atom_type(iat).init(offs_lo);
-        max_num_mt_points_        = std::max(max_num_mt_points_, atom_type(iat).num_mt_points());
-        max_mt_basis_size_        = std::max(max_mt_basis_size_, atom_type(iat).mt_basis_size());
-        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat).mt_radial_basis_size());
-        max_mt_aw_basis_size_     = std::max(max_mt_aw_basis_size_, atom_type(iat).mt_aw_basis_size());
-        max_mt_lo_basis_size_     = std::max(max_mt_lo_basis_size_, atom_type(iat).mt_lo_basis_size());
-        offs_lo += atom_type(iat).mt_lo_basis_size();
+        atom_type(iat).init();
     }
-
-    /* find the charges */
-    for (int i = 0; i < num_atoms(); i++) {
-        total_nuclear_charge_ += atom(i).zn();
-        num_core_electrons_ += atom(i).type().num_core_electrons();
-        num_valence_electrons_ += atom(i).type().num_valence_electrons();
-    }
-    num_electrons_ = num_core_electrons_ + num_valence_electrons_;
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
-        atom(ia).init(mt_lo_basis_size_);
-        mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
-        mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
+        atom(ia).init();
     }
 
     init_paw();
@@ -885,13 +868,6 @@ Unit_cell::update()
               << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
               << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
             RTE_THROW(s);
-        }
-
-        min_mt_radius_ = 1e100;
-        max_mt_radius_ = 0;
-        for (int i = 0; i < num_atom_types(); i++) {
-            min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
-            max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
         }
     }
 

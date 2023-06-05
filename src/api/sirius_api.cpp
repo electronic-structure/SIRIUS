@@ -335,9 +335,9 @@ atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
     std::vector<int> idx_map(nbf);
     for (int xi = 0; xi < nbf; xi++) {
         int m     = type__.indexb(xi).m;
-        int idxrf = type__.indexb(xi).idxrf;
+        auto idxrf = type__.indexb(xi).idxrf;
         idx_map[xi] =
-            type__.indexb().index_by_idxrf(idxrf) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
+            type__.indexb().index_of(sirius::rf_index(idxrf)) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
     }
     return idx_map;
 }
@@ -2108,15 +2108,24 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 if (l__ == nullptr) {
                     RTE_THROW("orbital quantum number must be provided for beta-projector");
                 }
-                type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
+                int l = *l__;
+                if (type.spin_orbit_coupling()) {
+                    if (l >= 0) {
+                        type.add_beta_radial_function(sirius::angular_momentum(l, 1), std::vector<double>(rf__, rf__ + *num_points__));
+                    } else {
+                        type.add_beta_radial_function(sirius::angular_momentum(-l, -1), std::vector<double>(rf__, rf__ + *num_points__));
+                    }
+                } else {
+                    type.add_beta_radial_function(sirius::angular_momentum(l), std::vector<double>(rf__, rf__ + *num_points__));
+                }
             } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
                 if (l__ == nullptr) {
                     RTE_THROW("orbital quantum number must be provided for pseudo-atomic radial function");
                 }
                 int n      = (n__) ? *n__ : -1;
                 double occ = (occ__) ? *occ__ : 0.0;
-                type.add_ps_atomic_wf(n, sirius::experimental::angular_momentum(*l__),
-                                      std::vector<double>(rf__, rf__ + *num_points__), occ);
+                type.add_ps_atomic_wf(n, sirius::angular_momentum(*l__),
+                        std::vector<double>(rf__, rf__ + *num_points__), occ);
             } else if (label == "ps_rho_core") {
                 type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
             } else if (label == "ps_rho_total") {

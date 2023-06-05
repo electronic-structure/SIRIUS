@@ -53,7 +53,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
 
-            int l = indexr_(iat).am(i).l();
+            int l = indexr_(iat).am(rf_index(i)).l();
             auto& rwf = fl__(iat, i);
 
             #pragma omp parallel for
@@ -103,9 +103,9 @@ void Radial_integrals_aug<jl_deriv>::generate()
 
             for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
                 for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++) {
-                    int l2 = atom_type.indexr(idxrf2).l;
+                    int l2 = atom_type.indexr(idxrf2).am.l();
                     for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
-                        int l1 = atom_type.indexr(idxrf1).l;
+                        int l1 = atom_type.indexr(idxrf1).am.l();
 
                         int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
 
@@ -220,14 +220,14 @@ void Radial_integrals_beta<jl_deriv>::generate()
             int iq = spl_q_[iq_loc];
             Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                int l  = atom_type.indexr(idxrf).l;
+                int l  = atom_type.indexr(idxrf).am.l();
                 /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
                 /* remember that beta(r) are defined as miltiplied by r */
                 if (jl_deriv) {
                     auto s  = jl.deriv_q(l);
-                    values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(idxrf), 1);
+                    values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 } else {
-                    values_(idxrf, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 1);
+                    values_(idxrf, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 }
             }
         }

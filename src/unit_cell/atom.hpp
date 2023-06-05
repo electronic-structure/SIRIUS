@@ -63,9 +63,6 @@ class Atom
     /// Maximum l for potential and magnetic field.
     int lmax_pot_{-1};
 
-    /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
-    int offset_lo_{-1}; // TODO: better name for this
-
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
     sddk::mdarray<std::complex<double>, 4> occupation_matrix_;
 
@@ -98,10 +95,8 @@ class Atom
     }
 
     /// Initialize atom.
-    inline void init(int offset_lo__)
+    inline void init()
     {
-        offset_lo_ = offset_lo__;
-
         lmax_pot_ = type().parameters().lmax_pot();
 
         if (type().parameters().full_potential()) {
@@ -122,7 +117,7 @@ class Atom
         }
 
         if (!type().parameters().full_potential()) {
-            int nbf = type().mt_lo_basis_size();
+            int nbf = type().mt_basis_size();
             d_mtrx_ = sddk::mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1, sddk::memory_t::host,
                                                "Atom::d_mtrx_");
             d_mtrx_.zero();
@@ -296,9 +291,9 @@ class Atom
             int l = l_by_lm[lm];
 
             for (int i2 = 0; i2 < type().indexr().size(); i2++) {
-                int l2 = type().indexr(i2).l;
+                int l2 = type().indexr(i2).am.l();
                 for (int i1 = 0; i1 <= i2; i1++) {
-                    int l1 = type().indexr(i1).l;
+                    int l1 = type().indexr(i1).am.l();
                     if ((l + l1 + l2) % 2 == 0) {
                         if (lm) {
                             h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = result(n++);
@@ -396,12 +391,6 @@ class Atom
     inline void sync_occupation_matrix(mpi::Communicator const& comm__, int const rank__)
     {
         comm__.bcast(occupation_matrix_.at(sddk::memory_t::host), (int)occupation_matrix_.size(), rank__);
-    }
-
-    inline int offset_lo() const
-    {
-        assert(offset_lo_ >= 0);
-        return offset_lo_;
     }
 
     inline double const* h_radial_integrals(int idxrf1, int idxrf2) const

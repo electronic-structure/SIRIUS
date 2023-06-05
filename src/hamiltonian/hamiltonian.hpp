@@ -487,7 +487,7 @@ class Hamiltonian_k
         }
 
         /* return if there are no beta-projectors */
-        if (H0().ctx().unit_cell().mt_lo_basis_size()) {
+        if (H0().ctx().unit_cell().max_mt_basis_size()) {
             auto bp_generator = kp().beta_projectors().make_generator();
             auto beta_coeffs  = bp_generator.prepare();
             apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
