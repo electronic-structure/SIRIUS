@@ -106,15 +106,6 @@ class Unit_cell
     /// Volume of the interstitial region.
     double volume_it_{0};
 
-    /// Total nuclear charge.
-    //int total_nuclear_charge_{0};
-
-    /// Total number of core electrons.
-    //double num_core_electrons_{0};
-
-    /// Total number of valence electrons.
-    //double num_valence_electrons_{0};
-
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
 
