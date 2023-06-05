@@ -177,8 +177,7 @@ class Atom_type
             \end{array} \right.
         \f]
      */
-    //std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
-    std::vector<std::pair<angular_momentum, Spline<double>>> beta_radial_functions1_;
+    std::vector<std::pair<angular_momentum, Spline<double>>> beta_radial_functions_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Lists of [n, j, occ, chi_l(r)] are stored. In case of
@@ -510,51 +509,25 @@ class Atom_type
 
     /// Add a radial function of beta-projector to a list of functions.
     /** This is the only allowed way to add beta projectors. */
-    //inline void add_beta_radial_function(int l__, std::vector<double> beta__)
-    //{
-    //    if (augment_) {
-    //        RTE_THROW("can't add more beta projectors");
-    //    }
-    //    Spline<double> s(radial_grid_, beta__);
-    //    beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
-
-    //    auto am = (l__ < 0) ? angular_momentum(-l__, -1) : angular_momentum(l__, 1);
-
-    //    /* add local orbital descriptor for the current beta-projector */
-    //    lo_descriptors_.push_back(local_orbital_descriptor(am));
-    //}
-
     inline void add_beta_radial_function(angular_momentum am__, std::vector<double> beta__)
     {
         if (augment_) {
             RTE_THROW("can't add more beta projectors");
         }
         Spline<double> s(radial_grid_, beta__);
-        beta_radial_functions1_.push_back(std::make_pair(am__, std::move(s)));
-    }
-
-    /// Return a radial beta functions.
-    inline auto const& beta_radial_function(int idxrf__) const
-    {
-        return beta_radial_functions1_[idxrf__].second;
+        beta_radial_functions_.push_back(std::make_pair(am__, std::move(s)));
     }
 
     /// Number of beta-radial functions.
     inline int num_beta_radial_functions() const
     {
-        return beta_radial_functions1_.size();
+        return beta_radial_functions_.size();
     }
 
-    /// Return a radial beta functions.
-    inline auto const& beta_radial_function1(int idxrf__) const
+    /// Return a radial beta function.
+    inline auto const& beta_radial_function(rf_index idxrf__) const
     {
-        return beta_radial_functions1_[idxrf__];
-    }
-
-    /// Number of beta-radial functions.
-    inline int num_beta_radial_functions1() const
-    {
-        return beta_radial_functions1_.size();
+        return beta_radial_functions_[idxrf__];
     }
 
     /// Add radial function of the augmentation charge.
@@ -1142,7 +1115,7 @@ class Atom_type
     {
         int lmax{-1};
 
-        for (auto& e: beta_radial_functions1_) {
+        for (auto& e: beta_radial_functions_) {
             lmax = std::max(lmax, e.first.l());
         }
         return lmax;

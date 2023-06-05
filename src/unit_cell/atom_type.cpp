@@ -100,21 +100,22 @@ Atom_type::init()
             indexr_.add_lo(e.am);
         }
     } else {
-        for (int i = 0; i < this->num_beta_radial_functions1(); i++) {
+        for (int i = 0; i < this->num_beta_radial_functions(); i++) {
+            auto idxrf = rf_index(i);
             if (this->spin_orbit_coupling()) {
-                if (this->beta_radial_function1(i).first.l() == 0) {
-                    indexr_.add(this->beta_radial_function1(i).first);
+                if (this->beta_radial_function(idxrf).first.l() == 0) {
+                    indexr_.add(this->beta_radial_function(idxrf).first);
                 } else {
-                    indexr_.add(this->beta_radial_function1(i).first, this->beta_radial_function1(i + 1).first);
+                    indexr_.add(this->beta_radial_function(idxrf).first, this->beta_radial_function(rf_index(i + 1)).first);
                     i++;
                 }
             } else {
-                indexr_.add(this->beta_radial_function1(i).first);
+                indexr_.add(this->beta_radial_function(idxrf).first);
             }
         }
         /* check inner consistency of the index */
         for (auto e : this->indexr_) {
-            if (e.am != this->beta_radial_function1(e.idxrf).first) {
+            if (e.am != this->beta_radial_function(e.idxrf).first) {
                 RTE_THROW("wrong order of beta radial functions");
             }
         }

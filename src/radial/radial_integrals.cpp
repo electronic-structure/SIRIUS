@@ -225,9 +225,9 @@ void Radial_integrals_beta<jl_deriv>::generate()
                 /* remember that beta(r) are defined as miltiplied by r */
                 if (jl_deriv) {
                     auto s  = jl.deriv_q(l);
-                    values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(idxrf), 1);
+                    values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 } else {
-                    values_(idxrf, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 1);
+                    values_(idxrf, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 }
             }
         }
