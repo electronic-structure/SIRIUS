@@ -241,9 +241,9 @@ class config_t
         }
         /// Scaling parameters of the iterative  solver tolerance.
         /**
-            First number is the scaling of density RMS, that gives the estimate of the new
-            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum
-            between the two. This is how it is done in the code:
+            First number is the scaling of density RMS, that gives the estimate of the new 
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
+            between the two. This is how it is done in the code: 
             \code{.cpp}
             double old_tol = ctx_.iterative_solver_tolerance();
             // estimate new tolerance of iterative solver
@@ -1413,6 +1413,18 @@ class config_t
             }
             dict_["/parameters/precision_gs"_json_pointer] = precision_gs__;
         }
+        /// True if Wannier functions have to be computed.
+        inline auto wannier() const
+        {
+            return dict_.at("/parameters/wannier"_json_pointer).get<bool>();
+        }
+        inline void wannier(bool wannier__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/wannier"_json_pointer] = wannier__;
+        }
       private:
         nlohmann::json& dict_;
     };
@@ -1498,15 +1510,18 @@ class config_t
             }
             dict_["/nlcg/tol"_json_pointer] = tol__;
         }
-        /// nlcg processing unit
-        inline auto processing_unit() const
+        /// NLCG processing unit
+        inline auto procssing_unit() const
         {
-            if (dict_.contains("/nlcg/processing_unit")) {
-                return dict_.at("/nlcg/processing_unit"_json_pointer).get<std::string>();
-            }
-            return dict_.at("/control/processing_unit"_json_pointer).get<std::string>();
+            return dict_.at("/nlcg/procssing_unit"_json_pointer).get<std::string>();
         }
-
+        inline void procssing_unit(std::string procssing_unit__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/procssing_unit"_json_pointer] = procssing_unit__;
+        }
       private:
         nlohmann::json& dict_;
     };
