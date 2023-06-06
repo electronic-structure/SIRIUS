@@ -68,6 +68,7 @@ set(_SOURCES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
+  "k_point/generate_w90_coeffs.cpp"
   "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
   "specfunc/sbessel.cpp"
@@ -123,6 +124,7 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
                                     $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
+                                    $<TARGET_NAME_IF_EXISTS:sirius::wannier90>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocsolver>
@@ -133,6 +135,7 @@ target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
+
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:SIRIUS_SCALAPACK>
@@ -149,6 +152,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_VCSQNM}>:SIRIUS_VCSQNM>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
+  $<$<BOOL:${USE_WANNIER90}>:SIRIUS_WANNIER90>
 )
 
 if(CREATE_FORTRAN_BINDINGS)

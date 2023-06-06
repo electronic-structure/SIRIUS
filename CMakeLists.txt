@@ -14,7 +14,6 @@ if(POLICY CMP0104)
 endif()
 
 # user variables
-
 option(CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
 option(CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
 option(BUILD_DOCS              "build doxygen doc" OFF)
@@ -35,6 +34,7 @@ option(USE_MEMORY_POOL         "use memory pool" ON)
 option(USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
 option(BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
 option(USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
+option(USE_WANNIER90           "use Wannier90 library" OFF)
 
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
@@ -193,6 +193,10 @@ else()
   endif()
 endif()
 
+if(USE_WANNIER90)
+  find_package(Wannier90 REQUIRED)
+endif()
+
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
 endif(USE_ELPA)
@@ -226,6 +230,10 @@ if(USE_ROCM)
   find_package(rocsolver CONFIG REQUIRED)
   set(CMAKE_HIP_STANDARD 14)
 endif()
+
+
+
+
 
 # check if git command exists
 find_program(GIT_EXE NAMES git)
