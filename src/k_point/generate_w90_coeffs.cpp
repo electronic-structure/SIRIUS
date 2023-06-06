@@ -13,8 +13,7 @@
 #include "linalg/inverse_sqrt.hpp"
 #include "generate_w90_coeffs.hpp"
 
-
-namespace sirius{
+namespace sirius {
 
 void
 write_Amn(sddk::mdarray<std::complex<double>, 3>& Amn) // TODO: pass explicit sizes of Amn array here
@@ -36,7 +35,7 @@ write_Amn(sddk::mdarray<std::complex<double>, 3>& Amn) // TODO: pass explicit si
                 writeAmn << std::fixed << std::setw(5) << ik + 1;
                 writeAmn << std::fixed << std::setprecision(12) << std::setw(18) << Amn(m, n, ik).real();
                 writeAmn << std::fixed << std::setprecision(12) << std::setw(18) << Amn(m, n, ik).imag();
-                //writeAmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(Amn(m, n, ik));
+                // writeAmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(Amn(m, n, ik));
                 writeAmn << std::endl;
             }
         }
@@ -65,7 +64,7 @@ write_Mmn(sddk::mdarray<std::complex<double>, 4>& M, sddk::mdarray<int, 2>& nnli
                 for (int m = 0; m < (int)M.size(0); m++) {
                     writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << M(m, n, ib, ik).real();
                     writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << M(m, n, ib, ik).imag();
-                    //writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(M(m, n, ib, ik));
+                    // writeMmn << std::fixed << std::setprecision(12) << std::setw(18) << abs(M(m, n, ib, ik));
                     writeMmn << std::endl;
                 }
             }
@@ -74,21 +73,21 @@ write_Mmn(sddk::mdarray<std::complex<double>, 4>& M, sddk::mdarray<int, 2>& nnli
     writeMmn.close();
 }
 
-
-void write_eig(sddk::mdarray<double, 2>& eigval) // TODO: is this temporary?
+void
+write_eig(sddk::mdarray<double, 2>& eigval) // TODO: is this temporary?
 {
     std::ofstream writeEig;
     writeEig.open("sirius.eig");
-    for(int ik=0; ik < (int)eigval.size(1); ik++){
-        for(int iband=0; iband < (int)eigval.size(0); iband++){
+    for (int ik = 0; ik < (int)eigval.size(1); ik++) {
+        for (int iband = 0; iband < (int)eigval.size(0); iband++) {
             writeEig << std::setw(5) << iband + 1;
             writeEig << std::setw(5) << ik + 1;
-            writeEig << std::fixed << std::setprecision(12) << std::setw(18) << eigval(iband,ik);
+            writeEig << std::fixed << std::setprecision(12) << std::setw(18) << eigval(iband, ik);
             writeEig << std::endl;
         }
     }
     writeEig.close();
-} 
+}
 
 /// Generate the necessary data for the W90 input.
 /** Wave-functions:
@@ -169,24 +168,24 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 
     /*
      * TASK 0: Find wavefunctions in the full brillouin zone from the ones in the irreducible wedge
-    */
-
+     */
 
     /*
      * STEP 0.1: Recover (k points) full Brillouin zone from Irreducible wedge when symmetry is on
-     * Eq. to use: 
+     * Eq. to use:
      *                           k_fbz = R.k+G = k_full + G
-     *   alias |          explanation             |                code variable 
-     * ------------------------------------------------------------------------------------------------------       
-     *     R   | point symmetry                   |  kset->ctx().unit_cell().symmetry()[ik2isym[ik]].spg_op.R  
+     *   alias |          explanation             |                code variable
+     * ------------------------------------------------------------------------------------------------------
+     *     R   | point symmetry                   |  kset->ctx().unit_cell().symmetry()[ik2isym[ik]].spg_op.R
      *     G   | reciprocal lattice vector        |  ik2ig[ik]
      *     k   | k vector in Irreducible Wedge    |  kset->kpoints_[ik2ir[ik]]
      *   k_fbz | k vector in First Brillouin zone |  kset_fbz.kpoints_[ik]
-     *  k_full | k vector after the rotation      |   
+     *  k_full | k vector after the rotation      |
      *--------------------------------------------------------------------------------------------------------
      * The equation to hold is:
-     *   kset_fbz.kpoints_[ik] = kset->ctx().unit_cell().symmetry()[ik2isym[ik]].spg_op.R*kset->kpoints_[ik2ir[ik]]+ik2ig[ik]  
-     *           k_fbz         =                          R                              .            k            +   G 
+     *   kset_fbz.kpoints_[ik] =
+     *kset->ctx().unit_cell().symmetry()[ik2isym[ik]].spg_op.R*kset->kpoints_[ik2ir[ik]]+ik2ig[ik] k_fbz         = R .
+     *k            +   G
      */
     std::vector<int> ik2ir;
     std::vector<int> ik2isym;
@@ -209,7 +208,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             // this loop supposes our BZ is in (-0.5,0.5]
             // TODO: use r3::reduce_coordinates() and subtract 0.5
             for (int ix : {0, 1, 2}) {
-                k_fbz[ix] = modf(k_full[ix]+0.5, &G[ix]);
+                k_fbz[ix] = modf(k_full[ix] + 0.5, &G[ix]);
                 k_fbz[ix] -= 0.5;
                 if (k_fbz[ix] <= -0.5) {
                     k_fbz[ix] += 1;
@@ -233,23 +232,22 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                                     -int(G[2]))); // note:: the minus is needed because k_fbz = R.k+G = k_full + G
             }
         } // end isym
-    }// end ik
+    }     // end ik
 
-    //remove additional G vector from k_temp. After this ik2ig is a set of {0,0,0}. We defined the FBZ uniquely.
+    // remove additional G vector from k_temp. After this ik2ig is a set of {0,0,0}. We defined the FBZ uniquely.
     for (int ik = 0; ik < (int)k_temp.size(); ik++) {
-        if(ik2ig[ik].length() > 0.01){
-            for(int ix : {0,1,2}){
+        if (ik2ig[ik].length() > 0.01) {
+            for (int ix : {0, 1, 2}) {
                 k_temp[ik][ix] -= ik2ig[ik][ix];
-                    ik2ig[ik][ix]-= ik2ig[ik][ix];
-                    }
+                ik2ig[ik][ix] -= ik2ig[ik][ix];
             }
+        }
     }
 
-    for(int ik=0; ik<(int)k_temp.size(); ik++){
+    for (int ik = 0; ik < (int)k_temp.size(); ik++) {
         kset_fbz.add_kpoint(k_temp[ik], 1.);
     }
     kset_fbz.initialize();
-
 
     auto ngridk = this->ctx().cfg().parameters().ngridk();
     if ((int)k_temp.size() != ngridk[0] * ngridk[1] * ngridk[2]) {
@@ -261,7 +259,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             kp.open("k.txt");
             for (int ik = 0; ik < k_temp.size(); ik++) {
                 kp << std::setw(5) << ik;
-                kp << std::setw(15) << std::setprecision(10) << std::fixed << k_temp[ik][0]; 
+                kp << std::setw(15) << std::setprecision(10) << std::fixed << k_temp[ik][0];
                 kp << std::setw(15) << std::setprecision(10) << std::fixed << k_temp[ik][1];
                 kp << std::setw(15) << std::setprecision(10) << std::fixed << k_temp[ik][2];
                 kp << std::setw(15) << std::setprecision(10) << this->kpoints_[ik2ir[ik]]->vk();
@@ -273,7 +271,6 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     }*/
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::unfold_fbz");
 
-    
     /*
      *  STEP 0.2: Reconstruct wfs and gvectors in the full bz from the one in Irreducible wedge.
      *  Eq to use:
@@ -283,211 +280,208 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      *  tau is the fractional translation associated with R in the point symmetry group.
      */
 
-
     int num_bands_tot = this->ctx().num_bands();
 
-
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
-    std::complex<double> imtwopi = std::complex<double>(0.,twopi);
+    std::complex<double> imtwopi = std::complex<double>(0., twopi);
     std::complex<double> exp1, exp2;
 
-    //if(ctx().comm().rank()==0)
+    // if(ctx().comm().rank()==0)
     //    for (int ik = 0; ik < kset_fbz.num_kpoints(); ik++)
-        //        std::cout << ik << " " << kset_fbz.spl_num_kpoints_.local_rank(ik) << std::endl; 
-    
+    //        std::cout << ik << " " << kset_fbz.spl_num_kpoints_.local_rank(ik) << std::endl;
+
     srand(time(NULL));
 
     for (int ik = 0; ik < kset_fbz.num_kpoints(); ik++) {
-        int& ik_ = ik2ir[ik];
-            int& isym = ik2isym[ik];
-        //send wf from rank that have it in IBZ to the one that have it in FBZ
-            int src_rank  = this->spl_num_kpoints_.local_rank(ik_);
-            int dest_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
-            bool use_mpi;
+        int& ik_  = ik2ir[ik];
+        int& isym = ik2isym[ik];
+        // send wf from rank that have it in IBZ to the one that have it in FBZ
+        int src_rank  = this->spl_num_kpoints_.local_rank(ik_);
+        int dest_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
+        bool use_mpi;
 
-            if(src_rank != kset_fbz.ctx().comm_k().rank() && dest_rank != kset_fbz.ctx().comm_k().rank()){
-                    continue;
+        if (src_rank != kset_fbz.ctx().comm_k().rank() && dest_rank != kset_fbz.ctx().comm_k().rank()) {
+            continue;
+        } else if (src_rank == kset_fbz.ctx().comm_k().rank() && dest_rank == kset_fbz.ctx().comm_k().rank()) {
+            use_mpi = false;
+        } else {
+            use_mpi = true;
         }
-            else if(src_rank == kset_fbz.ctx().comm_k().rank() && dest_rank == kset_fbz.ctx().comm_k().rank()){
-                    use_mpi = false;
-            }
-            else{
-                    use_mpi = true;
-            }
 
-            //std::cout << "rank: " << ctx().comm_k().rank() << " ik " << ik << " ik_ " << ik_ ;
-            //std::cout << " src_rank " << src_rank << " dest_rank" << dest_rank <<  " mpi: " << use_mpi << std::endl;
-            auto gkvec_IBZ = use_mpi  ? std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(this->get_gkvec(ik_, dest_rank)))
-                                      : this->kpoints_[ik_]->gkvec_;
-            sddk::mdarray<std::complex<double>, 2> temp;
-            if(use_mpi && kset_fbz.ctx().comm_k().rank() == dest_rank){
-                temp = sddk::mdarray<std::complex<double>, 2>(gkvec_IBZ->num_gvec(), num_bands_tot);
-            }
-        auto& wf_IBZ = use_mpi  ? temp
-                                    : this->kpoints_[ik_]->spinor_wave_functions_->pw_coeffs(wf::spin_index(0));        
-    
-        int tag = src_rank + kset_fbz.num_kpoints()*dest_rank;
-            if(kset_fbz.ctx().comm_k().rank() == src_rank){
-                    if(use_mpi){
-                            ctx().comm_k().send(this->kpoints_[ik_]->spinor_wave_functions().at(
-                                    sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-                                    this->kpoints_[ik_]->gkvec_->num_gvec() * num_bands_tot,
-                                    dest_rank, tag);    
-                    }
+        // std::cout << "rank: " << ctx().comm_k().rank() << " ik " << ik << " ik_ " << ik_ ;
+        // std::cout << " src_rank " << src_rank << " dest_rank" << dest_rank <<  " mpi: " << use_mpi << std::endl;
+        auto gkvec_IBZ = use_mpi ? std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(this->get_gkvec(ik_, dest_rank)))
+                                 : this->kpoints_[ik_]->gkvec_;
+        sddk::mdarray<std::complex<double>, 2> temp;
+        if (use_mpi && kset_fbz.ctx().comm_k().rank() == dest_rank) {
+            temp = sddk::mdarray<std::complex<double>, 2>(gkvec_IBZ->num_gvec(), num_bands_tot);
         }
-            if(kset_fbz.ctx().comm_k().rank() == dest_rank){
-                    if(use_mpi){
-                ctx().comm_k().recv(&wf_IBZ(0,0),
-                                    gkvec_IBZ->num_gvec()*num_bands_tot, src_rank, tag);        
-                    }
+        auto& wf_IBZ = use_mpi ? temp : this->kpoints_[ik_]->spinor_wave_functions_->pw_coeffs(wf::spin_index(0));
+
+        int tag = src_rank + kset_fbz.num_kpoints() * dest_rank;
+        if (kset_fbz.ctx().comm_k().rank() == src_rank) {
+            if (use_mpi) {
+                ctx().comm_k().send(this->kpoints_[ik_]->spinor_wave_functions().at(
+                                        sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+                                    this->kpoints_[ik_]->gkvec_->num_gvec() * num_bands_tot, dest_rank, tag);
+            }
+        }
+        if (kset_fbz.ctx().comm_k().rank() == dest_rank) {
+            if (use_mpi) {
+                ctx().comm_k().recv(&wf_IBZ(0, 0), gkvec_IBZ->num_gvec() * num_bands_tot, src_rank, tag);
+            }
 
             kset_fbz.kpoints_[ik]->spinor_wave_functions_ = std::make_unique<wf::Wave_functions<double>>(
-                    kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_bands_tot), ctx_.host_memory_t());
+                kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_bands_tot), ctx_.host_memory_t());
             kset_fbz.kpoints_[ik]->spinor_wave_functions_->zero(sddk::memory_t::host);
-        
-                auto& invR = kset_fbz.ctx().unit_cell().symmetry()[isym].spg_op.invR;
-            auto& tau = kset_fbz.ctx().unit_cell().symmetry()[isym].spg_op.t;
+
+            auto& invR = kset_fbz.ctx().unit_cell().symmetry()[isym].spg_op.invR;
+            auto& tau  = kset_fbz.ctx().unit_cell().symmetry()[isym].spg_op.t;
             r3::vector<int> invRG;
-            std::complex<double> exp1 = exp(-imtwopi*r3::dot(kset_fbz.kpoints_[ik]->vk(), tau));    //this is the exponential with the irreducible point
+            std::complex<double> exp1 =
+                exp(-imtwopi *
+                    r3::dot(kset_fbz.kpoints_[ik]->vk(), tau)); // this is the exponential with the irreducible point
             for (int ig = 0; ig < kset_fbz.kpoints_[ik]->gkvec_->num_gvec(); ig++) {
-                //WARNING!! I suppose always that ik2ig[ik]=0 so i don't have it in the equation.
-                invRG = r3::dot(kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig),invR);
-                                exp2 = exp(-imtwopi*r3::dot(kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig), tau)); 
+                // WARNING!! I suppose always that ik2ig[ik]=0 so i don't have it in the equation.
+                invRG = r3::dot(kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig), invR);
+                exp2 =
+                    exp(-imtwopi * r3::dot(kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig), tau));
                 int ig_ = gkvec_IBZ->index_by_gvec(invRG);
                 if (ig_ == -1) {
-                    std::cout << "WARNING !!!!! point G=" << invRG << " obtained from "<< kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig) <<
-                    " applying the rotation matrix " << invR << " has not been found!! " << std::endl;
+                    std::cout << "WARNING !!!!! point G=" << invRG << " obtained from "
+                              << kset_fbz.kpoints_[ik]->gkvec_->gvec<sddk::index_domain_t::local>(ig)
+                              << " applying the rotation matrix " << invR << " has not been found!! " << std::endl;
                     continue;
                 }
                 for (int iband = 0; iband < num_bands_tot; iband++) {
                     kset_fbz.kpoints_[ik]->spinor_wave_functions_->pw_coeffs(ig, wf::spin_index(0),
                                                                              wf::band_index(iband)) =
-                        exp1*exp2*wf_IBZ(ig_, iband)
-                                +std::complex<double>(rand()%1000,rand()%1000)*1.e-08;//needed to not get stuck on local minima. 
-                                                                                      //not working with 1.e-09
+                        exp1 * exp2 * wf_IBZ(ig_, iband) +
+                        std::complex<double>(rand() % 1000, rand() % 1000) * 1.e-08; // needed to not get stuck on local
+                                                                                     // minima. not working with 1.e-09
                 }
             }
-            }
-    }//end ik loop
+        }
+    } // end ik loop
 
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
 
-   /*
-    * STEP 0.3: Check that the wavefunctions diagonalize the Hamiltonian
-    * From H|u> = ES|u>
-    *           <u|H|u> = E<u|S|u> 
-    * but
-    *           <u|S|u> = 1
+    /*
+     * STEP 0.3: Check that the wavefunctions diagonalize the Hamiltonian
+     * From H|u> = ES|u>
+     *           <u|H|u> = E<u|S|u>
+     * but
+     *           <u|S|u> = 1
+     */
+    /*
+       std::cout << "calculating Hamiltonian...\n";
+        for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
+            int ik = kset_fbz.spl_num_kpoints_[ikloc];
+            std::cout << "k=" << ik << "\n";
+                auto Hk = H0(*kset_fbz.kpoints_[ik]);
+            auto hpsi = wave_function_factory(kset_fbz.ctx(), *kset_fbz.kpoints_[ik], wf::num_bands(num_bands_tot),
+       wf::num_mag_dims(0), false); auto spsi = wave_function_factory(kset_fbz.ctx(), *kset_fbz.kpoints_[ik],
+       wf::num_bands(num_bands_tot), wf::num_mag_dims(0), false);
+
+            //std::cout << kset_fbz.kpoints_[ik]->spinor_wave_functions_->ld() << "   " << hpsi->ld() << "   " <<
+       spsi->ld() << std::endl;
+            //std::cout << kset_fbz.kpoints_[ik]->beta_projectors().num_gkvec_loc() << std::endl;
+                Hk.apply_h_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_bands_tot),
+                                  *kset_fbz.kpoints_[ik]->spinor_wave_functions_, hpsi.get(), spsi.get());
+
+            la::dmatrix<std::complex<double>> UdaggerHU(num_bands_tot, num_bands_tot);
+
+
+
+            wf::inner(ctx_.spla_context(), kset_fbz.ctx_.processing_unit_memory_t(),
+                    wf::spin_range(0), *kset_fbz.kpoints_[ik]->spinor_wave_functions_,
+                    wf::band_range(0, num_bands_tot), *hpsi, wf::band_range(0, num_bands_tot),
+                    UdaggerHU, 0, 0);
+
+
+            la::dmatrix<std::complex<double>> UdaggerSU(num_bands_tot, num_bands_tot);
+            wf::inner(ctx_.spla_context(), kset_fbz.ctx_.processing_unit_memory_t(),
+                    wf::spin_range(0), *kset_fbz.kpoints_[ik]->spinor_wave_functions_,
+                    //wf::band_range(0, num_bands_tot), *hpsi, wf::band_range(0, num_bands_tot),
+                    wf::band_range(0, num_bands_tot), *spsi, wf::band_range(0, num_bands_tot),
+                    UdaggerSU, 0, 0);
+
+
+            bool Hdiag = true;
+            for(int i=0; i<num_bands_tot; i++){
+                for(int j=0; j<num_bands_tot; j++){
+                    if(i!=j && abs(UdaggerHU(i,j))>1.e-08){
+                        Hdiag = false;
+                    }
+                }
+            }
+
+
+            bool Sdiag = true;
+            bool Sunit = true;
+            for(int i=0; i<num_bands_tot; i++){
+                for(int j=0; j<num_bands_tot; j++){
+                    if(i!=j && abs(UdaggerSU(i,j))>1.e-08){
+                         Sdiag = false;
+                   }
+                            else if(i==j && abs(UdaggerSU(i,j)-1.)>1.e-08){
+                        Sunit = false;
+                    }
+                }
+            }
+
+
+            if(!Hdiag){
+                std::cout << "H at ik= " << ik << " is not diagonal!!\n";
+            }
+
+            if(!Sdiag){
+                std::cout << "S at ik= " << ik << " is not diagonal!!\n";
+            }
+
+            if(!Sunit){
+                std::cout << "S at ik= " << ik << " is not 1 on diagonals!!\n";
+            }
+
+        //    std::ofstream Hkk;
+        //    std::string name;
+        //    name = "Hk_"+ std::to_string(ik);
+        //    Hkk.open(name.c_str());
+        //    for(int i=0; i<num_bands_tot; i++){
+        //        for(int j=0; j<num_bands_tot; j++){
+        //            //Hkk << std::scientific << std::setw(20) << std::setprecision(9) << UdaggerHU(i,j);
+        //            Hkk << std::fixed << std::setw(6) << std::setprecision(1) << log10(abs(UdaggerHU(i,j)));
+        //        }
+        //        Hkk<< std::endl;
+        //    }
+        //    Hkk.close();
+        //    name = "Sk_"+ std::to_string(ik);
+        //    Hkk.open(name.c_str());
+        //    for(int i=0; i<num_bands_tot; i++){
+        //        for(int j=0; j<num_bands_tot; j++){
+        //            //Hkk << std::scientific << std::setw(20) << std::setprecision(9) << UdaggerSU(i,j);
+        //            Hkk << std::fixed << std::setw(6) << std::setprecision(1) << log10(abs(UdaggerSU(i,j)));
+        //        }
+        //        Hkk<< std::endl;
+        //    }
+        //    Hkk.close();
+
+        }
     */
-/*
-   std::cout << "calculating Hamiltonian...\n"; 
-    for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
-        int ik = kset_fbz.spl_num_kpoints_[ikloc];
-        std::cout << "k=" << ik << "\n";
-            auto Hk = H0(*kset_fbz.kpoints_[ik]);
-        auto hpsi = wave_function_factory(kset_fbz.ctx(), *kset_fbz.kpoints_[ik], wf::num_bands(num_bands_tot), wf::num_mag_dims(0), false);
-        auto spsi = wave_function_factory(kset_fbz.ctx(), *kset_fbz.kpoints_[ik], wf::num_bands(num_bands_tot), wf::num_mag_dims(0), false);
 
-        //std::cout << kset_fbz.kpoints_[ik]->spinor_wave_functions_->ld() << "   " << hpsi->ld() << "   " << spsi->ld() << std::endl;
-        //std::cout << kset_fbz.kpoints_[ik]->beta_projectors().num_gkvec_loc() << std::endl; 
-            Hk.apply_h_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_bands_tot), 
-                              *kset_fbz.kpoints_[ik]->spinor_wave_functions_, hpsi.get(), spsi.get());
-
-        la::dmatrix<std::complex<double>> UdaggerHU(num_bands_tot, num_bands_tot);
-
-
-
-        wf::inner(ctx_.spla_context(), kset_fbz.ctx_.processing_unit_memory_t(), 
-                wf::spin_range(0), *kset_fbz.kpoints_[ik]->spinor_wave_functions_, 
-                wf::band_range(0, num_bands_tot), *hpsi, wf::band_range(0, num_bands_tot), 
-                UdaggerHU, 0, 0);
-
-
-        la::dmatrix<std::complex<double>> UdaggerSU(num_bands_tot, num_bands_tot);
-        wf::inner(ctx_.spla_context(), kset_fbz.ctx_.processing_unit_memory_t(), 
-                wf::spin_range(0), *kset_fbz.kpoints_[ik]->spinor_wave_functions_, 
-                //wf::band_range(0, num_bands_tot), *hpsi, wf::band_range(0, num_bands_tot), 
-                wf::band_range(0, num_bands_tot), *spsi, wf::band_range(0, num_bands_tot), 
-                UdaggerSU, 0, 0);
-
-
-        bool Hdiag = true;
-        for(int i=0; i<num_bands_tot; i++){
-            for(int j=0; j<num_bands_tot; j++){
-                if(i!=j && abs(UdaggerHU(i,j))>1.e-08){
-                    Hdiag = false;
-                }
-            }
-        }
-
-
-        bool Sdiag = true;
-        bool Sunit = true;
-        for(int i=0; i<num_bands_tot; i++){
-            for(int j=0; j<num_bands_tot; j++){
-                if(i!=j && abs(UdaggerSU(i,j))>1.e-08){
-                     Sdiag = false;
-               }
-                        else if(i==j && abs(UdaggerSU(i,j)-1.)>1.e-08){
-                    Sunit = false;
-                }
-            }
-        }
-
-
-        if(!Hdiag){
-            std::cout << "H at ik= " << ik << " is not diagonal!!\n";
-        }
-
-        if(!Sdiag){
-            std::cout << "S at ik= " << ik << " is not diagonal!!\n";
-        }
-
-        if(!Sunit){
-            std::cout << "S at ik= " << ik << " is not 1 on diagonals!!\n";
-        }
-    
-    //    std::ofstream Hkk;
-    //    std::string name;
-    //    name = "Hk_"+ std::to_string(ik);
-    //    Hkk.open(name.c_str());
-    //    for(int i=0; i<num_bands_tot; i++){
-    //        for(int j=0; j<num_bands_tot; j++){
-    //            //Hkk << std::scientific << std::setw(20) << std::setprecision(9) << UdaggerHU(i,j);
-    //            Hkk << std::fixed << std::setw(6) << std::setprecision(1) << log10(abs(UdaggerHU(i,j)));
-    //        }
-    //        Hkk<< std::endl;
-    //    }
-    //    Hkk.close();
-    //    name = "Sk_"+ std::to_string(ik);
-    //    Hkk.open(name.c_str());
-    //    for(int i=0; i<num_bands_tot; i++){
-    //        for(int j=0; j<num_bands_tot; j++){
-    //            //Hkk << std::scientific << std::setw(20) << std::setprecision(9) << UdaggerSU(i,j);
-    //            Hkk << std::fixed << std::setw(6) << std::setprecision(1) << log10(abs(UdaggerSU(i,j)));
-    //        }
-    //        Hkk<< std::endl;
-    //    }
-    //    Hkk.close();
-
-    }
-*/      
-        
-        
     /*
      * TASK 1: Use wannier_setup_ to initialize all the variables needed to calculate Mmn and Amn
      */
-
 
     /*
      * STEP 1.1: Allocate memory for all the variables needed in wannier_setup_. Initialize the input variables
      *           with the values they have in SIRIUS
      */
 
-    //scalar variables definition
-    size_t length_seedname = 100;    // aux variable for the length of a string
-    int32_t num_kpts;                // input
-    //int32_t num_bands_tot;           // input
+    // scalar variables definition
+    size_t length_seedname = 100; // aux variable for the length of a string
+    int32_t num_kpts;             // input
+    // int32_t num_bands_tot;           // input
     int32_t num_atoms;               // input
     size_t length_atomic_symbol = 3; // aux, as expected from wannier90 lib
     bool gamma_only;                 // input
@@ -498,37 +492,36 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     int32_t num_nnmax = 12;          // aux variable for max number of neighbors
                                      // fixed, as in pw2wannier or in wannier90 docs
 
-
-    //scalar variables initialization
-    num_kpts      = kset_fbz.num_kpoints();
-    //num_bands_tot = this->get<double>(spl_num_kpoints_[0])->spinor_wave_functions().num_wf();
-    num_atoms     = this->ctx().unit_cell().num_atoms();
-    gamma_only    = this->ctx().gamma_point();
-    spinors       = false; // right now, generate_wave_functions only works with noncolin!
+    // scalar variables initialization
+    num_kpts = kset_fbz.num_kpoints();
+    // num_bands_tot = this->get<double>(spl_num_kpoints_[0])->spinor_wave_functions().num_wf();
+    num_atoms  = this->ctx().unit_cell().num_atoms();
+    gamma_only = this->ctx().gamma_point();
+    spinors    = false; // right now, generate_wave_functions only works with noncolin!
     // WARNING we need to compare with .win file!!!
 
-    //non-scalar variables definition + space allocation
-    char seedname[length_seedname];                          // input
-    sddk::mdarray<int32_t ,1> mp_grid(3);                    //input
-    sddk::mdarray<double, 2> real_lattice(3, 3);             // input BOHR!
-    sddk::mdarray<double, 2> recip_lattice(3, 3);            // input BOHR^{-1}!
-    sddk::mdarray<double,2> kpt_lattice(3,num_kpts);         //input
-    char atomic_symbol[num_atoms][3];                        // input
-    sddk::mdarray<double, 2> atoms_cart(3, num_atoms);       // input
-    sddk::mdarray<int,2> nnlist(num_kpts,num_nnmax);         // output
-    sddk::mdarray<int32_t ,3> nncell(3,num_kpts,num_nnmax);  // output
-    sddk::mdarray<double, 2> proj_site(3, num_bands_tot);    // output
-    sddk::mdarray<int32_t, 1> proj_l(num_bands_tot);         // output
-    sddk::mdarray<int32_t, 1> proj_m(num_bands_tot);         // output
-    sddk::mdarray<int32_t, 1> proj_radial(num_bands_tot);    // output
-    sddk::mdarray<double, 2> proj_z(3, num_bands_tot);       // output
-    sddk::mdarray<double, 2> proj_x(3, num_bands_tot);       // output
-    sddk::mdarray<double, 1> proj_zona(num_bands_tot);       // output
-    sddk::mdarray<int32_t, 1> exclude_bands(num_bands_tot);  // output
-    sddk::mdarray<int32_t, 1> proj_s(num_bands_tot);         // output - optional
-    sddk::mdarray<double, 2> proj_s_qaxis(3, num_bands_tot); // output - optional
+    // non-scalar variables definition + space allocation
+    char seedname[length_seedname];                           // input
+    sddk::mdarray<int32_t, 1> mp_grid(3);                     // input
+    sddk::mdarray<double, 2> real_lattice(3, 3);              // input BOHR!
+    sddk::mdarray<double, 2> recip_lattice(3, 3);             // input BOHR^{-1}!
+    sddk::mdarray<double, 2> kpt_lattice(3, num_kpts);        // input
+    char atomic_symbol[num_atoms][3];                         // input
+    sddk::mdarray<double, 2> atoms_cart(3, num_atoms);        // input
+    sddk::mdarray<int, 2> nnlist(num_kpts, num_nnmax);        // output
+    sddk::mdarray<int32_t, 3> nncell(3, num_kpts, num_nnmax); // output
+    sddk::mdarray<double, 2> proj_site(3, num_bands_tot);     // output
+    sddk::mdarray<int32_t, 1> proj_l(num_bands_tot);          // output
+    sddk::mdarray<int32_t, 1> proj_m(num_bands_tot);          // output
+    sddk::mdarray<int32_t, 1> proj_radial(num_bands_tot);     // output
+    sddk::mdarray<double, 2> proj_z(3, num_bands_tot);        // output
+    sddk::mdarray<double, 2> proj_x(3, num_bands_tot);        // output
+    sddk::mdarray<double, 1> proj_zona(num_bands_tot);        // output
+    sddk::mdarray<int32_t, 1> exclude_bands(num_bands_tot);   // output
+    sddk::mdarray<int32_t, 1> proj_s(num_bands_tot);          // output - optional
+    sddk::mdarray<double, 2> proj_s_qaxis(3, num_bands_tot);  // output - optional
 
-    //non-scalar variables initialization
+    // non-scalar variables initialization
     std::string aux = "silicon";
     strcpy(seedname, aux.c_str());
     length_seedname = aux.length();
@@ -539,10 +532,10 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             recip_lattice(ivec, icoor) = ctx().unit_cell().reciprocal_lattice_vectors()(icoor, ivec) / bohr_radius;
         }
     }
-    
+
     for (int ix : {0, 1, 2}) {
         for (int ik = 0; ik < num_kpts; ik++) {
-            auto& kk = kset_fbz.kpoints_[ik]->vk_;
+            auto& kk            = kset_fbz.kpoints_[ik]->vk_;
             kpt_lattice(ix, ik) = kk[ix];
         }
     }
@@ -562,13 +555,12 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      * STEP 1.2: Call wannier_setup_ from wannier library. This calculates two important arrays:
      * nnlist(ik,ib) is the index of the neighbor ib of the vector at index ik
      * nncell(ix,ik,ib) is the ix-th coordinate of the G vector that brings back the vector defined in nnlist(ik,ib)
-     * nntot is the total number of neighbors. 
+     * nntot is the total number of neighbors.
      * to the first Brillouin zone. Eq. to hold:
      *             kpoints_[nnlist(ik,ib)] = kpoints_[ik] + (neighbor b) - nncell(.,ik,ib)
      */
     std::cout << "I am process " << ctx().comm().rank() << " and I go inside the wannier_setup\n";
-    
-    
+
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
     if (ctx().comm().rank() == 0) {
         std::cout << "starting wannier_setup_\n";
@@ -602,8 +594,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                        length_seedname,                                // aux-length of a string
                        length_atomic_symbol);                          // aux-length of a string
 
-
-                       //std::cout << "center_w:: " << proj_site << std::endl;
+        // std::cout << "center_w:: " << proj_site << std::endl;
     }
     ctx().comm_k().bcast(&nntot, 1, 0);
     ctx().comm_k().bcast(nnlist.at(sddk::memory_t::host), num_kpts * num_nnmax, 0);
@@ -615,18 +606,15 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     std::cout << "\n\n\n\n\n\n";
     std::cout << "wannier_setup succeeded. rank " << ctx().comm().rank() << "\n";
 
-
-
-    if(kset_fbz.spl_num_kpoints_.local_size()!=0){//this is needed because if not the memory could go out of bound
+    if (kset_fbz.spl_num_kpoints_.local_size() != 0) { // this is needed because if not the memory could go out of bound
         if (num_bands != kset_fbz.kpoints_[kset_fbz.spl_num_kpoints_[0]]->spinor_wave_functions().num_wf()) {
             std::cout << "\n\n\n\nBAD!!! num_bands from w90 different than number of wfs in SIRIUS!! The program will "
                          "break!!\n\n\n\n"
                       << std::endl;
         }
     }
-    
-    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
     num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
 
@@ -636,27 +624,26 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      *                    M_{mn}(k,b) = <u_{mk}|u_{n,k+b}>
      */
 
-
     /*
      * STEP 2.1: Calculate A.
-     *    Amn(k) = <psi_{mk} | S | w_{nk}> = conj(<w_{nk} | S | psi_{mk}>)      
+     *    Amn(k) = <psi_{mk} | S | w_{nk}> = conj(<w_{nk} | S | psi_{mk}>)
      *           Here we calculate the projectors over all the atomic orbitals in the pseudopotential
-    */
+     */
 
-    sddk::mdarray<std::complex<double>, 3> A(num_bands, num_wann, kset_fbz.num_kpoints()); 
+    sddk::mdarray<std::complex<double>, 3> A(num_bands, num_wann, kset_fbz.num_kpoints());
     A.zero();
-    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann);     //matrix at the actual k point 
+    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann); // matrix at the actual k point
     Ak.zero();
 
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0); // we need to understand which orbitals to pick up, I am using every here
-    int num_atomic_wf  = kset_fbz.ctx().unit_cell().num_ps_atomic_wf().first;
+    int num_atomic_wf = kset_fbz.ctx().unit_cell().num_ps_atomic_wf().first;
 
     std::unique_ptr<wf::Wave_functions<double>> Swf_k;
-    //sddk::mdarray<std::complex<double>, 3> psidotpsi(num_bands, num_bands, num_kpts); // sirius2wannier
-    //sddk::mdarray<std::complex<double>, 3> atdotat(num_wann, num_wann, num_kpts);     // sirius2wannier
-    //psidotpsi.zero();
-    //atdotat.zero();
+    // sddk::mdarray<std::complex<double>, 3> psidotpsi(num_bands, num_bands, num_kpts); // sirius2wannier
+    // sddk::mdarray<std::complex<double>, 3> atdotat(num_wann, num_wann, num_kpts);     // sirius2wannier
+    // psidotpsi.zero();
+    // atdotat.zero();
     std::cout << "Calculating Amn...\n";
     auto mem = kset_fbz.ctx_.processing_unit_memory_t();
 
@@ -665,31 +652,31 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
         int ik = kset_fbz.spl_num_kpoints_[ikloc];
 
-        //calculate atomic orbitals + orthogonalization
+        // calculate atomic orbitals + orthogonalization
         auto q_op = (kset_fbz.kpoints_[ik]->unit_cell_.augment())
-                            ? std::make_unique<Q_operator<double>>(kset_fbz.kpoints_[ik]->ctx_)
-                            : nullptr;
-        //kset_fbz.kpoints_[ik]->beta_projectors().prepare();
+                        ? std::make_unique<Q_operator<double>>(kset_fbz.kpoints_[ik]->ctx_)
+                        : nullptr;
+        // kset_fbz.kpoints_[ik]->beta_projectors().prepare();
         Swf_k = std::make_unique<wf::Wave_functions<double>>(kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0),
-                                                                 wf::num_bands(num_bands), ctx_.host_memory_t());
+                                                             wf::num_bands(num_bands), ctx_.host_memory_t());
 
-        auto bp_gen = kset_fbz.kpoints_[ik]->beta_projectors().make_generator();
+        auto bp_gen    = kset_fbz.kpoints_[ik]->beta_projectors().make_generator();
         auto bp_coeffs = bp_gen.prepare();
 
-        apply_S_operator<double, std::complex<double>>(
-                mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen, bp_coeffs,
-                (kset_fbz.kpoints_[ik]->spinor_wave_functions()), q_op.get(), *Swf_k);
+        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
+                                                       bp_coeffs, (kset_fbz.kpoints_[ik]->spinor_wave_functions()),
+                                                       q_op.get(), *Swf_k);
 
         // allocate space for atomic wfs, same that for hubbard
         // we should move the following 2 lines in initialize() function of kpoint clas
         kset_fbz.kpoints_[ik]->atomic_wave_functions_ = std::make_unique<wf::Wave_functions<double>>(
-                kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_atomic_wf), ctx_.host_memory_t());
+            kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_atomic_wf), ctx_.host_memory_t());
         kset_fbz.kpoints_[ik]->atomic_wave_functions_S_ = std::make_unique<wf::Wave_functions<double>>(
-                kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_atomic_wf), ctx_.host_memory_t());
-        //defining pw expansion of atomic wave functions, defined in pseudopotential file
+            kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_atomic_wf), ctx_.host_memory_t());
+        // defining pw expansion of atomic wave functions, defined in pseudopotential file
         kset_fbz.kpoints_[ik]->generate_atomic_wave_functions(
-                atoms, [&](int iat) { return &kset_fbz.ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
-                kset_fbz.ctx_.ps_atomic_wf_ri(), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_));
+            atoms, [&](int iat) { return &kset_fbz.ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
+            kset_fbz.ctx_.ps_atomic_wf_ri(), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_));
 
         /*
          *  Pick up only needed atomic functions, with their proper linear combinations
@@ -701,9 +688,10 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         }
        //reconstruct map i-th wann func -> atom, l, m
         std::vector<std::array<int,3>> atoms_info(num_wann);
-        
+
         auto needed_atomic_wf = std::make_unique<wf::Wave_functions<double>>(
-                               kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_wann), ctx_.host_memory_t());
+                               kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_wann),
+       ctx_.host_memory_t());
 
         for(int iw=0; iw<num_wann; iw++)
         {
@@ -728,15 +716,14 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         }//end definition of atoms_info
         */
 
-        // TODO: what is going on here? 
+        // TODO: what is going on here?
         // it this code is taken from generate_hubbard_orbitals() then it should be reused
         // no code repetition is allowed
 
-
         // ORTHOGONALIZING -CHECK HUBBARD FUNCTION
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann),
-                bp_gen, bp_coeffs, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_), q_op.get(),
-                *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_));
+        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
+                                                       bp_coeffs, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_),
+                                                       q_op.get(), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_));
 
         int BS = kset_fbz.ctx_.cyclic_block_size();
         la::dmatrix<std::complex<double>> ovlp(num_wann, num_wann, kset_fbz.ctx_.blacs_grid(), BS, BS);
@@ -746,16 +733,16 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 
         auto B = std::get<0>(inverse_sqrt(ovlp, num_wann));
         wf::transform(kset_fbz.ctx_.spla_context(), mem, *B, 0, 0, 1.0,
-                      *(kset_fbz.kpoints_[ik]->atomic_wave_functions_), wf::spin_index(0),
-                       wf::band_range(0, num_wann), 0.0, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_),
-                       wf::spin_index(0), wf::band_range(0, num_wann));
+                      *(kset_fbz.kpoints_[ik]->atomic_wave_functions_), wf::spin_index(0), wf::band_range(0, num_wann),
+                      0.0, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_), wf::spin_index(0),
+                      wf::band_range(0, num_wann));
         wf::copy(mem, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_), wf::spin_index(0),
                  wf::band_range(0, num_wann), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_), wf::spin_index(0),
                  wf::band_range(0, num_wann));
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann),
-                bp_gen, bp_coeffs, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_), q_op.get(),
-                *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_));
-        //END of the orthogonalization. 
+        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
+                                                       bp_coeffs, *(kset_fbz.kpoints_[ik]->atomic_wave_functions_),
+                                                       q_op.get(), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_));
+        // END of the orthogonalization.
 
         wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), kset_fbz.kpoints_[ik]->spinor_wave_functions(),
                   wf::band_range(0, num_bands), *(kset_fbz.kpoints_[ik]->atomic_wave_functions_S_),
@@ -765,95 +752,89 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         std::copy(Ak.at(sddk::memory_t::host, 0, 0), Ak.at(sddk::memory_t::host, num_bands - 1, num_wann - 1) + 1,
                   A.at(sddk::memory_t::host, 0, 0, ik));
 
-
         std::cout << "Calculated Amn in rank " << ctx().comm().rank() << " ik: " << ik << std::endl;
     } // end ik loop for Amn
-   
 
-    for(int ik=0; ik<num_kpts; ik++){
+    for (int ik = 0; ik < num_kpts; ik++) {
         int local_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
-        ctx().comm_k().bcast(A.at(sddk::memory_t::host,0,0,ik), num_bands*num_wann, local_rank);
+        ctx().comm_k().bcast(A.at(sddk::memory_t::host, 0, 0, ik), num_bands * num_wann, local_rank);
         ctx().comm_k().barrier();
     }
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
 
-
-
-
     if (ctx().comm().rank() == 0) {
         write_Amn(A);
     }
-    
 
     /*
      * STEP 2.2: Send-receive messages from k+b to k
      *           The "owner" of Mmn(k,b) will be the task containing k, so we send k+b to k
      */
 
-        std::vector<std::shared_ptr<fft::Gvec>> gkpb_mpi;//auto gkvec_kpb = use_mpi  ? std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)))
-        std::vector<sddk::mdarray<std::complex<double>, 2>> wkpb_mpi;
-    std::vector<int> ikpb2ik_(num_kpts,-1);
-    
+    std::vector<std::shared_ptr<fft::Gvec>>
+        gkpb_mpi; // auto gkvec_kpb = use_mpi  ?
+                  // std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)))
+    std::vector<sddk::mdarray<std::complex<double>, 2>> wkpb_mpi;
+    std::vector<int> ikpb2ik_(num_kpts, -1);
+
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::send_k+b");
-    int index=-1; //to keep track of the index to use
+    int index = -1; // to keep track of the index to use
     for (int ik = 0; ik < num_kpts; ik++) {
         for (int ib = 0; ib < nntot; ib++) {
-                int ikpb = nnlist(ik,ib)-1;
-            int src_rank = kset_fbz.spl_num_kpoints_.local_rank(ikpb);
+            int ikpb      = nnlist(ik, ib) - 1;
+            int src_rank  = kset_fbz.spl_num_kpoints_.local_rank(ikpb);
             int dest_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
-            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << std::endl;
-                bool use_mpi = ( src_rank==kset_fbz.ctx().comm_k().rank() )^( dest_rank==kset_fbz.ctx().comm_k().rank());//xor operations: it is true if 01 or 10
-            if(!use_mpi){
+            // std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" <<
+            // src_rank << " dest_rank=" << dest_rank << std::endl;
+            bool use_mpi = (src_rank == kset_fbz.ctx().comm_k().rank()) ^
+                           (dest_rank == kset_fbz.ctx().comm_k().rank()); // xor operations: it is true if 01 or 10
+            if (!use_mpi) {
                 continue;
             }
-            
+
             bool found;
-            int tag = src_rank + kset_fbz.num_kpoints()*kset_fbz.num_kpoints()*dest_rank;
-            if(dest_rank == kset_fbz.ctx().comm_k().rank()){
-                found= ikpb2ik_[ikpb] != -1;//std::find(ikpb2ik_.begin(), ikpb2ik_.end(), ikpb) != ikpb2ik_.end(); //false if ikpb is not in ikpb2ik_ 
-                                kset_fbz.ctx().comm_k().send(&found,
-                                                 1,
-                                                src_rank, tag);
-            }else{
-                kset_fbz.ctx().comm_k().recv(&found,
-                                                 1,
-                                             dest_rank, tag);   
+            int tag = src_rank + kset_fbz.num_kpoints() * kset_fbz.num_kpoints() * dest_rank;
+            if (dest_rank == kset_fbz.ctx().comm_k().rank()) {
+                found = ikpb2ik_[ikpb] != -1; // std::find(ikpb2ik_.begin(), ikpb2ik_.end(), ikpb) != ikpb2ik_.end();
+                                              // //false if ikpb is not in ikpb2ik_
+                kset_fbz.ctx().comm_k().send(&found, 1, src_rank, tag);
+            } else {
+                kset_fbz.ctx().comm_k().recv(&found, 1, dest_rank, tag);
             }
-            if(found){
+            if (found) {
                 continue;
             }
-            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "TOBEDONE" << std::endl;
-            tag = src_rank + kset_fbz.num_kpoints()*dest_rank;
-            if(kset_fbz.ctx().comm_k().rank()==src_rank){
+            // std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" <<
+            // src_rank << " dest_rank=" << dest_rank << "TOBEDONE" << std::endl;
+            tag = src_rank + kset_fbz.num_kpoints() * dest_rank;
+            if (kset_fbz.ctx().comm_k().rank() == src_rank) {
                 auto trash = kset_fbz.get_gkvec(ikpb, dest_rank);
                 ctx().comm_k().send(kset_fbz.kpoints_[ikpb]->spinor_wave_functions().at(
-                                                    sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-                                                    kset_fbz.kpoints_[ikpb]->gkvec_->num_gvec() * num_bands_tot,
-                                                    dest_rank, tag);
-            }
-            else{
+                                        sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+                                    kset_fbz.kpoints_[ikpb]->gkvec_->num_gvec() * num_bands_tot, dest_rank, tag);
+            } else {
                 index++;
                 gkpb_mpi.emplace_back();
-                gkpb_mpi[index] = std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)));
+                gkpb_mpi[index] =
+                    std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)));
 
-                ikpb2ik_[ikpb]=index;
+                ikpb2ik_[ikpb] = index;
                 wkpb_mpi.push_back(sddk::mdarray<std::complex<double>, 2>(gkpb_mpi[index]->num_gvec(), num_bands_tot));
-                ctx().comm_k().recv(& wkpb_mpi[index](0,0),
-                                        gkpb_mpi[index]->num_gvec()*num_bands_tot, src_rank, tag);      
+                ctx().comm_k().recv(&wkpb_mpi[index](0, 0), gkpb_mpi[index]->num_gvec() * num_bands_tot, src_rank, tag);
             }
-            //std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" << src_rank << " dest_rank=" << dest_rank << "DONE"<< std::endl;
+            // std::cout << "rank="<< ctx().comm().rank() << " ik=" << ik << " ikpb=" << ikpb << " src_rank=" <<
+            // src_rank << " dest_rank=" << dest_rank << "DONE"<< std::endl;
 
-        }//end ib
-    }//end ik
+        } // end ib
+    }     // end ik
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::send_k+b");
 
-
     /*
-     * STEP 2.3: Calculate M. 
+     * STEP 2.3: Calculate M.
      * Strategy: for each couple k,k+b we reshuffle the indices c_{k+b}(G) such that
-     * they are aligned with the one at c_{k}(G). 
-     * Some care must be taken when nncell(_,ik,ib) != {0,0,0}. 
-     * In this case     kpoints[nnlist(ik,ib)] = kpoints[k] + b - nncell(_,ik,ib) 
+     * they are aligned with the one at c_{k}(G).
+     * Some care must be taken when nncell(_,ik,ib) != {0,0,0}.
+     * In this case     kpoints[nnlist(ik,ib)] = kpoints[k] + b - nncell(_,ik,ib)
      * and
      *              c_{n,k+b} = c_{n, nnlist(ik,ib)} (G+nncell(_,ik,ib))
      */
@@ -861,95 +842,94 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      *      Mmn(k,b) = <u_{mk} | S | u_{n,k+b}> = conj(<u_{n,k+b} | S | u_{m,k}>)      *
      ***********************************************************************************/
 
-    sddk::mdarray<std::complex<double>, 4> M(num_bands, num_bands, nntot, kset_fbz.num_kpoints()); 
+    sddk::mdarray<std::complex<double>, 4> M(num_bands, num_bands, nntot, kset_fbz.num_kpoints());
     M.zero();
     la::dmatrix<std::complex<double>> Mbk(num_bands, num_bands);
-    Mbk.zero(); 
+    Mbk.zero();
 
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::calculate_Mmn");
     for (int ikloc = 0; ikloc < kset_fbz.spl_num_kpoints_.local_size(); ikloc++) {
-        int ik = kset_fbz.spl_num_kpoints_[ikloc];
+        int ik    = kset_fbz.spl_num_kpoints_[ikloc];
         auto q_op = (kset_fbz.kpoints_[ik]->unit_cell_.augment())
-                    ? std::make_unique<Q_operator<double>>(kset_fbz.kpoints_[ik]->ctx_)
-                    : nullptr;
+                        ? std::make_unique<Q_operator<double>>(kset_fbz.kpoints_[ik]->ctx_)
+                        : nullptr;
 
-        auto bp_gen = kset_fbz.kpoints_[ik]->beta_projectors().make_generator();
+        auto bp_gen    = kset_fbz.kpoints_[ik]->beta_projectors().make_generator();
         auto bp_coeffs = bp_gen.prepare();
         Swf_k = std::make_unique<wf::Wave_functions<double>>(kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0),
                                                              wf::num_bands(num_bands), ctx_.host_memory_t());
-        apply_S_operator<double, std::complex<double>>(
-                        mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen, bp_coeffs,
-                        (kset_fbz.kpoints_[ik]->spinor_wave_functions()), q_op.get(), *Swf_k);
-            
+        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
+                                                       bp_coeffs, (kset_fbz.kpoints_[ik]->spinor_wave_functions()),
+                                                       q_op.get(), *Swf_k);
+
         std::cout << "Calculating Mmn. ik = " << ik << std::endl;
         for (int ib = 0; ib < nntot; ib++) {
-                int ikpb = nnlist(ik,ib)-1;
-            bool use_mpi = ( kset_fbz.ctx().comm_k().rank() != kset_fbz.spl_num_kpoints_.local_rank(ikpb) );
+            int ikpb     = nnlist(ik, ib) - 1;
+            bool use_mpi = (kset_fbz.ctx().comm_k().rank() != kset_fbz.spl_num_kpoints_.local_rank(ikpb));
 
-                auto& gkvec_kpb = use_mpi  ? gkpb_mpi[ikpb2ik_[ikpb]]//std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)))
-                                          : kset_fbz.kpoints_[ikpb]->gkvec_;
-                //sddk::mdarray<std::complex<double>, 2> temp;
-                //if(use_mpi && kset_fbz.ctx().comm_k().rank() == dest_rank){
-                //      temp = sddk::mdarray<std::complex<double>, 2>(gkvec_kpb->num_gvec(), num_bands_tot);
-                //}
-                auto& wf_kpb = use_mpi  ? wkpb_mpi[ikpb2ik_[ikpb]]//temp
-                                        : kset_fbz.kpoints_[ikpb]->spinor_wave_functions_->pw_coeffs(wf::spin_index(0));        
-    /*
-                int tag = src_rank + kset_fbz.num_kpoints()*dest_rank;
-                if(kset_fbz.ctx().comm_k().rank() == src_rank){
-                            if(use_mpi){
-                                    ctx().comm_k().send(kset_fbz.kpoints_[ikpb]->spinor_wave_functions().at(
-                                                    sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-                                                    kset_fbz.kpoints_[ikpb]->gkvec_->num_gvec() * num_bands_tot,
-                                                    dest_rank, tag);    
+            auto& gkvec_kpb = use_mpi ? gkpb_mpi[ikpb2ik_[ikpb]] // std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb,
+                                                                 // dest_rank)))
+                                      : kset_fbz.kpoints_[ikpb]->gkvec_;
+            // sddk::mdarray<std::complex<double>, 2> temp;
+            // if(use_mpi && kset_fbz.ctx().comm_k().rank() == dest_rank){
+            //      temp = sddk::mdarray<std::complex<double>, 2>(gkvec_kpb->num_gvec(), num_bands_tot);
+            //}
+            auto& wf_kpb = use_mpi ? wkpb_mpi[ikpb2ik_[ikpb]] // temp
+                                   : kset_fbz.kpoints_[ikpb]->spinor_wave_functions_->pw_coeffs(wf::spin_index(0));
+            /*
+                        int tag = src_rank + kset_fbz.num_kpoints()*dest_rank;
+                        if(kset_fbz.ctx().comm_k().rank() == src_rank){
+                                    if(use_mpi){
+                                            ctx().comm_k().send(kset_fbz.kpoints_[ikpb]->spinor_wave_functions().at(
+                                                            sddk::memory_t::host, 0, wf::spin_index(0),
+               wf::band_index(0)), kset_fbz.kpoints_[ikpb]->gkvec_->num_gvec() * num_bands_tot, dest_rank, tag);
+                                }
                         }
+                        if(kset_fbz.ctx().comm_k().rank() == dest_rank){
+                                    if(use_mpi){
+                                        ctx().comm_k().recv(&wf_kpb(0,0),
+                                                gkvec_kpb->num_gvec()*num_bands_tot, src_rank, tag);
+                                }
+        */
+            std::unique_ptr<wf::Wave_functions<double>> aux_psi_kpb;
+            aux_psi_kpb = std::make_unique<wf::Wave_functions<double>>(
+                kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_bands), ctx_.host_memory_t());
+            aux_psi_kpb->zero(sddk::memory_t::host);
+            r3::vector<int> G;
+            for (int ig = 0; ig < kset_fbz.kpoints_[ik]->gkvec_.get()->num_gvec(); ig++) {
+                // compute the total vector to use to get the index in kpb
+                G = kset_fbz.kpoints_[ik]->gkvec_.get()->gvec<sddk::index_domain_t::local>(ig);
+                G += r3::vector<int>(nncell(0, ik, ib), nncell(1, ik, ib), nncell(2, ik, ib));
+                int ig_ = gkvec_kpb->index_by_gvec(G); // kpoints_[ikpb]->gkvec_->index_by_gvec(G);
+                if (ig_ == -1) {
+                    continue;
                 }
-                if(kset_fbz.ctx().comm_k().rank() == dest_rank){
-                            if(use_mpi){
-                                ctx().comm_k().recv(&wf_kpb(0,0),
-                                        gkvec_kpb->num_gvec()*num_bands_tot, src_rank, tag);    
-                        }
-*/
-                std::unique_ptr<wf::Wave_functions<double>> aux_psi_kpb;
-                aux_psi_kpb = std::make_unique<wf::Wave_functions<double>>(
-                        kset_fbz.kpoints_[ik]->gkvec_, wf::num_mag_dims(0), wf::num_bands(num_bands), ctx_.host_memory_t());
-                                aux_psi_kpb->zero(sddk::memory_t::host);
-                r3::vector<int> G;
-                for (int ig = 0; ig < kset_fbz.kpoints_[ik]->gkvec_.get()->num_gvec(); ig++) {
-                    // compute the total vector to use to get the index in kpb
-                    G = kset_fbz.kpoints_[ik]->gkvec_.get()->gvec<sddk::index_domain_t::local>(ig);
-                    G += r3::vector<int>(nncell(0, ik, ib), nncell(1, ik, ib),
-                                                nncell(2, ik, ib)); 
-                    int ig_ = gkvec_kpb->index_by_gvec(G); // kpoints_[ikpb]->gkvec_->index_by_gvec(G);
-                    if (ig_ == -1) {
-                        continue;
-                                }
-                                for (int iband = 0; iband < num_bands; iband++) {
-                                        aux_psi_kpb->pw_coeffs(ig, wf::spin_index(0), wf::band_index(iband)) =
-                                                wf_kpb(ig_, iband);
-                                }
+                for (int iband = 0; iband < num_bands; iband++) {
+                    aux_psi_kpb->pw_coeffs(ig, wf::spin_index(0), wf::band_index(iband)) = wf_kpb(ig_, iband);
+                }
 
-                        } // end ig
-                
-                        wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *aux_psi_kpb, wf::band_range(0, num_bands),
-                          *Swf_k, wf::band_range(0, num_bands), Mbk, 0, 0);
-                        for (int n = 0; n < num_bands; n++) {
-                                for (int m = 0; m < num_bands; m++) {
-                                        M(m, n, ib, ik) = std::conj(Mbk(n, m));
-                                }
-                        }
-                //}
-            } // end ib
-        }     // end ik
+            } // end ig
+
+            wf::inner(ctx_.spla_context(), mem, wf::spin_range(0), *aux_psi_kpb, wf::band_range(0, num_bands), *Swf_k,
+                      wf::band_range(0, num_bands), Mbk, 0, 0);
+            for (int n = 0; n < num_bands; n++) {
+                for (int m = 0; m < num_bands; m++) {
+                    M(m, n, ib, ik) = std::conj(Mbk(n, m));
+                }
+            }
+            //}
+        } // end ib
+    }     // end ik
 
     std::cout << "Mmn calculated.\n";
     std::cout << "starting broadcast...\n";
-    for(int ik=0; ik<num_kpts; ik++){
+    for (int ik = 0; ik < num_kpts; ik++) {
         int local_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
-                kset_fbz.ctx().comm_k().bcast(M.at(sddk::memory_t::host,0,0,0,ik), num_bands*num_bands*nntot, local_rank);
-                ctx().comm_k().barrier();
+        kset_fbz.ctx().comm_k().bcast(M.at(sddk::memory_t::host, 0, 0, 0, ik), num_bands * num_bands * nntot,
+                                      local_rank);
+        ctx().comm_k().barrier();
     }
-    
+
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::calculate_Mmn");
 
     std::cout << "writing Mmn..\n";
@@ -957,38 +937,33 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         write_Mmn(M, nnlist, nncell);
     }
 
-
-
-    //Initialize eigval with the value of the energy dispersion
-    sddk::mdarray<double,2>               eigval(num_bands, num_kpts);                     //input
-    for(int ik = 0; ik < num_kpts; ik++) {
-        int ik_ = ik2ir[ik];
+    // Initialize eigval with the value of the energy dispersion
+    sddk::mdarray<double, 2> eigval(num_bands, num_kpts); // input
+    for (int ik = 0; ik < num_kpts; ik++) {
+        int ik_        = ik2ir[ik];
         int local_rank = this->spl_num_kpoints_.local_rank(ik_);
-        if(kset_fbz.ctx().comm_k().rank()==local_rank){
-                for(int iband=0; iband<num_bands; iband++){
-                        eigval(iband, ik) = this->kpoints_[ik_]->band_energy(iband, 0)*ha2ev;//sirius saves energy in
-                                                                                             //Hartree, we need it in eV
-                        }
-                }
-                kset_fbz.ctx().comm_k().bcast(eigval.at(sddk::memory_t::host,0,ik), num_bands, local_rank);
-    }  
-        
-    
+        if (kset_fbz.ctx().comm_k().rank() == local_rank) {
+            for (int iband = 0; iband < num_bands; iband++) {
+                eigval(iband, ik) = this->kpoints_[ik_]->band_energy(iband, 0) * ha2ev; // sirius saves energy in
+                                                                                        // Hartree, we need it in eV
+            }
+        }
+        kset_fbz.ctx().comm_k().bcast(eigval.at(sddk::memory_t::host, 0, ik), num_bands, local_rank);
+    }
 
-    if(kset_fbz.ctx().comm_k().rank() == 0){
+    if (kset_fbz.ctx().comm_k().rank() == 0) {
         // compute wannier orbitals
         // define additional arguments
-        //sddk::mdarray<double,2>               eigval(num_bands, num_kpts);                     //input
-        sddk::mdarray<std::complex<double>,3> U_matrix(num_wann, num_wann, num_kpts);          //output
-        sddk::mdarray<std::complex<double>,3> U_dis(num_bands, num_wann, num_kpts);            //output
-        sddk::mdarray<bool,2>                 lwindow(num_bands, num_kpts);                    //output
-        sddk::mdarray<double,2>               wannier_centres(3, num_wann);                    //output
-        sddk::mdarray<double,1>               wannier_spreads(num_wann);                       //output
-        sddk::mdarray<double,1>               spread_loc(3);                                   //output-op
-
+        // sddk::mdarray<double,2>               eigval(num_bands, num_kpts);                     //input
+        sddk::mdarray<std::complex<double>, 3> U_matrix(num_wann, num_wann, num_kpts); // output
+        sddk::mdarray<std::complex<double>, 3> U_dis(num_bands, num_wann, num_kpts);   // output
+        sddk::mdarray<bool, 2> lwindow(num_bands, num_kpts);                           // output
+        sddk::mdarray<double, 2> wannier_centres(3, num_wann);                         // output
+        sddk::mdarray<double, 1> wannier_spreads(num_wann);                            // output
+        sddk::mdarray<double, 1> spread_loc(3);                                        // output-op
 
         write_eig(eigval);
-    
+
         U_matrix.zero();
         U_dis.zero();
         lwindow.zero();
@@ -996,52 +971,21 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         wannier_spreads.zero();
         spread_loc.zero();
 
-    PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_run");
+        PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_run");
 
         std::cout << "Starting wannier_run..." << std::endl;
-        wannier_run_(seedname,
-                     this->ctx().cfg().parameters().ngridk().data(),
-                        &num_kpts,
-                        real_lattice.at(sddk::memory_t::host),
-                        recip_lattice.at(sddk::memory_t::host),
-                        kpt_lattice.at(sddk::memory_t::host),
-                        &num_bands,
-                        &num_wann,
-                        &nntot,
-                        &num_atoms,
-                        atomic_symbol,
-                        atoms_cart.at(sddk::memory_t::host),
-                        &gamma_only,
-                        M.at(sddk::memory_t::host),
-                        A.at(sddk::memory_t::host),
-                        eigval.at(sddk::memory_t::host),
-                        U_matrix.at(sddk::memory_t::host),
-                        U_dis.at(sddk::memory_t::host),
-                        lwindow.at(sddk::memory_t::host),
-                        wannier_centres.at(sddk::memory_t::host),
-                        wannier_spreads.at(sddk::memory_t::host),
-                        spread_loc.at(sddk::memory_t::host),
-                        length_seedname,
-                        length_atomic_symbol);
-    std::cout << "Wannier_run succeeded. " << std::endl;
+        wannier_run_(seedname, this->ctx().cfg().parameters().ngridk().data(), &num_kpts,
+                     real_lattice.at(sddk::memory_t::host), recip_lattice.at(sddk::memory_t::host),
+                     kpt_lattice.at(sddk::memory_t::host), &num_bands, &num_wann, &nntot, &num_atoms, atomic_symbol,
+                     atoms_cart.at(sddk::memory_t::host), &gamma_only, M.at(sddk::memory_t::host),
+                     A.at(sddk::memory_t::host), eigval.at(sddk::memory_t::host), U_matrix.at(sddk::memory_t::host),
+                     U_dis.at(sddk::memory_t::host), lwindow.at(sddk::memory_t::host),
+                     wannier_centres.at(sddk::memory_t::host), wannier_spreads.at(sddk::memory_t::host),
+                     spread_loc.at(sddk::memory_t::host), length_seedname, length_atomic_symbol);
+        std::cout << "Wannier_run succeeded. " << std::endl;
     }
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_run");
 }
 
-} // namespace sirius
-  // Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
-  // All rights reserved.
-  //
-  // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
-  // the following conditions are met:
-  //
-  // 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
-  //    following disclaimer.
-  // 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
-  //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-  //
-  // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-  // WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-  // PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-
+}
 #endif // SIRIUS_WANNIER90
