@@ -202,11 +202,13 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     for (int ik = 0; ik < this->num_kpoints(); ik++) {
         for (int isym = 0; isym < ctx().unit_cell().symmetry().size(); isym++) {
             auto& R     = ctx().unit_cell().symmetry()[isym].spg_op.R; // point symmetry rotation in crystal coordinates
+            // TODO: name k_full is misleading, it is a rotated k-point, not a "full" k-point.
             auto k_full = r3::dot(this->kpoints_[ik]->vk(), R);
             r3::vector<double> k_fbz;
             r3::vector<double> G; // it must be integer, but here we need double for modf
             // this loop supposes our BZ is in (-0.5,0.5]
             // TODO: use r3::reduce_coordinates() and subtract 0.5
+            // TODO: why [-0.5, 0.5) interval and not [0, 1)? why this constrain is imposed?
             for (int ix : {0, 1, 2}) {
                 k_fbz[ix] = modf(k_full[ix] + 0.5, &G[ix]);
                 k_fbz[ix] -= 0.5;
@@ -215,6 +217,9 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                     G[ix] -= 1;
                 }
             }
+            // k_full = k_fbz + G, correct?
+
+
             bool found = false; // TODO: use C++ iterators and std::find() function
             for (int ik_ = 0; ik_ < (int)k_temp.size(); ik_++) {
                 if ((k_temp[ik_] - k_fbz).length() < 1.e-05) {
@@ -224,17 +229,21 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             }
             if (!found) {
                 k_temp.push_back(k_fbz);
-                ik2ir.push_back(ik);
+                ik2ir.push_back(ik); // mapping from ik_full to ik(IBZ).
                 ir2ik[ik].push_back(ik2ir.size() - 1);
                 ik2isym.push_back(isym);
                 ik2ig.push_back(
                     r3::vector<int>(-int(G[0]), -int(G[1]),
                                     -int(G[2]))); // note:: the minus is needed because k_fbz = R.k+G = k_full + G
+                // TODO: something here definitely needs to be stored as a data structure to not have so many
+                // store: invR, t(tau), G, ik (from IBZ)
+                // plane arrays
             }
         } // end isym
     }     // end ik
 
     // remove additional G vector from k_temp. After this ik2ig is a set of {0,0,0}. We defined the FBZ uniquely.
+    // TODO: this step is not clear; check with Giovanni
     for (int ik = 0; ik < (int)k_temp.size(); ik++) {
         if (ik2ig[ik].length() > 0.01) {
             for (int ix : {0, 1, 2}) {
@@ -247,7 +256,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     for (int ik = 0; ik < (int)k_temp.size(); ik++) {
         kset_fbz.add_kpoint(k_temp[ik], 1.);
     }
-    kset_fbz.initialize();
+    kset_fbz.initialize(); // TODO: creation a full BZ from the IBZ should become a standalone function (lines 195-250)
 
     auto ngridk = this->ctx().cfg().parameters().ngridk();
     if ((int)k_temp.size() != ngridk[0] * ngridk[1] * ngridk[2]) {
@@ -292,7 +301,10 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 
     srand(time(NULL));
 
+    // TODO: this has to be moved to a separate function
+    // document the math
     for (int ik = 0; ik < kset_fbz.num_kpoints(); ik++) {
+        // is ik_ an index of irreducible point?
         int& ik_  = ik2ir[ik];
         int& isym = ik2isym[ik];
         // send wf from rank that have it in IBZ to the one that have it in FBZ
@@ -300,6 +312,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         int dest_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
         bool use_mpi;
 
+        // TODO: simplify; always assume MPI communication is involved (use_mpi=true), otherwise the code becomes less readable
         if (src_rank != kset_fbz.ctx().comm_k().rank() && dest_rank != kset_fbz.ctx().comm_k().rank()) {
             continue;
         } else if (src_rank == kset_fbz.ctx().comm_k().rank() && dest_rank == kset_fbz.ctx().comm_k().rank()) {
