@@ -546,10 +546,12 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         }
     }
 
-    for (int ix : {0, 1, 2}) {
-        for (int ik = 0; ik < num_kpts; ik++) {
-            auto& kk            = kset_fbz.kpoints_[ik]->vk_;
-            kpt_lattice(ix, ik) = kk[ix];
+    // TODO: check if kpt_lattice can be of type std::vector<r3::vector> (not top priority)
+    // general rule: ths more std:: containers you can use - the better
+
+    for (int ik = 0; ik < num_kpts; ik++) {
+        for (int ix : {0, 1, 2}) {
+            kpt_lattice(ix, ik) = kset_fbz.kpoints_[ik]->vk_[ix];
         }
     }
 
@@ -609,6 +611,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 
         // std::cout << "center_w:: " << proj_site << std::endl;
     }
+    // TODO: if ctx().comm().rank() == 0 calls wannier90, ctx().comm() must do a broadcast (not comm_k)
     ctx().comm_k().bcast(&nntot, 1, 0);
     ctx().comm_k().bcast(nnlist.at(sddk::memory_t::host), num_kpts * num_nnmax, 0);
     ctx().comm_k().bcast(nncell.at(sddk::memory_t::host), 3 * num_kpts * num_nnmax, 0);
@@ -732,6 +735,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         // TODO: what is going on here?
         // it this code is taken from generate_hubbard_orbitals() then it should be reused
         // no code repetition is allowed
+        // also, why do we need orthogonalized atomic orbitals for the initial guess?
 
         // ORTHOGONALIZING -CHECK HUBBARD FUNCTION
         apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
@@ -762,6 +766,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                   wf::band_range(0, num_wann), Ak, 0, 0);
         // already in the correct way, we just copy in the bigger array. (alternative:: create dmatrix with an index
         // as multiindex to avoid copies) note!! we need +1 to copy the last element
+        // TODO: better use Ak.begin(), Ak.end()
         std::copy(Ak.at(sddk::memory_t::host, 0, 0), Ak.at(sddk::memory_t::host, num_bands - 1, num_wann - 1) + 1,
                   A.at(sddk::memory_t::host, 0, 0, ik));
 
@@ -771,7 +776,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     for (int ik = 0; ik < num_kpts; ik++) {
         int local_rank = kset_fbz.spl_num_kpoints_.local_rank(ik);
         ctx().comm_k().bcast(A.at(sddk::memory_t::host, 0, 0, ik), num_bands * num_wann, local_rank);
-        ctx().comm_k().barrier();
+        ctx().comm_k().barrier(); // TODO: not needed, bcast is a blocking call already
     }
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
 
@@ -783,7 +788,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      * STEP 2.2: Send-receive messages from k+b to k
      *           The "owner" of Mmn(k,b) will be the task containing k, so we send k+b to k
      */
-
+    // TODO: this has to go into separate function
     std::vector<std::shared_ptr<fft::Gvec>>
         gkpb_mpi; // auto gkvec_kpb = use_mpi  ?
                   // std::make_shared<fft::Gvec>(static_cast<fft::Gvec>(kset_fbz.get_gkvec(ikpb, dest_rank)))
@@ -854,7 +859,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     /***********************************************************************************
      *      Mmn(k,b) = <u_{mk} | S | u_{n,k+b}> = conj(<u_{n,k+b} | S | u_{m,k}>)      *
      ***********************************************************************************/
-
+    // TODO: again, this is a seprate function
     sddk::mdarray<std::complex<double>, 4> M(num_bands, num_bands, nntot, kset_fbz.num_kpoints());
     M.zero();
     la::dmatrix<std::complex<double>> Mbk(num_bands, num_bands);
@@ -949,6 +954,9 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     if (ctx().comm().rank() == 0) {
         write_Mmn(M, nnlist, nncell);
     }
+
+    // TODO: k_point set has band_energy member; it is better to put the logic of creating band_energies
+    // for the full BZ when kset_fbz is created
 
     // Initialize eigval with the value of the energy dispersion
     sddk::mdarray<double, 2> eigval(num_bands, num_kpts); // input
