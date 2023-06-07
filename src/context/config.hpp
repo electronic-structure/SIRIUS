@@ -1511,16 +1511,16 @@ class config_t
             dict_["/nlcg/tol"_json_pointer] = tol__;
         }
         /// NLCG processing unit
-        inline auto procssing_unit() const
+        inline auto processing_unit() const
         {
-            return dict_.at("/nlcg/procssing_unit"_json_pointer).get<std::string>();
+            return dict_.at("/nlcg/processing_unit"_json_pointer).get<std::string>();
         }
-        inline void procssing_unit(std::string procssing_unit__)
+        inline void processing_unit(std::string processing_unit__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/nlcg/procssing_unit"_json_pointer] = procssing_unit__;
+            dict_["/nlcg/processing_unit"_json_pointer] = processing_unit__;
         }
       private:
         nlohmann::json& dict_;
