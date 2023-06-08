@@ -42,7 +42,9 @@ jobs:
           cd q-e-sirius
           mkdir build
           cd build
+          export sirius_DIR=$(spack location -i sirius)
           spack --color always build-env $DEVSPEC -- cmake .. -DQE_ENABLE_SIRIUS=1
+          spack --color always build-env $DEVSPEC -- make
 
   build_cuda:
     runs-on: ubuntu-latest
