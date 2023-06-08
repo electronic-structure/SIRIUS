@@ -29,7 +29,8 @@
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [2,2,2]
+        "ngridk" : [2,2,2],
+        "wannier" : true
     },
 
     "iterative_solver" : {

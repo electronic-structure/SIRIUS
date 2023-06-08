@@ -497,8 +497,8 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     // int32_t num_bands_tot;           // input
     int32_t num_atoms;               // input
     size_t length_atomic_symbol = 3; // aux, as expected from wannier90 lib
-    bool gamma_only;                 // input
-    bool spinors;                    // input
+    fortran_bool gamma_only;                 // input
+    fortran_bool spinors;                    // input
     int32_t num_bands;               // output
     int32_t num_wann;                // output
     int32_t nntot;                   // output
@@ -978,7 +978,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         // sddk::mdarray<double,2>               eigval(num_bands, num_kpts);                     //input
         sddk::mdarray<std::complex<double>, 3> U_matrix(num_wann, num_wann, num_kpts); // output
         sddk::mdarray<std::complex<double>, 3> U_dis(num_bands, num_wann, num_kpts);   // output
-        sddk::mdarray<bool, 2> lwindow(num_bands, num_kpts);                           // output
+        sddk::mdarray<fortran_bool, 2> lwindow(num_bands, num_kpts);                           // output
         sddk::mdarray<double, 2> wannier_centres(3, num_wann);                         // output
         sddk::mdarray<double, 1> wannier_spreads(num_wann);                            // output
         sddk::mdarray<double, 1> spread_loc(3);                                        // output-op
