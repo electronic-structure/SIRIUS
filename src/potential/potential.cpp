@@ -37,7 +37,7 @@ Potential::Potential(Simulation_context& ctx__)
     PROFILE("sirius::Potential");
 
     if (!ctx_.initialized()) {
-        TERMINATE("Simulation_context is not initialized");
+        RTE_THROW("Simulation_context is not initialized");
     }
 
     lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
@@ -334,9 +334,7 @@ void Potential::save()
 {
     effective_potential().hdf5_write(storage_file_name, "effective_potential");
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        std::stringstream s;
-        s << "effective_magnetic_field/" << j;
-        effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
+        effective_magnetic_field(j).hdf5_write(storage_file_name,  "effective_magnetic_field/" + std::to_string(j));
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
         sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
@@ -356,15 +354,15 @@ void Potential::load()
     int ngv;
     fin.read("/parameters/num_gvec", &ngv, 1);
     if (ngv != ctx_.gvec().num_gvec()) {
-        TERMINATE("wrong number of G-vectors");
+        RTE_THROW("wrong number of G-vectors");
     }
     sddk::mdarray<int, 2> gv(3, ngv);
     fin.read("/parameters/gvec", gv);
 
-    effective_potential().hdf5_read(fin["effective_potential"], gv);
+    effective_potential().hdf5_read(storage_file_name, "effective_potential", gv);
 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        effective_magnetic_field(j).hdf5_read(fin["effective_magnetic_field"][j], gv);
+        effective_magnetic_field(j).hdf5_read(storage_file_name, "effective_magnetic_field/" + std::to_string(j), gv);
     }
 
     if (ctx_.full_potential()) {
@@ -372,9 +370,8 @@ void Potential::load()
     }
 
     if (!ctx_.full_potential()) {
-        sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_only);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
-            fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+            fin["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
         }
     }
 }

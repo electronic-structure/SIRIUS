@@ -185,38 +185,39 @@ class Periodic_function
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    std::stringstream s;
-                    s << "f_mt_" << ia;
-                    fout[path__].write(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+                    fout[path__].write("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                            mt_component_[ia].size());
                 }
             }
         }
     }
 
-    void hdf5_read(sddk::HDF5_tree h5f__, sddk::mdarray<int, 2>& gvec__)
+    void hdf5_read(std::string storage_file_name__, std::string path__, sddk::mdarray<int, 2> const& gvec__)
     {
+        sddk::HDF5_tree h5f(storage_file_name__, sddk::hdf5_access_t::read_only);
+
+        /* read the PW coeffs. */
         std::vector<std::complex<T>> v(gvec_.num_gvec());
-        h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
+        h5f[path__].read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
-        std::map<r3::vector<int>, int> local_gvec_mapping;
-
-        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            auto G                = gvec_.gvec<sddk::index_domain_t::local>(igloc);
-            local_gvec_mapping[G] = igloc;
-        }
-
+        sddk::mdarray<int, 1> igmap(gvec_.count());
         for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
             r3::vector<int> G(&gvec__(0, ig));
-            if (local_gvec_mapping.count(G) != 0) {
-                this->rg().f_pw_local(local_gvec_mapping[G]) = v[ig];
+            /* locl index in a new (current) layout */
+            auto igloc = gvec_.index_by_gvec(G) - gvec_.offset();
+            /* only one rank will store the G-vector index ig */
+            if (igloc >= 0 && igloc < gvec_.count()) {
+                igmap[igloc] = ig;
             }
+        }
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            this->rg().f_pw_local(igloc) = v[igmap[igloc]];
         }
 
         if (ctx_.full_potential()) {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                std::stringstream s;
-                s << "f_mt_" << ia;
-                h5f__.read(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+                h5f[path__].read("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                        mt_component_[ia].size());
             }
         }
     }
