@@ -15,7 +15,6 @@
   * [Configuring SIRIUS](#configuring-sirius)
   * [Developing and debugging SIRIUS](#developing-and-debugging-sirius)
   * [Manual installation](#manual-installation)
-  * [Archlinux](#archlinux)
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
@@ -163,9 +162,6 @@ Use `-DCREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python mo
 To link against Intel MKL use `-DUSE_MKL=On`. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. Building tests requires `-DBUILD_TESTING=On`.
 
 By default example applications are built. This can be turned off via `-DBUILD_APPS=Off`, which is recommended when just building Fortran bindings.
-
-### Arch Linux
-Arch Linux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
 
 ### Installation on Piz Daint
 Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and
