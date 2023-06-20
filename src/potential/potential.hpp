@@ -611,9 +611,9 @@ class Potential : public Field4D
     /// Generate effective potential and magnetic field from charge density and magnetization.
     void generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
-    void save();
+    void save(std::string name__);
 
-    void load();
+    void load(std::string name__);
 
     void update_atomic_potential();
 

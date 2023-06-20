@@ -525,7 +525,7 @@ class Simulation_context : public Simulation_parameters
         return comm_ortho_fft_coarse_;
     }
 
-    void create_storage_file() const;
+    void create_storage_file(std::string name__) const;
 
     inline std::string const& start_time_tag() const
     {

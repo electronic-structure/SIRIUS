@@ -5854,63 +5854,83 @@ end subroutine sirius_generate_d_operator_matrix
 !
 !> @brief Save DFT ground state (density and potential)
 !> @param [in] gs_handler Ground-state handler.
+!> @param [in] file_name Name of the file that stores the saved data.
 !> @param [out] error_code Error code
-subroutine sirius_save_state(gs_handler,error_code)
+subroutine sirius_save_state(gs_handler,file_name,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+character(*), target, intent(in) :: file_name
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: file_name_ptr
+character(C_CHAR), target, allocatable :: file_name_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_save_state_aux(gs_handler,error_code)&
+subroutine sirius_save_state_aux(gs_handler,file_name,error_code)&
 &bind(C, name="sirius_save_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
+type(C_PTR), value :: file_name
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+file_name_ptr = C_NULL_PTR
+allocate(file_name_c_type(len(file_name)+1))
+file_name_c_type = string_f2c(file_name)
+file_name_ptr = C_LOC(file_name_c_type)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_save_state_aux(gs_handler_ptr,error_code_ptr)
+call sirius_save_state_aux(gs_handler_ptr,file_name_ptr,error_code_ptr)
+deallocate(file_name_c_type)
 end subroutine sirius_save_state
 
 !
 !> @brief Save DFT ground state (density and potential)
 !> @param [in] gs_handler Ground-state handler.
+!> @param [in] file_name Name of the file that stores the saved data.
 !> @param [out] error_code Error code
-subroutine sirius_load_state(gs_handler,error_code)
+subroutine sirius_load_state(gs_handler,file_name,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+character(*), target, intent(in) :: file_name
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: file_name_ptr
+character(C_CHAR), target, allocatable :: file_name_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_load_state_aux(gs_handler,error_code)&
+subroutine sirius_load_state_aux(gs_handler,file_name,error_code)&
 &bind(C, name="sirius_load_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
+type(C_PTR), value :: file_name
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+file_name_ptr = C_NULL_PTR
+allocate(file_name_c_type(len(file_name)+1))
+file_name_c_type = string_f2c(file_name)
+file_name_ptr = C_LOC(file_name_c_type)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_load_state_aux(gs_handler_ptr,error_code_ptr)
+call sirius_load_state_aux(gs_handler_ptr,file_name_ptr,error_code_ptr)
+deallocate(file_name_c_type)
 end subroutine sirius_load_state
 
 

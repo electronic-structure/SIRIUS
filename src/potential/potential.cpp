@@ -330,14 +330,14 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     }
 }
 
-void Potential::save()
+void Potential::save(std::string name__)
 {
-    effective_potential().hdf5_write(storage_file_name, "effective_potential");
+    effective_potential().hdf5_write(name__, "effective_potential");
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        effective_magnetic_field(j).hdf5_write(storage_file_name,  "effective_magnetic_field/" + std::to_string(j));
+        effective_magnetic_field(j).hdf5_write(name__,  "effective_magnetic_field/" + std::to_string(j));
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
-        sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
+        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
             if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
                 fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
@@ -347,9 +347,9 @@ void Potential::save()
     comm_.barrier();
 }
 
-void Potential::load()
+void Potential::load(std::string name__)
 {
-    sddk::HDF5_tree fin(storage_file_name, sddk::hdf5_access_t::read_only);
+    sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
 
     int ngv;
     fin.read("/parameters/num_gvec", &ngv, 1);
@@ -359,10 +359,10 @@ void Potential::load()
     sddk::mdarray<int, 2> gv(3, ngv);
     fin.read("/parameters/gvec", gv);
 
-    effective_potential().hdf5_read(storage_file_name, "effective_potential", gv);
+    effective_potential().hdf5_read(name__, "effective_potential", gv);
 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        effective_magnetic_field(j).hdf5_read(storage_file_name, "effective_magnetic_field/" + std::to_string(j), gv);
+        effective_magnetic_field(j).hdf5_read(name__, "effective_magnetic_field/" + std::to_string(j), gv);
     }
 
     if (ctx_.full_potential()) {

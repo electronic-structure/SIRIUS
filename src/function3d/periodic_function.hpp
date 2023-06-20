@@ -177,7 +177,7 @@ class Periodic_function
     }
 
     /** \todo write and read distributed functions */
-    void hdf5_write(std::string storage_file_name__, std::string path__)
+    void hdf5_write(std::string storage_file_name__, std::string path__) const
     {
         auto v = this->rg().gather_f_pw();
         if (ctx_.comm().rank() == 0) {
