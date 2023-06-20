@@ -958,6 +958,8 @@ Unit_cell::init_paw()
     }
 
     spl_num_paw_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+    spl_num_paw_atoms1_ = sirius::experimental::splindex_block<sirius::experimental::paw_atom_index_t>(num_paw_atoms(),
+            sirius::experimental::n_blocks(comm_.size()), sirius::experimental::block_id(comm_.rank()));
 }
 
 std::pair<int, std::vector<int>>

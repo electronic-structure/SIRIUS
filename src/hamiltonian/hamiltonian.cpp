@@ -158,9 +158,8 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
     sddk::mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
-        int ia            = psi__.spl_num_atoms()[ialoc];
+        auto ia           = psi__.spl_num_atoms().global_index(atom_index_t::local(ialoc));
         auto& atom        = unit_cell_.atom(ia);
-        //int offset        = psi__.offset_mt_coeffs(ialoc);
         int mt_basis_size = atom.type().mt_basis_size();
 
         zm.zero();
@@ -220,7 +219,7 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
     wf::spin_index s(0);
 
     for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
-        int ia     = psi__.spl_num_atoms()[ialoc];
+        auto ia    = psi__.spl_num_atoms().global_index(atom_index_t::local(ialoc));
         auto& atom = unit_cell_.atom(ia);
         wf::atom_index a(ialoc);
 
