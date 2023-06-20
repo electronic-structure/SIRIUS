@@ -251,7 +251,7 @@ class Density : public Field4D
                                  PAW_density<double>, Hubbard_matrix>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    void generate_paw_atom_density(int iapaw__);
+    void generate_paw_atom_density(paw_atom_index_t::local iapaw__);
 
     /// Initialize PAW density matrix.
     void init_density_matrix_for_paw();
@@ -311,13 +311,14 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_core_charge_density");
 
-        for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
-            int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
-            unit_cell_.atom_symmetry_class(ic).generate_core_charge_density(ctx_.core_relativity());
+        auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
+
+        for (auto it : spl_idx) {
+            unit_cell_.atom_symmetry_class(it.i).generate_core_charge_density(ctx_.core_relativity());
         }
 
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
+        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+            auto rank = spl_idx.location(ic).ib;
             unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
         }
     }
@@ -442,9 +443,9 @@ class Density : public Field4D
         return *rho_pseudo_core_;
     }
 
-    inline auto const& density_mt(int ialoc) const
+    inline auto const& density_mt(atom_index_t::local ialoc__) const
     {
-        int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
+        auto ia = ctx_.unit_cell().spl_num_atoms(ialoc__);
         return rho().mt()[ia];
     }
 

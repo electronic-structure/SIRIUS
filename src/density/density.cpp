@@ -436,7 +436,7 @@ void
 Density::init_density_matrix_for_paw()
 {
     for (int ipaw = 0; ipaw < unit_cell_.num_paw_atoms(); ipaw++) {
-        int ia = unit_cell_.paw_atom_index(ipaw);
+        int ia = unit_cell_.paw_atom_index(sirius::experimental::paw_atom_index_t::global(ipaw));
 
         auto& dm = density_matrix(ia);
         dm.zero();
@@ -479,10 +479,10 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(int ialoc__)
+Density::generate_paw_atom_density(sirius::experimental::paw_atom_index_t::local ialoc__)
 {
-    int ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
-    int ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
+    auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
+    auto ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
 
@@ -571,7 +571,7 @@ Density::generate_paw_loc_density()
 
     #pragma omp parallel for
     for (int ialoc = 0; ialoc < unit_cell_.spl_num_paw_atoms().local_size(); ialoc++) {
-        generate_paw_atom_density(ialoc);
+        generate_paw_atom_density(sirius::experimental::paw_atom_index_t::local(ialoc));
     }
 }
 

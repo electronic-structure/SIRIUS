@@ -68,10 +68,10 @@ class dmatrix: public sddk::matrix<T>
     BLACS_grid const* blacs_grid_{nullptr};
 
     /// Split index of matrix rows.
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_row_;
+    sddk::splindex_block_cyclic<> spl_row_;
 
     /// Split index of matrix columns.
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_col_;
+    sddk::splindex_block_cyclic<> spl_col_;
 
     /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
@@ -153,13 +153,13 @@ class dmatrix: public sddk::matrix<T>
     /// Return local number of rows for a given MPI rank.
     inline int num_rows_local(int rank) const
     {
-        return spl_row_.local_size(rank);
+        return spl_row_.local_size(block_id(rank));
     }
 
     /// Return global row index in the range [0, num_rows) by the local index in the range [0, num_rows_local).
     inline int irow(int irow_loc) const
     {
-        return spl_row_[irow_loc];
+        return spl_row_.global_index(irow_loc);
     }
 
     inline int num_cols() const
@@ -175,13 +175,13 @@ class dmatrix: public sddk::matrix<T>
 
     inline int num_cols_local(int rank) const
     {
-        return spl_col_.local_size(rank);
+        return spl_col_.local_size(block_id(rank));
     }
 
     /// Inindex of column in global matrix.
     inline int icol(int icol_loc) const
     {
-        return spl_col_[icol_loc];
+        return spl_col_.global_index(icol_loc);
     }
 
     inline int const* descriptor() const
@@ -221,11 +221,11 @@ class dmatrix: public sddk::matrix<T>
     {
         int m0, m1, n0, n1;
         if (blacs_grid_ != nullptr) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            sddk::splindex_block_cyclic<> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+            sddk::splindex_block_cyclic<> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
 
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            sddk::splindex_block_cyclic<> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+            sddk::splindex_block_cyclic<> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
 
             m0 = spl_r0.local_size();
             m1 = spl_r1.local_size();
@@ -382,9 +382,9 @@ class dmatrix: public sddk::matrix<T>
         T cs{0};
 
         if (blacs_grid_ != nullptr) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(m__, this->blacs_grid().num_ranks_row(),
+            sddk::splindex_block_cyclic<> spl_row(m__, this->blacs_grid().num_ranks_row(),
                                                        this->blacs_grid().rank_row(), this->bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(n__, this->blacs_grid().num_ranks_col(),
+            sddk::splindex_block_cyclic<> spl_col(n__, this->blacs_grid().num_ranks_col(),
                                                        this->blacs_grid().rank_col(), this->bs_col());
             for (int i = 0; i < spl_col.local_size(); i++) {
                 for (int j = 0; j < spl_row.local_size(); j++) {
