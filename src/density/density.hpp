@@ -716,20 +716,20 @@ class Density : public Field4D
 
     }
 
-    void save()
+    void save(std::string name__) const
     {
-        rho().hdf5_write(storage_file_name, "density");
+        rho().hdf5_write(name__, "density");
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             std::stringstream s;
             s << "magnetization/" << j;
-            mag(j).hdf5_write(storage_file_name, s.str());
+            mag(j).hdf5_write(name__, s.str());
         }
         ctx_.comm().barrier();
     }
 
-    void load()
+    void load(std::string name__)
     {
-        sddk::HDF5_tree fin(storage_file_name, sddk::hdf5_access_t::read_only);
+        sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
 
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);
@@ -739,10 +739,10 @@ class Density : public Field4D
         sddk::mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
 
-        rho().hdf5_read(fin["density"], gv);
+        rho().hdf5_read(name__, "density", gv);
         rho().rg().fft_transform(1);
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            mag(j).hdf5_read(fin["magnetization"][j], gv);
+            mag(j).hdf5_read(name__, "magnetization/" + std::to_string(j), gv);
             mag(j).rg().fft_transform(1);
         }
     }

@@ -43,55 +43,25 @@ struct hdf5_type_wrapper;
 template<>
 struct hdf5_type_wrapper<float>
 {
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_FLOAT;
-    }
+    operator hid_t() const noexcept {return H5T_NATIVE_FLOAT;};
 };
 
 template<>
 struct hdf5_type_wrapper<double>
 {
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_DOUBLE;
-    }
-};
-
-template<>
-struct hdf5_type_wrapper<std::complex<float>>
-{
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_FLOAT;
-    }
-};
-
-template<>
-struct hdf5_type_wrapper<std::complex<double>>
-{
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_DOUBLE;
-    }
+    operator hid_t() const noexcept {return H5T_NATIVE_DOUBLE;};
 };
 
 template<>
 struct hdf5_type_wrapper<int>
 {
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_INT;
-    }
+    operator hid_t() const noexcept {return H5T_NATIVE_INT;};
 };
 
 template<>
 struct hdf5_type_wrapper<uint8_t>
 {
-    static hid_t type_id()
-    {
-        return H5T_NATIVE_UCHAR;
-    }
+    operator hid_t() const noexcept {return H5T_NATIVE_UCHAR;};
 };
 
 /// Interface to the HDF5 library.
@@ -124,7 +94,7 @@ class HDF5_tree
             if ((id_ = H5Gopen(file_id, path.c_str(), H5P_DEFAULT)) < 0) {
                 std::stringstream s;
                 s << "error in H5Gopen()" << std::endl << "path : " << path;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
         }
 
@@ -134,7 +104,7 @@ class HDF5_tree
             if ((id_ = H5Gcreate(g.id(), name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
                 std::stringstream s;
                 s << "error in H5Gcreate()" << std::endl << "name : " << name;
-                TERMINATE(s);
+                RTE_THROW(s);
             }
         }
 
@@ -142,7 +112,7 @@ class HDF5_tree
         ~HDF5_group()
         {
             if (H5Gclose(id_) < 0) {
-                TERMINATE("error in H5Gclose()");
+                RTE_THROW("error in H5Gclose()");
             }
         }
 
@@ -170,7 +140,7 @@ class HDF5_tree
             }
 
             if ((id_ = H5Screate_simple((int)dims.size(), &current_dims[0], NULL)) < 0) {
-                TERMINATE("error in H5Screate_simple()");
+                RTE_THROW("error in H5Screate_simple()");
             }
         }
 
@@ -178,7 +148,7 @@ class HDF5_tree
         ~HDF5_dataspace()
         {
             if (H5Sclose(id_) < 0) {
-                TERMINATE("error in H5Sclose()");
+                RTE_THROW("error in H5Sclose()");
             }
         }
 
@@ -201,7 +171,7 @@ class HDF5_tree
         HDF5_dataset(hid_t group_id, const std::string& name)
         {
             if ((id_ = H5Dopen(group_id, name.c_str(), H5P_DEFAULT)) < 0) {
-                TERMINATE("error in H5Dopen()");
+                RTE_THROW("error in H5Dopen()");
             }
         }
 
@@ -210,7 +180,7 @@ class HDF5_tree
         {
             if ((id_ = H5Dcreate(group.id(), name.c_str(), type_id, dataspace.id(), H5P_DEFAULT, H5P_DEFAULT,
                                  H5P_DEFAULT)) < 0) {
-                TERMINATE("error in H5Dcreate()");
+                RTE_THROW("error in H5Dcreate()");
             }
         }
 
@@ -218,7 +188,7 @@ class HDF5_tree
         ~HDF5_dataset()
         {
             if (H5Dclose(id_) < 0) {
-                TERMINATE("error in H5Dclose()");
+                RTE_THROW("error in H5Dclose()");
             }
         }
 
@@ -248,11 +218,11 @@ class HDF5_tree
         HDF5_dataspace dataspace(dims);
 
         /* create new dataset */
-        HDF5_dataset dataset(group, dataspace, name, hdf5_type_wrapper<T>::type_id());
+        HDF5_dataset dataset(group, dataspace, name, hdf5_type_wrapper<T>());
 
         /* write data */
-        if (H5Dwrite(dataset.id(), hdf5_type_wrapper<T>::type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
-            TERMINATE("error in H5Dwrite()");
+        if (H5Dwrite(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
+            RTE_THROW("error in H5Dwrite()");
         }
     }
 
@@ -266,8 +236,8 @@ class HDF5_tree
 
         HDF5_dataset dataset(group.id(), name);
 
-        if (H5Dread(dataset.id(), hdf5_type_wrapper<T>::type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
-            TERMINATE("error in H5Dread()");
+        if (H5Dread(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
+            RTE_THROW("error in H5Dread()");
         }
     }
 
@@ -282,7 +252,7 @@ class HDF5_tree
         : file_name_(file_name__)
     {
         if (H5open() < 0) {
-            TERMINATE("error in H5open()");
+            RTE_THROW("error in H5open()");
         }
 
         if (false) {
@@ -293,7 +263,7 @@ class HDF5_tree
             case hdf5_access_t::truncate: {
                 file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
                 if (file_id_ < 0) {
-                    TERMINATE("error in H5Fcreate()");
+                    RTE_THROW("error in H5Fcreate()");
                 }
                 break;
             }
@@ -307,7 +277,7 @@ class HDF5_tree
             }
         }
         if (file_id_ < 0) {
-            TERMINATE("H5Fopen() failed");
+            RTE_THROW("H5Fopen() failed");
         }
 
         path_ = "/";
@@ -318,7 +288,7 @@ class HDF5_tree
     {
         if (root_node_) {
             if (H5Fclose(file_id_) < 0) {
-                TERMINATE("error in H5Fclose()");
+                RTE_THROW("error in H5Fclose()");
             }
         }
     }
@@ -327,9 +297,7 @@ class HDF5_tree
     /** Create node at the current location using integer index as a name. */
     HDF5_tree create_node(int idx)
     {
-        std::stringstream s;
-        s << idx;
-        return create_node(s.str());
+        return create_node(std::to_string(idx));
     }
 
     /// Create node by name.
@@ -437,7 +405,7 @@ class HDF5_tree
 
     /// Read a vector or a scalar.
     template <typename T>
-    void read(const std::string& name, T* data, int size)
+    void read(std::string const& name, T* data, int size)
     {
         std::vector<int> dims(1);
         dims[0] = size;
@@ -447,27 +415,24 @@ class HDF5_tree
     template <typename T>
     void read(int name_id, std::vector<T>& vec)
     {
-        std::string name = std::to_string(name_id);
-        read(name, &vec[0], (int)vec.size());
+        read(std::to_string(name_id), &vec[0], (int)vec.size());
     }
 
     template <typename T>
-    void read(const std::string& name, std::vector<T>& vec)
+    void read(std::string const& name, std::vector<T>& vec)
     {
         read(name, &vec[0], (int)vec.size());
     }
 
-    HDF5_tree operator[](const std::string& path__)
+    HDF5_tree operator[](std::string const& path__)
     {
-        std::string new_path = path_ + path__ + "/";
+        auto new_path = path_ + path__ + "/";
         return HDF5_tree(file_id_, new_path);
     }
 
-    HDF5_tree operator[](int idx)
+    HDF5_tree operator[](int idx__)
     {
-        std::stringstream s;
-        s << idx;
-        std::string new_path = path_ + s.str() + "/";
+        auto new_path = path_ + std::to_string(idx__) + "/";
         return HDF5_tree(file_id_, new_path);
     }
 };

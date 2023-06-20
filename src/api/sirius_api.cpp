@@ -6052,4 +6052,69 @@ void sirius_generate_d_operator_matrix(void* const* handler__, int* error_code__
         }, error_code__);
 }
 
+/*
+@api begin
+sirius_save_state:
+  doc: Save DFT ground state (density and potential)
+  arguments:
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    file_name:
+      type: string
+      attr: in, required
+      doc: Name of the file that stores the saved data.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void
+sirius_save_state(void** handler__, const char* file_name__, int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            std::string file_name(file_name__);
+            gs.ctx().create_storage_file(file_name);
+            gs.potential().save(file_name);
+            gs.density().save(file_name);
+        },
+        error_code__);
+}
+
+/*
+@api begin
+sirius_load_state:
+  doc: Save DFT ground state (density and potential)
+  arguments:
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    file_name:
+      type: string
+      attr: in, required
+      doc: Name of the file that stores the saved data.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void
+sirius_load_state(void** handler__, const char* file_name__, int* error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& gs = get_gs(handler__);
+            std::string file_name(file_name__);
+            gs.potential().load(file_name);
+            gs.density().load(file_name);
+        },
+        error_code__);
+}
+
 } // extern "C"

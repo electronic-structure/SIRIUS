@@ -285,7 +285,7 @@ class Smooth_periodic_function
         }
     }
 
-    inline auto gather_f_pw()
+    inline auto gather_f_pw() const
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
