@@ -209,8 +209,6 @@ static inline void
 mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> const& veff_vec__, int idx_veff__, T* out__)
 {
-    PROFILE("sirius::mul_by_veff");
-
     int nr = spfftk__.local_slice_size();
 
     switch (spfftk__.processing_unit()) {
