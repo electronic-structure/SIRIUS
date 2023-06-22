@@ -66,6 +66,9 @@ class DFT_ground_state
     /// Atomic forces.
     Force forces_;
 
+    /// k-point independent part of the Hamiltonian.
+    std::shared_ptr<Hamiltonian0<double>> H0_; // hard-code double for now
+
     /// Store Ewald energy which is computed once and which doesn't change during the run.
     double ewald_energy_{0};
 
@@ -113,6 +116,11 @@ class DFT_ground_state
         return ctx_;
     }
 
+    inline Hamiltonian0<double>& get_H0() const
+    {
+        return *H0_;
+    }
+
     inline Density& density()
     {
         return density_;
@@ -147,6 +155,8 @@ class DFT_ground_state
     {
         return scf_correction_energy_;
     }
+
+    void create_H0();
 
     double total_energy() const;
 

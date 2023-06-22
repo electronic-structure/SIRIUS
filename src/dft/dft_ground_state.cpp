@@ -52,6 +52,14 @@ DFT_ground_state::initial_state()
 }
 
 void
+DFT_ground_state::create_H0()
+{
+    PROFILE("sirius::DFT_ground_state::create_H0");
+
+    H0_ = std::shared_ptr<Hamiltonian0<double>>(new Hamiltonian0<double>(potential_, true));
+}
+
+void
 DFT_ground_state::update()
 {
     PROFILE("sirius::DFT_ground_state::update");
