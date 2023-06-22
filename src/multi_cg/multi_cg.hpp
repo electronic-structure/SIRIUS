@@ -131,7 +131,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         /* The repack on A and P changes the eigenvalue vectors of A and P respectively */
         /* The eigenvalues of the Linear_response_operator A are sent to device when needed */
         /* Update P.eigvals on device here */
-        if (is_device_memory(P.mem)) {
+        if (sddk::is_device_memory(P.mem)) {
             P.eigvals.copy_to(sddk::memory_t::device);
         }
 
