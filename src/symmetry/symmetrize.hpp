@@ -356,9 +356,10 @@ symmetrize(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
     }
 }
 
+template <typename Index_t>
 inline void
 symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int num_mag_dims__,
-        std::vector<Spheric_function_set<double>*> frlm__)
+        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     PROFILE("sirius::symmetrize_function|flm");
 
@@ -373,7 +374,7 @@ symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int n
     int lmax = utils::lmax(lmmax);
 
     /* split atoms between MPI ranks */
-    sddk::splindex<sddk::splindex_t::block> spl_atoms(frlm.atoms().size(), comm__.size(), comm__.rank());
+    sddk::splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
 
     /* space for real Rlm rotation matrix */
     sddk::mdarray<double, 2> rotm(lmmax, lmmax);

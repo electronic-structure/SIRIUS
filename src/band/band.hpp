@@ -88,10 +88,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
         /* copy old N - num_locked x N - num_locked distributed matrix */
         if (N__ > 0) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
 
             if (mtrx_old__) {
                 if (spl_row.local_size()) {
@@ -135,10 +137,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
         }
 
         if (ctx_.print_checksum()) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
             auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
             if (ctx_.comm_band().rank() == 0) {
                 utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
@@ -150,10 +154,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
         /* save new matrix */
         if (mtrx_old__) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
 
             if (spl_row.local_size()) {
                 #pragma omp parallel for schedule(static)

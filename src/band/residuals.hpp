@@ -340,11 +340,13 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
                 auto pos_src  = evec__.spl_col().location(ev_idx[j]);
                 auto pos_dest = evec_tmp.spl_col().location(j);
                 /* do MPI send / receive */
-                if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                    evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+                if (pos_src.ib == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                    evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.index_local), num_rows_local, pos_dest.ib,
+                            ev_idx[j]);
                 }
-                if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                    evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+                if (pos_dest.ib == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                    evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.index_local), num_rows_local, pos_src.ib,
+                            ev_idx[j]);
                 }
             }
         }
