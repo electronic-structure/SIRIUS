@@ -391,10 +391,10 @@ Density::initial_density_full_pot()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia             = unit_cell_.spl_num_atoms(ialoc);
-            r3::vector<double> v = unit_cell_.atom(ia).vector_field();
-            double len         = v.length();
+        for (auto it : unit_cell_.spl_num_atoms()) {
+            int ia = it.i;
+            auto v = unit_cell_.atom(ia).vector_field();
+            auto len = v.length();
 
             int nmtp = unit_cell_.atom(ia).num_mt_points();
             Spline<double> rho_s(unit_cell_.atom(ia).type().radial_grid());
@@ -436,7 +436,7 @@ void
 Density::init_density_matrix_for_paw()
 {
     for (int ipaw = 0; ipaw < unit_cell_.num_paw_atoms(); ipaw++) {
-        int ia = unit_cell_.paw_atom_index(sirius::experimental::paw_atom_index_t::global(ipaw));
+        int ia = unit_cell_.paw_atom_index(paw_atom_index_t::global(ipaw));
 
         auto& dm = density_matrix(ia);
         dm.zero();
@@ -479,7 +479,7 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(sirius::experimental::paw_atom_index_t::local ialoc__)
+Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
 {
     auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     auto ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
@@ -570,8 +570,8 @@ Density::generate_paw_loc_density()
     PROFILE("sirius::Density::generate_paw_loc_density");
 
     #pragma omp parallel for
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_paw_atoms().local_size(); ialoc++) {
-        generate_paw_atom_density(sirius::experimental::paw_atom_index_t::local(ialoc));
+    for (auto it : unit_cell_.spl_num_paw_atoms()) {
+        generate_paw_atom_density(it.li);
     }
 }
 
@@ -841,7 +841,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
                     bp_coeffs__, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
-        sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
+        sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
         int nbnd_loc = spl_nbnd.local_size();
         if (nbnd_loc) { // TODO: this part can also be moved to GPU
@@ -861,7 +861,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
 
                 for (int i = 0; i < nbnd_loc; i++) {
                     /* global index of band */
-                    int j = spl_nbnd[i];
+                    auto j = spl_nbnd.global_index(i);
 
                     for (int xi = 0; xi < nbf; xi++) {
                         bp1(xi, i) = beta_psi(offs + xi, j);
@@ -891,7 +891,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
     /* total number of occupied bands */
     int nbnd = kp__.num_occupied_bands();
 
-    sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
+    sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
     int nbnd_loc = spl_nbnd.local_size();
 
     /* auxiliary arrays */
@@ -909,7 +909,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
 
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < nbnd_loc; i++) {
-            int j = spl_nbnd[i];
+            auto j = spl_nbnd.global_index(i);
 
             for (int m = 0; m < nbeta; m++) {
                 bp1(m, i, ispn) = beta_psi(m, j);
@@ -1105,11 +1105,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             /* find the core states */
             generate_core_charge_density();
             /* add core contribution */
-            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia = unit_cell_.spl_num_atoms(ialoc);
-                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                    rho().mt()[ia](0, ir) +=
-                        unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
+            for (auto it : unit_cell_.spl_num_atoms()) {
+                for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
+                    rho().mt()[it.i](0, ir) +=
+                        unit_cell_.atom(it.i).symmetry_class().ae_core_charge_density(ir) / y00;
                 }
             }
         }

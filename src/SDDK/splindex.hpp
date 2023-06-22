@@ -26,6 +26,7 @@
 #define __SPLINDEX_HPP__
 
 #include "strong_type.hpp"
+#include "utils/rte.hpp"
 
 /// Basic index type.
 template <typename T = int>

@@ -508,9 +508,11 @@ class Wave_functions_mt : public Wave_functions_base<T>
     {
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
         sddk::splindex_block<atom_index_t> spl_atoms(num_atoms, n_blocks(comm__.size()), block_id(comm__.rank()));
-        auto it_begin = num_mt_coeffs__.begin() + spl_atoms.global_offset();
-        auto it_end = it_begin + spl_atoms.local_size();
-        return std::accumulate(it_begin, it_end, 0);
+        int result{0};
+        for (auto it : spl_atoms) {
+            result += num_mt_coeffs__[it.i];
+        }
+        return result;
     }
 
     /// Construct without muffin-tin part.
@@ -518,7 +520,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
             sddk::memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
         , comm_{comm__}
-        , spl_num_atoms_{sddk::splindex_block<atom_index_t>(num_atoms_, comm_.size(), comm_.rank())}
+        , spl_num_atoms_{sddk::splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
     {
     }
 

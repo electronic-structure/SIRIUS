@@ -300,11 +300,10 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     /* add pure local orbitals to the basis staring from ncomp index */
     if (nlo) {
-        for (int ialoc = 0; ialoc < phi_extra_new->spl_num_atoms().local_size(); ialoc++) {
-            int ia = phi_extra_new->spl_num_atoms()[ialoc];
-            for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
-                phi_extra_new->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0),
-                        wf::band_index(offset_lo[ia] + xi + ncomp)) = 1.0;
+        for (auto it : phi_extra_new->spl_num_atoms()) {
+            for (int xi = 0; xi < unit_cell_.atom(it.i).mt_lo_basis_size(); xi++) {
+                phi_extra_new->mt_coeffs(xi, wf::atom_index(it.li), wf::spin_index(0),
+                        wf::band_index(offset_lo[it.i] + xi + ncomp)) = 1.0;
             }
         }
     }
