@@ -106,10 +106,9 @@ energy_enuc(Simulation_context const& ctx, Potential const& potential)
     auto& unit_cell = ctx.unit_cell();
     double enuc{0};
     if (ctx.full_potential()) {
-        for (int ialoc = 0; ialoc < unit_cell.spl_num_atoms().local_size(); ialoc++) {
-            int ia = unit_cell.spl_num_atoms(ialoc);
-            int zn = unit_cell.atom(ia).zn();
-            enuc -= 0.5 * zn * potential.vh_el(ia);
+        for (auto it : unit_cell.spl_num_atoms()) {
+            int zn = unit_cell.atom(it.i).zn();
+            enuc -= 0.5 * zn * potential.vh_el(it.i);
         }
         ctx.comm().allreduce(&enuc, 1);
     }

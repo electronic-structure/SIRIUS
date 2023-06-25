@@ -671,14 +671,14 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     a2a_recv_ = mpi::block_data_descriptor(comm_.size());
 
     /* split G-vector shells between ranks in cyclic order */
-    spl_num_gsh_ = sddk::splindex<sddk::splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
+    spl_num_gsh_ = sddk::splindex_block_cyclic<>(gvec_.num_shells(), n_blocks(comm_.size()), block_id(comm_.rank()), 1);
 
     /* each rank sends a fraction of its local G-vectors to other ranks */
     /* count this fraction */
     for (int igloc = 0; igloc < gvec_.count(); igloc++) {
         int ig   = gvec_.offset() + igloc;
         int igsh = gvec_.shell(ig);
-        a2a_send_.counts[spl_num_gsh_.local_rank(igsh)]++;
+        a2a_send_.counts[spl_num_gsh_.location(igsh).ib]++;
     }
     a2a_send_.calc_offsets();
     /* sanity check: total number of elements to send is equal to the local number of G-vector */
@@ -692,7 +692,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             int ig = gvec_.gvec_offset(r) + igloc;
             /* index of the G-vector shell */
             int igsh = gvec_.shell(ig);
-            if (spl_num_gsh_.local_rank(igsh) == comm_.rank()) {
+            if (spl_num_gsh_.location(igsh).ib == comm_.rank()) {
                 a2a_recv_.counts[r]++;
             }
         }
@@ -714,7 +714,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             int ig   = gvec_.gvec_offset(r) + igloc;
             int igsh = gvec_.shell(ig);
             auto G   = gvec_.gvec<sddk::index_domain_t::global>(ig);
-            if (spl_num_gsh_.local_rank(igsh) == comm_.rank()) {
+            if (spl_num_gsh_.location(igsh).ib == comm_.rank()) {
                 for (int x : {0, 1, 2}) {
                     gvec_remapped_(x, a2a_recv_.offsets[r] + counts[r]) = G[x];
                 }

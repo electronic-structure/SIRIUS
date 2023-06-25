@@ -79,9 +79,8 @@ DFT_ground_state::energy_kin_sum_pw() const
 {
     double ekin{0};
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(it.i);
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
