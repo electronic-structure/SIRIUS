@@ -707,7 +707,7 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
             /* local number of bands for a fft-distribution */
             int nbnd = wf_fft__[ispn].num_wf_local();
             for (int i = 0; i < nbnd; i++) {
-                int j = wf_fft__[ispn].spl_num_wf()[i];
+                auto j = wf_fft__[ispn].spl_num_wf().global_index(i);
                 T w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
                 auto inp_wf = wf_fft__[ispn].pw_coeffs_spfft(wf_mem, wf::band_index(i));
@@ -726,7 +726,7 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
 
         int nbnd = wf_fft__[0].num_wf_local();
         for (int i = 0; i < nbnd; i++) {
-            int j = wf_fft__[0].spl_num_wf()[i];
+            auto j = wf_fft__[0].spl_num_wf().global_index(i);
             T w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             auto wf_mem_up = wf_fft__[0].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
@@ -787,14 +787,14 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
     /* add |psi_j> n_j <psi_j| to density matrix */
 
-    for (int ialoc = 0; ialoc < kp__.spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
-        int ia            = kp__.spinor_wave_functions().spl_num_atoms()[ialoc];
+    for (auto it : kp__.spinor_wave_functions().spl_num_atoms()) {
+        int ia            = it.i;
         int mt_basis_size = uc.atom(ia).type().mt_basis_size();
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                 for (int xi = 0; xi < mt_basis_size; xi++) {
-                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, wf::atom_index(ialoc),
+                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, wf::atom_index(it.li),
                             wf::spin_index(ispn), wf::band_index(j));
                     wf1(xi, j, ispn) = std::conj(z);
                     wf2(xi, j, ispn) = static_cast<std::complex<double>>(z) * kp__.band_occupancy(j, ispn) * kp__.weight();
@@ -1258,9 +1258,8 @@ Density::generate_valence(K_point_set const& ks__)
     auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
 
     /* start the main loop over k-points */
-    for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = ks__.spl_num_kpoints(ikloc);
-        auto kp = ks__.get<T>(ik);
+    for (auto it : ks__.spl_num_kpoints()) {
+        auto kp = ks__.get<T>(it.i);
 
         std::array<wf::Wave_functions_fft<T>, 2> wf_fft;
 
@@ -1636,9 +1635,8 @@ Density::generate_valence_mt()
     sddk::mdarray<double, 2> rf_pairs(unit_cell_.max_num_mt_points(), max_num_rf_pairs);
     sddk::mdarray<double, 3> dlm(ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), ctx_.num_mag_dims() + 1);
 
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-        int ia          = unit_cell_.spl_num_atoms(ialoc);
-        auto& atom_type = unit_cell_.atom(ia).type();
+    for (auto it : unit_cell_.spl_num_atoms()) {
+        auto& atom_type = unit_cell_.atom(it.i).type();
 
         int nmtp         = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
@@ -1646,15 +1644,15 @@ Density::generate_valence_mt()
         PROFILE_START("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims()) {
             case 3: {
-                reduce_density_matrix<3>(atom_type, ia, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<3>(atom_type, it.i, density_matrix_, mt_density_matrix);
                 break;
             }
             case 1: {
-                reduce_density_matrix<1>(atom_type, ia, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<1>(atom_type, it.i, density_matrix_, mt_density_matrix);
                 break;
             }
             case 0: {
-                reduce_density_matrix<0>(atom_type, ia, density_matrix_, mt_density_matrix);
+                reduce_density_matrix<0>(atom_type, it.i, density_matrix_, mt_density_matrix);
                 break;
             }
         }
@@ -1667,9 +1665,9 @@ Density::generate_valence_mt()
             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
                 /* off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2 */
                 int n = (idxrf1 == idxrf2) ? 1 : 2;
-                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                    rf_pairs(ir, offs + idxrf1) = n * unit_cell_.atom(ia).symmetry_class().radial_function(ir, idxrf1) *
-                                                  unit_cell_.atom(ia).symmetry_class().radial_function(ir, idxrf2);
+                for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
+                    rf_pairs(ir, offs + idxrf1) = n * unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf1) *
+                                                  unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf2);
                 }
             }
         }
@@ -1684,21 +1682,21 @@ Density::generate_valence_mt()
         switch (ctx_.num_mag_dims()) {
             case 3: {
                 /* copy x component */
-                std::copy(&dlm(0, 0, 2), &dlm(0, 0, 2) + sz, &mag(1).mt()[ia](0, 0));
+                std::copy(&dlm(0, 0, 2), &dlm(0, 0, 2) + sz, &mag(1).mt()[it.i](0, 0));
                 /* copy y component */
-                std::copy(&dlm(0, 0, 3), &dlm(0, 0, 3) + sz, &mag(2).mt()[ia](0, 0));
+                std::copy(&dlm(0, 0, 3), &dlm(0, 0, 3) + sz, &mag(2).mt()[it.i](0, 0));
             }
             case 1: {
                 for (int ir = 0; ir < nmtp; ir++) {
                     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                        rho().mt()[ia](lm, ir) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
-                        mag(0).mt()[ia](lm, ir) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
+                        rho().mt()[it.i](lm, ir) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
+                        mag(0).mt()[it.i](lm, ir) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
                     }
                 }
                 break;
             }
             case 0: {
-                std::copy(&dlm(0, 0, 0), &dlm(0, 0, 0) + sz, &rho().mt()[ia](0, 0));
+                std::copy(&dlm(0, 0, 0), &dlm(0, 0, 0) + sz, &rho().mt()[it.i](0, 0));
             }
         }
     }

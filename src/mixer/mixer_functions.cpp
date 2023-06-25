@@ -73,8 +73,8 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
                 y.rg().value(i) = xi * -s + yi * c;
             }
             if (x.ctx().full_potential()) {
-                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                    int ia = x.ctx().unit_cell().spl_num_atoms(ialoc);
+                for (auto it : x.ctx().unit_cell().spl_num_atoms()) {
+                    int ia = it.i;
                     auto& x_f_mt = x.mt()[ia];
                     auto& y_f_mt = y.mt()[ia];
                     #pragma omp for schedule(static) nowait
@@ -218,9 +218,8 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
 
     auto scale_func = [](double alpha, PAW_density<double>& x) -> void
     {
-        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
-            int ia = x.unit_cell().paw_atom_index(ipaw);
+        for (auto it : x.unit_cell().spl_num_paw_atoms()) {
+            int ia = x.unit_cell().paw_atom_index(it.i);
             for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
                 x.ae_density(j, ia) *= alpha;
                 x.ps_density(j, ia) *= alpha;
@@ -230,9 +229,8 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
 
     auto copy_function = [](PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
-            int ia = x.unit_cell().paw_atom_index(ipaw);
+        for (auto it : x.unit_cell().spl_num_paw_atoms()) {
+            int ia = x.unit_cell().paw_atom_index(it.i);
             for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
                 sddk::copy(x.ae_density(j, ia), y.ae_density(j, ia));
                 sddk::copy(x.ps_density(j, ia), y.ps_density(j, ia));
@@ -242,9 +240,8 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
 
     auto axpy_function = [](double alpha, PAW_density<double> const& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
-            int ia = x.unit_cell().paw_atom_index(ipaw);
+        for (auto it : x.unit_cell().spl_num_paw_atoms()) {
+            int ia = x.unit_cell().paw_atom_index(it.i);
             for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
                 y.ae_density(j, ia) = x.ae_density(j, ia) * alpha + y.ae_density(j, ia);
                 y.ps_density(j, ia) = x.ps_density(j, ia) * alpha + y.ps_density(j, ia);
@@ -254,9 +251,8 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
 
     auto rotate_function = [](double c, double s, PAW_density<double>& x, PAW_density<double>& y) -> void
     {
-        for (int i = 0; i < x.unit_cell().spl_num_paw_atoms().local_size(); i++) {
-            int ipaw = x.unit_cell().spl_num_paw_atoms(i);
-            int ia = x.unit_cell().paw_atom_index(ipaw);
+        for (auto it : x.unit_cell().spl_num_paw_atoms()) {
+            int ia = x.unit_cell().paw_atom_index(it.i);
             for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
                 x.ae_density(j, ia) = x.ae_density(j, ia) * c + s * y.ae_density(j, ia);
                 y.ae_density(j, ia) = y.ae_density(j, ia) * c - s * x.ae_density(j, ia);

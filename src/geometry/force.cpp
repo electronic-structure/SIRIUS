@@ -62,11 +62,11 @@ Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             r3::vector<double> force_ia(&forces__(0, ia));
             int ja        = ctx_.unit_cell().symmetry()[isym].spg_op.sym_atom[ia];
-            auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
-            if (location.rank == ctx_.comm().rank()) {
+            auto location = ctx_.unit_cell().spl_num_atoms().location(typename atom_index_t::global(ja));
+            if (location.ib == ctx_.comm().rank()) {
                 auto force_ja = dot(Rc, force_ia);
                 for (int x : {0, 1, 2}) {
-                    sym_forces(x, location.local_index) += force_ja[x];
+                    sym_forces(x, location.index_local) += force_ja[x];
                 }
             }
         }
@@ -91,8 +91,8 @@ void Force::calc_forces_nonloc_aux()
 
     auto& spl_num_kp = kset_.spl_num_kpoints();
 
-    for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-        auto* kp = kset_.get<T>(spl_num_kp[ikploc]);
+    for (auto it : spl_num_kp) {
+        auto* kp = kset_.get<T>(it.i);
 
         if (ctx_.gamma_point()) {
             add_k_point_contribution<T, T>(*kp, forces_nonloc_);
@@ -249,10 +249,9 @@ Force::calc_forces_ibs()
     }
 
     Hamiltonian0<double> H0(potential_, false);
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto hk = H0(*kset_.get<double>(ik));
-        add_ibs_force(kset_.get<double>(ik), hk, ffac, forces_ibs_);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto hk = H0(*kset_.get<double>(it.i));
+        add_ibs_force(kset_.get<double>(it.i), hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
@@ -266,11 +265,10 @@ Force::calc_forces_rho()
 
     forces_rho_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_rho_.zero();
-    for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-        int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
-        auto g = gradient(density_.density_mt(ialoc));
+    for (auto it : ctx_.unit_cell().spl_num_atoms()) {
+        auto g = gradient(density_.density_mt(it.li));
         for (int x = 0; x < 3; x++) {
-            forces_rho_(x, ia) = inner(potential_.effective_potential_mt(ialoc), g[x]);
+            forces_rho_(x, it.i) = inner(potential_.effective_potential_mt(it.li), g[x]);
         }
     }
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
@@ -285,11 +283,10 @@ Force::calc_forces_hf()
     forces_hf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_hf_.zero();
 
-    for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-        int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
-        auto g = gradient(potential_.hartree_potential_mt(ialoc));
+    for (auto it : ctx_.unit_cell().spl_num_atoms()) {
+        auto g = gradient(potential_.hartree_potential_mt(it.li));
         for (int x = 0; x < 3; x++) {
-            forces_hf_(x, ia) = ctx_.unit_cell().atom(ia).zn() * g[x](0, 0) * y00;
+            forces_hf_(x, it.i) = ctx_.unit_cell().atom(it.i).zn() * g[x](0, 0) * y00;
         }
     }
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
@@ -311,10 +308,9 @@ Force::calc_forces_hubbard()
 
         Q_operator<double> q_op(ctx_);
 
-        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+        for (auto it : kset_.spl_num_kpoints()) {
 
-            int ik  = kset_.spl_num_kpoints(ikloc);
-            auto kp = kset_.get<double>(ik);
+            auto kp = kset_.get<double>(it.i);
             // kp->beta_projectors().prepare();
             auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);

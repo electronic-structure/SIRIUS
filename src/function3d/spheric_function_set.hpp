@@ -41,9 +41,8 @@ class Spheric_function_set
         };
 
         if (spl_atoms_) {
-            for (int i = 0; i < spl_atoms_->local_size(); i++) {
-                int ia = atoms_[(*spl_atoms_)[i]];
-                set_func(ia);
+            for (auto it : (*spl_atoms_)) {
+                set_func(atoms_[it.i]);
             }
         } else {
             for (int ia : atoms_) {
@@ -68,7 +67,7 @@ class Spheric_function_set
         atoms_.resize(unit_cell__.num_atoms());
         std::iota(atoms_.begin(), atoms_.end(), 0);
         if (spl_atoms_) {
-            if (spl_atoms_->global_index_size() != unit_cell__.num_atoms()) {
+            if (spl_atoms_->size() != unit_cell__.num_atoms()) {
                 RTE_THROW("wrong split atom index");
             }
         }
@@ -84,7 +83,7 @@ class Spheric_function_set
         , all_atoms_{false}
     {
         if (spl_atoms_) {
-            if (spl_atoms_->global_index_size() != static_cast<int>(atoms__.size())) {
+            if (spl_atoms_->size() != static_cast<int>(atoms__.size())) {
                 RTE_THROW("wrong split atom index");
             }
         }
@@ -127,10 +126,10 @@ class Spheric_function_set
      *  from each rank. As a result, each rank stores a full and identical copy of global spherical function. */
     inline void sync(sddk::splindex_block<I> const& spl_atoms__)
     {
-        for (int i = 0; i < spl_atoms__.global_index_size(); i++) {
-            auto loc = spl_atoms__.location(i);
+        for (int i = 0; i < spl_atoms__.size(); i++) {
+            auto loc = spl_atoms__.location(typename I::global(i));
             int ia = atoms_[i];
-            unit_cell_->comm().bcast(func_[ia].at(sddk::memory_t::host), static_cast<int>(func_[ia].size()), loc.rank);
+            unit_cell_->comm().bcast(func_[ia].at(sddk::memory_t::host), static_cast<int>(func_[ia].size()), loc.ib);
         }
     }
 
@@ -144,29 +143,29 @@ class Spheric_function_set
         return *this;
     }
 
-    template <typename F>
-    friend F
-    inner(Spheric_function_set<F, I> const& f1__, Spheric_function_set<F, I> const& f2__);
+    template <typename T_, typename I_>
+    friend T_
+    inner(Spheric_function_set<T_, I_> const& f1__, Spheric_function_set<T_, I_> const& f2__);
 
-    template <typename F>
+    template <typename T_, typename I_>
     friend void
-    copy(Spheric_function_set<F, I> const& src__, Spheric_function_set<F, I>& dest__);
+    copy(Spheric_function_set<T_, I_> const& src__, Spheric_function_set<T_, I_>& dest__);
 
-    template <typename F>
+    template <typename T_, typename I_>
     friend void
-    copy(Spheric_function_set<F, I> const& src__, spheric_function_set_ptr_t<F> dest__);
+    copy(Spheric_function_set<T_, I_> const& src__, spheric_function_set_ptr_t<T_> dest__);
 
-    template <typename F>
+    template <typename T_, typename I_>
     friend void
-    copy(spheric_function_set_ptr_t<F> src__, Spheric_function_set<F, I> const& dest__);
+    copy(spheric_function_set_ptr_t<T_> src__, Spheric_function_set<T_, I_> const& dest__);
 
-    template <typename F>
+    template <typename T_, typename I_>
     friend void
-    scale(F alpha__, Spheric_function_set<F, I>& x__);
+    scale(T_ alpha__, Spheric_function_set<T_, I_>& x__);
 
-    template <typename F>
+    template <typename T_, typename I_>
     friend void
-    axpy(F alpha__, Spheric_function_set<F, I> const& x__, Spheric_function_set<F, I>& y__);
+    axpy(T_ alpha__, Spheric_function_set<T_, I_> const& x__, Spheric_function_set<T_, I_>& y__);
 };
 
 template <typename T, typename I>
@@ -185,13 +184,13 @@ inline T inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I
 
     if (ptr) {
         for (int i = 0; i < ptr->local_size(); i++) {
-            int ia = f1__.atoms_[(*ptr)[i]];
+            int ia = f1__.atoms_[(*ptr).global_index(typename I::local(i))];
             result += inner(f1__[ia], f2__[ia]);
         }
     } else {
         sddk::splindex_block<I> spl_atoms(f1__.atoms_.size(), n_blocks(comm.size()), block_id(comm.rank()));
         for (int i = 0; i < spl_atoms.local_size(); i++) {
-            int ia = f1__.atoms_[spl_atoms[i]];
+            int ia = f1__.atoms_[spl_atoms.global_index(typename I::local(i))];
             result += inner(f1__[ia], f2__[ia]);
         }
     }

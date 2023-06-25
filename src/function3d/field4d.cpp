@@ -96,7 +96,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     }
 
     if (ctx_.full_potential()) {
-        std::vector<Spheric_function_set<double>*> frlm;
+        std::vector<Spheric_function_set<double, atom_index_t>*> frlm;
         frlm.push_back(&f__->mt());
         switch (ctx_.num_mag_dims()) {
             case 1: {
