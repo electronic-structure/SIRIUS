@@ -27,7 +27,7 @@
 
 #include "context/simulation_context.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-//#include "traits.hpp"
+#include "traits.hpp"
 
 namespace sirius {
 
@@ -80,12 +80,12 @@ class Non_local_operator
     /// computes α B*Q + β out
     template <typename F>
     void lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
-                 F alpha = F{1}, F beta = F{0}) const;
+                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     /// computes α Q*B + β out
     template <typename F>
     void rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
-                 F alpha = F{1}, F beta = F{0}) const;
+                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
     inline F value(int xi1__, int xi2__, int ia__)
@@ -264,7 +264,7 @@ template <class T>
 template <class F>
 void
 Non_local_operator<T>::lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
-                               F alpha, F beta) const
+                               identity_t<F> alpha, identity_t<F> beta) const
 {
     /* Computes Cᵢⱼ =∑ₖ Bᵢₖ Qₖⱼ = Bᵢⱼ Qⱼⱼ
      * Note that Q is block-diagonal. */
@@ -303,7 +303,7 @@ template <class T>
 template <class F>
 void
 Non_local_operator<T>::rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
-                               F alpha, F beta) const
+                               identity_t<F> alpha, identity_t<F> beta) const
 {
     /* Computes Cᵢⱼ =  ∑ₖ Qᵢₖ * Bₖⱼ = Qᵢᵢ * Bᵢⱼ
      * Note that Q is block-diagonal. */
