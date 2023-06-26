@@ -409,7 +409,7 @@ PYBIND11_MODULE(py_sirius, m)
             [](K_point_set& ks, int i) -> K_point<double>& {
                 if (i >= ks.spl_num_kpoints().local_size())
                     throw pybind11::index_error("out of bounds");
-                return *ks.get<double>(ks.spl_num_kpoints(i));
+                return *ks.get<double>(ks.spl_num_kpoints().global_index(typename kp_index_t::local(i)));
             },
             py::return_value_policy::reference_internal)
         .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
