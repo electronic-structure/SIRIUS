@@ -95,12 +95,12 @@ class U_operator
         return offset_[ia__];
     }
 
-    std::complex<T> operator()(int m1, int m2, int j)
+    std::complex<T> const& operator()(int m1, int m2, int j) const
     {
         return um_[j](m1, m2);
     }
 
-    std::complex<T>* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3)
+    std::complex<T> const* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3) const
     {
         return um_[idx3].at(mem__, idx1, idx2);
     }
@@ -192,7 +192,7 @@ apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br
  */
 template <typename T>
 void apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
+                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
                       wf::Wave_functions<T>& hphi__);
 /// Apply strain derivative of S-operator to all scalar functions.
 void apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,

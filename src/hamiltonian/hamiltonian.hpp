@@ -215,7 +215,7 @@ class Hamiltonian_k
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
 
-    auto& U() const
+    auto U() const -> U_operator<T> const&
     {
         return *u_op_;
     }
