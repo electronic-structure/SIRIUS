@@ -33,6 +33,7 @@ void K_point_set::sync_band()
 
     sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
             get_memory_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
+    data.zero();
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
     #pragma omp parallel
@@ -50,8 +51,7 @@ void K_point_set::sync_band()
         }
     }
 
-    comm().allgather(data.at(sddk::memory_t::host), nb * spl_num_kpoints_.local_size(),
-        nb * spl_num_kpoints_.global_offset());
+    comm().allreduce(data.at(sddk::memory_t::host), static_cast<int>(data.size()));
 
     #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
