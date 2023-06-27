@@ -896,7 +896,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             auto& hmt = this->H0_.hmt(ia);
 
@@ -926,7 +926,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             for (int j = 0; j < b__.size(); j++) {
                 for (int ilo = 0; ilo < nlo; ilo++) {
@@ -958,7 +958,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -980,7 +980,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
@@ -1017,7 +1017,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -1042,7 +1042,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -1067,7 +1067,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(it.li);
+            auto aidx  = it.li;
 
             for (int ilo = 0; ilo < nlo; ilo++) {
                 int xi_lo = naw + ilo;

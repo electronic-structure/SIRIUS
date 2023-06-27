@@ -74,17 +74,17 @@ class Non_local_operator
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F>
     std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
-    apply(sddk::memory_t mem__, int chunk__, wf::atom_index ia__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
-          wf::band_range br__, const beta_projectors_coeffs_t<T>& beta_coeffs__, sddk::matrix<F>& beta_phi__);
+    apply(sddk::memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
+          wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__, sddk::matrix<F>& beta_phi__);
 
     /// computes α B*Q + β out
     template <typename F>
-    void lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+    void lmatmul(sddk::matrix<F>& out, sddk::matrix<F> const& B__, int ispn_block__, sddk::memory_t mem_t,
                  identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     /// computes α Q*B + β out
     template <typename F>
-    void rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+    void rmatmul(sddk::matrix<F>& out, sddk::matrix<F> const& B__, int ispn_block__, sddk::memory_t mem_t,
                  identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
@@ -207,9 +207,9 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
 template <class T>
 template <class F>
 std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
-Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, wf::atom_index ia__, int ispn_block__,
+Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__,
                              wf::Wave_functions<T>& op_phi__, wf::band_range br__,
-                             const beta_projectors_coeffs_t<T>& beta_coeffs__, sddk::matrix<F>& beta_phi__)
+                             beta_projectors_coeffs_t<T> const& beta_coeffs__, sddk::matrix<F>& beta_phi__)
 {
     if (is_null_) {
         return;

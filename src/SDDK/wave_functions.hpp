@@ -114,7 +114,7 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 namespace wf {
 
 using spin_index = strong_type<int, struct __spin_index_tag>;
-using atom_index = strong_type<int, struct __atom_index_tag>;
+//using atom_index = strong_type<int, struct __atom_index_tag>;
 using band_index = strong_type<int, struct __band_index_tag>;
 
 using num_bands = strong_type<int, struct __num_bands_tag>;
@@ -555,14 +555,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Return reference to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto&
-    mt_coeffs(int xi__, atom_index ia__, spin_index ispn__, band_index i__)
+    mt_coeffs(int xi__, atom_index_t::local ia__, spin_index ispn__, band_index i__)
     {
         return this->data_[ispn__.get()](this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], i__.get());
     }
 
     /// Return const reference to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto const&
-    mt_coeffs(int xi__, atom_index ia__, spin_index ispn__, band_index i__) const
+    mt_coeffs(int xi__, atom_index_t::local ia__, spin_index ispn__, band_index i__) const
     {
         return this->data_[ispn__.get()](this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], i__.get());
     }
@@ -571,14 +571,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Return const pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline std::complex<T> const*
-    at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__) const
+    at(sddk::memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__) const
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }
 
     /// Return pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto
-    at(sddk::memory_t mem__, int xi__, atom_index ia__, spin_index s__, band_index b__)
+    at(sddk::memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__)
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }

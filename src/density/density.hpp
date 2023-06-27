@@ -445,7 +445,7 @@ class Density : public Field4D
 
     inline auto const& density_mt(atom_index_t::local ialoc__) const
     {
-        auto ia = ctx_.unit_cell().spl_num_atoms(ialoc__);
+        auto ia = ctx_.unit_cell().spl_num_atoms().global_index(ialoc__);
         return rho().mt()[ia];
     }
 

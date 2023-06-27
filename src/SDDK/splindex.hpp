@@ -199,6 +199,14 @@ class splindex_iterator_t : public std::iterator<std::random_access_iterator_tag
     using difference_type = typename std::iterator<std::random_access_iterator_tag, Index_t>::difference_type;
     typename Index_t::local li;
     typename Index_t::global i;
+
+    splindex_iterator_t<Index_t>& operator=(splindex_iterator_t<Index_t> const& lhs_) = default;
+    //{
+    //    this->li = lhs_.li;
+    //    this->i = lhs_.i;
+    //    return *this;
+    //}
+
     splindex_iterator_t(splindex<Index_t> const& idx__)
         : idx_{idx__}
         , li{0}

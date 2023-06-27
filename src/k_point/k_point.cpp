@@ -459,7 +459,7 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
                 if (loc.ib == this->comm().rank()) {
                     for (int xi = 0; xi < nlo; xi++) {
                         fv_evec__(this->num_gkvec() + offs + xi, ist) =
-                            fv_eigen_vectors_slab_->mt_coeffs(xi, wf::atom_index(loc.index_local), wf::spin_index(0),
+                            fv_eigen_vectors_slab_->mt_coeffs(xi, atom_index_t::local(loc.index_local), wf::spin_index(0),
                                     wf::band_index(ist));
                     }
                 }
