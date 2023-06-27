@@ -302,7 +302,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
     if (nlo) {
         for (auto it : phi_extra_new->spl_num_atoms()) {
             for (int xi = 0; xi < unit_cell_.atom(it.i).mt_lo_basis_size(); xi++) {
-                phi_extra_new->mt_coeffs(xi, wf::atom_index(it.li), wf::spin_index(0),
+                phi_extra_new->mt_coeffs(xi, it.li, wf::spin_index(0),
                         wf::band_index(offset_lo[it.i] + xi + ncomp)) = 1.0;
             }
         }

@@ -101,13 +101,13 @@ void K_point<T>::generate_fv_states()
             int num_mt_aw = uc.atom(it.i).type().mt_aw_basis_size();
             /* aw part of the muffin-tin coefficients */
             for (int xi = 0; xi < num_mt_aw; xi++) {
-                fv_states_->mt_coeffs(xi, wf::atom_index(it.li), wf::spin_index(0), wf::band_index(i)) =
-                    alm_fv_slab.mt_coeffs(xi, wf::atom_index(it.li), wf::spin_index(0), wf::band_index(i));
+                fv_states_->mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i)) =
+                    alm_fv_slab.mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i));
             }
             /* lo part of muffin-tin coefficients */
             for (int xi = 0; xi < uc.atom(it.i).type().mt_lo_basis_size(); xi++) {
-                fv_states_->mt_coeffs(num_mt_aw + xi, wf::atom_index(it.li), wf::spin_index(0), wf::band_index(i)) =
-                    fv_eigen_vectors_slab().mt_coeffs(xi, wf::atom_index(it.li), wf::spin_index(0), wf::band_index(i));
+                fv_states_->mt_coeffs(num_mt_aw + xi, it.li, wf::spin_index(0), wf::band_index(i)) =
+                    fv_eigen_vectors_slab().mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i));
             }
         }
     }

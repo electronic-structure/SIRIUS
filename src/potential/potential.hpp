@@ -165,8 +165,8 @@ class Potential : public Field4D
         sddk::mdarray<std::complex<double>, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         qmt.zero();
 
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            auto ia = unit_cell_.spl_num_atoms(atom_index_t::local(ialoc));
+        for (auto it : unit_cell_.spl_num_atoms()) {
+            auto ia = it.i;
 
             auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.mt()[ia],
                 const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
@@ -736,7 +736,7 @@ class Potential : public Field4D
 
     auto const& effective_potential_mt(atom_index_t::local ialoc) const
     {
-        auto ia = unit_cell_.spl_num_atoms(ialoc);
+        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return this->scalar().mt()[ia];
     }
 
@@ -757,7 +757,7 @@ class Potential : public Field4D
 
     auto const& hartree_potential_mt(atom_index_t::local ialoc) const
     {
-        auto ia = unit_cell_.spl_num_atoms(ialoc);
+        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return hartree_potential_->mt()[ia];
     }
 

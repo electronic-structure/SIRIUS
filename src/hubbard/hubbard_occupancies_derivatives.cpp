@@ -298,9 +298,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                  *   | d beta / dr > Q < beta        | phi_atomic > */
                 phi_atomic_tmp->zero(mt, wf::spin_index(0), wf::band_range(0, nawf));
                 if (ctx_.unit_cell().atom(ja).type().augment()) {
-                    q_op__.apply(mt, ichunk, wf::atom_index(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
+                    q_op__.apply(mt, ichunk, atom_index_t::local(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
                             bp_grad_coeffs, beta_phi_atomic);
-                    q_op__.apply(mt, ichunk, wf::atom_index(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
+                    q_op__.apply(mt, ichunk, atom_index_t::local(i), 0, *phi_atomic_tmp, wf::band_range(0, nawf),
                             bp_coeffs, grad_beta_phi_atomic);
                 }
 

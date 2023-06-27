@@ -794,10 +794,11 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                 for (int xi = 0; xi < mt_basis_size; xi++) {
-                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, wf::atom_index(it.li),
-                            wf::spin_index(ispn), wf::band_index(j));
+                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, it.li, wf::spin_index(ispn),
+                            wf::band_index(j));
                     wf1(xi, j, ispn) = std::conj(z);
-                    wf2(xi, j, ispn) = static_cast<std::complex<double>>(z) * kp__.band_occupancy(j, ispn) * kp__.weight();
+                    wf2(xi, j, ispn) = static_cast<std::complex<double>>(z) * kp__.band_occupancy(j, ispn) *
+                        kp__.weight();
                 }
             }
         }
