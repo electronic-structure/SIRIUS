@@ -441,6 +441,16 @@ Simulation_context::initialize()
         RTE_THROW(s);
     }
 
+    if (full_potential() && (this->gk_cutoff() * this->unit_cell().max_mt_radius() > this->unit_cell().lmax_apw()) &&
+        this->comm().rank() == 0 && this->verbosity() >= 0) {
+        std::stringstream s;
+        s << "G+k cutoff (" << this->gk_cutoff() << ") is too large for a given lmax ("
+          << this->unit_cell().lmax_apw() << ") and a maximum MT radius (" << this->unit_cell().max_mt_radius() << ")"
+          << std::endl
+          << "suggested minimum value for lmax : " << int(this->gk_cutoff() * this->unit_cell().max_mt_radius()) + 1;
+        WARNING(s);
+    }
+
     if (!full_potential()) {
         lmax_rho(unit_cell().lmax() * 2);
         lmax_pot(unit_cell().lmax() * 2);

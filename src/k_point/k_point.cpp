@@ -341,24 +341,6 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
-    if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.unit_cell().lmax_apw()) &&
-        ctx_.comm().rank() == 0 && ctx_.verbosity() >= 0) {
-        std::stringstream s;
-        s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
-          << ctx_.unit_cell().lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")"
-          << std::endl
-          << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
-        WARNING(s);
-    }
-
-    if (gk_cutoff__ * 2 > ctx_.pw_cutoff()) {
-        std::stringstream s;
-        s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
-          << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
-          << "  doubled G+k cutoff : " << gk_cutoff__ * 2;
-        TERMINATE(s);
-    }
-
     gkvec_partition_ = std::make_shared<fft::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
