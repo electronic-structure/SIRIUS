@@ -513,20 +513,10 @@ class Unit_cell
         return spl_num_atoms_;
     }
 
-    //inline auto spl_num_atoms(atom_index_t::local i) const
-    //{
-    //    return spl_num_atoms_.global_index(i);
-    //}
-
     inline auto const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
     }
-
-    //inline auto spl_num_atom_symmetry_classes(atom_symmetry_class_index_t::local i) const
-    //{
-    //    return spl_num_atom_symmetry_classes_.global_index(i);
-    //}
 
     inline double volume_mt() const
     {
