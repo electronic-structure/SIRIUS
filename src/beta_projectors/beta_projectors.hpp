@@ -55,7 +55,7 @@ class Beta_projectors : public Beta_projectors_base<T>
 
         auto& comm = this->gkvec_.comm();
 
-        auto& beta_radial_integrals = this->ctx_.beta_ri();
+        auto& beta_radial_integrals = *this->ctx_.ri().beta_;
 
         std::vector<std::complex<double>> z(uc.lmax() + 1);
         for (int l = 0; l <= uc.lmax(); l++) {

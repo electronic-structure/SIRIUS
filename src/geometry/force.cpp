@@ -515,7 +515,7 @@ Force::calc_forces_scf_corr()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
+    auto ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
 
     forces_scf_corr_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_scf_corr_.zero();
@@ -571,7 +571,7 @@ Force::calc_forces_core()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
+    auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
 
     forces_core_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_core_.zero();
@@ -695,7 +695,7 @@ Force::calc_forces_vloc()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
+    auto ff = ctx_.ri().vloc_->values(q, ctx_.comm());
 
     forces_vloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_vloc_.zero();

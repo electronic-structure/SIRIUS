@@ -91,6 +91,76 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
 
+struct callback_functions_t
+{
+    /// Callback function provided by the host code to compute radial integrals of beta projectors.
+    std::function<void(int, double, double*, int)> beta_ri_{nullptr};
+
+    std::function<void(int, double, double*, int)> beta_ri_djl_{nullptr};
+
+    /// Callback function provided by the host code to compute radial integrals of augmentation operator.
+    std::function<void(int, double, double*, int, int)> aug_ri_{nullptr};
+
+    std::function<void(int, double, double*, int, int)> aug_ri_djl_{nullptr};
+
+    std::function<void(int, int, double*, double*)> rhoc_ri_{nullptr};
+
+    std::function<void(int, int, double*, double*)> rhoc_ri_djl_{nullptr};
+
+    std::function<void(int, int, double*, double*)> ps_rho_ri_{nullptr};
+
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_{nullptr};
+
+    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_djl_{nullptr};
+
+    /// Callback function to compute radial integrals of local potential.
+    std::function<void(int, int, double*, double*)> vloc_ri_{nullptr};
+
+    std::function<void(int, int, double*, double*)> vloc_ri_djl_{nullptr};
+
+    /// Callback function to compute band occupancies.
+    std::function<void(void)> band_occ_{nullptr};
+
+    /// Callback function to compute effective potential.
+    std::function<void(void)> veff_{nullptr};
+};
+
+struct radial_integrals_t
+{
+    /// Radial integrals of beta-projectors.
+    std::unique_ptr<Radial_integrals_beta<false>> beta_;
+
+    /// Radial integrals of beta-projectors with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_beta<true>> beta_djl_;
+
+    /// Radial integrals of augmentation operator.
+    std::unique_ptr<Radial_integrals_aug<false>> aug_;
+
+    /// Radial integrals of augmentation operator with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_aug<true>> aug_djl_;
+
+    /// Radial integrals of atomic wave-functions.
+    std::unique_ptr<Radial_integrals_atomic_wf<false>> ps_atomic_wf_;
+
+    /// Radial integrals of atomic wave-functions with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_atomic_wf<true>> ps_atomic_wf_djl_;
+
+    /// Radial integrals of pseudo-core charge density.
+    std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_;
+
+    /// Radial integrals of pseudo-core charge density with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_rho_core_pseudo<true>> ps_core_djl_;
+
+    /// Radial integrals of total pseudo-charge density.
+    std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_;
+
+    /// Radial integrals of the local part of pseudopotential.
+    std::unique_ptr<Radial_integrals_vloc<false>> vloc_;
+
+    /// Radial integrals of the local part of pseudopotential with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_vloc<true>> vloc_djl_;
+};
+
 /// Simulation context is a set of parameters and objects describing a single simulation.
 /** The order of initialization of the simulation context is the following: first, the default parameter
     values are set in the constructor, then (optionally) import() method is called and the parameters are
@@ -179,61 +249,6 @@ class Simulation_context : public Simulation_parameters
     /// Initial lattice vectors.
     r3::matrix<double> lattice_vectors0_;
 
-    /// Radial integrals of beta-projectors.
-    std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
-
-    /// Callback function provided by the host code to compute radial integrals of beta projectors.
-    std::function<void(int, double, double*, int)> beta_ri_callback_{nullptr};
-
-    /// Radial integrals of beta-projectors with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
-
-    std::function<void(int, double, double*, int)> beta_ri_djl_callback_{nullptr};
-
-    /// Radial integrals of augmentation operator.
-    std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
-
-    /// Callback function provided by the host code to compute radial integrals of augmentation operator.
-    std::function<void(int, double, double*, int, int)> aug_ri_callback_{nullptr};
-
-    /// Radial integrals of augmentation operator with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_aug<true>> aug_ri_djl_;
-
-    std::function<void(int, double, double*, int, int)> aug_ri_djl_callback_{nullptr};
-
-    /// Radial integrals of atomic wave-functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<false>> ps_atomic_wf_ri_;
-
-    /// Radial integrals of atomic wave-functions with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_atomic_wf<true>> ps_atomic_wf_ri_djl_;
-
-    /// Radial integrals of pseudo-core charge density.
-    std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
-
-    /// Radial integrals of pseudo-core charge density with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_rho_core_pseudo<true>> ps_core_ri_djl_;
-
-    std::function<void(int, int, double*, double*)> rhoc_ri_callback_{nullptr};
-    std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
-
-    std::function<void(int, int, double*, double*)> ps_rho_ri_callback_{nullptr};
-    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_callback_{nullptr};
-    std::function<void(int, double, double*, int)> ps_atomic_wf_ri_djl_callback_{nullptr};
-
-    /// Radial integrals of total pseudo-charge density.
-    std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
-
-    /// Radial integrals of the local part of pseudopotential.
-    std::unique_ptr<Radial_integrals_vloc<false>> vloc_ri_;
-
-    /// Callback function to compute radial integrals of local potential.
-    std::function<void(int, int, double*, double*)> vloc_ri_callback_{nullptr};
-
-    /// Radial integrals of the local part of pseudopotential with derivatives of spherical Bessel functions.
-    std::unique_ptr<Radial_integrals_vloc<true>> vloc_ri_djl_;
-
-    std::function<void(int, int, double*, double*)> vloc_ri_djl_callback_{nullptr};
-
     /// List of real-space point indices for each of the atoms.
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
@@ -256,12 +271,6 @@ class Simulation_context : public Simulation_parameters
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
-    /// Callback function to compute band occupancies.
-    std::function<void(void)> band_occ_callback_{nullptr};
-
-    /// Callback function to compute effective potential.
-    std::function<void(void)> veff_callback_{nullptr};
-
     /// Spla context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
@@ -270,6 +279,10 @@ class Simulation_context : public Simulation_parameters
 
     /// External pointers to periodic functions.
     std::map<std::string, periodic_function_ptr_t<double>> pf_ext_ptr;
+
+    callback_functions_t cb_;
+
+    radial_integrals_t ri_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -650,61 +663,6 @@ class Simulation_context : public Simulation_parameters
     sddk::mdarray<std::complex<double>, 2> sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
                                             sddk::matrix<std::complex<double>>& gvec_ylm__);
 
-    inline auto const& beta_ri() const
-    {
-        return *beta_ri_;
-    }
-
-    inline auto const& beta_ri_djl() const
-    {
-        return *beta_ri_djl_;
-    }
-
-    inline auto const& aug_ri() const
-    {
-        return *aug_ri_;
-    }
-
-    inline auto const& aug_ri_djl() const
-    {
-        return *aug_ri_djl_;
-    }
-
-    inline auto const& ps_atomic_wf_ri() const
-    {
-        return *ps_atomic_wf_ri_;
-    }
-
-    inline auto const& ps_atomic_wf_ri_djl() const
-    {
-        return *ps_atomic_wf_ri_djl_;
-    }
-
-    inline auto const& ps_core_ri() const
-    {
-        return *ps_core_ri_;
-    }
-
-    inline auto const& ps_core_ri_djl() const
-    {
-        return *ps_core_ri_djl_;
-    }
-
-    inline auto const& ps_rho_ri() const
-    {
-        return *ps_rho_ri_;
-    }
-
-    inline auto const& vloc_ri() const
-    {
-        return *vloc_ri_;
-    }
-
-    inline auto const& vloc_ri_djl() const
-    {
-        return *vloc_ri_djl_;
-    }
-
     /// Find the lambda parameter used in the Ewald summation.
     /** Lambda parameter scales the erfc function argument:
      *  \f[
@@ -821,83 +779,34 @@ class Simulation_context : public Simulation_parameters
         return num_itsol_steps_;
     }
 
-    /// Set the callback function.
-    inline void beta_ri_callback(void (*fptr__)(int, double, double*, int))
+    inline auto& cb()
     {
-        beta_ri_callback_ = fptr__;
+        return cb_;
     }
 
-    inline void beta_ri_djl_callback(void (*fptr__)(int, double, double*, int))
+    inline auto const& cb() const
     {
-        beta_ri_djl_callback_ = fptr__;
+        return cb_;
     }
 
-    /// Set the callback function.
-    inline void aug_ri_callback(void (*fptr__)(int, double, double*, int, int))
+    inline auto& ri()
     {
-        aug_ri_callback_ = fptr__;
+        return ri_;
     }
 
-    /// Set the callback function.
-    inline void aug_ri_djl_callback(void (*fptr__)(int, double, double*, int, int))
+    inline auto const& ri() const
     {
-        aug_ri_djl_callback_ = fptr__;
-    }
-
-    inline void vloc_ri_callback(void (*fptr__)(int, int, double*, double*))
-    {
-        vloc_ri_callback_ = fptr__;
-    }
-
-    inline void ps_rho_ri_callback(void (*fptr__)(int, int, double*, double*))
-    {
-        ps_rho_ri_callback_ = fptr__;
-    }
-
-    inline void vloc_ri_djl_callback(void (*fptr__)(int, int, double*, double*))
-    {
-        vloc_ri_djl_callback_ = fptr__;
-    }
-
-    inline void rhoc_ri_callback(void (*fptr__)(int, int, double*, double*))
-    {
-        rhoc_ri_callback_ = fptr__;
-    }
-
-    inline void rhoc_ri_djl_callback(void (*fptr__)(int, int, double*, double*))
-    {
-        rhoc_ri_djl_callback_ = fptr__;
-    }
-
-    inline void ps_atomic_wf_ri_callback(void (*fptr__)(int, double, double*, int))
-    {
-        ps_atomic_wf_ri_callback_ = fptr__;
-    }
-
-    inline void ps_atomic_wf_ri_djl_callback(void (*fptr__)(int, double, double*, int))
-    {
-        ps_atomic_wf_ri_djl_callback_ = fptr__;
-    }
-
-    /// Set callback function to compute band occupations
-    inline void band_occ_callback(void (*fptr__)(void))
-    {
-        band_occ_callback_ = fptr__;
+        return ri_;
     }
 
     inline std::function<void(void)> band_occ_callback() const
     {
-        return band_occ_callback_;
-    }
-
-    inline void veff_callback(void (*fptr__)(void))
-    {
-        veff_callback_ = fptr__;
+        return cb_.band_occ_;
     }
 
     inline std::function<void(void)> veff_callback() const
     {
-        return veff_callback_;
+        return cb_.veff_;
     }
 
     /// Export parameters of simulation context as a JSON dictionary.

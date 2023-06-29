@@ -5417,31 +5417,31 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
             std::transform(label.begin(), label.end(), label.begin(), ::tolower);
             auto& sim_ctx = get_sim_ctx(handler__);
             if (label == "beta_ri") {
-                sim_ctx.beta_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().beta_ri_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "beta_ri_djl") {
-                sim_ctx.beta_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().beta_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "aug_ri") {
-                sim_ctx.aug_ri_callback(reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__));
+                sim_ctx.cb().aug_ri_ = reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__);
             } else if (label == "aug_ri_djl") {
-                sim_ctx.aug_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__));
+                sim_ctx.cb().aug_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__);
             } else if (label == "vloc_ri") {
-                sim_ctx.vloc_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().vloc_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "vloc_ri_djl") {
-                sim_ctx.vloc_ri_djl_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().vloc_ri_djl_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "rhoc_ri") {
-                sim_ctx.rhoc_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().rhoc_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "rhoc_ri_djl") {
-                sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().rhoc_ri_djl_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "band_occ") {
-                sim_ctx.band_occ_callback(reinterpret_cast<void (*)(void)>(fptr__));
+                sim_ctx.cb().band_occ_ = reinterpret_cast<void (*)(void)>(fptr__);
             } else if (label == "veff") {
-                sim_ctx.veff_callback(reinterpret_cast<void (*)(void)>(fptr__));
+                sim_ctx.cb().veff_ = reinterpret_cast<void (*)(void)>(fptr__);
             } else if (label == "ps_rho_ri") {
-                sim_ctx.ps_rho_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().ps_rho_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "ps_atomic_wf_ri") {
-                sim_ctx.ps_atomic_wf_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().ps_atomic_wf_ri_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "ps_atomic_wf_ri_djl") {
-                sim_ctx.ps_atomic_wf_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().ps_atomic_wf_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else {
                 RTE_THROW("Wrong label of the callback function: " + label);
             }
@@ -5892,9 +5892,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
             gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
             gkq_in_distr.calc_offsets();
-
-            /* offset in the incoming G-vector index */
-            int offset = gkq_in_distr.offsets[gvkq.comm().rank()];
 
             // Copy eigenvalues (factor 2 for rydberg/hartree)
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + sctx.num_bands());

@@ -53,8 +53,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                     return offs;
                 });
 
-        auto& beta_ri0 = this->ctx_.beta_ri();
-        auto& beta_ri1 = this->ctx_.beta_ri_djl();
+        auto& beta_ri0 = *this->ctx_.ri().beta_;
+        auto& beta_ri1 = *this->ctx_.ri().beta_djl_;
 
         int lmax  = uc.lmax();
         int lmmax = utils::lmmax(lmax);
