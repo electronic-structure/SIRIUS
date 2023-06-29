@@ -30,6 +30,8 @@
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/serialize_mdarray.hpp"
+#include "lapw/generate_gvec_ylm.hpp"
+#include "lapw/sum_fg_fl_yg.hpp"
 
 namespace sirius {
 
@@ -323,11 +325,11 @@ Density::initial_density_full_pot()
     }
 
     /* compute boundary value at MT sphere from the plane-wave expansion */
-    auto gvec_ylm = ctx_.generate_gvec_ylm(lmax);
+    auto gvec_ylm = generate_gvec_ylm(ctx_, lmax);
 
     auto sbessel_mt = ctx_.generate_sbessel_mt(lmax);
 
-    auto flm = ctx_.sum_fg_fl_yg(lmax, v.data(), sbessel_mt, gvec_ylm);
+    auto flm = sum_fg_fl_yg(ctx_, lmax, v.data(), sbessel_mt, gvec_ylm);
 
     /* this is the difference between the value of periodic charge density at MT boundary and
        a value of the atom's free density at the boundary */

@@ -88,9 +88,6 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     }
 }
 
-/// Utility function to generate LAPW unit step function.
-double unit_step_function_form_factors(double R__, double g__);
-
 /// Store all callback functions in one place.
 struct callback_functions_t
 {
@@ -664,20 +661,6 @@ class Simulation_context : public Simulation_parameters
 
     /// Compute values of spherical Bessel functions at MT boundary.
     sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
-
-    /// Generate complex spherical harmoics for the local set of G-vectors.
-    sddk::matrix<std::complex<double>> generate_gvec_ylm(int lmax__);
-
-    /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
-    /// MT boundary values.
-    /** The following operation is performed:
-     *  \f[
-     *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G})
-     *     e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
-     *  \f]
-     */
-    sddk::mdarray<std::complex<double>, 2> sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                            sddk::matrix<std::complex<double>>& gvec_ylm__);
 
     /// Find the lambda parameter used in the Ewald summation.
     /** Lambda parameter scales the erfc function argument:
