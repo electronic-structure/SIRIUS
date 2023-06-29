@@ -91,31 +91,44 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
 
+/// Store all callback functions in one place.
 struct callback_functions_t
 {
     /// Callback function provided by the host code to compute radial integrals of beta projectors.
     std::function<void(int, double, double*, int)> beta_ri_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of beta projectors with
+    /// derivatives of spherical Bessel functions.
     std::function<void(int, double, double*, int)> beta_ri_djl_{nullptr};
 
     /// Callback function provided by the host code to compute radial integrals of augmentation operator.
     std::function<void(int, double, double*, int, int)> aug_ri_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of augmentation operator with
+    /// derivatives of spherical Bessel functions.
     std::function<void(int, double, double*, int, int)> aug_ri_djl_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of pseudo core charge density.
     std::function<void(int, int, double*, double*)> rhoc_ri_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of pseudo core charge density with
+    /// derivatives of spherical Bessel functions.
     std::function<void(int, int, double*, double*)> rhoc_ri_djl_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of pseudo charge density.
     std::function<void(int, int, double*, double*)> ps_rho_ri_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of pseudo atomic wave-functions.
     std::function<void(int, double, double*, int)> ps_atomic_wf_ri_{nullptr};
 
+    /// Callback function provided by the host code to compute radial integrals of pseudo atomic wave-functions with
+    /// derivatives of spherical Bessel functions.
     std::function<void(int, double, double*, int)> ps_atomic_wf_ri_djl_{nullptr};
 
     /// Callback function to compute radial integrals of local potential.
     std::function<void(int, int, double*, double*)> vloc_ri_{nullptr};
 
+    /// Callback function to compute radial integrals of local potential with derivatives of spherical Bessel functions.
     std::function<void(int, int, double*, double*)> vloc_ri_djl_{nullptr};
 
     /// Callback function to compute band occupancies.
@@ -125,6 +138,7 @@ struct callback_functions_t
     std::function<void(void)> veff_{nullptr};
 };
 
+/// Store all radial integrals in one place.
 struct radial_integrals_t
 {
     /// Radial integrals of beta-projectors.
@@ -271,7 +285,7 @@ class Simulation_context : public Simulation_parameters
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     sddk::memory_t host_memory_t_{sddk::memory_t::none};
 
-    /// Spla context.
+    /// SPLA library context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
     std::ostream* output_stream_{nullptr};
@@ -280,8 +294,10 @@ class Simulation_context : public Simulation_parameters
     /// External pointers to periodic functions.
     std::map<std::string, periodic_function_ptr_t<double>> pf_ext_ptr;
 
+    /// Stores all callback functions.
     callback_functions_t cb_;
 
+    /// Stores all radial integrals.
     radial_integrals_t ri_;
 
     mutable double evp_work_count_{0};
