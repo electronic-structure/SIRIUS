@@ -253,7 +253,7 @@ class Potential : public Field4D
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
+        auto ff = ctx_.ri().vloc_->values(q, ctx_.comm());
         /* make Vloc(G) */
         auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
 

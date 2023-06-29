@@ -205,7 +205,7 @@ K_point<T>::generate_hubbard_orbitals()
     std::iota(atoms.begin(), atoms.end(), 0);
 
     this->generate_atomic_wave_functions(atoms, [&](int iat){ return &ctx_.unit_cell().atom_type(iat).indexb_wfs(); },
-                ctx_.ps_atomic_wf_ri(), *atomic_wave_functions_);
+                *ctx_.ri().ps_atomic_wf_, *atomic_wave_functions_);
 
     auto pcs = env::print_checksum();
     if (pcs) {
