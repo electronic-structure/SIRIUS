@@ -30,6 +30,7 @@
 #include "function3d/paw_field4d.hpp"
 #include "function3d/periodic_function.hpp"
 #include "function3d/spheric_function_set.hpp"
+#include "function3d/make_periodic_function.hpp"
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "occupation_matrix.hpp"
@@ -327,9 +328,10 @@ class Density : public Field4D
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
+        auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);

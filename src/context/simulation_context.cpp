@@ -33,7 +33,7 @@
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
-#include "lapw/unit_step_function_form_factors.hpp"
+#include "lapw/step_function.hpp"
 
 namespace sirius {
 
@@ -122,22 +122,6 @@ Simulation_context::init_fft_grid()
     fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
 }
 
-sddk::mdarray<double, 3>
-Simulation_context::generate_sbessel_mt(int lmax__) const
-{
-    PROFILE("sirius::Simulation_context::generate_sbessel_mt");
-
-    sddk::mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            auto gv = gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
-            gsl_sf_bessel_jl_array(lmax__, gv.length() * unit_cell().atom_type(iat).mt_radius(),
-                                   &sbessel_mt(0, igloc, iat));
-        }
-    }
-    return sbessel_mt;
-}
 
 double
 Simulation_context::ewald_lambda() const
@@ -1113,8 +1097,9 @@ Simulation_context::update()
         }
     }
 
-    if (full_potential()) { // TODO: add corresponging radial integarls of Theta
-        init_step_function();
+    if (full_potential()) {
+        theta_ = init_step_function(this->unit_cell(), this->gvec(), this->gvec_fft(), this->phase_factors_t(),
+                *this->spfft_transform_);
     }
 
     auto save_config = env::save_config();
@@ -1281,59 +1266,59 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
     }
 }
 
-void
-Simulation_context::init_step_function()
-{
-    auto v = make_periodic_function<sddk::index_domain_t::global>([&](int iat, double g) {
-        auto R = unit_cell().atom_type(iat).mt_radius();
-        return unit_step_function_form_factors(R, g);
-    });
-
-    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
-    theta_pw_ = sddk::mdarray<std::complex<double>, 1>(gvec().num_gvec());
-
-    try {
-        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            theta_pw_[ig] = -v[ig];
-        }
-        theta_pw_[0] += 1.0;
-
-        std::vector<std::complex<double>> ftmp(gvec_fft().count());
-        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
-        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
-        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
-        fft::spfft_output(spfft<double>(), theta_ptr);
-    } catch (...) {
-        std::stringstream s;
-        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
-          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-          << "gvec_fft().count() = " << gvec_fft().count();
-        RTE_THROW(s);
-    }
-
-    double vit{0};
-    for (int i = 0; i < spfft<double>().local_slice_size(); i++) {
-        vit += theta_[i];
-    }
-    vit *= (unit_cell().omega() / fft_grid().num_points());
-    mpi::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
-
-    if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
-        std::stringstream s;
-        s << "step function gives a wrong volume for IT region" << std::endl
-          << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
-        if (comm().rank() == 0) {
-            WARNING(s);
-        }
-    }
-    if (cfg().control().print_checksum()) {
-        auto z1 = theta_pw_.checksum();
-        auto d1 = theta_.checksum();
-        mpi::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
-        utils::print_checksum("theta", d1, this->out());
-        utils::print_checksum("theta_pw", z1, this->out());
-    }
-}
+//void
+//Simulation_context::init_step_function()
+//{
+//    auto v = make_periodic_function<sddk::index_domain_t::global>([&](int iat, double g) {
+//        auto R = unit_cell().atom_type(iat).mt_radius();
+//        return unit_step_function_form_factors(R, g);
+//    });
+//
+//    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
+//    theta_pw_ = sddk::mdarray<std::complex<double>, 1>(gvec().num_gvec());
+//
+//    try {
+//        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+//            theta_pw_[ig] = -v[ig];
+//        }
+//        theta_pw_[0] += 1.0;
+//
+//        std::vector<std::complex<double>> ftmp(gvec_fft().count());
+//        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
+//        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
+//        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
+//        fft::spfft_output(spfft<double>(), theta_ptr);
+//    } catch (...) {
+//        std::stringstream s;
+//        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
+//          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
+//          << "gvec_fft().count() = " << gvec_fft().count();
+//        RTE_THROW(s);
+//    }
+//
+//    double vit{0};
+//    for (int i = 0; i < spfft<double>().local_slice_size(); i++) {
+//        vit += theta_[i];
+//    }
+//    vit *= (unit_cell().omega() / fft_grid().num_points());
+//    mpi::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
+//
+//    if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
+//        std::stringstream s;
+//        s << "step function gives a wrong volume for IT region" << std::endl
+//          << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
+//        if (comm().rank() == 0) {
+//            WARNING(s);
+//        }
+//    }
+//    if (cfg().control().print_checksum()) {
+//        auto z1 = theta_pw_.checksum();
+//        auto d1 = theta_.checksum();
+//        mpi::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
+//        utils::print_checksum("theta", d1, this->out());
+//        utils::print_checksum("theta_pw", z1, this->out());
+//    }
+//}
 
 void
 Simulation_context::init_comm()

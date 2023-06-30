@@ -238,9 +238,10 @@ Stress::calc_stress_core()
 
     potential_.xc_potential().rg().fft_transform(-1);
 
-    auto q     = ctx_.gvec().shells_len();
-    auto ff    = ctx_.ri().ps_core_djl_->values(q, ctx_.comm());
-    auto drhoc = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+    auto q        = ctx_.gvec().shells_len();
+    auto const ff = ctx_.ri().ps_core_djl_->values(q, ctx_.comm());
+    auto drhoc    = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                        ctx_.phase_factors_t(), ff);
 
     double sdiag{0};
     int ig0 = ctx_.gvec().skip_g0();
@@ -733,12 +734,14 @@ Stress::calc_stress_vloc()
 
     stress_vloc_.zero();
 
-    auto q          = ctx_.gvec().shells_len();
-    auto ri_vloc    = ctx_.ri().vloc_->values(q, ctx_.comm());
-    auto ri_vloc_dg = ctx_.ri().vloc_djl_->values(q, ctx_.comm());
+    auto q                = ctx_.gvec().shells_len();
+    auto const ri_vloc    = ctx_.ri().vloc_->values(q, ctx_.comm());
+    auto const ri_vloc_dg = ctx_.ri().vloc_djl_->values(q, ctx_.comm());
 
-    auto v  = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc);
-    auto dv = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc_dg);
+    auto v  = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ri_vloc);
+    auto dv = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ri_vloc_dg);
 
     double sdiag{0};
 

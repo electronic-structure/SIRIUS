@@ -17,30 +17,32 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file generate_gvec_ylm.hpp
+/** \file generate_sbessel_mt.hpp
  *
- *  \brief Generate complex spherical harmonics for the local set of G-vectors.
+ *  \brief Generate spherical Bessel functions at the muffin-tin boundary for the local set of G-vectors.
  */
 
-#ifndef __GENERATE_GVEC_YLM_HPP__
-#define __GENERATE_GVEC_YLM_HPP__
+#ifndef __GENERATE_SBESSEL_MT_HPP__
+#define __GENERATE_SBESSEL_MT_HPP__
 
 namespace sirius {
 
-/// Generate complex spherical harmonics for the local set of G-vectors.
+/// Compute values of spherical Bessel functions at MT boundary.
 inline auto
-generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
+generate_sbessel_mt(Simulation_context const& ctx__, int lmax__)
 {
-    PROFILE("sirius::generate_gvec_ylm");
+    PROFILE("sirius::generate_sbessel_mt");
 
-    sddk::mdarray<std::complex<double>, 2> gvec_ylm(utils::lmmax(lmax__), ctx__.gvec().count(),
-            sddk::memory_t::host, "gvec_ylm");
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {
-        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
-        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+    sddk::mdarray<double, 3> sbessel_mt(lmax__ + 1, ctx__.gvec().count(), ctx__.unit_cell().num_atom_types());
+    for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {
+            auto gv = ctx__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
+            gsl_sf_bessel_jl_array(lmax__, gv.length() * ctx__.unit_cell().atom_type(iat).mt_radius(),
+                                   &sbessel_mt(0, igloc, iat));
+        }
     }
-    return gvec_ylm;
+    return sbessel_mt;
 }
 
 }
