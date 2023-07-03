@@ -48,7 +48,7 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
         na_max = std::max(na_max, ctx__.unit_cell().atom_type(iat).num_atoms());
     }
 
-    int lmmax = utils::lmmax(lmax__);
+    const int lmmax = utils::lmmax(lmax__);
     /* resuling matrix */
     sddk::mdarray<std::complex<double>, 2> flm(lmmax, ctx__.unit_cell().num_atoms());
 
@@ -83,7 +83,7 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
     }
 
     for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-        int na = ctx__.unit_cell().atom_type(iat).num_atoms();
+        const int na = ctx__.unit_cell().atom_type(iat).num_atoms();
         ctx__.generate_phase_factors(iat, phase_factors);
         PROFILE_START("sirius::sum_fg_fl_yg|zm");
         #pragma omp parallel for schedule(static)
@@ -118,7 +118,7 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
         PROFILE_STOP("sirius::sum_fg_fl_yg|mul");
 
         for (int i = 0; i < na; i++) {
-            int ia = ctx__.unit_cell().atom_type(iat).atom_id(i);
+            const int ia = ctx__.unit_cell().atom_type(iat).atom_id(i);
             std::copy(&tmp(0, i), &tmp(0, i) + lmmax, &flm(0, ia));
         }
     }
