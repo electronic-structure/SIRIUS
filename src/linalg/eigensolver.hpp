@@ -68,7 +68,7 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     if (map_to_type.count(name__) == 0) {
         std::stringstream s;
         s << "wrong label of eigen-solver : " << name__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return map_to_type.at(name__);
@@ -111,7 +111,7 @@ class Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -119,14 +119,14 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__,
                       dmatrix<std::complex<double>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
     virtual int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -134,35 +134,35 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__,
                       dmatrix<std::complex<float>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem of a sub-matrix for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -170,7 +170,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
                       dmatrix<double>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -178,7 +178,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
                       double* eval__, dmatrix<std::complex<double>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -186,7 +186,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
                       dmatrix<float>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -194,7 +194,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
                       float* eval__, dmatrix<std::complex<float>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -202,7 +202,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__,
                       double* eval__, dmatrix<double>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -210,7 +210,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__,
                       dmatrix<std::complex<double>>& B__, double* eval__, dmatrix<std::complex<double>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -218,7 +218,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__,
                       float* eval__, dmatrix<float>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
@@ -226,7 +226,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__,
                       dmatrix<std::complex<float>>& B__, float* eval__, dmatrix<std::complex<float>>& Z__)
     {
-        TERMINATE(error_msg_not_implemented);
+        RTE_THROW(error_msg_not_implemented);
         return -1;
     }
 
