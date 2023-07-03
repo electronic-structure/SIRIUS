@@ -36,19 +36,19 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 {
     PROFILE("sirius::make_periodic_function");
 
-    double fourpi_omega = fourpi / uc__.omega();
+    const double fourpi_omega = fourpi / uc__.omega();
 
-    auto ngv = (index_domain == sddk::index_domain_t::local) ? gv__.count() : gv__.num_gvec();
+    auto const ngv = (index_domain == sddk::index_domain_t::local) ? gv__.count() : gv__.num_gvec();
     sddk::mdarray<std::complex<double>, 1> f_pw(ngv);
     f_pw.zero();
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gv__.count(); igloc++) {
         /* global index of G-vector */
-        int ig   = gv__.offset() + igloc;
-        double g = gv__.gvec_len<sddk::index_domain_t::local>(igloc);
+        const int ig   = gv__.offset() + igloc;
+        const double g = gv__.gvec_len<sddk::index_domain_t::local>(igloc);
 
-        auto j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
+        auto const j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
         for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
             f_pw[j] += fourpi_omega * std::conj(phase_factors_t__(igloc, iat)) * form_factors__(iat, g);
         }
@@ -70,19 +70,19 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 {
     PROFILE("sirius::make_periodic_function");
 
-    double fourpi_omega = fourpi / uc__.omega();
+    const double fourpi_omega = fourpi / uc__.omega();
 
-    auto ngv = (index_domain == sddk::index_domain_t::local) ? gv__.count() : gv__.num_gvec();
+    auto const ngv = (index_domain == sddk::index_domain_t::local) ? gv__.count() : gv__.num_gvec();
     sddk::mdarray<std::complex<double>, 1> f_pw(ngv);
     f_pw.zero();
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gv__.count(); igloc++) {
         /* global index of G-vector */
-        int ig   = gv__.offset() + igloc;
-        int igsh = gv__.shell(ig);
+        const int ig   = gv__.offset() + igloc;
+        const int igsh = gv__.shell(ig);
 
-        auto j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
+        auto const j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
         for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
             f_pw[j] += fourpi_omega * std::conj(phase_factors_t__(igloc, iat)) * form_factors__(igsh, iat);
         }
