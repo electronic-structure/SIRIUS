@@ -753,6 +753,11 @@ class Wave_functions : public Wave_functions_mt<T>
         return *gkvec_;
     }
 
+    auto gkvec_sptr() const
+    {
+        return gkvec_;
+    }
+
     inline auto checksum_pw(sddk::memory_t mem__, spin_index s__, band_range b__) const
     {
         std::complex<T> cs{0};

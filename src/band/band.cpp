@@ -75,59 +75,6 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
     }
 }
 
-
-///// Check wave-functions for orthonormalization.
-//template <typename T>
-//void Band::check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const
-//{
-//    auto& kp = Hk__.kp();
-//    kp.message(1, __function_name__, "%s", "checking wave-functions\n");
-//
-//    if (!ctx_.full_potential()) {
-//
-//        sddk::dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-//
-//        const bool nc_mag = (ctx_.num_mag_dims() == 3);
-//        const int num_sc = nc_mag ? 2 : 1;
-//
-//        auto& psi = kp.spinor_wave_functions();
-//        sddk::Wave_functions<real_type<T>> spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-//
-//        if (is_device_memory(ctx_.preferred_memory_t())) {
-//            auto& mpd = ctx_.mem_pool(sddk::memory_t::device);
-//            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-//                psi.pw_coeffs(ispn).allocate(mpd);
-//                psi.pw_coeffs(ispn).copy_to(sddk::memory_t::device, 0, ctx_.num_bands());
-//            }
-//            for (int i = 0; i < num_sc; i++) {
-//                spsi.pw_coeffs(i).allocate(mpd);
-//            }
-//            ovlp.allocate(sddk::memory_t::device);
-//        }
-//
-//        /* compute residuals */
-//        for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
-//            auto sr = sddk::spin_range(nc_mag ? 2 : ispin_step);
-//            /* apply Hamiltonian and S operators to the wave-functions */
-//            Hk__.template apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
-//            inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-//
-//            double diff = check_identity(ovlp, ctx_.num_bands());
-//
-//            if (diff > 1e-12) {
-//                kp.message(1, __function_name__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
-//            } else {
-//                kp.message(1, __function_name__, "%s", "OK! Wave functions are orthonormal.\n");
-//            }
-//        }
-//        if (is_device_memory(ctx_.preferred_memory_t())) {
-//            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-//                psi.pw_coeffs(ispn).deallocate(sddk::memory_t::device);
-//            }
-//        }
-//    }
-//}
-
 template
 void
 Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
