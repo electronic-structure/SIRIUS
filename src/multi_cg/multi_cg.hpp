@@ -45,11 +45,11 @@ void repack(std::vector<T> &data, std::vector<int> const&ids) {
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
-#ifndef NDEBUG
-    for (size_t i = ids.size(); i < data.size(); ++i) {
-        data[i] = -1;
-    }
-#endif
+//#ifndef NDEBUG
+//    for (size_t i = ids.size(); i < data.size(); ++i) {
+//        data[i] = -1;
+//    }
+//#endif
 }
 
 template<class Matrix, class Prec, class StateVec>
@@ -271,11 +271,11 @@ struct Smoothed_diagonal_preconditioner {
         for (size_t i = 0; i < ids.size(); ++i) {
             eigvals[i] = eigvals[ids[i]];
         }
-#ifndef NDEBUG
-        for (size_t i = ids.size(); i < eigvals.size(); ++i) {
-            eigvals[i] = -1;
-        }
-#endif
+//#ifndef NDEBUG
+//        for (size_t i = ids.size(); i < eigvals.size(); ++i) {
+//            eigvals[i] = -1;
+//        }
+//#endif
     }
 };
 
@@ -323,12 +323,12 @@ struct Linear_response_operator {
         for (size_t i = 0; i < ids.size(); ++i) {
             min_eigenvals[i] = min_eigenvals[ids[i]];
         }
-#ifndef NDEBUG
-        // for debugging purposes, can be commented out in production runs
-        for (size_t i = ids.size(); i < min_eigenvals.size(); ++i) {
-            min_eigenvals[i] = -1;
-        }
-#endif
+//#ifndef NDEBUG
+//        // for debugging purposes, can be commented out in production runs
+//        for (size_t i = ids.size(); i < min_eigenvals.size(); ++i) {
+//            min_eigenvals[i] = -1;
+//        }
+//#endif
     }
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
