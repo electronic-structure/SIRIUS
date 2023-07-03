@@ -1170,7 +1170,7 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<std::complex
         case sddk::device_t::CPU: {
             #pragma omp parallel for
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                int ig = gvec().offset() + igloc;
+                const int ig = gvec().offset() + igloc;
                 for (int i = 0; i < na; i++) {
                     int ia                    = unit_cell().atom_type(iat__).atom_id(i);
                     phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
@@ -1207,7 +1207,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 
     r3::vector<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
 
-    int z_off = spfft<double>().local_z_offset();
+    const int z_off = spfft<double>().local_z_offset();
     r3::vector<int> grid_beg(0, 0, z_off);
     r3::vector<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
     std::vector<r3::vector<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
@@ -1266,60 +1266,6 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
     }
 }
 
-//void
-//Simulation_context::init_step_function()
-//{
-//    auto v = make_periodic_function<sddk::index_domain_t::global>([&](int iat, double g) {
-//        auto R = unit_cell().atom_type(iat).mt_radius();
-//        return unit_step_function_form_factors(R, g);
-//    });
-//
-//    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
-//    theta_pw_ = sddk::mdarray<std::complex<double>, 1>(gvec().num_gvec());
-//
-//    try {
-//        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-//            theta_pw_[ig] = -v[ig];
-//        }
-//        theta_pw_[0] += 1.0;
-//
-//        std::vector<std::complex<double>> ftmp(gvec_fft().count());
-//        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
-//        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
-//        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
-//        fft::spfft_output(spfft<double>(), theta_ptr);
-//    } catch (...) {
-//        std::stringstream s;
-//        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
-//          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-//          << "gvec_fft().count() = " << gvec_fft().count();
-//        RTE_THROW(s);
-//    }
-//
-//    double vit{0};
-//    for (int i = 0; i < spfft<double>().local_slice_size(); i++) {
-//        vit += theta_[i];
-//    }
-//    vit *= (unit_cell().omega() / fft_grid().num_points());
-//    mpi::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
-//
-//    if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
-//        std::stringstream s;
-//        s << "step function gives a wrong volume for IT region" << std::endl
-//          << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
-//        if (comm().rank() == 0) {
-//            WARNING(s);
-//        }
-//    }
-//    if (cfg().control().print_checksum()) {
-//        auto z1 = theta_pw_.checksum();
-//        auto d1 = theta_.checksum();
-//        mpi::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
-//        utils::print_checksum("theta", d1, this->out());
-//        utils::print_checksum("theta_pw", z1, this->out());
-//    }
-//}
-
 void
 Simulation_context::init_comm()
 {
@@ -1333,15 +1279,15 @@ Simulation_context::init_comm()
         RTE_THROW("wrong MPI grid");
     }
 
-    int npr = cfg().control().mpi_grid_dims()[0];
-    int npc = cfg().control().mpi_grid_dims()[1];
-    int npb = npr * npc;
+    const int npr = cfg().control().mpi_grid_dims()[0];
+    const int npc = cfg().control().mpi_grid_dims()[1];
+    const int npb = npr * npc;
     if (npb <= 0) {
         std::stringstream s;
         s << "wrong mpi grid dimensions : " << npr << " " << npc;
         RTE_THROW(s);
     }
-    int npk = comm_.size() / npb;
+    const int npk = comm_.size() / npb;
     if (npk * npb != comm_.size()) {
         std::stringstream s;
         s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
