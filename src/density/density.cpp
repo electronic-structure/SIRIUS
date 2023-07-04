@@ -30,6 +30,9 @@
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/serialize_mdarray.hpp"
+#include "lapw/generate_gvec_ylm.hpp"
+#include "lapw/sum_fg_fl_yg.hpp"
+#include "lapw/generate_sbessel_mt.hpp"
 
 namespace sirius {
 
@@ -173,9 +176,10 @@ Density::initial_density_pseudo()
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
     // TODO: MPI parallelise over G-shells
-    auto ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
+    auto const ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
     /* make Vloc(G) */
-    auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ff);
 
     if (ctx_.cfg().control().print_checksum()) {
         auto z1 = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
@@ -274,7 +278,8 @@ Density::initial_density_full_pot()
     Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 40);
 
     /* compute contribution from free atoms to the interstitial density */
-    auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>([&ri](int iat, double g) { return ri.value(iat, g); });
+    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+            [&ri](int iat, double g) { return ri.value(iat, g); });
 
     /* initialize density of free atoms (not smoothed) */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -323,11 +328,11 @@ Density::initial_density_full_pot()
     }
 
     /* compute boundary value at MT sphere from the plane-wave expansion */
-    auto gvec_ylm = ctx_.generate_gvec_ylm(lmax);
+    auto gvec_ylm = generate_gvec_ylm(ctx_, lmax);
 
-    auto sbessel_mt = ctx_.generate_sbessel_mt(lmax);
+    auto sbessel_mt = generate_sbessel_mt(ctx_, lmax);
 
-    auto flm = ctx_.sum_fg_fl_yg(lmax, v.data(), sbessel_mt, gvec_ylm);
+    auto flm = sum_fg_fl_yg(ctx_, lmax, v.at(sddk::memory_t::host), sbessel_mt, gvec_ylm);
 
     /* this is the difference between the value of periodic charge density at MT boundary and
        a value of the atom's free density at the boundary */

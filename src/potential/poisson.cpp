@@ -24,6 +24,7 @@
 
 #include "potential.hpp"
 #include "utils/profiler.hpp"
+#include "lapw/sum_fg_fl_yg.hpp"
 
 namespace sirius {
 
@@ -169,7 +170,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         }
 
         /* compute multipoles of interstitial density in MT region */
-        auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
+        auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
         if (ctx_.cfg().control().print_checksum()) {
             utils::print_checksum("qit", qit.checksum(), ctx_.out());
@@ -179,7 +180,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         poisson_add_pseudo_pw(qmt, qit, const_cast<std::complex<double>*>(&rho.rg().f_pw_local(0)));
 
         if (ctx_.cfg().control().verification() >= 2) {
-            auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
+            auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -230,7 +231,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
         /* compute V_lm at the MT boundary */
-        auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->rg().f_pw_local(0), sbessel_mt_, gvec_ylm_);
+        auto vmtlm = sum_fg_fl_yg(ctx_, ctx_.lmax_pot(), &hartree_potential_->rg().f_pw_local(0), sbessel_mt_, gvec_ylm_);
 
         /* add boundary condition and convert to Rlm */
         PROFILE("sirius::Potential::poisson|bc");

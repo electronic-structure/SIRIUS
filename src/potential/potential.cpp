@@ -24,6 +24,8 @@
 
 #include "potential.hpp"
 #include "xc_functional.hpp"
+#include "lapw/generate_gvec_ylm.hpp"
+#include "lapw/generate_sbessel_mt.hpp"
 
 namespace sirius {
 
@@ -140,8 +142,8 @@ void Potential::update()
         local_potential_->zero();
         generate_local_potential();
     } else {
-        gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
-        sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
+        gvec_ylm_ = generate_gvec_ylm(ctx_, ctx_.lmax_pot());
+        sbessel_mt_ = generate_sbessel_mt(ctx_, lmax_ + pseudo_density_order_ + 1);
 
         /* compute moments of spherical Bessel functions
          *

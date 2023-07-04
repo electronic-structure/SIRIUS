@@ -33,6 +33,7 @@
 #include "non_local_functor.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "symmetry/crystal_symmetry.hpp"
+#include "lapw/step_function.hpp"
 
 namespace sirius {
 

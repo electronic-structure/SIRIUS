@@ -33,18 +33,9 @@
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
+#include "lapw/step_function.hpp"
 
 namespace sirius {
-
-double
-unit_step_function_form_factors(double R__, double g__)
-{
-    if (g__ < 1e-12) {
-        return std::pow(R__, 3) / 3.0;
-    } else {
-        return (std::sin(g__ * R__) - g__ * R__ * std::cos(g__ * R__)) / std::pow(g__, 3);
-    }
-}
 
 template <>
 spfft::Transform& Simulation_context::spfft<double>()
@@ -131,129 +122,6 @@ Simulation_context::init_fft_grid()
     fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
 }
 
-sddk::mdarray<double, 3>
-Simulation_context::generate_sbessel_mt(int lmax__) const
-{
-    PROFILE("sirius::Simulation_context::generate_sbessel_mt");
-
-    sddk::mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            auto gv = gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
-            gsl_sf_bessel_jl_array(lmax__, gv.length() * unit_cell().atom_type(iat).mt_radius(),
-                                   &sbessel_mt(0, igloc, iat));
-        }
-    }
-    return sbessel_mt;
-}
-
-sddk::matrix<std::complex<double>>
-Simulation_context::generate_gvec_ylm(int lmax__)
-{
-    PROFILE("sirius::Simulation_context::generate_gvec_ylm");
-
-    sddk::matrix<std::complex<double>> gvec_ylm(utils::lmmax(lmax__), gvec().count(), sddk::memory_t::host, "gvec_ylm");
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        auto rtp = r3::spherical_coordinates(gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
-        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
-    }
-    return gvec_ylm;
-}
-
-sddk::mdarray<std::complex<double>, 2>
-Simulation_context::sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                 sddk::matrix<std::complex<double>>& gvec_ylm__)
-{
-    PROFILE("sirius::Simulation_context::sum_fg_fl_yg");
-
-    int ngv_loc = gvec().count();
-
-    int na_max{0};
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        na_max = std::max(na_max, unit_cell().atom_type(iat).num_atoms());
-    }
-
-    int lmmax = utils::lmmax(lmax__);
-    /* resuling matrix */
-    sddk::mdarray<std::complex<double>, 2> flm(lmmax, unit_cell().num_atoms());
-
-    sddk::matrix<std::complex<double>> phase_factors;
-    sddk::matrix<std::complex<double>> zm;
-    sddk::matrix<std::complex<double>> tmp;
-
-    switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            auto& mp      = get_memory_pool(sddk::memory_t::host);
-            phase_factors = sddk::matrix<std::complex<double>>(ngv_loc, na_max, mp);
-            zm            = sddk::matrix<std::complex<double>>(lmmax, ngv_loc, mp);
-            tmp           = sddk::matrix<std::complex<double>>(lmmax, na_max, mp);
-            break;
-        }
-        case sddk::device_t::GPU: {
-            auto& mp      = get_memory_pool(sddk::memory_t::host);
-            auto& mpd     = get_memory_pool(sddk::memory_t::device);
-            phase_factors = sddk::matrix<std::complex<double>>(nullptr, ngv_loc, na_max);
-            phase_factors.allocate(mpd);
-            zm = sddk::matrix<std::complex<double>>(lmmax, ngv_loc, mp);
-            zm.allocate(mpd);
-            tmp = sddk::matrix<std::complex<double>>(lmmax, na_max, mp);
-            tmp.allocate(mpd);
-            break;
-        }
-    }
-
-    std::vector<std::complex<double>> zil(lmax__ + 1);
-    for (int l = 0; l <= lmax__; l++) {
-        zil[l] = std::pow(std::complex<double>(0, 1), l);
-    }
-
-    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-        int na = unit_cell().atom_type(iat).num_atoms();
-        generate_phase_factors(iat, phase_factors);
-        PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|zm");
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < ngv_loc; igloc++) {
-            for (int l = 0, lm = 0; l <= lmax__; l++) {
-                std::complex<double> z = fourpi * fl__(l, igloc, iat) * zil[l] * fpw__[igloc];
-                for (int m = -l; m <= l; m++, lm++) {
-                    zm(lm, igloc) = z * std::conj(gvec_ylm__(lm, igloc));
-                }
-            }
-        }
-        PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|zm");
-        PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
-        switch (processing_unit()) {
-            case sddk::device_t::CPU: {
-                la::wrap(la::lib_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::host),
-                          zm.ld(), phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::host), tmp.ld());
-                break;
-            }
-            case sddk::device_t::GPU: {
-                zm.copy_to(sddk::memory_t::device);
-                la::wrap(la::lib_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(sddk::memory_t::device),
-                          zm.ld(), phase_factors.at(sddk::memory_t::device), phase_factors.ld(),
-                          &la::constant<std::complex<double>>::zero(), tmp.at(sddk::memory_t::device), tmp.ld());
-                tmp.copy_to(sddk::memory_t::host);
-                break;
-            }
-        }
-        PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|mul");
-
-        for (int i = 0; i < na; i++) {
-            int ia = unit_cell().atom_type(iat).atom_id(i);
-            std::copy(&tmp(0, i), &tmp(0, i) + lmmax, &flm(0, ia));
-        }
-    }
-
-    comm().allreduce(&flm(0, 0), (int)flm.size());
-
-    return flm;
-}
 
 double
 Simulation_context::ewald_lambda() const
@@ -1239,8 +1107,9 @@ Simulation_context::update()
         }
     }
 
-    if (full_potential()) { // TODO: add corresponging radial integarls of Theta
-        init_step_function();
+    if (full_potential()) {
+        theta_ = init_step_function(this->unit_cell(), this->gvec(), this->gvec_fft(), this->phase_factors_t(),
+                *this->spfft_transform_);
     }
 
     auto save_config = env::save_config();
@@ -1311,7 +1180,7 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<std::complex
         case sddk::device_t::CPU: {
             #pragma omp parallel for
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                int ig = gvec().offset() + igloc;
+                const int ig = gvec().offset() + igloc;
                 for (int i = 0; i < na; i++) {
                     int ia                    = unit_cell().atom_type(iat__).atom_id(i);
                     phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
@@ -1348,7 +1217,7 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 
     r3::vector<double> delta(1.0 / spfft<double>().dim_x(), 1.0 / spfft<double>().dim_y(), 1.0 / spfft<double>().dim_z());
 
-    int z_off = spfft<double>().local_z_offset();
+    const int z_off = spfft<double>().local_z_offset();
     r3::vector<int> grid_beg(0, 0, z_off);
     r3::vector<int> grid_end(spfft<double>().dim_x(), spfft<double>().dim_y(), z_off + spfft<double>().local_z_length());
     std::vector<r3::vector<double>> verts_cart{{-R, -R, -R}, {R, -R, -R}, {-R, R, -R}, {R, R, -R},
@@ -1408,60 +1277,6 @@ Simulation_context::init_atoms_to_grid_idx(double R__)
 }
 
 void
-Simulation_context::init_step_function()
-{
-    auto v = make_periodic_function<sddk::index_domain_t::global>([&](int iat, double g) {
-        auto R = unit_cell().atom_type(iat).mt_radius();
-        return unit_step_function_form_factors(R, g);
-    });
-
-    theta_    = sddk::mdarray<double, 1>(spfft<double>().local_slice_size());
-    theta_pw_ = sddk::mdarray<std::complex<double>, 1>(gvec().num_gvec());
-
-    try {
-        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            theta_pw_[ig] = -v[ig];
-        }
-        theta_pw_[0] += 1.0;
-
-        std::vector<std::complex<double>> ftmp(gvec_fft().count());
-        this->gvec_fft().scatter_pw_global(&theta_pw_[0], &ftmp[0]);
-        spfft<double>().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
-        double* theta_ptr = spfft<double>().local_slice_size() == 0 ? nullptr : &theta_[0];
-        fft::spfft_output(spfft<double>(), theta_ptr);
-    } catch (...) {
-        std::stringstream s;
-        s << "fft_grid = " << fft_grid_[0] << " " << fft_grid_[1] << " " << fft_grid_[2] << std::endl
-          << "spfft<double>().local_slice_size() = " << spfft<double>().local_slice_size() << std::endl
-          << "gvec_fft().count() = " << gvec_fft().count();
-        RTE_THROW(s);
-    }
-
-    double vit{0};
-    for (int i = 0; i < spfft<double>().local_slice_size(); i++) {
-        vit += theta_[i];
-    }
-    vit *= (unit_cell().omega() / fft_grid().num_points());
-    mpi::Communicator(spfft<double>().communicator()).allreduce(&vit, 1);
-
-    if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
-        std::stringstream s;
-        s << "step function gives a wrong volume for IT region" << std::endl
-          << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
-        if (comm().rank() == 0) {
-            WARNING(s);
-        }
-    }
-    if (cfg().control().print_checksum()) {
-        auto z1 = theta_pw_.checksum();
-        auto d1 = theta_.checksum();
-        mpi::Communicator(spfft<double>().communicator()).allreduce(&d1, 1);
-        utils::print_checksum("theta", d1, this->out());
-        utils::print_checksum("theta_pw", z1, this->out());
-    }
-}
-
-void
 Simulation_context::init_comm()
 {
     PROFILE("sirius::Simulation_context::init_comm");
@@ -1474,15 +1289,15 @@ Simulation_context::init_comm()
         RTE_THROW("wrong MPI grid");
     }
 
-    int npr = cfg().control().mpi_grid_dims()[0];
-    int npc = cfg().control().mpi_grid_dims()[1];
-    int npb = npr * npc;
+    const int npr = cfg().control().mpi_grid_dims()[0];
+    const int npc = cfg().control().mpi_grid_dims()[1];
+    const int npb = npr * npc;
     if (npb <= 0) {
         std::stringstream s;
         s << "wrong mpi grid dimensions : " << npr << " " << npc;
         RTE_THROW(s);
     }
-    int npk = comm_.size() / npb;
+    const int npk = comm_.size() / npb;
     if (npk * npb != comm_.size()) {
         std::stringstream s;
         s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;

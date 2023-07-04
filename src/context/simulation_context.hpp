@@ -38,6 +38,7 @@
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
 #include "fft/fft.hpp"
+#include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -87,9 +88,6 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
               << "num.blocks: " <<  mp[i]->num_blocks() << std::endl;
     }
 }
-
-/// Utility function to generate LAPW unit step function.
-double unit_step_function_form_factors(double R__, double g__);
 
 /// Store all callback functions in one place.
 struct callback_functions_t
@@ -266,11 +264,8 @@ class Simulation_context : public Simulation_parameters
     /// List of real-space point indices for each of the atoms.
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
-    /// Plane wave expansion coefficients of the step function.
-    sddk::mdarray<std::complex<double>, 1> theta_pw_;
-
-    /// Step function on the real-space grid.
-    sddk::mdarray<double, 1> theta_;
+    /// Step function in real-space and reciprocal domains.
+    step_function_t theta_;
 
     /// Augmentation operator for each atom type.
     /** The augmentation operator is used by Density, Potential, Q_operator, and Non_local_functor classes. */
@@ -313,43 +308,6 @@ class Simulation_context : public Simulation_parameters
 
     /// Initialize communicators.
     void init_comm();
-
-    /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
-    /** Unit step function is constructed from it's plane-wave expansion coefficients which are computed
-     *  analytically:
-     *  \f[
-     *      \Theta({\bf r}) = \sum_{\bf G} \Theta({\bf G}) e^{i{\bf Gr}},
-     *  \f]
-     *  where
-     *  \f[
-     *      \Theta({\bf G}) = \frac{1}{\Omega} \int \Theta({\bf r}) e^{-i{\bf Gr}} d{\bf r} =
-     *          \frac{1}{\Omega} \int_{\Omega} e^{-i{\bf Gr}} d{\bf r} - \frac{1}{\Omega} \int_{MT} e^{-i{\bf Gr}}
-     *           d{\bf r} = \delta_{\bf G, 0} - \sum_{\alpha} \frac{1}{\Omega} \int_{MT_{\alpha}} e^{-i{\bf Gr}}
-     *           d{\bf r}
-     *  \f]
-     *  Integralof a plane-wave over the muffin-tin volume is taken using the spherical expansion of the
-     *  plane-wave around central point \f$ \tau_{\alpha} \f$:
-     *  \f[ \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = e^{-i{\bf G\tau_{\alpha}}}
-     *   \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr) Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat
-     *   {\bf r}) r^2 \sin \theta dr d\phi d\theta
-     *  \f]
-     *  In the above integral only \f$ \ell=m=0 \f$ term survives. So we have:
-     *  \f[
-     *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
-     *  \f]
-     *  where
-     *  \f[
-     *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr =
-     *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
-     *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
-     *  \f]
-     *  are the so-called step function form factors. With this we have a final expression for the plane-wave
-     *  coefficients of the unit step function:
-     *  \f[ \Theta({\bf G}) = \delta_{\bf G, 0} - \sum_{\alpha}
-     *   \frac{4\pi}{\Omega} e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
-     *  \f]
-     */
-    void init_step_function();
 
     /// Find a list of real-space grid points around each atom.
     void init_atoms_to_grid_idx(double R__);
@@ -581,6 +539,16 @@ class Simulation_context : public Simulation_parameters
         return *gen_evp_solver_;
     }
 
+    inline auto phase_factors_t(int igloc__, int iat__) const
+    {
+        return phase_factors_t_(igloc__, iat__);
+    }
+
+    inline auto const& phase_factors_t() const
+    {
+        return phase_factors_t_;
+    }
+
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
     inline auto gvec_phase_factor(r3::vector<int> G__, int ia__) const
     {
@@ -600,84 +568,6 @@ class Simulation_context : public Simulation_parameters
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
     void generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const;
-
-    /// Make periodic function out of form factors.
-    /** Return vector of plane-wave coefficients */ // TODO: return mdarray
-    template <sddk::index_domain_t index_domain, typename F>
-    inline auto make_periodic_function(F&& form_factors__) const
-    {
-        PROFILE("sirius::Simulation_context::make_periodic_function");
-
-        double fourpi_omega = fourpi / unit_cell().omega();
-
-        int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
-
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            /* global index of G-vector */
-            int ig   = gvec().offset() + igloc;
-            double g = gvec().gvec_len<sddk::index_domain_t::local>(igloc);
-
-            int j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
-            }
-        }
-
-        if (index_domain == sddk::index_domain_t::global) {
-            comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
-        }
-
-        return f_pw;
-    }
-
-    /// Make periodic out of form factors computed for G-shells.
-    template <sddk::index_domain_t index_domain>
-    inline auto make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
-    {
-        PROFILE("sirius::Simulation_context::make_periodic_function");
-
-        double fourpi_omega = fourpi / unit_cell().omega();
-
-        int ngv = (index_domain == sddk::index_domain_t::local) ? gvec().count() : gvec().num_gvec();
-        std::vector<std::complex<double>> f_pw(ngv, std::complex<double>(0, 0));
-
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            /* global index of G-vector */
-            int ig   = gvec().offset() + igloc;
-            int igsh = gvec().shell(ig);
-
-            int j = (index_domain == sddk::index_domain_t::local) ? igloc : ig;
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(igsh, iat);
-            }
-        }
-
-        if (index_domain == sddk::index_domain_t::global) {
-            comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
-        }
-
-        return f_pw;
-    }
-
-    /// Compute values of spherical Bessel functions at MT boundary.
-    sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
-
-    /// Generate complex spherical harmoics for the local set of G-vectors.
-    sddk::matrix<std::complex<double>> generate_gvec_ylm(int lmax__);
-
-    /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
-    /// MT boundary values.
-    /** The following operation is performed:
-     *  \f[
-     *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G})
-     *     e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
-     *  \f]
-     */
-    sddk::mdarray<std::complex<double>, 2> sum_fg_fl_yg(int lmax__, std::complex<double> const* fpw__, sddk::mdarray<double, 3>& fl__,
-                                            sddk::matrix<std::complex<double>>& gvec_ylm__);
 
     /// Find the lambda parameter used in the Ewald summation.
     /** Lambda parameter scales the erfc function argument:
@@ -700,13 +590,13 @@ class Simulation_context : public Simulation_parameters
     /// Return plane-wave coefficient of the step function.
     inline auto const& theta_pw(int ig__) const
     {
-        return theta_pw_[ig__];
+        return theta_.pw[ig__];
     }
 
     /// Return the value of the step function for the grid point ir.
     inline double theta(int ir__) const
     {
-        return theta_[ir__];
+        return theta_.rg[ir__];
     }
 
     /// Returns a constant pointer to the augmentation operator of a given atom type.
