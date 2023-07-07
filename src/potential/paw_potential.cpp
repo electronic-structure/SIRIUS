@@ -24,6 +24,7 @@
 
 #include "potential.hpp"
 #include "symmetry/symmetrize.hpp"
+#include "symmetry/symmetrize_mt_function.hpp"
 
 namespace sirius {
 
