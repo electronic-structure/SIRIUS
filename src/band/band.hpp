@@ -172,14 +172,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     template <typename T>
     void solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const;
 
-    /// Check the residuals of wave-functions.
-    template <typename T>
-    void check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const;
-
-    /// Check wave-functions for orthonormalization.
-    template <typename T>
-    void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const;
-
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
     template <typename T, typename F>
     void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const;
@@ -441,16 +433,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
             }
         }
     }
-
-    ///* check residuals */
-    //if (ctx_.cfg().control().verification() >= 2) {
-    //    check_residuals<T>(Hk__);
-    //    check_wave_functions<T>(Hk__);
-    //}
-
-    //ctx_.print_memory_usage(__FILE__, __LINE__);
 }
-
 
 }
 

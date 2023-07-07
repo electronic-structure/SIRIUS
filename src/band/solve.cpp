@@ -23,6 +23,7 @@
  */
 #include "band.hpp"
 #include "davidson.hpp"
+#include "check_wave_functions.hpp"
 
 namespace sirius {
 
@@ -115,11 +116,20 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
         RTE_THROW("unknown iterative solver type");
     }
 
-    ///* check residuals */
-    //if (ctx_.cfg().control().verification() >= 2) {
-    //    check_residuals<T>(Hk__);
-    //    check_wave_functions<T>(Hk__);
-    //}
+    /* check wave-functions */
+    if (ctx_.cfg().control().verification() >= 2) {
+        if (ctx_.num_mag_dims() == 3) {
+            auto eval = Hk__.kp().band_energies(0);
+            check_wave_functions<T, F>(Hk__, Hk__.kp().spinor_wave_functions(), wf::spin_range(0, 2),
+                    wf::band_range(0, ctx_.num_bands()), eval.data());
+        } else {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                auto eval = Hk__.kp().band_energies(ispn);
+                check_wave_functions<T, F>(Hk__, Hk__.kp().spinor_wave_functions(), wf::spin_range(ispn),
+                        wf::band_range(0, ctx_.num_bands()), eval.data());
+            }
+        }
+    }
 
     print_memory_usage(ctx_.out(), FILE_LINE);
 

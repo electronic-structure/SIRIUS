@@ -155,7 +155,14 @@ class K_point_set
 
     /// Get a list of band energies for a given k-point index.
     template <typename T>
-    std::vector<double> get_band_energies(int ik__, int ispn__) const;
+    auto get_band_energies(int ik__, int ispn__) const
+    {
+        std::vector<double> bnd_e(ctx_.num_bands());
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
+        }
+        return bnd_e;
+    }
 
     /// Return maximum number of G+k vectors among all k-points.
     int max_num_gkvec() const
@@ -283,16 +290,6 @@ inline K_point<float>* K_point_set::get<float>(int ik__) const
     RTE_THROW("not compiled with FP32 support");
     return nullptr; // make compiler happy
 #endif
-}
-
-template <typename T>
-std::vector<double> K_point_set::get_band_energies(int ik__, int ispn__) const
-{
-    std::vector<double> bnd_e(ctx_.num_bands());
-    for (int j = 0; j < ctx_.num_bands(); j++) {
-        bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
-    }
-    return bnd_e;
 }
 
 }; // namespace sirius

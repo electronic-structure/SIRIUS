@@ -421,6 +421,15 @@ class K_point
         band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
+    inline auto band_energies(int ispn__) const
+    {
+        std::vector<double> result(ctx_.num_bands());
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            result[j] = this->band_energy(j, ispn__);
+        }
+        return result;
+    }
+
     /// Get band occupancy.
     inline double band_occupancy(int j__, int ispn__) const
     {
