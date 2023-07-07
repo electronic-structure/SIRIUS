@@ -291,6 +291,7 @@ struct Linear_response_operator {
     double alpha_pv;
     sddk::memory_t mem;
     wf::spin_range sr;
+    int nbnd;
     la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
@@ -303,9 +304,10 @@ struct Linear_response_operator {
         wf::Wave_functions<double> * tmp,
         double alpha_pv,
         sddk::memory_t mem,
-        wf::spin_range sr)
+        wf::spin_range sr,
+        int nbnd)
     : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), mem(mem), sr(sr), overlap(ctx.num_bands(), ctx.num_bands())
+      alpha_pv(alpha_pv), mem(mem), sr(sr), nbnd(nbnd), overlap(nbnd, nbnd)
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
@@ -355,7 +357,7 @@ struct Linear_response_operator {
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // overlap := evq' * (S * x)
-        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, wf::band_range(0, ctx.num_bands()),
+        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, wf::band_range(0, nbnd),
             *Sphi, wf::band_range(0, num_active), overlap, 0, 0);
 
         // Hphi := evq * overlap
@@ -363,7 +365,7 @@ struct Linear_response_operator {
             ctx.spla_context(),
             mem,
             overlap, 0, 0,
-            1.0, *evq, wf::spin_index(0), wf::band_range(0, ctx.num_bands()),
+            1.0, *evq, wf::spin_index(0), wf::band_range(0, nbnd),
             0.0, *Hphi, wf::spin_index(0), wf::band_range(0, num_active));
 
         auto bp_gen    = Hk.kp().beta_projectors().make_generator();
