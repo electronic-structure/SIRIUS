@@ -5613,7 +5613,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
             sddk::device_t processing_unit{ctx.processing_unit()};
 
-            if (pu.compare("none") != 0 || !pu.empty()) {
+            if (pu.compare("none") != 0) {
                 processing_unit = sddk::get_device_t(pu);
             }
 
