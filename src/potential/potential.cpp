@@ -26,6 +26,7 @@
 #include "xc_functional.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
+#include "symmetry/symmetrize_field4d.hpp"
 
 namespace sirius {
 
@@ -293,7 +294,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (use_symmetry__) {
         /* symmetrize potential and effective magnetic field */
-        this->symmetrize();
+        symmetrize_field4d(*this);
         if (transform_to_rg__) {
             /* transform potential to real space after symmetrization */
             this->fft_transform(1);

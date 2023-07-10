@@ -1,13 +1,15 @@
 #ifndef __SYMMETRIZE_MT_FUNCTION_HPP__
 #define __SYMMETRIZE_MT_FUNCTION_HPP__
 
+#include "crystal_symmetry.hpp"
+
 namespace sirius {
 
 inline void
-symmetrize(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int num_mag_dims__,
+symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int num_mag_dims__,
         std::vector<Spheric_function_set<double>*> frlm__)
 {
-    PROFILE("sirius::symmetrize_function|flm");
+    PROFILE("sirius::symmetrize_mt_function");
 
     /* first (scalar) component is always available */
     auto& frlm = *frlm__[0];

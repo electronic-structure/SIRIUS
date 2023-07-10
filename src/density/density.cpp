@@ -25,6 +25,7 @@
 
 #include "density.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
+#include "symmetry/symmetrize_field4d.hpp"
 #include "symmetry/symmetrize.hpp"
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
@@ -165,7 +166,7 @@ Density::initial_density()
         }
     }
     if (ctx_.use_symmetry()) {
-        this->symmetrize();
+        symmetrize_field4d(*this);
     }
 }
 
@@ -1123,7 +1124,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
         }
     }
     if (symmetrize__) {
-        this->symmetrize();
+        symmetrize_field4d(*this);
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             std::vector<std::complex<double>> dm_ref;
             std::unique_ptr<Occupation_matrix> om_ref;
