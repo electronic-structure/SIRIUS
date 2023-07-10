@@ -5980,6 +5980,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 psi_wf.get(),
                 tmp_wf.get(),
                 *alpha_pv__ / 2,
+                nbnd_occ,
                 mem, // rydberg/hartree factor
                 sr);
             // CG state vectors
