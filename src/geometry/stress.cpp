@@ -28,7 +28,7 @@
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
 #include "dft/energy.hpp"
-#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/symmetrize_stress_tensor.hpp"
 
 namespace sirius {
 
@@ -81,7 +81,7 @@ Stress::calc_stress_nonloc_aux()
 
     stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_nonloc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_nonloc_);
 }
 
 r3::matrix<double>
@@ -208,7 +208,7 @@ Stress::calc_stress_hubbard()
 
     /* global reduction */
     kset_.comm().allreduce(&stress_hubbard_(0, 0), 9);
-    symmetrize(stress_hubbard_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_hubbard_);
 
     stress_hubbard_ = -1.0 * stress_hubbard_;
 
@@ -277,7 +277,7 @@ Stress::calc_stress_core()
 
     ctx_.comm().allreduce(&stress_core_(0, 0), 9);
 
-    symmetrize(stress_core_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_core_);
 
     return stress_core_;
 }
@@ -364,7 +364,7 @@ Stress::calc_stress_xc()
         stress_xc_ += t;
     }
 
-    symmetrize(stress_xc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_xc_);
 
     return stress_xc_;
 }
@@ -483,7 +483,7 @@ Stress::calc_stress_us()
 
     stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_us_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_us_);
 
     return stress_us_;
 }
@@ -554,7 +554,7 @@ Stress::calc_stress_ewald()
         }
     }
 
-    symmetrize(stress_ewald_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_ewald_);
 
     return stress_ewald_;
 }
@@ -641,7 +641,7 @@ Stress::calc_stress_har()
 
     ctx_.comm().allreduce(&stress_har_(0, 0), 9);
 
-    symmetrize(stress_har_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_har_);
 
     return stress_har_;
 }
@@ -688,7 +688,7 @@ Stress::calc_stress_kin_aux()
 
     stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_kin_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_kin_);
 }
 
 r3::matrix<double>
@@ -703,28 +703,6 @@ Stress::calc_stress_kin()
         this->calc_stress_kin_aux<double>();
     }
     return stress_kin_;
-}
-
-void
-Stress::symmetrize(r3::matrix<double>& mtrx__) const
-{
-    if (!ctx_.use_symmetry()) {
-        return;
-    }
-
-    r3::matrix<double> result;
-
-    for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
-        auto R = ctx_.unit_cell().symmetry()[i].spg_op.Rcp;
-        result = result + dot(dot(transpose(R), mtrx__), R);
-    }
-
-    mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().size());
-
-    std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-    for (auto e : idx) {
-        mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
-    }
 }
 
 r3::matrix<double>
@@ -774,7 +752,7 @@ Stress::calc_stress_vloc()
 
     ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
-    symmetrize(stress_vloc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vloc_);
 
     return stress_vloc_;
 }
