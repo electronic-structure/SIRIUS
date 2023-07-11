@@ -27,6 +27,7 @@
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "symmetry/symmetrize_density_matrix.hpp"
+#include "symmetry/symmetrize_occupation_matrix.hpp"
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
@@ -1141,7 +1142,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
             if (ctx_.hubbard_correction()) {
                 /* all symmetrization is done in the occupation_matrix class */
-                occupation_matrix_->symmetrize();
+                symmetrize_occupation_matrix(*occupation_matrix_);
             }
 
             /* compare with reference density matrix */
