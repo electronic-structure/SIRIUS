@@ -23,7 +23,6 @@
  */
 
 #include "potential.hpp"
-#include "symmetry/symmetrize.hpp"
 #include "symmetry/symmetrize_mt_function.hpp"
 
 namespace sirius {
@@ -298,28 +297,26 @@ void Potential::calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__
 }
 
 double
-Potential::calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>, 4> const& density_matrix__,
+Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<std::complex<double>, 3> const& density_matrix__,
         sddk::mdarray<double, 3> const& paw_dij__) const
 {
     std::complex<double> energy = 0.0;
 
-    auto& atom = unit_cell_.atom(ia__);
-
-    for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
-        for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
+    for (int ib2 = 0; ib2 < atom__.mt_basis_size(); ib2++) {
+        for (int ib1 = 0; ib1 < atom__.mt_basis_size(); ib1++) {
             double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
-                    dm[2] = 2 * std::real(density_matrix__(ib1, ib2, 2, ia__));
-                    dm[3] = -2 * std::imag(density_matrix__(ib1, ib2, 2, ia__));
+                    dm[2] = 2 * std::real(density_matrix__(ib1, ib2, 2));
+                    dm[3] = -2 * std::imag(density_matrix__(ib1, ib2, 2));
                 }
                 case 1: {
-                    dm[0] = std::real(density_matrix__(ib1, ib2, 0, ia__) + density_matrix__(ib1, ib2, 1, ia__));
-                    dm[1] = std::real(density_matrix__(ib1, ib2, 0, ia__) - density_matrix__(ib1, ib2, 1, ia__));
+                    dm[0] = std::real(density_matrix__(ib1, ib2, 0) + density_matrix__(ib1, ib2, 1));
+                    dm[1] = std::real(density_matrix__(ib1, ib2, 0) - density_matrix__(ib1, ib2, 1));
                     break;
                 }
                 case 0: {
-                    dm[0] = density_matrix__(ib1, ib2, 0, ia__).real();
+                    dm[0] = density_matrix__(ib1, ib2, 0).real();
                     break;
                 }
                 default: {

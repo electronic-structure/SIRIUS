@@ -154,7 +154,7 @@ class Potential : public Field4D
 
     double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
-    double calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>, 4> const& density_matrix__,
+    double calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<std::complex<double>, 3> const& density_matrix__,
             sddk::mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
@@ -704,7 +704,7 @@ class Potential : public Field4D
         for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
             int ia_paw = unit_cell_.spl_num_paw_atoms(i);
             int ia     = unit_cell_.paw_atom_index(ia_paw);
-            e += calc_PAW_one_elec_energy(ia, density__.density_matrix(), paw_dij_[ia_paw]);
+            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), density__.density_matrix(ia), paw_dij_[ia_paw]);
         }
         comm_.allreduce(&e, 1);
         return e;

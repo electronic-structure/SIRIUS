@@ -458,7 +458,7 @@ Force::calc_forces_us()
         int nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
+        auto dm = density_.density_matrix_aux(atom_type);
 
         sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
         sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);

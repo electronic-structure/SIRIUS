@@ -414,7 +414,7 @@ Stress::calc_stress_us()
         auto nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
+        auto dm = density_.density_matrix_aux(atom_type);
 
         sddk::mdarray<std::complex<double>, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
                                                        get_memory_pool(sddk::memory_t::host));
