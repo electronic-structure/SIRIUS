@@ -68,9 +68,8 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
         /* compute Rlm rotation matrix */
         sht::rotation_matrix(lmax, sym__[i].spg_op.euler_angles, sym__[i].spg_op.proper, rotm);
 
-        for (auto it : spl_atoms) {
+        for (auto [ia, lia] : spl_atoms) {
             /* get global index of the atom */
-            int ia = it.i;
             int lmmax_ia = frlm[ia].angular_domain_size();
             int nrmax_ia = frlm.unit_cell().atom(ia).num_mt_points();
             int ja = sym__[i].spg_op.inv_sym_atom[ia];
@@ -84,14 +83,14 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
             /* always symmetrize the scalar component */
             for (int ir = 0; ir < nrmax_ia; ir++) {
                 for (int lm = 0; lm < lmmax_ia; lm++) {
-                    fsym_loc(lm, ir, 0, it.li) += ftmp(lm, ir, 0);
+                    fsym_loc(lm, ir, 0, lia) += ftmp(lm, ir, 0);
                 }
             }
             /* apply S part to [0, 0, z] collinear vector */
             if (num_mag_dims__ == 1) {
                 for (int ir = 0; ir < nrmax_ia; ir++) {
                     for (int lm = 0; lm < lmmax_ia; lm++) {
-                        fsym_loc(lm, ir, 1, it.li) += ftmp(lm, ir, 1) * S(2, 2);
+                        fsym_loc(lm, ir, 1, lia) += ftmp(lm, ir, 1) * S(2, 2);
                     }
                 }
             }
@@ -101,7 +100,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
                     for (int j : {0, 1, 2}) {
                         for (int ir = 0; ir < nrmax_ia; ir++) {
                             for (int lm = 0; lm < lmmax_ia; lm++) {
-                                fsym_loc(lm, ir, 1 + k, it.li) += ftmp(lm, ir, 1 + j) * S(k, j);
+                                fsym_loc(lm, ir, 1 + k, lia) += ftmp(lm, ir, 1 + j) * S(k, j);
                             }
                         }
                     }
@@ -136,4 +135,3 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 }
 
 #endif
-

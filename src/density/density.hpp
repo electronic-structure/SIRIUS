@@ -313,8 +313,8 @@ class Density : public Field4D
 
         auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
-        for (auto it : spl_idx) {
-            unit_cell_.atom_symmetry_class(it.i).generate_core_charge_density(ctx_.core_relativity());
+        for (auto [i, _] : spl_idx) {
+            unit_cell_.atom_symmetry_class(i).generate_core_charge_density(ctx_.core_relativity());
         }
 
         for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {

@@ -144,10 +144,10 @@ class K_point_set
     void update()
     {
         /* update k-points */
-        for (auto it : spl_num_kpoints_) {
-            kpoints_[it.i]->update();
+        for (auto [ik, _] : spl_num_kpoints_) {
+            kpoints_[ik]->update();
 #if defined(USE_FP32)
-            kpoints_float_[it.i]->update();
+            kpoints_float_[ik]->update();
 #endif
         }
     }
@@ -167,8 +167,8 @@ class K_point_set
     int max_num_gkvec() const
     {
         int max_num_gkvec{0};
-        for (auto it : spl_num_kpoints_) {
-            max_num_gkvec = std::max(max_num_gkvec, kpoints_[it.i]->num_gkvec());
+        for (auto [ik, _] : spl_num_kpoints_) {
+            max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
         }
         comm().allreduce<int, mpi::op_t::max>(&max_num_gkvec, 1);
         return max_num_gkvec;

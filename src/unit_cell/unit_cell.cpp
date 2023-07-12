@@ -187,7 +187,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     out__ << std::endl
           << "unit cell volume : " << utils::ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl
           << "1/sqrt(omega)    : " << utils::ffmt(18, 8) << 1.0 / sqrt(omega()) << std::endl
-          << "MT volume        : " << utils::ffmt(18, 8) << volume_mt() 
+          << "MT volume        : " << utils::ffmt(18, 8) << volume_mt()
                                    << " (" << utils::ffmt(5, 2) << volume_mt() * 100 / omega() << "%)" << std::endl
           << "IT volume        : " << utils::ffmt(18, 8) << volume_it()
                                    << " (" << utils::ffmt(5, 2) << volume_it() * 100 / omega() << "%)" << std::endl
@@ -469,8 +469,8 @@ Unit_cell::print_nearest_neighbours(std::ostream& out__) const
             out__ << std::setw(4) << ja_symbol << " (" << std::setw(5) << ja << ")"
                   << std::setw(12) << std::setprecision(5) << ja_d
                   << std::setw(5) << T[0] << std::setw(5) << T[1] << std::setw(5) << T[2]
-                  << std::setw(13) << std::setprecision(5) << std::fixed << r_loc[0] 
-                  << std::setw(10) << std::setprecision(5) << std::fixed << r_loc[1] 
+                  << std::setw(13) << std::setprecision(5) << std::fixed << r_loc[0]
+                  << std::setw(10) << std::setprecision(5) << std::fixed << r_loc[1]
                   << std::setw(10) << std::setprecision(5) << std::fixed << r_loc[2] << std::endl;
         }
     }
@@ -531,8 +531,8 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
 
-    for (auto it : spl_num_atom_symmetry_classes()) {
-        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
+    for (auto [i, _] : spl_num_atom_symmetry_classes()) {
+        atom_symmetry_class(i).generate_radial_functions(parameters_.valence_relativity());
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
@@ -546,8 +546,8 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
             pout << std::endl << "Linearization energies" << std::endl;
         }
 
-        for (auto it : spl_num_atom_symmetry_classes()) {
-            atom_symmetry_class(it.i).write_enu(pout);
+        for (auto [ia, _] : spl_num_atom_symmetry_classes()) {
+            atom_symmetry_class(ia).write_enu(pout);
         }
         RTE_OUT(out__) << pout.flush(0);
     }
@@ -564,8 +564,8 @@ Unit_cell::generate_radial_integrals()
     PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
     try {
-        for (auto it : spl_num_atom_symmetry_classes()) {
-            atom_symmetry_class(it.i).generate_radial_integrals(parameters_.valence_relativity());
+        for (auto [i, _] : spl_num_atom_symmetry_classes()) {
+            atom_symmetry_class(i).generate_radial_integrals(parameters_.valence_relativity());
         }
 
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
@@ -579,8 +579,8 @@ Unit_cell::generate_radial_integrals()
     }
 
     try {
-        for (auto it : spl_num_atoms_) {
-            atom(it.i).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
+        for (auto [i, _] : spl_num_atoms_) {
+            atom(i).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
         }
 
         for (int ia = 0; ia < num_atoms(); ia++) {

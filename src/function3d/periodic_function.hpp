@@ -162,8 +162,8 @@ class Periodic_function
         if (ctx_.full_potential()) {
             mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
-            for (auto it : unit_cell_.spl_num_atoms()) {
-                mt_val[it.i] = mt_component_[it.i].component(0).integrate(2) * fourpi * y00;
+            for (auto [i, _] : unit_cell_.spl_num_atoms()) {
+                mt_val[i] = mt_component_[i].component(0).integrate(2) * fourpi * y00;
             }
 
             comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());

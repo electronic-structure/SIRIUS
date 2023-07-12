@@ -41,8 +41,8 @@ class Spheric_function_set
         };
 
         if (spl_atoms_) {
-            for (auto it : (*spl_atoms_)) {
-                set_func(atoms_[it.i]);
+            for (auto [i, _] : (*spl_atoms_)) {
+                set_func(atoms_[i]);
             }
         } else {
             for (int ia : atoms_) {

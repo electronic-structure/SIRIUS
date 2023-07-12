@@ -300,10 +300,10 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& H
 
     /* add pure local orbitals to the basis staring from ncomp index */
     if (nlo) {
-        for (auto it : phi_extra_new->spl_num_atoms()) {
-            for (int xi = 0; xi < unit_cell_.atom(it.i).mt_lo_basis_size(); xi++) {
-                phi_extra_new->mt_coeffs(xi, it.li, wf::spin_index(0),
-                        wf::band_index(offset_lo[it.i] + xi + ncomp)) = 1.0;
+        for (auto [ia, lia] : phi_extra_new->spl_num_atoms()) {
+            for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
+                phi_extra_new->mt_coeffs(xi, lia, wf::spin_index(0),
+                        wf::band_index(offset_lo[ia] + xi + ncomp)) = 1.0;
             }
         }
     }
@@ -356,7 +356,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) con
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<wf::Wave_functions<double>> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(wf::Wave_functions<double>(kp.gkvec_sptr(), num_mt_coeffs, 
+        hpsi.push_back(wf::Wave_functions<double>(kp.gkvec_sptr(), num_mt_coeffs,
                     wf::num_mag_dims(0), wf::num_bands(nfv), ctx_.host_memory_t()));
     }
 

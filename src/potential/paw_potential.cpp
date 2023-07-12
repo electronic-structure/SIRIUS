@@ -64,9 +64,9 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     paw_hartree_total_energy_ = 0.0;
 
     /* calculate xc and hartree for atoms */
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        paw_hartree_total_energy_ += calc_PAW_local_potential(it.i, density.paw_ae_density(it.i),
-                                                              density.paw_ps_density(it.i));
+    for (auto [i, _] : unit_cell_.spl_num_paw_atoms()) {
+        paw_hartree_total_energy_ += calc_PAW_local_potential(i, density.paw_ae_density(i),
+                                                              density.paw_ps_density(i));
     }
     comm_.allreduce(&paw_hartree_total_energy_, 1);
 
@@ -94,9 +94,9 @@ void Potential::generate_PAW_effective_potential(Density const& density)
 
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        auto ia = unit_cell_.paw_atom_index(it.i);
-        calc_PAW_local_Dij(ia, paw_dij_[it.i]);
+    for (auto [i, _] : unit_cell_.spl_num_paw_atoms()) {
+        auto ia = unit_cell_.paw_atom_index(i);
+        calc_PAW_local_Dij(ia, paw_dij_[i]);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));

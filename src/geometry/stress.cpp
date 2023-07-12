@@ -50,8 +50,8 @@ Stress::calc_stress_nonloc_aux()
 
     print_memory_usage(ctx_.out(), FILE_LINE);
 
-    for (auto it : kset_.spl_num_kpoints()) {
-        auto kp = kset_.get<T>(it.i);
+    for (auto [i, _] : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<T>(i);
         auto mem = ctx_.processing_unit_memory_t();
         auto mg = kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
         Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
@@ -130,8 +130,8 @@ Stress::calc_stress_hubbard()
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         dn.allocate(ctx_.processing_unit_memory_t());
     }
-    for (auto it : kset_.spl_num_kpoints()) {
-        auto kp = kset_.get<double>(it.i);
+    for (auto [i, _] : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(i);
         dn.zero();
         if (is_device_memory(ctx_.processing_unit_memory_t())) {
             dn.zero(ctx_.processing_unit_memory_t());
@@ -650,8 +650,8 @@ Stress::calc_stress_kin_aux()
 {
     stress_kin_.zero();
 
-    for (auto it : kset_.spl_num_kpoints()) {
-        auto kp = kset_.get<T>(it.i);
+    for (auto [i, _] : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<T>(i);
 
         double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
         fact *=  kp->weight();

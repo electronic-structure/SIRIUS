@@ -59,10 +59,10 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
 inline UltrasoftPrecond::UltrasoftPrecond(K_point_set const& kset, Simulation_context& ctx,
                                           Q_operator<double> const& q_op)
 {
-    for (auto it : kset.spl_num_kpoints()) {
-        auto& kp = *kset.get<double>(it.i);
+    for (auto [ik, _] : kset.spl_num_kpoints()) {
+        auto& kp = *kset.get<double>(ik);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
-            key_t key{it.i.get(), ispn};
+            key_t key{ik, ispn};
             data_[key] = std::make_shared<op_t>(ctx, q_op, ispn, kp.beta_projectors(), kp.gkvec());
         }
     }

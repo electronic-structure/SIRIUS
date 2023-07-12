@@ -154,8 +154,8 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
-    for (auto it : kset__.spl_num_kpoints()) {
-        auto kp = kset__.get<T>(it.i);
+    for (auto [ik, _] : kset__.spl_num_kpoints()) {
+        auto kp = kset__.get<T>(ik);
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {

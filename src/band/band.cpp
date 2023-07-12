@@ -53,8 +53,8 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
         N = unit_cell_.num_ps_atomic_wf().first;
     }
 
-    for (auto it: kset__.spl_num_kpoints()) {
-        auto kp = kset__.get<T>(it.i);
+    for (auto [ik, _]: kset__.spl_num_kpoints()) {
+        auto kp = kset__.get<T>(ik);
         auto Hk = H0__(*kp);
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             ::sirius::initialize_subspace<T, T>(Hk, N);

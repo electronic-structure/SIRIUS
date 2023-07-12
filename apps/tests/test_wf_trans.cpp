@@ -37,9 +37,9 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
                 phi.pw_coeffs(igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
             }
-            for (auto it : phi.spl_num_atoms()) {
-                for (int xi = 0; xi < num_mt_coeffs[it.i]; xi++) {
-                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+            for (auto [ia, lia] : phi.spl_num_atoms()) {
+                for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
+                    phi.mt_coeffs(xi, lia, s, wf::band_index(i)) = utils::random<std::complex<T>>();
                 }
             }
         }
@@ -85,11 +85,11 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
                     phi.pw_coeffs(igloc, s, wf::band_index(i)) -
                     psi.pw_coeffs(igloc, s, wf::band_index(num_bands__ - i - 1)));
             }
-            for (auto it : phi.spl_num_atoms()) {
-                for (int xi = 0; xi < num_mt_coeffs[it.i]; xi++) {
+            for (auto [ia, li] : phi.spl_num_atoms()) {
+                for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
                     diff += std::abs(
-                        phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) -
-                        psi.mt_coeffs(xi, it.li, s, wf::band_index(num_bands__ - i - 1)));
+                        phi.mt_coeffs(xi, li, s, wf::band_index(i)) -
+                        psi.mt_coeffs(xi, li, s, wf::band_index(num_bands__ - i - 1)));
                 }
             }
         }

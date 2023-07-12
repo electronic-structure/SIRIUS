@@ -509,8 +509,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
         sddk::splindex_block<atom_index_t> spl_atoms(num_atoms, n_blocks(comm__.size()), block_id(comm__.rank()));
         int result{0};
-        for (auto it : spl_atoms) {
-            result += num_mt_coeffs__[it.i];
+        for (auto [ia, _] : spl_atoms) {
+            result += num_mt_coeffs__[ia];
         }
         return result;
     }

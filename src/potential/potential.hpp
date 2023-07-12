@@ -165,8 +165,7 @@ class Potential : public Field4D
         sddk::mdarray<std::complex<double>, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         qmt.zero();
 
-        for (auto it : unit_cell_.spl_num_atoms()) {
-            auto ia = it.i;
+        for (auto [ia, _] : unit_cell_.spl_num_atoms()) {
 
             auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.mt()[ia],
                 const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
@@ -667,8 +666,7 @@ class Potential : public Field4D
         /* compute contribution from the core */
         double ecore{0};
         #pragma omp parallel for reduction(+:ecore)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
+        for (auto [ia, _] : unit_cell_.spl_num_paw_atoms()) {
 
             auto& atom = unit_cell_.atom(ia);
 
@@ -700,9 +698,9 @@ class Potential : public Field4D
     {
         double e{0};
         #pragma omp parallel for reduction(+:e)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
-            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), density__.density_matrix(ia), paw_dij_[it.i]);
+        for (auto [i, _] : unit_cell_.spl_num_paw_atoms()) {
+            auto ia = unit_cell_.paw_atom_index(i);
+            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), density__.density_matrix(ia), paw_dij_[ia]);
         }
         comm_.allreduce(&e, 1);
         return e;

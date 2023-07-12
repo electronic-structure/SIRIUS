@@ -191,27 +191,27 @@ class splindex
 };
 
 template <typename Index_t>
-class splindex_iterator_t : public std::iterator<std::random_access_iterator_tag, Index_t>
+class splindex_iterator_t //: public std::iterator<std::random_access_iterator_tag, Index_t>
 {
   private:
     splindex<Index_t> const* idx_{nullptr};
   public:
     using difference_type = typename std::iterator<std::random_access_iterator_tag, Index_t>::difference_type;
     typename Index_t::local li;
-    typename Index_t::global i;
 
     splindex_iterator_t<Index_t>& operator=(splindex_iterator_t<Index_t> const& lhs_) = default;
 
     splindex_iterator_t(splindex<Index_t> const& idx__)
         : idx_{&idx__}
         , li{0}
-        , i{0}
     {
     }
+
     inline bool operator!=(splindex_iterator_t<Index_t> const& rhs__)
     {
         return this->li != rhs__.li;
     }
+
     inline splindex_iterator_t<Index_t>& operator++()
     {
         this->li++;
@@ -223,11 +223,12 @@ class splindex_iterator_t : public std::iterator<std::random_access_iterator_tag
         this->li++;
         return tmp;
     }
-    inline splindex_iterator_t<Index_t> const& operator*()
+
+    inline auto operator*()
     {
-        this->i = idx_->global_index(this->li);
-        return *this;
+        return std::make_pair(idx_->global_index(this->li), this->li);
     }
+
     inline difference_type operator-(splindex_iterator_t<Index_t> const& rhs__) const
     {
         return li - rhs__.li;
@@ -304,17 +305,17 @@ class splindex_block : public splindex<Index_t>
         return typename Index_t::global(this->block_size_ * block_id__ + idxloc__);
     }
 
-    inline auto global_offset() const override
+    inline auto global_offset() const
     {
         return this->global_index(typename Index_t::local(0), this->block_id_);
     }
 
-    inline auto global_offset(block_id iblock__) const override
+    inline auto global_offset(block_id iblock__) const
     {
         return this->global_index(typename Index_t::local(0), iblock__);
     }
 
-    inline auto counts() const override
+    inline auto counts() const
     {
         std::vector<value_type> v(this->n_blocks_);
         for (int i = 0; i < this->n_blocks_; i++) {
@@ -458,7 +459,7 @@ class splindex_chunk : public splindex<Index_t>
         return typename Index_t::global(global_index_[block_id__][idxloc__]);
     }
 
-    inline auto global_offset() const override
+    inline auto global_offset() const
     {
         return this->global_index(typename Index_t::local(0), this->block_id_);
     }

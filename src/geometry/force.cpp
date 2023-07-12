@@ -53,8 +53,8 @@ void Force::calc_forces_nonloc_aux()
 
     auto& spl_num_kp = kset_.spl_num_kpoints();
 
-    for (auto it : spl_num_kp) {
-        auto* kp = kset_.get<T>(it.i);
+    for (auto [i, _] : spl_num_kp) {
+        auto* kp = kset_.get<T>(i);
 
         if (ctx_.gamma_point()) {
             add_k_point_contribution<T, T>(*kp, forces_nonloc_);
@@ -211,12 +211,13 @@ Force::calc_forces_ibs()
     }
 
     Hamiltonian0<double> H0(potential_, false);
-    for (auto it : kset_.spl_num_kpoints()) {
-        auto hk = H0(*kset_.get<double>(it.i));
-        add_ibs_force(kset_.get<double>(it.i), hk, ffac, forces_ibs_);
+    for (auto [i, _] : kset_.spl_num_kpoints()) {
+        auto hk = H0(*kset_.get<double>(i));
+        add_ibs_force(kset_.get<double>(i), hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize_forces(ctx_.unit_cell(), forces_ibs_);
+
 
     return forces_ibs_;
 }
@@ -227,10 +228,10 @@ Force::calc_forces_rho()
 
     forces_rho_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_rho_.zero();
-    for (auto it : ctx_.unit_cell().spl_num_atoms()) {
-        auto g = gradient(density_.density_mt(it.li));
+    for (auto [ia, lia] : ctx_.unit_cell().spl_num_atoms()) {
+        auto g = gradient(density_.density_mt(lia));
         for (int x = 0; x < 3; x++) {
-            forces_rho_(x, it.i) = inner(potential_.effective_potential_mt(it.li), g[x]);
+            forces_rho_(x, ia) = inner(potential_.effective_potential_mt(lia), g[x]);
         }
     }
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
@@ -245,10 +246,10 @@ Force::calc_forces_hf()
     forces_hf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_hf_.zero();
 
-    for (auto it : ctx_.unit_cell().spl_num_atoms()) {
-        auto g = gradient(potential_.hartree_potential_mt(it.li));
+    for (auto [i, li] : ctx_.unit_cell().spl_num_atoms()) {
+        auto g = gradient(potential_.hartree_potential_mt(li));
         for (int x = 0; x < 3; x++) {
-            forces_hf_(x, it.i) = ctx_.unit_cell().atom(it.i).zn() * g[x](0, 0) * y00;
+            forces_hf_(x, i) = ctx_.unit_cell().atom(i).zn() * g[x](0, 0) * y00;
         }
     }
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
@@ -270,9 +271,9 @@ Force::calc_forces_hubbard()
 
         Q_operator<double> q_op(ctx_);
 
-        for (auto it : kset_.spl_num_kpoints()) {
+        for (auto [i, li] : kset_.spl_num_kpoints()) {
 
-            auto kp = kset_.get<double>(it.i);
+            auto kp = kset_.get<double>(i);
             // kp->beta_projectors().prepare();
             auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
