@@ -31,6 +31,7 @@ namespace sirius {
 class Occupation_matrix : public Hubbard_matrix
 {
   private:
+    /// K-point contribution to density matrices weighted with e^{ikT} phase factors.
     std::map<r3::vector<int>, sddk::mdarray<std::complex<double>, 3>> occ_mtrx_T_;
 
   public:
@@ -61,8 +62,8 @@ class Occupation_matrix : public Hubbard_matrix
         }
 
         /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
-        for (auto& T : this->occ_mtrx_T_) {
-            ctx_.comm().allreduce(T.second.at(sddk::memory_t::host), static_cast<int>(T.second.size()));
+        for (auto& e : this->occ_mtrx_T_) {
+            ctx_.comm().allreduce(e.second.at(sddk::memory_t::host), static_cast<int>(e.second.size()));
         }
     }
 
@@ -74,9 +75,12 @@ class Occupation_matrix : public Hubbard_matrix
         }
     }
 
-    void symmetrize();
-
     void print_occupancies(int verbosity__) const;
+
+    inline auto const& occ_mtrx_T(r3::vector<int> T__) const
+    {
+        return occ_mtrx_T_.at(T__);
+    }
 };
 
 } // namespace sirius

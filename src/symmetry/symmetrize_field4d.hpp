@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Simon Frasch, Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,37 +17,38 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file mixer_functions.hpp
+/** \file symmetrize_field4d.hpp
  *
- *  \brief Contains declarations of functions required for mixing.
+ *  \brief Symmetrize density and potential fields (scalar + vector).
  */
 
-#ifndef __MIXER_FUNCTIONS_HPP__
-#define __MIXER_FUNCTIONS_HPP__
+#ifndef __SYMMETRIZE_FIELD4D_HPP__
+#define __SYMMETRIZE_FIELD4D_HPP__
 
-#include "function3d/periodic_function.hpp"
-#include "SDDK/memory.hpp"
-#include "mixer/mixer.hpp"
-#include "hubbard/hubbard_matrix.hpp"
-#include "density/density_matrix.hpp"
-#include "density/density.hpp"
+#include "symmetrize_mt_function.hpp"
+#include "symmetrize_pw_function.hpp"
 
 namespace sirius {
 
-namespace mixer {
+inline void
+symmetrize_field4d(Field4D& f__)
+{
+    auto& ctx = f__.ctx();
 
-FunctionProperties<Periodic_function<double>> periodic_function_property();
+    /* quick exit: the only symmetry operation is identity */
+    if (ctx.unit_cell().symmetry().size() == 1) {
+        return;
+    }
 
-FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__);
+    /* symmetrize PW components */
+    symmetrize_pw_function(ctx.unit_cell().symmetry(), ctx.remap_gvec(), ctx.sym_phase_factors(),
+        ctx.num_mag_dims(), f__.pw_components());
 
-FunctionProperties<density_matrix_t> density_function_property();
+    if (ctx.full_potential()) {
+        symmetrize_mt_function(ctx.unit_cell().symmetry(), ctx.comm(), ctx.num_mag_dims(), f__.mt_components());
+    }
+}
 
-FunctionProperties<PAW_density<double>> paw_density_function_property();
-
-FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property();
-
-} // namespace mixer
-
-} // namespace sirius
+}
 
 #endif

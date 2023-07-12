@@ -68,7 +68,6 @@ set(_SOURCES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
-  "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
   "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"

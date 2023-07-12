@@ -29,11 +29,14 @@
 
 namespace sirius {
 
+/// Describes Hubbard orbital occupancy or potential correction matrices.
 class Hubbard_matrix
 {
   protected:
     Simulation_context& ctx_;
+    /// Local part of Hubbard matrix
     std::vector<sddk::mdarray<std::complex<double>, 3>> local_;
+    /// Non-local part of Hubbard matrix.
     std::vector<sddk::mdarray<std::complex<double>, 3>> nonlocal_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
@@ -65,43 +68,23 @@ class Hubbard_matrix
 
     void zero();
 
-    sddk::mdarray<std::complex<double>, 3>& local(int ia__)
-    {
-        return local_[ia__];
-    }
-
-    const std::vector<std::pair<int, int>>& atomic_orbitals() const
-    {
-        return atomic_orbitals_;
-    }
-
-    const std::pair<int, int>& atomic_orbitals(const int idx__) const
-    {
-        return atomic_orbitals_[idx__];
-    }
-
-    const int offset(const int idx__) const
-    {
-        return offset_[idx__];
-    }
-
-    const std::vector<int>& offset() const
-    {
-        return offset_;
-    }
-
-    sddk::mdarray<std::complex<double>, 3> const& local(int ia__) const
-    {
-        return local_[ia__];
-    }
-
-    /// return a vector containing the occupation numbers for each atomic orbitals
+    /// Return a vector containing the occupation numbers for each atomic orbital.
     auto& local() const
     {
         return local_;
     }
 
-    auto &nonlocal() const
+    auto& local(int ia__)
+    {
+        return local_[ia__];
+    }
+
+    auto const& local(int ia__) const
+    {
+        return local_[ia__];
+    }
+
+    auto& nonlocal() const
     {
         return nonlocal_;
     }
@@ -114,6 +97,26 @@ class Hubbard_matrix
     auto const& nonlocal(int idx__) const
     {
         return nonlocal_[idx__];
+    }
+
+    const auto& atomic_orbitals() const
+    {
+        return atomic_orbitals_;
+    }
+
+    const auto& atomic_orbitals(const int idx__) const
+    {
+        return atomic_orbitals_[idx__];
+    }
+
+    const int offset(const int idx__) const
+    {
+        return offset_[idx__];
+    }
+
+    const auto& offset() const
+    {
+        return offset_;
     }
 
     auto const& ctx() const

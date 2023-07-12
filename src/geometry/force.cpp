@@ -32,7 +32,7 @@
 #include "beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
 #include "hamiltonian/hamiltonian.hpp"
-#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/symmetrize_forces.hpp"
 #include "lapw/step_function.hpp"
 
 namespace sirius {
@@ -43,45 +43,6 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
     , potential_(potential__)
     , kset_(kset__)
 {
-}
-
-void
-Force::symmetrize(sddk::mdarray<double, 2>& forces__) const
-{
-    if (!ctx_.use_symmetry()) {
-        return;
-    }
-
-    sddk::mdarray<double, 2> sym_forces(3, ctx_.unit_cell().spl_num_atoms().local_size());
-    sym_forces.zero();
-
-    for (int isym = 0; isym < ctx_.unit_cell().symmetry().size(); isym++) {
-        auto Rc = dot(dot(ctx_.unit_cell().symmetry().lattice_vectors(),
-                          r3::matrix<double>(ctx_.unit_cell().symmetry()[isym].spg_op.R)),
-                      ctx_.unit_cell().symmetry().inverse_lattice_vectors());
-
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            r3::vector<double> force_ia(&forces__(0, ia));
-            int ja        = ctx_.unit_cell().symmetry()[isym].spg_op.sym_atom[ia];
-            auto location = ctx_.unit_cell().spl_num_atoms().location(ja);
-            if (location.rank == ctx_.comm().rank()) {
-                auto force_ja = dot(Rc, force_ia);
-                for (int x : {0, 1, 2}) {
-                    sym_forces(x, location.local_index) += force_ja[x];
-                }
-            }
-        }
-    }
-
-    double alpha = 1.0 / double(ctx_.unit_cell().symmetry().size());
-    for (int ia = 0; ia < ctx_.unit_cell().spl_num_atoms().local_size(); ia++) {
-        for (int x: {0, 1, 2}) {
-            sym_forces(x, ia) *= alpha;
-        }
-    }
-    double* sbuf = ctx_.unit_cell().spl_num_atoms().local_size() ? sym_forces.at(sddk::memory_t::host) : nullptr;
-    ctx_.comm().allgather(sbuf, forces__.at(sddk::memory_t::host), 3 * ctx_.unit_cell().spl_num_atoms().local_size(),
-        3 * ctx_.unit_cell().spl_num_atoms().global_offset());
 }
 
 template <typename T>
@@ -104,7 +65,7 @@ void Force::calc_forces_nonloc_aux()
 
     ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    symmetrize(forces_nonloc_);
+    symmetrize_forces(ctx_.unit_cell(), forces_nonloc_);
 }
 
 sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
@@ -256,7 +217,7 @@ Force::calc_forces_ibs()
         add_ibs_force(kset_.get<double>(ik), hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
-    symmetrize(forces_ibs_);
+    symmetrize_forces(ctx_.unit_cell(), forces_ibs_);
 
     return forces_ibs_;
 }
@@ -275,7 +236,7 @@ Force::calc_forces_rho()
         }
     }
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
-    symmetrize(forces_rho_);
+    symmetrize_forces(ctx_.unit_cell(), forces_rho_);
 
     return forces_rho_;
 }
@@ -294,7 +255,7 @@ Force::calc_forces_hf()
         }
     }
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
-    symmetrize(forces_hf_);
+    symmetrize_forces(ctx_.unit_cell(), forces_hf_);
 
     return forces_hf_;
 }
@@ -332,7 +293,7 @@ Force::calc_forces_hubbard()
         kset_.comm().allreduce(forces_hubbard_.at(sddk::memory_t::host), 3 * ctx_.unit_cell().num_atoms());
     }
 
-    symmetrize(forces_hubbard_);
+    symmetrize_forces(ctx_.unit_cell(), forces_hubbard_);
     return forces_hubbard_;
 }
 
@@ -410,7 +371,7 @@ Force::calc_forces_ewald()
         }
     }
 
-    symmetrize(forces_ewald_);
+    symmetrize_forces(ctx_.unit_cell(), forces_ewald_);
 
     return forces_ewald_;
 }
@@ -458,7 +419,7 @@ Force::calc_forces_us()
         int nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
+        auto dm = density_.density_matrix_aux(atom_type);
 
         sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
         sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
@@ -504,7 +465,7 @@ Force::calc_forces_us()
 
     ctx_.comm().allreduce(&forces_us_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    symmetrize(forces_us_);
+    symmetrize_forces(ctx_.unit_cell(), forces_us_);
 
     return forces_us_;
 }
@@ -560,7 +521,7 @@ Force::calc_forces_scf_corr()
     }
     ctx_.comm().allreduce(&forces_scf_corr_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    symmetrize(forces_scf_corr_);
+    symmetrize_forces(ctx_.unit_cell(), forces_scf_corr_);
 
     return forces_scf_corr_;
 }
@@ -620,7 +581,7 @@ Force::calc_forces_core()
     }
     ctx_.comm().allreduce(&forces_core_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    symmetrize(forces_core_);
+    symmetrize_forces(ctx_.unit_cell(), forces_core_);
 
     return forces_core_;
 }
@@ -739,7 +700,7 @@ Force::calc_forces_vloc()
 
     ctx_.comm().allreduce(&forces_vloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    symmetrize(forces_vloc_);
+    symmetrize_forces(ctx_.unit_cell(), forces_vloc_);
 
     return forces_vloc_;
 }

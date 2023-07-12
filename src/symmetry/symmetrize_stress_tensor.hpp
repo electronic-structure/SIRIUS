@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Simon Frasch, Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,37 +17,41 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file mixer_functions.hpp
+/** \file symmetrize_stress_tensor.hpp
  *
- *  \brief Contains declarations of functions required for mixing.
+ *  \brief Symmetrize lattice stress tensor.
  */
 
-#ifndef __MIXER_FUNCTIONS_HPP__
-#define __MIXER_FUNCTIONS_HPP__
+#ifndef __SYMMETRIZE_STRESS_TENSOR_HPP__
+#define __SYMMETRIZE_STRESS_TENSOR_HPP__
 
-#include "function3d/periodic_function.hpp"
-#include "SDDK/memory.hpp"
-#include "mixer/mixer.hpp"
-#include "hubbard/hubbard_matrix.hpp"
-#include "density/density_matrix.hpp"
-#include "density/density.hpp"
+#include "crystal_symmetry.hpp"
 
 namespace sirius {
 
-namespace mixer {
+inline void
+symmetrize_stress_tensor(Crystal_symmetry const& sym__, r3::matrix<double>& s__)
+{
+    if (sym__.size() == 1) {
+        return;
+    }
 
-FunctionProperties<Periodic_function<double>> periodic_function_property();
+    r3::matrix<double> result;
 
-FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__);
+    for (int i = 0; i < sym__.size(); i++) {
+        auto R = sym__[i].spg_op.Rcp;
+        result = result + dot(dot(transpose(R), s__), R);
+    }
 
-FunctionProperties<density_matrix_t> density_function_property();
+    s__ = result * (1.0 / sym__.size());
 
-FunctionProperties<PAW_density<double>> paw_density_function_property();
+    std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+    for (auto e : idx) {
+        s__(e[0], e[1]) = s__(e[1], e[0]) = 0.5 * (s__(e[0], e[1]) + s__(e[1], e[0]));
+    }
+}
 
-FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property();
-
-} // namespace mixer
-
-} // namespace sirius
+}
 
 #endif
+

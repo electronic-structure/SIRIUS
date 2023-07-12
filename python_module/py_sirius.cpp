@@ -267,13 +267,11 @@ PYBIND11_MODULE(py_sirius, m)
                  return py::array_t<double>({nrows}, {1 * sizeof(double)}, matrix_storage.at(sddk::memory_t::host),
                                             obj);
              })
-        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal)
-        .def("symmetrize", py::overload_cast<>(&Field4D::symmetrize));
+        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
 
     py::class_<Potential, Field4D>(m, "Potential")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("generate", &Potential::generate, "density"_a, "use_sym"_a, "transform_to_rg"_a)
-        .def("symmetrize", py::overload_cast<>(&Potential::symmetrize))
         .def("fft_transform", &Potential::fft_transform)
         .def("save", &Potential::save)
         .def("load", &Potential::load)
@@ -298,8 +296,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
         .def("mix", &Density::mix)
-        .def("symmetrize", py::overload_cast<>(&Density::symmetrize))
-        .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
         .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>),
              "kpointset"_a, "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
@@ -307,27 +303,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("get_magnetisation", &Density::get_magnetisation)
-        .def_property(
-            "density_matrix",
-            [](py::object& obj) -> py::array_t<complex_double> {
-                Density& density = obj.cast<Density&>();
-                auto& dm         = density.density_matrix();
-                if (dm.at(sddk::memory_t::host) == nullptr) {
-                    RTE_THROW("trying to access null pointer");
-                }
-                return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
-                                                                       dm.at(sddk::memory_t::host), obj);
-            },
-            [](py::object& obj) -> py::array_t<complex_double> {
-                Density& density = obj.cast<Density&>();
-                auto& dm         = density.density_matrix();
-                if (dm.at(sddk::memory_t::host) == nullptr) {
-                    RTE_THROW("trying to access null pointer");
-                }
-                return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
-                                                                       dm.at(sddk::memory_t::host), obj);
-            },
-            py::return_value_policy::reference_internal)
         .def("load", &Density::load);
 
     py::class_<Band>(m, "Band")
@@ -340,7 +315,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
         .def("print_info", &DFT_ground_state::print_info)
         .def("initial_state", &DFT_ground_state::initial_state)
-        //.def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("serialize",
              [](DFT_ground_state& dft) {

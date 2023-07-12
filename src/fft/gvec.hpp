@@ -987,7 +987,7 @@ class Gvec_shells
     }
 
     template <typename T>
-    std::vector<T> remap_forward(T* data__) const
+    auto remap_forward(T* data__) const
     {
         PROFILE("sddk::Gvec_shells::remap_forward");
 

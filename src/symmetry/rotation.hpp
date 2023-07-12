@@ -86,7 +86,7 @@ rotation_matrix_su2(r3::matrix<double> R__)
 }
 
 /// Get axis and angle from rotation matrix.
-inline std::pair<r3::vector<double>, double>
+inline auto
 axis_angle(r3::matrix<double> R__)
 {
     r3::vector<double> u;
@@ -160,7 +160,8 @@ axis_angle(r3::matrix<double> R__)
  *                                \cos(\beta) \end{array} \right)
  *  \f]
  */
-inline r3::matrix<double> rot_mtrx_cart(r3::vector<double> euler_angles__)
+inline auto
+rot_mtrx_cart(r3::vector<double> euler_angles__)
 {
     double alpha = euler_angles__[0];
     double beta = euler_angles__[1];
@@ -181,7 +182,8 @@ inline r3::matrix<double> rot_mtrx_cart(r3::vector<double> euler_angles__)
 }
 
 /// Compute Euler angles corresponding to the proper rotation matrix.
-inline r3::vector<double> euler_angles(r3::matrix<double> const& rot__, double tolerance__)
+inline auto
+euler_angles(r3::matrix<double> const& rot__, double tolerance__)
 {
     r3::vector<double> angles(0, 0, 0);
 

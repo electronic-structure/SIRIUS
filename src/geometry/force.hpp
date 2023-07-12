@@ -78,8 +78,6 @@ class Force
     template <typename T, typename F>
     void add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const;
 
-    void symmetrize(sddk::mdarray<double, 2>& forces__) const;
-
     /** In the second-variational approach we need to compute the following expression for the k-dependent
      *  contribution to the forces:
      *  \f[
