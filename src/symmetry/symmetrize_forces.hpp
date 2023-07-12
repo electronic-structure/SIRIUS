@@ -47,11 +47,11 @@ symmetrize_forces(Unit_cell const& uc__, sddk::mdarray<double, 2>& f__)
         for (int ia = 0; ia < uc__.num_atoms(); ia++) {
             r3::vector<double> force_ia(&f__(0, ia));
             int ja        = sym[isym].spg_op.sym_atom[ia];
-            auto location = uc__.spl_num_atoms().location(ja);
-            if (location.rank == uc__.comm().rank()) {
+            auto location = uc__.spl_num_atoms().location(typename atom_index_t::global(ja));
+            if (location.ib == uc__.comm().rank()) {
                 auto force_ja = dot(Rc, force_ia);
                 for (int x : {0, 1, 2}) {
-                    sym_forces(x, location.local_index) += force_ja[x];
+                    sym_forces(x, location.index_local) += force_ja[x];
                 }
             }
         }
