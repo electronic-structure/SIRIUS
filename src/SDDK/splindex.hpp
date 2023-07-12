@@ -261,7 +261,7 @@ class splindex_block : public splindex<Index_t>
     using splindex<Index_t>::local_size;
 
     /// Return local size of the split index for a given block.
-    inline value_type local_size(block_id block_id__) const
+    inline value_type local_size(block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
 
@@ -278,7 +278,7 @@ class splindex_block : public splindex<Index_t>
     }
 
     /// Return "local index, rank" pair for a global index.
-    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const
+    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const override
     {
         RTE_ASSERT(idx__ < this->size_);
 
@@ -291,7 +291,7 @@ class splindex_block : public splindex<Index_t>
     using splindex<Index_t>::global_index;
 
     /// Return global index of an element by local index and block id.
-    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const
+    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
 
@@ -304,17 +304,17 @@ class splindex_block : public splindex<Index_t>
         return typename Index_t::global(this->block_size_ * block_id__ + idxloc__);
     }
 
-    inline auto global_offset() const
+    inline auto global_offset() const override
     {
         return this->global_index(typename Index_t::local(0), this->block_id_);
     }
 
-    inline auto global_offset(block_id iblock__) const
+    inline auto global_offset(block_id iblock__) const override
     {
         return this->global_index(typename Index_t::local(0), iblock__);
     }
 
-    inline auto counts() const
+    inline auto counts() const override
     {
         std::vector<value_type> v(this->n_blocks_);
         for (int i = 0; i < this->n_blocks_; i++) {
@@ -346,7 +346,7 @@ class splindex_block_cyclic : public splindex<Index_t>
     using splindex<Index_t>::local_size;
 
     /// Return local size of the split index for a given block.
-    inline value_type local_size(block_id block_id__) const
+    inline value_type local_size(block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
 
@@ -368,7 +368,7 @@ class splindex_block_cyclic : public splindex<Index_t>
     }
 
     /// Return "local index, rank" pair for a global index.
-    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const
+    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const override
     {
         RTE_ASSERT(idx__ < this->size_);
 
@@ -387,7 +387,7 @@ class splindex_block_cyclic : public splindex<Index_t>
     using splindex<Index_t>::global_index;
 
     /// Return global index of an element by local index and block id.
-    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const
+    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
         RTE_ASSERT(idxloc__ < local_size(block_id__));
@@ -433,7 +433,7 @@ class splindex_chunk : public splindex<Index_t>
 
     using splindex<Index_t>::local_size;
 
-    inline value_type local_size(block_id block_id__) const
+    inline value_type local_size(block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
 
@@ -443,14 +443,14 @@ class splindex_chunk : public splindex<Index_t>
         return static_cast<value_type>(global_index_[block_id__].size());
     }
 
-    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const
+    inline typename splindex<Index_t>::location_t location(typename Index_t::global idx__) const override
     {
         return locations_[idx__];
     }
 
     using splindex<Index_t>::global_index;
 
-    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const
+    inline typename Index_t::global global_index(typename Index_t::local idxloc__, block_id block_id__) const override
     {
         RTE_ASSERT(block_id__ >= 0 && block_id__ < this->n_blocks_);
         RTE_ASSERT(idxloc__ < local_size(block_id__));
@@ -458,7 +458,7 @@ class splindex_chunk : public splindex<Index_t>
         return typename Index_t::global(global_index_[block_id__][idxloc__]);
     }
 
-    inline auto global_offset() const
+    inline auto global_offset() const override
     {
         return this->global_index(typename Index_t::local(0), this->block_id_);
     }
