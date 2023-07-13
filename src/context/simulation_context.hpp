@@ -313,10 +313,14 @@ class Simulation_context : public Simulation_parameters
     void init_atoms_to_grid_idx(double R__);
 
     /// Get the stsrting time stamp.
-    void start()
+    void init_common()
     {
         gettimeofday(&start_time_, NULL);
         start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
+
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+
+        this->import(env::config_file());
     }
 
     /* copy constructor is forbidden */
@@ -327,8 +331,7 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(mpi::Communicator const& comm__ = mpi::Communicator::world())
         : comm_(comm__)
     {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
+        init_common();
     }
 
     Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__, mpi::Communicator const& comm_band__)
@@ -336,16 +339,14 @@ class Simulation_context : public Simulation_parameters
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
     {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
+        init_common();
     }
 
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
         : comm_(mpi::Communicator::world())
     {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
+        init_common();
         import(str__);
         unit_cell_->import(cfg().unit_cell());
     }
@@ -353,8 +354,7 @@ class Simulation_context : public Simulation_parameters
     explicit Simulation_context(nlohmann::json const& dict__)
         : comm_(mpi::Communicator::world())
     {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
+        init_common();
         import(dict__);
         unit_cell_->import(cfg().unit_cell());
     }
@@ -363,8 +363,7 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(std::string const& str__, mpi::Communicator const& comm__)
         : comm_(comm__)
     {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
+        init_common();
         import(str__);
         unit_cell_->import(cfg().unit_cell());
     }
