@@ -27,6 +27,7 @@
 
 #include "strong_type.hpp"
 #include "utils/rte.hpp"
+#include <cstddef>
 
 /// Basic index type.
 template <typename T = int>
@@ -191,47 +192,53 @@ class splindex
 };
 
 template <typename Index_t>
-class splindex_iterator_t : public std::iterator<std::random_access_iterator_tag, Index_t>
+class splindex_iterator_t
 {
   private:
     splindex<Index_t> const* idx_{nullptr};
   public:
-    using difference_type = typename std::iterator<std::random_access_iterator_tag, Index_t>::difference_type;
+    using difference_type = std::ptrdiff_t;
     typename Index_t::local li;
-    typename Index_t::global i;
 
     splindex_iterator_t<Index_t>& operator=(splindex_iterator_t<Index_t> const& lhs_) = default;
 
     splindex_iterator_t(splindex<Index_t> const& idx__)
         : idx_{&idx__}
         , li{0}
-        , i{0}
     {
     }
+
     inline bool operator!=(splindex_iterator_t<Index_t> const& rhs__)
     {
         return this->li != rhs__.li;
     }
+
     inline splindex_iterator_t<Index_t>& operator++()
     {
         this->li++;
         return *this;
     }
-    inline splindex_iterator_t<Index_t>& operator++(int)
+
+    inline splindex_iterator_t<Index_t> operator++(int)
     {
         splindex_iterator_t<Index_t> tmp(this->idx());
         this->li++;
         return tmp;
     }
-    inline splindex_iterator_t<Index_t> const& operator*()
+
+    inline auto operator*()
     {
-        this->i = idx_->global_index(this->li);
-        return *this;
+        struct {
+            typename Index_t::global i;
+            typename Index_t::local li; } ret{idx_->global_index(this->li), this->li};
+        return ret;
     }
+
     inline difference_type operator-(splindex_iterator_t<Index_t> const& rhs__) const
     {
         return li - rhs__.li;
     }
+
     inline splindex_iterator_t<Index_t>& operator+=(difference_type rhs__)
     {
         li += rhs__;
