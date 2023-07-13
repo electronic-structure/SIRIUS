@@ -312,7 +312,7 @@ class Simulation_context : public Simulation_parameters
     /// Find a list of real-space grid points around each atom.
     void init_atoms_to_grid_idx(double R__);
 
-    /// Get the stsrting time stamp.
+    /// Common init function called by all constructors.
     void init_common()
     {
         gettimeofday(&start_time_, NULL);
