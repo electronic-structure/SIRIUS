@@ -531,13 +531,12 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
 
-    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
-        int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).generate_radial_functions(parameters_.valence_relativity());
+    for (auto it : spl_num_atom_symmetry_classes()) {
+        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-        int rank = spl_num_atom_symmetry_classes().local_rank(ic);
+        int rank = spl_num_atom_symmetry_classes().location(typename atom_symmetry_class_index_t::global(ic)).ib;
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
 
@@ -547,9 +546,8 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
             pout << std::endl << "Linearization energies" << std::endl;
         }
 
-        for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
-            int ic = spl_num_atom_symmetry_classes(icloc);
-            atom_symmetry_class(ic).write_enu(pout);
+        for (auto it : spl_num_atom_symmetry_classes()) {
+            atom_symmetry_class(it.i).write_enu(pout);
         }
         RTE_OUT(out__) << pout.flush(0);
     }
@@ -566,13 +564,12 @@ Unit_cell::generate_radial_integrals()
     PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
     try {
-        for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
-            int ic = spl_num_atom_symmetry_classes(icloc);
-            atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
+        for (auto it : spl_num_atom_symmetry_classes()) {
+            atom_symmetry_class(it.i).generate_radial_integrals(parameters_.valence_relativity());
         }
 
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            int rank = spl_num_atom_symmetry_classes().local_rank(ic);
+            int rank = spl_num_atom_symmetry_classes().location(typename atom_symmetry_class_index_t::global(ic)).ib;
             atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
         }
     } catch(std::exception const& e) {
@@ -582,13 +579,12 @@ Unit_cell::generate_radial_integrals()
     }
 
     try {
-        for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
-            int ia = spl_num_atoms_[ialoc];
-            atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
+        for (auto it : spl_num_atoms_) {
+            atom(it.i).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
         }
 
         for (int ia = 0; ia < num_atoms(); ia++) {
-            int rank = spl_num_atoms().local_rank(ia);
+            int rank = spl_num_atoms().location(typename atom_index_t::global(ia)).ib;
             atom(ia).sync_radial_integrals(comm_, rank);
         }
     } catch(std::exception const& e) {
@@ -665,7 +661,7 @@ Unit_cell::initialize()
     PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
+    spl_num_atoms_ = sddk::splindex_block<atom_index_t>(num_atoms(), n_blocks(comm_.size()), block_id(comm_.rank()));
 
     /* initialize atom types */
     for (int iat = 0; iat < num_atom_types(); iat++) {
@@ -873,8 +869,8 @@ Unit_cell::update()
 
     get_symmetry();
 
-    spl_num_atom_symmetry_classes_ = sddk::splindex<sddk::splindex_t::block>(num_atom_symmetry_classes(),
-            comm_.size(), comm_.rank());
+    spl_num_atom_symmetry_classes_ = sddk::splindex_block<atom_symmetry_class_index_t>(num_atom_symmetry_classes(),
+            n_blocks(comm_.size()), block_id(comm_.rank()));
 
     volume_mt_ = 0.0;
     if (parameters_.full_potential()) {
@@ -957,7 +953,8 @@ Unit_cell::init_paw()
         }
     }
 
-    spl_num_paw_atoms_ = sddk::splindex<sddk::splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+    spl_num_paw_atoms_ = sddk::splindex_block<paw_atom_index_t>(num_paw_atoms(), n_blocks(comm_.size()),
+            block_id(comm_.rank()));
 }
 
 std::pair<int, std::vector<int>>

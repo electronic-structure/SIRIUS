@@ -3302,11 +3302,11 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
             ks.comm().bcast(&spin, 1, dest_rank);
 
             /* rank where k-point vkl resides on the SIRIUS side */
-            int src_rank = ks.spl_num_kpoints().local_rank(jk);
+            int src_rank = ks.spl_num_kpoints().location(typename kp_index_t::global(jk)).ib;
 
             if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
                 /* send G+k copy to destination rank (where host code receives the data) */
-                auto gkvec = ks.get_gkvec(jk, dest_rank);
+                auto gkvec = ks.get_gkvec(typename kp_index_t::global(jk), dest_rank);
 
                 sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
@@ -3963,7 +3963,7 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
             auto kp = ks.get<double>(*ik__ - 1);
 
             /* get rank that stores a given k-point */
-            int rank = ks.spl_num_kpoints().local_rank(*ik__ - 1);
+            int rank = ks.spl_num_kpoints().location(kp_index_t::global(*ik__ - 1)).ib;
 
             auto& comm_k = ks.ctx().comm_k();
 
@@ -5229,7 +5229,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             for (int rank = 0; rank < fft_comm.size(); rank++) {
                 /* slab of FFT grid for a given rank */
-                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(block_id(rank)));
                 if (rank == fft_comm.rank()) {
                     std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
@@ -5247,9 +5247,10 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 for (int iz = 0; iz < nz; iz++) {
                     /* global z coordinate inside FFT box */
                     int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
-                    if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                    if (z >= spl_z.global_offset(block_id(rank)) && z < spl_z.global_offset(block_id(rank)) +
+                            spl_z.local_size(block_id(rank))) {
                         /* make z local for SIRIUS FFT partitioning */
-                        z -= spl_z.global_offset(rank);
+                        z -= spl_z.global_offset(block_id(rank));
                         for (int iy = 0; iy < ny; iy++) {
                             /* global y coordinate inside FFT box */
                             int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */

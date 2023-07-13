@@ -85,14 +85,11 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                 int nbnd = kp__.num_occupied_bands(ispn);
 
                 /* inner product of beta gradient and WF */
-                // auto bp_base_phi_chunk = bp_base__.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
-                //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
-
                 auto bp_base_phi_chunk = inner_prod_beta<F>(
                     ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), beta_coeffs_base,
                     kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
-                sddk::splindex<sddk::splindex_t::block> spl_nbnd(nbnd, kp__.comm().size(), kp__.comm().rank());
+                sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
                 int nbnd_loc = spl_nbnd.local_size();
 
@@ -112,7 +109,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                                        sddk::matrix<F>& beta_phi_chunk) {
                         /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
-                            int ibnd = spl_nbnd[ibnd_loc];
+                            int ibnd = spl_nbnd.global_index(ibnd_loc);
 
                             auto d1 = main_two_factor * kp__.band_occupancy(ibnd, ispn) * kp__.weight();
                             auto z2 = dij - static_cast<real_type<F>>(kp__.band_energy(ibnd, ispn) * qij);

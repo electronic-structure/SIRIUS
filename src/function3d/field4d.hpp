@@ -144,7 +144,7 @@ class Field4D
 
     auto mt_components()
     {
-        std::vector<Spheric_function_set<double>*> result;
+        std::vector<Spheric_function_set<double, atom_index_t>*> result;
         result.push_back(&components_[0]->mt());
         switch (ctx_.num_mag_dims()) {
             case 1: {

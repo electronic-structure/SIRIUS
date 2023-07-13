@@ -66,7 +66,7 @@ make_vector(std::vector<wfc_ptr_t> const& wfct, Simulation_context const& ctx, K
     int num_spins = ctx.num_spins();
     int nb        = ctx.num_bands();
     for (auto i = 0u; i < wfct.size(); ++i) {
-        auto gidk = kset.spl_num_kpoints(i); // global k-point index
+        auto gidk = kset.spl_num_kpoints().global_index(typename kp_index_t::local(i)); //(i); // global k-point index
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             auto& array   = wfct[i]->pw_coeffs(wf::spin_index(ispn));
             int lda       = array.size(0);
@@ -105,24 +105,20 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
     , density_(density)
     , potential_(potential)
 {
-    // intialize hphi and sphi and allocate (device) memory
     int nk    = kset.spl_num_kpoints().local_size();
     auto& ctx = kset.ctx();
-    // auto& mpd = ctx.mem_pool(ctx.preferred_memory_t());
     hphis_.resize(nk);
-    // sphis.resize(nk);
     cphis_.resize(nk);
-    for (int i = 0; i < nk; ++i) {
-        auto global_kpoint_index          = kset.spl_num_kpoints(i);
-        auto& kp                          = *kset.get<double>(global_kpoint_index);
+    for (auto it : kset.spl_num_kpoints()) {
+        auto& kp                          = *kset.get<double>(it.i);
         sddk::memory_t preferred_memory_t = ctx.processing_unit_memory_t();
         auto num_mag_dims                 = wf::num_mag_dims(ctx.num_mag_dims());
         auto num_bands                    = wf::num_bands(ctx.num_bands());
         // make a new wf for Hamiltonian apply...
-        hphis_[i] =
+        hphis_[it.li] =
             std::make_shared<wf::Wave_functions<prec_t>>(kp.gkvec_sptr(), num_mag_dims, num_bands, preferred_memory_t);
-        cphis_[i] = &kp.spinor_wave_functions();
-        hphis_[i]->allocate(sddk::memory_t::host);
+        cphis_[it.li] = &kp.spinor_wave_functions();
+        hphis_[it.li]->allocate(sddk::memory_t::host);
     }
     // need to allocate wavefunctions on GPU
 }
@@ -133,7 +129,6 @@ Energy::compute()
     auto& ctx     = kset_.ctx();
     int num_spins = ctx.num_spins();
     int num_bands = ctx.num_bands();
-    int nk        = kset_.spl_num_kpoints().local_size();
 
     density_.generate<prec_t>(kset_, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
 
@@ -145,15 +140,15 @@ Energy::compute()
     auto proc_mem_t = ctx.processing_unit_memory_t();
 
     // apply Hamiltonian
-    for (int i = 0; i < nk; ++i) {
-        auto& kp = *kset_.get<prec_t>(kset_.spl_num_kpoints(i));
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto& kp = *kset_.get<prec_t>(it.i);
         std::vector<double> band_energies(num_bands);
 
-        auto mem_guard   = cphis_[i]->memory_guard(proc_mem_t, wf::copy_to::device);
-        auto mem_guard_h = hphis_[i]->memory_guard(proc_mem_t, wf::copy_to::host);
+        auto mem_guard   = cphis_[it.li]->memory_guard(proc_mem_t, wf::copy_to::device);
+        auto mem_guard_h = hphis_[it.li]->memory_guard(proc_mem_t, wf::copy_to::host);
 
         auto null_ptr_wfc = std::shared_ptr<wf::Wave_functions<prec_t>>();
-        apply_hamiltonian(H0, kp, *hphis_[i], kp.spinor_wave_functions(), null_ptr_wfc);
+        apply_hamiltonian(H0, kp, *hphis_[it.li], kp.spinor_wave_functions(), null_ptr_wfc);
         // compute band energies = diag(<psi|H|psi>)
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
@@ -162,7 +157,7 @@ Energy::compute()
                 wf::band_range bandr{jj, jj + 1};
                 wf::inner(ctx.spla_context(), proc_mem_t, wf::spin_range(ispn),
                           /* bra */ kp.spinor_wave_functions(), bandr,
-                          /* ket */ *hphis_[i], bandr,
+                          /* ket */ *hphis_[it.li], bandr,
                           /*result*/ dmat, 0, 0);
                 kp.band_energy(jj, ispn, dmat(0, 0).real());
             }
@@ -210,22 +205,19 @@ Energy::get_C(nlcglib::memory_type memory = nlcglib::memory_type::none)
 std::shared_ptr<nlcglib::VectorBaseZ>
 Energy::get_fn()
 {
-    auto nk      = kset_.spl_num_kpoints().local_size();
     const int ns = kset_.ctx().num_spins();
     int nbands   = kset_.ctx().num_bands();
     std::vector<std::vector<double>> fn;
     std::vector<std::pair<int, int>> kindices;
-    for (int ik = 0; ik < nk; ++ik) {
-        // global k-point index
-        auto gidk = kset_.spl_num_kpoints(ik);
-        auto& kp  = *kset_.get<prec_t>(gidk);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto& kp = *kset_.get<prec_t>(it.i);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> fn_local(nbands);
             for (int i = 0; i < nbands; ++i) {
                 fn_local[i] = kp.band_occupancy(i, ispn);
             }
             fn.push_back(std::move(fn_local));
-            kindices.emplace_back(gidk, ispn);
+            kindices.emplace_back(it.i, ispn);
         }
     }
     return std::make_shared<Array1d>(fn, kindices, kset_.comm().native());
@@ -260,22 +252,19 @@ Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<s
 std::shared_ptr<nlcglib::VectorBaseZ>
 Energy::get_ek()
 {
-    auto nk      = kset_.spl_num_kpoints().local_size();
     const int ns = kset_.ctx().num_spins();
     int nbands   = kset_.ctx().num_bands();
     std::vector<std::vector<double>> ek;
     std::vector<std::pair<int, int>> kindices;
-    for (int ik = 0; ik < nk; ++ik) {
-        // global k-point index
-        auto gidk = kset_.spl_num_kpoints(ik);
-        auto& kp  = *kset_.get<prec_t>(gidk);
+    for (auto it :  kset_.spl_num_kpoints()) {
+        auto& kp = *kset_.get<prec_t>(it.i);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> ek_local(nbands);
             for (int i = 0; i < nbands; ++i) {
                 ek_local[i] = kp.band_energy(i, ispn);
             }
             ek.push_back(std::move(ek_local));
-            kindices.emplace_back(gidk, ispn);
+            kindices.emplace_back(it.i.get(), ispn);
         }
     }
     return std::make_shared<Array1d>(ek, kindices, kset_.comm().native());
@@ -284,14 +273,11 @@ Energy::get_ek()
 std::shared_ptr<nlcglib::VectorBaseZ>
 Energy::get_gkvec_ekin()
 {
-    auto nk      = kset_.spl_num_kpoints().local_size();
     const int ns = kset_.ctx().num_spins();
     std::vector<std::vector<double>> gkvec_cart;
     std::vector<std::pair<int, int>> kindices;
-    for (int ik = 0; ik < nk; ++ik) {
-        // global k-point index
-        auto gidk = kset_.spl_num_kpoints(ik);
-        auto& kp  = *kset_.get<prec_t>(gidk);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto& kp  = *kset_.get<prec_t>(it.i);
         for (int ispn = 0; ispn < ns; ++ispn) {
             int gkvec_count = kp.gkvec().count();
             auto& gkvec     = kp.gkvec();
@@ -300,7 +286,7 @@ Energy::get_gkvec_ekin()
                 gkvec_local[i] = gkvec.gkvec_cart<sddk::index_domain_t::global>(i).length();
             }
             gkvec_cart.push_back(std::move(gkvec_local));
-            kindices.emplace_back(gidk, ispn);
+            kindices.emplace_back(it.i.get(), ispn);
         }
     }
     return std::make_shared<Array1d>(gkvec_cart, kindices, kset_.comm().native());
@@ -309,19 +295,16 @@ Energy::get_gkvec_ekin()
 std::shared_ptr<nlcglib::ScalarBaseZ>
 Energy::get_kpoint_weights()
 {
-    auto nk      = kset_.spl_num_kpoints().local_size();
     const int ns = kset_.ctx().num_spins();
     std::vector<double> weights;
     std::vector<std::pair<int, int>> kindices;
-    for (int ik = 0; ik < nk; ++ik) {
-        // global k-point index
-        auto gidk = kset_.spl_num_kpoints(ik);
-        auto& kp  = *kset_.get<double>(gidk);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto& kp  = *kset_.get<double>(it.i);
 
         // also return weights for every spin index
         for (int ispn = 0; ispn < ns; ++ispn) {
             weights.push_back(kp.weight());
-            kindices.emplace_back(gidk, ispn);
+            kindices.emplace_back(it.i.get(), ispn);
         }
     }
     return std::make_shared<Scalar>(weights, kindices, kset_.comm().native());

@@ -248,27 +248,26 @@ void Potential::poisson(Periodic_function<double> const& rho)
             }
         }
 
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            int nmtp = unit_cell_.atom(ia).num_mt_points();
+        for (auto it : unit_cell_.spl_num_atoms()) {
+            int nmtp = unit_cell_.atom(it.i).num_mt_points();
 
             std::vector<double> vlm(ctx_.lmmax_pot());
-            SHT::convert(ctx_.lmax_pot(), &vmtlm(0, ia), &vlm[0]);
+            SHT::convert(ctx_.lmax_pot(), &vmtlm(0, it.i), &vlm[0]);
 
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    hartree_potential_->mt()[ia](lm, ir) += vlm[lm] * rRl(ir, l, unit_cell_.atom(ia).type_id());
+                    hartree_potential_->mt()[it.i](lm, ir) += vlm[lm] * rRl(ir, l, unit_cell_.atom(it.i).type_id());
                 }
             }
             /* save electronic part of the potential at the point of origin */
 #ifdef __VHA_AUX
-            vh_el_(ia) = y00 * hartree_potential_->mt()[ia](0, 0) +
-                unit_cell_.atom(ia).zn() / unit_cell_.atom(ia).radial_grid(0);
+            vh_el_(it.i) = y00 * hartree_potential_->mt()[it.i](0, 0) +
+                unit_cell_.atom(it.i).zn() / unit_cell_.atom(it.i).radial_grid(0);
 #else
-            vh_el_(ia) = y00 * hartree_potential_->mt()[ia](0, 0);
+            vh_el_(it.i) = y00 * hartree_potential_->mt()[it.i](0, 0);
 #endif
         }
         ctx_.comm().allgather(vh_el_.at(sddk::memory_t::host), unit_cell_.spl_num_atoms().local_size(),
@@ -292,14 +291,13 @@ void Potential::poisson(Periodic_function<double> const& rho)
     /* add nucleus potential and contribution to Hartree energy */
     if (ctx_.full_potential()) {
         double evha_nuc{0};
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            auto& atom = unit_cell_.atom(ia);
+        for (auto it : unit_cell_.spl_num_atoms()) {
+            auto& atom = unit_cell_.atom(it.i);
             Spline<double> srho(atom.radial_grid());
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
-                hartree_potential_->mt()[ia](0, ir) -= atom.zn() / r / y00;
-                srho(ir) = rho.mt()[ia](0, ir) * r;
+                hartree_potential_->mt()[it.i](0, ir) -= atom.zn() / r / y00;
+                srho(ir) = rho.mt()[it.i](0, ir) * r;
             }
             evha_nuc -= atom.zn() * srho.interpolate().integrate(0) / y00;
         }

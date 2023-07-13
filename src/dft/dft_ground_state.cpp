@@ -79,9 +79,8 @@ DFT_ground_state::energy_kin_sum_pw() const
 {
     double ekin{0};
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(it.i);
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
@@ -281,12 +280,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     ctx_.cfg().parameters().precision_hs("fp64");
                     ctx_.cfg().lock();
 
-                    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-                        int ik = kset_.spl_num_kpoints(ikloc);
+                    for (auto it : kset_.spl_num_kpoints()) {
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            wf::copy(sddk::memory_t::host, kset_.get<float>(ik)->spinor_wave_functions(),
+                            wf::copy(sddk::memory_t::host, kset_.get<float>(it.i)->spinor_wave_functions(),
                                     wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
-                                    kset_.get<double>(ik)->spinor_wave_functions(), wf::spin_index(ispn),
+                                    kset_.get<double>(it.i)->spinor_wave_functions(), wf::spin_index(ispn),
                                     wf::band_range(0, ctx_.num_bands()));
                         }
                     }
