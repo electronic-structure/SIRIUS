@@ -77,6 +77,7 @@ if(NOT TARGET sirius::sirius)
   if(@USE_ROCM@)
     find_package(hip CONFIG ${mode})
     find_package(rocblas CONFIG ${mode})
+    find_package(rocsolver CONFIG ${mode})
   endif()
 
   # Clean-up module path.
