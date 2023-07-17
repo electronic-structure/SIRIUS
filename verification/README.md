@@ -26,6 +26,7 @@ salloc -N4 -C gpu --time=60:00 -A csstaff
 | test09 | Ni      | \[2, 2, 2\] | USPP           | LDA(PZ)   | non-collinear | - ground state <br> - forces <br> - stress |
 | test10 | Au      | \[2, 2, 2\] | NC <br> with SO correction   | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
 | test11 | Au      | \[2, 2, 2\] | USPP <br> with SO correction | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
+| test12 | C       | \[2, 2, 2\] | full-potential | LDA (PZ)  | non-magnetic  | |
 | test14 | SrVO3   | \[2, 2, 2\] | USPP           | GGA (PBE) | non-magnetic  | - ground state <br> - forces <br> - stress |
 | test15 | LiF     | \[1, 1, 1\] | PAW            | LDA (PZ)  | non-magnetic  | - Gamma-point calculation <br> - low symmetry <br> - forces <br> - stress |
 | test16 | NiO     | \[2, 2, 2\] | full-potential | LDA (PZ)  | AFM collinear | |
