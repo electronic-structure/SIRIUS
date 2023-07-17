@@ -104,7 +104,7 @@ class PAW_density : public PAW_field4D<T>
   public:
 
     PAW_density(Unit_cell const& uc__)
-        : PAW_field4D<T>(uc__, false)
+        : PAW_field4D<T>("PAW density", uc__, false)
     {
     }
 

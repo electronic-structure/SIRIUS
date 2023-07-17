@@ -70,7 +70,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 
         for (auto it : spl_atoms) {
             /* get global index of the atom */
-            int ia = it.i;
+            int ia = frlm.atoms()[it.i];
             int lmmax_ia = frlm[ia].angular_domain_size();
             int nrmax_ia = frlm.unit_cell().atom(ia).num_mt_points();
             int ja = sym__[i].spg_op.inv_sym_atom[ia];

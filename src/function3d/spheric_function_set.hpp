@@ -14,6 +14,8 @@ class Spheric_function_set
   private:
     /// Pointer to the unit cell
     Unit_cell const* unit_cell_{nullptr};
+    /// Text label of the function set.
+    std::string label_;
     /// List of atoms for which the spherical expansion is defined.
     std::vector<int> atoms_;
     /// Split the number of atoms between MPI ranks.
@@ -57,10 +59,11 @@ class Spheric_function_set
     }
 
     /// Constructor for all atoms.
-    Spheric_function_set(Unit_cell const& unit_cell__, std::function<lmax_t(int)> lmax__,
+    Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::function<lmax_t(int)> lmax__,
             sddk::splindex_block<I> const* spl_atoms__ = nullptr,
             spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
         : unit_cell_{&unit_cell__}
+        , label_{label__}
         , spl_atoms_{spl_atoms__}
         , all_atoms_{true}
     {
@@ -75,9 +78,10 @@ class Spheric_function_set
     }
 
     /// Constructor for a subset of atoms.
-    Spheric_function_set(Unit_cell const& unit_cell__, std::vector<int> atoms__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex_block<I> const* spl_atoms__ = nullptr)
+    Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::vector<int> atoms__,
+            std::function<lmax_t(int)> lmax__, sddk::splindex_block<I> const* spl_atoms__ = nullptr)
         : unit_cell_{&unit_cell__}
+        , label_{label__}
         , atoms_{atoms__}
         , spl_atoms_{spl_atoms__}
         , all_atoms_{false}

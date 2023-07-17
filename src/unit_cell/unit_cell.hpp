@@ -180,9 +180,9 @@ class Unit_cell
     }
 
     /// Return global index of atom by the index in the list of PAW atoms.
-    inline int paw_atom_index(paw_atom_index_t::global ipaw__) const
+    inline auto paw_atom_index(paw_atom_index_t::global ipaw__) const
     {
-        return paw_atom_index_[ipaw__];
+        return typename atom_index_t::global(paw_atom_index_[ipaw__]);
     }
 
     /// Print basic info.

@@ -82,8 +82,6 @@ class Potential : public Field4D
 
     sddk::mdarray<double, 2> gamma_factors_R_;
 
-    int lmax_;
-
     std::unique_ptr<SHT> sht_;
 
     int pseudo_density_order_{9};
@@ -148,9 +146,10 @@ class Potential : public Field4D
 
     /// Calculate PAW potential for a given atom.
     /** \return Hartree energy contribution. */
-    double calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, std::vector<Flm const*> ps_density);
+    double calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density,
+            std::vector<Flm const*> ps_density);
 
-    void calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__);
+    void calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mdarray<double, 3>& paw_dij__);
 
     double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
@@ -305,14 +304,7 @@ class Potential : public Field4D
               << "  l_by_lm.size: " << l_by_lm_.size();
             RTE_THROW(s);
         }
-        if (lmmax_rho > ctx_.lmmax_rho()) {
-            std::stringstream s;
-            s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
-              << "  lmmax_rho: " << lmmax_rho << std::endl
-              << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
-            RTE_THROW(s);
-        }
-        std::vector<T> qmt(ctx_.lmmax_rho(), 0);
+        std::vector<T> qmt(lmmax_rho, 0);
 
         double R    = atom__.mt_radius();
         int    nmtp = atom__.num_mt_points();
