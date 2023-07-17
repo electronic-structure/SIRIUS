@@ -15,16 +15,17 @@ salloc -N4 -C gpu --time=60:00 -A csstaff
 ```
 | Folder | Structure | K-points | Potential type | XC type | Magnetism | Remarks |
 |-|-|-|-|-|-|-|
-| test01 | SrVO3   | \[2, 2, 2\] | USPP           | LDA (PZ)  | non-magnetic | - ground state <br> - forces <br> - stress |
-| test02 | He atom | \[1, 1, 1\] | full-potential | LDA (VWN) | non-magnetic | test of iterative solver|
-| test03 | Fe      | \[4, 4, 4\] | PAW            | GGA (PBE) | spin-collinear | |
-| test04 | LiF     | \[4, 4, 4\] | PAW            | LDA (PZ)  | non-magnetic | - ground state <br> - forces <br> - stress |
+| test01 | SrVO3   | \[2, 2, 2\] | USPP           | LDA (PZ)  | non-magnetic  | - ground state <br> - forces <br> - stress |
+| test02 | He atom | \[1, 1, 1\] | full-potential | LDA (VWN) | non-magnetic  | test of iterative solver|
+| test03 | Fe      | \[4, 4, 4\] | PAW            | GGA (PBE) | FM collinear  | |
+| test04 | LiF     | \[4, 4, 4\] | PAW            | LDA (PZ)  | non-magnetic  | - ground state <br> - forces <br> - stress |
 | test05 | NiO     | \[2, 2, 2\] | USPP           | LDA (PZ)  | AFM collinear | - ground state <br> - forces <br> - stress |
-| test06 | Fe      | \[2, 2, 2\] | USPP           | LDA (PZ)  | FM collinear | - ground state <br> - forces <br> - stress |
-| test07 | Ni      | \[4, 4, 4\] | USPP           | GGA (BPE) | FM collinear | - ground state <br> - forces <br> - stress |
-| test08 | Si      | \[1, 1, 1\] | USPP           | LDA (PZ)  | non-magnetic | - Gamma point treatment is off <br> - complex wave-functions <br> - forces <br> - stress |
+| test06 | Fe      | \[2, 2, 2\] | USPP           | LDA (PZ)  | FM collinear  | - ground state <br> - forces <br> - stress |
+| test07 | Ni      | \[4, 4, 4\] | USPP           | GGA (BPE) | FM collinear  | - ground state <br> - forces <br> - stress |
+| test08 | Si      | \[1, 1, 1\] | USPP           | LDA (PZ)  | non-magnetic  | - Gamma point treatment is off <br> - complex wave-functions <br> - forces <br> - stress |
 | test09 | Ni      | \[2, 2, 2\] | USPP           | LDA(PZ)   | non-collinear | - ground state <br> - forces <br> - stress |
-| test10 | Au      | \[2, 2, 2\] | NC <br> with SO correction | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
+| test10 | Au      | \[2, 2, 2\] | NC <br> with SO correction   | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
+| test11 | Au      | \[2, 2, 2\] | USPP <br> with SO correction | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
 | test14 | SrVO3   | \[2, 2, 2\] | USPP           | GGA (PBE) | non-magnetic | - ground state <br> - forces <br> - stress |
 | test15 | LiF     | \[1, 1, 1\] | PAW            | LDA (PZ)  | non-magnetic | - Gamma-point calculation <br> - low symmetry <br> - forces <br> - stress |
 | test16 | NiO     | \[2, 2, 2\] | full-potential | LDA (PZ)  | AFM collinear | |
