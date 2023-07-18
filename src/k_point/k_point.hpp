@@ -372,6 +372,11 @@ class K_point
         comm().allreduce(sv_evec__.at(sddk::memory_t::host), (int)sv_evec__.size());
     }
 
+    inline auto const& get_gkvec() const
+    {
+        return gkvec_;
+    }
+    
     inline auto const& gkvec() const
     {
         return *gkvec_;
@@ -776,6 +781,8 @@ wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, w
 
     return wf;
 }
+
+
 
 } // namespace sirius
 
