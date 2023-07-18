@@ -1,10 +1,7 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "verbosity" : 2,
-        "print_forces" : false,
-        "print_stress" : false,
-        "print_checksum" : false
+        "verbosity" : 2
     },
 
     "parameters" : {
