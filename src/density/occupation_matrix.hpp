@@ -115,15 +115,13 @@ class Occupation_matrix : public Hubbard_matrix
         return occ_mtrx_T_.at(T__);
     }
 
-    inline auto& occ_mtrx_T(r3::vector<int> T__)
-    {
-        return occ_mtrx_T_.at(T__);
-    }
-
     inline auto const& occ_mtrx_T() const
     {
         return occ_mtrx_T_;
     }
+
+    friend void
+    copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
 };
 
 inline void
@@ -136,9 +134,8 @@ copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
         ::sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
     for (auto& e : src__.occ_mtrx_T()) {
-        ::sddk::copy(e.second, dest__.occ_mtrx_T(e.first));
+        ::sddk::copy(e.second, dest__.occ_mtrx_T_.at(e.first));
     }
 }
-
 
 } // namespace sirius

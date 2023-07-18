@@ -298,28 +298,22 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    /// Return atom type instance by label.
-    inline Atom_type& atom_type(std::string const label__)
+    /// Return const atom type instance by label.
+    inline auto const& atom_type(std::string const label__) const
     {
         if (!atom_type_id_map_.count(label__)) {
             std::stringstream s;
             s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         int id = atom_type_id_map_.at(label__);
         return atom_type(id);
     }
 
-    /// Return const atom type instance by label.
-    inline Atom_type const& atom_type(std::string const label__) const
+    /// Return atom type instance by label.
+    inline auto& atom_type(std::string const label__)
     {
-        if (!atom_type_id_map_.count(label__)) {
-            std::stringstream s;
-            s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
-        }
-        int id = atom_type_id_map_.at(label__);
-        return atom_type(id);
+        return const_cast<Atom_type&>(reinterpret_cast<Unit_cell const&>(*this).atom_type(label__));
     }
 
     /// Number of atom symmetry classes.
@@ -540,7 +534,7 @@ class Unit_cell
 
     inline int lmax_apw() const
     {
-        int lmax{0};
+        int lmax{-1};
         for (int iat = 0; iat < this->num_atom_types(); iat++) {
             lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
         }

@@ -1325,13 +1325,6 @@ Density::generate_valence(K_point_set const& ks__)
         ctx_.comm().allreduce(density_matrix(ia).at(sddk::memory_t::host), static_cast<int>(density_matrix(ia).size()));
     }
 
-    //if (occupation_matrix_ && (ks__.num_kpoints() != ks__.spl_num_kpoints().local_size())) {
-    //    // TODO: verify; reduction on non-distributed k-set shoul not cause any troubles
-    //    // only do the reduction when the kpoint set is distributed over mpi. if
-    //    // not calling the reduction will lead to very wrong results where the
-    //    // occupation numbers are larger than 1...
-    //    occupation_matrix_->reduce();
-    //}
     if (occupation_matrix_) {
         occupation_matrix_->reduce();
     }
