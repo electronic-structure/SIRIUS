@@ -27,6 +27,7 @@
 
 #include <fstream>
 #include <optional>
+#include <memory>
 #include <hdf5.h>
 #include "memory.hpp"
 #include "utils/rte.hpp"
@@ -216,8 +217,7 @@ class HDF5_tree
 
     /// Auxiliary class to handle HDF5 Attribute object
     ///
-    /// @remark The Attribute's Dataspace is assumed to be SCALAR. Supporting other Dataspaces will require the
-    /// generalisation of HDF5_dataspace, which currently only support SIMPLE
+    /// @remark The Attribute's Dataspace is assumed to be SCALAR.
     class HDF5_attribute
     {
       private:
@@ -225,7 +225,7 @@ class HDF5_tree
         hid_t id_;
 
       public:
-        /// Constructor which opens the existing dataset object
+        /// Constructor which opens the existing attribute object
         HDF5_attribute(hid_t attribute_id, const std::string& name)
         {
             if ((id_ = H5Aopen(attribute_id, name.c_str(), H5P_DEFAULT)) < 0)
@@ -233,7 +233,9 @@ class HDF5_tree
         }
 
         /// Constructor which creates the new attribute object
-        /// @partent_id Group or dataset ID
+        /// @partent_id Group or dataset ID to which the attribute is attached
+        /// @name Name of the attribute
+        /// @type_id Type ID for the attribute
         HDF5_attribute(hid_t parent_id, const std::string& name, hid_t type_id)
         {
             hid_t dataspace_id;
@@ -291,6 +293,14 @@ class HDF5_tree
     }
 
     /// Write attribure to current group or to specifc DATASET
+    ///
+    /// @remark The attribute is attached to the current group by default, but it can be optionally attached to a
+    /// dataset (within the current group)
+    ///
+    /// @param name Name of the attribute
+    /// @param data Attribute data
+    /// @param type_id Attribute type ID
+    /// @param dataset_name Dataset in current group to wich attach the attribute
     template <typename T>
     void write_attribute(const std::string& name, T const* data, hid_t type_id,
                          std::optional<std::string> dataset_name = {})
@@ -298,23 +308,25 @@ class HDF5_tree
         /* open group */
         HDF5_group group(file_id_, path_);
 
-        /* create new attribute */
-        if (dataset_name) {
-            // New attribute is part of a dataset in the current group
-            HDF5_dataset dataset(group.id(), *dataset_name);
-            HDF5_attribute attribute(dataset.id(), name, type_id);
-            /* write data */
-            if (H5Awrite(attribute.id(), type_id, data) < 0) {
-                RTE_THROW("error in H5Awrite()");
-            }
+        hid_t parent_id; // Group or dataset ID to which the attribute is attached
 
+        /* open dataset and get ID, otherwise use group ID */
+        std::unique_ptr<HDF5_dataset> dataset{nullptr};
+        if (dataset_name) {
+            /* Open dataset with name dataset_name in this group */
+            /* The HDF5_dataset needs to live (remain open) until the attribute is written */
+            dataset   = std::make_unique<HDF5_dataset>(group.id(), *dataset_name);
+            parent_id = dataset->id();
         } else {
-            // New attribute is part of the current group
-            HDF5_attribute attribute(group.id(), name, type_id);
-            /* write data */
-            if (H5Awrite(attribute.id(), type_id, data) < 0) {
-                RTE_THROW("error in H5Awrite()");
-            }
+            parent_id = group.id();
+        }
+
+        /* create new attribute, attached to the parent */
+        HDF5_attribute attribute(parent_id, name, type_id);
+
+        /* write data */
+        if (H5Awrite(attribute.id(), type_id, data) < 0) {
+            RTE_THROW("error in H5Awrite()");
         }
     }
 
