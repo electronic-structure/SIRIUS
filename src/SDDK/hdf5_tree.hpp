@@ -31,7 +31,8 @@
 
 namespace sddk {
 
-enum class hdf5_access_t {
+enum class hdf5_access_t
+{
     truncate,
     read_write,
     read_only
@@ -40,28 +41,40 @@ enum class hdf5_access_t {
 template <typename T>
 struct hdf5_type_wrapper;
 
-template<>
+template <>
 struct hdf5_type_wrapper<float>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_FLOAT;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_FLOAT;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<double>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_DOUBLE;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_DOUBLE;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<int>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_INT;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_INT;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<uint8_t>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_UCHAR;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_UCHAR;
+    };
 };
 
 /// Interface to the HDF5 library.
@@ -199,6 +212,44 @@ class HDF5_tree
         }
     };
 
+    /// Auxiliary
+    class HDF5_attribute
+    {
+      private:
+        /// HDF5 id of the current object
+        hid_t id_;
+
+      public:
+        /// Constructor which opens the existing dataset object
+        HDF5_attribute(hid_t group_id, const std::string& name)
+        {
+            if ((id_ = H5Aopen(group_id, name.c_str(), H5P_DEFAULT)) < 0)
+                RTE_THROW("error in H5Aopen()");
+        }
+
+        /// Constructor which creates the new attribute object
+        HDF5_attribute(HDF5_dataset& dataset, HDF5_dataspace& dataspace, const std::string& name, hid_t type_id)
+        {
+            if ((id_ = H5Acreate(dataset.id(), name.c_str(), type_id, dataspace.id(), H5P_DEFAULT, H5P_DEFAULT)) < 0) {
+                RTE_THROW("error in H5Acreate()");
+            }
+        }
+
+        /// Destructor
+        ~HDF5_attribute()
+        {
+            if (H5Aclose(id_) < 0) {
+                RTE_THROW("error in H5Aclose()");
+            }
+        }
+
+        /// Return HDF5 id of the current object
+        inline hid_t id() const
+        {
+            return id_;
+        }
+    };
+
     /// Constructor to create branches of the HDF5 tree.
     HDF5_tree(hid_t file_id__, const std::string& path__)
         : path_(path__)
@@ -246,7 +297,6 @@ class HDF5_tree
     // HDF5_tree& operator=(HDF5_tree const& src) = delete;
 
   public:
-
     /// Constructor to create the HDF5 tree.
     HDF5_tree(const std::string& file_name__, hdf5_access_t access__)
         : file_name_(file_name__)
