@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -28,6 +28,7 @@
 #include <fstream>
 #include <hdf5.h>
 #include "memory.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
@@ -212,7 +213,10 @@ class HDF5_tree
         }
     };
 
-    /// Auxiliary
+    /// Auxiliary class to handle HDF5 Attribute object
+    ///
+    /// @remark The Attribute's Dataspace is assumed to be SCALAR. Supporting other Dataspaces will require the
+    /// generalisation of HDF5_dataspace, which currently only support SIMPLE
     class HDF5_attribute
     {
       private:
@@ -228,9 +232,16 @@ class HDF5_tree
         }
 
         /// Constructor which creates the new attribute object
-        HDF5_attribute(HDF5_dataset& dataset, HDF5_dataspace& dataspace, const std::string& name, hid_t type_id)
+        HDF5_attribute(HDF5_group& group, const std::string& name, hid_t type_id)
         {
-            if ((id_ = H5Acreate(dataset.id(), name.c_str(), type_id, dataspace.id(), H5P_DEFAULT, H5P_DEFAULT)) < 0) {
+            hid_t dataspace_id;
+
+            // Create SCALAR Dataspace
+            if ((dataspace_id = H5Screate(H5S_SCALAR)) < 0) {
+                RTE_THROW("error in H5Screate()");
+            }
+
+            if ((id_ = H5Acreate(group.id(), name.c_str(), type_id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
                 RTE_THROW("error in H5Acreate()");
             }
         }
@@ -274,6 +285,22 @@ class HDF5_tree
         /* write data */
         if (H5Dwrite(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
             RTE_THROW("error in H5Dwrite()");
+        }
+    }
+
+    /// Write attribure
+    template <typename T>
+    void write_attribute(const std::string& name, T const* data, hid_t type_id)
+    {
+        /* open group */
+        HDF5_group group(file_id_, path_);
+
+        /* create new attribute */
+        HDF5_attribute attribute(group, name, type_id);
+
+        /* write data */
+        if (H5Awrite(attribute.id(), type_id, data) < 0) {
+            RTE_THROW("error in H5Awrite()");
         }
     }
 
@@ -423,6 +450,35 @@ class HDF5_tree
     void write(const std::string& name, std::vector<T> const& vec)
     {
         write(name, &vec[0], (int)vec.size());
+    }
+
+    /// Write attribure
+    template <typename T>
+    void write_attribute(const std::string& name, const T& data)
+    {
+        write_attribute(name, &data, hdf5_type_wrapper<T>());
+    }
+
+    /// Write string attribure
+    void write_attribute(const std::string& name, const std::string& data, hid_t base_string_type = H5T_FORTRAN_S1)
+    {
+        // Create string type
+        hid_t string_type = H5Tcopy(base_string_type);
+        if (H5Tset_size(string_type, std::size(data)) < 0) {
+            RTE_THROW("error in H5Tset_size()");
+        }
+
+        write_attribute(name, data.c_str(), string_type);
+    }
+
+    /// Write array attribure
+    template <typename T>
+    void write_attribute(const std::string& name, const std::vector<T>& data)
+    { // Create array type
+        hsize_t data_size = std::size(data);
+        hid_t array_type  = H5Tarray_create(hdf5_type_wrapper<T>(), 1, &data_size);
+
+        write_attribute(name, data.data(), array_type);
     }
 
     template <int N>

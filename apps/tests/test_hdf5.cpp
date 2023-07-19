@@ -1,5 +1,8 @@
 #include <sirius.hpp>
 
+#include <string>
+#include <vector>
+
 void
 test1()
 {
@@ -71,27 +74,23 @@ test3()
 void
 test4()
 {
+    using namespace std::string_literals;
     sddk::HDF5_tree f("qe.h5", sddk::hdf5_access_t::truncate);
 
-    sddk::mdarray<double, 2> dat(2, 4);
-    dat.zero();
+    sddk::mdarray<double, 2> miller(2, 3);
+    miller.zero();
 
-    dat(0, 0) = 1.1;
-    dat(0, 1) = 2.2;
-    dat(0, 2) = 3.3;
-    dat(1, 0) = 4.4;
-    dat(1, 1) = 5.5;
-    dat(1, 2) = 6.6;
+    sddk::mdarray<double, 2> evec(3, 4);
+    evec.zero();
 
-    std::cout << "hash  = " << dat.hash() << std::endl;
+    std::vector<double> xk = {0.00, 0.13, 0.10};
 
-    f.create_node("aaa");
-    f["aaa"].write("dat_name", dat);
-    dat.zero();
-    f["aaa"].read("dat_name", dat);
-    std::cout << "hash  = " << dat.hash() << std::endl;
-
-    f.write("dat_name", dat);
+    f.write_attribute("gamma_only", ".FALSE."s);
+    f.write_attribute("igwx", 4572);
+    f.write_attribute("scale_factor", 1.0);
+    f.write_attribute("xk", xk);
+    f.write("MillerIndices", miller);
+    f.write("evec", evec);
 }
 
 int
