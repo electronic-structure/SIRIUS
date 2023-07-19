@@ -1,72 +1,93 @@
 {
-    "control" : {
-        "cyclic_block_size" : 16,
-        "processing_unit" : "cpu",
-    
-        "!std_evp_solver_name" : "lapack",
-        "!gen_evp_solver_name" : "lapack",
-        "verbosity" : 2
+  "control": {
+    "processing_unit": "cpu",
+    "verbosity": 2
+  },
+  "parameters": {
+    "xc_functionals": [
+      "XC_LDA_X",
+      "XC_LDA_C_PZ"
+    ],
+    "electronic_structure_method": "full_potential_lapwlo",
+    "num_fv_states": 60,
+    "auto_rmt": 1,
+    "num_mag_dims": 1,
+    "ngridk": [ 2, 2, 2 ],
+    "use_symmetry": true,
+    "pw_cutoff": 20,
+    "aw_cutoff": 5,
+    "lmax_apw": 5,
+    "lmax_pot": 5,
+    "lmax_rho": 5,
+    "density_tol": 1e-08,
+    "energy_tol": 1e-08
+  },
+  "mixer": {
+    "beta": 0.75,
+    "type": "broyden2",
+    "max_history": 8
+  },
+  "unit_cell": {
+    "lattice_vectors": [
+      [
+        1,
+        0.5,
+        0.5
+      ],
+      [
+        0.5,
+        1,
+        0.5
+      ],
+      [
+        0.5,
+        0.5,
+        1
+      ]
+    ],
+    "lattice_vectors_scale": 7.89357814,
+    "atom_types": [
+      "Ni",
+      "O"
+    ],
+    "atom_files": {
+      "Ni": "Ni.json",
+      "O": "O.json"
     },
-
-    "parameters" : {
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-    
-        "electronic_structure_method" : "full_potential_lapwlo",
-    
-        "num_fv_states" : 60,
-
-        "auto_rmt" : 1,
-
-        "num_mag_dims" : 1,
-
-        "num_dft_iter" : 100,
-
-        "ngridk" : [2,2,2],
-    
-        "use_symmetry" : true,
-
-        "pw_cutoff" : 20,
-
-        "aw_cutoff" : 5,
-    
-        "lmax_apw" : 5,
-        "lmax_pot" : 5,
-        "lmax_rho" : 5,
-
-        "potential_tol" : 1e-8,
-        "energy_tol" : 1e-8
-    },
-    
-    "mixer" : {
-        "beta" : 0.75,
-        "type" : "broyden2",
-        "max_history" : 8
-    },
-    
-    "unit_cell" : {
-
-        "lattice_vectors" : [ [1.0, 0.5, 0.5], 
-                              [0.5, 1.0, 0.5], 
-                              [0.5, 0.5, 1.0]
-                            ],
-
-        "lattice_vectors_scale" : 7.89357814,
-
-        "atom_types" : ["Ni", "O"],
-
-        "atom_files" : {"Ni" : "Ni.json", "O" : "O.json"},
-
-        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  2], 
-                             [0.5, 0.5, 0.5,    0,  0, -2] 
-                           ],
-
-                    "O" :  [ [0.25, 0.25, 0.25],
-                             [0.75, 0.75, 0.75]
-                           ]
-                  }
-    },
-
-    "kpoints_rel": {
+    "atoms": {
+      "Ni": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          2
+        ],
+        [
+          0.5,
+          0.5,
+          0.5,
+          0,
+          0,
+          -2
+        ]
+      ],
+      "O": [
+        [
+          0.25,
+          0.25,
+          0.25
+        ],
+        [
+          0.75,
+          0.75,
+          0.75
+        ]
+      ]
+    }
+  },
+  "kpoints_rel": {
     "K": [
       0.375,
       0.375,
@@ -89,13 +110,13 @@
     ],
     "X": [
       0.5,
-      0.0,
+      0,
       0.5
     ],
     "GAMMA": [
-      0.0,
-      0.0,
-      0.0
+      0,
+      0,
+      0
     ],
     "W_2": [
       0.75,
@@ -103,6 +124,9 @@
       0.5
     ]
   },
-
-  "kpoints_path" : ["GAMMA", "K", "L"]
+  "kpoints_path": [
+    "GAMMA",
+    "K",
+    "L"
+  ]
 }

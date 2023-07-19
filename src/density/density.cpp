@@ -86,7 +86,7 @@ Density::Density(Simulation_context& ctx__)
     PROFILE("sirius::Density");
 
     if (!ctx_.initialized()) {
-        TERMINATE("Simulation_context is not initialized");
+        RTE_THROW("Simulation_context is not initialized");
     }
 
     using spf = Smooth_periodic_function<double>;
@@ -1140,7 +1140,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                 sirius::symmetrize_density_matrix(unit_cell_, *density_matrix_, ctx_.num_mag_comp());
             }
 
-            if (ctx_.hubbard_correction()) {
+            if (occupation_matrix_) {
                 /* all symmetrization is done in the occupation_matrix class */
                 symmetrize_occupation_matrix(*occupation_matrix_);
             }
@@ -1155,7 +1155,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
                 if (ctx_.verbosity() >= 1) {
-                    RTE_OUT(ctx_.out()) << "error of the density matrix symmetrization: " << diff << " "
+                    RTE_OUT(ctx_.out()) << "error of density matrix symmetrization: " << diff << " "
                         << status << std::endl;
                 }
             }
@@ -1172,10 +1172,28 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                 }
                 std::string status = (diff1 > 1e-8) ? "Fail" : "OK";
                 if (ctx_.verbosity() >= 1) {
-                    RTE_OUT(ctx_.out()) << "error of the LDA+U local occupation matrix symmetrization: " << diff1
+                    RTE_OUT(ctx_.out()) << "error of LDA+U local occupation matrix symmetrization: " << diff1
+                        << " " << status << std::endl;
+                }
+
+                om_ref->update_nonlocal();
+
+                double diff2{0};
+                for (size_t i = 0; i < occupation_matrix_->nonlocal().size(); i++) {
+                    for (size_t j = 0; j < occupation_matrix_->nonlocal(i).size(); j++) {
+                        diff2 = std::max(diff2, std::abs(om_ref->nonlocal(i)[j] - occupation_matrix_->nonlocal(i)[j]));
+                    }
+                }
+                status = (diff2 > 1e-8) ? "Fail" : "OK";
+                if (ctx_.verbosity() >= 1) {
+                    RTE_OUT(ctx_.out()) << "error of LDA+U nonlocal occupation matrix symmetrization: " << diff2
                         << " " << status << std::endl;
                 }
             }
+        }
+    } else { /* if we don't symmetrize, we still need to copy nonlocal part of occupation matrix */
+        if (occupation_matrix_) {
+            occupation_matrix_->update_nonlocal();
         }
     }
 
@@ -1238,7 +1256,7 @@ Density::generate_valence(K_point_set const& ks__)
     if (std::abs(wt - 1.0) > 1e-12) {
         std::stringstream s;
         s << "K_point weights don't sum to one" << std::endl << "  obtained sum: " << wt;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge()) > 1e-8 &&
@@ -1307,10 +1325,7 @@ Density::generate_valence(K_point_set const& ks__)
         ctx_.comm().allreduce(density_matrix(ia).at(sddk::memory_t::host), static_cast<int>(density_matrix(ia).size()));
     }
 
-    if (occupation_matrix_ && (ks__.num_kpoints() != ks__.spl_num_kpoints().local_size())) {
-        // only do the reduction when the kpoint set is distributed over mpi. if
-        // not calling the reduction will lead to very wrong results where the
-        // occupation numbers are larger than 1...
+    if (occupation_matrix_) {
         occupation_matrix_->reduce();
     }
 
@@ -1825,21 +1840,29 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
                              Periodic_function<double>, density_matrix_t,
                              PAW_density<double>, Hubbard_matrix>(mixer_cfg__);
 
-    /* initialize functions */
-    if (mixer_cfg__.use_hartree()) {
-        if (ctx_.full_potential()) {
-            RTE_THROW("Mixer: Hartree residual energy is implemented only for PP-PW case");
-        }
-        this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
-    } else {
+    if (ctx_.full_potential()) {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
-    }
-    if (ctx_.num_mag_dims() > 0) {
-        this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
-    }
-    if (ctx_.num_mag_dims() > 1) {
-        this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
-        this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
+        if (ctx_.num_mag_dims() > 0) {
+            this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
+        }
+        if (ctx_.num_mag_dims() > 1) {
+            this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
+            this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, [&](int ia){return lmax_t(ctx_.lmax_rho());});
+        }
+    } else {
+        /* initialize functions */
+        if (mixer_cfg__.use_hartree()) {
+            this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_);
+        } else {
+            this->mixer_->initialize_function<0>(func_prop, component(0), ctx_);
+        }
+        if (ctx_.num_mag_dims() > 0) {
+            this->mixer_->initialize_function<1>(func_prop, component(1), ctx_);
+        }
+        if (ctx_.num_mag_dims() > 1) {
+            this->mixer_->initialize_function<2>(func_prop, component(2), ctx_);
+            this->mixer_->initialize_function<3>(func_prop, component(3), ctx_);
+        }
     }
 
     this->mixer_->initialize_function<4>(density_prop, *density_matrix_, unit_cell_, ctx_.num_mag_comp());

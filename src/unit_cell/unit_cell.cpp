@@ -203,6 +203,13 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
           << "number of symmetry classes : " << num_atom_symmetry_classes() << std::endl;
     if (!parameters_.full_potential()) {
         out__ << "number of PAW atoms : " << num_paw_atoms() << std::endl;
+        if (num_paw_atoms() != 0) {
+            out__ << "PAW atoms :";
+            for (auto ia : paw_atom_index_) {
+                out__ << " " << ia;
+            }
+            out__ << std::endl;
+        }
     }
     if (verbosity__ >= 2) {
         out__ << std::endl
@@ -249,7 +256,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
           << "minimum bond length: " << utils::ffmt(12, 6) << min_bond_length() << std::endl;
     if (!parameters_.full_potential()) {
         out__ << std::endl
-              << "nnumber of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
+              << "total number of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
     }
     out__ << std::endl;
 }

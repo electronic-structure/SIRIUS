@@ -890,7 +890,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         #pragma omp parallel for
         for (auto it: spl_atoms) {
             int tid    = omp_get_thread_num();
-            int ia     = it.li;
+            int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
@@ -1240,6 +1240,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     ctx.spla_context());
             gflops += ngop * num_mt_aw * b__.size() * ngv;
 
+            if (pcs) {
+                auto cs = alm_phi.checksum(num_mt_aw, b__.size());
+                if (comm.rank() == 0) {
+                    utils::print_checksum("alm_phi", cs, RTE_OUT(std::cout));
+                }
+            }
+
             if (ophi__) {
                 /* add APW-APW contribution to ophi */
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one,
@@ -1272,12 +1279,27 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
                     appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+
+                    if (pcs) {
+                        auto cs1 = alm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
+                        auto cs2 = halm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
+                        if (comm.rank() == 0) {
+                            utils::print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
+                            utils::print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
+                        }
+                    }
                 }
 
                 {
                     auto layout_in = halm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
                     auto layout_out = halm_phi.grid_layout();
                     costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
+                    if (pcs) {
+                        auto cs = halm_phi.checksum(num_mt_aw, b__.size());
+                        if (comm.rank() == 0) {
+                            utils::print_checksum("halm_phi", cs, RTE_OUT(std::cout));
+                        }
+                    }
                 }
 
                 /* APW-APW contribution to hphi */
@@ -1287,6 +1309,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
+                if (pcs) {
+                    auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                    if (comm.rank() == 0) {
+                        utils::print_checksum("hphi_apw#1", cs, RTE_OUT(std::cout));
+                    }
+                }
             }
             time += utils::time_interval(t0);
         }
@@ -1301,6 +1329,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(), one,
                         hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
+                if (pcs) {
+                    auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                    if (comm.rank() == 0) {
+                        utils::print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
+                    }
+                }
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
             if (ophi__) {
@@ -1321,7 +1355,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             if (hphi__) {
                 auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("hphi_apw", cs, RTE_OUT(std::cout));
+                    utils::print_checksum("hphi_apw#3", cs, RTE_OUT(std::cout));
                 }
             }
             if (ophi__) {

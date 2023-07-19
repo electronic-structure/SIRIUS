@@ -1,70 +1,73 @@
 {
-    "control" : {
-        "cyclic_block_size" : 16,
-        "!processing_unit" : "cpu",
-    
-        "std_evp_solver_name" : "lapack",
-        "gen_evp_solver_name" : "lapack",
-        "verbosity" : 2,
-        "verification" : 1
+  "control": {
+    "verbosity": 2
+  },
+  "parameters": {
+    "xc_functionals": [
+      "XC_GGA_X_PW91",
+      "XC_GGA_C_PW91"
+    ],
+    "electronic_structure_method": "full_potential_lapwlo",
+    "auto_rmt": 1,
+    "ngridk": [
+      2,
+      2,
+      2
+    ],
+    "use_symmetry": true,
+    "pw_cutoff": 20,
+    "aw_cutoff": 8,
+    "lmax_apw": 8,
+    "lmax_pot": 8,
+    "lmax_rho": 8,
+    "density_tol": 1e-05,
+    "energy_tol": 1e-08
+  },
+  "mixer": {
+    "beta": 0.5,
+    "type": "anderson",
+    "max_history": 8
+  },
+  "unit_cell": {
+    "lattice_vectors": [
+      [
+        0,
+        5.13,
+        5.13
+      ],
+      [
+        5.13,
+        0,
+        5.13
+      ],
+      [
+        5.13,
+        5.13,
+        0
+      ]
+    ],
+    "atom_types": [
+      "Si"
+    ],
+    "atom_files": {
+      "Si": "Si.json"
     },
-
-    "parameters" : {
-        "xc_functionals" : ["XC_GGA_X_PW91", "XC_GGA_C_PW91"],
-    
-        "electronic_structure_method" : "full_potential_lapwlo",
-    
-        "#num_fv_states" : 60,
-
-        "auto_rmt" : 1,
-
-        "num_mag_dims" : 0,
-
-        "num_dft_iter" : 100,
-
-        "ngridk" : [2,2,2],
-    
-        "use_symmetry" : true,
-
-        "pw_cutoff" : 20,
-
-        "aw_cutoff" : 8,
-    
-        "lmax_apw" : 8,
-        "lmax_pot" : 8,
-        "lmax_rho" : 8,
-
-        "potential_tol" : 1e-5,
-        "energy_tol" : 1e-8
-    },
-    
-    "mixer" : {
-      "beta" : 0.5,
-      "type" : "anderson",
-      "max_history" : 8
-    },
-        
-    "unit_cell" : {
-        "lattice_vectors" : [
-            [0, 5.13, 5.13],
-            [5.13, 0, 5.13],
-            [5.13, 5.13, 0]
+    "atoms": {
+      "Si": [
+        [
+          0,
+          0,
+          0
         ],
-        "atom_types" : [
-            "Si"
-        ],
-        "atom_files" : {
-            "Si" : "Si.json"
-        },
-        "atoms" : {
-            "Si" : [
-                [0.0, 0.0, 0.0],
-                [0.250, 0.250, 0.250]
-            ]
-        }
-    },
-    
-    "kpoints_rel": {
+        [
+          0.25,
+          0.25,
+          0.25
+        ]
+      ]
+    }
+  },
+  "kpoints_rel": {
     "K": [
       0.375,
       0.375,
@@ -87,13 +90,13 @@
     ],
     "X": [
       0.5,
-      0.0,
+      0,
       0.5
     ],
     "GAMMA": [
-      0.0,
-      0.0,
-      0.0
+      0,
+      0,
+      0
     ],
     "W_2": [
       0.75,
@@ -101,6 +104,9 @@
       0.5
     ]
   },
-
-  "kpoints_path" : ["GAMMA", "K", "L"]
+  "kpoints_path": [
+    "GAMMA",
+    "K",
+    "L"
+  ]
 }

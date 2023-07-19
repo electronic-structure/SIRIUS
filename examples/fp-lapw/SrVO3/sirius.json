@@ -1,39 +1,27 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "verbosity" : 1,
-        "print_forces" : true,
-        "print_stress" : true
+        "verbosity" : 1
     },
 
     "parameters" : {
-        "electronic_structure_method" : "pseudopotential",
-
-        "num_fv_states" : 40,
-
+        "electronic_structure_method" : "full_potential_lapwlo",
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-        "smearing_width" : 0.025,
-
-        "use_symmetry" : true,
-
-        "gk_cutoff" : 6.0,
+        "smearing_width" : 0.05,
+        "aw_cutoff" : 7.0,
         "pw_cutoff" : 20.00,
-
+        "auto_rmt" : 0,
+        "use_symmetry": true,
+        "ngridk" : [2, 2, 2],
+        "density_tol" : 1e-5,
         "energy_tol" : 1e-8,
-        "density_tol" : 1e-6,
-
-        "ngridk" : [2,2,2]
-    },
-
-    "iterative_solver" : {
-        "type" : "davidson"
+        "num_dft_iter" : 100
     },
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0],
-                              [0, 1, 0],
+        "lattice_vectors" : [ [1, 0, 0], 
+                              [0, 1, 0], 
                               [0, 0, 1]
                             ],
         "lattice_vectors_scale" : 7.260327248,
@@ -41,9 +29,9 @@
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
-            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
-            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+            "Sr" : "Sr.json",
+            "V"  : "V.json",
+            "O"  : "O.json"
         },
 
         "atoms" : {
@@ -51,9 +39,9 @@
                 [0.5, 0.5, 0.5]
             ],
             "V" : [
-                [0, 0, 0, 0, 0, 4]
+                [0, 0, 0]
             ],
-            "O" : [
+            "O" : [ 
                 [0.5, 0.0, 0.0],
                 [0.0, 0.5, 0.0],
                 [0.0, 0.0, 0.5]

@@ -95,7 +95,7 @@ class Periodic_function
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
         , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr(), rg_ptr__)
-        , mt_component_(ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
+        , mt_component_("MT component of Periodic_function", ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
         , gvec_(ctx__.gvec())
     {
     }
