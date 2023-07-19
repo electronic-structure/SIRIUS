@@ -77,20 +77,24 @@ test4()
     using namespace std::string_literals;
     sddk::HDF5_tree f("qe.h5", sddk::hdf5_access_t::truncate);
 
-    sddk::mdarray<double, 2> miller(2, 3);
+    sddk::mdarray<double, 2> miller(2, 3); // Dataset
     miller.zero();
 
-    sddk::mdarray<double, 2> evec(3, 4);
-    evec.zero();
+    sddk::mdarray<double, 2> evc(3, 4); // Dataset
+    evc.zero();
 
-    std::vector<double> xk = {0.00, 0.13, 0.10};
+    std::vector<double> xk = {0.00, 0.13, 0.10}; // Group '/' attribute
+    std::vector<double> bg1 = {0.00, 0.13, 0.10}; // Dataset 'MillerIndices' attribute
 
     f.write_attribute("gamma_only", ".FALSE."s);
     f.write_attribute("igwx", 4572);
     f.write_attribute("scale_factor", 1.0);
     f.write_attribute("xk", xk);
     f.write("MillerIndices", miller);
-    f.write("evec", evec);
+    f.write_attribute("bg1", bg1, "MillerIndices"s);
+    f.write_attribute("doc", "Miller Indices of the wave-vectors"s, "MillerIndices"s);
+    f.write("evc", evc);
+    f.write_attribute("doc", "Wave Functions, (npwx, nbnd)"s, "evc"s);
 }
 
 int

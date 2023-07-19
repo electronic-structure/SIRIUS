@@ -26,6 +26,7 @@
 #define __HDF5_TREE_HPP__
 
 #include <fstream>
+#include <optional>
 #include <hdf5.h>
 #include "memory.hpp"
 #include "utils/rte.hpp"
@@ -225,14 +226,15 @@ class HDF5_tree
 
       public:
         /// Constructor which opens the existing dataset object
-        HDF5_attribute(hid_t group_id, const std::string& name)
+        HDF5_attribute(hid_t attribute_id, const std::string& name)
         {
-            if ((id_ = H5Aopen(group_id, name.c_str(), H5P_DEFAULT)) < 0)
+            if ((id_ = H5Aopen(attribute_id, name.c_str(), H5P_DEFAULT)) < 0)
                 RTE_THROW("error in H5Aopen()");
         }
 
         /// Constructor which creates the new attribute object
-        HDF5_attribute(HDF5_group& group, const std::string& name, hid_t type_id)
+        /// @partent_id Group or dataset ID
+        HDF5_attribute(hid_t parent_id, const std::string& name, hid_t type_id)
         {
             hid_t dataspace_id;
 
@@ -241,7 +243,7 @@ class HDF5_tree
                 RTE_THROW("error in H5Screate()");
             }
 
-            if ((id_ = H5Acreate(group.id(), name.c_str(), type_id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
+            if ((id_ = H5Acreate(parent_id, name.c_str(), type_id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
                 RTE_THROW("error in H5Acreate()");
             }
         }
@@ -288,19 +290,31 @@ class HDF5_tree
         }
     }
 
-    /// Write attribure
+    /// Write attribure to current group or to specifc DATASET
     template <typename T>
-    void write_attribute(const std::string& name, T const* data, hid_t type_id)
+    void write_attribute(const std::string& name, T const* data, hid_t type_id,
+                         std::optional<std::string> dataset_name = {})
     {
         /* open group */
         HDF5_group group(file_id_, path_);
 
         /* create new attribute */
-        HDF5_attribute attribute(group, name, type_id);
+        if (dataset_name) {
+            // New attribute is part of a dataset in the current group
+            HDF5_dataset dataset(group.id(), *dataset_name);
+            HDF5_attribute attribute(dataset.id(), name, type_id);
+            /* write data */
+            if (H5Awrite(attribute.id(), type_id, data) < 0) {
+                RTE_THROW("error in H5Awrite()");
+            }
 
-        /* write data */
-        if (H5Awrite(attribute.id(), type_id, data) < 0) {
-            RTE_THROW("error in H5Awrite()");
+        } else {
+            // New attribute is part of the current group
+            HDF5_attribute attribute(group.id(), name, type_id);
+            /* write data */
+            if (H5Awrite(attribute.id(), type_id, data) < 0) {
+                RTE_THROW("error in H5Awrite()");
+            }
         }
     }
 
@@ -454,13 +468,14 @@ class HDF5_tree
 
     /// Write attribure
     template <typename T>
-    void write_attribute(const std::string& name, const T& data)
+    void write_attribute(const std::string& name, const T& data, std::optional<std::string> dataset_name = {})
     {
-        write_attribute(name, &data, hdf5_type_wrapper<T>());
+        write_attribute(name, &data, hdf5_type_wrapper<T>(), dataset_name);
     }
 
     /// Write string attribure
-    void write_attribute(const std::string& name, const std::string& data, hid_t base_string_type = H5T_FORTRAN_S1)
+    void write_attribute(const std::string& name, const std::string& data, std::optional<std::string> dataset_name = {},
+                         hid_t base_string_type = H5T_FORTRAN_S1)
     {
         // Create string type
         hid_t string_type = H5Tcopy(base_string_type);
@@ -468,17 +483,18 @@ class HDF5_tree
             RTE_THROW("error in H5Tset_size()");
         }
 
-        write_attribute(name, data.c_str(), string_type);
+        write_attribute(name, data.c_str(), string_type, dataset_name);
     }
 
     /// Write array attribure
     template <typename T>
-    void write_attribute(const std::string& name, const std::vector<T>& data)
+    void write_attribute(const std::string& name, const std::vector<T>& data,
+                         std::optional<std::string> dataset_name = {})
     { // Create array type
         hsize_t data_size = std::size(data);
         hid_t array_type  = H5Tarray_create(hdf5_type_wrapper<T>(), 1, &data_size);
 
-        write_attribute(name, data.data(), array_type);
+        write_attribute(name, data.data(), array_type, dataset_name);
     }
 
     template <int N>
