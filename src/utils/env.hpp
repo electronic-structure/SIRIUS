@@ -66,6 +66,13 @@ print_checksum()
 }
 
 inline bool
+print_hash()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_HASH");
+    return val && *val;
+}
+
+inline bool
 print_mpi_layout()
 {
     auto val = get_value_ptr<int>("SIRIUS_PRINT_MPI_LAYOUT");

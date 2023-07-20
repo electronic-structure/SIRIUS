@@ -799,18 +799,6 @@ class config_t
             }
             dict_["/control/num_bands_to_print"_json_pointer] = num_bands_to_print__;
         }
-        /// If true then the hash sums of some arrays will be printed.
-        inline auto print_hash() const
-        {
-            return dict_.at("/control/print_hash"_json_pointer).get<bool>();
-        }
-        inline void print_hash(bool print_hash__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/print_hash"_json_pointer] = print_hash__;
-        }
         /// If true then the stress tensor components are printed at the end of SCF run.
         inline auto print_stress() const
         {

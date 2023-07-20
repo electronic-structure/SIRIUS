@@ -382,11 +382,6 @@
                     "default" : 10,
                     "title" : "Number of eigen-values that are printed to the standard output."
                 },
-                "print_hash" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the hash sums of some arrays will be printed."
-                },
                 "print_stress" : {
                     "type" : "boolean",
                     "default" : false,

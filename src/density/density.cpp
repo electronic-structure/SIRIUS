@@ -188,7 +188,7 @@ Density::initial_density_pseudo()
     }
     std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
-    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash() && ctx_.comm().rank() == 0) {
         auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
         utils::print_hash("rho_pw_init", h);
     }
@@ -205,7 +205,7 @@ Density::initial_density_pseudo()
         }
     }
     rho().rg().fft_transform(1);
-    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash() && ctx_.comm().rank() == 0) {
         auto h = rho().rg().values().hash();
         utils::print_hash("rho_rg_init", h);
     }
@@ -1342,7 +1342,7 @@ Density::generate_valence(K_point_set const& ks__)
             rho().rg().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+        if (env::print_hash() && ctx_.comm().rank() == 0) {
             auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);
         }
@@ -1524,7 +1524,7 @@ Density::generate_rho_aug()
         utils::print_checksum("rho_aug", cs, ctx_.out());
     }
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h = rho_aug.hash();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("rho_aug", h);
