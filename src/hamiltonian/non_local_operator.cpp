@@ -222,7 +222,7 @@ D_operator<T>::initialize()
         }
     }
 
-    if (this->ctx_.print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = this->op_.checksum();
         utils::print_checksum("D_operator", cs, this->ctx_.out());
     }
@@ -315,7 +315,7 @@ Q_operator<T>::initialize()
             }
         }
     }
-    if (this->ctx_.print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = this->op_.checksum();
         utils::print_checksum("Q_operator", cs, this->ctx_.out());
     }

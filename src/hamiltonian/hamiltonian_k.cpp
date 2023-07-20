@@ -395,7 +395,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
         int s = (pu == sddk::device_t::GPU) ? (iblk % 2) : 0;
         s     = 0;
 
-        if (H0_.ctx().cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             alm_row.zero();
             alm_col.zero();
             halm_col.zero();
@@ -481,7 +481,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
         }
         // acc::sync_stream(stream_id(omp_get_max_threads()));
 
-        if (H0_.ctx().cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             auto z1 = alm_row.checksum();
             auto z2 = alm_col.checksum();
             auto z3 = halm_col.checksum();

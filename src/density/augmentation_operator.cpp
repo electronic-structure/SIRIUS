@@ -118,7 +118,7 @@ void Augmentation_operator::generate_pw_coeffs()
     /* broadcast from rank#0 */
     gvec_.comm().bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
-    if (atom_type_.parameters().cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = q_pw_.checksum();
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);

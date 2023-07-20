@@ -241,9 +241,9 @@ class config_t
         }
         /// Scaling parameters of the iterative  solver tolerance.
         /**
-            First number is the scaling of density RMS, that gives the estimate of the new
-            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum
-            between the two. This is how it is done in the code:
+            First number is the scaling of density RMS, that gives the estimate of the new 
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
+            between the two. This is how it is done in the code: 
             \code{.cpp}
             double old_tol = ctx_.iterative_solver_tolerance();
             // estimate new tolerance of iterative solver
@@ -799,42 +799,6 @@ class config_t
             }
             dict_["/control/num_bands_to_print"_json_pointer] = num_bands_to_print__;
         }
-        ///  If true then performance of some compute-intensive kernels will be printed to the standard output.
-        inline auto print_performance() const
-        {
-            return dict_.at("/control/print_performance"_json_pointer).get<bool>();
-        }
-        inline void print_performance(bool print_performance__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/print_performance"_json_pointer] = print_performance__;
-        }
-        /// If true then memory usage will be printed to the standard output.
-        inline auto print_memory_usage() const
-        {
-            return dict_.at("/control/print_memory_usage"_json_pointer).get<bool>();
-        }
-        inline void print_memory_usage(bool print_memory_usage__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/print_memory_usage"_json_pointer] = print_memory_usage__;
-        }
-        /// If true then the checksums of some arrays will be printed (useful during debug).
-        inline auto print_checksum() const
-        {
-            return dict_.at("/control/print_checksum"_json_pointer).get<bool>();
-        }
-        inline void print_checksum(bool print_checksum__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/print_checksum"_json_pointer] = print_checksum__;
-        }
         /// If true then the hash sums of some arrays will be printed.
         inline auto print_hash() const
         {
@@ -870,18 +834,6 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/control/print_forces"_json_pointer] = print_forces__;
-        }
-        /// If true then the timer statistics is printed at the end of SCF run.
-        inline auto print_timers() const
-        {
-            return dict_.at("/control/print_timers"_json_pointer).get<bool>();
-        }
-        inline void print_timers(bool print_timers__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/control/print_timers"_json_pointer] = print_timers__;
         }
         /// If true then the list of nearest neighbours for each atom is printed to the standard output.
         inline auto print_neighbors() const
@@ -1498,15 +1450,18 @@ class config_t
             }
             dict_["/nlcg/tol"_json_pointer] = tol__;
         }
-        /// nlcg processing unit
-        inline auto processing_unit() const
+        /// NLCG processing unit
+        inline auto procssing_unit() const
         {
-            if (dict_.contains("/nlcg/processing_unit")) {
-                return dict_.at("/nlcg/processing_unit"_json_pointer).get<std::string>();
-            }
-            return dict_.at("/control/processing_unit"_json_pointer).get<std::string>();
+            return dict_.at("/nlcg/procssing_unit"_json_pointer).get<std::string>();
         }
-
+        inline void procssing_unit(std::string procssing_unit__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/procssing_unit"_json_pointer] = procssing_unit__;
+        }
       private:
         nlohmann::json& dict_;
     };

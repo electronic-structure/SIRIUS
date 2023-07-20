@@ -82,7 +82,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
     }
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = density__.rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
@@ -241,7 +241,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
     } // for loop over xc functionals
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
         utils::print_checksum("exc", cs, ctx_.out());
     }
