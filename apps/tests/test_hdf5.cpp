@@ -84,17 +84,16 @@ test4()
     evc.zero();
 
     std::vector<double> xk = {0.00, 0.13, 0.10}; // Group '/' attribute
-    std::vector<double> bg1 = {0.00, 0.13, 0.10}; // Dataset 'MillerIndices' attribute
 
-    f.write_attribute("gamma_only", ".FALSE."s);
+    f.write_attribute("gamma_only", ".FALSE.");
     f.write_attribute("igwx", 4572);
     f.write_attribute("scale_factor", 1.0);
     f.write_attribute("xk", xk);
     f.write("MillerIndices", miller);
-    f.write_attribute("bg1", bg1, "MillerIndices"s);
-    f.write_attribute("doc", "Miller Indices of the wave-vectors"s, "MillerIndices"s);
+    f.write_attribute("bg1", {0.67, 0.39, 0.00}, "MillerIndices");
+    f.write_attribute("doc", "Miller Indices of the wave-vectors", "MillerIndices");
     f.write("evc", evc);
-    f.write_attribute("doc", "Wave Functions, (npwx, nbnd)"s, "evc"s);
+    f.write_attribute("doc", "Wave Functions, (npwx, nbnd)"s, "evc");
 }
 
 int
