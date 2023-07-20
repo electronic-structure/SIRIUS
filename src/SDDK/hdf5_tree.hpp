@@ -315,10 +315,7 @@ class HDF5_tree
         }
     }
 
-    /// Write attribure to current GROUP or to specifc DATASET within the GROUP
-    ///
-    /// @remark The attribute is attached to the current GROUP by default, but it can be optionally attached to a
-    /// DATASET (within the current GROUP)
+    /// Write attribure to current GROUP
     ///
     /// @param name Name of the attribute
     /// @param data Attribute data
@@ -335,10 +332,7 @@ class HDF5_tree
         }
     }
 
-    /// Write attribure to current GROUP or to specifc DATASET within the GROUP
-    ///
-    /// @remark The attribute is attached to the current GROUP by default, but it can be optionally attached to a
-    /// DATASET (within the current GROUP)
+    /// Write attribure to DATASET within the GROUP
     ///
     /// @param name Name of the attribute
     /// @param data Attribute data
