@@ -77,7 +77,7 @@ test4()
     using namespace std::string_literals;
     sddk::HDF5_tree f("qe.h5", sddk::hdf5_access_t::truncate);
 
-    sddk::mdarray<double, 2> miller(2, 3); // Dataset
+    sddk::mdarray<int, 2> miller(2, 3); // Dataset
     miller.zero();
 
     sddk::mdarray<double, 2> evc(3, 4); // Dataset
