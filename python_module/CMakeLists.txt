@@ -2,9 +2,9 @@ find_package(Python3 COMPONENTS Development REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 find_package(mpi4py REQUIRED)
 
-# TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP14 is needed for Intel compiler
+# TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP17 is needed for Intel compiler
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-  add_definitions("-DPYBIND11_CPP14")
+  add_definitions("-DPYBIND11_CPP17")
 endif()
 
 set(pb11_src_dir "${PROJECT_SOURCE_DIR}/python_module/pybind11")
