@@ -679,7 +679,7 @@
                     "default" : 1e-9,
                     "title" : "CG tolerance"
                 },
-                "procssing_unit": {
+                "processing_unit": {
                     "type": "string",
                     "default": "",
                     "enum": [
