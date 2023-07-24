@@ -52,7 +52,7 @@ void from_irreduciblewedge_to_fullbrillouinzone(K_point_set& kset_ibz,
           K_point_set& kset_fbz, std::vector<k_info>& k_temp);
 
 void rotate_wavefunctions(K_point_set& kset_ibz, K_point_set& kset_fbz, 
-          std::vector<k_info> const& k_temp);
+          std::vector<k_info> const& k_temp, int const& num_bands, std::vector<int> const& band_index_tot);
 
 void calculate_Amn(K_point_set& kset_fbz, int const& num_bands, 
           int const& num_wann, sddk::mdarray<std::complex<double>, 3>& A);

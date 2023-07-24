@@ -170,10 +170,11 @@ from_irreduciblewedge_to_fullbrillouinzone(K_point_set& kset_ibz, K_point_set& k
  * \f] 
  */
 void 
-rotate_wavefunctions( K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k_info> const& k_temp)
+rotate_wavefunctions( K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k_info> const& k_temp,
+                      int const& num_bands, std::vector<int> const& band_index_tot)
 {
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::unfold_wfs");
-    int num_bands_tot = kset_fbz.ctx().num_bands();
+    int num_bands_tot = kset_ibz.ctx().num_bands();
     std::complex<double> imtwopi = std::complex<double>(0., twopi);
     std::complex<double> exp1, exp2;
     srand(time(NULL));
@@ -214,16 +215,16 @@ rotate_wavefunctions( K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<
                 int ig_ = gvec_IBZ->index_by_gvec(invRG);
                 assert ( ( ig_ != -1 ) );
 
-                for (int iband = 0; iband < num_bands_tot; iband++) {
+                for (int iband = 0; iband < num_bands; iband++) {
                     kset_fbz.get<double>(ik)->spinor_wave_functions().pw_coeffs(ig, wf::spin_index(0),
                                                                              wf::band_index(iband)) =
-                        exp1 * exp2 * wf_IBZ(ig_, iband) +
+                        exp1 * exp2 * wf_IBZ(ig_, band_index_tot[iband]) +
                         std::complex<double>(rand() % 1000, rand() % 1000) * 1.e-08; // needed to not get stuck on local
                                                                                      // minima. not working with 1.e-09
                 }
             }
-            for (int iband = 0; iband < num_bands_tot; iband++) {
-                kset_fbz.get<double>(ik)->band_energy(iband,0, kset_ibz.get<double>(k_temp[ik].ik_ibz)->band_energy(iband, 0) );             
+            for (int iband = 0; iband < num_bands; iband++) {
+                kset_fbz.get<double>(ik)->band_energy(iband,0, kset_ibz.get<double>(k_temp[ik].ik_ibz)->band_energy(band_index_tot[iband], 0) );             
             }
         }
         if(src_rank == kset_fbz.ctx().comm_k().rank()){
@@ -600,9 +601,6 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 
     int num_bands_tot = this->ctx().num_bands();
  
-    rotate_wavefunctions(*this, kset_fbz, k_temp);
-
-
     /*
      * Set all variables for wannier_setup and call the function
      */
@@ -735,6 +733,28 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     std::cout << "wannier_setup succeeded. rank " << ctx().comm().rank() << "\n";
 
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
+
+    std::vector<int> band_index_tot;//band_index_tot[iband] gives the index of iband in the full band vector
+    for(int iband=0; iband<exclude_bands.size(); iband++){
+        int band_fortran = iband+1;
+        //bool is_excluded = (std::find(exclude_bands.at(sddk::memory_t::host),
+        //                    exclude_bands.at(sddk::memory_t::host)+exclude_bands.size(),
+        //                    iband+1)
+        //                    != exclude_bands.at(sddk::memory_t::host)+exclude_bands.size()
+        //                   );// true if the value iband+1 is in exclude_bands
+
+        bool is_excluded = ( std::find_if(exclude_bands.at(sddk::memory_t::host),
+                                          exclude_bands.at(sddk::memory_t::host)+exclude_bands.size(), 
+                                          [&, band_fortran](int const& band_excluded)
+                                          {return ( band_excluded == band_fortran );  }
+                                         ) != exclude_bands.at(sddk::memory_t::host)+exclude_bands.size() );
+
+        if(!is_excluded){
+            band_index_tot.push_back(iband);
+        }
+    }
+
+    rotate_wavefunctions(*this, kset_fbz, k_temp, num_bands, band_index_tot);
 
     num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
 
