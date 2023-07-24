@@ -3302,11 +3302,11 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
             ks.comm().bcast(&spin, 1, dest_rank);
 
             /* rank where k-point vkl resides on the SIRIUS side */
-            int src_rank = ks.spl_num_kpoints().local_rank(jk);
+            int src_rank = ks.spl_num_kpoints().location(typename kp_index_t::global(jk)).ib;
 
             if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
                 /* send G+k copy to destination rank (where host code receives the data) */
-                auto gkvec = ks.get_gkvec(jk, dest_rank);
+                auto gkvec = ks.get_gkvec(typename kp_index_t::global(jk), dest_rank);
 
                 sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
@@ -3963,7 +3963,7 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
             auto kp = ks.get<double>(*ik__ - 1);
 
             /* get rank that stores a given k-point */
-            int rank = ks.spl_num_kpoints().local_rank(*ik__ - 1);
+            int rank = ks.spl_num_kpoints().location(kp_index_t::global(*ik__ - 1)).ib;
 
             auto& comm_k = ks.ctx().comm_k();
 
@@ -5229,7 +5229,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             for (int rank = 0; rank < fft_comm.size(); rank++) {
                 /* slab of FFT grid for a given rank */
-                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(block_id(rank)));
                 if (rank == fft_comm.rank()) {
                     std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
@@ -5247,9 +5247,10 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 for (int iz = 0; iz < nz; iz++) {
                     /* global z coordinate inside FFT box */
                     int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
-                    if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                    if (z >= spl_z.global_offset(block_id(rank)) && z < spl_z.global_offset(block_id(rank)) +
+                            spl_z.local_size(block_id(rank))) {
                         /* make z local for SIRIUS FFT partitioning */
-                        z -= spl_z.global_offset(rank);
+                        z -= spl_z.global_offset(block_id(rank));
                         for (int iy = 0; iy < ny; iy++) {
                             /* global y coordinate inside FFT box */
                             int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
@@ -5417,31 +5418,31 @@ sirius_set_callback_function(void* const* handler__, char const* label__, void (
             std::transform(label.begin(), label.end(), label.begin(), ::tolower);
             auto& sim_ctx = get_sim_ctx(handler__);
             if (label == "beta_ri") {
-                sim_ctx.beta_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().beta_ri_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "beta_ri_djl") {
-                sim_ctx.beta_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().beta_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "aug_ri") {
-                sim_ctx.aug_ri_callback(reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__));
+                sim_ctx.cb().aug_ri_ = reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__);
             } else if (label == "aug_ri_djl") {
-                sim_ctx.aug_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__));
+                sim_ctx.cb().aug_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int, int)>(fptr__);
             } else if (label == "vloc_ri") {
-                sim_ctx.vloc_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().vloc_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "vloc_ri_djl") {
-                sim_ctx.vloc_ri_djl_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().vloc_ri_djl_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "rhoc_ri") {
-                sim_ctx.rhoc_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().rhoc_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "rhoc_ri_djl") {
-                sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().rhoc_ri_djl_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "band_occ") {
-                sim_ctx.band_occ_callback(reinterpret_cast<void (*)(void)>(fptr__));
+                sim_ctx.cb().band_occ_ = reinterpret_cast<void (*)(void)>(fptr__);
             } else if (label == "veff") {
-                sim_ctx.veff_callback(reinterpret_cast<void (*)(void)>(fptr__));
+                sim_ctx.cb().veff_ = reinterpret_cast<void (*)(void)>(fptr__);
             } else if (label == "ps_rho_ri") {
-                sim_ctx.ps_rho_ri_callback(reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__));
+                sim_ctx.cb().ps_rho_ri_ = reinterpret_cast<void (*)(int, int, double*, double*)>(fptr__);
             } else if (label == "ps_atomic_wf_ri") {
-                sim_ctx.ps_atomic_wf_ri_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().ps_atomic_wf_ri_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else if (label == "ps_atomic_wf_ri_djl") {
-                sim_ctx.ps_atomic_wf_ri_djl_callback(reinterpret_cast<void (*)(int, double, double*, int)>(fptr__));
+                sim_ctx.cb().ps_atomic_wf_ri_djl_ = reinterpret_cast<void (*)(int, double, double*, int)>(fptr__);
             } else {
                 RTE_THROW("Wrong label of the callback function: " + label);
             }
@@ -5613,7 +5614,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
             sddk::device_t processing_unit{ctx.processing_unit()};
 
-            if (pu.compare("none") != 0 || !pu.empty()) {
+            if (pu.compare("none") != 0) {
                 processing_unit = sddk::get_device_t(pu);
             }
 
@@ -5897,9 +5898,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
             gkq_in_distr.calc_offsets();
 
-            /* offset in the incoming G-vector index */
-            int offset = gkq_in_distr.offsets[gvkq.comm().rank()];
-
             int nbnd_occ = *nbnd_occ__;
             // Copy eigenvalues (factor 2 for rydberg/hartree)
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
@@ -5931,23 +5929,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             ///* check residuals H|psi> - e * S |psi> */
             //{
-            //    //sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvk, 1.0);
-            //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-            //    kp.initialize();
-            //    auto Hk = H0(kp);
-            //    auto hpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-            //    auto spsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-            //    auto res_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-
-            //    Hk.apply_h_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, nbnd_occ), *psi_wf, hpsi_wf.get(), spsi_wf.get());
-            //    for (int i = 0; i < nbnd_occ; i++) {
-            //        double diff{0};
-            //        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-            //            diff += std::abs(hpsi_wf->pw_coeffs(ig, wf::spin_index(0), wf::band_index(i)) -
-            //                    spsi_wf->pw_coeffs(ig, wf::spin_index(0), wf::band_index(i)) * eigvals_vec[i]);
-            //        }
-            //        std::cout << "band : " << i << ", residual : " << diff << std::endl;
-            //    }
+            // // if needed, call check_wave_functions()
             //}
 
             // setup auxiliary state vectors for CG.
@@ -5957,7 +5939,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
             auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
-            sddk::memory_t mem = sctx.processing_unit_memory_t(); // "auto mem" should do as well
+            auto mem = sctx.processing_unit_memory_t();
 
             std::vector<wf::device_memory_guard> mg;
 
@@ -5979,9 +5961,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 Sphi_wf.get(),
                 psi_wf.get(),
                 tmp_wf.get(),
-                *alpha_pv__ / 2,
+                *alpha_pv__ / 2, // rydberg/hartree factor
                 nbnd_occ,
-                mem, // rydberg/hartree factor
+                mem,
                 sr);
             // CG state vectors
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};

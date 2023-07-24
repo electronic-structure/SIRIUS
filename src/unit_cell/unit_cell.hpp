@@ -58,16 +58,16 @@ class Unit_cell
     std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
-    sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
+    sddk::splindex_block<atom_index_t> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    sddk::splindex<sddk::splindex_t::block> spl_num_paw_atoms_;
+    sddk::splindex_block<paw_atom_index_t> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    sddk::splindex<sddk::splindex_t::block> spl_num_atom_symmetry_classes_;
+    sddk::splindex_block<atom_symmetry_class_index_t> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:
@@ -174,15 +174,15 @@ class Unit_cell
         return spl_num_paw_atoms_;
     }
 
-    inline int spl_num_paw_atoms(int idx__) const
+    inline auto spl_num_paw_atoms(paw_atom_index_t::local idx__) const
     {
-        return spl_num_paw_atoms_[idx__];
+        return spl_num_paw_atoms_.global_index(idx__);
     }
 
     /// Return global index of atom by the index in the list of PAW atoms.
-    inline int paw_atom_index(int ipaw__) const
+    inline auto paw_atom_index(paw_atom_index_t::global ipaw__) const
     {
-        return paw_atom_index_[ipaw__];
+        return typename atom_index_t::global(paw_atom_index_[ipaw__]);
     }
 
     /// Print basic info.
@@ -298,28 +298,22 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    /// Return atom type instance by label.
-    inline Atom_type& atom_type(std::string const label__)
+    /// Return const atom type instance by label.
+    inline auto const& atom_type(std::string const label__) const
     {
         if (!atom_type_id_map_.count(label__)) {
             std::stringstream s;
             s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         int id = atom_type_id_map_.at(label__);
         return atom_type(id);
     }
 
-    /// Return const atom type instance by label.
-    inline Atom_type const& atom_type(std::string const label__) const
+    /// Return atom type instance by label.
+    inline auto& atom_type(std::string const label__)
     {
-        if (!atom_type_id_map_.count(label__)) {
-            std::stringstream s;
-            s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
-        }
-        int id = atom_type_id_map_.at(label__);
-        return atom_type(id);
+        return const_cast<Atom_type&>(reinterpret_cast<Unit_cell const&>(*this).atom_type(label__));
     }
 
     /// Number of atom symmetry classes.
@@ -513,19 +507,9 @@ class Unit_cell
         return spl_num_atoms_;
     }
 
-    inline auto spl_num_atoms(int i) const
-    {
-        return static_cast<int>(spl_num_atoms_[i]);
-    }
-
     inline auto const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
-    }
-
-    inline auto spl_num_atom_symmetry_classes(int i) const
-    {
-        return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
     }
 
     inline double volume_mt() const
@@ -550,7 +534,7 @@ class Unit_cell
 
     inline int lmax_apw() const
     {
-        int lmax{0};
+        int lmax{-1};
         for (int iat = 0; iat < this->num_atom_types(); iat++) {
             lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
         }

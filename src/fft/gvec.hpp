@@ -920,7 +920,7 @@ class Gvec_shells
     mpi::block_data_descriptor a2a_recv_;
 
     /// Split global index of G-shells between MPI ranks.
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_num_gsh_;
+    sddk::splindex_block_cyclic<> spl_num_gsh_;
 
     /// List of G-vectors in the remapped storage.
     sddk::mdarray<int, 2> gvec_remapped_;
@@ -987,7 +987,7 @@ class Gvec_shells
     }
 
     template <typename T>
-    std::vector<T> remap_forward(T* data__) const
+    auto remap_forward(T* data__) const
     {
         PROFILE("sddk::Gvec_shells::remap_forward");
 
@@ -996,7 +996,7 @@ class Gvec_shells
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
             int ig                                     = gvec_.offset() + igloc;
             int igsh                                   = gvec_.shell(ig);
-            int r                                      = spl_num_gsh_.local_rank(igsh);
+            int r                                      = spl_num_gsh_.location(igsh).ib;
             send_buf[a2a_send_.offsets[r] + counts[r]] = data__[igloc];
             counts[r]++;
         }
@@ -1023,7 +1023,7 @@ class Gvec_shells
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
             int ig        = gvec_.offset() + igloc;
             int igsh      = gvec_.shell(ig);
-            int r         = spl_num_gsh_.local_rank(igsh);
+            int r         = spl_num_gsh_.location(igsh).ib;
             data__[igloc] = recv_buf[a2a_send_.offsets[r] + counts[r]];
             counts[r]++;
         }

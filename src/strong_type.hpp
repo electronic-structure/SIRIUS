@@ -1,7 +1,7 @@
 #ifndef __STRONG_TYPE_HPP__
 #define __STRONG_TYPE_HPP__
 
-namespace sirius {
+//namespace sirius {
 
 template <typename T, typename Tag>
 class strong_type
@@ -52,6 +52,6 @@ class strong_type
     }
 };
 
-}
+//}
 
 #endif

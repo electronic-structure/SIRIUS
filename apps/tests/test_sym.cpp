@@ -58,7 +58,7 @@ void test_sym(cmd_args const& args__)
     for (int ik = 0; ik < kset_sym.num_kpoints(); ik++) {
         auto kp = kset_sym.get<double>(ik);
         phi_sym.emplace_back(kp->gkvec_sptr(), wf::num_mag_dims(0), wf::num_bands(nawf.first), sddk::memory_t::host);
-        kp->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_sym.back());
+        kp->generate_atomic_wave_functions(atoms, idxb, *ctx.ri().ps_atomic_wf_, phi_sym.back());
     }
 
     std::vector<wf::Wave_functions<double>> phi_nosym;
@@ -66,7 +66,7 @@ void test_sym(cmd_args const& args__)
     for (int ik = 0; ik < kset_nosym.num_kpoints(); ik++) {
         auto kp = kset_nosym.get<double>(ik);
         phi_nosym.emplace_back(kp->gkvec_sptr(), wf::num_mag_dims(0), wf::num_bands(nawf.first), sddk::memory_t::host);
-        kp->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_nosym.back());
+        kp->generate_atomic_wave_functions(atoms, idxb, *ctx.ri().ps_atomic_wf_, phi_nosym.back());
     }
 
     auto& sym = ctx.unit_cell().symmetry();

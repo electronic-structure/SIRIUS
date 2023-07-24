@@ -1,78 +1,109 @@
 {
-    "control" : {
-        "cyclic_block_size" : 2,
-        "processing_unit" : "cpu",
-        "!std_evp_solver_name" : "lapack",
-        "!gen_evp_solver_name" : "lapack",
-        "verbosity" : 3,
-        "print_checksum" : false,
-        "verification" : 0
+  "control": {
+    "processing_unit": "cpu",
+    "verbosity": 2
+  },
+  "parameters": {
+    "electronic_structure_method": "full_potential_lapwlo",
+    "xc_functionals": [
+      "XC_LDA_X",
+      "XC_LDA_C_VWN"
+    ],
+    "smearing_width": 0.05,
+    "valence_relativity": "none",
+    "core_relativity": "none",
+    "num_fv_states": 60,
+    "aw_cutoff": 7,
+    "pw_cutoff": 16,
+    "auto_rmt": 1,
+    "use_symmetry": true,
+    "ngridk": [
+      1,
+      1,
+      1
+    ],
+    "density_tol": 1e-06,
+    "energy_tol": 1e-07,
+    "num_dft_iter": 100,
+    "num_mag_dims": 1,
+    "lmax_apw": 8,
+    "lmax_pot": 8,
+    "lmax_rho": 8,
+    "molecule": true
+  },
+  "iterative_solver": {
+    "energy_tolerance": 0.01,
+    "num_steps": 16,
+    "subspace_size": 8,
+    "type": "davidson",
+    "converge_by_energy": 1
+  },
+  "unit_cell": {
+    "lattice_vectors": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "lattice_vectors_scale": 15,
+    "atom_types": [
+      "Fe"
+    ],
+    "atom_files": {
+      "Fe": "Fe.json"
     },
-
-    "parameters" : {
-        "electronic_structure_method" : "full_potential_lapwlo",
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
-        "smearing_width" : 0.05,
-        "valence_relativity" : "none",
-        "core_relativity" : "none",
-        "num_fv_states" : 60,
-        "aw_cutoff" : 7,
-        "pw_cutoff" : 16.00,
-        "auto_rmt" : 1,
-        "use_symmetry": true,
-        "ngridk" : [1,1,1],
-        "potential_tol" : 1e-8,
-        "energy_tol" : 1e-7,
-        "num_dft_iter" : 100,
-        "num_mag_dims" : 1,
-        "lmax_apw"     : 8,
-        "lmax_pot"     : 8,
-        "lmax_rho"     : 8,
-        "molecule"     : true
-    },
-
-    "iterative_solver" : {
-        "energy_tolerance" : 1e-2,
-        "empty_states_tolerance" : 1e-12,
-        
-        "!residual_tolerance" : 1e-8,
-        
-        "num_steps" : 16,
-        "subspace_size" : 8,
-        "type" : "davidson",
-        "converge_by_energy" : 1
-    },
-
-    "unit_cell" : {
-
-        "lattice_vectors" : [ [1, 0, 0], 
-                              [0, 1, 0], 
-                              [0, 0, 1]
-                            ],
-        "lattice_vectors_scale" : 15,
-
-        "atom_types" : ["Fe"],
-
-        "atom_files" : {
-            "Fe" : "Fe.json"
-        },
-        
-        "atom_coordinate_units" : "A",
-        
-        "atoms" : {
-            "Fe" : [
-                [ 1.5, 0, 0,  0, 0, 1],
-                [-1.5, 0, 0,  0, 0, 1],
-                [0,  1.5, 0,  0, 0, 1],
-                [0, -1.5, 0,  0, 0, 1]
-            ]
-        }
-    },
-    
-    "mixer" : {
-        "beta" : 0.5,
-        "type" : "anderson",
-        "max_history" : 8
+    "atom_coordinate_units": "A",
+    "atoms": {
+      "Fe": [
+        [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          -1.5,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1.5,
+          0,
+          0,
+          0,
+          1
+        ]
+      ]
     }
-
+  },
+  "mixer": {
+    "beta": 0.5,
+    "type": "anderson",
+    "max_history": 8
+  }
 }

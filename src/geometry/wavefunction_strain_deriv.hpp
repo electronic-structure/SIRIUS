@@ -21,12 +21,12 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
 
         std::vector<sddk::mdarray<double, 1>> ri_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-            ri_values[iat] = ctx__.ps_atomic_wf_ri().values(iat, gvs[0]);
+            ri_values[iat] = ctx__.ri().ps_atomic_wf_->values(iat, gvs[0]);
         }
 
         std::vector<sddk::mdarray<double, 1>> ridjl_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-            ridjl_values[iat] = ctx__.ps_atomic_wf_ri_djl().values(iat, gvs[0]);
+            ridjl_values[iat] = ctx__.ri().ps_atomic_wf_djl_->values(iat, gvs[0]);
         }
 
         const double p = (mu__ == nu__) ? 0.5 : 0.0;

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -27,11 +27,16 @@
 
 #include <fstream>
 #include <hdf5.h>
+#include <vector>
+#include <string>
+#include <initializer_list>
 #include "memory.hpp"
+#include "utils/rte.hpp"
 
 namespace sddk {
 
-enum class hdf5_access_t {
+enum class hdf5_access_t
+{
     truncate,
     read_write,
     read_only
@@ -40,28 +45,40 @@ enum class hdf5_access_t {
 template <typename T>
 struct hdf5_type_wrapper;
 
-template<>
+template <>
 struct hdf5_type_wrapper<float>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_FLOAT;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_FLOAT;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<double>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_DOUBLE;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_DOUBLE;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<int>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_INT;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_INT;
+    };
 };
 
-template<>
+template <>
 struct hdf5_type_wrapper<uint8_t>
 {
-    operator hid_t() const noexcept {return H5T_NATIVE_UCHAR;};
+    operator hid_t() const noexcept
+    {
+        return H5T_NATIVE_UCHAR;
+    };
 };
 
 /// Interface to the HDF5 library.
@@ -199,12 +216,84 @@ class HDF5_tree
         }
     };
 
+    /// Auxiliary class to handle HDF5 Attribute object
+    ///
+    /// @remark The Attribute's Dataspace is assumed to be SCALAR.
+    class HDF5_attribute
+    {
+      private:
+        /// HDF5 id of the current object
+        hid_t id_;
+
+      public:
+        /// Constructor which opens the existing attribute object
+        HDF5_attribute(hid_t attribute_id, const std::string& name)
+        {
+            if ((id_ = H5Aopen(attribute_id, name.c_str(), H5P_DEFAULT)) < 0)
+                RTE_THROW("error in H5Aopen()");
+        }
+
+        /// Constructor creating the new attribute object
+        ///
+        /// @remark The Attribute's DATASPACE is assumed to be SCALAR
+        ///
+        /// @param parent_id GROUP or DATASET ID to which the attribute is attached
+        /// @param name Name of the attribute
+        /// @param type_id Type ID for the attribute
+        HDF5_attribute(hid_t parent_id, const std::string& name, hid_t type_id)
+        {
+            hid_t dataspace_id;
+
+            // Create SCALAR Dataspace
+            if ((dataspace_id = H5Screate(H5S_SCALAR)) < 0) {
+                RTE_THROW("error in H5Screate()");
+            }
+
+            if ((id_ = H5Acreate(parent_id, name.c_str(), type_id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
+                RTE_THROW("error in H5Acreate()");
+            }
+        }
+
+        /// Destructor
+        ~HDF5_attribute()
+        {
+            if (H5Aclose(id_) < 0) {
+                RTE_THROW("error in H5Aclose()");
+            }
+        }
+
+        /// Return HDF5 id of the current object
+        inline hid_t id() const
+        {
+            return id_;
+        }
+    };
+
     /// Constructor to create branches of the HDF5 tree.
     HDF5_tree(hid_t file_id__, const std::string& path__)
         : path_(path__)
         , file_id_(file_id__)
         , root_node_(false)
     {
+    }
+
+    /// Create HDF5 string type from std::string
+    hid_t string_type(const std::string& data, hid_t base_string_type) const
+    {
+        // Create string type
+        hid_t string_type = H5Tcopy(base_string_type);
+        if (H5Tset_size(string_type, std::size(data)) < 0) {
+            RTE_THROW("error in H5Tset_size()");
+        }
+        return string_type;
+    }
+
+    /// Create HDF5 array type from std::vector
+    template <typename T>
+    hid_t array_type(const std::vector<T>& data) const
+    {
+        hsize_t data_size = std::size(data);
+        return H5Tarray_create(hdf5_type_wrapper<T>(), 1, &data_size);
     }
 
     /// Write a multidimensional array.
@@ -223,6 +312,44 @@ class HDF5_tree
         /* write data */
         if (H5Dwrite(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
             RTE_THROW("error in H5Dwrite()");
+        }
+    }
+
+    /// Write attribure to current GROUP
+    ///
+    /// @param name Name of the attribute
+    /// @param data Attribute data
+    /// @param type_id Attribute type ID
+    template <typename T>
+    void write_attribute(const std::string& name, const T* const data, hid_t type_id) const
+    {
+        HDF5_group group(file_id_, path_);
+
+        HDF5_attribute attribute(group.id(), name, type_id);
+
+        if (H5Awrite(attribute.id(), type_id, data) < 0) {
+            RTE_THROW("error in H5Awrite()");
+        }
+    }
+
+    /// Write attribure to DATASET within the GROUP
+    ///
+    /// @param name Name of the attribute
+    /// @param data Attribute data
+    /// @param type_id Attribute type ID
+    /// @param dataset_name Dataset in current group to wich attach the attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const T* const data, hid_t type_id,
+                         const std::string& dataset_name) const
+    {
+        HDF5_group group(file_id_, path_);
+
+        HDF5_dataset dataset(group.id(), dataset_name);
+
+        HDF5_attribute attribute(dataset.id(), name, type_id);
+
+        if (H5Awrite(attribute.id(), type_id, data) < 0) {
+            RTE_THROW("error in H5Awrite()");
         }
     }
 
@@ -246,7 +373,6 @@ class HDF5_tree
     // HDF5_tree& operator=(HDF5_tree const& src) = delete;
 
   public:
-
     /// Constructor to create the HDF5 tree.
     HDF5_tree(const std::string& file_name__, hdf5_access_t access__)
         : file_name_(file_name__)
@@ -373,6 +499,78 @@ class HDF5_tree
     void write(const std::string& name, std::vector<T> const& vec)
     {
         write(name, &vec[0], (int)vec.size());
+    }
+
+    /// Write attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const T& data) const
+    {
+        write_attribute(name, &data, hdf5_type_wrapper<T>());
+    }
+
+    /// Write attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const T& data, const std::string& dataset_name) const
+    {
+        write_attribute(name, &data, hdf5_type_wrapper<T>(), dataset_name);
+    }
+
+    /// Write string attribute
+    void write_attribute(const std::string& name, const std::string& data,
+                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    {
+        write_attribute(name, data.c_str(), string_type(data, base_string_type));
+    }
+
+    /// Write string attribute
+    void write_attribute(const std::string& name, const std::string& data, const std::string& dataset_name,
+                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    {
+        write_attribute(name, data.c_str(), string_type(data, base_string_type), dataset_name);
+    }
+
+    /// Write string attribute
+    template <std::size_t N>
+    void write_attribute(const std::string& name, const char (&data)[N], hid_t base_string_type = H5T_FORTRAN_S1) const
+    {
+        write_attribute(name, std::string(data), base_string_type);
+    }
+
+    /// Write string attribute
+    template <std::size_t N>
+    void write_attribute(const std::string& name, const char (&data)[N], const std::string& dataset_name,
+                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    {
+        write_attribute(name, std::string(data), dataset_name, base_string_type);
+    }
+
+    /// Write array attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const std::vector<T>& data) const
+    {
+        write_attribute(name, data.data(), array_type(data));
+    }
+
+    /// Write array attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const std::vector<T>& data, const std::string& dataset_name) const
+    {
+        write_attribute(name, data.data(), array_type(data), dataset_name);
+    }
+
+    /// Write array attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const std::initializer_list<T>& data) const
+    {
+        write_attribute(name, std::vector<T>(data));
+    }
+
+    /// Write array attribute
+    template <typename T>
+    void write_attribute(const std::string& name, const std::initializer_list<T>& data,
+                         const std::string& dataset_name) const
+    {
+        write_attribute(name, std::vector<T>(data), dataset_name);
     }
 
     template <int N>

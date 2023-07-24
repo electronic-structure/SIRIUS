@@ -88,10 +88,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
         /* copy old N - num_locked x N - num_locked distributed matrix */
         if (N__ > 0) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
 
             if (mtrx_old__) {
                 if (spl_row.local_size()) {
@@ -135,10 +137,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
         }
 
         if (ctx_.print_checksum()) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
             auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
             if (ctx_.comm_band().rank() == 0) {
                 utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
@@ -150,10 +154,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
         /* save new matrix */
         if (mtrx_old__) {
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            sddk::splindex<sddk::splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked__,
-                    mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
+                    mtrx__.bs_row());
+            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
+                    mtrx__.bs_col());
 
             if (spl_row.local_size()) {
                 #pragma omp parallel for schedule(static)
@@ -171,14 +177,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>
     void solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const;
-
-    /// Check the residuals of wave-functions.
-    template <typename T>
-    void check_residuals(Hamiltonian_k<real_type<T>>& Hk__) const;
-
-    /// Check wave-functions for orthonormalization.
-    template <typename T>
-    void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
     template <typename T, typename F>
@@ -240,7 +238,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     std::vector<int> atoms(ctx.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
     Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx.unit_cell().atom_type(iat).indexb_wfs();},
-                                             ctx.ps_atomic_wf_ri(), phi);
+                                             *ctx.ri().ps_atomic_wf_, phi);
 
     /* generate some random noise */
     std::vector<T> tmp(4096);
@@ -441,16 +439,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
             }
         }
     }
-
-    ///* check residuals */
-    //if (ctx_.cfg().control().verification() >= 2) {
-    //    check_residuals<T>(Hk__);
-    //    check_wave_functions<T>(Hk__);
-    //}
-
-    //ctx_.print_memory_usage(__FILE__, __LINE__);
 }
-
 
 }
 
