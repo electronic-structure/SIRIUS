@@ -307,7 +307,7 @@ Band::diag_pseudo_potential_exact<double, double>(int ispn__, Hamiltonian_k<doub
     RTE_THROW("not implemented");
 }
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 sddk::mdarray<float, 1>
 Band::diag_S_davidson<float>(Hamiltonian_k<float>& Hk__) const;

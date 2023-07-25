@@ -57,7 +57,7 @@ template
 void
 Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template<>
 void
 Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__) const
@@ -154,9 +154,8 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset__.spl_num_kpoints(ikloc);
-        auto kp = kset__.get<T>(ik);
+    for (auto it : kset__.spl_num_kpoints()) {
+        auto kp = kset__.get<T>(it.i);
 
         auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
@@ -205,7 +204,7 @@ template
 void
 Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, double itsol_tol__) const;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 void
 Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;

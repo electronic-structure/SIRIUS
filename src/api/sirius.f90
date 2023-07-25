@@ -5771,9 +5771,10 @@ end subroutine sirius_create_H0
 !> @param [in] num_spin_comp Number of spin components.
 !> @param [in] alpha_pv Constant for the projector.
 !> @param [in] spin Current spin channel.
+!> @param [in] nbnd_occ Number of occupied bands.
 !> @param [out] error_code Error code
 subroutine sirius_linear_solver(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,psi,&
-&eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,error_code)
+&eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
@@ -5788,6 +5789,7 @@ integer, target, intent(in) :: ld
 integer, target, intent(in) :: num_spin_comp
 real(8), target, intent(in) :: alpha_pv
 integer, target, intent(in) :: spin
+integer, target, intent(in) :: nbnd_occ
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5802,11 +5804,12 @@ type(C_PTR) :: ld_ptr
 type(C_PTR) :: num_spin_comp_ptr
 type(C_PTR) :: alpha_pv_ptr
 type(C_PTR) :: spin_ptr
+type(C_PTR) :: nbnd_occ_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,error_code)&
+&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5821,6 +5824,7 @@ type(C_PTR), value :: ld
 type(C_PTR), value :: num_spin_comp
 type(C_PTR), value :: alpha_pv
 type(C_PTR), value :: spin
+type(C_PTR), value :: nbnd_occ
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -5849,13 +5853,15 @@ alpha_pv_ptr = C_NULL_PTR
 alpha_pv_ptr = C_LOC(alpha_pv)
 spin_ptr = C_NULL_PTR
 spin_ptr = C_LOC(spin)
+nbnd_occ_ptr = C_NULL_PTR
+nbnd_occ_ptr = C_LOC(nbnd_occ)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_linear_solver_aux(handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,&
 &dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,&
-&error_code_ptr)
+&nbnd_occ_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !

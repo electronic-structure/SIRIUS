@@ -210,11 +210,10 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
     auto const& uc = H0_.ctx().unit_cell();
 
-    sddk::splindex<sddk::splindex_t::block> spl_num_atoms(uc.num_atoms(), kp_.comm().size(), kp_.comm().rank());
+    sddk::splindex_block<atom_index_t> spl_num_atoms(uc.num_atoms(), n_blocks(kp_.comm().size()), block_id(kp_.comm().rank()));
     int nlo{0};
-    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
-        int ia = spl_num_atoms[ialoc];
-        nlo += uc.atom(ia).mt_lo_basis_size();
+    for (auto it : spl_num_atoms) {
+        nlo += uc.atom(it.i).mt_lo_basis_size();
     }
 
     auto h_diag = (what & 1) ? sddk::mdarray<T, 2>(kp_.num_gkvec_loc() + nlo, 1) : sddk::mdarray<T, 2>();
@@ -283,11 +282,10 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
     }
 
     nlo = 0;
-    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
-        int ia     = spl_num_atoms[ialoc];
-        auto& atom = uc.atom(ia);
+    for (auto it : spl_num_atoms) {
+        auto& atom = uc.atom(it.i);
         auto& type = atom.type();
-        auto& hmt = H0_.hmt(ia);
+        auto& hmt = H0_.hmt(it.i);
         #pragma omp parallel for
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
@@ -890,15 +888,15 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto apply_hmt_apw_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T>& h_apw_lo__)
     {
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+        for (auto it: spl_atoms) {
             int tid    = omp_get_thread_num();
-            int ia     = spl_atoms[ialoc];
+            int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             auto& hmt = this->H0_.hmt(ia);
 
@@ -921,14 +919,14 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         o_apw_lo__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, b__.size()));
 
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
-            int ia     = spl_atoms[ialoc];
+        for (auto it : spl_atoms) {
+            int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             for (int j = 0; j < b__.size(); j++) {
                 for (int ilo = 0; ilo < nlo; ilo++) {
@@ -952,15 +950,15 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     {
         /* lo-lo contribution */
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+        for (auto it : spl_atoms) {
             int tid    = omp_get_thread_num();
-            int ia     = spl_atoms[ialoc];
+            auto ia    = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -977,12 +975,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     {
         /* lo-lo contribution */
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
-            int ia     = spl_atoms[ialoc];
+        for (auto it : spl_atoms) {
+            auto ia    = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
@@ -1012,14 +1010,14 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             wf::Wave_functions_mt<T>& halm_phi__)
     {
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < alm_phi__.spl_num_atoms().local_size(); ialoc++) {
+        for (auto it : alm_phi__.spl_num_atoms()) {
             int tid = omp_get_thread_num();
-            int ia = atom_begin__ + alm_phi__.spl_num_atoms()[ialoc];
+            int ia = atom_begin__ + it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -1036,15 +1034,15 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__, wf::Wave_functions<T>& hphi__)
     {
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
+        for (auto it : spl_atoms) {
             int tid = omp_get_thread_num();
-            int ia     = spl_atoms[ialoc];
+            int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             auto& hmt = H0_.hmt(ia);
 
@@ -1062,14 +1060,14 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto apply_omt_lo_apw = [this, &ctx, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__, wf::Wave_functions<T>& ophi__)
     {
         #pragma omp parallel for
-        for (int ialoc = 0; ialoc < spl_atoms.local_size(); ialoc++) {
-            int ia     = spl_atoms[ialoc];
+        for (auto it : spl_atoms) {
+            int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
-            auto aidx  = wf::atom_index(ialoc);
+            auto aidx  = it.li;
 
             for (int ilo = 0; ilo < nlo; ilo++) {
                 int xi_lo = naw + ilo;
@@ -1213,7 +1211,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* loop over blocks of atoms */
     for (auto na : utils::split_in_blocks(ctx.unit_cell().num_atoms(), 64)) {
 
-        sddk::splindex<sddk::splindex_t::block> spl_atoms(na, comm.size(), comm.rank());
+        sddk::splindex_block<> spl_atoms(na, n_blocks(comm.size()), block_id(comm.rank()));
 
         /* actual number of AW radial functions in a block of atoms */
         int num_mt_aw{0};
@@ -1241,6 +1239,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     alm_phi.at(sddk::memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
                     ctx.spla_context());
             gflops += ngop * num_mt_aw * b__.size() * ngv;
+
+            if (pcs) {
+                auto cs = alm_phi.checksum(num_mt_aw, b__.size());
+                if (comm.rank() == 0) {
+                    utils::print_checksum("alm_phi", cs, RTE_OUT(std::cout));
+                }
+            }
 
             if (ophi__) {
                 /* add APW-APW contribution to ophi */
@@ -1274,12 +1279,27 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
                     appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+
+                    if (pcs) {
+                        auto cs1 = alm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
+                        auto cs2 = halm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
+                        if (comm.rank() == 0) {
+                            utils::print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
+                            utils::print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
+                        }
+                    }
                 }
 
                 {
                     auto layout_in = halm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
                     auto layout_out = halm_phi.grid_layout();
                     costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
+                    if (pcs) {
+                        auto cs = halm_phi.checksum(num_mt_aw, b__.size());
+                        if (comm.rank() == 0) {
+                            utils::print_checksum("halm_phi", cs, RTE_OUT(std::cout));
+                        }
+                    }
                 }
 
                 /* APW-APW contribution to hphi */
@@ -1289,6 +1309,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
+                if (pcs) {
+                    auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                    if (comm.rank() == 0) {
+                        utils::print_checksum("hphi_apw#1", cs, RTE_OUT(std::cout));
+                    }
+                }
             }
             time += utils::time_interval(t0);
         }
@@ -1303,6 +1329,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         offset_aw_global, 0, h_apw_lo_phi_lo.spla_distribution(), one,
                         hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                         ctx.spla_context());
+                if (pcs) {
+                    auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
+                    if (comm.rank() == 0) {
+                        utils::print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
+                    }
+                }
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
             if (ophi__) {
@@ -1323,7 +1355,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             if (hphi__) {
                 auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("hphi_apw", cs, RTE_OUT(std::cout));
+                    utils::print_checksum("hphi_apw#3", cs, RTE_OUT(std::cout));
                 }
             }
             if (ophi__) {
@@ -1461,7 +1493,7 @@ Hamiltonian_k<double>::get_h_o_diag_lapw<2>() const;
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template class Hamiltonian_k<float>;
 
 template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>

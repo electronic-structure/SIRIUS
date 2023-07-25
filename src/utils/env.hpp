@@ -102,6 +102,17 @@ save_config()
 }
 
 inline std::string
+config_file()
+{
+    auto val = get_value_ptr<std::string>("SIRIUS_CONFIG");
+    if (val) {
+        return *val;
+    } else {
+        return "";
+    }
+}
+
+inline std::string
 get_ev_solver()
 {
     auto val = get_value_ptr<std::string>("SIRIUS_EV_SOLVER");

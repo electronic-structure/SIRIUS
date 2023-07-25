@@ -37,7 +37,7 @@ DFT_ground_state::initial_state()
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             Band(ctx_).initialize_subspace(kset_, H0);
 #else
@@ -79,9 +79,8 @@ DFT_ground_state::energy_kin_sum_pw() const
 {
     double ekin{0};
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(it.i);
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
@@ -223,7 +222,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         ctx_.message(2, __func__, s);
 
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
@@ -267,7 +266,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         /* tolerance can't be too small */
         iter_solver_tol__ = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         if (ctx_.cfg().parameters().precision_gs() != "auto") {
             /* if the final precision is not equal to the current precision */
             if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
@@ -281,12 +280,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     ctx_.cfg().parameters().precision_hs("fp64");
                     ctx_.cfg().lock();
 
-                    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-                        int ik = kset_.spl_num_kpoints(ikloc);
+                    for (auto it : kset_.spl_num_kpoints()) {
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            wf::copy(sddk::memory_t::host, kset_.get<float>(ik)->spinor_wave_functions(),
+                            wf::copy(sddk::memory_t::host, kset_.get<float>(it.i)->spinor_wave_functions(),
                                     wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
-                                    kset_.get<double>(ik)->spinor_wave_functions(), wf::spin_index(ispn),
+                                    kset_.get<double>(it.i)->spinor_wave_functions(), wf::spin_index(ispn),
                                     wf::band_range(0, ctx_.num_bands()));
                         }
                     }

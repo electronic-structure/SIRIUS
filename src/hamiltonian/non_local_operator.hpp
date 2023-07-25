@@ -27,13 +27,10 @@
 
 #include "SDDK/omp.hpp"
 #include "SDDK/memory.hpp"
-// #include "beta_projectors/beta_projectors.hpp"
-// #include "beta_projectors/beta_projectors_base.hpp"
-// #include "beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "non_local_operator_base.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
-#include "traits.hpp"
+//#include "traits.hpp"
 #include "utils/rte.hpp"
 
 namespace sirius {

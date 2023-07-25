@@ -3303,11 +3303,11 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
             ks.comm().bcast(&spin, 1, dest_rank);
 
             /* rank where k-point vkl resides on the SIRIUS side */
-            int src_rank = ks.spl_num_kpoints().local_rank(jk);
+            int src_rank = ks.spl_num_kpoints().location(typename kp_index_t::global(jk)).ib;
 
             if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
                 /* send G+k copy to destination rank (where host code receives the data) */
-                auto gkvec = ks.get_gkvec(jk, dest_rank);
+                auto gkvec = ks.get_gkvec(typename kp_index_t::global(jk), dest_rank);
 
                 sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
@@ -3964,7 +3964,7 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
             auto kp = ks.get<double>(*ik__ - 1);
 
             /* get rank that stores a given k-point */
-            int rank = ks.spl_num_kpoints().local_rank(*ik__ - 1);
+            int rank = ks.spl_num_kpoints().location(kp_index_t::global(*ik__ - 1)).ib;
 
             auto& comm_k = ks.ctx().comm_k();
 
@@ -5230,7 +5230,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
 
             for (int rank = 0; rank < fft_comm.size(); rank++) {
                 /* slab of FFT grid for a given rank */
-                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(block_id(rank)));
                 if (rank == fft_comm.rank()) {
                     std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
@@ -5248,9 +5248,10 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 for (int iz = 0; iz < nz; iz++) {
                     /* global z coordinate inside FFT box */
                     int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
-                    if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                    if (z >= spl_z.global_offset(block_id(rank)) && z < spl_z.global_offset(block_id(rank)) +
+                            spl_z.local_size(block_id(rank))) {
                         /* make z local for SIRIUS FFT partitioning */
-                        z -= spl_z.global_offset(rank);
+                        z -= spl_z.global_offset(block_id(rank));
                         for (int iy = 0; iy < ny; iy++) {
                             /* global y coordinate inside FFT box */
                             int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
@@ -5614,7 +5615,7 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
 
             sddk::device_t processing_unit{ctx.processing_unit()};
 
-            if (pu.compare("none") != 0 || !pu.empty()) {
+            if (pu.compare("none") != 0) {
                 processing_unit = sddk::get_device_t(pu);
             }
 
@@ -5836,6 +5837,10 @@ sirius_linear_solver:
       type: int
       attr: in, required
       doc: Current spin channel.
+    nbnd_occ:
+      type: int
+      attr: in, required
+      doc: Number of occupied bands.
     error_code:
       type: int
       attr: out, optional
@@ -5845,15 +5850,13 @@ sirius_linear_solver:
 void sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num_gvec_kq_loc__,
         int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double> * psi__, double* eigvals__,
         std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__, double const * alpha_pv__,
-        int const* spin__, int* error_code__)
+        int const* spin__, int const* nbnd_occ__, int* error_code__)
 {
     PROFILE("sirius_api::sirius_linear_solver");
     call_sirius(
         [&]() {
             /* works for non-magnetic and collinear cases */
             RTE_ASSERT(*num_spin_comp__ == 1);
-
-            int nbnd = 16;
 
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
@@ -5896,24 +5899,25 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
             gkq_in_distr.calc_offsets();
 
-            // Copy eigenvalues (factor 2 for rydberg/hartree)
-            std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd);
+            int nbnd_occ = *nbnd_occ__;
+            /* copy eigenvalues (factor 2 for rydberg/hartree) */
+            std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
             for (auto &val : eigvals_vec) {
                 val /= 2;
             }
 
             // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
-            sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, nbnd);
-            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, nbnd);
-            sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, nbnd);
+            sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, nbnd_occ);
+            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, nbnd_occ);
+            sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, nbnd_occ);
 
-            auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
-            auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
-            auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
-            auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
+            auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+            auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+            auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+            auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
-                for (int i = 0; i < nbnd; i++) {
+                for (int i = 0; i < nbnd_occ; i++) {
                     for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                         psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
                         dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
@@ -5930,32 +5934,18 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
                 kp.initialize();
                 auto Hk = H0(kp);
-                //auto hpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
-                //auto spsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
-                //auto res_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(sctx.num_bands()), wf::num_mag_dims(0), false);
-
-                //Hk.apply_h_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, sctx.num_bands()), *psi_wf, hpsi_wf.get(), spsi_wf.get());
-                //for (int i = 0; i < sctx.num_bands(); i++) {
-                //    double diff{0};
-                //    for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                //        diff += std::abs(hpsi_wf->pw_coeffs(ig, wf::spin_index(0), wf::band_index(i)) -
-                //                spsi_wf->pw_coeffs(ig, wf::spin_index(0), wf::band_index(i)) * eigvals_vec[i]);
-                //    }
-                //    std::cout << "band : " << i << ", residual : " << diff << std::endl;
-                //}
-
-                sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd),
+                sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
                         eigvals_vec.data());
             }
 
             // setup auxiliary state vectors for CG.
-            auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
-            auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
+            auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+            auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
-            auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
-            auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd), wf::num_mag_dims(0), false);
+            auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+            auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
-            sddk::memory_t mem = sctx.processing_unit_memory_t(); // "auto mem" should do as well
+            auto mem = sctx.processing_unit_memory_t();
 
             std::vector<wf::device_memory_guard> mg;
 
@@ -5977,8 +5967,10 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 Sphi_wf.get(),
                 psi_wf.get(),
                 tmp_wf.get(),
-                *alpha_pv__ / 2,
-                mem, sr, nbnd);
+                *alpha_pv__ / 2, // rydberg/hartree factor
+                nbnd_occ,
+                mem,
+                sr);
             // CG state vectors
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
@@ -6000,12 +5992,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
               std::move(h_o_diag.first),
               std::move(h_o_diag.second),
               std::move(eigvals_mdarray),
-              nbnd,
+              nbnd_occ,
               mem,
               sr
             };
 
-            // Identity_preconditioner preconditioner{static_cast<size_t>(sctx.num_bands())};
+            // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
             auto result = sirius::cg::multi_cg(
                 linear_operator,
@@ -6018,7 +6010,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             /* bring wave functions back in order of QE */
             for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
-                for (int i = 0; i < nbnd; i++) {
+                for (int i = 0; i < nbnd_occ; i++) {
                     for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                         dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                     }

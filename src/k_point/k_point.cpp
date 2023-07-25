@@ -341,24 +341,6 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
-    if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.unit_cell().lmax_apw()) &&
-        ctx_.comm().rank() == 0 && ctx_.verbosity() >= 0) {
-        std::stringstream s;
-        s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
-          << ctx_.unit_cell().lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")"
-          << std::endl
-          << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
-        WARNING(s);
-    }
-
-    if (gk_cutoff__ * 2 > ctx_.pw_cutoff()) {
-        std::stringstream s;
-        s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
-          << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
-          << "  doubled G+k cutoff : " << gk_cutoff__ * 2;
-        TERMINATE(s);
-    }
-
     gkvec_partition_ = std::make_shared<fft::Gvec_fft>(
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
@@ -371,11 +353,13 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
         gv.at(sddk::memory_t::host))));
 
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
+    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+            ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
     sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
 
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
+    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+            ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
     sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
 
@@ -385,14 +369,14 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
             int ig = gkvec_->gvec_offset(rank) + igloc;
             auto loc_row = spl_ngk_row.location(ig);
             auto loc_col = spl_ngk_col.location(ig);
-            if (loc_row.rank == comm_row().rank()) {
+            if (loc_row.ib == comm_row().rank()) {
                 for (int x : {0, 1, 2}) {
-                    gkvec_row(x, loc_row.local_index) = gv(x, igloc);
+                    gkvec_row(x, loc_row.index_local) = gv(x, igloc);
                 }
             }
-            if (loc_col.rank == comm_col().rank()) {
+            if (loc_col.ib == comm_col().rank()) {
                 for (int x : {0, 1, 2}) {
-                    gkvec_col(x, loc_col.local_index) = gv(x, igloc);
+                    gkvec_col(x, loc_col.index_local) = gv(x, igloc);
                 }
             }
         }
@@ -471,11 +455,12 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 /* number of atom local orbitals */
                 int nlo = ctx_.unit_cell().atom(ia).mt_lo_basis_size();
-                auto loc = fv_eigen_vectors_slab_->spl_num_atoms().location(ia);
-                if (loc.rank == this->comm().rank()) {
+                auto loc = fv_eigen_vectors_slab_->spl_num_atoms().location(typename atom_index_t::global(ia));
+                if (loc.ib == this->comm().rank()) {
                     for (int xi = 0; xi < nlo; xi++) {
                         fv_evec__(this->num_gkvec() + offs + xi, ist) =
-                            fv_eigen_vectors_slab_->mt_coeffs(xi, wf::atom_index(loc.local_index), wf::spin_index(0), wf::band_index(ist));
+                            fv_eigen_vectors_slab_->mt_coeffs(xi, atom_index_t::local(loc.index_local), wf::spin_index(0),
+                                    wf::band_index(ist));
                     }
                 }
                 offs += nlo;
@@ -781,18 +766,20 @@ void
 K_point<T>::generate_gklo_basis()
 {
     /* find local number of row G+k vectors */
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_row(num_gkvec(), num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
+    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+            ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
 
     /* find local number of column G+k vectors */
-    sddk::splindex<sddk::splindex_t::block_cyclic> spl_ngk_col(num_gkvec(), num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
+    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+            ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
 
     if (ctx_.full_potential()) {
-        sddk::splindex<sddk::splindex_t::block_cyclic> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
-                num_ranks_row_, rank_row_, ctx_.cyclic_block_size());
-        sddk::splindex<sddk::splindex_t::block_cyclic> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
-                num_ranks_col_, rank_col_, ctx_.cyclic_block_size());
+        sddk::splindex_block_cyclic<> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+                n_blocks(num_ranks_row_), block_id(rank_row_), ctx_.cyclic_block_size());
+        sddk::splindex_block_cyclic<> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+                n_blocks(num_ranks_col_), block_id(rank_col_), ctx_.cyclic_block_size());
 
         lo_basis_descriptor lo_desc;
 
@@ -815,10 +802,10 @@ K_point<T>::generate_gklo_basis()
                 lo_desc.order = static_cast<uint8_t>(order);
                 lo_desc.idxrf = static_cast<uint8_t>(idxrf);
 
-                if (spl_nlo_row.local_rank(num_gkvec() + idx) == rank_row_) {
+                if (spl_nlo_row.location(num_gkvec() + idx).ib == rank_row_) {
                     lo_basis_descriptors_row_.push_back(lo_desc);
                 }
-                if (spl_nlo_col.local_rank(num_gkvec() + idx) == rank_col_) {
+                if (spl_nlo_col.location(num_gkvec() + idx).ib == rank_col_) {
                     lo_basis_descriptors_col_.push_back(lo_desc);
                 }
 
@@ -844,7 +831,7 @@ K_point<T>::generate_gklo_basis()
 }
 
 template class K_point<double>;
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template class K_point<float>;
 #endif
 } // namespace sirius

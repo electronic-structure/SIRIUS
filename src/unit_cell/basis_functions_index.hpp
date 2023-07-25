@@ -72,9 +72,6 @@ class basis_functions_index
 
     sddk::mdarray<int, 2> index_by_lm_order_;
 
-    /// Maximum l of the radial basis functions.
-    int lmax_{-1};
-
     int offset_lo_{-1};
 
     std::vector<int> offset_;

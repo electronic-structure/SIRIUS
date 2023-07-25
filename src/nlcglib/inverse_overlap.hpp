@@ -296,7 +296,7 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
         R.allocate(sddk::memory_t::device);
     }
 
-    q_op_.rmatmul(R, bphi, this->ispn_, pm, 1, 0);
+    q_op_.rmatmul(R, bphi, this->ispn_, pm, 1.0, 0.0);
 
     sddk::auto_copy(Y, X, pu);
 

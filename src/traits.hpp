@@ -1,5 +1,5 @@
-#ifndef TRAITS_H
-#define TRAITS_H
+#ifndef __TRAITS_HPP__
+#define __TRAITS_HPP__
 
 namespace sirius {
 
@@ -14,4 +14,4 @@ using identity_t = typename identity<X>::type;
 
 } // namespace sirius
 
-#endif /* TRAITS_H */
+#endif /* __TRAITS_HPP__ */

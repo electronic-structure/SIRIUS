@@ -586,9 +586,15 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    run_tasks(args);
-
     int my_rank = mpi::Communicator::world().rank();
+
+    try {
+        run_tasks(args);
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    } catch (...) {
+        std::cout << "unknown exception" << std::endl;
+    }
 
     sirius::finalize(1);
 

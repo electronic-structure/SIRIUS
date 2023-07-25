@@ -319,26 +319,25 @@ void Potential::xc_mt(Density const& density__)
     PROFILE("sirius::Potential::xc_mt");
 
     #pragma omp parallel for
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-        int ia = unit_cell_.spl_num_atoms(ialoc);
-        auto& rgrid = unit_cell_.atom(ia).radial_grid();
+    for (auto it : unit_cell_.spl_num_atoms()) {
+        auto& rgrid = unit_cell_.atom(it.i).radial_grid();
         std::vector<Flm const*> rho(ctx_.num_mag_dims() + 1);
         std::vector<Flm*> vxc(ctx_.num_mag_dims() + 1);
-        rho[0] = &density__.rho().mt()[ia];
-        vxc[0] = &xc_potential_->mt()[ia];
+        rho[0] = &density__.rho().mt()[it.i];
+        vxc[0] = &xc_potential_->mt()[it.i];
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            rho[j + 1] = &density__.mag(j).mt()[ia];
-            vxc[j + 1] = &effective_magnetic_field(j).mt()[ia];
+            rho[j + 1] = &density__.mag(j).mt()[it.i];
+            vxc[j + 1] = &effective_magnetic_field(j).mt()[it.i];
         }
-        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[ia]);
+        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i]);
 
         /* z, x, y order */
         std::array<int, 3> comp_map = {2, 0, 1};
         /* add auxiliary magnetic field antiparallel to starting magnetization */
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                effective_magnetic_field(j).mt()[ia](0, ir) -=
-                    aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]];
+                effective_magnetic_field(j).mt()[it.i](0, ir) -=
+                    aux_bf_(j, it.i) * ctx_.unit_cell().atom(it.i).vector_field()[comp_map[j]];
             }
         }
     } // ialoc

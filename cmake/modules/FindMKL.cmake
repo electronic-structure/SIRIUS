@@ -43,7 +43,7 @@ if(CMAKE_FIND_LIBRARY_SUFFIXES STREQUAL ".a")
   message(FATAL_ERROR "Attempting to find static MKL libraries. SIRIUS supports only shared linking against MKL. NOTE: On Cray systems you must set `CRAYPE_LINK_TYPE=dynamic`.")
 endif()
 
-if(NOT USE_MKL_SHARED_LIBS)
+if(NOT SIRIUS_USE_MKL_SHARED_LIBS)
   set(INT_LIB "libmkl_intel_lp64.a")
   set(SEQ_LIB "libmkl_sequential.a")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")

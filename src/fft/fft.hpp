@@ -42,7 +42,7 @@ struct SpFFT_Grid<double> {using type = spfft::Grid;};
 template <>
 struct SpFFT_Grid<std::complex<double>> {using type = spfft::Grid;};
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template <>
 struct SpFFT_Grid<std::complex<float>> {using type = spfft::GridFloat;};
 
@@ -63,7 +63,7 @@ struct SpFFT_Transform<double> {using type = spfft::Transform;};
 template <>
 struct SpFFT_Transform<std::complex<double>> {using type = spfft::Transform;};
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template <>
 struct SpFFT_Transform<float> {using type = spfft::TransformFloat;};
 
@@ -232,7 +232,7 @@ inline size_t spfft_grid_size_local(T const& spfft__)
  *  using block distribution. */
 inline auto split_z_dimension(int size_z__, mpi::Communicator const& comm_fft__)
 {
-    return sddk::splindex<sddk::splindex_t::block>(size_z__, comm_fft__.size(), comm_fft__.rank());
+    return sddk::splindex_block<>(size_z__, n_blocks(comm_fft__.size()), block_id(comm_fft__.rank()));
 }
 
 } // namespace fft

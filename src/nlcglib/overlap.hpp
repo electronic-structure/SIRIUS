@@ -60,12 +60,10 @@ template <class op_t>
 Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_context& ctx,
                                            const Q_operator<double>& q_op)
 {
-    int nk = kset.spl_num_kpoints().local_size();
-    for (int ik_loc = 0; ik_loc < nk; ++ik_loc) {
-        int ik   = kset.spl_num_kpoints(ik_loc);
-        auto& kp = *kset.get<double>(ik);
+    for (auto it : kset.spl_num_kpoints()) {
+        auto& kp = *kset.get<double>(it.i);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
-            key_t key{ik, ispn};
+            key_t key{it.i.get(), ispn};
             data_[key] = std::make_shared<op_t>(ctx, q_op, kp.beta_projectors(), ispn);
         }
     }

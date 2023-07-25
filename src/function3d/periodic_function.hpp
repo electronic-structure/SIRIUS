@@ -64,7 +64,7 @@ class Periodic_function
     Smooth_periodic_function<T> rg_component_;
 
     /// Muffin-tin part of the periodic function.
-    Spheric_function_set<T> mt_component_;
+    Spheric_function_set<T, atom_index_t> mt_component_;
 
     /// Alias to G-vectors.
     fft::Gvec const& gvec_;
@@ -88,14 +88,14 @@ class Periodic_function
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
     Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr,
+            sddk::splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
             smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
             spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
         , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr(), rg_ptr__)
-        , mt_component_(ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
+        , mt_component_("MT component of Periodic_function", ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
         , gvec_(ctx__.gvec())
     {
     }
@@ -162,9 +162,8 @@ class Periodic_function
         if (ctx_.full_potential()) {
             mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia     = unit_cell_.spl_num_atoms(ialoc);
-                mt_val[ia] = mt_component_[ia].component(0).integrate(2) * fourpi * y00;
+            for (auto it : unit_cell_.spl_num_atoms()) {
+                mt_val[it.i] = mt_component_[it.i].component(0).integrate(2) * fourpi * y00;
             }
 
             comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());

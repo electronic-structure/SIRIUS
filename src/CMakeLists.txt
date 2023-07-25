@@ -2,11 +2,11 @@
 # working correctly
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
-if(CREATE_FORTRAN_BINDINGS)
+if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
 endif()
 
-if(USE_CUDA OR USE_ROCM)
+if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
   set(_CUSOURCES
     "gpu/augmentation_operator.cu"
     "gpu/checksum.cu"
@@ -68,7 +68,6 @@ set(_SOURCES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
-  "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
   "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"
@@ -103,55 +102,61 @@ target_compile_features(sirius PUBLIC c_std_99)
 target_compile_features(sirius PUBLIC cuda_std_14)
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(USE_ROCM)
+if(SIRIUS_USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
+  set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 endif()
 
-target_link_libraries(sirius PUBLIC SpFFT::spfft
-                                    SPLA::spla
-                                    ${GSL_LIBRARY}
-                                    "${LINALG_LIB}"
-                                    MPI::MPI_CXX
-                                    sirius::libxc
-                                    sirius::libspg
-                                    sirius::hdf5
-                                    costa::costa
-                                    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::elpa>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::magma>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
-                                    $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
-                                    $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
-                                    $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
-                                    $<$<BOOL:${USE_NVTX}>:nvToolsExt>
-                                    $<$<BOOL:${USE_ROCM}>:roc::rocblas>
-                                    $<$<BOOL:${USE_ROCM}>:roc::rocsolver>
-                                    $<$<BOOL:${USE_ROCM}>:hip::host>
-                                    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>)
+if(SIRIUS_USE_CUDA)
+  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+endif()
+
+target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
+  MPI::MPI_CXX
+  sirius::libxc
+  sirius::libspg
+  sirius::hdf5
+  costa::costa
+  $<TARGET_NAME_IF_EXISTS:sirius::elpa>
+  $<TARGET_NAME_IF_EXISTS:sirius::magma>
+  $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
+  $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
+  $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
+  SpFFT::spfft
+  SPLA::spla
+  "${SIRIUS_LINALG_LIB}"
+  $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
+  $<$<BOOL:${SIRIUS_USE_NVTX}>:nvToolsExt>
+  $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
+  $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocsolver>
+  $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocblas>
+  $<$<BOOL:${SIRIUS_USE_ROCM}>:hip::host>
+  $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
+)
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
-  $<$<BOOL:${USE_PROFILER}>:SIRIUS_PROFILE>
-  $<$<BOOL:${USE_SCALAPACK}>:SIRIUS_SCALAPACK>
-  $<$<BOOL:${USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>
-  $<$<BOOL:${USE_POWER_COUNTER}>:SIRIUS_USE_POWER_COUNTER>
-  $<$<BOOL:${USE_ELPA}>:SIRIUS_ELPA>
-  $<$<BOOL:${USE_NLCGLIB}>:SIRIUS_NLCGLIB>
-  $<$<BOOL:${USE_CUDA}>:SIRIUS_GPU SIRIUS_CUDA>
-  $<$<BOOL:${USE_NVTX}>:SIRIUS_CUDA_NVTX>
-  $<$<BOOL:${USE_MAGMA}>:SIRIUS_MAGMA>
-  $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
-  $<$<BOOL:${USE_VDWXC}>:SIRIUS_USE_VDWXC>
-  $<$<BOOL:${USE_FP32_BOOL}>:USE_FP32>
-  $<$<BOOL:${USE_VCSQNM}>:SIRIUS_VCSQNM>
-  $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
-  $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
+  $<$<BOOL:${SIRIUS_USE_PROFILER}>:SIRIUS_PROFILE>
+  $<$<BOOL:${SIRIUS_USE_SCALAPACK}>:SIRIUS_SCALAPACK>
+  $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>
+  $<$<BOOL:${SIRIUS_USE_POWER_COUNTER}>:SIRIUS_SIRIUS_USE_POWER_COUNTER>
+  $<$<BOOL:${SIRIUS_USE_ELPA}>:SIRIUS_ELPA>
+  $<$<BOOL:${SIRIUS_USE_NLCGLIB}>:SIRIUS_NLCGLIB>
+  $<$<BOOL:${SIRIUS_USE_CUDA}>:SIRIUS_GPU SIRIUS_CUDA>
+  $<$<BOOL:${SIRIUS_USE_NVTX}>:SIRIUS_CUDA_NVTX>
+  $<$<BOOL:${SIRIUS_USE_MAGMA}>:SIRIUS_MAGMA>
+  $<$<BOOL:${SIRIUS_USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
+  $<$<BOOL:${SIRIUS_USE_VDWXC}>:SIRIUS_USE_VDWXC>
+  $<$<BOOL:${SIRIUS_USE_FP32_BOOL}>:SIRIUS_USE_FP32>
+  $<$<BOOL:${SIRIUS_USE_VCSQNM}>:SIRIUS_VCSQNM>
+  $<$<BOOL:${SIRIUS_HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
+  $<$<AND:$<BOOL:${SIRIUS_USE_MAGMA}>,$<BOOL:${SIRIUS_USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
 
-if(CREATE_FORTRAN_BINDINGS)
+if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

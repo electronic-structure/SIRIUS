@@ -30,9 +30,11 @@
 #include "function3d/paw_field4d.hpp"
 #include "function3d/periodic_function.hpp"
 #include "function3d/spheric_function_set.hpp"
+#include "function3d/make_periodic_function.hpp"
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "occupation_matrix.hpp"
+#include "density_matrix.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -102,7 +104,7 @@ class PAW_density : public PAW_field4D<T>
   public:
 
     PAW_density(Unit_cell const& uc__)
-        : PAW_field4D<T>(uc__, false)
+        : PAW_field4D<T>("PAW density", uc__, false)
     {
     }
 
@@ -215,7 +217,7 @@ class Density : public Field4D
 
     /// Density matrix for all atoms.
     /** This is a global matrix, meaning that each MPI rank holds the full copy. This simplifies the symmetrization. */
-    sddk::mdarray<std::complex<double>, 4> density_matrix_;
+    std::unique_ptr<density_matrix_t> density_matrix_;
 
     /// Local fraction of atoms with PAW correction.
     std::unique_ptr<PAW_density<double>> paw_density_;
@@ -245,11 +247,11 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<std::complex<double>, 4>, PAW_density<double>,
-                                 Hubbard_matrix>> mixer_;
+                                 Periodic_function<double>, density_matrix_t,
+                                 PAW_density<double>, Hubbard_matrix>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    void generate_paw_atom_density(int iapaw__);
+    void generate_paw_atom_density(paw_atom_index_t::local iapaw__);
 
     /// Initialize PAW density matrix.
     void init_density_matrix_for_paw();
@@ -263,7 +265,7 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<std::complex<double>, 4> const& zdens__,
+    void reduce_density_matrix(Atom_type const& atom_type__, sddk::mdarray<std::complex<double>, 3> const& zdens__,
                                sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
@@ -309,13 +311,14 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_core_charge_density");
 
-        for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
-            int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
-            unit_cell_.atom_symmetry_class(ic).generate_core_charge_density(ctx_.core_relativity());
+        auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
+
+        for (auto it : spl_idx) {
+            unit_cell_.atom_symmetry_class(it.i).generate_core_charge_density(ctx_.core_relativity());
         }
 
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            int rank = unit_cell_.spl_num_atom_symmetry_classes().local_rank(ic);
+        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+            auto rank = spl_idx.location(ic).ib;
             unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
         }
     }
@@ -327,9 +330,10 @@ class Density : public Field4D
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
+        auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
@@ -439,9 +443,9 @@ class Density : public Field4D
         return *rho_pseudo_core_;
     }
 
-    inline auto const& density_mt(int ialoc) const
+    inline auto const& density_mt(atom_index_t::local ialoc__) const
     {
-        int ia = ctx_.unit_cell().spl_num_atoms(ialoc);
+        auto ia = ctx_.unit_cell().spl_num_atoms().global_index(ialoc__);
         return rho().mt()[ia];
     }
 
@@ -478,19 +482,19 @@ class Density : public Field4D
     /// Mix new density.
     double mix();
 
-    inline auto const& density_matrix() const
+    inline auto const& density_matrix(int ia__) const
     {
-        return density_matrix_;
+        return (*density_matrix_)[ia__];
     }
 
-    inline auto& density_matrix()
+    inline auto& density_matrix(int ia__)
     {
-        return density_matrix_;
+        return (*density_matrix_)[ia__];
     }
 
     /// Return density matrix in auxiliary form.
     sddk::mdarray<double, 3>
-    density_matrix_aux(sddk::mdarray<std::complex<double>, 4> const& dm__, int iat__) const;
+    density_matrix_aux(Atom_type const& atom_type__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
     sddk::mdarray<double, 2>
@@ -502,165 +506,6 @@ class Density : public Field4D
      */
     std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
     get_magnetisation() const;
-
-    /// Symmetrize density matrix.
-    /** We start from the spectral represntation of the occupancy operator defined for the irreducible Brillouin
-     *  zone:
-     *  \f[
-     *    \hat N_{IBZ} = \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-     *          \langle \Psi_{j{\bf k}}^{\sigma'} |
-     *  \f]
-     *  and a set of localized orbitals with the pure angular character (this can be LAPW functions,
-     *  beta-projectors or localized Hubbard orbitals) :
-     *  \f[
-     *    |\phi_{\ell m}^{\alpha {\bf T}}\rangle
-     *  \f]
-     *  The orbitals are labeled by the angular and azimuthal quantum numbers (\f$ \ell m \f$),
-     *  atom index (\f$ \alpha \f$) and a lattice translation vector (\f$ {\bf T} \f$) such that:
-     *  \f[
-     *    \langle {\bf r} | \phi_{\ell m}^{\alpha {\bf T}} \rangle = \phi_{\ell m}({\bf r - r_{\alpha} - T})
-     *  \f]
-     *
-     *  There might be several localized orbitals per atom. We wish to compute the symmetrized occupation matrix:
-     *  \f[
-     *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
-     *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle = 
-     *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
-     *       \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat{\bf P} \Psi_{j{\bf k}}^{\sigma} \rangle 
-     *       w_{\bf k} n_{j{\bf k}}
-     *       \langle \hat{\bf P} \Psi_{j{\bf k}}^{\sigma'} | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
-     *  \f]
-     *
-     *  Let's now label the overlap integrals between localized orbitals and KS wave-functions:
-     *  \f[
-     *    A_{\ell m j{\bf k}}^{\alpha {\bf T} \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} |
-     *       \phi_{\ell m}^{\alpha {\bf T}} \rangle =
-     *      \int \Psi_{j{\bf k}}^{\sigma *}({\bf r})
-     *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r}
-     *  \f]
-     *  and check how it transforms under the symmetry operation \f$ \hat {\bf P} = \{ {\bf R} | {\bf t} \} \f$
-     *  applied to the KS states.
-     *  \f[
-     *   \int \big( \hat {\bf P}\Psi_{j {\bf k}}^{\sigma *}({\bf r}) \big)
-     *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} = 
-     *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \big( \hat {\bf P}^{-1} \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
-     *  \f]
-     *
-     *  Let's first derive how the inverse symmetry operation acts on the localized orbital centered on the
-     *  atom inside a unit cell (no <b>T</b>):
-     *  \f[
-     *   \hat {\bf P}^{-1} \phi\big( {\bf r} -  {\bf r}_{\alpha} \big) = 
-     *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} \big) = \\
-     *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t})) \big) =
-     *     \tilde \phi \big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t}) \big)
-     *  \f]
-     *  This operation rotates the orbital and centers it at the position
-     *  \f[
-     *   {\bf r}_{\beta} = {\bf R}^{-1}{\bf r}_{\alpha} - {\bf R}^{-1}{\bf t} = \hat {\bf P}^{-1}{\bf r}_{\alpha}
-     *  \f]
-     *
-     *
-     *  For example, suppose thar we have y-orbital centered at \f$ {\bf r}_{\alpha} = [1, 0] \f$ (black dot)
-     *  and a symmetry operation \f$ \hat {\bf P}  = \{ {\bf R} | {\bf t} \} \f$ that rotates by
-     *  \f$ \pi/2 \f$ counterclockwise and translates by [1/2, 1/2]:
-     *
-     *  \image html sym_orbital1.png width=400px
-     *
-     *  Under this symmetry operation the atom coordinate will transform into [1/2, 3/2] (red dot), but
-     *  this is not(!) how the orbital is transformed. The origin of the atom will transform according to 
-     *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\beta} = [-1/2, -1/2] \f$ (blue dot) such that 
-     *  \f$ \hat {\bf P} {\bf r}_{\beta} = {\bf r}_{\alpha} \f$:
-     *
-     *  \image html sym_orbital2.png width=400px
-     *
-     *  To be more precise, we should highlight that the transformed atom coordinate can go out of the original
-    *   unit cell and can be brought back with a translation vector:
-     *  \f[
-     *   \hat {\bf P}^{-1}{\bf r}_{\alpha} = {\bf r}_{\beta} + {\bf T}_{P\alpha\beta}
-     *  \f]
-     *
-     *  Now let's derive how the inverse symmetry operation acts on the localized orbital \f$ \phi({\bf r}) \f$
-     *  centered on atom in the arbitrary unit cell:
-     *  \f[
-     *   \hat {\bf P}^{-1} \phi\big( {\bf r} - {\bf r}_{\alpha} - {\bf T} \big) = 
-     *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} - {\bf T} \big) = \\
-     *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t})) \big) = 
-     *     \tilde \phi\big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t}) \big) = 
-     *     \tilde \phi\big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
-     *  \f]
-     *
-     *  Now let's check how the atomic orbitals transfrom under the rotational part of the symmetry operation.
-     *  The atomic functions of (\f$ \ell m \f$) character is expressed as a product of radial function and a
-     *  spherical harmonic:
-     *  \f[
-     *    \phi_{\ell m}({\bf r}) = \phi_{\ell}(r) Y_{\ell m}(\theta, \phi)
-     *  \f]
-     *
-     *  Under rotation the spherical harmonic is transformed as:
-     *  \f[
-     *    Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) =
-     *       \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
-     *       \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
-     *  \f]
-     *  so
-     *  \f[
-     *    \tilde \phi_{\ell m}({\bf r}) =\hat {\bf P}^{-1} \phi_{\ell}(r) Y_{\ell m}(\theta, \phi) = 
-     *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) \phi_{\ell}(r) Y_{\ell m'}(\theta, \phi)
-     *  \f]
-     *
-     *  We will use Bloch theorem to get rid of the translations in the argument of \f$ \tilde \phi \f$:
-     *  \f[
-     *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
-     *    d{\bf r} = 
-     *    e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
-     *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} \big) d{\bf r}
-     *  \f]
-     *  (the "-" in the phase factor appears because KS wave-functions are complex conjugate) and now we can write
-     *  \f[
-     *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
-     *      e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
-     *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) A_{\ell m' j{\bf k}}^{\beta \sigma}
-     *  \f]
-     *
-     *  The final expression for the symmetrized matrix is then
-     *  \f[
-     *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
-     *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
-     *        A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma *}
-     *       w_{\bf k} n_{j{\bf k}}
-     *        A_{\ell' m' j\hat {\bf P}{\bf k}}^{\alpha' {\bf T'} \sigma'} = \\ = \sum_{\bf P} \sum_{j}
-     *        \sum_{{\bf k}}^{IBZ}
-     *      e^{i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
-     *      e^{-i{\bf k}({\bf T}_{P\alpha'\beta'} + {\bf R}^{-1}{\bf T'})}
-     *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        A_{\ell m_1 j{\bf k}}^{\beta \sigma *} A_{\ell' m_2 j{\bf k}}^{\beta' \sigma'} w_{\bf k} n_{j{\bf k}}
-     *  \f]
-     *
-     *  In the case of \f$ \alpha = \alpha' \f$ and \f$ {\bf T}={\bf T}' \f$ all the phase-factor exponents disappear
-     *  and we get an expression for the "on-site" occupation matrix:
-     *
-     *  \f[
-     *    n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} =
-     *        \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ}
-     *      \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        A_{\ell m_1 j{\bf k}}^{\beta \sigma *} A_{\ell' m_2 j{\bf k}}^{\beta \sigma'}
-     *        w_{\bf k} n_{j{\bf k}} = \\ =
-     *        \sum_{\bf P} \sum_{m_1 m_2}  D_{mm_1}^{\ell *}({\bf P})  D_{m'm_2}^{\ell'}({\bf P})
-     *        \tilde n_{\ell m_1 \sigma, \ell' m_2 \sigma'}^{\beta}
-     *  \f]
-     *
-     *
-     *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
-     *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
-     *  \f[
-     *    \langle  \phi_{\ell m}^{\alpha} | \Psi_{j{\bf k}}^{\sigma} \rangle = \sum_{\bf G}
-     *      \phi_{\ell m}^{\alpha *}({\bf G+k}) \Psi_{j}^{\sigma}({\bf G+k})
-     *  \f]
-     *
-     */
-    void symmetrize_density_matrix();
 
     void print_info(std::ostream& out__) const;
 
@@ -902,7 +747,9 @@ copy(Density const& src__, Density& dest__)
             copy(src__.component(j).mt(), dest__.component(j).mt());
         }
     }
-    copy(src__.density_matrix(), dest__.density_matrix());
+    for (int ia = 0; ia < src__.ctx().unit_cell().num_atoms(); ia++) {
+        copy(src__.density_matrix(ia), dest__.density_matrix(ia));
+    }
     if (src__.ctx().hubbard_correction()) {
         copy(src__.occupation_matrix(), dest__.occupation_matrix());
     }

@@ -39,10 +39,9 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
                 phi.pw_coeffs(igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
             }
-            for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
-                int ia = phi.spl_num_atoms()[ialoc];
-                for (int xi = 0; xi < num_mt_coeffs[ia]; xi++) {
-                    phi.mt_coeffs(xi, wf::atom_index(ialoc), s, wf::band_index(i)) = utils::random<std::complex<T>>();
+            for (auto it : phi.spl_num_atoms()) {
+                for (int xi = 0; xi < num_mt_coeffs[it.i]; xi++) {
+                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = utils::random<std::complex<T>>();
                 }
             }
         }
@@ -126,7 +125,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     if (args.exist("fp32")) {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         call_test<float>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
 #else
         RTE_THROW("Not compiled with FP32 support");

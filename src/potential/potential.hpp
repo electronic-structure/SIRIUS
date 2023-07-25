@@ -82,8 +82,6 @@ class Potential : public Field4D
 
     sddk::mdarray<double, 2> gamma_factors_R_;
 
-    int lmax_;
-
     std::unique_ptr<SHT> sht_;
 
     int pseudo_density_order_{9};
@@ -120,10 +118,10 @@ class Potential : public Field4D
     std::unique_ptr<PAW_field4D<double>> paw_potential_;
 
     /// Exchange-correlation energy density of PAW atoms pseudodensity.
-    std::unique_ptr<Spheric_function_set<double>> paw_ps_exc_;
+    std::unique_ptr<Spheric_function_set<double, paw_atom_index_t>> paw_ps_exc_;
 
     /// Exchange-correlation energy density of PAW atoms all-electron density.
-    std::unique_ptr<Spheric_function_set<double>> paw_ae_exc_;
+    std::unique_ptr<Spheric_function_set<double, paw_atom_index_t>> paw_ae_exc_;
 
     /// Contribution to D-operator matrix from the PAW atoms.
     std::vector<sddk::mdarray<double, 3>> paw_dij_;
@@ -148,13 +146,14 @@ class Potential : public Field4D
 
     /// Calculate PAW potential for a given atom.
     /** \return Hartree energy contribution. */
-    double calc_PAW_local_potential(int ia, std::vector<Flm const*> ae_density, std::vector<Flm const*> ps_density);
+    double calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density,
+            std::vector<Flm const*> ps_density);
 
-    void calc_PAW_local_Dij(int ia__, sddk::mdarray<double, 3>& paw_dij__);
+    void calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mdarray<double, 3>& paw_dij__);
 
     double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
-    double calc_PAW_one_elec_energy(int ia__, sddk::mdarray<std::complex<double>, 4> const& density_matrix__,
+    double calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<std::complex<double>, 3> const& density_matrix__,
             sddk::mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
@@ -165,8 +164,8 @@ class Potential : public Field4D
         sddk::mdarray<std::complex<double>, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         qmt.zero();
 
-        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
+        for (auto it : unit_cell_.spl_num_atoms()) {
+            auto ia = it.i;
 
             auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.mt()[ia],
                 const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
@@ -253,9 +252,10 @@ class Potential : public Field4D
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        auto ff = ctx_.ri().vloc_->values(q, ctx_.comm());
+        auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
         /* make Vloc(G) */
-        auto v = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
 
@@ -304,14 +304,7 @@ class Potential : public Field4D
               << "  l_by_lm.size: " << l_by_lm_.size();
             RTE_THROW(s);
         }
-        if (lmmax_rho > ctx_.lmmax_rho()) {
-            std::stringstream s;
-            s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
-              << "  lmmax_rho: " << lmmax_rho << std::endl
-              << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
-            RTE_THROW(s);
-        }
-        std::vector<T> qmt(ctx_.lmmax_rho(), 0);
+        std::vector<T> qmt(lmmax_rho, 0);
 
         double R    = atom__.mt_radius();
         int    nmtp = atom__.num_mt_points();
@@ -666,9 +659,8 @@ class Potential : public Field4D
         /* compute contribution from the core */
         double ecore{0};
         #pragma omp parallel for reduction(+:ecore)
-        for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-            int ia_paw = unit_cell_.spl_num_paw_atoms(i);
-            int ia     = unit_cell_.paw_atom_index(ia_paw);
+        for (auto it : unit_cell_.spl_num_paw_atoms()) {
+            auto ia = unit_cell_.paw_atom_index(it.i);
 
             auto& atom = unit_cell_.atom(ia);
 
@@ -700,10 +692,9 @@ class Potential : public Field4D
     {
         double e{0};
         #pragma omp parallel for reduction(+:e)
-        for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-            int ia_paw = unit_cell_.spl_num_paw_atoms(i);
-            int ia     = unit_cell_.paw_atom_index(ia_paw);
-            e += calc_PAW_one_elec_energy(ia, density__.density_matrix(), paw_dij_[ia_paw]);
+        for (auto it : unit_cell_.spl_num_paw_atoms()) {
+            auto ia = unit_cell_.paw_atom_index(it.i);
+            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), density__.density_matrix(ia), paw_dij_[it.i]);
         }
         comm_.allreduce(&e, 1);
         return e;
@@ -736,9 +727,9 @@ class Potential : public Field4D
         return *dveff_;
     }
 
-    auto const& effective_potential_mt(int ialoc) const
+    auto const& effective_potential_mt(atom_index_t::local ialoc) const
     {
-        int ia = unit_cell_.spl_num_atoms(ialoc);
+        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return this->scalar().mt()[ia];
     }
 
@@ -757,9 +748,9 @@ class Potential : public Field4D
         return *hartree_potential_;
     }
 
-    auto const& hartree_potential_mt(int ialoc) const
+    auto const& hartree_potential_mt(atom_index_t::local ialoc) const
     {
-        int ia = unit_cell_.spl_num_atoms(ialoc);
+        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return hartree_potential_->mt()[ia];
     }
 

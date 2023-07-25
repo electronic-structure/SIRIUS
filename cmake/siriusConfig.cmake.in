@@ -40,43 +40,48 @@ if(NOT TARGET sirius::sirius)
   find_package(SPLA 1.1.0 CONFIG ${mode})
   find_package(costa CONFIG ${mode})
 
-  if(@USE_OPENMP@)
+  if(@SIRIUS_USE_OPENMP@)
     find_package(OpenMP ${mode})
   endif()
 
-  if(@USE_MKL@)
-    set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
+  if(@SIRIUS_USE_MKL@)
+    set(SIRIUS_USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
     find_package(MKL ${mode})
-  elseif(@USE_CRAY_LIBSCI@)
+  elseif(@SIRIUS_USE_CRAY_LIBSCI@)
     find_package(CRAY_LIBSCI ${mode})
   else()
     find_package(LAPACK ${mode})
-    if(@USE_SCALAPACK@)
+    if(@SIRIUS_USE_SCALAPACK@)
       find_package(SCALAPACK ${mode}) # just sets scalapack_DIR
     endif()
   endif()
   
-  if(@USE_ELPA@)
+  if(@SIRIUS_USE_ELPA@)
     find_package(Elpa ${mode})
   endif()
 
-  if(@USE_MAGMA@)
+  if(@SIRIUS_USE_MAGMA@)
     find_package(MAGMA ${mode})
   endif()
 
-  if(@USE_VDWXC@)
+  if(@SIRIUS_USE_VDWXC@)
     find_package(LibVDWXC 0.3.0 ${mode})
   endif()
 
-  if(@USE_CUDA@)
+  if(@SIRIUS_USE_CUDA@)
     # TODO: propagate the passed `sm` flag
     find_package(CUDA ${mode})
     include("${CMAKE_CURRENT_LIST_DIR}/cudalibs_target.cmake")
   endif()
 
-  if(@USE_ROCM@)
+  if(@SIRIUS_USE_ROCM@)
     find_package(hip CONFIG ${mode})
     find_package(rocblas CONFIG ${mode})
+    find_package(rocsolver CONFIG ${mode})
+  endif()
+
+  if(@USE_MEMORY_POOL@)
+    find_package(umpire ${mode})
   endif()
 
   # Clean-up module path.

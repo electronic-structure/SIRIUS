@@ -170,12 +170,12 @@ void test_davidson(cmd_args const& args__)
             std::cout << "precision_wf: " << precision_wf << ", precision_hs: " << precision_hs << std::endl;
         }
         if (precision_wf == "fp32" && precision_hs == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             diagonalize<float, std::complex<float>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }
         if (precision_wf == "fp32" && precision_hs == "fp64") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
             diagonalize<float, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
 #endif
         }

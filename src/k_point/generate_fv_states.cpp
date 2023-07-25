@@ -97,18 +97,17 @@ void K_point<T>::generate_fv_states()
         auto out_ptr = &fv_states_->pw_coeffs(0, wf::spin_index(0), wf::band_index(i));
         std::copy(in_ptr, in_ptr + gkvec().count(), out_ptr);
 
-        for (int ialoc = 0; ialoc < alm_fv_slab.spl_num_atoms().local_size(); ialoc++) {
-            int ia = alm_fv_slab.spl_num_atoms()[ialoc];
-            int num_mt_aw = uc.atom(ia).type().mt_aw_basis_size();
+        for (auto it : alm_fv_slab.spl_num_atoms()) {
+            int num_mt_aw = uc.atom(it.i).type().mt_aw_basis_size();
             /* aw part of the muffin-tin coefficients */
             for (int xi = 0; xi < num_mt_aw; xi++) {
-                fv_states_->mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
-                    alm_fv_slab.mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
+                fv_states_->mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i)) =
+                    alm_fv_slab.mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i));
             }
             /* lo part of muffin-tin coefficients */
-            for (int xi = 0; xi < uc.atom(ia).type().mt_lo_basis_size(); xi++) {
-                fv_states_->mt_coeffs(num_mt_aw + xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i)) =
-                    fv_eigen_vectors_slab().mt_coeffs(xi, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(i));
+            for (int xi = 0; xi < uc.atom(it.i).type().mt_lo_basis_size(); xi++) {
+                fv_states_->mt_coeffs(num_mt_aw + xi, it.li, wf::spin_index(0), wf::band_index(i)) =
+                    fv_eigen_vectors_slab().mt_coeffs(xi, it.li, wf::spin_index(0), wf::band_index(i));
             }
         }
     }
@@ -122,7 +121,7 @@ void K_point<T>::generate_fv_states()
 }
 
 template void K_point<double>::generate_fv_states();
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template void K_point<float>::generate_fv_states();
 #endif
 

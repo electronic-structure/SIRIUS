@@ -37,18 +37,21 @@ class PAW_field4D
   private:
     /// Unit cell.
     Unit_cell const& uc_;
+    /// Text label of the field.
+    std::string label_;
     /// All-electron part.
-    std::array<Spheric_function_set<T>, 4> ae_components_;
+    std::array<Spheric_function_set<T, paw_atom_index_t>, 4> ae_components_;
     /// Pseudo-potential part.
-    std::array<Spheric_function_set<T>, 4> ps_components_;
+    std::array<Spheric_function_set<T, paw_atom_index_t>, 4> ps_components_;
     /* copy constructor is forbidden */
     PAW_field4D(PAW_field4D const& src__) = delete;
     /* copy assignment operator is forbidden */
     PAW_field4D& operator=(PAW_field4D const& src__) = delete;
   public:
     /// Constructor
-    PAW_field4D(Unit_cell const& uc__, bool is_global__)
+    PAW_field4D(std::string label__, Unit_cell const& uc__, bool is_global__)
         : uc_{uc__}
+        , label_{label__}
     {
         if (!uc__.num_paw_atoms()) {
             return;
@@ -57,10 +60,10 @@ class PAW_field4D
         auto ptr = (is_global__) ? nullptr : &uc__.spl_num_paw_atoms();
 
         for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
-            ae_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
-                    [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
-            ps_components_[j] = Spheric_function_set<T>(uc__, uc__.paw_atoms(),
-                    [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
+            ae_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
+                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
+            ps_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
+                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
         }
     }
 

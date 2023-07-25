@@ -24,6 +24,9 @@
 
 #include "potential.hpp"
 #include "xc_functional.hpp"
+#include "lapw/generate_gvec_ylm.hpp"
+#include "lapw/generate_sbessel_mt.hpp"
+#include "symmetry/symmetrize_field4d.hpp"
 
 namespace sirius {
 
@@ -40,23 +43,29 @@ Potential::Potential(Simulation_context& ctx__)
         RTE_THROW("Simulation_context is not initialized");
     }
 
-    lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+    int lmax{-1};
 
-    if (lmax_ >= 0) {
-        sht_  = std::unique_ptr<SHT>(new SHT(ctx_.processing_unit(), lmax_, ctx_.cfg().settings().sht_coverage()));
+    if (ctx_.full_potential()) {
+        lmax = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+    } else {
+        lmax = 2 * ctx_.unit_cell().lmax();
+    }
+
+    if (lmax >= 0) {
+        sht_  = std::make_unique<SHT>(ctx_.processing_unit(), lmax, ctx_.cfg().settings().sht_coverage());
         if (ctx_.cfg().control().verification() >= 1)  {
             sht_->check();
         }
-        l_by_lm_ = utils::l_by_lm(lmax_);
+        l_by_lm_ = utils::l_by_lm(lmax);
 
         /* precompute i^l */
-        zil_.resize(lmax_ + 1);
-        for (int l = 0; l <= lmax_; l++) {
+        zil_.resize(lmax + 1);
+        for (int l = 0; l <= lmax; l++) {
             zil_[l] = std::pow(std::complex<double>(0, 1), l);
         }
 
-        zilm_.resize(utils::lmmax(lmax_));
-        for (int l = 0, lm = 0; l <= lmax_; l++) {
+        zilm_.resize(utils::lmmax(lmax));
+        for (int l = 0, lm = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++, lm++) {
                 zilm_[lm] = zil_[l];
             }
@@ -65,7 +74,8 @@ Potential::Potential(Simulation_context& ctx__)
 
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
+        xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label,
+                    ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
             xc_func_.back().set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
@@ -74,11 +84,18 @@ Potential::Potential(Simulation_context& ctx__)
     using pf = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
-    hartree_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
-
-    xc_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
-
-    xc_energy_density_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());}, &ctx_.unit_cell().spl_num_atoms());
+    if (ctx_.full_potential()) {
+        hartree_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
+                &ctx_.unit_cell().spl_num_atoms());
+        xc_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
+                &ctx_.unit_cell().spl_num_atoms());
+        xc_energy_density_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
+                &ctx_.unit_cell().spl_num_atoms());
+    } else {
+        hartree_potential_ = std::make_unique<pf>(ctx_);
+        xc_potential_ = std::make_unique<pf>(ctx_);
+        xc_energy_density_ = std::make_unique<pf>(ctx_);
+    }
 
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
@@ -140,8 +157,10 @@ void Potential::update()
         local_potential_->zero();
         generate_local_potential();
     } else {
-        gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
-        sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
+        gvec_ylm_ = generate_gvec_ylm(ctx_, ctx_.lmax_pot());
+
+        auto lmax = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+        sbessel_mt_ = generate_sbessel_mt(ctx_, lmax + pseudo_density_order_ + 1);
 
         /* compute moments of spherical Bessel functions
          *
@@ -291,7 +310,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (use_symmetry__) {
         /* symmetrize potential and effective magnetic field */
-        this->symmetrize();
+        symmetrize_field4d(*this);
         if (transform_to_rg__) {
             /* transform potential to real space after symmetrization */
             this->fft_transform(1);
