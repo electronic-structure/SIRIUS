@@ -29,6 +29,7 @@
 #include <string>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <sstream>
 
 namespace env {
@@ -37,18 +38,18 @@ namespace env {
 template <typename T>
 inline T const* get_value_ptr(std::string const& name__)
 {
-    static std::map<std::string, T*> map_name;
+    static std::map<std::string, std::unique_ptr<T>> map_name;
     if (map_name.count(name__) == 0) {
         /* first time the function is called */
         const char* raw_str = std::getenv(name__.c_str());
         if (raw_str == NULL) {
             map_name[name__] = nullptr;
         } else {
-            map_name[name__] = new T;
+            map_name[name__] = std::make_unique<T>();
             std::istringstream(std::string(raw_str)) >> (*map_name[name__]);
         }
     }
-    return map_name[name__];
+    return map_name[name__].get();
 }
 
 inline bool
@@ -62,6 +63,13 @@ inline bool
 print_checksum()
 {
     auto val = get_value_ptr<int>("SIRIUS_PRINT_CHECKSUM");
+    return val && *val;
+}
+
+inline bool
+print_hash()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_HASH");
     return val && *val;
 }
 

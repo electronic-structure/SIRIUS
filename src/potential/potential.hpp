@@ -261,7 +261,7 @@ class Potential : public Field4D
 
         local_potential_->fft_transform(1);
 
-        if (ctx_.cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
             utils::print_checksum("local_potential_pw", cs, ctx_.out());

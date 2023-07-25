@@ -64,7 +64,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
         if (diff > 1e-10) {
             RTE_THROW("um is not Hermitian");
         }
-        if (ctx_.print_checksum()) {
+        if (env::print_checksum()) {
             utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
         }
         if (ctx_.processing_unit() == sddk::device_t::GPU) {

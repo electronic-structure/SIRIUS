@@ -268,7 +268,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
         /* add Hartree potential to the total potential */
         effective_potential() += hartree_potential();
 
-        if (ctx_.cfg().control().print_hash()) {
+        if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha", h);
@@ -286,7 +286,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
         /* add XC potential to the effective potential */
         effective_potential() += xc_potential();
 
-        if (ctx_.cfg().control().print_hash()) {
+        if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha+Vxc", h);
@@ -324,7 +324,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
         }
     }
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h = effective_potential().rg().hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("V(G)", h);

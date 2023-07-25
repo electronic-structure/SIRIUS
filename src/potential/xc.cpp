@@ -75,14 +75,14 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         WARNING(s);
     }
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h = rho.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("rho", h);
         }
     }
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = density__.rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
@@ -114,7 +114,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         /* product of gradients */
         grad_rho_grad_rho = dot(grad_rho, grad_rho);
 
-        if (ctx_.cfg().control().print_hash()) {
+        if (env::print_hash()) {
             //auto h1 = lapl_rho.hash_f_rg();
             auto h2 = grad_rho_grad_rho.hash_f_rg();
             if (ctx_.comm().rank() == 0) {
@@ -241,7 +241,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
     } // for loop over xc functionals
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
         utils::print_checksum("exc", cs, ctx_.out());
     }
@@ -261,7 +261,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     auto& rho_up = *result[0];
     auto& rho_dn = *result[1];
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h1 = rho_up.hash_f_rg();
         auto h2 = rho_dn.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
@@ -297,7 +297,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
         grad_rho_up_grad_rho_dn = dot(grad_rho_up, grad_rho_dn);
         grad_rho_dn_grad_rho_dn = dot(grad_rho_dn, grad_rho_dn);
 
-        if (ctx_.cfg().control().print_hash()) {
+        if (env::print_hash()) {
             auto h3 = grad_rho_up_grad_rho_up.hash_f_rg();
             auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
@@ -465,7 +465,7 @@ void Potential::xc(Density const& density__)
         xc_rg_magnetic<add_pseudo_core__>(density__);
     }
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h = xc_energy_density_->rg().hash_f_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("Exc", h);

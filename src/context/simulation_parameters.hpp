@@ -194,11 +194,6 @@ class Simulation_parameters
         return level__;
     }
 
-    auto print_checksum() const
-    {
-        return cfg().control().print_checksum();
-    }
-
     inline int lmax_rho() const
     {
         return cfg().parameters().lmax_rho();

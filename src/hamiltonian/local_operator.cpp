@@ -65,7 +65,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
                 .allocate(get_memory_pool(sddk::memory_t::device))
                 .copy_to(sddk::memory_t::device);
         }
-        if (ctx_.print_checksum()) {
+        if (env::print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
             auto cs2 = veff_vec_[v_local_index_t::theta]->checksum_rg();
             utils::print_checksum("theta_pw", cs1, ctx_.out());
@@ -151,7 +151,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             }
         }
 
-        if (ctx_.print_checksum()) {
+        if (env::print_checksum()) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 auto cs1 = veff_vec_[j]->checksum_pw();
                 auto cs2 = veff_vec_[j]->checksum_rg();

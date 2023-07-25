@@ -181,14 +181,14 @@ Density::initial_density_pseudo()
     auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto z1 = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
         utils::print_checksum("rho_pw_init", z1, ctx_.out());
     }
     std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
-    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash() && ctx_.comm().rank() == 0) {
         auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
         utils::print_hash("rho_pw_init", h);
     }
@@ -205,7 +205,7 @@ Density::initial_density_pseudo()
         }
     }
     rho().rg().fft_transform(1);
-    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash() && ctx_.comm().rank() == 0) {
         auto h = rho().rg().values().hash();
         utils::print_hash("rho_rg_init", h);
     }
@@ -217,7 +217,7 @@ Density::initial_density_pseudo()
     /* renormalize charge */
     normalize();
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
         utils::print_checksum("rho_rg_init", cs, ctx_.out());
     }
@@ -252,7 +252,7 @@ Density::initial_density_pseudo()
     }
     this->fft_transform(-1);
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs  = component(i).rg().checksum_rg();
             auto cs1 = component(i).rg().checksum_pw();
@@ -286,7 +286,7 @@ Density::initial_density_full_pot()
         unit_cell_.atom_type(iat).init_free_atom_density(false);
     }
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto z = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
         utils::print_checksum("rho_pw", z, ctx_.out());
@@ -297,7 +297,7 @@ Density::initial_density_full_pot()
     /* convert charge density to real space mesh */
     rho().rg().fft_transform(1);
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
         utils::print_checksum("rho_rg", cs, ctx_.out());
     }
@@ -1336,7 +1336,7 @@ Density::generate_valence(K_point_set const& ks__)
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
         /* print checksum if needed */
-        if (ctx_.cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
             mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
             utils::print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
@@ -1357,7 +1357,7 @@ Density::generate_valence(K_point_set const& ks__)
             rho().rg().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
+        if (env::print_hash() && ctx_.comm().rank() == 0) {
             auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);
         }
@@ -1422,7 +1422,7 @@ Density::generate_rho_aug()
         /* convert to real matrix */
         auto dm = density_matrix_aux(atom_type);
 
-        if (ctx_.cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             auto cs = dm.checksum();
             utils::print_checksum("density_matrix_aux", cs, ctx_.out());
         }
@@ -1533,13 +1533,13 @@ Density::generate_rho_aug()
         rho_aug.copy_to(sddk::memory_t::host);
     }
 
-    if (ctx_.cfg().control().print_checksum()) {
+    if (env::print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
         utils::print_checksum("rho_aug", cs, ctx_.out());
     }
 
-    if (ctx_.cfg().control().print_hash()) {
+    if (env::print_hash()) {
         auto h = rho_aug.hash();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("rho_aug", h);

@@ -382,26 +382,6 @@
                     "default" : 10,
                     "title" : "Number of eigen-values that are printed to the standard output."
                 },
-                "print_performance" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : " If true then performance of some compute-intensive kernels will be printed to the standard output."
-                },
-                "print_memory_usage" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then memory usage will be printed to the standard output."
-                },
-                "print_checksum" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the checksums of some arrays will be printed (useful during debug)."
-                },
-                "print_hash" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the hash sums of some arrays will be printed."
-                },
                 "print_stress" : {
                     "type" : "boolean",
                     "default" : false,
@@ -411,11 +391,6 @@
                     "type" : "boolean",
                     "default" : false,
                     "title" : "If true then the atomic forces are printed at the end of SCF run."
-                },
-                "print_timers" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "If true then the timer statistics is printed at the end of SCF run."
                 },
                 "print_neighbors" : {
                     "type" : "boolean",
@@ -704,7 +679,7 @@
                     "default" : 1e-9,
                     "title" : "CG tolerance"
                 },
-                "procssing_unit": {
+                "processing_unit": {
                     "type": "string",
                     "default": "",
                     "enum": [

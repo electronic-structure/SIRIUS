@@ -93,17 +93,6 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define STOP() TERMINATE("terminated by request")
 
-template <typename T, typename OUT>
-inline void print_checksum(std::string label__, T value__, OUT&& out__)
-{
-    out__ << "checksum(" << label__ << ") : " << value__ << std::endl;
-}
-
-inline void print_hash(std::string label__, unsigned long long int hash__)
-{
-    std::printf("hash(%s): %llx\n", label__.c_str(), hash__);
-}
-
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
 inline int lmmax(int lmax)
 {
@@ -509,6 +498,17 @@ inline auto split(std::string const str__, char delim__)
         result.push_back(s);
     }
     return result;
+}
+
+template <typename T, typename OUT>
+inline void print_checksum(std::string label__, T value__, OUT&& out__)
+{
+    out__ << "checksum(" << label__ << ") : " << ffmt(16, 8) << value__ << std::endl;
+}
+
+inline void print_hash(std::string label__, unsigned long long int hash__)
+{
+    std::printf("hash(%s): %llx\n", label__.c_str(), hash__);
 }
 
 } // namespace

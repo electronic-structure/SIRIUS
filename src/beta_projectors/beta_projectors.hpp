@@ -85,7 +85,7 @@ class Beta_projectors : public Beta_projectors_base<T>
             }
         }
 
-        if (this->ctx_.cfg().control().print_checksum()) {
+        if (env::print_checksum()) {
             auto c1 = this->pw_coeffs_t_.checksum();
             comm.allreduce(&c1, 1);
             if (comm.rank() == 0) {

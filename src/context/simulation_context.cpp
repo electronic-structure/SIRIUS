@@ -482,11 +482,6 @@ Simulation_context::initialize()
         print_info(this->out());
     }
 
-    auto pcs = env::print_checksum();
-    if (pcs) {
-        this->cfg().control().print_checksum(true);
-    }
-
     auto print_mpi_layout = env::print_mpi_layout();
 
     if (verbosity() >= 3 || print_mpi_layout) {
