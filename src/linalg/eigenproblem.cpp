@@ -44,8 +44,6 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
 
     PROFILE_START("Eigensolver_elpa|solve_gen|setup");
 
-    int bs = A__.bs_row();
-
     int error;
     elpa_t handle;
 
@@ -53,28 +51,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     if (error != ELPA_OK) {
         return 1;
     }
-    elpa_set_integer(handle, "na", matrix_size__, &error);
-    elpa_set_integer(handle, "nev", nev__, &error);
-    elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-    elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-    elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
-    elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-    elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-    elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-    elpa_set_integer(handle, "omp_threads", nt, &error);
-    //if (error != ELPA_OK) {
-    //    TERMINATE("can't set elpa threads");
-    //}
-    if (acc::num_devices() != 0) {
-        elpa_set_integer(handle, "gpu", 1, &error);
-    }
-    if (stage_ == 1) {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-    } else {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-    }
-    elpa_setup(handle);
+    setup_handler(handle, A__, matrix_size__, nev__);
+
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
@@ -129,8 +107,6 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 
     PROFILE_START("Eigensolver_elpa|solve_gen|setup");
 
-    int bs = A__.bs_row();
-
     int error;
     elpa_t handle;
 
@@ -138,28 +114,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     if (error != ELPA_OK) {
         return 1;
     }
-    elpa_set_integer(handle, "na", matrix_size__, &error);
-    elpa_set_integer(handle, "nev", nev__, &error);
-    elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-    elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-    elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
-    elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-    elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-    elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-    elpa_set_integer(handle, "omp_threads", nt, &error);
-    //if (error != ELPA_OK) {
-    //    TERMINATE("can't set elpa threads");
-    //}
-    if (acc::num_devices() != 0) {
-        elpa_set_integer(handle, "gpu", 1, &error);
-    }
-    if (stage_ == 1) {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-    } else {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-    }
-    elpa_setup(handle);
+    setup_handler(handle, A__, matrix_size__, nev__);
+
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
@@ -225,8 +181,6 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
 
     PROFILE_START("Eigensolver_elpa|solve_std|setup");
 
-    int bs = A__.bs_row();
-
     int error;
     elpa_t handle;
 
@@ -234,28 +188,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     if (error != ELPA_OK) {
         return 1;
     }
-    elpa_set_integer(handle, "na", matrix_size__, &error);
-    elpa_set_integer(handle, "nev", nev__, &error);
-    elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-    elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-    elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
-    elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-    elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-    elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-    elpa_set_integer(handle, "omp_threads", nt, &error);
-    //if (error != ELPA_OK) {
-    //    TERMINATE("can't set elpa threads");
-    //}
-    if (acc::num_devices() != 0) {
-        elpa_set_integer(handle, "gpu", 1, &error);
-    }
-    if (stage_ == 1) {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-    } else {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-    }
-    elpa_setup(handle);
+    setup_handler(handle, A__, matrix_size__, nev__);
+
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
@@ -290,8 +224,6 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 
     PROFILE_START("Eigensolver_elpa|solve_std|setup");
 
-    int bs = A__.bs_row();
-
     int error;
     elpa_t handle;
 
@@ -299,28 +231,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     if (error != ELPA_OK) {
         return 1;
     }
-    elpa_set_integer(handle, "na", matrix_size__, &error);
-    elpa_set_integer(handle, "nev", nev__, &error);
-    elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
-    elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
-    elpa_set_integer(handle, "nblk", bs, &error);
-    elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().native()), &error);
-    elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
-    elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-    elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-    elpa_set_integer(handle, "omp_threads", nt, &error);
-    //if (error != ELPA_OK) {
-    //    TERMINATE("can't set elpa threads");
-    //}
-    if (acc::num_devices() != 0) {
-        elpa_set_integer(handle, "gpu", 1, &error);
-    }
-    if (stage_ == 1) {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
-    } else {
-        elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
-    }
-    elpa_setup(handle);
+    setup_handler(handle, A__, matrix_size__, nev__);
+
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
     auto& mph = get_memory_pool(sddk::memory_t::host);

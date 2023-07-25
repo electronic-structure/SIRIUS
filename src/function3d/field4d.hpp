@@ -46,15 +46,30 @@ class Field4D
   protected:
     Simulation_context& ctx_;
 
-    void symmetrize(Periodic_function<double>* f__,
-                    Periodic_function<double>* gz__,
-                    Periodic_function<double>* gx__,
-                    Periodic_function<double>* gy__);
-
   public:
     /// Constructor.
     Field4D(Simulation_context& ctx__, lmax_t lmax__,
-            std::array<periodic_function_ptr_t<double> const*, 4> ptr__ = {nullptr, nullptr, nullptr, nullptr});
+            std::array<periodic_function_ptr_t<double> const*, 4> ptr__ = {nullptr, nullptr, nullptr, nullptr})
+        : ctx_{ctx__}
+    {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            smooth_periodic_function_ptr_t<double> const* ptr_rg{nullptr};
+            spheric_function_set_ptr_t<double> const* ptr_mt{nullptr};
+            if (ptr__[i] && ptr__[i]->rg.ptr) {
+                ptr_rg = &ptr__[i]->rg;
+            }
+            if (ptr__[i] && ptr__[i]->mt.ptr) {
+                ptr_mt = &ptr__[i]->mt;
+            }
+            if (ctx_.full_potential()) {
+                /* allocate with global MT part */
+                components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;}, nullptr,
+                        ptr_rg, ptr_mt);
+            } else {
+                components_[i] = std::make_unique<Periodic_function<double>>(ctx_, ptr_rg);
+            }
+        }
+    }
 
     /// Return scalar part of the field.
     inline auto& scalar()
@@ -127,10 +142,50 @@ class Field4D
         return ctx_;
     }
 
-    /// Symmetrize the scalar and vector components of the filed with crystall symmetries.
-    void symmetrize()
+    auto mt_components()
     {
-        this->symmetrize(&this->scalar(), &this->vector(0), &this->vector(1), &this->vector(2));
+        std::vector<Spheric_function_set<double, atom_index_t>*> result;
+        result.push_back(&components_[0]->mt());
+        switch (ctx_.num_mag_dims()) {
+            case 1: {
+                /* z-component */
+                result.push_back(&components_[1]->mt());
+                break;
+            }
+            case 3: {
+                /* x-component */
+                result.push_back(&components_[2]->mt());
+                /* y-component */
+                result.push_back(&components_[3]->mt());
+                /* z-component */
+                result.push_back(&components_[1]->mt());
+                break;
+            }
+        }
+        return result;
+    }
+
+    auto pw_components()
+    {
+        std::vector<Smooth_periodic_function<double>*> result;
+        result.push_back(&components_[0]->rg());
+        switch (ctx_.num_mag_dims()) {
+            case 1: {
+                /* z-component */
+                result.push_back(&components_[1]->rg());
+                break;
+            }
+            case 3: {
+                /* x-component */
+                result.push_back(&components_[2]->rg());
+                /* y-component */
+                result.push_back(&components_[3]->rg());
+                /* z-component */
+                result.push_back(&components_[1]->rg());
+                break;
+            }
+        }
+        return result;
     }
 };
 

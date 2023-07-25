@@ -98,7 +98,7 @@ class Stress
   private:
     Simulation_context& ctx_;
 
-    Density& density_;
+    Density const& density_;
 
     Potential& potential_;
 
@@ -217,8 +217,6 @@ class Stress
      */
     template <typename T, typename F>
     void calc_stress_nonloc_aux();
-
-    void symmetrize(r3::matrix<double>& mtrx__) const;
 
   public:
     Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)

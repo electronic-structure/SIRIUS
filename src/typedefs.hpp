@@ -26,8 +26,8 @@
 #define __TYPEDEFS_HPP__
 
 #include <cstdlib>
-//#include <assert.h>
 #include <complex>
+#include <cstdint>
 #include <vector>
 #include <array>
 #include <limits>
@@ -151,21 +151,6 @@ inline std::ostream& operator<<(std::ostream& out, radial_solution_descriptor co
 
 /// Set of radial solution descriptors, used to construct augmented waves or local orbitals.
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
-
-/// Descriptor of a local orbital radial function.
-struct local_orbital_descriptor
-{
-    /// Orbital quantum number \f$ \ell \f$.
-    int l;
-
-    /// Total angular momentum used in pseudopotential SO code.
-    double total_angular_momentum; // TODO: is this necessary?
-
-    /// Set of radial solution descriptors.
-    /** Local orbital is constructed from at least two radial functions in order to make it zero at the
-     *  muffin-tin sphere boundary. */
-    radial_solution_descriptor_set rsd_set;
-};
 
 /// Descriptor of an atom in a list of nearest neighbours for each atom.
 /** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */

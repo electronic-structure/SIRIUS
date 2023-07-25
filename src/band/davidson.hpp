@@ -29,6 +29,8 @@
 #include "band/band.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "utils/profiler.hpp"
+#include "k_point/k_point.hpp"
+#include "hamiltonian/hamiltonian.hpp"
 #include "residuals.hpp"
 
 namespace sirius {

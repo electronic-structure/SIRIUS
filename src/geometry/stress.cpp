@@ -28,7 +28,7 @@
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
 #include "dft/energy.hpp"
-#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/symmetrize_stress_tensor.hpp"
 
 namespace sirius {
 
@@ -44,15 +44,14 @@ Stress::calc_stress_nonloc_aux()
     stress_nonloc_.zero();
 
     /* if there are no beta projectors then get out there */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         return;
     }
 
     print_memory_usage(ctx_.out(), FILE_LINE);
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<T>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<T>(it.i);
         auto mem = ctx_.processing_unit_memory_t();
         auto mg = kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
         Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
@@ -81,7 +80,7 @@ Stress::calc_stress_nonloc_aux()
 
     stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_nonloc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_nonloc_);
 }
 
 r3::matrix<double>
@@ -118,7 +117,7 @@ Stress::calc_stress_hubbard()
     auto r = ctx_.unit_cell().num_hubbard_wf();
     /* if there are no beta projectors then get out there */
     /* TODO : Need to fix the case where pp have no beta projectors */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         TERMINATE("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
         return stress_hubbard_;
     }
@@ -131,14 +130,13 @@ Stress::calc_stress_hubbard()
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         dn.allocate(ctx_.processing_unit_memory_t());
     }
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<double>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(it.i);
         dn.zero();
         if (is_device_memory(ctx_.processing_unit_memory_t())) {
             dn.zero(ctx_.processing_unit_memory_t());
         }
-        kp->beta_projectors().prepare();
+        // kp->beta_projectors().prepare();
         auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
         auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
         auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
@@ -204,12 +202,11 @@ Stress::calc_stress_hubbard()
                 stress_hubbard_(dir1, dir2) -= d / ctx_.unit_cell().omega();
             }
         }
-        kp->beta_projectors().dismiss();
     }
 
     /* global reduction */
     kset_.comm().allreduce(&stress_hubbard_(0, 0), 9);
-    symmetrize(stress_hubbard_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_hubbard_);
 
     stress_hubbard_ = -1.0 * stress_hubbard_;
 
@@ -239,9 +236,10 @@ Stress::calc_stress_core()
 
     potential_.xc_potential().rg().fft_transform(-1);
 
-    auto q     = ctx_.gvec().shells_len();
-    auto ff    = ctx_.ps_core_ri_djl().values(q, ctx_.comm());
-    auto drhoc = ctx_.make_periodic_function<sddk::index_domain_t::local>(ff);
+    auto q        = ctx_.gvec().shells_len();
+    auto const ff = ctx_.ri().ps_core_djl_->values(q, ctx_.comm());
+    auto drhoc    = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                        ctx_.phase_factors_t(), ff);
 
     double sdiag{0};
     int ig0 = ctx_.gvec().skip_g0();
@@ -277,7 +275,7 @@ Stress::calc_stress_core()
 
     ctx_.comm().allreduce(&stress_core_(0, 0), 9);
 
-    symmetrize(stress_core_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_core_);
 
     return stress_core_;
 }
@@ -364,7 +362,7 @@ Stress::calc_stress_xc()
         stress_xc_ += t;
     }
 
-    symmetrize(stress_xc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_xc_);
 
     return stress_xc_;
 }
@@ -377,7 +375,7 @@ Stress::calc_stress_us()
     stress_us_.zero();
 
     /* check if we have beta projectors. Only for pseudo potentials */
-    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+    if (ctx_.unit_cell().max_mt_basis_size() == 0) {
         return stress_us_;
     }
 
@@ -408,12 +406,13 @@ Stress::calc_stress_us()
             continue;
         }
 
-        Augmentation_operator q_deriv(ctx_.unit_cell().atom_type(iat), ctx_.gvec(), ctx_.aug_ri(), ctx_.aug_ri_djl());
+        Augmentation_operator q_deriv(ctx_.unit_cell().atom_type(iat), ctx_.gvec(), *ctx_.ri().aug_,
+                *ctx_.ri().aug_djl_);
 
         auto nbf = atom_type.mt_basis_size();
 
         /* get auxiliary density matrix */
-        auto dm = density_.density_matrix_aux(density_.density_matrix(), iat);
+        auto dm = density_.density_matrix_aux(atom_type);
 
         sddk::mdarray<std::complex<double>, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
                                                        get_memory_pool(sddk::memory_t::host));
@@ -482,7 +481,7 @@ Stress::calc_stress_us()
 
     stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_us_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_us_);
 
     return stress_us_;
 }
@@ -553,7 +552,7 @@ Stress::calc_stress_ewald()
         }
     }
 
-    symmetrize(stress_ewald_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_ewald_);
 
     return stress_ewald_;
 }
@@ -640,7 +639,7 @@ Stress::calc_stress_har()
 
     ctx_.comm().allreduce(&stress_har_(0, 0), 9);
 
-    symmetrize(stress_har_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_har_);
 
     return stress_har_;
 }
@@ -651,9 +650,8 @@ Stress::calc_stress_kin_aux()
 {
     stress_kin_.zero();
 
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_.get<T>(ik);
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<T>(it.i);
 
         double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
         fact *=  kp->weight();
@@ -687,7 +685,7 @@ Stress::calc_stress_kin_aux()
 
     stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
 
-    symmetrize(stress_kin_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_kin_);
 }
 
 r3::matrix<double>
@@ -704,28 +702,6 @@ Stress::calc_stress_kin()
     return stress_kin_;
 }
 
-void
-Stress::symmetrize(r3::matrix<double>& mtrx__) const
-{
-    if (!ctx_.use_symmetry()) {
-        return;
-    }
-
-    r3::matrix<double> result;
-
-    for (int i = 0; i < ctx_.unit_cell().symmetry().size(); i++) {
-        auto R = ctx_.unit_cell().symmetry()[i].spg_op.Rcp;
-        result = result + dot(dot(transpose(R), mtrx__), R);
-    }
-
-    mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().size());
-
-    std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-    for (auto e : idx) {
-        mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
-    }
-}
-
 r3::matrix<double>
 Stress::calc_stress_vloc()
 {
@@ -733,12 +709,14 @@ Stress::calc_stress_vloc()
 
     stress_vloc_.zero();
 
-    auto q          = ctx_.gvec().shells_len();
-    auto ri_vloc    = ctx_.vloc_ri().values(q, ctx_.comm());
-    auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q, ctx_.comm());
+    auto q                = ctx_.gvec().shells_len();
+    auto const ri_vloc    = ctx_.ri().vloc_->values(q, ctx_.comm());
+    auto const ri_vloc_dg = ctx_.ri().vloc_djl_->values(q, ctx_.comm());
 
-    auto v  = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc);
-    auto dv = ctx_.make_periodic_function<sddk::index_domain_t::local>(ri_vloc_dg);
+    auto v  = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ri_vloc);
+    auto dv = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+                ctx_.phase_factors_t(), ri_vloc_dg);
 
     double sdiag{0};
 
@@ -771,7 +749,7 @@ Stress::calc_stress_vloc()
 
     ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
-    symmetrize(stress_vloc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vloc_);
 
     return stress_vloc_;
 }

@@ -136,8 +136,8 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         if (!utils::file_exists(storage_file_name)) {
             RTE_THROW("storage file is not found");
         }
-        density.load();
-        potential.load();
+        density.load(storage_file_name);
+        potential.load(storage_file_name);
     } else {
         dft.initial_state();
     }
@@ -493,7 +493,7 @@ void run_tasks(cmd_args const& args)
         ks.initialize();
 
         //density.initial_density();
-        density.load();
+        density.load(storage_file_name);
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
         Hamiltonian0<double> H0(potential, true);
@@ -586,9 +586,15 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    run_tasks(args);
-
     int my_rank = mpi::Communicator::world().rank();
+
+    try {
+        run_tasks(args);
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    } catch (...) {
+        std::cout << "unknown exception" << std::endl;
+    }
 
     sirius::finalize(1);
 

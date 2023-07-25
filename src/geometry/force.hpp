@@ -26,6 +26,7 @@
 #define __FORCE_HPP__
 
 #include "hamiltonian/hamiltonian.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
 
 namespace sirius {
 /* forward declaration */
@@ -44,7 +45,7 @@ class Force
   private:
     Simulation_context& ctx_;
 
-    Density& density_;
+    const Density& density_;
 
     Potential& potential_;
 
@@ -76,8 +77,6 @@ class Force
 
     template <typename T, typename F>
     void add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const;
-
-    void symmetrize(sddk::mdarray<double, 2>& forces__) const;
 
     /** In the second-variational approach we need to compute the following expression for the k-dependent
      *  contribution to the forces:

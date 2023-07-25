@@ -174,6 +174,7 @@ template <typename T>
 class Hamiltonian_k
 {
   private:
+    /// K-point independent part of Hamiltonian.
     Hamiltonian0<T>& H0_;
     K_point<T>& kp_;
     /// Hubbard correction.
@@ -344,17 +345,14 @@ class Hamiltonian_k
      *
      *  \param [in]  apw_only   True if only APW-APW block of H and O are applied.
      *  \param [in]  phi_is_lo  True if input wave-functions are pure local orbitals.
-     *  \param [in]  N          Starting index of wave-functions.
-     *  \param [in]  n          Number of wave-functions to which H and S are applied.
+     *  \param [in]  b          Range of bands.
      *  \param [in]  phi        Input wave-functions.
      *  \param [out] hphi       Result of Hamiltonian, applied to wave-functions.
      *  \param [out] ophi       Result of overlap operator, applied to wave-functions.
      */
-    //void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-    //                  sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* ophi__);
-
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
                       wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__);
+
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
      *  \f[
@@ -436,21 +434,15 @@ class Hamiltonian_k
                            sddk::mdarray<std::complex<T>, 2>& o) const;
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
-    /** \param [in]  spins Spin index range
-     *  \param [in]  N     Starting index of wave-functions.
-     *  \param [in]  n     Number of wave-functions to which H and S are applied.
+    /** \tparam F    Type of the subspace matrix.
+     *  \param [in]  spins Range of spins.
+     *  \param [in]  br    Range of bands.
      *  \param [in]  phi   Input wave-functions [storage: CPU && GPU].
      *  \param [out] hphi  Result of Hamiltonian, applied to wave-functions [storage: CPU || GPU].
      *  \param [out] sphi  Result of S-operator, applied to wave-functions [storage: CPU || GPU].
      *
      *  In non-collinear case (spins in [0,1]) the Hamiltonian and S operator are applied to both components of spinor
      *  wave-functions. Otherwise they are applied to a single component.
-     */
-    //template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
-    //void apply_h_s(sddk::spin_range spins__, int N__, int n__, sddk::Wave_functions<T>& phi__,
-    //               sddk::Wave_functions<T>* hphi__, sddk::Wave_functions<T>* sphi__);
-
-    /** \tparam F  Type of the subspace matrix.
      */
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
@@ -487,8 +479,10 @@ class Hamiltonian_k
         }
 
         /* return if there are no beta-projectors */
-        if (H0().ctx().unit_cell().mt_lo_basis_size()) {
-            apply_non_local_D_Q<T, F>(mem, spins__, br__, kp().beta_projectors(), phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+        if (H0().ctx().unit_cell().max_mt_basis_size()) {
+            auto bp_generator = kp().beta_projectors().make_generator();
+            auto beta_coeffs  = bp_generator.prepare();
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
         }
 
         /* apply the hubbard potential if relevant */

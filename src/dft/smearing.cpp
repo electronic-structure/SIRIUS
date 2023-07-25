@@ -59,7 +59,7 @@ fermi_dirac::entropy(double x__, double width__)
  * \f]
  */
 double
-fermi_dirac::occupancy_deriv2(double x__, double width__)
+fermi_dirac::dxdelta(double x__, double width__)
 {
     double exw = std::exp(x__ / width__);
     double w2  = width__ * width__;
@@ -67,24 +67,27 @@ fermi_dirac::occupancy_deriv2(double x__, double width__)
 }
 
 double
-cold::delta(double x__, double width__)
-{
-    double x = x__ / width__ - 1.0 / sqrt2;
-    return std::exp(-std::pow(x, 2)) * (2 * width__ - sqrt2 * x__) / std::sqrt(pi) / width__ / width__;
-}
-
-double
 cold::occupancy(double x__, double width__)
 {
-    double x = x__ / width__ - 1.0 / sqrt2;
-    return std::erf(x) / 2.0 + std::exp(-std::pow(x, 2)) / std::sqrt(2 * pi) + 0.5;
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    double f  = std::erf(x) / 2.0 + 0.5;
+
+    if (x2 > 700)
+        return f;
+
+    // std::erf(x) / 2.0 + std::exp(-x2) / std::sqrt(2 * pi) + 0.5;
+    return f + std::exp(-x2) / std::sqrt(2 * pi);
 }
 
 double
-cold::entropy(double x__, double width__)
+cold::delta(double x__, double width__)
 {
-    double x = x__ / width__ - 1.0 / sqrt2;
-    return -std::exp(-std::pow(x, 2)) * (width__ - sqrt2 * x__) / 2 / std::sqrt(pi);
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    if (x2 > 700)
+        return 0;
+    return std::exp(-x2) * (2 * width__ - sqrt2 * x__) / std::sqrt(pi) / width__ / width__;
 }
 
 /** Second derivative of the occupation function \f$f(x,w)\f$.
@@ -93,16 +96,29 @@ cold::entropy(double x__, double width__)
  * w^2}, \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
  */
 double
-cold::occupancy_deriv2(double x__, double width__)
+cold::dxdelta(double x__, double width__)
 {
-    double sqrt2  = std::sqrt(2.0);
-    double z      = x__ / width__ - 1 / sqrt2;
-    double expmz2 = std::exp(-z * z);
+    double sqrt2 = std::sqrt(2.0);
+    double z     = x__ / width__ - 1 / sqrt2;
+    double z2    = z * z;
+    if (z2 > 700)
+        return 0;
+    double expmz2 = std::exp(-z2);
     return expmz2 * (-sqrt2 - 2 * z + 2 * sqrt2 * z * z) / std::sqrt(pi) / width__ / width__;
 }
 
+double
+cold::entropy(double x__, double width__)
+{
+    double x  = x__ / width__ - 1.0 / sqrt2;
+    double x2 = x * x;
+    if (x2 > 700)
+        return 0;
+    return -std::exp(-x2) * (width__ - sqrt2 * x__) / 2 / std::sqrt(pi);
+}
+
 /**
-   These are the coefficients \f$A_n\f$ required to compute the MP-smearing:
+   Coefficients \f$A_n\f$ required to compute the MP-smearing:
    \f[
    \frac{(-1)^n}{n! 4^n \sqrt{\pi}}
    \f]
@@ -113,17 +129,6 @@ mp_coefficients(int n)
     double sqrtpi = std::sqrt(pi);
     int sign      = n % 2 == 0 ? 1 : -1;
     return sign / tgamma(n + 1) / std::pow(4, n) / sqrtpi;
-}
-
-double
-methfessel_paxton::delta(double x__, double width__, int n__)
-{
-    double result{0};
-    double z = -x__ / width__;
-    for (int i = 1; i <= n__; ++i) {
-        result += mp_coefficients(i) * sf::hermiteh(2 * i, z) * std::exp(-z * z);
-    }
-    return result;
 }
 
 double
@@ -141,7 +146,7 @@ methfessel_paxton::occupancy(double x__, double width__, int n__)
 }
 
 double
-methfessel_paxton::occupancy_deriv(double x__, double width__, int n__)
+methfessel_paxton::delta(double x__, double width__, int n__)
 {
     double z      = -x__ / width__;
     double result = -std::exp(-z * z) / std::sqrt(pi) / width__ * (-1);
@@ -153,7 +158,7 @@ methfessel_paxton::occupancy_deriv(double x__, double width__, int n__)
 }
 
 double
-methfessel_paxton::occupancy_deriv2(double x__, double width__, int n__)
+methfessel_paxton::dxdelta(double x__, double width__, int n__)
 {
     double z      = -x__ / width__;
     double result = 2 * std::exp(-z * z) * z / std::sqrt(pi) / (width__ * width__);

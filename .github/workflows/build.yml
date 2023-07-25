@@ -34,6 +34,17 @@ jobs:
         run: |
           cd ${GITHUB_WORKSPACE}/build
           spack --color always build-env $DEVSPEC -- ctest --output-on-failure -L cpu_serial
+      - name: Build QE
+        run: |
+          spack install $DEVSPEC
+          cd ${GITHUB_WORKSPACE}
+          git clone --depth 1 https://github.com/electronic-structure/q-e-sirius.git
+          cd q-e-sirius
+          mkdir build
+          cd build
+          export sirius_DIR=$(spack location -i sirius)
+          spack --color always build-env $DEVSPEC -- cmake .. -DQE_ENABLE_SIRIUS=1
+          spack --color always build-env $DEVSPEC -- make
 
   build_cuda:
     runs-on: ubuntu-latest

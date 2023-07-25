@@ -64,7 +64,7 @@ class Periodic_function
     Smooth_periodic_function<T> rg_component_;
 
     /// Muffin-tin part of the periodic function.
-    Spheric_function_set<T> mt_component_;
+    Spheric_function_set<T, atom_index_t> mt_component_;
 
     /// Alias to G-vectors.
     fft::Gvec const& gvec_;
@@ -88,14 +88,14 @@ class Periodic_function
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
     Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex<sddk::splindex_t::block> const* spl_atoms__ = nullptr,
+            sddk::splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
             smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
             spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
         , rg_component_(ctx__.spfft<real_type<T>>(), ctx__.gvec_fft_sptr(), rg_ptr__)
-        , mt_component_(ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
+        , mt_component_("MT component of Periodic_function", ctx__.unit_cell(), lmax__, spl_atoms__, mt_ptr__)
         , gvec_(ctx__.gvec())
     {
     }
@@ -162,9 +162,8 @@ class Periodic_function
         if (ctx_.full_potential()) {
             mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia     = unit_cell_.spl_num_atoms(ialoc);
-                mt_val[ia] = mt_component_[ia].component(0).integrate(2) * fourpi * y00;
+            for (auto it : unit_cell_.spl_num_atoms()) {
+                mt_val[it.i] = mt_component_[it.i].component(0).integrate(2) * fourpi * y00;
             }
 
             comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());
@@ -177,46 +176,47 @@ class Periodic_function
     }
 
     /** \todo write and read distributed functions */
-    void hdf5_write(std::string storage_file_name__, std::string path__)
+    void hdf5_write(std::string file_name__, std::string path__) const
     {
         auto v = this->rg().gather_f_pw();
         if (ctx_.comm().rank() == 0) {
-            sddk::HDF5_tree fout(storage_file_name, sddk::hdf5_access_t::read_write);
+            sddk::HDF5_tree fout(file_name__, sddk::hdf5_access_t::read_write);
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    std::stringstream s;
-                    s << "f_mt_" << ia;
-                    fout[path__].write(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+                    fout[path__].write("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                            mt_component_[ia].size());
                 }
             }
         }
     }
 
-    void hdf5_read(sddk::HDF5_tree h5f__, sddk::mdarray<int, 2>& gvec__)
+    void hdf5_read(std::string file_name__, std::string path__, sddk::mdarray<int, 2> const& gvec__)
     {
+        sddk::HDF5_tree h5f(file_name__, sddk::hdf5_access_t::read_only);
+
+        /* read the PW coeffs. */
         std::vector<std::complex<T>> v(gvec_.num_gvec());
-        h5f__.read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
+        h5f[path__].read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
-        std::map<r3::vector<int>, int> local_gvec_mapping;
-
-        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            auto G                = gvec_.gvec<sddk::index_domain_t::local>(igloc);
-            local_gvec_mapping[G] = igloc;
-        }
-
+        sddk::mdarray<int, 1> igmap(gvec_.count());
         for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
             r3::vector<int> G(&gvec__(0, ig));
-            if (local_gvec_mapping.count(G) != 0) {
-                this->rg().f_pw_local(local_gvec_mapping[G]) = v[ig];
+            /* locl index in a new (current) layout */
+            auto igloc = gvec_.index_by_gvec(G) - gvec_.offset();
+            /* only one rank will store the G-vector index ig */
+            if (igloc >= 0 && igloc < gvec_.count()) {
+                igmap[igloc] = ig;
             }
+        }
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            this->rg().f_pw_local(igloc) = v[igmap[igloc]];
         }
 
         if (ctx_.full_potential()) {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                std::stringstream s;
-                s << "f_mt_" << ia;
-                h5f__.read(s.str(), mt_component_[ia].at(sddk::memory_t::host), mt_component_[ia].size());
+                h5f[path__].read("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                        mt_component_[ia].size());
             }
         }
     }

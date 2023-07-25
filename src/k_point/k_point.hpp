@@ -325,7 +325,7 @@ class K_point
                             sufficient storage space.
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<experimental::basis_functions_index const*(int)> indexb__,
+                                        std::function<basis_functions_index const*(int)> indexb__,
                                         Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__);
     void generate_hubbard_orbitals();
 
@@ -419,6 +419,15 @@ class K_point
     inline void band_energy(int j__, int ispn__, double e__)
     {
         band_energies_(j__, get_ispn(ispn__)) = e__;
+    }
+
+    inline auto band_energies(int ispn__) const
+    {
+        std::vector<double> result(ctx_.num_bands());
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            result[j] = this->band_energy(j, ispn__);
+        }
+        return result;
     }
 
     /// Get band occupancy.
@@ -686,13 +695,13 @@ class K_point
         return comm_col_;
     }
 
-    auto& beta_projectors()
+    auto beta_projectors() -> Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    auto const& beta_projectors() const
+    auto beta_projectors() const -> const Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;

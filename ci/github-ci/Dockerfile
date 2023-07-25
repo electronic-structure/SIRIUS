@@ -45,10 +45,10 @@ RUN spack external find --all --scope system
 #    yq -i '.compilers[1].compiler.paths.f77 = "/usr/bin/gfortran"' /etc/spack/compilers.yaml && \
 #    yq -i '.compilers[1].compiler.paths.fc = "/usr/bin/gfortran"' /etc/spack/compilers.yaml
 
-ENV SPEC_GCC_CPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa ^openblas ^mpich@3.4.3 ^nlcglib +wrapper ^kokkos@3.7.01 +wrapper ^spfft+single_precision ^umpire~device_alloc target=x86_64"
+ENV SPEC_GCC_CPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa ^openblas ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^umpire~device_alloc target=x86_64"
 RUN spack install --fail-fast --only=dependencies $SPEC_GCC_CPU
 
-ENV SPEC_GCC_GPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa +magma +cuda ^openblas ^mpich@3.4.3 ^nlcglib +cuda +wrapper ^kokkos@3.7.01 +wrapper ^spfft+single_precision ^magma+cuda ^umpire+cuda~device_alloc target=x86_64"
+ENV SPEC_GCC_GPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa +magma +cuda ^openblas ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^magma+cuda ^umpire+cuda~device_alloc target=x86_64"
 RUN spack install --fail-fast --only=dependencies $SPEC_GCC_GPU
 
 ENV SPEC_CLANG_CPU="sirius@develop %clang build_type=Release +tests ^openblas%gcc ^mpich ~fortran ^spfft+single_precision ^libxc%gcc target=x86_64"

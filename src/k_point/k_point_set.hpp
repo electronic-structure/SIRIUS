@@ -52,7 +52,7 @@ class K_point_set
 #endif
 
     /// Split index of k-points.
-    sddk::splindex<sddk::splindex_t::chunk> spl_num_kpoints_;
+    sddk::splindex_chunk<kp_index_t> spl_num_kpoints_;
 
     /// Fermi energy which is searched in find_band_occupancies().
     double energy_fermi_{0};
@@ -144,26 +144,31 @@ class K_point_set
     void update()
     {
         /* update k-points */
-        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
-            int ik = spl_num_kpoints(ikloc);
-            kpoints_[ik]->update();
+        for (auto it : spl_num_kpoints_) {
+            kpoints_[it.i]->update();
 #if defined(USE_FP32)
-            kpoints_float_[ik]->update();
+            kpoints_float_[it.i]->update();
 #endif
         }
     }
 
     /// Get a list of band energies for a given k-point index.
     template <typename T>
-    std::vector<double> get_band_energies(int ik__, int ispn__) const;
+    auto get_band_energies(int ik__, int ispn__) const
+    {
+        std::vector<double> bnd_e(ctx_.num_bands());
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
+        }
+        return bnd_e;
+    }
 
     /// Return maximum number of G+k vectors among all k-points.
     int max_num_gkvec() const
     {
         int max_num_gkvec{0};
-        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-            auto ik       = spl_num_kpoints_[ikloc];
-            max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
+        for (auto it : spl_num_kpoints_) {
+            max_num_gkvec = std::max(max_num_gkvec, kpoints_[it.i]->num_gkvec());
         }
         comm().allreduce<int, mpi::op_t::max>(&max_num_gkvec, 1);
         return max_num_gkvec;
@@ -201,14 +206,19 @@ class K_point_set
         return static_cast<int>(kpoints_.size());
     }
 
-    inline int spl_num_kpoints(int ikloc) const
+    inline auto spl_num_kpoints(kp_index_t::local ikloc__) const
     {
-        return spl_num_kpoints_[ikloc];
+        return spl_num_kpoints_.global_index(ikloc__);
     }
 
     inline double energy_fermi() const
     {
         return energy_fermi_;
+    }
+
+    inline void set_energy_fermi(double energy_fermi__)
+    {
+        this->energy_fermi_ = energy_fermi__;
     }
 
     inline double band_gap() const
@@ -239,13 +249,13 @@ class K_point_set
 
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
-    inline fft::Gvec get_gkvec(int jk__, int rank__)
+    inline fft::Gvec get_gkvec(kp_index_t::global jk__, int rank__)
     {
         /* rank in the k-point communicator */
         int my_rank = comm().rank();
 
         /* rank that stores jk */
-        int jrank = spl_num_kpoints().local_rank(jk__);
+        int jrank = spl_num_kpoints().location(jk__).ib;
 
         /* need this to pass communicator */
         fft::Gvec gkvec(ctx_.comm_band());
@@ -264,7 +274,7 @@ class K_point_set
 template<>
 inline K_point<double>* K_point_set::get<double>(int ik__) const
 {
-    assert(ik__ >= 0 && ik__ < (int)kpoints_.size());
+    RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_.size());
     return kpoints_[ik__].get();
 }
 
@@ -272,22 +282,12 @@ template<>
 inline K_point<float>* K_point_set::get<float>(int ik__) const
 {
 #if defined(USE_FP32)
-    assert(ik__ >= 0 && ik__ < (int)kpoints_float_.size());
+    RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_float_.size());
     return kpoints_float_[ik__].get();
 #else
     RTE_THROW("not compiled with FP32 support");
     return nullptr; // make compiler happy
 #endif
-}
-
-template <typename T>
-std::vector<double> K_point_set::get_band_energies(int ik__, int ispn__) const
-{
-    std::vector<double> bnd_e(ctx_.num_bands());
-    for (int j = 0; j < ctx_.num_bands(); j++) {
-        bnd_e[j] = (*this).get<T>(ik__)->band_energy(j, ispn__);
-    }
-    return bnd_e;
 }
 
 }; // namespace sirius

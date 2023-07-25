@@ -1,10 +1,8 @@
 {
     "control": {
-        "gen_evp_solver_name": "lapack",
-        "print_checksum": false,
         "print_forces": true,
         "processing_unit": "cpu",
-        "verbosity": 2
+        "verbosity": 1
     },
     "hubbard": {
         "full_orthogonalization": false,
@@ -234,7 +232,7 @@
         "pw_cutoff": 25.0,
         "hubbard_correction": true,
         "ngridk": [ 4, 4, 4 ],
-        "num_dft_iter": 100,
+        "use_symmetry" : true,
         "num_mag_dims": 1,
         "smearing": "gaussian",
         "smearing_width": 0.01,

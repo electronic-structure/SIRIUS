@@ -47,8 +47,8 @@ if(CREATE_FORTRAN_BINDINGS)
   enable_language(Fortran)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
 
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
   set(CMAKE_CUDA_ARCHITECTURES "60;70;80" CACHE STRING "CUDA architectures to generate code for")
@@ -223,6 +223,7 @@ if(USE_ROCM)
 
   enable_language(HIP)
   find_package(rocblas CONFIG REQUIRED)
+  find_package(rocsolver CONFIG REQUIRED)
   set(CMAKE_HIP_STANDARD 14)
 endif()
 

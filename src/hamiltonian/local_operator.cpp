@@ -60,7 +60,10 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         }
         veff_vec_[v_local_index_t::theta]->fft_transform(1);
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[v_local_index_t::theta]->values().allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+            veff_vec_[v_local_index_t::theta]
+                ->values()
+                .allocate(get_memory_pool(sddk::memory_t::device))
+                .copy_to(sddk::memory_t::device);
         }
         if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -131,8 +134,8 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             if (ctx_.num_mag_dims()) {
                 #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0             = veff_vec_[v_local_index_t::v0]->value(ir);
-                    T v1             = veff_vec_[v_local_index_t::v1]->value(ir);
+                    T v0                                      = veff_vec_[v_local_index_t::v0]->value(ir);
+                    T v1                                      = veff_vec_[v_local_index_t::v1]->value(ir);
                     veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
                     veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
                 }
@@ -206,8 +209,6 @@ static inline void
 mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> const& veff_vec__, int idx_veff__, T* out__)
 {
-    PROFILE("sirius::mul_by_veff");
-
     int nr = spfftk__.local_slice_size();
 
     switch (spfftk__.processing_unit()) {
@@ -295,7 +296,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
     int ngv_fft = gkvec_fft__->count();
 
     if (ngv_fft != spfftk__.num_local_elements()) {
-        TERMINATE("wrong number of G-vectors");
+        RTE_THROW("wrong number of G-vectors");
     }
 
     std::array<wf::Wave_functions_fft<T>, 2> phi_fft;
@@ -323,14 +324,12 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
 
     /* transform wave-function to real space; the result of the transformation is stored in the FFT buffer */
     auto phi_to_r = [&](wf::spin_index ispn,  wf::band_index i) {
-        PROFILE("phi_to_r");
         auto phi_mem = phi_fft[ispn.get()].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
         spfftk__.backward(phi_fft[ispn.get()].pw_coeffs_spfft(phi_mem, i), spfft_pu);
     };
 
     /* transform function to PW domain */
     auto vphi_to_G = [&]() {
-        PROFILE("vphi_to_G");
         spfftk__.forward(spfft_pu, reinterpret_cast<T*>(vphi_.at(spfft_mem)), SPFFT_FULL_SCALING);
     };
 
@@ -339,7 +338,6 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
         - first bit: spin component which is updated
         - second bit: add or not kinetic energy term */
     auto add_to_hphi = [&](int ispn_block, wf::band_index i) {
-        PROFILE("add_to_hphi");
         /* index of spin component */
         int ispn = ispn_block & 1;
         /* add kinetic energy if this is a diagonal block */

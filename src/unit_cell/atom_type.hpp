@@ -38,11 +38,28 @@
 
 namespace sirius {
 
+/// Descriptor of a local orbital radial function.
+struct local_orbital_descriptor
+{
+    /// Orbital quantum number \f$ \ell \f$.
+    angular_momentum am;
+
+    /// Set of radial solution descriptors.
+    /** Local orbital is constructed from at least two radial functions in order to make it zero at the
+     *  muffin-tin sphere boundary. */
+    radial_solution_descriptor_set rsd_set;
+
+    local_orbital_descriptor(angular_momentum am__)
+        : am(am__)
+    {
+    }
+};
+
 /// Store basic information about radial pseudo wave-functions.
 struct ps_atomic_wf_descriptor
 {
     /// Constructor.
-    ps_atomic_wf_descriptor(int n__, sirius::experimental::angular_momentum am__, double occ__, Spline<double> f__)
+    ps_atomic_wf_descriptor(int n__, angular_momentum am__, double occ__, Spline<double> f__)
         : n(n__)
         , am(am__)
         , occ(occ__)
@@ -52,7 +69,7 @@ struct ps_atomic_wf_descriptor
     /// Principal quantum number.
     int n;
     /// Angular momentum quantum number.
-    sirius::experimental::angular_momentum am;
+    angular_momentum am;
     /// Shell occupancy
     double occ;
     /// Radial wave-function.
@@ -122,12 +139,9 @@ class Atom_type
     /// Maximum number of AW radial functions across angular momentums.
     int max_aw_order_{0};
 
-    int offset_lo_{-1}; // TODO: better name // TODO: should be moved to Unit_cell.
-
     /// Index of radial basis functions.
-    /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
-        In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
-        In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
+    /** In LAPW this index is used to iterate over combined set of APW and local-orbital radial functions.
+     *  In pseudo_potential case this index is used to iterate over radial part of beta-projectors. */
     radial_functions_index indexr_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
@@ -135,10 +149,10 @@ class Atom_type
     basis_functions_index indexb_;
 
     /// Index for the radial atomic functions.
-    sirius::experimental::radial_functions_index indexr_wfs_;
+    radial_functions_index indexr_wfs_;
 
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
-    sirius::experimental::basis_functions_index indexb_wfs_;
+    basis_functions_index indexb_wfs_;
 
     /// List of Hubbard orbital descriptors.
     /** List of sirius::hubbard_orbital_descriptor for each orbital. Each element of the list contains
@@ -147,10 +161,10 @@ class Atom_type
     std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
 
     /// Index of radial functions for hubbard orbitals.
-    sirius::experimental::radial_functions_index indexr_hub_;
+    radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
-    sirius::experimental::basis_functions_index indexb_hub_;
+    basis_functions_index indexb_hub_;
 
     /// Radial functions of beta-projectors.
     /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit
@@ -163,7 +177,7 @@ class Atom_type
             \end{array} \right.
         \f]
      */
-    std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
+    std::vector<std::pair<angular_momentum, Spline<double>>> beta_radial_functions_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Lists of [n, j, occ, chi_l(r)] are stored. In case of
@@ -348,7 +362,7 @@ class Atom_type
 
     /// Initialize the atom type.
     /** Once the unit cell is populated with all atom types and atoms, each atom type can be initialized. */
-    void init(int offset_lo__);
+    void init();
 
     /// Initialize the free atom density (smooth or true).
     void init_free_atom_density(bool smooth);
@@ -430,17 +444,17 @@ class Atom_type
     inline void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
     {
         if ((int)lo_descriptors_.size() == ilo) {
-            lo_descriptors_.push_back(local_orbital_descriptor());
-            lo_descriptors_[ilo].l = l;
+            angular_momentum am(l);
+            lo_descriptors_.push_back(local_orbital_descriptor(am));
         } else {
-            if (l != lo_descriptors_[ilo].l) {
+            if (l != lo_descriptors_[ilo].am.l()) {
                 std::stringstream s;
                 s << "wrong angular quantum number" << std::endl
                   << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
                   << "idxlo: " << ilo << std::endl
                   << "n: " << l << std::endl
                   << "l: " << n << std::endl
-                  << "expected l: " << lo_descriptors_[ilo].l << std::endl;
+                  << "expected l: " << lo_descriptors_[ilo].am.l() << std::endl;
                 RTE_THROW(s);
             }
         }
@@ -473,8 +487,7 @@ class Atom_type
     }
 
     /// Add atomic radial function to the list.
-    inline void add_ps_atomic_wf(int n__, sirius::experimental::angular_momentum am__, std::vector<double> f__,
-                                 double occ__ = 0.0)
+    inline void add_ps_atomic_wf(int n__, angular_momentum am__, std::vector<double> f__, double occ__ = 0.0)
     {
         Spline<double> rwf(radial_grid_, f__);
         auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
@@ -496,39 +509,25 @@ class Atom_type
 
     /// Add a radial function of beta-projector to a list of functions.
     /** This is the only allowed way to add beta projectors. */
-    inline void add_beta_radial_function(int l__, std::vector<double> beta__)
+    inline void add_beta_radial_function(angular_momentum am__, std::vector<double> beta__)
     {
         if (augment_) {
             RTE_THROW("can't add more beta projectors");
         }
         Spline<double> s(radial_grid_, beta__);
-        beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
-
-        local_orbital_descriptor lod;
-        lod.l = std::abs(l__);
-
-        /* for spin orbit coupling; we can always do that there is
-           no insidence on the rest when calculations exclude SO */
-        if (l__ < 0) {
-            lod.total_angular_momentum = lod.l - 0.5;
-        } else {
-            lod.total_angular_momentum = lod.l + 0.5;
-        }
-        /* add local orbital descriptor for the current beta-projector */
-        lo_descriptors_.push_back(lod);
-    }
-
-    /// Return a radial beta functions.
-    inline Spline<double> const& beta_radial_function(int idxrf__) const
-    {
-        return beta_radial_functions_[idxrf__].second;
+        beta_radial_functions_.push_back(std::make_pair(am__, std::move(s)));
     }
 
     /// Number of beta-radial functions.
     inline int num_beta_radial_functions() const
     {
-        RTE_ASSERT(lo_descriptors_.size() == beta_radial_functions_.size());
-        return lo_descriptors_.size();
+        return beta_radial_functions_.size();
+    }
+
+    /// Return a radial beta function.
+    inline auto const& beta_radial_function(rf_index idxrf__) const
+    {
+        return beta_radial_functions_[idxrf__];
     }
 
     /// Add radial function of the augmentation charge.
@@ -831,28 +830,28 @@ class Atom_type
 
     inline auto const& indexr(int i) const
     {
-        RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
-        return indexr_[i];
+        //RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
+        return indexr_[rf_index(i)];
     }
 
     inline int indexr_by_l_order(int l, int order) const
     {
-        return indexr_.index_by_l_order(l, order);
+        return indexr_.index_of(angular_momentum(l), order);
     }
 
     inline int indexr_by_idxlo(int idxlo) const
     {
-        return indexr_.index_by_idxlo(idxlo);
+        return indexr_.index_of(rf_lo_index(idxlo));
     }
 
-    inline basis_functions_index const& indexb() const
+    inline auto const& indexb() const
     {
         return indexb_;
     }
 
-    inline basis_function_index_descriptor const& indexb(int i) const
+    inline auto const& indexb(int i) const
     {
-        RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
+        //RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
         return indexb_[i];
     }
 
@@ -963,12 +962,6 @@ class Atom_type
         return file_name_;
     }
 
-    inline int offset_lo() const
-    {
-        RTE_ASSERT(offset_lo_ >= 0);
-        return offset_lo_;
-    }
-
     inline void d_mtrx_ion(sddk::matrix<double> const& d_mtrx_ion__)
     {
         d_mtrx_ion_ = sddk::matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
@@ -1068,8 +1061,7 @@ class Atom_type
      *  leaving the m index free. Only useful when spin orbit coupling is included. */
     inline bool compare_index_beta_functions(const int xi, const int xj) const
     {
-        return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
-                (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
+        return ((indexb(xi).am == indexb(xj).am) && (indexb(xi).idxrf == indexb(xj).idxrf));
     }
 
     /// Return a vector containing all information about the localized atomic
@@ -1102,7 +1094,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: lo_descriptors_) {
-            lmax = std::max(lmax, e.l);
+            lmax = std::max(lmax, e.am.l());
         }
         return lmax;
     }
@@ -1123,9 +1115,8 @@ class Atom_type
     {
         int lmax{-1};
 
-        /* need to take |l| since the total angular momentum is encoded in the sign of l */
         for (auto& e: beta_radial_functions_) {
-            lmax = std::max(lmax, std::abs(e.first));
+            lmax = std::max(lmax, e.first.l());
         }
         return lmax;
     }

@@ -241,9 +241,9 @@ class config_t
         }
         /// Scaling parameters of the iterative  solver tolerance.
         /**
-            First number is the scaling of density RMS, that gives the estimate of the new 
-            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
-            between the two. This is how it is done in the code: 
+            First number is the scaling of density RMS, that gives the estimate of the new
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum
+            between the two. This is how it is done in the code:
             \code{.cpp}
             double old_tol = ctx_.iterative_solver_tolerance();
             // estimate new tolerance of iterative solver
@@ -1498,6 +1498,15 @@ class config_t
             }
             dict_["/nlcg/tol"_json_pointer] = tol__;
         }
+        /// nlcg processing unit
+        inline auto processing_unit() const
+        {
+            if (dict_.contains("/nlcg/processing_unit")) {
+                return dict_.at("/nlcg/processing_unit"_json_pointer).get<std::string>();
+            }
+            return dict_.at("/control/processing_unit"_json_pointer).get<std::string>();
+        }
+
       private:
         nlohmann::json& dict_;
     };

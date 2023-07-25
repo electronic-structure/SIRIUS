@@ -58,7 +58,7 @@ void test_sym(cmd_args const& args__)
     for (int ik = 0; ik < kset_sym.num_kpoints(); ik++) {
         auto kp = kset_sym.get<double>(ik);
         phi_sym.emplace_back(kp->gkvec_sptr(), wf::num_mag_dims(0), wf::num_bands(nawf.first), sddk::memory_t::host);
-        kp->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_sym.back());
+        kp->generate_atomic_wave_functions(atoms, idxb, *ctx.ri().ps_atomic_wf_, phi_sym.back());
     }
 
     std::vector<wf::Wave_functions<double>> phi_nosym;
@@ -66,7 +66,7 @@ void test_sym(cmd_args const& args__)
     for (int ik = 0; ik < kset_nosym.num_kpoints(); ik++) {
         auto kp = kset_nosym.get<double>(ik);
         phi_nosym.emplace_back(kp->gkvec_sptr(), wf::num_mag_dims(0), wf::num_bands(nawf.first), sddk::memory_t::host);
-        kp->generate_atomic_wave_functions(atoms, idxb, ctx.ps_atomic_wf_ri(), phi_nosym.back());
+        kp->generate_atomic_wave_functions(atoms, idxb, *ctx.ri().ps_atomic_wf_, phi_nosym.back());
     }
 
     auto& sym = ctx.unit_cell().symmetry();
@@ -91,7 +91,7 @@ void test_sym(cmd_args const& args__)
             for (int ia = 0; ia < na; ia++) {
                 auto& type = ctx.unit_cell().atom(ia).type();
                 /* idex of the block of d-orbitals for atom ia */
-                int ib = type.indexb_wfs().offset(2) + nawf.second[ia];
+                int ib = type.indexb_wfs().index_of(rf_index(2)) + nawf.second[ia];
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
                         for (int ig = 0; ig < kset_nosym.get<double>(ik1)->num_gkvec(); ig++) {
@@ -122,8 +122,8 @@ void test_sym(cmd_args const& args__)
                 auto& type_i = ctx.unit_cell().atom(ia).type();
                 auto& type_j = ctx.unit_cell().atom(ja).type();
                 /* idex of the block of d-orbitals for atom ia and ja*/
-                int ib = type_i.indexb_wfs().offset(2) + nawf.second[ia];
-                int jb = type_j.indexb_wfs().offset(2) + nawf.second[ja];
+                auto ib = type_i.indexb_wfs().index_of(rf_index(2)) + nawf.second[ia];
+                auto jb = type_j.indexb_wfs().index_of(rf_index(2)) + nawf.second[ja];
 
                 for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {
                     sddk::mdarray<std::complex<double>, 1> v1(5);
@@ -145,7 +145,7 @@ void test_sym(cmd_args const& args__)
             for (int ia = 0; ia < na; ia++) {
                 auto& type = ctx.unit_cell().atom(ia).type();
                 /* idex of the block of d-orbitals for atom ia */
-                int ib = type.indexb_wfs().offset(2) + nawf.second[ia];
+                auto ib = type.indexb_wfs().index_of(rf_index(2)) + nawf.second[ia];
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
                         for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {

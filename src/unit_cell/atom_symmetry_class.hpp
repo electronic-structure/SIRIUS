@@ -148,7 +148,7 @@ class Atom_symmetry_class
     inline double aw_surface_deriv(int l__, int order__, int dm__) const
     {
         RTE_ASSERT(dm__ <= 2);
-        int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
+        auto idxrf = atom_type_.indexr().index_of(angular_momentum(l__), order__);
         return surface_derivatives_(dm__, idxrf);
     }
 
@@ -156,7 +156,7 @@ class Atom_symmetry_class
     inline void aw_surface_deriv(int l__, int order__, int dm__, double deriv__)
     {
         RTE_ASSERT(dm__ <= 2);
-        int idxrf = atom_type_.indexr().index_by_l_order(l__, order__);
+        auto idxrf = atom_type_.indexr().index_of(angular_momentum(l__), order__);
         surface_derivatives_(dm__, idxrf) = deriv__;
     }
 

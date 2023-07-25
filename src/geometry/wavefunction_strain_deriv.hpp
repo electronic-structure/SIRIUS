@@ -21,12 +21,12 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
 
         std::vector<sddk::mdarray<double, 1>> ri_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-            ri_values[iat] = ctx__.ps_atomic_wf_ri().values(iat, gvs[0]);
+            ri_values[iat] = ctx__.ri().ps_atomic_wf_->values(iat, gvs[0]);
         }
 
         std::vector<sddk::mdarray<double, 1>> ridjl_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-            ridjl_values[iat] = ctx__.ps_atomic_wf_ri_djl().values(iat, gvs[0]);
+            ridjl_values[iat] = ctx__.ri().ps_atomic_wf_djl_->values(iat, gvs[0]);
         }
 
         const double p = (mu__ == nu__) ? 0.5 : 0.0;
@@ -37,14 +37,14 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
             auto phase        = twopi * dot(kp__.gkvec().gkvec<sddk::index_domain_t::local>(igkloc),
                                             ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
-            for (int xi = 0; xi < atom_type.indexb_wfs().size(); xi++) {
+            for (auto const& e: atom_type.indexb_wfs()) {
                 /*  orbital quantum  number of this atomic orbital */
-                int l = atom_type.indexb_wfs().l(xi);
+                int l = e.am.l();
                 /*  composite l,m index */
-                int lm = atom_type.indexb_wfs().lm(xi);
+                int lm = e.lm;
                 /* index of the radial function */
-                int idxrf = atom_type.indexb_wfs().idxrf(xi);
-                int offset_in_wf = num_ps_atomic_wf.second[ia] + xi;
+                int idxrf = e.idxrf;
+                int offset_in_wf = num_ps_atomic_wf.second[ia] + e.xi;
 
                 auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(ctx__.unit_cell().omega());
 

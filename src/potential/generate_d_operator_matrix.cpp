@@ -48,7 +48,7 @@ void Potential::generate_D_operator_matrix()
     auto spl_ngv_loc = utils::split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
-    auto& mpd = get_memory_pool(sddk::memory_t::device);
+    sddk::memory_pool* mpd{nullptr};
 
     int n_mag_comp{1};
 
@@ -58,12 +58,13 @@ void Potential::generate_D_operator_matrix()
             break;
         }
         case sddk::device_t::GPU: {
+            mpd = &get_memory_pool(sddk::memory_t::device);
             n_mag_comp = ctx_.num_mag_dims() + 1;
             veff = sddk::mdarray<std::complex<double>, 2>(gvec_count, n_mag_comp, mph);
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 std::copy(&component(j).rg().f_pw_local(0), &component(j).rg().f_pw_local(0) + gvec_count, &veff(0, j));
             }
-            veff.allocate(mpd).copy_to(sddk::memory_t::device);
+            veff.allocate(*mpd).copy_to(sddk::memory_t::device);
             break;
         }
     }
@@ -103,9 +104,9 @@ void Potential::generate_D_operator_matrix()
                 break;
             }
             case sddk::device_t::GPU: {
-                d_tmp.allocate(mpd).zero(sddk::memory_t::device);
-                veff_a.allocate(mpd);
-                qpw = sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
+                d_tmp.allocate(*mpd).zero(sddk::memory_t::device);
+                veff_a.allocate(*mpd);
+                qpw = sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], *mpd, "qpw");
                 break;
             }
         }

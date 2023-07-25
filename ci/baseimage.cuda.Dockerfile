@@ -19,7 +19,8 @@ RUN apt-get install -y apt-utils
 # install basic tools
 RUN apt-get install -y --no-install-recommends gcc g++ gfortran clang libomp-14-dev git make unzip file \
   vim wget pkg-config python3-pip python3-dev cython3 python3-pythran curl tcl m4 cpio automake meson \
-  xz-utils patch patchelf apt-transport-https ca-certificates gnupg software-properties-common perl tar bzip2
+  xz-utils patch patchelf apt-transport-https ca-certificates gnupg software-properties-common perl tar bzip2 \
+  liblzma-dev libbz2-dev
 
 # install CMake
 RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz -O cmake.tar.gz && \
@@ -64,7 +65,7 @@ RUN spack install openblas %gcc +fortran
 
 RUN spack install magma %gcc +cuda +fortran ^openblas
 
-RUN spack install nlcglib %gcc +cuda+wrapper ^kokkos@3.7.01+wrapper
+RUN spack install nlcglib@master %gcc +cuda
 
 # for the MPI hook
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
@@ -88,7 +89,7 @@ RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
-  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda +wrapper ^kokkos +wrapper ^umpire+cuda~device_alloc"
+  "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda  ^umpire+cuda~device_alloc"
 
 RUN spack install --only=dependencies --fail-fast \
   "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc"

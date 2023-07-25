@@ -58,16 +58,16 @@ class Unit_cell
     std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
-    sddk::splindex<sddk::splindex_t::block> spl_num_atoms_;
+    sddk::splindex_block<atom_index_t> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    sddk::splindex<sddk::splindex_t::block> spl_num_paw_atoms_;
+    sddk::splindex_block<paw_atom_index_t> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    sddk::splindex<sddk::splindex_t::block> spl_num_atom_symmetry_classes_;
+    sddk::splindex_block<atom_symmetry_class_index_t> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:
@@ -106,52 +106,11 @@ class Unit_cell
     /// Volume of the interstitial region.
     double volume_it_{0};
 
-    /// Total nuclear charge.
-    int total_nuclear_charge_{0};
-
-    /// Total number of core electrons.
-    double num_core_electrons_{0};
-
-    /// Total number of valence electrons.
-    double num_valence_electrons_{0};
-
-    /// Total number of electrons.
-    double num_electrons_{0};
-
     /// List of equivalent atoms, provided externally.
     std::vector<int> equivalent_atoms_;
 
-    /// Maximum number of muffin-tin points among all atom types.
-    int max_num_mt_points_{0};
-
-    /// Maximum number of MT basis functions among all atoms.
-    int max_mt_basis_size_{0};
-
-    /// Maximum number of MT radial basis functions among all atoms.
-    int max_mt_radial_basis_size_{0};
-
-    /// Total number of augmented wave basis functions in the muffin-tins.
-    /** This is equal to the total number of matching coefficients for each plane-wave. */
-    int mt_aw_basis_size_{0};
-
-    /// Total number of local orbital basis functions.
-    /** This also counts the total number of beta-projectors in case of pseudopotential method. */
-    int mt_lo_basis_size_{0};
-
-    /// Maximum AW basis size among all atoms.
-    int max_mt_aw_basis_size_{0};
-
-    /// Maximum local orbital basis size among all atoms.
-    int max_mt_lo_basis_size_{0};
-
     /// List of nearest neighbours for each atom.
     std::vector<std::vector<nearest_neighbour_descriptor>> nearest_neighbours_;
-
-    /// Minimum muffin-tin radius.
-    double min_mt_radius_{0};
-
-    /// Maximum muffin-tin radius.
-    double max_mt_radius_{0};
 
     std::unique_ptr<Crystal_symmetry> symmetry_;
 
@@ -215,15 +174,15 @@ class Unit_cell
         return spl_num_paw_atoms_;
     }
 
-    inline int spl_num_paw_atoms(int idx__) const
+    inline auto spl_num_paw_atoms(paw_atom_index_t::local idx__) const
     {
-        return spl_num_paw_atoms_[idx__];
+        return spl_num_paw_atoms_.global_index(idx__);
     }
 
     /// Return global index of atom by the index in the list of PAW atoms.
-    inline int paw_atom_index(int ipaw__) const
+    inline auto paw_atom_index(paw_atom_index_t::global ipaw__) const
     {
-        return paw_atom_index_[ipaw__];
+        return typename atom_index_t::global(paw_atom_index_[ipaw__]);
     }
 
     /// Print basic info.
@@ -285,14 +244,19 @@ class Unit_cell
     /** This is useful to check the sanity of the crystal structure. */
     double min_bond_length() const;
 
+    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
+    std::vector<double> find_mt_radii(int auto_rmt__, bool inflate__);
+
+    /// Get the total number of pseudo atomic wave-functions.
+    std::pair<int, std::vector<int>> num_ps_atomic_wf() const;
+
     /// Return number of Hubbard wave-functions.
     auto const& num_hubbard_wf() const
     {
         return num_hubbard_wf_;
     }
-
-    /// Get the total number of pseudo atomic wave-functions.
-    std::pair<int, std::vector<int>> num_ps_atomic_wf() const;
 
     /// Get Cartesian coordinates of the vector by its fractional coordinates.
     template <typename T>
@@ -334,28 +298,22 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    /// Return atom type instance by label.
-    inline Atom_type& atom_type(std::string const label__)
+    /// Return const atom type instance by label.
+    inline auto const& atom_type(std::string const label__) const
     {
         if (!atom_type_id_map_.count(label__)) {
             std::stringstream s;
             s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         int id = atom_type_id_map_.at(label__);
         return atom_type(id);
     }
 
-    /// Return const atom type instance by label.
-    inline Atom_type const& atom_type(std::string const label__) const
+    /// Return atom type instance by label.
+    inline auto& atom_type(std::string const label__)
     {
-        if (!atom_type_id_map_.count(label__)) {
-            std::stringstream s;
-            s << "atom type " << label__ << " is not found";
-            TERMINATE(s);
-        }
-        int id = atom_type_id_map_.at(label__);
-        return atom_type(id);
+        return const_cast<Atom_type&>(reinterpret_cast<Unit_cell const&>(*this).atom_type(label__));
     }
 
     /// Number of atom symmetry classes.
@@ -396,80 +354,136 @@ class Unit_cell
         return *atoms_[id__];
     }
 
+    /// Total nuclear charge.
     inline int total_nuclear_charge() const
     {
-        return total_nuclear_charge_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).zn();
+        }
+        return result;
     }
 
     /// Total number of electrons (core + valence).
     inline double num_electrons() const
     {
-        return num_electrons_;
+        return this->num_core_electrons() + this->num_valence_electrons();
     }
 
     /// Number of valence electrons.
     inline double num_valence_electrons() const
     {
-        return num_valence_electrons_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).num_valence_electrons();
+        }
+        return result;
     }
 
     /// Number of core electrons.
     inline double num_core_electrons() const
     {
-        return num_core_electrons_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).num_core_electrons();
+        }
+        return result;
     }
 
     /// Maximum number of muffin-tin points among all atom types.
     inline int max_num_mt_points() const
     {
-        return max_num_mt_points_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).num_mt_points());
+        }
+        return result;
     }
 
     /// Total number of the augmented wave basis functions over all atoms.
+    /** This is equal to the total number of matching coefficients for each plane-wave. */
     inline int mt_aw_basis_size() const
     {
-        return mt_aw_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).mt_aw_basis_size();
+        }
+        return result;
     }
 
     /// Total number of local orbital basis functions over all atoms.
     inline int mt_lo_basis_size() const
     {
-        return mt_lo_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            result += nat * atom_type(iat).mt_lo_basis_size();
+        }
+        return result;
     }
 
     /// Maximum number of basis functions among all atom types.
     inline int max_mt_basis_size() const
     {
-        return max_mt_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_basis_size());
+        }
+        return result;
     }
 
     /// Maximum number of radial functions among all atom types.
     inline int max_mt_radial_basis_size() const
     {
-        return max_mt_radial_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_radial_basis_size());
+        }
+        return result;
     }
 
     /// Minimum muffin-tin radius.
     inline double min_mt_radius() const
     {
-        return min_mt_radius_;
+        double result{1e100};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::min(result, atom_type(iat).mt_radius());
+        }
+        return result;
     }
 
     /// Maximum muffin-tin radius.
     inline double max_mt_radius() const
     {
-        return max_mt_radius_;
+        double result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_radius());
+        }
+        return result;
     }
 
     /// Maximum number of AW basis functions among all atom types.
     inline int max_mt_aw_basis_size() const
     {
-        return max_mt_aw_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_aw_basis_size());
+        }
+        return result;
     }
 
+    /// Maximum local orbital basis size among all atoms.
     inline int max_mt_lo_basis_size() const
     {
-        return max_mt_lo_basis_size_;
+        int result{0};
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            result = std::max(result, atom_type(iat).mt_lo_basis_size());
+        }
+        return result;
     }
 
     /// Maximum number of atoms across all atom types.
@@ -493,19 +507,9 @@ class Unit_cell
         return spl_num_atoms_;
     }
 
-    inline auto spl_num_atoms(int i) const
-    {
-        return static_cast<int>(spl_num_atoms_[i]);
-    }
-
     inline auto const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
-    }
-
-    inline auto spl_num_atom_symmetry_classes(int i) const
-    {
-        return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
     }
 
     inline double volume_mt() const
@@ -530,7 +534,7 @@ class Unit_cell
 
     inline int lmax_apw() const
     {
-        int lmax{0};
+        int lmax{-1};
         for (int iat = 0; iat < this->num_atom_types(); iat++) {
             lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
         }
@@ -598,11 +602,6 @@ class Unit_cell
         }
         return a;
     }
-
-    /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
-    /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-     *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. */
-    std::vector<double> find_mt_radii(int auto_rmt__, bool inflate__);
 };
 
 } // namespace sirius

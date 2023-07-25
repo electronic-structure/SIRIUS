@@ -263,7 +263,7 @@ class Matching_coefficients // TODO: compute on GPU
         }
 
         for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-            int l  = type.indexb(xi).l;
+            int l  = type.indexb(xi).am.l();
             int lm = type.indexb(xi).lm;
             int nu = type.indexb(xi).order;
 

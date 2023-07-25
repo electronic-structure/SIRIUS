@@ -7,8 +7,26 @@ if(CREATE_FORTRAN_BINDINGS)
 endif()
 
 if(USE_CUDA OR USE_ROCM)
-  file(GLOB_RECURSE CUFILES "gpu/*.cu")
-  set(_CUSOURCES "${CUFILES}")
+  set(_CUSOURCES
+    "gpu/augmentation_operator.cu"
+    "gpu/checksum.cu"
+    "gpu/create_beta_gk.cu"
+    "gpu/cuda_uspp_kernels.cu"
+    "gpu/density_rg.cu"
+    "gpu/fft_kernels.cu"
+    "gpu/generate_dm_pw.cu"
+    "gpu/generate_phase_factors.cu"
+    "gpu/local_operator.cu"
+    "gpu/mul_by_veff.cu"
+    "gpu/mul_veff_with_phase_factors.cu"
+    "gpu/random.cu"
+    "gpu/residuals_aux.cu"
+    "gpu/scale_matrix.cu"
+    "gpu/spherical_harmonics.cu"
+    "gpu/spline.cu"
+    "gpu/sum_q_pw_dm_pw.cu"
+    "nlcglib/preconditioner/diag_mm.cu"
+  )
 endif()
 
 set(_SOURCES
@@ -16,6 +34,7 @@ set(_SOURCES
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
+  "hamiltonian/s_u_operator.cpp"
   "band/band.cpp"
   "band/solve.cpp"
   "band/diag_pseudo_potential.cpp"
@@ -49,7 +68,6 @@ set(_SOURCES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
-  "function3d/field4d.cpp"
   "radial/radial_integrals.cpp"
   "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"
@@ -61,6 +79,7 @@ set(_SOURCES
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
+  "gpu/rocsolver.cpp"
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
@@ -105,9 +124,9 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:roc::rocblas>
+                                    $<$<BOOL:${USE_ROCM}>:roc::rocsolver>
                                     $<$<BOOL:${USE_ROCM}>:hip::host>
-				    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>
-			    )
+                                    $<$<BOOL:${USE_MEMORY_POOL}>:umpire>)
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>

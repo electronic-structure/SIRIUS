@@ -703,6 +703,16 @@
                     "type" : "number",
                     "default" : 1e-9,
                     "title" : "CG tolerance"
+                },
+                "procssing_unit": {
+                    "type": "string",
+                    "default": "",
+                    "enum": [
+                        "",
+                        "cpu",
+                        "gpu"
+                    ],
+                    "title": "NLCG processing unit"
                 }
             }
         },

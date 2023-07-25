@@ -43,7 +43,7 @@ class Radial_integrals_base
     Radial_grid<double> grid_q_;
 
     /// Split index of q-points.
-    sddk::splindex<sddk::splindex_t::block> spl_q_;
+    sddk::splindex_block<> spl_q_;
 
     /// Array with integrals.
     sddk::mdarray<Spline<double>, N> values_;
@@ -64,8 +64,8 @@ class Radial_integrals_base
         qmax_ = qmax__ + std::max(10.0, qmax__ * 0.1);
 
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax_), 0, qmax_);
-        spl_q_  = sddk::splindex<sddk::splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(),
-                                                          unit_cell_.comm().rank());
+        spl_q_  = sddk::splindex_block<>(grid_q_.num_points(), n_blocks(unit_cell_.comm().size()),
+                block_id(unit_cell_.comm().rank()));
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
@@ -117,14 +117,14 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     /// Callback function to compute radial integrals using the host code.
     std::function<void(int, double, double*, int)> atomic_wfc_callback_{nullptr};
     /// Return radial basis index for a given atom type.
-    std::function<sirius::experimental::radial_functions_index const&(int)> indexr_;
+    std::function<radial_functions_index const&(int)> indexr_;
     /// Generate radial integrals.
     void generate(std::function<Spline<double> const&(int, int)> fl__);
 
   public:
     /// Constructor.
     Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__,
-                               std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
+                               std::function<radial_functions_index const&(int)> indexr__,
                                std::function<Spline<double> const&(int, int)> fl__,
                                std::function<void(int, double, double*, int)> atomic_wfc_callback__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
@@ -247,17 +247,17 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).ps_total_charge_density().empty()) {
                 #pragma omp parallel for
                 for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
-                    int iq = splq[iqloc];
+                    auto iq = splq.global_index(iqloc);
                     if (ri_callback_) {
                         ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
                     } else {
@@ -291,17 +291,17 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).ps_core_charge_density().empty()) {
                 #pragma omp parallel for
                 for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
-                    int iq = splq[iqloc];
+                    auto iq = splq.global_index(iqloc);
                     if (ri_callback_) {
                         ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
                     } else {
@@ -402,17 +402,17 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
-        sddk::splindex<sddk::splindex_t::block> splq(nq, comm__.size(), comm__.rank());
+        sddk::splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).local_potential().empty()) {
                 #pragma omp parallel for
                 for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
-                    int iq = splq[iqloc];
+                    auto iq = splq.global_index(iqloc);
                     if (ri_callback_) {
                         ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
                     } else {

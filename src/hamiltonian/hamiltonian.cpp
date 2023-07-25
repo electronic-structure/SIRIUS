@@ -136,12 +136,12 @@ Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, sddk::mdar
             alm[j] = oalm[j] = alm__(ig, j);
         }
         for (int j = 0; j < type.mt_aw_basis_size(); j++) {
-            int l     = type.indexb(j).l;
+            int l     = type.indexb(j).am.l();
             int lm    = type.indexb(j).lm;
             int idxrf = type.indexb(j).idxrf;
             for (int order = 0; order < type.aw_order(l); order++) {
                 int j1     = type.indexb().index_by_lm_order(lm, order);
-                int idxrf1 = type.indexr().index_by_l_order(l, order);
+                int idxrf1 = type.indexr().index_of(angular_momentum(l), order);
                 oalm[j] += static_cast<const T>(atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1)) * alm[j1];
             }
         }
@@ -157,10 +157,9 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
 {
     sddk::mdarray<std::complex<T>, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 
-    for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
-        int ia            = psi__.spl_num_atoms()[ialoc];
+    for (auto it : psi__.spl_num_atoms()) {
+        auto ia           = it.i;
         auto& atom        = unit_cell_.atom(ia);
-        //int offset        = psi__.offset_mt_coeffs(ialoc);
         int mt_basis_size = atom.type().mt_basis_size();
 
         zm.zero();
@@ -183,9 +182,9 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
         /* compute bwf = B_z*|wf_j> */
         la::wrap(la::lib_t::blas).hemm(
             'L', 'U', mt_basis_size, ctx_.num_fv_states(), &la::constant<std::complex<T>>::one(),
-            zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
+            zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)),
             psi__.ld(), &la::constant<std::complex<T>>::zero(),
-            &bpsi__[0].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
+            &bpsi__[0].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
@@ -204,9 +203,9 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
 
             la::wrap(la::lib_t::blas).gemm(
                'N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size, &la::constant<std::complex<T>>::one(),
-               zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)),
+               zm.at(sddk::memory_t::host), zm.ld(), &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)),
                psi__.ld(), &la::constant<std::complex<T>>::zero(),
-               &bpsi__[2].mt_coeffs(0, wf::atom_index(ialoc), wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());
+               &bpsi__[2].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());
         }
     }
 }
@@ -219,14 +218,14 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
 
     wf::spin_index s(0);
 
-    for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
-        int ia     = psi__.spl_num_atoms()[ialoc];
+    for (auto it : psi__.spl_num_atoms()) {
+        auto ia    = it.i;
         auto& atom = unit_cell_.atom(ia);
-        wf::atom_index a(ialoc);
+        auto a     = it.li;
 
         for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */
-            int nrf = atom.type().indexr().num_rf(l);
+            int nrf = atom.type().indexr().max_order(l);
 
             for (int order1 = 0; order1 < nrf; order1++) {
                 for (int order2 = 0; order2 < nrf; order2++) {

@@ -1,0 +1,73 @@
+{
+  "control": {
+    "processing_unit": "cpu",
+    "rmt_max": 2.2,
+    "verbosity" : 1
+  },
+  "unit_cell": {
+    "lattice_vectors": [
+      [
+        2.46857, 0.0, 0.0
+      ],
+      [
+        -1.234285, 2.13784433, 0.0
+      ],
+      [
+        0, 0, 8.84079
+      ]
+    ],
+    "lattice_vectors_scale": 1.889725989,
+    "atom_types": [
+      "C"
+    ],
+    "atom_files": {
+      "C": "C.json"
+    },
+    "atoms": {
+      "C": [
+        [
+          1.3533556499999998e-16, 2.3440807399999993e-16, 2.2101975
+        ],
+        [
+            4.0600669399999995e-16, 7.03224222e-16, 6.630592499999999
+        ],
+        [
+            -1.234285000015105e-05, 1.42523668, 2.2101975
+        ],
+        [
+            1.2342973399999995, 0.7126076510000001, 6.630592499999999
+        ]
+      ]
+    },
+    "atom_coordinate_units" : "A"
+  },
+  "mixer": {
+    "max_history": 4,
+    "beta": 0.5,
+    "type": "anderson"
+  },
+  "parameters": {
+    "energy_tol": 1e-06,
+    "use_symmetry": true,
+    "gk_cutoff" : 10,
+    "xc_functionals": [
+      "XC_LDA_X",
+      "XC_LDA_C_PZ"
+    ],
+    "density_tol": 1e-08,
+    "num_dft_iter": 1,
+    "pw_cutoff": 20.0,
+    "auto_rmt": 1,
+    "smearing_width": 0.01,
+    "electronic_structure_method": "full_potential_lapwlo",
+    "core_relativity": "dirac",
+    "ngridk": [
+      2,
+      2,
+      2
+    ],
+    "lmax_apw" : 6,
+    "lmax_rho" : 6,
+    "lmax_pot" : 6
+  }
+}

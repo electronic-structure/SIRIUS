@@ -33,26 +33,25 @@ void K_point_set::sync_band()
 
     sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
             get_memory_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
+    data.zero();
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
     #pragma omp parallel
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        int ik = spl_num_kpoints_[ikloc];
-        auto kp = this->get<T>(ik);
+    for (auto it : spl_num_kpoints_) {
+        auto kp = this->get<T>(it.i);
         switch (what) {
             case sync_band_t::energy: {
-                std::copy(&kp->band_energies_(0, 0), &kp->band_energies_(0, 0) + nb, &data(0, 0, ik));
+                std::copy(&kp->band_energies_(0, 0), &kp->band_energies_(0, 0) + nb, &data(0, 0, it.i));
                 break;
             }
             case sync_band_t::occupancy: {
-                std::copy(&kp->band_occupancies_(0, 0), &kp->band_occupancies_(0, 0) + nb, &data(0, 0, ik));
+                std::copy(&kp->band_occupancies_(0, 0), &kp->band_occupancies_(0, 0) + nb, &data(0, 0, it.i));
                 break;
             }
         }
     }
 
-    comm().allgather(data.at(sddk::memory_t::host), nb * spl_num_kpoints_.local_size(),
-        nb * spl_num_kpoints_.global_offset());
+    comm().allreduce(data.at(sddk::memory_t::host), static_cast<int>(data.size()));
 
     #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
@@ -139,16 +138,18 @@ void K_point_set::initialize(std::vector<int> const& counts)
     PROFILE("sirius::K_point_set::initialize");
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
-        sddk::splindex<sddk::splindex_t::block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
-        spl_num_kpoints_ = sddk::splindex<sddk::splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
+        sddk::splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
+        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+                block_id(comm().rank()), spl_tmp.counts());
     } else {
-        spl_num_kpoints_ = sddk::splindex<sddk::splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
+        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+                block_id(comm().rank()), counts);
     }
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+    for (auto it : spl_num_kpoints_) {
+        kpoints_[it.i]->initialize();
 #if defined(USE_FP32)
-        kpoints_float_[spl_num_kpoints_[ikloc]]->initialize();
+        kpoints_float_[it.i]->initialize();
 #endif
     }
 
@@ -205,14 +206,27 @@ template <class Nt, class DNt, class D2Nt>
 auto
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
 {
+    // Newton finds the minimum, not necessarily N(mu) == ne, tolerate up to `tol_ne` difference in number of electrons
+    // if |N(mu_0) -ne| > tol_ne an error is thrown.
+    const double tol_ne = 1e-2;
+
     struct {
         double mu; // chemical potential
-        int iter; // newton information
+        int iter{0}; // newton information
         std::vector<double> ys; // newton history
     } res;
+
     double mu = mu0;
     double alpha{1.0}; // Newton damping
     int iter{0};
+
+    if ( std::abs(N(mu) - ne) < tol) {
+        res.mu = mu;
+        res.iter = iter;
+        res.ys = {};
+        return res;
+    }
+
     while (true) {
         // compute
         double Nf   = N(mu);
@@ -222,20 +236,28 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         //double F = (Nf - ne) * (Nf - ne);
         double dF = 2 * (Nf - ne) * dNf;
         double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
-        mu = mu - alpha * dF / std::abs(ddF);
+        double step = alpha * dF / std::abs(ddF);
+        mu = mu - step;
 
         res.ys.push_back(mu);
 
-        if (std::abs(dF) < tol) {
-            res.iter = iter;
-            res.mu = mu;
-            return res;
+        if (std::abs(ddF) < 1e-30) {
+            std::stringstream s;
+            s << "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!"
+              << std::setprecision(8) << std::abs(Nf - ne) << "\n";
+            RTE_THROW(s);
         }
 
-        if (std::abs(ddF) < 1e-10) {
-            std::stringstream s;
-            s << "Newton minimization (chemical potential) failed because 2nd derivative too close to zero!";
-            RTE_THROW(s);
+        if (std::abs(step) < tol || std::abs(Nf - ne) < tol) {
+            if (std::abs(Nf - ne) > tol_ne) {
+                std::stringstream s;
+                s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search." << "\n";
+                RTE_THROW(s);
+            }
+
+            res.iter = iter;
+            res.mu   = mu;
+            return res;
         }
 
         iter++;
@@ -280,12 +302,11 @@ void K_point_set::find_band_occupancies()
                 }
             }
         }
-        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-            int ik = spl_num_kpoints_[ikloc];
+        for (auto it : spl_num_kpoints_) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp parallel for
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    this->get<T>(ik)->band_occupancy(j, ispn, ctx_.max_occupancy());
+                    this->get<T>(it.i)->band_occupancy(j, ispn, ctx_.max_occupancy());
                 }
             }
         }
@@ -304,32 +325,30 @@ void K_point_set::find_band_occupancies()
     auto emax = std::numeric_limits<double>::lowest();
 
     #pragma omp parallel for reduction(min:emin) reduction(max:emax)
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        int ik = spl_num_kpoints_[ikloc];
+    for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            emin = std::min(emin, this->get<T>(ik)->band_energy(0, ispn));
-            emax = std::max(emax, this->get<T>(ik)->band_energy(ctx_.num_bands() - 1, ispn));
+            emin = std::min(emin, this->get<T>(it.i)->band_energy(0, ispn));
+            emax = std::max(emax, this->get<T>(it.i)->band_energy(ctx_.num_bands() - 1, ispn));
         }
     }
     comm().allreduce<double, mpi::op_t::min>(&emin, 1);
     comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
-    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
         double ne{0};
-        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-            int ik = spl_num_kpoints_[ikloc];
+        for (auto it : spl_num_kpoints_) {
             double tmp{0};
             #pragma omp parallel reduction(+ : tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
-                    tmp += f(ef - this->get<T>(ik)->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
+                    tmp += f(ef - this->get<T>(it.i)->band_energy(splb.global_index(j), ispn)) * ctx_.max_occupancy();
                 }
             }
-            ne += tmp * kpoints_[ik]->weight();
+            ne += tmp * kpoints_[it.i]->weight();
         }
         ctx_.comm().allreduce(&ne, 1);
         return ne;
@@ -352,11 +371,11 @@ void K_point_set::find_band_occupancies()
         if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
             f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
             auto df  = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
-            auto ddf = smearing::occupancy_deriv2(ctx_.smearing(), ctx_.smearing_width());
+            auto ddf = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
             auto N   = [&](double mu) { return compute_ne(mu, f); };
             auto dN  = [&](double mu) { return compute_ne(mu, df); };
             auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 300);
+            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
             energy_fermi_ = res_newton.mu;
             if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
@@ -372,13 +391,12 @@ void K_point_set::find_band_occupancies()
         energy_fermi_ = bisection_search(F, emin, emax, tol);
     }
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        int ik = spl_num_kpoints_[ikloc];
+    for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(energy_fermi_ - this->get<T>(ik)->band_energy(j, ispn)) * ctx_.max_occupancy();
-                this->get<T>(ik)->band_occupancy(j, ispn, o);
+                auto o = f(energy_fermi_ - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
+                this->get<T>(it.i)->band_occupancy(j, ispn, o);
             }
         }
     }
@@ -433,16 +451,15 @@ double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
 
-    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = this->get<T>(ik);
+    for (auto it : spl_num_kpoints_) {
+        auto const& kp = this->get<T>(it.i);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
+                tmp += kp->band_energy(splb.global_index(j), ispn) * kp->band_occupancy(splb.global_index(j), ispn);
             }
         }
         eval_sum += kp->weight() * tmp;
@@ -482,16 +499,15 @@ double K_point_set::entropy_sum() const
 
     auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
-    sddk::splindex<sddk::splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-        auto ik = spl_num_kpoints_[ikloc];
-        auto const& kp = this->get<T>(ik);
+    for (auto it : spl_num_kpoints_) {
+        auto const& kp = this->get<T>(it.i);
         double tmp{0};
         #pragma omp parallel for reduction(+:tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
+                tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb.global_index(j), ispn));
             }
         }
         s_sum += kp->weight() * tmp;
@@ -531,8 +547,8 @@ void K_point_set::print_info()
         pout << std::endl << utils::hbar(80, '-') << std::endl;
     }
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
-        int ik = spl_num_kpoints(ikloc);
+    for (auto it : spl_num_kpoints()) {
+        int ik = it.i;
         pout << std::setw(4) << ik << utils::ffmt(9, 4) << kpoints_[ik]->vk()[0] << utils::ffmt(9, 4)
              << kpoints_[ik]->vk()[1] << utils::ffmt(9, 4) << kpoints_[ik]->vk()[2] << utils::ffmt(17, 6)
              << kpoints_[ik]->weight() << std::setw(11) << kpoints_[ik]->num_gkvec();
@@ -558,7 +574,7 @@ void K_point_set::save(std::string const& name__) const
     ctx_.comm().barrier();
     for (int ik = 0; ik < num_kpoints(); ik++) {
         /* check if this ranks stores the k-point */
-        if (ctx_.comm_k().rank() == spl_num_kpoints_.local_rank(ik)) {
+        if (ctx_.comm_k().rank() == spl_num_kpoints_.location(typename kp_index_t::global(ik)).ib) {
             this->get<double>(ik)->save(name__, ik);
         }
         /* wait for all */
