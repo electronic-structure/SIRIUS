@@ -45,11 +45,6 @@ void repack(std::vector<T> &data, std::vector<int> const&ids) {
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
-#ifndef NDEBUG
-    for (size_t i = ids.size(); i < data.size(); ++i) {
-        data[i] = -1;
-    }
-#endif
 }
 
 template<class Matrix, class Prec, class StateVec>
@@ -271,11 +266,6 @@ struct Smoothed_diagonal_preconditioner {
         for (size_t i = 0; i < ids.size(); ++i) {
             eigvals[i] = eigvals[ids[i]];
         }
-#ifndef NDEBUG
-        for (size_t i = ids.size(); i < eigvals.size(); ++i) {
-            eigvals[i] = -1;
-        }
-#endif
     }
 };
 
@@ -289,9 +279,9 @@ struct Linear_response_operator {
     wf::Wave_functions<double> * evq;
     wf::Wave_functions<double> * tmp;
     double alpha_pv;
-    int nbnd_occ;
-    sddk::memory_t mem;
+    wf::band_range br;
     wf::spin_range sr;
+    sddk::memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
@@ -303,11 +293,11 @@ struct Linear_response_operator {
         wf::Wave_functions<double> * evq,
         wf::Wave_functions<double> * tmp,
         double alpha_pv,
-        int nbnd_occ,
-        sddk::memory_t mem,
-        wf::spin_range sr)
+        wf::band_range br,
+        wf::spin_range sr,
+        sddk::memory_t mem)
     : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), nbnd_occ(nbnd_occ), mem(mem), sr(sr), overlap(nbnd_occ, nbnd_occ)
+      alpha_pv(alpha_pv), br(br), sr(sr), mem(mem), overlap(br.size(), br.size())
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
@@ -325,12 +315,6 @@ struct Linear_response_operator {
         for (size_t i = 0; i < ids.size(); ++i) {
             min_eigenvals[i] = min_eigenvals[ids[i]];
         }
-#ifndef NDEBUG
-        // for debugging purposes, can be commented out in production runs
-        for (size_t i = ids.size(); i < min_eigenvals.size(); ++i) {
-            min_eigenvals[i] = -1;
-        }
-#endif
     }
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
@@ -357,15 +341,15 @@ struct Linear_response_operator {
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // overlap := evq' * (S * x)
-        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, wf::band_range(0, nbnd_occ),
-            *Sphi, wf::band_range(0, num_active), overlap, 0, 0);
+        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active),
+                overlap, 0, 0);
 
         // Hphi := evq * overlap
         wf::transform(
             ctx.spla_context(),
             mem,
             overlap, 0, 0,
-            1.0, *evq, wf::spin_index(0), wf::band_range(0, nbnd_occ),
+            1.0, *evq, wf::spin_index(0), br,
             0.0, *Hphi, wf::spin_index(0), wf::band_range(0, num_active));
 
         auto bp_gen    = Hk.kp().beta_projectors().make_generator();
@@ -386,7 +370,6 @@ struct Linear_response_operator {
         std::vector<double> betas(num_active, beta);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active),
                 alphas.data(), tmp, betas.data(), y.x);
-        //y.x->axpby(sddk::device_t::CPU, sddk::spin_range(0), alpha, *tmp, beta, num_active);
     }
 };
 
