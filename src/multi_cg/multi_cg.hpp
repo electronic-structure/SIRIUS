@@ -279,10 +279,9 @@ struct Linear_response_operator {
     wf::Wave_functions<double> * evq;
     wf::Wave_functions<double> * tmp;
     double alpha_pv;
-    int nbnd_occ;
-    sddk::memory_t mem;
+    wf::band_range br;
     wf::spin_range sr;
-    int nbnd;
+    sddk::memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
@@ -294,12 +293,11 @@ struct Linear_response_operator {
         wf::Wave_functions<double> * evq,
         wf::Wave_functions<double> * tmp,
         double alpha_pv,
-        int nbnd_occ,
-        sddk::memory_t mem,
+        wf::band_range br,
         wf::spin_range sr,
-        int nbnd)
+        sddk::memory_t mem)
     : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), nbnd_occ(nbnd_occ), mem(mem), sr(sr), overlap(nbnd_occ, nbnd_occ)
+      alpha_pv(alpha_pv), br(br), sr(sr), mem(mem), overlap(br.size(), br.size())
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
@@ -343,15 +341,15 @@ struct Linear_response_operator {
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // overlap := evq' * (S * x)
-        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, wf::band_range(0, nbnd_occ),
-            *Sphi, wf::band_range(0, num_active), overlap, 0, 0);
+        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active),
+                overlap, 0, 0);
 
         // Hphi := evq * overlap
         wf::transform(
             ctx.spla_context(),
             mem,
             overlap, 0, 0,
-            1.0, *evq, wf::spin_index(0), wf::band_range(0, nbnd_occ),
+            1.0, *evq, wf::spin_index(0), br,
             0.0, *Hphi, wf::spin_index(0), wf::band_range(0, num_active));
 
         auto bp_gen    = Hk.kp().beta_projectors().make_generator();
@@ -372,7 +370,6 @@ struct Linear_response_operator {
         std::vector<double> betas(num_active, beta);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active),
                 alphas.data(), tmp, betas.data(), y.x);
-        //y.x->axpby(sddk::device_t::CPU, sddk::spin_range(0), alpha, *tmp, beta, num_active);
     }
 };
 

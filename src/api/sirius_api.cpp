@@ -5889,8 +5889,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             auto Hk = H0(kp);
 
-            auto& gvkq = kp.gkvec();
-
             int nbnd_occ = *nbnd_occ__;
             /* copy eigenvalues (factor 2 for rydberg/hartree) */
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
@@ -5959,9 +5957,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 psi_wf.get(),
                 tmp_wf.get(),
                 *alpha_pv__ / 2, // rydberg/hartree factor
-                nbnd_occ,
-                mem,
-                sr);
+                wf::band_range(0, nbnd_occ),
+                sr,
+                mem);
             /* CG state vectors */
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
