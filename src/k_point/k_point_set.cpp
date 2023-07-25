@@ -77,7 +77,7 @@ template
 void
 K_point_set::sync_band<double, sync_band_t::occupancy>();
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 void
 K_point_set::sync_band<float, sync_band_t::energy>();
@@ -147,9 +147,9 @@ void K_point_set::initialize(std::vector<int> const& counts)
     }
 
     for (auto it : spl_num_kpoints_) {
-        kpoints_[it.i]->initialize();
-#if defined(USE_FP32)
-        kpoints_float_[it.i]->initialize();
+      kpoints_[it.i]->initialize();
+#if defined(SIRIUS_USE_FP32)
+      kpoints_float_[it.i]->initialize();
 #endif
     }
 
@@ -441,7 +441,7 @@ void K_point_set::find_band_occupancies()
 
 template
 void K_point_set::find_band_occupancies<double>();
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 void K_point_set::find_band_occupancies<float>();
 #endif
@@ -472,7 +472,7 @@ double K_point_set::valence_eval_sum() const
 double K_point_set::valence_eval_sum() const
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         return this->valence_eval_sum<float>();
 #else
         RTE_THROW("not compiled with FP32 support");
@@ -520,7 +520,7 @@ double K_point_set::entropy_sum() const
 double K_point_set::entropy_sum() const
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         return this->entropy_sum<float>();
 #else
         RTE_THROW("not compiled with FP32 support");

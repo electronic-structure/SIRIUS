@@ -57,7 +57,7 @@ template
 void
 Band::solve_full_potential<double>(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template<>
 void
 Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__) const
@@ -204,7 +204,7 @@ template
 void
 Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, double itsol_tol__) const;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 void
 Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;

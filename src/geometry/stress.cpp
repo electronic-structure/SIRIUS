@@ -693,7 +693,7 @@ Stress::calc_stress_kin()
 {
     PROFILE("sirius::Stress|kin");
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         this->calc_stress_kin_aux<float>();
 #endif
     } else {
@@ -758,7 +758,7 @@ r3::matrix<double>
 Stress::calc_stress_nonloc()
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         if (ctx_.gamma_point()) {
             calc_stress_nonloc_aux<float, float>();
         } else {

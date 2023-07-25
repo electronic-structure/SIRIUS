@@ -85,7 +85,7 @@ int main(int argn, char **argv)
     printf("running %-30s : ", argv[0]);
     int result{0};
     if (args.exist("fp32")) {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         result = run_test<float>(args);
 #else
         RTE_THROW("not compiled with FP32 support");

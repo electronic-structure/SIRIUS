@@ -125,9 +125,9 @@ and optionally any of the additional libraries:
  * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
  * [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page)**
 
-\* Only required when `BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.
+\* Only required when `SIRIUS_BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.
 
-\** Only required when `-DBUILD_TESTING=On`
+\** Only required when `-DSIRIUS_BUILD_TESTING=On`
 
 Clone the repository and build as follows:
 
@@ -143,25 +143,25 @@ make -j install
 where `CMAKE_PREFIX_PATH` is a list of installation paths of dependencies installed in non-standard locations.
 
 #### Adding GPU support
-To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DCMAKE_CUDA_ARCHITECTURES='60;70'`, where `CMAKE_CUDA_ARCHITECTURES` is
+To enable CUDA you need to pass the following options to CMake: `-DSIRIUS_USE_CUDA=On -DCMAKE_CUDA_ARCHITECTURES='60;70'`, where `CMAKE_CUDA_ARCHITECTURES` is
 a list of NVIDIA architectures. Use `60`, `61`, `62` for Pascal; `70`, `72` for Volta; `75` for Turing; and `80` for Ampere.
 If CUDA is installed in a non-standard directory, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
 
-To enable MAGMA (GPU implementation of LAPACK) use `-DUSE_MAGMA=On`. Append MAGMA's installation directory to `CMAKE_PREFIX_PATH` if necessary.
+To enable MAGMA (GPU implementation of LAPACK) use `-DSIRIUS_USE_MAGMA=On`. Append MAGMA's installation directory to `CMAKE_PREFIX_PATH` if necessary.
 
 #### Parallel eigensolvers
-To compile with ScaLAPACK use `-DUSE_SCALAPACK=On`. To use ELPA, both `-DUSE_SCALAPACK=On` and `-DUSE_ELPA=On` are
+To compile with ScaLAPACK use `-DSIRIUS_USE_SCALAPACK=On`. To use ELPA, both `-DSIRIUS_USE_SCALAPACK=On` and `-DSIRIUS_USE_ELPA=On` are
 required, as we need ScaLAPACK functionality to transform the generalized eigenvalue problem to standard form,
 which can then be solved by ELPA. Append ScaLAPACK's and ELPA's install directory to `CMAKE_PREFIX_PATH` if necessary.
 
 #### Python module
-Use `-DCREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python module depends on `mpi4py` and
+Use `-DSIRIUS_CREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python module depends on `mpi4py` and
 `pybind11`, which need to be installed on your system.
 
 #### Additional options
-To link against Intel MKL use `-DUSE_MKL=On`. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. Building tests requires `-DBUILD_TESTING=On`.
+To link against Intel MKL use `-DSIRIUS_USE_MKL=On`. For Cray libsci use `-DSIRIUS_USE_CRAY_LIBSCI=On`. Building tests requires `-DSIRIUS_BUILD_TESTING=On`.
 
-By default example applications are built. This can be turned off via `-DBUILD_APPS=Off`, which is recommended when just building Fortran bindings.
+By default example applications are built. This can be turned off via `-DSIRIUS_BUILD_APPS=Off`, which is recommended when just building Fortran bindings.
 
 ### Installation on Piz Daint
 Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and

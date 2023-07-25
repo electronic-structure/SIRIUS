@@ -73,7 +73,7 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
     PROFILE("sirius::Force::calc_forces_nonloc");
 
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         this->calc_forces_nonloc_aux<float>();
 #endif
     } else {
@@ -912,7 +912,7 @@ Force::print_info(std::ostream& out__, int verbosity__)
 template
 void
 Force::calc_forces_nonloc_aux<double>();
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template
 void
 Force::calc_forces_nonloc_aux<float>();

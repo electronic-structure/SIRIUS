@@ -1493,7 +1493,7 @@ Hamiltonian_k<double>::get_h_o_diag_lapw<2>() const;
 template std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template class Hamiltonian_k<float>;
 
 template std::pair<sddk::mdarray<float, 2>, sddk::mdarray<float, 2>>

@@ -42,7 +42,7 @@ struct SpFFT_Grid<double> {using type = spfft::Grid;};
 template <>
 struct SpFFT_Grid<std::complex<double>> {using type = spfft::Grid;};
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template <>
 struct SpFFT_Grid<std::complex<float>> {using type = spfft::GridFloat;};
 
@@ -63,7 +63,7 @@ struct SpFFT_Transform<double> {using type = spfft::Transform;};
 template <>
 struct SpFFT_Transform<std::complex<double>> {using type = spfft::Transform;};
 
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
 template <>
 struct SpFFT_Transform<float> {using type = spfft::TransformFloat;};
 

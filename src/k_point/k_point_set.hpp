@@ -46,7 +46,7 @@ class K_point_set
     /// List of k-points.
     std::vector<std::unique_ptr<K_point<double>>> kpoints_;
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
     /// List of k-points in fp32 type, most calculation and assertion in this class only rely on fp64 type kpoints_
     std::vector<std::unique_ptr<K_point<float>>> kpoints_float_;
 #endif
@@ -144,12 +144,12 @@ class K_point_set
     void update()
     {
         /* update k-points */
-        for (auto it : spl_num_kpoints_) {
-            kpoints_[it.i]->update();
-#if defined(USE_FP32)
-            kpoints_float_[it.i]->update();
+      for (auto it : spl_num_kpoints_) {
+           kpoints_[it.i]->update();
+#if defined(SIRIUS_USE_FP32)
+           kpoints_float_[it.i]->update();
 #endif
-        }
+      }
     }
 
     /// Get a list of band energies for a given k-point index.
@@ -178,7 +178,7 @@ class K_point_set
     void add_kpoint(r3::vector<double> vk__, double weight__)
     {
         kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__)));
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
         kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, weight__)));
 #endif
     }
@@ -281,7 +281,7 @@ inline K_point<double>* K_point_set::get<double>(int ik__) const
 template<>
 inline K_point<float>* K_point_set::get<float>(int ik__) const
 {
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
     RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_float_.size());
     return kpoints_float_[ik__].get();
 #else

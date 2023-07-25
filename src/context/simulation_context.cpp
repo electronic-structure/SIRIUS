@@ -67,7 +67,7 @@ spfft::Grid& Simulation_context::spfft_grid_coarse<double>()
     return *spfft_grid_coarse_;
 }
 
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
 template <>
 spfft::TransformFloat& Simulation_context::spfft<float>()
 {
@@ -838,7 +838,7 @@ Simulation_context::update()
         spfft_grid_coarse_ = std::make_unique<spfft::Grid>(fft_coarse_grid_[0], fft_coarse_grid_[1],
                 fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(),
                 spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
         spfft_grid_coarse_float_ = std::make_unique<spfft::GridFloat>(fft_coarse_grid_[0], fft_coarse_grid_[1],
                 fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(), spl_z.local_size(), spfft_pu, -1,
                 comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
@@ -853,7 +853,7 @@ Simulation_context::update()
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
             gv.at(sddk::memory_t::host))));
-#ifdef USE_FP32
+#ifdef SIRIUS_USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
@@ -875,7 +875,7 @@ Simulation_context::update()
             new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
                             gvec_fft_->zcol_count(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().native(), SPFFT_EXCH_DEFAULT));
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         spfft_grid_float_ = std::unique_ptr<spfft::GridFloat>(
             new spfft::GridFloat(fft_grid_[0], fft_grid_[1], fft_grid_[2], gvec_fft_->zcol_count(),
                                  spl_z.local_size(), spfft_pu, -1, comm_fft().native(), SPFFT_EXCH_DEFAULT));
@@ -887,7 +887,7 @@ Simulation_context::update()
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
-#if defined(USE_FP32)
+#if defined(SIRIUS_USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
             gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));

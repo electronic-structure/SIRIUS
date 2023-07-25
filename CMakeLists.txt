@@ -15,35 +15,35 @@ endif()
 
 # user variables
 
-option(CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
-option(CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
-option(BUILD_DOCS              "build doxygen doc" OFF)
-option(USE_ELPA                "use elpa" OFF)
-option(USE_MAGMA               "use MAGMA" OFF)
-option(USE_NLCGLIB             "enable nlcglib" OFF)
-option(USE_CUDA                "use CUDA" OFF)
-option(USE_ROCM                "use ROCM AMD GPU code" OFF)
-option(USE_NVTX                "use Nvidia profiling tools library" OFF)
-option(USE_VDWXC               "use libvdwxc for van der Walls corrections" OFF)
-option(USE_MKL                 "use Intel MKL" OFF)
-option(USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
-option(USE_SCALAPACK           "use scalapack" OFF)
-option(BUILD_APPS              "build apps" ON)
-option(USE_OPENMP              "use OpenMP" ON)
-option(USE_PROFILER            "measure execution of functions with timer" ON)
-option(USE_MEMORY_POOL         "use memory pool" ON)
-option(USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
-option(BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
-option(USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
+option(SIRIUS_CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
+option(SIRIUS_CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
+option(SIRIUS_BUILD_DOCS              "build doxygen doc" OFF)
+option(SIRIUS_USE_ELPA                "use elpa" OFF)
+option(SIRIUS_USE_MAGMA               "use MAGMA" OFF)
+option(SIRIUS_USE_NLCGLIB             "enable nlcglib" OFF)
+option(SIRIUS_USE_CUDA                "use CUDA" OFF)
+option(SIRIUS_USE_ROCM                "use ROCM AMD GPU code" OFF)
+option(SIRIUS_USE_NVTX                "use Nvidia profiling tools library" OFF)
+option(SIRIUS_USE_VDWXC               "use libvdwxc for van der Walls corrections" OFF)
+option(SIRIUS_USE_MKL                 "use Intel MKL" OFF)
+option(SIRIUS_USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
+option(SIRIUS_USE_SCALAPACK           "use scalapack" OFF)
+option(SIRIUS_BUILD_APPS              "build apps" ON)
+option(SIRIUS_USE_OPENMP              "use OpenMP" ON)
+option(SIRIUS_USE_PROFILER            "measure execution of functions with timer" ON)
+option(SIRIUS_USE_MEMORY_POOL         "use memory pool" ON)
+option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
+option(SIRIUS_BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
+option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
 
-set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
-set(USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
+set(SIRIUS_GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
+set(SIRIUS_USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
 
-set_property(CACHE USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
+set_property(CACHE SIRIUS_USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
-if(CREATE_FORTRAN_BINDINGS)
+if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   enable_language(Fortran)
 endif()
 
@@ -64,8 +64,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
 
-if(USE_CUDA AND USE_ROCM)
-  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
+if(SIRIUS_USE_CUDA AND SIRIUS_USE_ROCM)
+  message(FATAL_ERROR "SIRIUS_USE_CUDA and SIRIUS_USE_ROCM must not be enabled at the same time!")
 endif()
 
 add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
@@ -77,7 +77,7 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
-if (CREATE_PYTHON_MODULE)
+if (SIRIUS_CREATE_PYTHON_MODULE)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
@@ -128,14 +128,11 @@ option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
-if(USE_NLCGLIB)
+if(SIRIUS_USE_NLCGLIB)
   find_package(nlcglib REQUIRED)
   find_package(Kokkos REQUIRED)
 endif()
 
-if(USE_MEMORY_POOL)
-  find_package(umpire)
-endif()
 
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
@@ -147,12 +144,13 @@ find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
 
 # Check if SpFFT support single precision if required
-set(USE_FP32_BOOL OFF)
-if(NOT USE_FP32 STREQUAL "OFF")
+if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   if(SPFFT_SINGLE_PRECISION)
-    set(USE_FP32_BOOL ON)
-  elseif(USE_FP32 STREQUAL "ON")
+    set(SIRIUS_USE_FP32_BOOL "ON")
+  elseif(SIRIUS_USE_FP32 STREQUAL "ON")
     message(FATAL_ERROR "Single precision option enabled, but SpFFT not compiled with single precision support.")
+  else()
+    set(SIRIUS_USE_FP32_BOOL "OFF")
   endif()
 endif()
 
@@ -172,50 +170,50 @@ else()
   target_compile_definitions(sirius::filesystem INTERFACE SIRIUS_BOOST_FILESYSTEM)
 endif()
 
-if (USE_OPENMP)
+if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 
 set(LINALG_LIB "")
-if(USE_MKL)
-  set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
+if(SIRIUS_USE_MKL)
+  set(SIRIUS_USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
-  set(LINALG_LIB "sirius::mkl")
-elseif(USE_CRAY_LIBSCI)
+  set(SIRIUS_LINALG_LIB "sirius::mkl")
+elseif(SIRIUS_USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
-  set(LINALG_LIB "${CRAY_LIBSCI_LIBRARIES}")
+  set(SIRIUS_LINALG_LIB "${SIRIUS_CRAY_LIBSCI_LIBRARIES}")
 else()
   find_package(LAPACK REQUIRED)
-  set(LINALG_LIB "${LAPACK_LIBRARIES}")
-  if(USE_SCALAPACK)
+  set(SIRIUS_LINALG_LIB "${LAPACK_LIBRARIES}")
+  if(SIRIUS_USE_SCALAPACK)
     find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
-    set(LINALG_LIB "${LINALG_LIB};${SCALAPACK_LIBRARIES}")
+    set(SIRIUS_LINALG_LIB "${SIRIUS_LINALG_LIB};${SIRIUS_SCALAPACK_LIBRARIES}")
   endif()
 endif()
 
-if(USE_ELPA)
+if(SIRIUS_USE_ELPA)
   find_package(Elpa REQUIRED)
-endif(USE_ELPA)
+endif(SIRIUS_USE_ELPA)
 
-if(USE_MAGMA)
+if(SIRIUS_USE_MAGMA)
   find_package(MAGMA REQUIRED)
-endif(USE_MAGMA)
+endif(SIRIUS_USE_MAGMA)
 
-if(USE_VDWXC)
+if(SIRIUS_USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
-endif(USE_VDWXC)
+endif(SIRIUS_USE_VDWXC)
 
 find_package(costa CONFIG REQUIRED)
 
-if(USE_CUDA)
+if(SIRIUS_USE_CUDA)
   enable_language(CUDA)
   # note find cudatoolkit is called inside the include file. the
   # sirius::cuda_libs target is also defined there
   include(cmake/cudalibs_target.cmake)
   message(STATUS "CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}")
-endif(USE_CUDA)
+endif(SIRIUS_USE_CUDA)
 
-if(USE_ROCM)
+if(SIRIUS_USE_ROCM)
   # safegaurd.
   if (NOT DEFINED CMAKE_HIP_ARCHITECTURES)
     set(CMAKE_HIP_ARCHITECTURES gfx801 gfx900 gfx90a)
@@ -226,6 +224,11 @@ if(USE_ROCM)
   find_package(rocsolver CONFIG REQUIRED)
   set(CMAKE_HIP_STANDARD 14)
 endif()
+
+if(SIRIUS_USE_MEMORY_POOL)
+  find_package(umpire)
+endif()
+
 
 # check if git command exists
 find_program(GIT_EXE NAMES git)
@@ -286,10 +289,10 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
-if(CREATE_PYTHON_MODULE)
+if(SIRIUS_CREATE_PYTHON_MODULE)
   # Python module
   add_subdirectory(python_module)
-endif(CREATE_PYTHON_MODULE)
+endif(SIRIUS_CREATE_PYTHON_MODULE)
 
 # applications
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
@@ -297,14 +300,14 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
   add_subdirectory(apps/unit_tests)
 endif(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 
-if(BUILD_APPS)
+if(SIRIUS_BUILD_APPS)
   add_subdirectory(apps/atoms)
   add_subdirectory(apps/hydrogen)
   add_subdirectory(apps/dft_loop)
-  if(USE_NLCGLIB)
+  if(SIRIUS_USE_NLCGLIB)
     add_subdirectory(apps/nlcg)
   endif()
   add_subdirectory(apps/upf)
   add_subdirectory(apps/utils)
-endif(BUILD_APPS)
+endif(SIRIUS_BUILD_APPS)
 add_subdirectory(doc)

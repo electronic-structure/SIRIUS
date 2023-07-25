@@ -7,7 +7,7 @@ find_package(PkgConfig REQUIRED)
 
 pkg_search_module(_LIBVDWXC libvdwxc>=${LibVDWXC_FIND_VERSION})
 
-find_path(LIBVDWXC_INCLUDE_DIR
+find_path(SIRIUS_LIBVDWXC_INCLUDE_DIR
   NAMES vdwxc.h vdwxc_mpi.h
   PATH_SUFFIXES include inc
   HINTS
@@ -17,7 +17,7 @@ find_path(LIBVDWXC_INCLUDE_DIR
   ${_LIBVDWXC_INCLUDE_DIRS}
   DOC "vdwxc include directory")
 
-find_library(LIBVDWXC_LIBRARIES
+find_library(SIRIUS_LIBVDWXC_LIBRARIES
   NAMES vdwxc
   PATH_SUFFIXES lib
   HINTS
@@ -28,14 +28,14 @@ find_library(LIBVDWXC_LIBRARIES
   DOC "vdwxc libraries list")
 
 # try linking in C (C++ fails because vdwxc_mpi.h includes mpi.h inside extern "C"{...})
-set(CMAKE_REQUIRED_LIBRARIES "${LIBVDWXC_LIBRARIES}")
-check_symbol_exists(vdwxc_init_mpi "${LIBVDWXC_INCLUDE_DIR}/vdwxc_mpi.h" HAVE_LIBVDW_WITH_MPI)
+set(CMAKE_REQUIRED_LIBRARIES "${SIRIUS_LIBVDWXC_LIBRARIES}")
+check_symbol_exists(vdwxc_init_mpi "${SIRIUS_LIBVDWXC_INCLUDE_DIR}/vdwxc_mpi.h" HAVE_LIBVDW_WITH_MPI)
 
-find_package_handle_standard_args(LibVDWXC DEFAULT_MSG LIBVDWXC_LIBRARIES LIBVDWXC_INCLUDE_DIR)
+find_package_handle_standard_args(LibVDWXC DEFAULT_MSG SIRIUS_LIBVDWXC_LIBRARIES SIRIUS_LIBVDWXC_INCLUDE_DIR)
 
 if(LibVDWXC_FOUND AND NOT TARGET sirius::libvdwxc)
   add_library(sirius::libvdwxc INTERFACE IMPORTED)
   set_target_properties(sirius::libvdwxc PROPERTIES
-                                         INTERFACE_INCLUDE_DIRECTORIES "${LIBVDWXC_INCLUDE_DIR}"
-                                         INTERFACE_LINK_LIBRARIES "${LIBVDWXC_LIBRARIES}")
+                                         INTERFACE_INCLUDE_DIRECTORIES "${SIRIUS_LIBVDWXC_INCLUDE_DIR}"
+                                         INTERFACE_LINK_LIBRARIES "${SIRIUS_LIBVDWXC_LIBRARIES}")
 endif()
