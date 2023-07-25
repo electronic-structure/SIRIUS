@@ -5891,14 +5891,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             auto& gvkq = kp.gkvec();
 
-            sddk::mdarray<int, 2> gvec_kq_loc(const_cast<int*>(gvec_kq_loc__), 3, num_gvec_kq_loc);
-
-            /* collect local G+k+q vector sizes across all ranks */
-            mpi::block_data_descriptor gkq_in_distr(gvkq.comm().size());
-            gkq_in_distr.counts[gvkq.comm().rank()] = num_gvec_kq_loc;
-            gvkq.comm().allgather(gkq_in_distr.counts.data(), 1, gvkq.comm().rank());
-            gkq_in_distr.calc_offsets();
-
             int nbnd_occ = *nbnd_occ__;
             /* copy eigenvalues (factor 2 for rydberg/hartree) */
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
@@ -5928,17 +5920,16 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 }
             }
 
-            /* check residuals H|psi> - e * S |psi> */
-            {
-                //sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvk, 1.0);
-                sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-                kp.initialize();
-                auto Hk = H0(kp);
-                sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
-                        eigvals_vec.data());
-            }
+            ///* check residuals H|psi> - e * S |psi> */
+            //{
+            //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
+            //    kp.initialize();
+            //    auto Hk = H0(kp);
+            //    sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
+            //            eigvals_vec.data());
+            //}
 
-            // setup auxiliary state vectors for CG.
+            /* setup auxiliary state vectors for CG */
             auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
             auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
@@ -5971,19 +5962,19 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 nbnd_occ,
                 mem,
                 sr);
-            // CG state vectors
+            /* CG state vectors */
             auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
             auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
             auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
             auto C_wrap = sirius::lr::Wave_functions_wrap{C.get(), mem};
 
-            // Set up the diagonal preconditioner
+            /* set up the diagonal preconditioner */
             auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
             sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
             eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
                 return eigvals_vec[i];
             };
-            // allocate and copy eigvals_mdarray to GPU if running on GPU
+            /* allocate and copy eigvals_mdarray to GPU if running on GPU */
             if (is_device_memory(mem)) {
                 eigvals_mdarray.allocate(mem).copy_to(mem);
             }
