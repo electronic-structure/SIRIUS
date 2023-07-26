@@ -1867,14 +1867,26 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      *       - trmm is computed on GPU with wf::transform
      */
     // TODO: test magma and cuSolver
+    /*
+     * potrf from cuSolver works in a standalone test, but not here; here it returns -1;
+     *   disbled for further investigation
+     *
+     */
     auto la = la::lib_t::lapack;
     auto la1 = la::lib_t::blas;
     auto mem = sddk::memory_t::host;
+    /* if matrix is distributed, we use ScaLAPACK for Cholesky factorization */
     if (o__.comm().size() > 1) {
         la = la::lib_t::scalapack;
     }
-    if (mem__ == sddk::memory_t::device) {
+    if (is_device_memory(mem__)) {
+        /* this is for trmm */
         la1 = la::lib_t::gpublas;
+        /* this is for potrf */
+        //if (o__.comm().size() == 1) {
+        //    mem = mem__;
+        //    la = sddk::linalg_t::gpublas;
+        //}
     }
 
     /* compute the transformation matrix (inverse of the Cholesky factor) */
