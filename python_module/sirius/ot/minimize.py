@@ -58,7 +58,7 @@ def btsearch(x, p, f, f0, b, maxiter=20, tau=0.1):
         x = b
         for _ in range(maxiter):
             fx = f(x)
-            if fx < f0:
+            if fx <= f0:
                 return x, fx
             else:
                 x *= tau
@@ -259,12 +259,12 @@ def minimize(x0, f, df, M,
             cg_restart_flag = False  # this worked, reset restart flag
         except StepError:
             # linsearch failed, resort to fallback method
-            logger('OT: %d line-search resort to fallback' % i)
+            # logger('OT: %d line-search resort to fallback' % i)
             try:
                 xnext, fnext = btsearch(x, p, f, f0=fc, b=0.2)
             except StepError:
                 # this was not a descent direction -> restart
-                logger('CG restart')
+                # logger('CG restart')
                 if cg_restart_flag:
                     # btsearch failed
                     # we are already in restart
@@ -275,14 +275,12 @@ def minimize(x0, f, df, M,
                 cg_restart_flag = True
                 continue
         except SlopeError:
-            logger('CG restart')
+            # logger('CG restart')
             # restart
             pdfx, dfx = df(x)
             p = -M @ dfx
             cg_restart_flag = True
             continue
-        except Exception:
-            raise Exception('OT: cannot find descent: giving up')
 
         fc = fnext
 
@@ -298,7 +296,7 @@ def minimize(x0, f, df, M,
         x = xnext
 
         if res < tol:
-            logger('minimization: success after', i + 1, ' iterations')
+            # logger('minimization: success after', i + 1, ' iterations')
             break
 
         # conjugate search direction for next iteration

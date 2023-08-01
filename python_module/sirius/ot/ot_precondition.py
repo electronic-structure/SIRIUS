@@ -1,3 +1,4 @@
+from sirius.coefficient_array.coefficient_array import CoefficientArray
 from ..coefficient_array import PwCoeffs
 from scipy.sparse import dia_matrix
 import numpy as np
@@ -27,7 +28,7 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=True):
         return DiagonalPreconditioner(
             D=dia_matrix((d, 0), shape=(N, N)), c0=c0)
     else:
-        P = PwCoeffs(dtype=np.float64, ctype=dia_matrix)
+        P = PwCoeffs()
         for k in range(nk):
             kp = kpointset[k]
             gkvec = kp.gkvec()
@@ -58,18 +59,16 @@ class DiagonalPreconditioner(Preconditioner):
         self.c0 = c0
         self.D = D
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: PwCoeffs):
         """
         """
-        from ..coefficient_array import CoefficientArray
         from .ot_transformations import lagrangeMult
 
-        out = type(other)(dtype=other.dtype)
-        if isinstance(other, CoefficientArray):
-            for key, Dl in self.D.items():
-                out[key] = Dl * other[key]
-        else:
-            raise ValueError('wrong type given')
+        assert(isinstance(other, PwCoeffs))
+
+        out = PwCoeffs()
+        for key, Dl in self.D.items():
+            out[key] = Dl * other[key]
         ll = lagrangeMult(other, self.c0, self)
         return out + ll
 
@@ -84,7 +83,7 @@ class DiagonalPreconditioner(Preconditioner):
             for key, Dl in self.D.items():
                 self.D[key] = s*Dl
         elif isinstance(s, CoefficientArray):
-            out = type(s)(dtype=s.dtype)
+            out = PwCoeffs()
             for key in s.keys():
                 out[key] = self.D[key] * s[key]
             return out
@@ -97,7 +96,7 @@ class DiagonalPreconditioner(Preconditioner):
         """
         from ..coefficient_array import CoefficientArray
         if isinstance(self.D, CoefficientArray):
-            out_data = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
+            out_data = PwCoeffs()
             out = DiagonalPreconditioner(out_data, self.c0)
             for k, v in self.D.items():
                 out.D[k] = -v
@@ -130,7 +129,7 @@ class IdentityPreconditioner(Preconditioner):
     def __neg__(self):
         return IdentityPreconditioner(self.c0, _f=-self._f)
 
-    def __getitem__(self, key):
+    def __getitem__(self, _):
         return self._f
 
     __lmul__ = __mul__

@@ -117,11 +117,11 @@ class U_operator
     int
     find_orbital_index(const int ia__, const int n__, const int l__) const;
 
-    matrix<std::complex<T>> const& mat(int i) const
+    matrix<std::complex<T>> const&
+    mat(int i) const
     {
         return um_[i];
     }
-
 };
 
 /** \tparam T  Precision of the wave-functions.

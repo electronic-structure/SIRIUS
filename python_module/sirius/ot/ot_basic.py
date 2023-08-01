@@ -5,16 +5,11 @@ from ..py_sirius import (
     energy_bxc,
     Wave_functions,
     MemoryEnum,
-    CopyEnum,
     Hamiltonian0,
     total_energy
 )
 from ..coefficient_array import PwCoeffs
 import numpy as np
-
-
-def matview(x):
-    return np.matrix(x, copy=False)
 
 
 def pp_total_energy(potential, density, k_point_set, ctx):
@@ -97,7 +92,11 @@ class Energy:
         for key, val in yn.items():
             k, ispn = key
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
-            benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
+            if self.ctx.gamma_point:
+                tmp = np.einsum("ij,ij->j", val[1:,:], np.conj(X[key])[1:, :])
+                benergies[: val.shape[1]] = (np.array(val[0,:]) * np.array(X[key][0,:]) + 2 * np.real(tmp)).flatten()
+            else:
+                benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
             for j, ek in enumerate(benergies):
                 # print(np.real(ek), end=' ')
@@ -139,7 +138,7 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands
+        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands, apply_hamiltonian_gamma
 
         ctx = self.kpointset.ctx()
         pmem_t = ctx.processing_unit_memory_t()
@@ -148,7 +147,7 @@ class ApplyHamiltonian:
         if isinstance(cn, PwCoeffs):
             assert ki is None
             assert ispn is None
-            out = PwCoeffs(dtype=cn.dtype)
+            out = PwCoeffs()
             for k, ispn_coeffs in cn.by_k().items():
                 kpoint = self.kpointset[k]
                 # spins might have different number of bands ...
@@ -164,7 +163,10 @@ class ApplyHamiltonian:
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, : val.shape[1]] = val
 
-                apply_hamiltonian(H0, kpoint, Psi_y, Psi_x)
+                if ctx.gamma_point:
+                    apply_hamiltonian_gamma(H0, kpoint, Psi_y, Psi_x)
+                else:
+                    apply_hamiltonian(H0, kpoint, Psi_y, Psi_x)
 
                 w = kpoint.weight()
                 # copy coefficients from Psi_y
@@ -182,6 +184,8 @@ class ApplyHamiltonian:
                             :, :num_wf
                         ]
             return out
+        else:
+            raise TypeError(f"Expected an object of type PwCoeffs but got {type(cn)}.")
 
     def __matmul__(self, cn):
         """ """

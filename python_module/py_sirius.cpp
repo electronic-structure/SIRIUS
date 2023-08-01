@@ -8,6 +8,11 @@
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
+#include <string>
+#include <vector>
+#include <list>
+#include <complex>
+#include <iostream>
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -70,6 +75,7 @@ pj_convert(json& node)
 /* typedefs */
 using complex_double = std::complex<double>;
 
+template <bool gamma_point = false>
 void
 apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
                   wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
@@ -93,7 +99,11 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
-        H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        if constexpr (gamma_point) {
+            H.apply_h_s<double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        } else {
+            H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        }
     }
     if (is_device_memory(ctx.processing_unit_memory_t())) {
         if (swf) {
@@ -179,7 +189,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("processing_unit", py::overload_cast<std::string>(&Simulation_context::processing_unit))
             .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
             .def("full_potential", &Simulation_context::full_potential)
-            .def("hubbard_correction", &Simulation_context::hubbard_correction)
+            .def_property_readonly("hubbard_correction", &Simulation_context::hubbard_correction)
             .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
                  py::return_value_policy::reference)
             .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -190,7 +200,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
             .def("num_spinors", &Simulation_context::num_spinors)
             .def("num_mag_dims", &Simulation_context::num_mag_dims)
-            .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
+            .def_property_readonly("gamma_point", py::overload_cast<>(&Simulation_context::gamma_point, py::const_))
             .def("update", &Simulation_context::update)
             .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
             .def("processing_unit_memory_t", &Simulation_context::processing_unit_memory_t)
@@ -202,8 +212,7 @@ PYBIND11_MODULE(py_sirius, m)
                     py::return_value_policy::reference_internal)
             .def(
                     "comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
-                    py::return_value_policy::reference_internal)
-            .def("fft_grid", &Simulation_context::fft_grid, py::return_value_policy::reference_internal);
+                    py::return_value_policy::reference_internal);
 
     py::class_<Atom>(m, "Atom")
             .def("position", &Atom::position)
@@ -432,15 +441,16 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Force>(m, "Force")
             .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
-            .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
-            .def_property_readonly("ewald", &Force::forces_ewald)
-            .def_property_readonly("hubbard", &Force::forces_hubbard)
-            .def_property_readonly("vloc", &Force::forces_vloc)
-            .def_property_readonly("nonloc", &Force::forces_nonloc)
-            .def_property_readonly("core", &Force::forces_core)
-            .def_property_readonly("scf_corr", &Force::forces_scf_corr)
-            .def_property_readonly("us", &Force::forces_us)
-            .def_property_readonly("total", &Force::forces_total)
+            .def("calc_forces_total", py::overload_cast<bool>(&Force::calc_forces_total), "add_scf_corr"_a,
+                 py::return_value_policy::reference_internal)
+            .def_property_readonly("ewald", &Force::forces_ewald, py::return_value_policy::reference_internal)
+            .def_property_readonly("hubbard", &Force::forces_hubbard, py::return_value_policy::reference_internal)
+            .def_property_readonly("vloc", &Force::forces_vloc, py::return_value_policy::reference_internal)
+            .def_property_readonly("nonloc", &Force::forces_nonloc, py::return_value_policy::reference_internal)
+            .def_property_readonly("core", &Force::forces_core, py::return_value_policy::reference_internal)
+            .def_property_readonly("scf_corr", &Force::forces_scf_corr, py::return_value_policy::reference_internal)
+            .def_property_readonly("us", &Force::forces_us, py::return_value_policy::reference_internal)
+            .def_property_readonly("total", &Force::forces_total, py::return_value_policy::reference_internal)
             .def("print_info", &Force::print_info);
 
     py::class_<fft::Grid>(m, "FFT3D_grid")
@@ -520,10 +530,11 @@ PYBIND11_MODULE(py_sirius, m)
                  "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
             .def("num_sc", &wf::Wave_functions<double>::num_sc)
             .def("num_wf", &wf::Wave_functions<double>::num_wf)
-            // .def("has_mt", &wf::Wave_functions<double>::has_mt)
-            // .def("zero_pw", &wf::Wave_functions<double>::zero_pw)
-            // .def("preferred_memory_t", py::overload_cast<>(&wf::Wave_functions<double>::preferred_memory_t,
-            // py::const_))
+            .def("zero",
+                 [](wf::Wave_functions<double>& wf) {
+                     for (int i = 0; i < wf.num_md(); ++i)
+                         wf.pw_coeffs(wf::spin_index(i)).zero();
+                 })
             .def(
                     "pw_coeffs",
                     [](py::object& obj, int i) -> py::array_t<complex_double> {
@@ -569,7 +580,9 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
     m.def("sprint_magnetization", &sprint_magnetization);
-    m.def("apply_hamiltonian", &apply_hamiltonian, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a, "wf_in"_a,
+    m.def("apply_hamiltonian", &apply_hamiltonian<>, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a, "wf_in"_a,
+          py::arg("swf_out") = nullptr);
+    m.def("apply_hamiltonian_gamma", &apply_hamiltonian<true>, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a, "wf_in"_a,
           py::arg("swf_out") = nullptr);
 
     m.def("initialize_subspace", &initialize_subspace<double, std::complex<double>>);

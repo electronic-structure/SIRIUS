@@ -27,6 +27,7 @@
 
 #include "hamiltonian/hamiltonian.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
+#include <complex>
 
 namespace sirius {
 /* forward declaration */
@@ -211,6 +212,8 @@ class Force
 
     mdarray<double, 2> const&
     calc_forces_total();
+    mdarray<double, 2> const&
+    calc_forces_total(bool add_scf_corr);
 
     inline auto const&
     forces_total() const
