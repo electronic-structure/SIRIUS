@@ -29,7 +29,6 @@
 #include "linalg.hpp"
 #include "SDDK/omp.hpp"
 #include "eigensolver.hpp"
-
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
 #include "gpu/magma.hpp"
 #endif
@@ -1404,22 +1403,22 @@ class Eigensolver_magma: public Eigensolver
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
-
     Eigensolver_magma_gpu()
         : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
     {
     }
 
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
+    /// Solve a hermitian eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__,
+              dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_magma_gpu|zheevdx");
 
-        int nt = omp_get_max_threads();
-        int lda = A__.ld();
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        int nt     = omp_get_max_threads();
+        int lda    = A__.ld();
+        auto& mph  = get_memory_pool(sddk::memory_t::host);
         auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
-        auto w = mph.get_unique_ptr<double>(matrix_size__);
+        auto w     = mph.get_unique_ptr<double>(matrix_size__);
 
         acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__,
                     matrix_size__);
@@ -1431,19 +1430,18 @@ class Eigensolver_magma_gpu: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
-        int llda = matrix_size__ + 32;
+        int llda    = matrix_size__ + 32;
         auto z_work = mphp.get_unique_ptr<std::complex<double>>(llda * matrix_size__);
 
         auto h_work = mphp.get_unique_ptr<std::complex<double>>(lwork);
-        auto rwork = mphp.get_unique_ptr<double>(lrwork);
-        auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
+        auto rwork  = mphp.get_unique_ptr<double>(lrwork);
+        auto iwork  = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                      reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::device)), lda, 0.0, 0.0, 1,
-                      nev__, &m, w.get(),
-                      reinterpret_cast<magmaDoubleComplex*>(z_work.get()), llda,
-                      reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
-                      rwork.get(), lrwork, iwork.get(), liwork, &info);
+                          reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::device)), lda, 0.0, 0.0, 1,
+                          nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(z_work.get()), llda,
+                          reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(), lrwork, iwork.get(),
+                          liwork, &info);
 
         if (nt != omp_get_max_threads()) {
             TERMINATE("magma has changed the number of threads");
@@ -1461,6 +1459,55 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         return info;
     }
+
+    /// Solve a symmetric eigen-value problem for N lower eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
+    {
+        PROFILE("Eigensolver_magma_gpu|dsyevdx");
+
+        int nt     = omp_get_max_threads();
+        int lda    = A__.ld();
+        auto& mph  = get_memory_pool(sddk::memory_t::host);
+        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto w     = mph.get_unique_ptr<double>(matrix_size__);
+
+        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__,
+                    matrix_size__);
+
+        int info, m;
+
+        int lwork;
+        int liwork;
+        magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+        int llda    = matrix_size__ + 32;
+        auto z_work = mphp.get_unique_ptr<double>(llda * matrix_size__);
+        auto h_work = mphp.get_unique_ptr<double>(lwork);
+        auto iwork  = mph.get_unique_ptr<magma_int_t>(liwork);
+
+        magma_dsyevdx_gpu(MagmaVec /*jobz*/, MagmaRangeI /*range*/, MagmaLower /*uplo*/, matrix_size__ /*n*/,
+                          A__.at(sddk::memory_t::device) /*dA*/, lda /*ldda*/, 0.0 /*vl*/, 0.0 /*vu*/, 1 /*il*/,
+                          nev__ /*iu*/, &m /*mout*/, w.get() /*w*/, z_work.get() /*wA*/, llda /*ldwa*/,
+                          h_work.get() /*work*/, lwork /*lwork*/, iwork.get() /*iwork*/, liwork /*liwork*/,
+                          &info /*info*/);
+
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(),
+                         matrix_size__, nev__);
+        }
+
+        return info;
+    }
+
 };
 #else
 class Eigensolver_magma: public Eigensolver
