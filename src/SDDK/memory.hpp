@@ -364,7 +364,7 @@ class memory_pool
 #endif
   public:
     /// Constructor
-    memory_pool(memory_t M__, size_t initial_size__ = 0)
+    memory_pool(memory_t M__)
         : M_(M__)
     {
         std::string mem_type;
@@ -612,7 +612,7 @@ class mdarray_index_descriptor
         return size_;
     }
 
-    inline bool check_range(index_type i__) const
+    inline bool check_range([[maybe_unused]] index_type i__) const
     {
 #ifdef NDEBUG
         return true;
