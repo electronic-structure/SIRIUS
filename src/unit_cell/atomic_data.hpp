@@ -26,7 +26,7 @@ struct atomic_level_descriptor
     double occupancy;
 
     /// True if this is a core level.
-    bool core;
+    bool core{false};
 };
 
 const std::vector<std::string> atomic_symb = {
