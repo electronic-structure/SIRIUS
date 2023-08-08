@@ -74,7 +74,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
 }
 
 template <class T>
-const int
+int
 U_operator<T>::find_orbital_index(const int ia__, const int n__, const int l__) const
 {
     int at_lvl = 0;

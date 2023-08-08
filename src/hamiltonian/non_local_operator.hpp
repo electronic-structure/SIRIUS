@@ -105,7 +105,7 @@ class U_operator
         return um_[idx3].at(mem__, idx1, idx2);
     }
 
-    const int find_orbital_index(const int ia__, const int n__, const int l__) const;
+    int find_orbital_index(const int ia__, const int n__, const int l__) const;
 };
 
 /** \tparam T  Precision of the wave-functions.
