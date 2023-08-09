@@ -1531,7 +1531,8 @@ auto_copy(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
 
 template <class numeric_t, std::size_t... Ts>
 auto
-_empty_like_inner(std::index_sequence<Ts...>& seq, std::size_t (&dims)[sizeof...(Ts)], memory_pool* mempool)
+_empty_like_inner(std::index_sequence<Ts...>& seq [[maybe_unused]], std::size_t (&dims)[sizeof...(Ts)],
+                  memory_pool* mempool)
 {
     if (mempool == nullptr) {
         return mdarray<numeric_t, sizeof...(Ts)>{dims[Ts]...};
