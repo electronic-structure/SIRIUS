@@ -33,6 +33,7 @@
 #include <limits>
 #include <map>
 #include <algorithm>
+#include <cstdint>
 
 /// Spin-blocks of the Hamiltonian.
 enum class spin_block_t
