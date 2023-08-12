@@ -101,8 +101,9 @@ show_vec(const r3::vector<T>& vec)
 /* typedefs */
 using complex_double = std::complex<double>;
 
-void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
-        wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
+void
+apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functions<double>& wf_out,
+                  wf::Wave_functions<double>& wf, std::shared_ptr<wf::Wave_functions<double>>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
@@ -112,9 +113,9 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_f
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
         throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
     }
-    auto H    = H0(kp);
-    auto& ctx = H0.ctx();
-    auto mg_wf = wf.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device);
+    auto H         = H0(kp);
+    auto& ctx      = H0.ctx();
+    auto mg_wf     = wf.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device);
     auto mg_wf_out = wf_out.memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::host);
 
     /* apply H to all wave functions */
@@ -123,7 +124,11 @@ void apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_f
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
-        H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        if (ctx.gamma_point()) {
+            H.apply_h_s<double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        } else {
+            H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+        }
     }
     if (is_device_memory(ctx.processing_unit_memory_t())) {
         if (swf) {
@@ -217,7 +222,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
         .def("num_spinors", &Simulation_context::num_spinors)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
-        .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
+        .def_property_readonly("gamma_point", py::overload_cast<>(&Simulation_context::gamma_point, py::const_))
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("processing_unit_memory_t", &Simulation_context::processing_unit_memory_t)

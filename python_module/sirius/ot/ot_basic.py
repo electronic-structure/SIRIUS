@@ -125,7 +125,9 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands
+        from ..py_sirius import (apply_hamiltonian,
+                                 num_mag_dims,
+                                 num_bands)
 
         ctx = self.kpointset.ctx()
         pmem_t = ctx.processing_unit_memory_t()
