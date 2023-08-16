@@ -616,7 +616,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Force>(m, "Force")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
-        .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
+        .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal, "add_scf_corr"_a)
         .def_property_readonly("ewald", &Force::forces_ewald)
         .def_property_readonly("hubbard", &Force::forces_hubbard)
         .def_property_readonly("vloc", &Force::forces_vloc)
