@@ -220,8 +220,7 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
 
     auto inner_prod_func = [](PAW_density<double> const& x, PAW_density<double> const& y) -> double
     {
-        /* do not contribute to mixing */
-        return 0.0;
+        return inner(x, y);
     };
 
     auto scale_func = [](double alpha, PAW_density<double>& x) -> void
