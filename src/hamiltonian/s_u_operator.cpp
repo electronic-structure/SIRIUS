@@ -172,8 +172,9 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
     }
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         auto sp = hub_wf__.actual_spin_index(s);
+        auto sp1 = hphi__.actual_spin_index(s);
         wf::transform(ctx__.spla_context(), mt, Up, 0, 0, 1.0, hub_wf__, sp, wf::band_range(0, hub_wf__.num_wf().get()),
-                      1.0, hphi__, sp, br__);
+                      1.0, hphi__, sp1, br__);
     }
 }
 
