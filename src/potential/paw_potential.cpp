@@ -251,6 +251,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
                 /* create array for integration */
                 std::vector<double> intdata(rgrid.num_points());
 
+                // TODO: precompute radial integrals of paw_ae_wfs and paw_ps_wfs pair products
                 for (int lm3 = 0; lm3 < lmmax; lm3++) {
                     /* fill array */
                     for (int irad = 0; irad < rgrid.num_points(); irad++) {
