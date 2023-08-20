@@ -305,46 +305,19 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
 }
 
 double
-Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<std::complex<double>, 3> const& density_matrix__,
+Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<double, 2> const& density_matrix__,
         sddk::mdarray<double, 3> const& paw_dij__) const
 {
-    std::complex<double> energy = 0.0;
+    double energy{0.0};
 
     for (int ib2 = 0; ib2 < atom__.mt_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 < atom__.mt_basis_size(); ib1++) {
-            double dm[4] = {0, 0, 0, 0};
-            switch (ctx_.num_mag_dims()) {
-                case 3: {
-                    dm[2] = 2 * std::real(density_matrix__(ib1, ib2, 2));
-                    dm[3] = -2 * std::imag(density_matrix__(ib1, ib2, 2));
-                }
-                case 1: {
-                    dm[0] = std::real(density_matrix__(ib1, ib2, 0) + density_matrix__(ib1, ib2, 1));
-                    dm[1] = std::real(density_matrix__(ib1, ib2, 0) - density_matrix__(ib1, ib2, 1));
-                    break;
-                }
-                case 0: {
-                    dm[0] = density_matrix__(ib1, ib2, 0).real();
-                    break;
-                }
-                default: {
-                    RTE_THROW("calc_PAW_one_elec_energy FATAL ERROR!");
-                    break;
-                }
-            }
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                energy += dm[imagn] * paw_dij__(ib1, ib2, imagn);
+                energy += density_matrix__(utils::packed_index(ib1, ib2), imagn) * paw_dij__(ib1, ib2, imagn);
             }
         }
     }
-
-    if (std::abs(energy.imag()) > 1e-10) {
-        std::stringstream s;
-        s << "PAW energy is not real: " << energy;
-        RTE_THROW(s.str());
-    }
-
-    return energy.real();
+    return energy;
 }
 
 } // namespace sirius
