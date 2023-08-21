@@ -482,7 +482,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     utils::print_checksum("sphi", cs, RTE_OUT(out__));
                 }
                 /* setup eigen-value problem */
-                Band(ctx).set_subspace_mtrx(0, N, 0, *phi, *hphi, H, &H_old);
+                generate_subspace_matrix(ctx, 0, N, 0, *phi, *hphi, H, &H_old);
                 break;
             }
             case davidson_evp_t::overlap: {
@@ -490,7 +490,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                         wf::spin_range(nc_mag ? 2 : 0), wf::band_range(0, 0), wf::band_range(0, N), *phi, *phi,
                         {phi.get(), sphi.get()}, H, *res, false);
                 /* setup eigen-value problem */
-                Band(ctx).set_subspace_mtrx(0, N, 0, *phi, *sphi, H, &H_old);
+                generate_subspace_matrix(ctx, 0, N, 0, *phi, *sphi, H, &H_old);
                 break;
             }
         }
@@ -768,7 +768,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                                     *phi, *sphi, {phi.get(), hphi.get(), sphi.get()}, H, *res, false);
                         }
                     }
-                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *hphi, H, &H_old);
+                    generate_subspace_matrix<T, F>(ctx, N, expand_with, num_locked, *phi, *hphi, H, &H_old);
                     break;
                 }
                 case davidson_evp_t::overlap: {
@@ -782,7 +782,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                         wf::orthogonalize(ctx.spla_context(), mem, sr, wf::band_range(0, N), wf::band_range(N, N + expand_with),
                                          *phi, *phi, {phi.get(), sphi.get()}, H, *res, false);
                     }
-                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *sphi, H, &H_old);
+                    generate_subspace_matrix<T, F>(ctx, N, expand_with, num_locked, *phi, *sphi, H, &H_old);
                     break;
                 }
             }

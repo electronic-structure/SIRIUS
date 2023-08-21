@@ -25,6 +25,7 @@
 #include <iomanip>
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
+#include "band/initialize_subspace.hpp"
 
 namespace sirius {
 
@@ -39,14 +40,14 @@ DFT_ground_state::initial_state()
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
-            Band(ctx_).initialize_subspace(kset_, H0);
+            ::sirius::initialize_subspace(kset_, H0);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
 
         } else {
             Hamiltonian0<double> H0(potential_, true);
-            Band(ctx_).initialize_subspace(kset_, H0);
+            ::sirius::initialize_subspace(kset_, H0);
         }
     }
 }
@@ -135,7 +136,7 @@ DFT_ground_state::check_scf_density()
     bool precompute_lapw{true};
     Hamiltonian0<double> H0(pot, precompute_lapw);
     /* initialize the subspace */
-    Band(ctx_).initialize_subspace(kset_, H0);
+    ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
     Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */

@@ -26,6 +26,7 @@
 #include "context/simulation_context.hpp"
 #include "k_point/k_point_set.hpp"
 #include "utils/profiler.hpp"
+#include "initialize_subspace.hpp"
 
 namespace sirius {
 
@@ -39,48 +40,5 @@ Band::Band(Simulation_context& ctx__)
         RTE_THROW("Simulation_context is not initialized");
     }
 }
-
-template <typename T>
-void
-Band::initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const
-{
-    PROFILE("sirius::Band::initialize_subspace");
-
-    int N{0};
-
-    if (ctx_.cfg().iterative_solver().init_subspace() == "lcao") {
-        /* get the total number of atomic-centered orbitals */
-        N = unit_cell_.num_ps_atomic_wf().first;
-    }
-
-    for (auto it: kset__.spl_num_kpoints()) {
-        auto kp = kset__.get<T>(it.i);
-        auto Hk = H0__(*kp);
-        if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            ::sirius::initialize_subspace<T, T>(Hk, N);
-        } else {
-            ::sirius::initialize_subspace<T, std::complex<T>>(Hk, N);
-        }
-    }
-
-    /* reset the energies for the iterative solver to do at least two steps */
-    for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__.get<T>(ik)->band_energy(i, ispn, 0);
-                kset__.get<T>(ik)->band_occupancy(i, ispn, ctx_.max_occupancy());
-            }
-        }
-    }
-}
-
-template
-void
-Band::initialize_subspace<double>(K_point_set& kset__, Hamiltonian0<double>& H0__) const;
-#if defined(SIRIUS_USE_FP32)
-template
-void
-Band::initialize_subspace<float>(K_point_set& kset__, Hamiltonian0<float>& H0__) const;
-#endif
 
 }

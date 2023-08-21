@@ -38,6 +38,7 @@
 #include "symmetry/crystal_symmetry.hpp"
 #include "multi_cg/multi_cg.hpp"
 #include "band/check_wave_functions.hpp"
+#include "band/initialize_subspace.hpp"
 #include "sirius.hpp"
 
 struct sirius_context_handler_t
@@ -2661,7 +2662,7 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
             auto& gs = get_gs(gs_handler__);
             auto& ks = get_ks(ks_handler__);
             sirius::Hamiltonian0<double> H0(gs.potential(), true);
-            sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
+            sirius::initialize_subspace(ks, H0);
         },
         error_code__);
 }
