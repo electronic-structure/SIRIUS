@@ -492,9 +492,12 @@ class Density : public Field4D
         return (*density_matrix_)[ia__];
     }
 
-    /// Return density matrix in auxiliary form.
+    /// Return density matrix for all atoms of a given type in auxiliary form.
     sddk::mdarray<double, 3>
     density_matrix_aux(Atom_type const& atom_type__) const;
+
+    sddk::mdarray<double, 2>
+    density_matrix_aux(typename atom_index_t::global ia__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
     sddk::mdarray<double, 2>
