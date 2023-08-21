@@ -115,7 +115,23 @@ class PAW_field4D
     {
         return uc_;
     }
+
+    template <typename T_>
+    friend T_
+    inner(PAW_field4D<T_> const& x__, PAW_field4D<T_> const& y__);
 };
+
+template <typename T>
+T
+inner(PAW_field4D<T> const& x__, PAW_field4D<T> const& y__)
+{
+    T result{0};
+    for (int j = 0; j < x__.uc_.parameters().num_mag_dims() + 1; j++) {
+        result += inner(x__.ae_components_[j], y__.ae_components_[j]);
+        result += inner(x__.ps_components_[j], y__.ps_components_[j]);
+    }
+    return result;
+}
 
 
 } // namespace sirius
