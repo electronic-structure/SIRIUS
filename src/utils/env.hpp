@@ -142,6 +142,13 @@ get_verbosity()
     }
 }
 
+inline bool
+check_scf_density()
+{
+    auto val = get_value_ptr<int>("SIRIUS_CHECK_SCF_DENSITY");
+    return val && *val;
+}
+
 } // namespace env
 
 #endif

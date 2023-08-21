@@ -226,7 +226,7 @@ class Periodic_function
         T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
             auto vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
-            p += std::real(this->f_pw_local_(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
+            p += std::real(this->rg().f_pw_local(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);
         return p;

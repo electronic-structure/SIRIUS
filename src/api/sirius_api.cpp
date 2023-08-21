@@ -5858,6 +5858,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             /* works for non-magnetic and collinear cases */
             RTE_ASSERT(*num_spin_comp__ == 1);
 
+            int nbnd_occ = *nbnd_occ__;
+
+            if (nbnd_occ == 0) {
+                return;
+            }
+
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
 
@@ -5889,7 +5895,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             auto Hk = H0(kp);
 
-            int nbnd_occ = *nbnd_occ__;
             /* copy eigenvalues (factor 2 for rydberg/hartree) */
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
             for (auto &val : eigvals_vec) {
@@ -5918,14 +5923,14 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 }
             }
 
-            ///* check residuals H|psi> - e * S |psi> */
-            //{
-            //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-            //    kp.initialize();
-            //    auto Hk = H0(kp);
-            //    sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
-            //            eigvals_vec.data());
-            //}
+            /* check residuals H|psi> - e * S |psi> */
+            if (sctx.cfg().control().verification() >= 1) {
+                sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
+                kp.initialize();
+                auto Hk = H0(kp);
+                sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
+                        eigvals_vec.data());
+            }
 
             /* setup auxiliary state vectors for CG */
             auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);

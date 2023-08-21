@@ -29,6 +29,7 @@
 #include "hamiltonian/hamiltonian.hpp"
 #include "k_point/k_point_set.hpp"
 #include "SDDK/wave_functions.hpp"
+#include "davidson_result_t.hpp"
 
 namespace sirius {
 
@@ -172,7 +173,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve the band eigen-problem for pseudopotential case.
     template <typename T, typename F>
-    int solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const;
+    davidson_result_t solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const;
 
     /// Solve the band eigen-problem for full-potential case.
     template <typename T>
@@ -180,7 +181,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
     template <typename T, typename F>
-    void solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const;
+    bool solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const;
 
     /// Initialize the subspace for the entire k-point set.
     template <typename T>
