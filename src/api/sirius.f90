@@ -5938,33 +5938,33 @@ end subroutine sirius_save_state
 
 !
 !> @brief Save DFT ground state (density and potential)
-!> @param [in] gs_handler Ground-state handler.
+!> @param [in] handler Ground-state handler.
 !> @param [in] file_name Name of the file that stores the saved data.
 !> @param [out] error_code Error code
-subroutine sirius_load_state(gs_handler,file_name,error_code)
+subroutine sirius_load_state(handler,file_name,error_code)
 implicit none
 !
-type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+type(sirius_ground_state_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: file_name
 integer, optional, target, intent(out) :: error_code
 !
-type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: file_name_ptr
 character(C_CHAR), target, allocatable :: file_name_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_load_state_aux(gs_handler,file_name,error_code)&
+subroutine sirius_load_state_aux(handler,file_name,error_code)&
 &bind(C, name="sirius_load_state")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: gs_handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: file_name
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
-gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
 file_name_ptr = C_NULL_PTR
 allocate(file_name_c_type(len(file_name)+1))
 file_name_c_type = string_f2c(file_name)
@@ -5973,9 +5973,58 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_load_state_aux(gs_handler_ptr,file_name_ptr,error_code_ptr)
+call sirius_load_state_aux(handler_ptr,file_name_ptr,error_code_ptr)
 deallocate(file_name_c_type)
 end subroutine sirius_load_state
+
+!
+!> @brief Set density matrix.
+!> @param [in] handler Ground-state handler.
+!> @param [in] ia Index of atom.
+!> @param [in] dm Input density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
+!> @param [out] error_code Error code.
+subroutine sirius_set_density_matrix(handler,ia,dm,ld,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+complex(8), target, intent(in) :: dm
+integer, target, intent(in) :: ld
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: dm_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_density_matrix_aux(handler,ia,dm,ld,error_code)&
+&bind(C, name="sirius_set_density_matrix")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: dm
+type(C_PTR), value :: ld
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+dm_ptr = C_NULL_PTR
+dm_ptr = C_LOC(dm)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_density_matrix_aux(handler_ptr,ia_ptr,dm_ptr,ld_ptr,error_code_ptr)
+end subroutine sirius_set_density_matrix
 
 
 subroutine sirius_free_handler_ctx(handler, error_code)
