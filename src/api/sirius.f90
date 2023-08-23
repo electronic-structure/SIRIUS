@@ -5989,7 +5989,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
-complex(8), target, intent(in) :: dm
+complex(8), target, intent(in) :: dm(ld, ld, 3)
 integer, target, intent(in) :: ld
 integer, optional, target, intent(out) :: error_code
 !

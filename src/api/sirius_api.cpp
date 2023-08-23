@@ -6113,7 +6113,7 @@ sirius_set_density_matrix:
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required
+      attr: in, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int

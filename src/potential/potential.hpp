@@ -33,7 +33,7 @@ namespace sirius {
 
 void check_xc_potential(Density const& rho__);
 
-void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
+double xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
         int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
 
 double density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
