@@ -295,7 +295,9 @@ void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_
             rhomin = std::min(rhomin, rho_tp[0](itp, ir));
             /* fix negative density */
             if (rho_tp[0](itp, ir) < 0.0) {
-                rho_tp[0](itp, ir) = 0.0;
+                for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                    rho_tp[j](itp, ir) = 0.0;
+                }
             }
         }
     }
@@ -303,7 +305,9 @@ void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_
     if (rhomin < 0.0) {
         std::stringstream s;
         s << "[xc_mt] negative charge density: " << rhomin << std::endl
-          << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax";
+          << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax" << std::endl
+          << "  sht.lmax       : " << sht__.lmax() << std::endl
+          << "  sht.num_points : " << sht__.num_points();
         WARNING(s);
     }
 

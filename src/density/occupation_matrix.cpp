@@ -150,6 +150,9 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
            have two. The inner product takes care of this case internally. */
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            if (kp__.num_occupied_bands(ispn) == 0) {
+                continue;
+            }
             la::dmatrix<std::complex<T>> dm(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
                 dm.allocate(get_memory_pool(mem));
