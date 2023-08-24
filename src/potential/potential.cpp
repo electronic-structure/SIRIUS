@@ -334,6 +334,40 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     if (!ctx_.full_potential()) {
         generate_D_operator_matrix();
         generate_PAW_effective_potential(density__);
+        if (ctx_.verbosity() >= 3) {
+            rte::ostream out(ctx_.out(), "potential");
+            out << "density matrix" << std::endl;
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                auto& atom = ctx_.unit_cell().atom(ia);
+                out << "atom : " << ia << std::endl;
+                for (int imagn = 0; imagn < ctx_.num_mag_comp(); imagn++) {
+                    out << "  imagn : " << imagn << std::endl;
+                    for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
+                        out << "    ";
+                        for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
+                            out << utils::ffmt(8, 3) << density__.density_matrix(ia)(ib1, ib2, imagn);
+                        }
+                        out << std::endl;
+                    }
+                }
+            }
+
+            out << "D operator matrix" << std::endl;
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                auto& atom = ctx_.unit_cell().atom(ia);
+                out << "atom : " << ia << std::endl;
+                for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
+                    out << "  imagn : " << imagn << std::endl;
+                    for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
+                        out << "    ";
+                        for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
+                            out << utils::ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
+                        }
+                        out << std::endl;
+                    }
+                }
+            }
+        }
     }
 
     if (ctx_.hubbard_correction()) {

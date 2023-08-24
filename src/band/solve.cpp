@@ -67,12 +67,12 @@ Band::solve_full_potential<float>(Hamiltonian_k<float>& Hk__, double itsol_tol__
 #endif
 
 template <typename T, typename F>
-int
+davidson_result_t
 Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const
 {
     print_memory_usage(ctx_.out(), FILE_LINE);
 
-    int niter{0};
+    davidson_result_t result{0, sddk::mdarray<double, 2>(), true, {0, 0}};
 
     auto& itso = ctx_.cfg().iterative_solver();
     if (itso.type() == "exact") {
@@ -102,11 +102,10 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
         std::stringstream s;
         std::ostream* out = (kp.comm().rank() == 0) ? &std::cout : &s;
 
-        auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, wf::num_bands(ctx_.num_bands()),
+        result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk__, wf::num_bands(ctx_.num_bands()),
                 wf::num_mag_dims(ctx_.num_mag_dims()), kp.spinor_wave_functions(), tolerance,
                 itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
                 itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
-        niter = result.niter;
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 kp.band_energy(j, ispn, result.eval(j, ispn));
@@ -133,11 +132,11 @@ Band::solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double 
 
     print_memory_usage(ctx_.out(), FILE_LINE);
 
-    return niter;
+    return result;
 }
 
 template <typename T, typename F>
-void
+bool
 Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const
 {
     PROFILE("sirius::Band::solve");
@@ -154,6 +153,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
 
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
+    bool converged{true};
     for (auto it : kset__.spl_num_kpoints()) {
         auto kp = kset__.get<T>(it.i);
 
@@ -161,14 +161,18 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
         if (ctx_.full_potential()) {
             solve_full_potential<T>(Hk, itsol_tol__);
         } else {
+            davidson_result_t result;
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
+                result = solve_pseudo_potential<T, F>(Hk, itsol_tol__, empy_tol);
             } else {
-                num_dav_iter += solve_pseudo_potential<T, std::complex<F>>(Hk, itsol_tol__, empy_tol);
+                result = solve_pseudo_potential<T, std::complex<F>>(Hk, itsol_tol__, empy_tol);
             }
+            num_dav_iter += result.niter;
+            converged = converged & result.converged;
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
+    kset__.comm().allreduce<bool, mpi::op_t::land>(&converged, 1);
     ctx_.num_itsol_steps(num_dav_iter);
     if (!ctx_.full_potential()) {
         ctx_.out(2, __func__) << "average number of iterations: "
@@ -198,19 +202,20 @@ Band::solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) cons
         ctx_.message(2, __func__, s);
     }
     print_memory_usage(ctx_.out(), FILE_LINE);
+    return converged;
 }
 
 template
-void
+bool
 Band::solve<double, double>(K_point_set& kset__, Hamiltonian0<double>& H0__, double itsol_tol__) const;
 
 #if defined(SIRIUS_USE_FP32)
 template
-void
+bool
 Band::solve<float, float>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 
 template
-void
+bool
 Band::solve<float, double>(K_point_set& kset__, Hamiltonian0<float>& H0__, double itsol_tol__) const;
 #endif
 
