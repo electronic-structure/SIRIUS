@@ -107,9 +107,9 @@ if(SIRIUS_USE_ROCM)
   set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 endif()
 
-if(SIRIUS_USE_CUDA)
-  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
-endif()
+#if(SIRIUS_USE_CUDA)
+#  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+#endif()
 
 target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
   MPI::MPI_CXX
