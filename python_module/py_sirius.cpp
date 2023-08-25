@@ -299,18 +299,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("mix", &Density::mix)
         .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>),
              "kpointset"_a, "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
-        .def("generate_paw_density", &Density::generate_paw_density)
+        //.def("generate_paw_density", &Density::generate_paw_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("get_magnetisation", &Density::get_magnetisation)
         .def("load", &Density::load);
 
-    py::class_<Band>(m, "Band")
-        .def(py::init<Simulation_context&>())
-        .def("initialize_subspace",
-             (void(Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a);
+    //py::class_<Band>(m, "Band")
+    //    .def(py::init<Simulation_context&>())
+    //    .def("initialize_subspace",
+    //         (void(Band::*)(K_point_set&, Hamiltonian0<double>&) const) & Band::initialize_subspace)
+    //    .def("solve", &Band::solve<double, double>, "kset"_a, "hamiltonian"_a, "itsol_tol"_a);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
