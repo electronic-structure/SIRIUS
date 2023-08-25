@@ -2798,6 +2798,10 @@ sirius_generate_density:
       type: bool
       attr: in, optional
       doc: If true, density and magnetization are transformed to real-space grid.
+    paw_only:
+      type: bool
+      attr: in, optional
+      doc: it true, only local PAW density is generated
     error_code:
       type: int
       attr: out, optional
@@ -2806,21 +2810,20 @@ sirius_generate_density:
 */
 void
 sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__,
-                        int* error_code__)
+        bool const* paw_only__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& gs = get_gs(gs_handler__);
-            bool add_core{false};
-            if (add_core__ != nullptr) {
-                add_core = *add_core__;
-            }
-            bool transform_to_rg{false};
-            if (transform_to_rg__ != nullptr) {
-                transform_to_rg = *transform_to_rg__;
-            }
+            auto add_core = get_value<bool>(add_core__, false);
+            auto transform_to_rg = get_value<bool>(transform_to_rg__, false);
+            auto paw_only = get_value<bool>(paw_only__, false);
 
-            gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+            if (paw_only) {
+                gs.density().generate_paw_density();
+            } else {
+                gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+            }
         },
         error_code__);
 }
@@ -6118,7 +6121,7 @@ sirius_set_density_matrix:
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required
+      attr: in, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int

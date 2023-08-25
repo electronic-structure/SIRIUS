@@ -158,7 +158,7 @@ Density::initial_density()
 
         init_density_matrix_for_paw();
 
-        generate_paw_loc_density();
+        generate_paw_density();
 
         if (occupation_matrix_) {
             occupation_matrix_->init();
@@ -479,7 +479,7 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
+Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 {
     auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     auto ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
@@ -549,17 +549,17 @@ Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
 }
 
 void
-Density::generate_paw_loc_density()
+Density::generate_paw_density()
 {
     if (!unit_cell_.num_paw_atoms()) {
         return;
     }
 
-    PROFILE("sirius::Density::generate_paw_loc_density");
+    PROFILE("sirius::Density::generate_paw_density");
 
     #pragma omp parallel for
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        generate_paw_atom_density(it.li);
+        generate_paw_density(it.li);
     }
 }
 
@@ -1189,7 +1189,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
         occupation_matrix_->print_occupancies(2);
     }
 
-    generate_paw_loc_density();
+    generate_paw_density();
 
     if (transform_to_rg__) {
         this->fft_transform(1);
