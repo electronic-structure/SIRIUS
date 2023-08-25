@@ -50,10 +50,6 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES "60;70;80" CACHE STRING "CUDA architectures to generate code for")
-endif()
-
 # This ensures that -std=c++14 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -101,9 +97,6 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 endif()
 
-# Makes the build directory relocatable: requires CMake 3.14.7
-#set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
-
 # preserve rpaths when installing and make the install folder relocatable
 # use `CMAKE_SKIP_INSTALL_RPATH` to skip this
 # https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
@@ -132,7 +125,6 @@ if(SIRIUS_USE_NLCGLIB)
   find_package(nlcglib REQUIRED)
   find_package(Kokkos REQUIRED)
 endif()
-
 
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
