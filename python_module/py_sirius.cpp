@@ -298,7 +298,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("mix", &Density::mix)
         .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>),
              "kpointset"_a, "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
-        .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
+        .def("generate_paw_density", &Density::generate_paw_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
