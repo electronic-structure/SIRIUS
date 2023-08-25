@@ -21,11 +21,11 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           mkdir build
           cd build
-          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DCREATE_FORTRAN_BINDINGS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/sirius_install
       - name: Build SIRIUS
         run: |
           cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $DEVSPEC -- make
+          spack --color always build-env $DEVSPEC -- make install
       - name: Run unit tests
         run: |
           cd ${GITHUB_WORKSPACE}/build
@@ -36,13 +36,14 @@ jobs:
           spack --color always build-env $DEVSPEC -- ctest --output-on-failure -L cpu_serial
       - name: Build QE
         run: |
-          spack install $DEVSPEC
+            #spack install $DEVSPEC
           cd ${GITHUB_WORKSPACE}
           git clone --depth 1 https://github.com/electronic-structure/q-e-sirius.git
           cd q-e-sirius
           mkdir build
           cd build
-          export sirius_DIR=$(spack location -i sirius)
+          #export sirius_DIR=$(spack location -i sirius)
+          export sirius_DIR=${GITHUB_WORKSPACE}/sirius_install
           spack --color always build-env $DEVSPEC -- cmake .. -DQE_ENABLE_SIRIUS=1
           spack --color always build-env $DEVSPEC -- make
 
