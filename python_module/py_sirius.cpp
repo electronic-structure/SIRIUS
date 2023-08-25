@@ -7,6 +7,7 @@
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
 #include "wave_functions.hpp"
+#include "band/initialize_subspace.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -104,7 +105,7 @@ initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
     Hamiltonian0<double> H0(dft_gs.potential(), false);
-    Band(ctx).initialize_subspace(kset, H0);
+    ::sirius::initialize_subspace(kset, H0);
 }
 
 PYBIND11_MODULE(py_sirius, m)
@@ -298,7 +299,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("mix", &Density::mix)
         .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>),
              "kpointset"_a, "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
-        .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
+        .def("generate_paw_density", &Density::generate_paw_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)

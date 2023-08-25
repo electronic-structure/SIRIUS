@@ -30,7 +30,6 @@
 #include "hubbard/hubbard.hpp"
 #include "geometry/stress.hpp"
 #include "geometry/force.hpp"
-#include "band/band.hpp"
 #include "energy.hpp"
 
 using json = nlohmann::json;

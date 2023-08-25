@@ -273,7 +273,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     } // ixc
 }
 
-void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
+double xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
         int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__)
 {
     /* zero the fields */
@@ -295,16 +295,11 @@ void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_
             rhomin = std::min(rhomin, rho_tp[0](itp, ir));
             /* fix negative density */
             if (rho_tp[0](itp, ir) < 0.0) {
-                rho_tp[0](itp, ir) = 0.0;
+                for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                    rho_tp[j](itp, ir) = 0.0;
+                }
             }
         }
-    }
-
-    if (rhomin < 0.0) {
-        std::stringstream s;
-        s << "[xc_mt] negative charge density: " << rhomin << std::endl
-          << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax";
-        WARNING(s);
     }
 
     if (num_mag_dims__ == 0) {
@@ -312,6 +307,8 @@ void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_
     } else {
         xc_mt_magnetic(rgrid__, sht__, num_mag_dims__, xc_func__, rho_tp, vxc__, *exc__);
     }
+
+    return rhomin;
 }
 
 void Potential::xc_mt(Density const& density__)
@@ -329,7 +326,16 @@ void Potential::xc_mt(Density const& density__)
             rho[j + 1] = &density__.mag(j).mt()[it.i];
             vxc[j + 1] = &effective_magnetic_field(j).mt()[it.i];
         }
-        sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i]);
+
+        auto rhomin = sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i]);
+        if (rhomin < 0.0) {
+            std::stringstream s;
+            s << "[xc_mt] negative charge density " << rhomin << " for atom " << it.i << std::endl
+              << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax" << std::endl
+              << "  sht.lmax       : " << sht_->lmax() << std::endl
+              << "  sht.num_points : " << sht_->num_points();
+            WARNING(s);
+        }
 
         /* z, x, y order */
         std::array<int, 3> comp_map = {2, 0, 1};

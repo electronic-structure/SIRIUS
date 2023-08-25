@@ -4,6 +4,8 @@
 #include "utils/filesystem.hpp"
 #include "utils/json.hpp"
 #include "dft/lattice_relaxation.hpp"
+#include "band/initialize_subspace.hpp"
+#include "band/diagonalize.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -495,17 +497,16 @@ void run_tasks(cmd_args const& args)
         //density.initial_density();
         density.load(storage_file_name);
         potential.generate(density, ctx->use_symmetry(), true);
-        Band band(*ctx);
         Hamiltonian0<double> H0(potential, true);
         if (!ctx->full_potential()) {
-            band.initialize_subspace(ks, H0);
+            ::sirius::initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 RTE_THROW("fix me");
                 //potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
                 //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        band.solve<double, double>(ks, H0, ctx->cfg().iterative_solver().energy_tolerance());
+        sirius::diagonalize<double, double>(H0, ks, ctx->cfg().iterative_solver().energy_tolerance());
 
         ks.sync_band<double, sync_band_t::energy>();
         if (mpi::Communicator::world().rank() == 0) {

@@ -251,7 +251,7 @@ class Density : public Field4D
                                  PAW_density<double>, Hubbard_matrix>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    void generate_paw_atom_density(paw_atom_index_t::local iapaw__);
+    void generate_paw_density(paw_atom_index_t::local iapaw__);
 
     /// Initialize PAW density matrix.
     void init_density_matrix_for_paw();
@@ -450,7 +450,7 @@ class Density : public Field4D
     }
 
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
-    void generate_paw_loc_density();
+    void generate_paw_density();
 
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
     inline auto paw_ae_density(int ia__) const
@@ -492,9 +492,12 @@ class Density : public Field4D
         return (*density_matrix_)[ia__];
     }
 
-    /// Return density matrix in auxiliary form.
+    /// Return density matrix for all atoms of a given type in auxiliary form.
     sddk::mdarray<double, 3>
     density_matrix_aux(Atom_type const& atom_type__) const;
+
+    sddk::mdarray<double, 2>
+    density_matrix_aux(typename atom_index_t::global ia__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
     sddk::mdarray<double, 2>

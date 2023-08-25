@@ -39,6 +39,7 @@
 #include "multi_cg/multi_cg.hpp"
 #include "band/check_wave_functions.hpp"
 #include "band/initialize_subspace.hpp"
+#include "band/diagonalize.hpp"
 #include "sirius.hpp"
 
 struct sirius_context_handler_t
@@ -2725,7 +2726,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
             }
             sirius::Hamiltonian0<double> H0(gs.potential(), false);
-            sirius::Band(ks.ctx()).solve<double, double>(ks, H0, tol);
+            sirius::diagonalize<double, double>(H0, ks, tol);
         },
         error_code__);
 }
@@ -2799,6 +2800,10 @@ sirius_generate_density:
       type: bool
       attr: in, optional
       doc: If true, density and magnetization are transformed to real-space grid.
+    paw_only:
+      type: bool
+      attr: in, optional
+      doc: it true, only local PAW density is generated
     error_code:
       type: int
       attr: out, optional
@@ -2807,21 +2812,20 @@ sirius_generate_density:
 */
 void
 sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__,
-                        int* error_code__)
+        bool const* paw_only__, int* error_code__)
 {
     call_sirius(
         [&]() {
             auto& gs = get_gs(gs_handler__);
-            bool add_core{false};
-            if (add_core__ != nullptr) {
-                add_core = *add_core__;
-            }
-            bool transform_to_rg{false};
-            if (transform_to_rg__ != nullptr) {
-                transform_to_rg = *transform_to_rg__;
-            }
+            auto add_core = get_value<bool>(add_core__, false);
+            auto transform_to_rg = get_value<bool>(transform_to_rg__, false);
+            auto paw_only = get_value<bool>(paw_only__, false);
 
-            gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+            if (paw_only) {
+                gs.density().generate_paw_density();
+            } else {
+                gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+            }
         },
         error_code__);
 }
@@ -5859,6 +5863,12 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             /* works for non-magnetic and collinear cases */
             RTE_ASSERT(*num_spin_comp__ == 1);
 
+            int nbnd_occ = *nbnd_occ__;
+
+            if (nbnd_occ == 0) {
+                return;
+            }
+
             auto& gs = get_gs(handler__);
             auto& sctx = gs.ctx();
 
@@ -5890,7 +5900,6 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             auto Hk = H0(kp);
 
-            int nbnd_occ = *nbnd_occ__;
             /* copy eigenvalues (factor 2 for rydberg/hartree) */
             std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
             for (auto &val : eigvals_vec) {
@@ -5919,14 +5928,14 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
                 }
             }
 
-            ///* check residuals H|psi> - e * S |psi> */
-            //{
-            //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-            //    kp.initialize();
-            //    auto Hk = H0(kp);
-            //    sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
-            //            eigvals_vec.data());
-            //}
+            /* check residuals H|psi> - e * S |psi> */
+            if (sctx.cfg().control().verification() >= 1) {
+                sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
+                kp.initialize();
+                auto Hk = H0(kp);
+                sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
+                        eigvals_vec.data());
+            }
 
             /* setup auxiliary state vectors for CG */
             auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
@@ -6114,7 +6123,7 @@ sirius_set_density_matrix:
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required
+      attr: in, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int

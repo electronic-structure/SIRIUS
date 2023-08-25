@@ -48,7 +48,6 @@ using json = nlohmann::json;
 #include "sht/sht.hpp"
 #include "sht/gaunt.hpp"
 #include "hdf5_tree.hpp"
-#include "band/band.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"

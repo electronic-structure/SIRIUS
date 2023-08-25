@@ -158,7 +158,7 @@ Density::initial_density()
 
         init_density_matrix_for_paw();
 
-        generate_paw_loc_density();
+        generate_paw_density();
 
         if (occupation_matrix_) {
             occupation_matrix_->init();
@@ -479,18 +479,19 @@ Density::init_density_matrix_for_paw()
 }
 
 void
-Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
+Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 {
     auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
     auto ia     = ctx_.unit_cell().paw_atom_index(ia_paw);
 
     auto& atom_type = ctx_.unit_cell().atom(ia).type();
 
-    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax());
+    auto lmax = atom_type.indexr().lmax();
+
+    auto l_by_lm = utils::l_by_lm(2 * lmax);
 
     /* get gaunt coefficients */
-    Gaunt_coefficients<double> GC(atom_type.indexr().lmax(), 2 * atom_type.indexr().lmax(),
-                                  atom_type.indexr().lmax(), SHT::gaunt_rrr);
+    Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 
     paw_density_->zero(ia);
 
@@ -500,40 +501,27 @@ Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
     auto& paw_ae_wfs = atom_type.ae_paw_wfs_array();
     auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
 
-    /* iterate over local basis functions (or over lm1 and lm2) */
-    for (int xi2 = 0; xi2 < atom_type.indexb().size(); xi2++) {
-        int lm2  = atom_type.indexb(xi2).lm;
-        int irb2 = atom_type.indexb(xi2).idxrf;
+    auto dm = this->density_matrix_aux(atom_index_t::global(ia));
 
-        for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            int lm1  = atom_type.indexb(xi1).lm;
-            int irb1 = atom_type.indexb(xi1).idxrf;
+    for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
+        auto& ae_dens = paw_density_->ae_density(imagn, ia);
+        auto& ps_dens = paw_density_->ps_density(imagn, ia);
 
-            /* get num of non-zero GC */
-            int num_non_zero_gc = GC.num_gaunt(lm1, lm2);
+        /* iterate over local basis functions (or over lm1 and lm2) */
+        for (int xi2 = 0; xi2 < atom_type.indexb().size(); xi2++) {
+            int lm2  = atom_type.indexb(xi2).lm;
+            int irb2 = atom_type.indexb(xi2).idxrf;
 
-            double diag_coef = (xi1 == xi2) ? 1.0 : 2.0;
+            for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                int lm1  = atom_type.indexb(xi1).lm;
+                int irb1 = atom_type.indexb(xi1).idxrf;
 
-            /* store density matrix in aux form */
-            double dm[4] = {0, 0, 0, 0};
-            switch (ctx_.num_mag_dims()) {
-                case 3: {
-                    dm[2] = 2 * std::real(density_matrix(ia)(xi1, xi2, 2));
-                    dm[3] = -2 * std::imag(density_matrix(ia)(xi1, xi2, 2));
-                }
-                case 1: {
-                    dm[0] = std::real(density_matrix(ia)(xi1, xi2, 0) + density_matrix(ia)(xi1, xi2, 1));
-                    dm[1] = std::real(density_matrix(ia)(xi1, xi2, 0) - density_matrix(ia)(xi1, xi2, 1));
-                    break;
-                }
-                case 0: {
-                    dm[0] = std::real(density_matrix(ia)(xi1, xi2, 0));
-                }
-            }
+                /* get num of non-zero GC */
+                int num_non_zero_gc = GC.num_gaunt(lm1, lm2);
 
-            for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                auto& ae_dens = paw_density_->ae_density(imagn, ia);
-                auto& ps_dens = paw_density_->ps_density(imagn, ia);
+                double diag_coef = (xi1 == xi2) ? 1.0 : 2.0;
+
+                auto idx = utils::packed_index(xi1, xi2);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -548,9 +536,9 @@ Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
                         ae_dens(lm3coef.lm3, irad) +=
-                            dm[imagn] * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
+                            dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
                         ps_dens(lm3coef.lm3, irad) +=
-                            dm[imagn] * inv_r2 * lm3coef.coef *
+                            dm(idx, imagn) * inv_r2 * lm3coef.coef *
                             (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) +
                              atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(irad));
                     }
@@ -561,17 +549,17 @@ Density::generate_paw_atom_density(paw_atom_index_t::local ialoc__)
 }
 
 void
-Density::generate_paw_loc_density()
+Density::generate_paw_density()
 {
     if (!unit_cell_.num_paw_atoms()) {
         return;
     }
 
-    PROFILE("sirius::Density::generate_paw_loc_density");
+    PROFILE("sirius::Density::generate_paw_density");
 
     #pragma omp parallel for
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        generate_paw_atom_density(it.li);
+        generate_paw_density(it.li);
     }
 }
 
@@ -1201,7 +1189,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
         occupation_matrix_->print_occupancies(2);
     }
 
-    generate_paw_loc_density();
+    generate_paw_density();
 
     if (transform_to_rg__) {
         this->fft_transform(1);
@@ -1788,37 +1776,50 @@ Density::get_magnetisation() const
     return std::make_tuple(total_mag, it_mag, mt_mag);
 }
 
+sddk::mdarray<double, 2>
+Density::density_matrix_aux(typename atom_index_t::global ia__) const
+{
+    auto nbf = ctx_.unit_cell().atom(ia__).type().mt_basis_size();
+    sddk::mdarray<double, 2> dm(nbf * (nbf + 1) / 2, ctx_.num_mag_dims() + 1);
+    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        for (int xi1 = 0; xi1 <= xi2; xi1++) {
+            auto idx12 = utils::packed_index(xi1, xi2);
+            switch (ctx_.num_mag_dims()) {
+                case 3: {
+                    dm(idx12, 2) = 2 * std::real(this->density_matrix(ia__)(xi2, xi1, 2));
+                    dm(idx12, 3) = -2 * std::imag(this->density_matrix(ia__)(xi2, xi1, 2));
+                }
+                case 1: {
+                    dm(idx12, 0) =
+                        std::real(this->density_matrix(ia__)(xi2, xi1, 0) + this->density_matrix(ia__)(xi2, xi1, 1));
+                    dm(idx12, 1) =
+                        std::real(this->density_matrix(ia__)(xi2, xi1, 0) - this->density_matrix(ia__)(xi2, xi1, 1));
+                    break;
+                }
+                case 0: {
+                    dm(idx12, 0) = this->density_matrix(ia__)(xi2, xi1, 0).real();
+                    break;
+                }
+            }
+        }
+    }
+    return dm;
+}
+
 sddk::mdarray<double, 3>
 Density::density_matrix_aux(Atom_type const& atom_type__) const
 {
-    int nbf = atom_type__.mt_basis_size();
+    auto nbf = atom_type__.mt_basis_size();
 
     /* convert to real matrix */
     sddk::mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type__.num_atoms(), ctx_.num_mag_dims() + 1);
     #pragma omp parallel for
     for (int i = 0; i < atom_type__.num_atoms(); i++) {
         int ia = atom_type__.atom_id(i);
-
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                switch (ctx_.num_mag_dims()) {
-                    case 3: {
-                        dm(idx12, i, 2) = 2 * std::real(density_matrix(ia)(xi2, xi1, 2));
-                        dm(idx12, i, 3) = -2 * std::imag(density_matrix(ia)(xi2, xi1, 2));
-                    }
-                    case 1: {
-                        dm(idx12, i, 0) =
-                            std::real(density_matrix(ia)(xi2, xi1, 0) + density_matrix(ia)(xi2, xi1, 1));
-                        dm(idx12, i, 1) =
-                            std::real(density_matrix(ia)(xi2, xi1, 0) - density_matrix(ia)(xi2, xi1, 1));
-                        break;
-                    }
-                    case 0: {
-                        dm(idx12, i, 0) = density_matrix(ia)(xi2, xi1, 0).real();
-                        break;
-                    }
-                }
+        auto dm1 = this->density_matrix_aux(typename atom_index_t::global(ia));
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            for (int k = 0; k < nbf * (nbf + 1) / 2; k++) {
+                dm(k, i, j) = dm1(k, j);
             }
         }
     }

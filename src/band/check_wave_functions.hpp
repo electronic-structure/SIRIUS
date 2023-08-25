@@ -50,11 +50,12 @@ void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__, wf::Wave_functions<
 
     for (int ib = 0; ib < br__.size(); ib++) {
         double l2norm{0};
-        for (int s = sr__.begin(); s != sr__.end(); s++) {
+        for (auto s = sr__.begin(); s != sr__.end(); s++) {
+            auto s1 = hpsi.actual_spin_index(s);
             for (int ig = 0; ig < psi__.gkvec().count(); ig++) {
                 /* H|psi> - e S|psi> */
-                auto z = hpsi.pw_coeffs(ig, wf::spin_index(s), wf::band_index(ib)) -
-                    spsi.pw_coeffs(ig, wf::spin_index(s), wf::band_index(ib)) * static_cast<real_type<T>>(eval__[ib]);
+                auto z = hpsi.pw_coeffs(ig, s1, wf::band_index(ib)) -
+                    spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<real_type<T>>(eval__[ib]);
                 l2norm += std::real(z * std::conj(z));
             }
             psi__.gkvec().comm().allreduce(&l2norm, 1);

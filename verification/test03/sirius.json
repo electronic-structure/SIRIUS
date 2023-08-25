@@ -44,7 +44,8 @@
     "mixer" : {
         "beta" : 0.9,
         "type" : "anderson",
-        "max_history" : 8
+        "max_history" : 8,
+        "use_hartree" : true
     }
 
 }

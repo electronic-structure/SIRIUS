@@ -35,10 +35,6 @@ set(_SOURCES
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
   "hamiltonian/s_u_operator.cpp"
-  "band/band.cpp"
-  "band/solve.cpp"
-  "band/diag_pseudo_potential.cpp"
-  "band/diag_full_potential.cpp"
   "density/density.cpp"
   "density/augmentation_operator.cpp"
   "density/occupation_matrix.cpp"
@@ -107,9 +103,9 @@ if(SIRIUS_USE_ROCM)
   set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 endif()
 
-if(SIRIUS_USE_CUDA)
-  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
-endif()
+#if(SIRIUS_USE_CUDA)
+#  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+#endif()
 
 target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
   MPI::MPI_CXX

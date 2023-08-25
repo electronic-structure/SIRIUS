@@ -26,6 +26,7 @@
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
 #include "band/initialize_subspace.hpp"
+#include "band/diagonalize.hpp"
 
 namespace sirius {
 
@@ -138,29 +139,30 @@ DFT_ground_state::check_scf_density()
     /* initialize the subspace */
     ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
+    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
-    bool symmetrize{true};
     bool add_core{true};
     /* create new density */
-    Density rho1(ctx_);
-    rho1.generate<double>(kset_, symmetrize, add_core, transform_to_rg);
+    Density rho(ctx_);
+    rho.generate<double>(kset_, ctx_.use_symmetry(), add_core, transform_to_rg);
 
-    auto gs1 = energy_dict(ctx_, kset_, rho1, pot, ewald_energy_);
+    auto gs1 = energy_dict(ctx_, kset_, rho, pot, ewald_energy_);
 
     auto calc_rms = [&](Field4D& a, Field4D& b) -> double
     {
         double rms{0};
-        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            rms += std::pow(std::abs(a.component(0).rg().f_pw_local(ig) - b.component(0).rg().f_pw_local(ig)), 2);
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+                rms += std::pow(std::abs(a.component(j).rg().f_pw_local(ig) - b.component(j).rg().f_pw_local(ig)), 2);
+            }
         }
         ctx_.comm().allreduce(&rms, 1);
         return std::sqrt(rms / ctx_.gvec().num_gvec());
     };
 
-    double rms = calc_rms(density_, rho1);
+    double rms = calc_rms(density_, rho);
     double rms_veff = calc_rms(potential_, pot);
 
     json dict;
@@ -222,14 +224,16 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
+        diagonalize_result_t result;
+
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
-                Band(ctx_).solve<float, float>(kset_, H0, iter_solver_tol__);
+                result = sirius::diagonalize<float, float>(H0, kset_, iter_solver_tol__);
             } else {
-                Band(ctx_).solve<float, double>(kset_, H0, iter_solver_tol__);
+                result = sirius::diagonalize<float, double>(H0, kset_, iter_solver_tol__);
             }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
@@ -241,7 +245,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         } else {
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
-            Band(ctx_).solve<double, double>(kset_, H0, iter_solver_tol__);
+            result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -266,6 +270,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                        ctx_.cfg().settings().itsol_tol_scale()[1] * iter_solver_tol__);
         /* tolerance can't be too small */
         iter_solver_tol__ = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
+
+        bool iter_solver_converged{true};
+        if (ctx_.cfg().iterative_solver().type() != "exact") {
+            iter_solver_converged = (tol <= ctx_.cfg().settings().itsol_tol_min());
+        }
 
 #if defined(SIRIUS_USE_FP32)
         if (ctx_.cfg().parameters().precision_gs() != "auto") {
@@ -334,12 +343,21 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         print_info(out);
         out << std::endl;
         out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
-            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl
-            << "residual density Hartree energy : " << eha_res;
+            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold;
+        if (!ctx_.full_potential()) {
+            out << std::endl
+                << "Hartree energy of density residual : " << eha_res << std::endl
+                << "bands are converged : " << utils::boolstr(result.converged);
+        }
+        if (ctx_.cfg().iterative_solver().type() != "exact") {
+            out << std::endl
+                << "iterative solver converged : " << utils::boolstr(iter_solver_converged);
+        }
+
         ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
         bool converged{true};
-        converged = converged && (std::abs(eold - etot) < energy_tol__);
+        converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
         if (ctx_.cfg().mixer().use_hartree()) {
             converged = converged && (eha_res < density_tol__);
         } else {
@@ -348,7 +366,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (converged) {
             std::stringstream out;
             out << std::endl;
-            out << "converged after " << iter + 1 << " SCF iterations!";
+            out << "converged after " << iter + 1 << " SCF iterations!" << std::endl;
             ctx_.message(1, __func__, out);
             density_.check_num_electrons();
             num_iter = iter;
@@ -400,9 +418,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         dict["converged"] = false;
     }
 
-    //if (ctx_.cfg().control().verification() >= 1) {
-    //    check_scf_density();
-    //}
+    if (env::check_scf_density()) {
+        check_scf_density();
+    }
 
     // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
     // dict["volume_units"] = "angstrom^3";

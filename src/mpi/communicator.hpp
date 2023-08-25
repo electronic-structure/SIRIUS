@@ -59,7 +59,8 @@ enum class op_t
 {
     sum,
     max,
-    min
+    min,
+    land
 };
 
 template <op_t op>
@@ -81,6 +82,12 @@ template <>
 struct op_wrapper<op_t::min>
 {
     operator MPI_Op() const noexcept {return MPI_MIN;}
+};
+
+template <>
+struct op_wrapper<op_t::land>
+{
+    operator MPI_Op() const noexcept {return MPI_LAND;}
 };
 
 template <typename T>

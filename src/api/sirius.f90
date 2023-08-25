@@ -2962,13 +2962,16 @@ end subroutine sirius_generate_effective_potential
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] add_core Add core charge density in the muffin-tins.
 !> @param [in] transform_to_rg If true, density and magnetization are transformed to real-space grid.
+!> @param [in] paw_only it true, only local PAW density is generated
 !> @param [out] error_code Error code.
-subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg,error_code)
+subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg,paw_only,&
+&error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 logical, optional, target, intent(in) :: add_core
 logical, optional, target, intent(in) :: transform_to_rg
+logical, optional, target, intent(in) :: paw_only
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -2976,15 +2979,19 @@ type(C_PTR) :: add_core_ptr
 logical(C_BOOL), target :: add_core_c_type
 type(C_PTR) :: transform_to_rg_ptr
 logical(C_BOOL), target :: transform_to_rg_c_type
+type(C_PTR) :: paw_only_ptr
+logical(C_BOOL), target :: paw_only_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg,error_code)&
+subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg,paw_only,&
+&error_code)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: add_core
 type(C_PTR), value :: transform_to_rg
+type(C_PTR), value :: paw_only
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -3001,15 +3008,22 @@ if (present(transform_to_rg)) then
 transform_to_rg_c_type = transform_to_rg
 transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
+paw_only_ptr = C_NULL_PTR
+if (present(paw_only)) then
+paw_only_c_type = paw_only
+paw_only_ptr = C_LOC(paw_only_c_type)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr,&
-&error_code_ptr)
+&paw_only_ptr,error_code_ptr)
 if (present(add_core)) then
 endif
 if (present(transform_to_rg)) then
+endif
+if (present(paw_only)) then
 endif
 end subroutine sirius_generate_density
 
@@ -5989,7 +6003,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
 integer, target, intent(in) :: ia
-complex(8), target, intent(in) :: dm
+complex(8), target, intent(in) :: dm(ld, ld, 3)
 integer, target, intent(in) :: ld
 integer, optional, target, intent(out) :: error_code
 !

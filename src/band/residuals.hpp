@@ -31,7 +31,7 @@
 #include "context/simulation_context.hpp"
 #include "SDDK/wave_functions.hpp"
 
-struct residual_result
+struct residual_result_t
 {
   int num_consecutive_smallest_converged;
   int unconverged_residuals;
@@ -273,7 +273,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
     \f]
  */
 template <typename T, typename F>
-residual_result
+auto
 residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
           int N__, int num_bands__, int num_locked__, sddk::mdarray<real_type<F>, 1>& eval__, la::dmatrix<F>& evec__,
           wf::Wave_functions<T>& hphi__, wf::Wave_functions<T>& ophi__,
@@ -321,7 +321,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
 
         /* if everything is converged, return early */
         if (ev_idx.empty()) {
-            return residual_result{num_bands__, 0, 0};
+            return residual_result_t{num_bands__, 0, 0};
         }
 
         // Otherwise copy / reorder the unconverged eigenpairs
@@ -391,7 +391,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
         frobenius_norm += result.norm[i] * result.norm[i];
     }
     frobenius_norm = std::sqrt(frobenius_norm);
-    return {
+    return residual_result_t{
         num_consecutive_converged,
         result.num_unconverged,
         frobenius_norm

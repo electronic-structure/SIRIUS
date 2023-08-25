@@ -547,7 +547,7 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
 
-    if (parameters_.verbosity() >= 1) {
+    if (parameters_.verbosity() >= 2) {
         mpi::pstdout pout(comm_);
         if (comm_.rank() == 0) {
             pout << std::endl << "Linearization energies" << std::endl;

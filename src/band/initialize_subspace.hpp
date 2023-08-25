@@ -1,7 +1,32 @@
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file initialize_subspace.hpp
+ *
+ *  \brief Create intial subspace from atomic-like wave-functions 
+ */
+
 #ifndef __INITIALIZE_SUBSPACE_HPP__
 #define __INITIALIZE_SUBSPACE_HPP__
 
 #include "k_point/k_point_set.hpp"
+#include "diagonalize_pp.hpp"
 
 namespace sirius {
 
@@ -11,21 +36,23 @@ namespace sirius {
 template <typename T, typename F>
 inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 {
-    PROFILE("sirius::Band::initialize_subspace|kp");
+    PROFILE("sirius::initialize_subspace|kp");
 
-    //if (ctx_.cfg().control().verification() >= 2) {
-    //    auto eval = diag_S_davidson<T>(Hk__);
-    //    if (eval[0] <= 0) {
-    //        std::stringstream s;
-    //        s << "S-operator matrix is not positive definite\n"
-    //          << "  lowest eigen-value: " << eval[0];
-    //        WARNING(s);
-    //    } else {
-    //        ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
-    //    }
-    //}
-    //
     auto& ctx = Hk__.H0().ctx();
+
+    if (ctx.cfg().control().verification() >= 2) {
+        auto eval = diag_S_davidson<T, F>(Hk__);
+        if (eval[0] <= 0) {
+            std::stringstream s;
+            s << "S-operator matrix is not positive definite\n"
+              << "  lowest eigen-value: " << eval[0];
+            WARNING(s);
+        } else {
+            std::stringstream s;
+            s << "S-matrix is OK! Minimum eigen-value : " << eval[0];
+            RTE_OUT(ctx.out(1)) << s.str() << std::endl;
+        }
+    }
 
     auto pcs = env::print_checksum();
 
@@ -64,7 +91,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     for (int i = 0; i < 4096; i++) {
         tmp[i] = 1e-5 * utils::random<T>();
     }
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
+    PROFILE_START("sirius::initialize_subspace|kp|wf");
     /* fill remaining wave-functions with pseudo-random guess */
     RTE_ASSERT(Hk__.kp().num_gkvec() > num_phi + 10);
     #pragma omp parallel
@@ -101,7 +128,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
         wf::copy(sddk::memory_t::host, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
                 wf::band_range(num_phi, num_phi_tot));
     }
-    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
+    PROFILE_STOP("sirius::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
     wf::Wave_functions<T> hphi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
