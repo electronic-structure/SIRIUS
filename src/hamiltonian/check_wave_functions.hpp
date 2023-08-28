@@ -25,6 +25,9 @@
 #ifndef __CHECK_WAVE_FUNCTIONS_HPP__
 #define __CHECK_WAVE_FUNCTIONS_HPP__
 
+#include "SDDK/wave_functions.hpp"
+#include "hamiltonian/hamiltonian.hpp"
+
 namespace sirius {
 
 template <typename T, typename F>

@@ -26,6 +26,7 @@
 #define __DIAGONALIZE_FP_HPP__
 
 #include "davidson.hpp"
+#include "k_point/k_point.hpp"
 
 namespace sirius {
 

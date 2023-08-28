@@ -26,6 +26,7 @@
 
 #include "davidson.hpp"
 #include "check_wave_functions.hpp"
+#include "k_point/k_point.hpp"
 
 namespace sirius {
 
