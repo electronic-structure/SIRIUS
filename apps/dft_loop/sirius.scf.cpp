@@ -4,8 +4,8 @@
 #include "utils/filesystem.hpp"
 #include "utils/json.hpp"
 #include "dft/lattice_relaxation.hpp"
-#include "band/initialize_subspace.hpp"
-#include "band/diagonalize.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
+#include "hamiltonian/diagonalize.hpp"
 
 using namespace sirius;
 using json = nlohmann::json;

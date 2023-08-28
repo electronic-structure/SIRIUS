@@ -37,9 +37,9 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "multi_cg/multi_cg.hpp"
-#include "band/check_wave_functions.hpp"
-#include "band/initialize_subspace.hpp"
-#include "band/diagonalize.hpp"
+#include "hamiltonian/check_wave_functions.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
+#include "hamiltonian/diagonalize.hpp"
 #include "sirius.hpp"
 
 struct sirius_context_handler_t

@@ -25,8 +25,8 @@
 #include <iomanip>
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
-#include "band/initialize_subspace.hpp"
-#include "band/diagonalize.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
+#include "hamiltonian/diagonalize.hpp"
 
 namespace sirius {
 

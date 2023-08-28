@@ -1,7 +1,7 @@
 #include <sirius.hpp>
 #include <testing.hpp>
-#include "band/davidson.hpp"
-#include "band/initialize_subspace.hpp"
+#include "hamiltonian/davidson.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
 
 using namespace sirius;
 
