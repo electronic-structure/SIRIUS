@@ -138,7 +138,7 @@ project_out_subspace(::spla::Context& spla_ctx__, sddk::memory_t mem__, wf::spin
 */
 template <typename T, typename F, davidson_evp_t what>
 inline auto
-davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num_mag_dims__,
+davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands__, wf::num_mag_dims num_mag_dims__,
         wf::Wave_functions<T>& psi__, std::function<double(int, int)> tolerance__, double res_tol__,
         int num_steps__, bool locking__, int subspace_size__, bool estimate_eval__, bool extra_ortho__,
         std::ostream& out__, int verbosity__, wf::Wave_functions<T>* phi_extra__ = nullptr)
@@ -151,7 +151,6 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
 
     auto pcs = env::print_checksum();
 
-    auto& kp = Hk__.kp();
 
     auto& itso = ctx.cfg().iterative_solver();
 
@@ -183,7 +182,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
         nlo = ctx.unit_cell().mt_lo_basis_size();
     }
 
-    if (num_phi > kp.gklo_basis_size()) {
+    if (num_phi > kp__.gklo_basis_size()) {
         std::stringstream s;
         s << "subspace size is too large!";
         RTE_THROW(s);
@@ -209,43 +208,43 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     mg.emplace_back(psi__.memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
 
     /* auxiliary wave-functions */
-    auto phi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+    auto phi = wave_function_factory(ctx, kp__, wf::num_bands(num_phi), num_md, mt_part);
     mg.emplace_back(phi->memory_guard(mem));
 
     /* Hamiltonian, applied to auxiliary wave-functions */
     std::unique_ptr<wf_t> hphi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
-        hphi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+        hphi = wave_function_factory(ctx, kp__, wf::num_bands(num_phi), num_md, mt_part);
         mg.emplace_back(hphi->memory_guard(mem));
     }
 
     /* S operator, applied to auxiliary wave-functions */
-    auto sphi = wave_function_factory(ctx, kp, wf::num_bands(num_phi), num_md, mt_part);
+    auto sphi = wave_function_factory(ctx, kp__, wf::num_bands(num_phi), num_md, mt_part);
     mg.emplace_back(sphi->memory_guard(mem));
 
     /* Hamiltonain, applied to new Psi wave-functions */
     std::unique_ptr<wf_t> hpsi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
-        hpsi = wave_function_factory(ctx, kp, num_bands__, num_md, mt_part);
+        hpsi = wave_function_factory(ctx, kp__, num_bands__, num_md, mt_part);
         mg.emplace_back(hpsi->memory_guard(mem));
     }
 
     /* S operator, applied to new Psi wave-functions */
-    auto spsi = wave_function_factory(ctx, kp, num_bands__, num_md, mt_part);
+    auto spsi = wave_function_factory(ctx, kp__, num_bands__, num_md, mt_part);
     mg.emplace_back(spsi->memory_guard(mem));
 
     /* residuals */
     /* res is also used as a temporary array in orthogonalize() and the first time num_extra_phi + num_bands
      * states will be orthogonalized */
-    auto res = wave_function_factory(ctx, kp, wf::num_bands(num_bands__.get() + num_extra_phi), num_md, mt_part);
+    auto res = wave_function_factory(ctx, kp__, wf::num_bands(num_bands__.get() + num_extra_phi), num_md, mt_part);
     mg.emplace_back(res->memory_guard(mem));
 
     std::unique_ptr<wf_t> hphi_extra{nullptr};
     std::unique_ptr<wf_t> sphi_extra{nullptr};
 
     if (phi_extra__) {
-        hphi_extra = wave_function_factory(ctx, kp, wf::num_bands(num_extra_phi), num_md, mt_part);
-        sphi_extra = wave_function_factory(ctx, kp, wf::num_bands(num_extra_phi), num_md, mt_part);
+        hphi_extra = wave_function_factory(ctx, kp__, wf::num_bands(num_extra_phi), num_md, mt_part);
+        sphi_extra = wave_function_factory(ctx, kp__, wf::num_bands(num_extra_phi), num_md, mt_part);
         mg.emplace_back(phi_extra__->memory_guard(mem, wf::copy_to::device));
         mg.emplace_back(hphi_extra->memory_guard(mem));
         mg.emplace_back(sphi_extra->memory_guard(mem));
@@ -301,8 +300,8 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
     if (pcs) {
         auto cs1 = h_o_diag.first.checksum();
         auto cs2 = h_o_diag.second.checksum();
-        kp.comm().allreduce(&cs1, 1);
-        kp.comm().allreduce(&cs2, 1);
+        kp__.comm().allreduce(&cs1, 1);
+        kp__.comm().allreduce(&cs2, 1);
         utils::print_checksum("h_diag", cs1, RTE_OUT(out__));
         utils::print_checksum("o_diag", cs2, RTE_OUT(out__));
         auto cs = psi__.checksum(mem, wf::band_range(0, num_bands__.get()));
@@ -431,7 +430,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     WARNING(s);
                     if (N <= 20) {
                         auto s1 = H.serialize("davidson:H_first", N, N);
-                        if (Hk__.kp().comm().rank() == 0) {
+                        if (kp__.comm().rank() == 0) {
                             RTE_OUT(out__) << s1.str() << std::endl;
                         }
                     }
@@ -447,7 +446,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                 WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:O_first", N, N);
-                    if (Hk__.kp().comm().rank() == 0) {
+                    if (kp__.comm().rank() == 0) {
                         RTE_OUT(out__) << s1.str() << std::endl;
                     }
                 }
@@ -515,7 +514,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                 WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:H", N, N);
-                    if (Hk__.kp().comm().rank() == 0) {
+                    if (kp__.comm().rank() == 0) {
                         RTE_OUT(out__) << s1.str() << std::endl;
                     }
                 }
@@ -659,7 +658,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     RTE_OUT(out__) << "Warning: maximum number of iterations reached, but "
                         << result.num_unconverged[ispin_step]
                         << " residual(s) did not converge for k-point "
-                        << kp.vk()[0] << " " << kp.vk()[1] << " " << kp.vk()[2] << std::endl;
+                        << kp__.vk()[0] << " " << kp__.vk()[1] << " " << kp__.vk()[2] << std::endl;
                     result.converged = false;
                 }
 

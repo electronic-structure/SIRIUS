@@ -57,7 +57,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
 
     Hamiltonian0<T> H0(pot__, true);
     auto Hk = H0(kp);
-    sirius::initialize_subspace<T, F>(Hk, ctx__.unit_cell().num_ps_atomic_wf().first);
+    sirius::initialize_subspace<T, F>(Hk, kp, ctx__.unit_cell().num_ps_atomic_wf().first);
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_energy(i, 0, 0);
     }
@@ -67,7 +67,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     const int num_bands = ctx__.num_bands();
     bool locking{true};
 
-    auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk, wf::num_bands(num_bands),
+    auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk, kp, wf::num_bands(num_bands),
             wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
             60, locking, subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
 

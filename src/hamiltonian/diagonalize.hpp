@@ -69,20 +69,20 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
 
         auto Hk = H0__(*kp);
         if (ctx.full_potential()) {
-            diagonalize_fp<T>(Hk, itsol_tol__);
+            diagonalize_fp<T>(Hk, *kp, itsol_tol__);
         } else {
             if (itso.type() == "exact") {
                 if (ctx.gamma_point() || ctx.num_mag_dims() == 3) {
                     RTE_THROW("not implemented");
                 }
                 for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
-                    diagonalize_pp_exact<T, std::complex<F>>(ispn, Hk);
+                    diagonalize_pp_exact<T, std::complex<F>>(ispn, Hk, *kp);
                 }
             } else {
                 if (ctx.gamma_point() && (ctx.so_correction() == false)) {
-                    result.davidson_result = diagonalize_pp<T, F>(Hk, itsol_tol__, empy_tol);
+                    result.davidson_result = diagonalize_pp<T, F>(Hk, *kp, itsol_tol__, empy_tol);
                 } else {
-                    result.davidson_result = diagonalize_pp<T, std::complex<F>>(Hk, itsol_tol__, empy_tol);
+                    result.davidson_result = diagonalize_pp<T, std::complex<F>>(Hk, *kp, itsol_tol__, empy_tol);
                 }
                 num_dav_iter += result.davidson_result.niter;
                 converged = converged & result.davidson_result.converged;
