@@ -7,7 +7,7 @@
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
 #include "wave_functions.hpp"
-#include "band/initialize_subspace.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
