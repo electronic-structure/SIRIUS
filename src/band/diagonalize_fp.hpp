@@ -30,6 +30,12 @@
 namespace sirius {
 
 inline void
+diagonalize_fp_fv_exact(Hamiltonian_k<float>& Hk__)
+{
+    RTE_THROW("not implemented");
+}
+
+inline void
 diagonalize_fp_fv_exact(Hamiltonian_k<double>& Hk__)
 {
     PROFILE("sirius::diagonalize_fp_fv_exact");
@@ -263,6 +269,12 @@ get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol__)
 }
 
 inline void
+diagonalize_fp_fv_davidson(Hamiltonian_k<float>& Hk__, double itsol_tol__)
+{
+    RTE_THROW("not implemented");
+}
+
+inline void
 diagonalize_fp_fv_davidson(Hamiltonian_k<double>& Hk__, double itsol_tol__)
 {
     PROFILE("sirius::diagonalize_fp_fv_davidson");
@@ -331,6 +343,12 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double>& Hk__, double itsol_tol__)
             phi_extra_new.get());
 
     kp.set_fv_eigen_values(&result.eval[0]);
+}
+
+inline void
+diagonalize_fp_sv(Hamiltonian_k<float>& Hk__)
+{
+    RTE_THROW("not implemented");
 }
 
 /// Diagonalize second-variational Hamiltonian.

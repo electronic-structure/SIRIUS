@@ -30,7 +30,14 @@
 namespace sirius {
 
 template <typename T, typename F>
-inline void
+inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
+diagonalize_pp_exact(int ispn__, Hamiltonian_k<T>& Hk__)
+{
+    RTE_THROW("not implemented");
+}
+
+template <typename T, typename F>
+inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
 diagonalize_pp_exact(int ispn__, Hamiltonian_k<T>& Hk__)
 {
     PROFILE("sirius::diagonalize_pp_exact");
