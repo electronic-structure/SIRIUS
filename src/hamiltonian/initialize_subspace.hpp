@@ -305,9 +305,9 @@ initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__)
         auto kp = kset__.get<T>(it.i);
         auto Hk = H0__(*kp);
         if (ctx.gamma_point() && (ctx.so_correction() == false)) {
-            ::sirius::initialize_subspace<T, T>(Hk, N);
+            initialize_subspace<T, T>(Hk, N);
         } else {
-            ::sirius::initialize_subspace<T, std::complex<T>>(Hk, N);
+            initialize_subspace<T, std::complex<T>>(Hk, N);
         }
     }
 

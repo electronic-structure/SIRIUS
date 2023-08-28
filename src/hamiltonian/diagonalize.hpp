@@ -27,6 +27,7 @@
 
 #include "diagonalize_fp.hpp"
 #include "diagonalize_pp.hpp"
+#include "k_point/k_point_set.hpp"
 
 namespace sirius {
 
@@ -127,4 +128,3 @@ diagonalize(Hamiltonian0<T>& H0__, K_point_set& kset__, double itsol_tol__)
 }
 
 #endif
-

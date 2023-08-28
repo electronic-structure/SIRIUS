@@ -41,14 +41,14 @@ DFT_ground_state::initial_state()
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
-            ::sirius::initialize_subspace(kset_, H0);
+            initialize_subspace(kset_, H0);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
 
         } else {
             Hamiltonian0<double> H0(potential_, true);
-            ::sirius::initialize_subspace(kset_, H0);
+            initialize_subspace(kset_, H0);
         }
     }
 }
