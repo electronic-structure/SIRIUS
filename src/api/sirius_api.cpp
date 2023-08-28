@@ -37,7 +37,9 @@
 #endif
 #include "symmetry/crystal_symmetry.hpp"
 #include "multi_cg/multi_cg.hpp"
-#include "band/check_wave_functions.hpp"
+#include "hamiltonian/check_wave_functions.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
+#include "hamiltonian/diagonalize.hpp"
 #include "sirius.hpp"
 
 struct sirius_context_handler_t
@@ -2661,7 +2663,7 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
             auto& gs = get_gs(gs_handler__);
             auto& ks = get_ks(ks_handler__);
             sirius::Hamiltonian0<double> H0(gs.potential(), true);
-            sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
+            sirius::initialize_subspace(ks, H0);
         },
         error_code__);
 }
@@ -2724,7 +2726,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
             }
             sirius::Hamiltonian0<double> H0(gs.potential(), false);
-            sirius::Band(ks.ctx()).solve<double, double>(ks, H0, tol);
+            sirius::diagonalize<double, double>(H0, ks, tol);
         },
         error_code__);
 }

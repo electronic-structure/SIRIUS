@@ -550,11 +550,6 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
        orthogonalize_radial_functions();
     }
 
-//= #ifdef __PRINT_OBJECT_CHECKSUM
-//=     DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(spherical_potential_.data(), atom_type_.num_mt_points()).checksum());
-//=     DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
-//= #endif
-
     //** if (true)
     //** {
     //**     std::stringstream s;

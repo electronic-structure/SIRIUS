@@ -32,7 +32,7 @@
 #include <iostream>
 #include <complex>
 #include "SDDK/wave_functions.hpp"
-#include "band/residuals.hpp"
+#include "hamiltonian/residuals.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "k_point/k_point.hpp"

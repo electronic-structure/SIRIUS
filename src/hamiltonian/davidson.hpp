@@ -25,16 +25,25 @@
 #ifndef __DAVIDSON_HPP__
 #define __DAVIDSON_HPP__
 
-#include "k_point/k_point.hpp"
-#include "band/band.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "k_point/k_point.hpp"
 #include "utils/profiler.hpp"
-#include "k_point/k_point.hpp"
-#include "hamiltonian/hamiltonian.hpp"
 #include "residuals.hpp"
-#include "davidson_result_t.hpp"
+#include "generate_subspace_matrix.hpp"
 
 namespace sirius {
+
+/// Result of Davidson solver.
+struct davidson_result_t {
+    /// Number of iterations.
+    int niter;
+    /// Eigen-values.
+    sddk::mdarray<double, 2> eval;
+    /// True if all bands (up and dn) are converged.
+    bool converged;
+    /// Number of unconverged bands for each spin channel.
+    int num_unconverged[2];
+};
 
 enum class davidson_evp_t {
     hamiltonian,
@@ -408,44 +417,44 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                 break;
             }
         }
-//
-//        /* DEBUG */
-//        if (ctx.cfg().control().verification() >= 1) {
-//            /* setup eigen-value problem */
-//            if (what != davidson_evp_t::overlap) {
-//                Band(ctx).set_subspace_mtrx<T, F>(0, N, 0, *phi, *hphi, H);
-//                auto max_diff = check_hermitian(H, N);
-//                if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
-//                    std::stringstream s;
-//                    s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
-//                      << "  happened before entering the iterative loop" << std::endl;
-//                    WARNING(s);
-//                    if (N <= 20) {
-//                        auto s1 = H.serialize("davidson:H_first", N, N);
-//                        if (Hk__.kp().comm().rank() == 0) {
-//                            RTE_OUT(out__) << s1.str() << std::endl;
-//                        }
-//                    }
-//                }
-//            }
-//
-//            Band(ctx).set_subspace_mtrx<T, F>(0, N, 0, *phi, *sphi, H);
-//            auto max_diff = check_hermitian(H, N);
-//            if (max_diff > (std::is_same<real_type<T>, double>::value ? 1e-12 : 1e-6)) {
-//                std::stringstream s;
-//                s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
-//                  << "  happened before entering the iterative loop" << std::endl;
-//                WARNING(s);
-//                if (N <= 20) {
-//                    auto s1 = H.serialize("davidson:O_first", N, N);
-//                    if (Hk__.kp().comm().rank() == 0) {
-//                        RTE_OUT(out__) << s1.str() << std::endl;
-//                    }
-//                }
-//            }
-//        }
-//        /* END DEBUG */
-//
+
+        /* DEBUG */
+        if (ctx.cfg().control().verification() >= 1) {
+            /* setup eigen-value problem */
+            if (what != davidson_evp_t::overlap) {
+                generate_subspace_matrix(ctx, 0, N, 0, *phi, *hphi, H);
+                auto max_diff = check_hermitian(H, N);
+                if (max_diff > (std::is_same<T, double>::value ? 1e-12 : 1e-6)) {
+                    std::stringstream s;
+                    s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
+                      << "  happened before entering the iterative loop" << std::endl;
+                    WARNING(s);
+                    if (N <= 20) {
+                        auto s1 = H.serialize("davidson:H_first", N, N);
+                        if (Hk__.kp().comm().rank() == 0) {
+                            RTE_OUT(out__) << s1.str() << std::endl;
+                        }
+                    }
+                }
+            }
+
+            generate_subspace_matrix(ctx, 0, N, 0, *phi, *sphi, H);
+            auto max_diff = check_hermitian(H, N);
+            if (max_diff > (std::is_same<T, double>::value ? 1e-12 : 1e-6)) {
+                std::stringstream s;
+                s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
+                  << "  happened before entering the iterative loop" << std::endl;
+                WARNING(s);
+                if (N <= 20) {
+                    auto s1 = H.serialize("davidson:O_first", N, N);
+                    if (Hk__.kp().comm().rank() == 0) {
+                        RTE_OUT(out__) << s1.str() << std::endl;
+                    }
+                }
+            }
+        }
+        /* END DEBUG */
+
         if (pcs) {
             auto cs = phi->checksum(mem, wf::band_range(0, N));
             utils::print_checksum("phi", cs, RTE_OUT(out__));
@@ -479,7 +488,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                     utils::print_checksum("sphi", cs, RTE_OUT(out__));
                 }
                 /* setup eigen-value problem */
-                Band(ctx).set_subspace_mtrx(0, N, 0, *phi, *hphi, H, &H_old);
+                generate_subspace_matrix(ctx, 0, N, 0, *phi, *hphi, H, &H_old);
                 break;
             }
             case davidson_evp_t::overlap: {
@@ -487,7 +496,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                         wf::spin_range(nc_mag ? 2 : 0), wf::band_range(0, 0), wf::band_range(0, N), *phi, *phi,
                         {phi.get(), sphi.get()}, H, *res, false);
                 /* setup eigen-value problem */
-                Band(ctx).set_subspace_mtrx(0, N, 0, *phi, *sphi, H, &H_old);
+                generate_subspace_matrix(ctx, 0, N, 0, *phi, *sphi, H, &H_old);
                 break;
             }
         }
@@ -777,7 +786,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                                     *phi, *sphi, {phi.get(), hphi.get(), sphi.get()}, H, *res, false);
                         }
                     }
-                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *hphi, H, &H_old);
+                    generate_subspace_matrix<T, F>(ctx, N, expand_with, num_locked, *phi, *hphi, H, &H_old);
                     break;
                 }
                 case davidson_evp_t::overlap: {
@@ -791,7 +800,7 @@ davidson(Hamiltonian_k<T>& Hk__, wf::num_bands num_bands__, wf::num_mag_dims num
                         wf::orthogonalize(ctx.spla_context(), mem, sr, wf::band_range(0, N), wf::band_range(N, N + expand_with),
                                          *phi, *phi, {phi.get(), sphi.get()}, H, *res, false);
                     }
-                    Band(ctx).set_subspace_mtrx<T, F>(N, expand_with, num_locked, *phi, *sphi, H, &H_old);
+                    generate_subspace_matrix<T, F>(ctx, N, expand_with, num_locked, *phi, *sphi, H, &H_old);
                     break;
                 }
             }

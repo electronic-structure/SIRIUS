@@ -25,6 +25,8 @@
 #include <iomanip>
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
+#include "hamiltonian/initialize_subspace.hpp"
+#include "hamiltonian/diagonalize.hpp"
 
 namespace sirius {
 
@@ -39,14 +41,14 @@ DFT_ground_state::initial_state()
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
-            Band(ctx_).initialize_subspace(kset_, H0);
+            ::sirius::initialize_subspace(kset_, H0);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
 
         } else {
             Hamiltonian0<double> H0(potential_, true);
-            Band(ctx_).initialize_subspace(kset_, H0);
+            ::sirius::initialize_subspace(kset_, H0);
         }
     }
 }
@@ -135,9 +137,9 @@ DFT_ground_state::check_scf_density()
     bool precompute_lapw{true};
     Hamiltonian0<double> H0(pot, precompute_lapw);
     /* initialize the subspace */
-    Band(ctx_).initialize_subspace(kset_, H0);
+    ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve<double, double>(kset_, H0, ctx_.cfg().settings().itsol_tol_min());
+    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().settings().itsol_tol_min());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
@@ -222,16 +224,16 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
-        bool converged_bands{false};
+        diagonalize_result_t result;
 
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
-                converged_bands = Band(ctx_).solve<float, float>(kset_, H0, iter_solver_tol__);
+                result = sirius::diagonalize<float, float>(H0, kset_, iter_solver_tol__);
             } else {
-                converged_bands = Band(ctx_).solve<float, double>(kset_, H0, iter_solver_tol__);
+                result = sirius::diagonalize<float, double>(H0, kset_, iter_solver_tol__);
             }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
@@ -243,7 +245,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         } else {
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
-            converged_bands = Band(ctx_).solve<double, double>(kset_, H0, iter_solver_tol__);
+            result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__);
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -345,7 +347,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (!ctx_.full_potential()) {
             out << std::endl
                 << "Hartree energy of density residual : " << eha_res << std::endl
-                << "bands are converged : " << utils::boolstr(converged_bands);
+                << "bands are converged : " << utils::boolstr(result.converged);
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
             out << std::endl
@@ -355,7 +357,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
         bool converged{true};
-        converged = converged && (std::abs(eold - etot) < energy_tol__) && converged_bands && iter_solver_converged;
+        converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
         if (ctx_.cfg().mixer().use_hartree()) {
             converged = converged && (eha_res < density_tol__);
         } else {

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2023 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,176 +17,18 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file band.hpp
+/** \file initialize_subspace.hpp
  *
- *   \brief Contains declaration and partial implementation of sirius::Band class.
+ *  \brief Create intial subspace from atomic-like wave-functions 
  */
 
-#ifndef __BAND_HPP__
-#define __BAND_HPP__
+#ifndef __INITIALIZE_SUBSPACE_HPP__
+#define __INITIALIZE_SUBSPACE_HPP__
 
-#include "SDDK/memory.hpp"
-#include "hamiltonian/hamiltonian.hpp"
 #include "k_point/k_point_set.hpp"
-#include "SDDK/wave_functions.hpp"
-#include "davidson_result_t.hpp"
+#include "diagonalize_pp.hpp"
 
 namespace sirius {
-
-/// Setup and solve the eigen value problem.
-class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
-{
-  private:
-    /// Simulation context.
-    Simulation_context& ctx_;
-
-    /// Alias for the unit cell.
-    Unit_cell& unit_cell_;
-
-    /// BLACS grid for distributed linear algebra operations.
-    la::BLACS_grid const& blacs_grid_;
-
-    /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
-    /** This is only used by the LAPW method. */
-    void diag_full_potential_first_variation_exact(Hamiltonian_k<double>& Hk__) const;
-
-    /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-    void diag_full_potential_first_variation_davidson(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
-
-    /// Solve second-variational problem.
-    void diag_full_potential_second_variation(Hamiltonian_k<double>& Hk__) const;
-
-    /// Get singular components of the LAPW overlap matrix.
-    /** Singular components are the eigen-vectors with a very small eigen-value. */
-    void get_singular_components(Hamiltonian_k<double>& Hk__, double itsol_tol__) const;
-
-    /// Exact (not iterative) diagonalization of the Hamiltonian.
-    template <typename T, typename F>
-    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k<T>& Hk__) const;
-
-    /// Diagonalize S operator to check for the negative eigen-values.
-    template <typename T>
-    sddk::mdarray<real_type<T>, 1> diag_S_davidson(Hamiltonian_k<real_type<T>>& Hk__) const;
-
-  public:
-    /// Constructor
-    Band(Simulation_context& ctx__);
-
-    /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
-     *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
-     *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-    template <typename T, typename F>
-    void set_subspace_mtrx(int N__, int n__, int num_locked__, wf::Wave_functions<T>& phi__,
-                           wf::Wave_functions<T>& op_phi__, la::dmatrix<F>& mtrx__,
-                           la::dmatrix<F>* mtrx_old__ = nullptr) const
-    {
-        PROFILE("sirius::Band::set_subspace_mtrx");
-
-        RTE_ASSERT(n__ != 0);
-        if (mtrx_old__ && mtrx_old__->size()) {
-            RTE_ASSERT(&mtrx__.blacs_grid() == &mtrx_old__->blacs_grid());
-        }
-
-        /* copy old N - num_locked x N - num_locked distributed matrix */
-        if (N__ > 0) {
-            sddk::splindex_block_cyclic<> spl_row(N__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                    mtrx__.bs_row());
-            sddk::splindex_block_cyclic<> spl_col(N__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                    mtrx__.bs_col());
-
-            if (mtrx_old__) {
-                if (spl_row.local_size()) {
-                    #pragma omp parallel for schedule(static)
-                    for (int i = 0; i < spl_col.local_size(); i++) {
-                        std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
-                    }
-                }
-            }
-
-            if (env::print_checksum()) {
-                auto cs = mtrx__.checksum(N__ - num_locked__, N__ - num_locked__);
-                if (ctx_.comm_band().rank() == 0) {
-                    utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
-                }
-            }
-        }
-
-        /*  [--- num_locked -- | ------ N - num_locked ---- | ---- n ----] */
-        /*  [ ------------------- N ------------------------| ---- n ----] */
-
-        auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
-        /* <{phi,phi_new}|Op|phi_new> */
-        inner(ctx_.spla_context(), mem, ctx_.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(0), phi__,
-                wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__),
-                mtrx__, 0, N__ - num_locked__);
-
-        /* restore lower part */
-        if (N__ > 0) {
-            if (mtrx__.blacs_grid().comm().size() == 1) {
-                #pragma omp parallel for
-                for (int i = 0; i < N__ - num_locked__; i++) {
-                    for (int j = N__ - num_locked__; j < N__ + n__ - num_locked__; j++) {
-                        mtrx__(j, i) = utils::conj(mtrx__(i, j));
-                    }
-                }
-            } else {
-                la::wrap(la::lib_t::scalapack)
-                    .tranc(n__, N__ - num_locked__, mtrx__, 0, N__ - num_locked__, mtrx__, N__ - num_locked__, 0);
-            }
-        }
-
-        if (env::print_checksum()) {
-            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                    mtrx__.bs_row());
-            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                    mtrx__.bs_col());
-            auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
-            if (ctx_.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
-            }
-        }
-
-        /* remove any numerical noise */
-        mtrx__.make_real_diag(N__ + n__ - num_locked__);
-
-        /* save new matrix */
-        if (mtrx_old__) {
-            sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                    mtrx__.bs_row());
-            sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
-                    n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                    mtrx__.bs_col());
-
-            if (spl_row.local_size()) {
-                #pragma omp parallel for schedule(static)
-                for (int i = 0; i < spl_col.local_size(); i++) {
-                    std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
-                }
-            }
-        }
-    }
-
-    /// Solve the band eigen-problem for pseudopotential case.
-    template <typename T, typename F>
-    davidson_result_t solve_pseudo_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__, double empy_tol__) const;
-
-    /// Solve the band eigen-problem for full-potential case.
-    template <typename T>
-    void solve_full_potential(Hamiltonian_k<T>& Hk__, double itsol_tol__) const;
-
-    /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    template <typename T, typename F>
-    bool solve(K_point_set& kset__, Hamiltonian0<T>& H0__, double itsol_tol__) const;
-
-    /// Initialize the subspace for the entire k-point set.
-    template <typename T>
-    void initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__) const;
-};
 
 /// Initialize the wave-functions subspace at a given k-point.
 /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
@@ -194,21 +36,23 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 template <typename T, typename F>
 inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
 {
-    PROFILE("sirius::Band::initialize_subspace|kp");
+    PROFILE("sirius::initialize_subspace|kp");
 
-    //if (ctx_.cfg().control().verification() >= 2) {
-    //    auto eval = diag_S_davidson<T>(Hk__);
-    //    if (eval[0] <= 0) {
-    //        std::stringstream s;
-    //        s << "S-operator matrix is not positive definite\n"
-    //          << "  lowest eigen-value: " << eval[0];
-    //        WARNING(s);
-    //    } else {
-    //        ctx_.message(1, __function_name__, "S-matrix is OK! Minimum eigen-value: %18.12f\n", eval[0]);
-    //    }
-    //}
-    //
     auto& ctx = Hk__.H0().ctx();
+
+    if (ctx.cfg().control().verification() >= 2) {
+        auto eval = diag_S_davidson<T, F>(Hk__);
+        if (eval[0] <= 0) {
+            std::stringstream s;
+            s << "S-operator matrix is not positive definite\n"
+              << "  lowest eigen-value: " << eval[0];
+            WARNING(s);
+        } else {
+            std::stringstream s;
+            s << "S-matrix is OK! Minimum eigen-value : " << eval[0];
+            RTE_OUT(ctx.out(1)) << s.str() << std::endl;
+        }
+    }
 
     auto pcs = env::print_checksum();
 
@@ -247,7 +91,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     for (int i = 0; i < 4096; i++) {
         tmp[i] = 1e-5 * utils::random<T>();
     }
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
+    PROFILE_START("sirius::initialize_subspace|kp|wf");
     /* fill remaining wave-functions with pseudo-random guess */
     RTE_ASSERT(Hk__.kp().num_gkvec() > num_phi + 10);
     #pragma omp parallel
@@ -284,7 +128,7 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
         wf::copy(sddk::memory_t::host, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
                 wf::band_range(num_phi, num_phi_tot));
     }
-    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
+    PROFILE_STOP("sirius::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
     wf::Wave_functions<T> hphi(Hk__.kp().gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
@@ -372,8 +216,8 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     //    }
 
         /* setup eigen-value problem */
-        Band(ctx).set_subspace_mtrx(0, num_phi_tot, 0, phi, hphi, hmlt);
-        Band(ctx).set_subspace_mtrx(0, num_phi_tot, 0, phi, ophi, ovlp);
+        generate_subspace_matrix(ctx, 0, num_phi_tot, 0, phi, hphi, hmlt);
+        generate_subspace_matrix(ctx, 0, num_phi_tot, 0, phi, ophi, ovlp);
 
         if (pcs) {
             auto cs1 = hmlt.checksum(num_phi_tot, num_phi_tot);
@@ -442,6 +286,42 @@ inline void initialize_subspace(Hamiltonian_k<T>& Hk__, int num_ao__)
     }
 }
 
+template <typename T>
+void
+initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__)
+{
+    PROFILE("sirius::initialize_subspace_kset");
+
+    int N{0};
+
+    auto& ctx = H0__.ctx();
+
+    if (ctx.cfg().iterative_solver().init_subspace() == "lcao") {
+        /* get the total number of atomic-centered orbitals */
+        N = ctx.unit_cell().num_ps_atomic_wf().first;
+    }
+
+    for (auto it: kset__.spl_num_kpoints()) {
+        auto kp = kset__.get<T>(it.i);
+        auto Hk = H0__(*kp);
+        if (ctx.gamma_point() && (ctx.so_correction() == false)) {
+            ::sirius::initialize_subspace<T, T>(Hk, N);
+        } else {
+            ::sirius::initialize_subspace<T, std::complex<T>>(Hk, N);
+        }
+    }
+
+    /* reset the energies for the iterative solver to do at least two steps */
+    for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
+        for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
+            for (int i = 0; i < ctx.num_bands(); i++) {
+                kset__.get<T>(ik)->band_energy(i, ispn, 0);
+                kset__.get<T>(ik)->band_occupancy(i, ispn, ctx.max_occupancy());
+            }
+        }
+    }
 }
 
-#endif // __BAND_HPP__
+}
+
+#endif
