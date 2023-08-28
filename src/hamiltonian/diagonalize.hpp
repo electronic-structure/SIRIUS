@@ -43,7 +43,7 @@ struct diagonalize_result_t {
  */
 template <typename T, typename F>
 inline auto
-diagonalize(Hamiltonian0<T>& H0__, K_point_set& kset__, double itsol_tol__) 
+diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__)
 {
     PROFILE("sirius::diagonalize");
 

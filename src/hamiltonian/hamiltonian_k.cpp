@@ -37,7 +37,7 @@
 namespace sirius {
 
 template <typename T>
-Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__)
+Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__)
     : H0_(H0__)
     , kp_(kp__)
 {

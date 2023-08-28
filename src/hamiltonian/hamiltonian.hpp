@@ -109,7 +109,7 @@ class Hamiltonian0
     Hamiltonian0(Hamiltonian0<T>&& src) = default;
 
     /// Return a Hamiltonian for the given k-point.
-    inline Hamiltonian_k<T> operator()(K_point<T>& kp__);
+    inline Hamiltonian_k<T> operator()(K_point<T>& kp__) const;
 
     Simulation_context& ctx() const
     {
@@ -175,7 +175,7 @@ class Hamiltonian_k
 {
   private:
     /// K-point independent part of Hamiltonian.
-    Hamiltonian0<T>& H0_;
+    Hamiltonian0<T> const& H0_;
     K_point<T>& kp_;
     /// Hubbard correction.
     /** In general case it is a k-dependent matrix */
@@ -188,7 +188,7 @@ class Hamiltonian_k
     Hamiltonian_k<T>& operator=(Hamiltonian_k<T> const& src__) = delete;
 
   public:
-    Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__);
+    Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__);
 
     Hamiltonian_k(Hamiltonian_k<T>&& src__);
 
@@ -215,7 +215,7 @@ class Hamiltonian_k
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
 
-    auto& U()
+    auto& U() const
     {
         return *u_op_;
     }
@@ -447,7 +447,7 @@ class Hamiltonian_k
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
     apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
-              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
@@ -506,7 +506,7 @@ class Hamiltonian_k
     template <typename F>
     std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
     apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
-              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         RTE_THROW("implementat this");
     }
@@ -517,7 +517,7 @@ class Hamiltonian_k
 
 template <typename T>
 Hamiltonian_k<T>
-Hamiltonian0<T>::operator()(K_point<T>& kp__)
+Hamiltonian0<T>::operator()(K_point<T>& kp__) const
 {
     return Hamiltonian_k<T>(*this, kp__);
 }

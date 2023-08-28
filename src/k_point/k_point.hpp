@@ -69,7 +69,7 @@ class K_point
     /// G-vector distribution for the FFT transformation.
     std::shared_ptr<fft::Gvec_fft> gkvec_partition_;
 
-    std::unique_ptr<fft::spfft_transform_type<T>> spfft_transform_;
+    mutable std::unique_ptr<fft::spfft_transform_type<T>> spfft_transform_;
 
     /// First-variational eigen values
     sddk::mdarray<double, 1> fv_eigen_values_;
@@ -735,12 +735,7 @@ class K_point
         }
     }
 
-    auto& spfft_transform()
-    {
-        return *spfft_transform_;
-    }
-
-    auto const& spfft_transform() const
+    auto& spfft_transform() const
     {
         return *spfft_transform_;
     }
