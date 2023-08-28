@@ -499,7 +499,7 @@ void run_tasks(cmd_args const& args)
         potential.generate(density, ctx->use_symmetry(), true);
         Hamiltonian0<double> H0(potential, true);
         if (!ctx->full_potential()) {
-            ::sirius::initialize_subspace(ks, H0);
+            initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 RTE_THROW("fix me");
                 //potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
