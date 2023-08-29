@@ -352,14 +352,7 @@ struct Linear_response_operator {
             1.0, *evq, wf::spin_index(0), br,
             0.0, *Hphi, wf::spin_index(0), wf::band_range(0, num_active));
 
-        auto bp_gen    = Hk.kp().beta_projectors().make_generator();
-        auto bp_coeffs = bp_gen.prepare();
-        // Sphi := S * Hphi = S * (evq * (evq' * (S * x)))
-        sirius::apply_S_operator<double, std::complex<double>>(
-            mem,
-            wf::spin_range(0), wf::band_range(0, num_active),
-            bp_gen, bp_coeffs,
-            *Hphi, &Hk.H0().Q(), *Sphi);
+        Hk.apply_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_active), *Hphi, *Sphi);
 
         // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
         std::vector<double> alpha_pvs(num_active, alpha_pv);

@@ -501,6 +501,26 @@ class Hamiltonian_k
         RTE_THROW("implementat this");
     }
 
+    /// apply S operator
+    /** \tparam F    Type of the subspace matrix.
+     *  \param [in]  spins Range of spins.
+     *  \param [in]  br    Range of bands.
+     *  \param [in]  phi   Input wave-functions [storage: CPU && GPU].
+     *  \param [out] sphi  Result of S-operator, applied to wave-functions [storage: CPU || GPU].
+     *
+     *  In non-collinear case (spins in [0,1]) the S operator is applied to both components of spinor
+     *  wave-functions. Otherwise they are applied to a single component.
+     */
+    template <typename F>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
+    apply_s(wf::spin_range spin__, wf::band_range br__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& sphi__) const {
+        auto mem = H0().ctx().processing_unit_memory_t();
+        auto bp_gen    = kp_.beta_projectors().make_generator();
+        auto bp_coeffs = bp_gen.prepare();
+        apply_S_operator<T, F>(mem, spin__, br__,
+                               bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
+    }
+
     /// Apply magnetic field to first-variational LAPW wave-functions.
     void apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
 };
