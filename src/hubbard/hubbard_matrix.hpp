@@ -109,7 +109,7 @@ class Hubbard_matrix
         return atomic_orbitals_[idx__];
     }
 
-    const int offset(const int idx__) const
+    int offset(const int idx__) const
     {
         return offset_[idx__];
     }
@@ -124,7 +124,7 @@ class Hubbard_matrix
         return ctx_;
     }
 
-    const int find_orbital_index(const int ia__, const int n__, const int l__) const
+    int find_orbital_index(const int ia__, const int n__, const int l__) const
     {
         int at_lvl = 0;
         for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {

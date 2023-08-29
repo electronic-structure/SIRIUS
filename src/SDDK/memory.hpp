@@ -364,7 +364,7 @@ class memory_pool
 #endif
   public:
     /// Constructor
-    memory_pool(memory_t M__, size_t initial_size__ = 0)
+    memory_pool(memory_t M__)
         : M_(M__)
     {
         std::string mem_type;
@@ -612,7 +612,7 @@ class mdarray_index_descriptor
         return size_;
     }
 
-    inline bool check_range(index_type i__) const
+    inline bool check_range([[maybe_unused]] index_type i__) const
     {
 #ifdef NDEBUG
         return true;
@@ -1531,7 +1531,8 @@ auto_copy(mdarray<T, N>& dst, const mdarray<T, N>& src, device_t device)
 
 template <class numeric_t, std::size_t... Ts>
 auto
-_empty_like_inner(std::index_sequence<Ts...>& seq, std::size_t (&dims)[sizeof...(Ts)], memory_pool* mempool)
+_empty_like_inner(std::index_sequence<Ts...>& seq [[maybe_unused]], std::size_t (&dims)[sizeof...(Ts)],
+                  memory_pool* mempool)
 {
     if (mempool == nullptr) {
         return mdarray<numeric_t, sizeof...(Ts)>{dims[Ts]...};

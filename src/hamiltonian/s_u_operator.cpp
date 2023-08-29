@@ -74,7 +74,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
 }
 
 template <class T>
-const int
+int
 U_operator<T>::find_orbital_index(const int ia__, const int n__, const int l__) const
 {
     int at_lvl = 0;
@@ -108,7 +108,7 @@ template class U_operator<float>;
 template <typename T>
 void
 apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T>& um__,
+                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
                  wf::Wave_functions<T>& hphi__)
 {
     if (!ctx__.hubbard_correction()) {
@@ -180,12 +180,12 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
 
 template void apply_U_operator<double>(Simulation_context&, wf::spin_range, wf::band_range,
                                        const wf::Wave_functions<double>&, const wf::Wave_functions<double>&,
-                                       U_operator<double>&, wf::Wave_functions<double>&);
+                                       U_operator<double> const&, wf::Wave_functions<double>&);
 
 #ifdef SIRIUS_USE_FP32
 template void apply_U_operator<float>(Simulation_context&, wf::spin_range, wf::band_range,
                                       const wf::Wave_functions<float>&, const wf::Wave_functions<float>&,
-                                      U_operator<float>&, wf::Wave_functions<float>&);
+                                      U_operator<float> const&, wf::Wave_functions<float>&);
 #endif
 
 /// Apply strain derivative of S-operator to all scalar functions.

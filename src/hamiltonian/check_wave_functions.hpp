@@ -25,10 +25,13 @@
 #ifndef __CHECK_WAVE_FUNCTIONS_HPP__
 #define __CHECK_WAVE_FUNCTIONS_HPP__
 
+#include "SDDK/wave_functions.hpp"
+#include "hamiltonian/hamiltonian.hpp"
+
 namespace sirius {
 
 template <typename T, typename F>
-void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
+void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
         wf::band_range br__, double* eval__)
 {
     wf::Wave_functions<T> hpsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), sddk::memory_t::host);
@@ -68,4 +71,3 @@ void check_wave_functions(Hamiltonian_k<real_type<T>>& Hk__, wf::Wave_functions<
 }
 
 #endif
-

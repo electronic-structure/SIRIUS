@@ -109,7 +109,7 @@ class Hamiltonian0
     Hamiltonian0(Hamiltonian0<T>&& src) = default;
 
     /// Return a Hamiltonian for the given k-point.
-    inline Hamiltonian_k<T> operator()(K_point<T>& kp__);
+    inline Hamiltonian_k<T> operator()(K_point<T>& kp__) const;
 
     Simulation_context& ctx() const
     {
@@ -175,7 +175,7 @@ class Hamiltonian_k
 {
   private:
     /// K-point independent part of Hamiltonian.
-    Hamiltonian0<T>& H0_;
+    Hamiltonian0<T> const& H0_;
     K_point<T>& kp_;
     /// Hubbard correction.
     /** In general case it is a k-dependent matrix */
@@ -188,7 +188,7 @@ class Hamiltonian_k
     Hamiltonian_k<T>& operator=(Hamiltonian_k<T> const& src__) = delete;
 
   public:
-    Hamiltonian_k(Hamiltonian0<T>& H0__, K_point<T>& kp__);
+    Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__);
 
     Hamiltonian_k(Hamiltonian_k<T>&& src__);
 
@@ -199,23 +199,13 @@ class Hamiltonian_k
         return H0_;
     }
 
-    auto& kp()
-    {
-        return kp_;
-    }
-
-    auto const& kp() const
-    {
-        return kp_;
-    }
-
     template <typename F, int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_pw() const;
 
     template <int what>
     std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
 
-    auto& U()
+    auto U() const -> U_operator<T> const&
     {
         return *u_op_;
     }
@@ -351,7 +341,7 @@ class Hamiltonian_k
      *  \param [out] ophi       Result of overlap operator, applied to wave-functions.
      */
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
-                      wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__);
+                      wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__) const;
 
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
@@ -447,7 +437,7 @@ class Hamiltonian_k
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
     apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
-              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         PROFILE("sirius::Hamiltonian_k::apply_h_s");
 
@@ -455,8 +445,8 @@ class Hamiltonian_k
 
         if (hphi__ != nullptr) {
             /* apply local part of Hamiltonian */
-            H0().local_op().apply_h(reinterpret_cast<fft::spfft_transform_type<T>&>(kp().spfft_transform()),
-                                    kp().gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
+            H0().local_op().apply_h(reinterpret_cast<fft::spfft_transform_type<T>&>(kp_.spfft_transform()),
+                                    kp_.gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
         }
 
         auto mem = H0().ctx().processing_unit_memory_t();
@@ -480,7 +470,7 @@ class Hamiltonian_k
 
         /* return if there are no beta-projectors */
         if (H0().ctx().unit_cell().max_mt_basis_size()) {
-            auto bp_generator = kp().beta_projectors().make_generator();
+            auto bp_generator = kp_.beta_projectors().make_generator();
             auto beta_coeffs  = bp_generator.prepare();
             apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
         }
@@ -488,7 +478,7 @@ class Hamiltonian_k
         /* apply the hubbard potential if relevant */
         if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
             /* apply the hubbard potential */
-            apply_U_operator(H0().ctx(), spins__, br__, kp().hubbard_wave_functions_S(), phi__, this->U(), *hphi__);
+            apply_U_operator(H0().ctx(), spins__, br__, kp_.hubbard_wave_functions_S(), phi__, this->U(), *hphi__);
         }
 
         if (pcs) {
@@ -506,18 +496,38 @@ class Hamiltonian_k
     template <typename F>
     std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
     apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
-              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__)
+              wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         RTE_THROW("implementat this");
     }
 
+    /// apply S operator
+    /** \tparam F    Type of the subspace matrix.
+     *  \param [in]  spins Range of spins.
+     *  \param [in]  br    Range of bands.
+     *  \param [in]  phi   Input wave-functions [storage: CPU && GPU].
+     *  \param [out] sphi  Result of S-operator, applied to wave-functions [storage: CPU || GPU].
+     *
+     *  In non-collinear case (spins in [0,1]) the S operator is applied to both components of spinor
+     *  wave-functions. Otherwise they are applied to a single component.
+     */
+    template <typename F>
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
+    apply_s(wf::spin_range spin__, wf::band_range br__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& sphi__) const {
+        auto mem = H0().ctx().processing_unit_memory_t();
+        auto bp_gen    = kp_.beta_projectors().make_generator();
+        auto bp_coeffs = bp_gen.prepare();
+        apply_S_operator<T, F>(mem, spin__, br__,
+                               bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
+    }
+
     /// Apply magnetic field to first-variational LAPW wave-functions.
-    void apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__);
+    void apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
 };
 
 template <typename T>
 Hamiltonian_k<T>
-Hamiltonian0<T>::operator()(K_point<T>& kp__)
+Hamiltonian0<T>::operator()(K_point<T>& kp__) const
 {
     return Hamiltonian_k<T>(*this, kp__);
 }

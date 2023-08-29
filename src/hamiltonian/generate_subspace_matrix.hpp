@@ -25,6 +25,9 @@
 #ifndef __GENERATE_SUBSPACE_MATRIX_HPP__
 #define __GENERATE_SUBSPACE_MATRIX_HPP__
 
+#include "context/simulation_context.hpp"
+#include "SDDK/wave_functions.hpp"
+
 namespace sirius {
 
 /// Generate subspace matrix for the iterative diagonalization.
@@ -143,4 +146,3 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
 }
 
 #endif
-
