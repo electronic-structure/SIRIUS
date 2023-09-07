@@ -37,7 +37,7 @@
         "type": "davidson"
     },
     "mixer": {
-        "beta": 0.7,
+        "beta": 0.5,
         "beta0": 0.15,
         "beta_scaling_factor": 1.0,
         "max_history": 8,
