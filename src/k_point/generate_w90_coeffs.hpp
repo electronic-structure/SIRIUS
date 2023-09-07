@@ -38,6 +38,10 @@ struct k_info{
     r3::vector<double> t;
 };
 
+void 
+read_nnkp(const int& num_kpts, int& num_wann, int& nntot, sddk::mdarray<int, 2>& nnlist, 
+    sddk::mdarray<int32_t, 3>& nncell, sddk::mdarray<int32_t, 1>& exclude_bands);
+
 void write_Amn(sddk::mdarray<std::complex<double>, 3> const& Amn, 
           int const& num_kpts, int const& num_bands, int const& num_wann);
 

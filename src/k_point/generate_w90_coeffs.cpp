@@ -15,6 +15,63 @@
 
 namespace sirius {
 
+void 
+read_nnkp(const int& num_kpts, int& num_wann, int& nntot, sddk::mdarray<int, 2>& nnlist, 
+    sddk::mdarray<int32_t, 3>& nncell, sddk::mdarray<int32_t, 1>& exclude_bands)
+{
+    std::ifstream readNNKP;
+    readNNKP.open("silicon.nnkp");
+    std::string line;
+    //read file
+    std::vector<std::string> file_content;
+    while( std::getline(readNNKP,line) ){
+        file_content.push_back(line);
+    for(auto ch : line)
+    {
+        std::cout << ch << std::endl;
+    }    
+    }
+    std::cout << "endl!\n";
+
+    //read num_wann
+    std::string string_to_check = "begin projections";
+    auto iterator = std::find_if(file_content.begin(), file_content.end(), 
+                                        [&, string_to_check](std::string& iter_file)
+                                          {return ( string_to_check == iter_file ); });
+    num_wann = std::atoi((*(iterator+1)).c_str());
+    std::cout << "num_wann:" << num_wann;
+    //read nnlist and nncell
+    string_to_check = "begin nnkpts";
+    iterator = std::find_if(file_content.begin(), file_content.end(), 
+                                        [&, string_to_check](std::string& iter_file)
+                                          {return ( string_to_check == iter_file ); });
+    iterator++;
+    nntot = std::atoi((*(iterator)).c_str());
+    std::cout << "nntot:" << nntot;
+    iterator++;
+    int aux_int;
+    std::cout << std::endl;
+    for(int ik=0; ik<num_kpts; ik++){
+        for(int ib=0; ib<nntot; ib++){
+            std::stringstream split_line;
+            split_line << *iterator;
+            std::cout << split_line.str() << std::endl;
+            split_line >> aux_int;
+            assert(aux_int == ik+1);
+            split_line >> nnlist(ik,ib);
+            split_line >> nncell(0,ik,ib) >> nncell(1,ik,ib) >> nncell(2,ik,ib);
+            iterator++;
+            //std::cout << std::setw(6) << ik+1;
+            //std::cout << std::setw(6) <<  nnlist(ik,ib);
+            //std::cout << std::setw(7) << nncell(0,ik,ib);
+            //std::cout << std::setw(4) << nncell(1,ik,ib);
+            //std::cout << std::setw(4) << nncell(2,ik,ib);
+            //std::cout << std::endl;
+            //std::cout << std::endl;
+        }
+    }
+}
+
 /*
  * This function creates a file with extension ".amn" that can eventually be read by wannier90
  * to set the matrix Amn (not needed if we want to use the library)
@@ -691,7 +748,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
     if (ctx().comm().rank() == 0) {
         std::cout << "starting wannier_setup_\n";
-        wannier_setup_(seedname,
+/*        wannier_setup_(seedname,
                        this->ctx().cfg().parameters().ngridk().data(), // input
                        &num_kpts,                                      // input
                        real_lattice.at(sddk::memory_t::host),          // input
@@ -720,6 +777,9 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                        proj_s_qaxis.at(sddk::memory_t::host),          // output
                        length_seedname,                                // aux-length of a string
                        length_atomic_symbol);                          // aux-length of a string
+*/
+    read_nnkp(const int& num_kpts, int& num_wann, int& nntot, sddk::mdarray<int, 2>& nnlist, 
+    sddk::mdarray<int32_t, 3>& nncell, sddk::mdarray<int32_t, 1>& exclude_bands)
 
     }
     ctx().comm().bcast(&nntot, 1, 0);
@@ -797,7 +857,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         }
         kset_fbz.ctx().comm_k().bcast(eigval.at(sddk::memory_t::host, 0, ik), num_bands, local_rank);//TODO: remove
     }
-
+/*
     if (kset_fbz.ctx().comm_k().rank() == 0) {
         std::cout << "Starting wannier_run..." << std::endl;
 
@@ -831,6 +891,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                      spread_loc.at(sddk::memory_t::host), length_seedname, length_atomic_symbol);
         std::cout << "Wannier_run succeeded. " << std::endl;
     }
+*/
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_run");
 }
 
