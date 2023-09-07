@@ -33,7 +33,7 @@ option(SIRIUS_USE_OPENMP              "use OpenMP" ON)
 option(SIRIUS_USE_PROFILER            "measure execution of functions with timer" ON)
 option(SIRIUS_USE_MEMORY_POOL         "use memory pool" ON)
 option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
-option(SIRIUS_BUILD_TESTING           "build test executables" OFF) # override default setting in CTest module
+option(BUILD_TESTING                   "build test executables" OFF) # override default setting in CTest module
 option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
 
 set(SIRIUS_GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
