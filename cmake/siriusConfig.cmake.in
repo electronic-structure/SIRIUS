@@ -80,7 +80,7 @@ if(NOT TARGET sirius::sirius)
     find_package(rocsolver CONFIG ${mode})
   endif()
 
-  if(@USE_MEMORY_POOL@)
+  if(@SIRIUS_USE_MEMORY_POOL@)
     find_package(umpire ${mode})
   endif()
 
