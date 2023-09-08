@@ -22,7 +22,7 @@ set(SIRIUS_SCF_FLAGS_cpu_band_parallel    --control.processing_unit=cpu --contro
 
 # todo: Add OMP_NUM_THREADS + srun / mpiexec flags here too?
 
-if(SIRIUS_BUILD_TESTING)
+if(BUILD_TESTING)
     file(GLOB dirs LIST_DIRECTORIES true "${CMAKE_SOURCE_DIR}/verification/test*")
 
     foreach(full_path ${dirs})
