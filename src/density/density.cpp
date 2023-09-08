@@ -781,6 +781,7 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
     /* add |psi_j> n_j <psi_j| to density matrix */
 
+    #pragma omp parallel for
     for (auto it : kp__.spinor_wave_functions().spl_num_atoms()) {
         int ia            = it.i;
         int mt_basis_size = uc.atom(ia).type().mt_basis_size();
