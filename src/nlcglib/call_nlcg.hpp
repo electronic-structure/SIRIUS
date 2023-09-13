@@ -47,7 +47,10 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
     double tau   = nlcg_params.tau();
     int maxiter  = nlcg_params.maxiter();
     int restart  = nlcg_params.restart();
-    auto nlcg_pu = sddk::get_device_t(nlcg_params.processing_unit());
+    auto nlcg_pu = ctx.processing_unit();
+    if(nlcg_params.processing_unit() != "") {
+        nlcg_pu = sddk::get_device_t(nlcg_params.processing_unit());
+    }
 
     std::string smear = ctx.cfg().parameters().smearing();
 
